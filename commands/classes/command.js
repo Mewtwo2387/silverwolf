@@ -1,16 +1,15 @@
 class Command {
-    constructor(client, name, description, options, ephemeral = false, ignoreDefer = false){
+    constructor(client, name, description, options, ephemeral = false){
         this.client = client;
         this.name = name;
         this.description = description;
         this.options = options;
         this.ephemeral = ephemeral;
-        this.ignoreDefer = ignoreDefer;
     }
 
     async execute(interaction){
         if (this.run !== undefined) {
-            if (!this.ignoreDefer){
+            if (!interaction.deferred) {
                 await interaction.deferReply({
                     ephemeral: this.ephemeral
                 });

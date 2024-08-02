@@ -14,7 +14,7 @@ class Execute extends DevCommand {
                 description: "the command to execute",
                 type: 3,
                 required: true
-            }], false, true
+            }]
         );
     }
 
