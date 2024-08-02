@@ -1,4 +1,4 @@
-const { Command } = require('./classes/command.js');
+const { Command } = require("./classes/command.js");
 
 class Say extends Command {
     constructor(client){
@@ -9,15 +9,12 @@ class Say extends Command {
                 type: 3,
                 required: true
             }
-        ]);
+        ], true);
     }
 
     async run(interaction){
         const input = interaction.options.getString('message').replace(/@/g, '');
         try{
-            await interaction.deferReply({
-                ephemeral: true
-            });
             await interaction.channel.send(input);
             await interaction.editReply({
                 content: 'message sent',
@@ -25,7 +22,7 @@ class Say extends Command {
             });
         }catch(error){
             console.error(error);
-            interaction.reply({
+            interaction.editReply({
                 content: 'error (jez is that you again)',
                 ephemeral: true
             });

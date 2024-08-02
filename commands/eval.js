@@ -13,9 +13,9 @@ class Eval extends DevCommand {
     async run(interaction){
         const input = interaction.options.getString("code");
         try{
-            interaction.reply(eval(input)+'');
+            interaction.editReply(eval(input)+'');
         }catch(error){
-            interaction.reply(`Error: ${error.message}`);
+            interaction.editReply(`Error: ${error.message}`);
         }
     }
 }

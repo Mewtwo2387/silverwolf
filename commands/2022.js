@@ -15,7 +15,7 @@ class OldTGP extends Command {
         if(quote.reply !== undefined){
             embed.setDescription(`*"${quote.quote}"* - ${quote.author}\n*"${quote.reply}"* - ${quote.replyauthor}`);
         }
-        interaction.reply({ embeds: [embed] });
+        interaction.editReply({ embeds: [embed] });
     }
 }
 

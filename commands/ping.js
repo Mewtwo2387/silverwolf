@@ -6,7 +6,7 @@ class Ping extends Command {
     }
 
     async run(interaction){
-        await interaction.reply("Pong!");
+        await interaction.editReply("Pong!");
     }
 }
 

@@ -6,7 +6,7 @@ class Hello extends Command {
     }
 
     async run(interaction){
-        await interaction.reply(`Hello ${interaction.user.username}!`);
+        await interaction.editReply(`Hello ${interaction.user.username}!`);
     }
 }
 

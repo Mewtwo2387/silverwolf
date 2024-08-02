@@ -8,21 +8,16 @@ class Lore extends Command {
                 name: "member",
                 description: "lore of the member",
                 type: 3,
-                required: true,
-                choices: [
-                    { name: "Doge", value: "Doge" },
-                    { name: "Implicit", value: "Implicit" },
-                    { name: "Akagi", value: "Akagi" }
-                ]
+                required: true
             }]
         );
     }
 
     async run(interaction){
-        var embed;
-        switch(interaction.options.getString('member')){
-            case "Doge":
-                embed = new Discord.EmbedBuilder()
+        var embed = null;
+        switch(interaction.options.getString('member').toLowerCase()){
+            case "doge": case "kaitlin":
+                interaction.editReply({embeds: [ new Discord.EmbedBuilder()
                     .setColor('#00AAAA')
                     .setTitle('«« ━━ ✦・Doge Lore・✦ ━━ »»')
                     .setDescription('### Lover of the TGP Queen\nDoge is doge.')
@@ -48,9 +43,10 @@ class Lore extends Command {
                     .addFields({ name: 'Lore 11: Stockfish', value:`Cheater smh.`,inline:false})
                     .addFields({ name: 'Lore 12: Renvi Appreciation', value:`Renvi loves doge's navel. That's it. I won't provide any more context.`,inline:false})
                     .addFields({ name: 'Lore 13: Herrscher of Egg', value:`Doge wants to be a girl. And now Doge is a girl.`,inline:false})
+                ]});
                 break;
-            case "Implicit":
-                embed = new Discord.EmbedBuilder()
+            case "implicit":
+                interaction.editReply({embeds: [ new Discord.EmbedBuilder()
                     .setColor('#00AAAA')
                     .setTitle('«« (;  · \\\_ ·) Implicit lore (;  · \\\_ ·) »»')
                     .setDescription('### (;  · \\\_ ·)\n(;  · \\\_ ·)(;  · \\\_ ·)(;  · \\\_ ·) (;  · \\\_ ·)(;  · \\\_ ·)(;  · \\\_ ·)(;  · \\\_ ·) (;  · \\\_ ·)(;  · \\\_ ·) (;  · \\\_ ·)(;  · \\\_ ·)(;  · \\\_ ·)(;  · \\\_ ·)')
@@ -64,9 +60,10 @@ class Lore extends Command {
                     .addFields({ name: 'Matrix Relationships', value:`(;  · \\\_ ·)`, inline: true })
                     .addFields({ name: 'Quotes', value:`(;  · \\\_ ·)`, inline: true })
                     .addFields({ name: 'Lore (;  · \\\_ ·): (;  · \\\_ ·)', value:`(;  · \\\_ ·)(;  · \\\_ ·) (;  · \\\_ ·)(;  · \\\_ ·)(;  · \\\_ ·)`,inline:false})
-                    break;
-            case "Akagi":
-                embed = new Discord.EmbedBuilder()
+                ]});
+                break;
+            case "akagi": case "akagers":
+                interaction.editReply({embeds: [ new Discord.EmbedBuilder()
                     .setColor('#00AAAA')
                     .setTitle('«« ━━ ✦・Akagi Lore・✦ ━━ »»')
                     .setDescription('### Sentient Aircraft Carrier\nAkagi is an IJN aircraft carrier disguised as a genderbent human being. Despite being an aircraft carrier, his iconic quote is "I am not an aircraft carrier".')
@@ -87,15 +84,57 @@ class Lore extends Command {
                     .addFields({ name: 'Lore 6: EEE HEE HEE', value: `EEE HEE HEE`,inline:false})
                     .addFields({ name: 'Lore 7: (not) ace person in horni server', value: `He uhhh, you know what he did`, inline: false })
                     .addFields({ name: 'Lore 8: Piss', value: `He was pissed on and turned bright yellow. He now unpissed.`, inline: false })
-                    break;
+                ]});
+                break;
+            case "jez": case "xei": case "xeiris":
+                interaction.editReply("# XEIPIZZA");
+                interaction.channel.send("<:yanfeismug:1136925353651228775>");
+                interaction.channel.send({embeds: [ new Discord.EmbedBuilder()
+                    .setColor('#00AAAA')
+                    .setTitle('«« ━━ ✦・Jez Lore・✦ ━━ »»')
+                    .setDescription('### Sentient GPU\nIris XE supremacy')
+                    .addFields({ name: 'Timezone', value:'Singapore (GMT+8)',inline:true})
+                    .addFields({ name: 'Staff', value:'Basement Admin',inline:true})
+                    .addFields({ name: 'Join Date', value:`November '22`,inline:true})
+                    .addFields({ name: 'Pronouns', value:`He/Him`,inline:true})
+                    .addFields({ name: 'Veteran', value:`No (but entered vet chat via levels)`,inline:true})
+                    .addFields({ name: 'Basement Member', value:`Yes`,inline:true})
+                    .addFields({ name: 'Aliases', value:`Jez\nXei\nXel\nXeiris\nXelris\nArcXe\nIris Xe\nHerrscher of Lofi\nLofi's Husband\nMeltryllis Simp`,inline:true})
+                    .addFields({ name: 'Matrix Relationships', value:'**Wife: ** Lofi Bot\n**Classmate: ** Mystic\n**Therapy on: ** Doge\n**Simps for: ** Meltryllis\n**Shipped with: ** Leon (I swear this was real)',inline:true})
+                ]});
+                break;
+            case 'karezi': case 'kareezers':
+                interaction.editReply('childe')
+                interaction.channel.send({ files: [{ attachment: 'https://media.tenor.com/lnf8yDfui1QAAAAC/lumine-lick.gif' }] });
+                break;
+            case 'jaydon':
+                if(Math.random()<0.5){
+                    interaction.editReply('keqing')
+                    interaction.channel.send("<:yanfeismug:1136925353651228775>");
+                }else{
+                    interaction.editReply('no keqing?')
+                }
+                break;
+            case 'venfei':
+                interaction.editReply('a'.repeat(Math.ceil(Math.random()*25)))
+                break;
+            case 'dani': case 'danie': case 'jes': case 'jester':
+                interaction.editReply('scarameow :3')
+                break;
+            case 'mistake':
+                interaction.editReply(`[1:1] In the beginning when Mistake created the server,
+[1:2] the server was a formless void and darkness covered the face of the deep, while a wind from Mistake swept over the face of the waters.
+[1:3] Then Mistake said, "Let there be channels"; and there was channels.
+[1:4] And Mistake saw that the channels was good; and Mistake separated the general chat from the place chat.
+[1:5] Mistake called the channel #general, and there was \`#g #e #n #s #h #i #n\`.
+[1:6] And Mistake said, "Let there be an incoming channel in the midst of the channels, and let it separate the channel from the channels."
+[1:7] So Mistake made \`#incoming\` and separated the channels that were under the \`#incoming\` with another category. And it was so.`)
+                break;
+            case 'mystic':
+                interaction.editReply("mommy")
             default:
-                embed = new Discord.EmbedBuilder()
-                    .setColor("#AA0000")
-                    .setTitle("Error")
-                    .setDescription("I don't know how, but you chose a choice that isn't here");
+                interaction.editReply('send me the lore')
         }
-        
-        interaction.reply({embeds: [embed]});
         return;
     }
 }

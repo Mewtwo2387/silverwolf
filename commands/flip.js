@@ -23,7 +23,7 @@ class Flip extends Command {
             .setTitle('You flipped a coin.')
             .setDescription('Silverwolf gave you side.')
         }
-        interaction.reply({ embeds: [embed] });
+        interaction.editReply({ embeds: [embed] });
     }
 }
 

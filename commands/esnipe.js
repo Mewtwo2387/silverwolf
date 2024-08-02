@@ -28,7 +28,7 @@ class ESnipe extends Command {
                 .setDescription(`Author: ${msg.old.author.username}\nOld: ${msg.old.content}\nNew: ${msg.new.content}`)
                 .setTimestamp(msg.new.createdAt);
 
-            await interaction.reply({ embeds: [embed] });
+            await interaction.editReply({ embeds: [embed] });
             return;
         }
 
@@ -37,7 +37,7 @@ class ESnipe extends Command {
             .setTitle("Snipe failed!")
             .setDescription(`There are only ${total} edited messages to snipe in this channel`);
 
-        await interaction.reply({ embeds: [embed] });
+        await interaction.editReply({ embeds: [embed] });
     }
 }
 

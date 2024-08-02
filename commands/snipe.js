@@ -28,7 +28,7 @@ class Snipe extends Command {
                 .setDescription(`**${msg.author.username}**: ${msg.content}`)
                 .setTimestamp(msg.createdAt);
 
-            await interaction.reply({ embeds: [embed] });
+            await interaction.editReply({ embeds: [embed] });
             return;
         }
 
@@ -37,7 +37,7 @@ class Snipe extends Command {
             .setTitle("Snipe failed!")
             .setDescription(`There are only ${total} deleted messages to snipe in this channel`);
 
-        await interaction.reply({ embeds: [embed] });
+        await interaction.editReply({ embeds: [embed] });
     }
 }
 

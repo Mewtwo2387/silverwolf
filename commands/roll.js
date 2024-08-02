@@ -83,7 +83,7 @@ class Roll extends Command {
                     }
                 } 
         }
-        interaction.reply({embeds: [embed]});
+        interaction.editReply({embeds: [embed]});
     }
 }
 

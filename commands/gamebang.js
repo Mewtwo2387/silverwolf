@@ -26,7 +26,7 @@ class Gamebang extends Command {
             .addFields({ name: "13. Gamebang and the Archon War", value: 'https://drive.google.com/file/d/1lqXnxMjvAHjiFyFyFnGbHFA0ghaFmjdr/view?usp=sharing', inline: false })
             .addFields({ name: "14. Gamebang and the Apocalypse", value: 'https://drive.google.com/file/d/1hY3j3tfDkZWFhddWby5nRf6ICT9h7OFk/view?usp=sharing', inline: false })
             .setFooter({ text: 'holy fuck' });
-        interaction.reply({embeds: [embed]});
+        interaction.editReply({embeds: [embed]});
         return;
     }
 }
