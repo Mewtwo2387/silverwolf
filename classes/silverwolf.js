@@ -1,4 +1,5 @@
 const { Client, REST, Routes } = require("discord.js");
+const { Database } = require("./database.js");
 const fs = require("fs");
 const path = require("path");
 
@@ -11,6 +12,7 @@ class Silverwolf extends Client {
         this.deletedMessages = [];
         this.editedMessages = [];
         this.singing = false;
+        this.db = new Database();
         this.init();
     }
 
