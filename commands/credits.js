@@ -1,7 +1,7 @@
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 
-class Balance extends Command {
+class Credits extends Command {
     constructor(client){
         super(client, "credits", "check your mystic credits", []);
     }
@@ -17,4 +17,4 @@ class Balance extends Command {
     }
 }
 
-module.exports = Balance;
+module.exports = Credits;
