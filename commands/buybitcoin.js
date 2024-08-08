@@ -18,8 +18,8 @@ class BuyBitcoin extends Command {
         const bitcoin = new Bitcoin();
         const amount = interaction.options.getNumber('amount');
         const price = await bitcoin.getPrice();
-        const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
-        const bitcoinAmount = await this.client.db.getUserAttr(interaction.user.id, 'bitcoin');
+        let credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
+        let bitcoinAmount = await this.client.db.getUserAttr(interaction.user.id, 'bitcoin');
 
 
         if(price == null){
@@ -46,9 +46,19 @@ class BuyBitcoin extends Command {
             } else {
                 await this.client.db.updateUserAttr(interaction.user.id, 'bitcoin', amount);
                 await this.client.db.updateUserAttr(interaction.user.id, 'credits', -amount * price);
+                await this.client.db.updateUserAttr(interaction.user.id, 'total_sold_amount', -amount);
+                await this.client.db.updateUserAttr(interaction.user.id, 'total_sold_price', -amount * price);
+                bitcoinAmount = await this.client.db.getUserAttr(interaction.user.id, 'bitcoin');
+                credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
+                const lastBoughtAmount = await this.client.db.getUserAttr(interaction.user.id, 'last_bought_amount');
+                const lastBoughtPrice = await this.client.db.getUserAttr(interaction.user.id, 'last_bought_price');
                 await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
                     .setColor('#00AA00')
                     .setTitle(`Sold ${-amount} bitcoin for ${-amount * price} mystic credits!`)
+                    .setDescription(`Current bitcoin price: ${price}
+Last bought price: ${lastBoughtPrice} (${lastBoughtAmount} bitcoin)
+Current bitcoin amount: ${bitcoinAmount}
+Current mystic credits: ${credits}`)
                 ]});
                 return;
             }
@@ -62,9 +72,18 @@ class BuyBitcoin extends Command {
             } else {
                 await this.client.db.updateUserAttr(interaction.user.id, 'bitcoin',  amount);
                 await this.client.db.updateUserAttr(interaction.user.id, 'credits', -amount * price);
+                await this.client.db.updateUserAttr(interaction.user.id, 'total_bought_amount', amount);
+                await this.client.db.updateUserAttr(interaction.user.id, 'total_bought_price', amount * price);
+                await this.client.db.setUserAttr(interaction.user.id, 'last_bought_amount', amount);
+                await this.client.db.setUserAttr(interaction.user.id, 'last_bought_price', price);
+                bitcoinAmount = await this.client.db.getUserAttr(interaction.user.id, 'bitcoin');
+                credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
                 await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
                     .setColor('#00AA00')
                     .setTitle(`Bought ${amount} bitcoin for ${amount * price} mystic credits!`)
+                    .setDescription(`Current bitcoin price: ${price}
+Current bitcoin amount: ${bitcoinAmount}
+Current mystic credits: ${credits}`)
                 ]});
                 return;
             }

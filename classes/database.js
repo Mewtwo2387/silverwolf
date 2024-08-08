@@ -97,6 +97,17 @@ class Database {
         }
     }
 
+    async setUserAttr(userId, field, value) {
+        try {
+            await this.getUser(userId);
+            const query = `UPDATE User SET ${field} = ? WHERE id = ?;`;
+            await this.executeQuery(query, [value, userId]);
+            console.log(`Updated user ${userId}: ${field} set to ${value}.`);
+        } catch (err) {
+            console.error(`Failed to override ${field}:`, err.message);
+        }
+    }
+
     async getUserAttr(userId, attribute) {
         try {
             const user = await this.getUser(userId);
