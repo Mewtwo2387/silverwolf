@@ -7,8 +7,8 @@ class Balance extends Command {
     }
 
     async run(interaction){
-        const credits = await this.client.db.getCredits(interaction.user.id);
-        const bitcoin = await this.client.db.getBitcoin(interaction.user.id);
+        const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
+        const bitcoin = await this.client.db.getUserAttr(interaction.user.id, 'bitcoin');
         console.log(credits);
         await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
             .setColor('#00AA00')

@@ -22,7 +22,7 @@ class Add extends DevCommand {
     async run(interaction){
         const user = interaction.options.getUser('user');
         const amount = interaction.options.getInteger('amount');
-        await this.client.db.addCredits(user.id, amount);
+        await this.client.db.updateUserAttr(user.id, 'credits', amount);
         await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
             .setColor('#00AA00')
             .setTitle(`Added ${amount} mystic credits to ${user.tag}`)

@@ -18,8 +18,8 @@ class BuyBitcoin extends Command {
         const bitcoin = new Bitcoin();
         const amount = interaction.options.getNumber('amount');
         const price = await bitcoin.getPrice();
-        const credits = await this.client.db.getCredits(interaction.user.id);
-        const bitcoinAmount = await this.client.db.getBitcoin(interaction.user.id);
+        const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
+        const bitcoinAmount = await this.client.db.getUserAttr(interaction.user.id, 'bitcoin');
 
 
         if(price == null){
@@ -44,8 +44,8 @@ class BuyBitcoin extends Command {
                 ]});
                 return;
             } else {
-                await this.client.db.addBitcoin(interaction.user.id, amount);
-                await this.client.db.addCredits(interaction.user.id, -amount * price);
+                await this.client.db.updateUserAttr(interaction.user.id, 'bitcoin', amount);
+                await this.client.db.updateUserAttr(interaction.user.id, 'credits', -amount * price);
                 await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
                     .setColor('#00AA00')
                     .setTitle(`Sold ${-amount} bitcoin for ${-amount * price} mystic credits!`)
@@ -60,8 +60,8 @@ class BuyBitcoin extends Command {
                 ]});
                 return;
             } else {
-                await this.client.db.addBitcoin(interaction.user.id, amount);
-                await this.client.db.addCredits(interaction.user.id, -amount * price);
+                await this.client.db.updateUserAttr(interaction.user.id, 'bitcoin',  amount);
+                await this.client.db.updateUserAttr(interaction.user.id, 'credits', -amount * price);
                 await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
                     .setColor('#00AA00')
                     .setTitle(`Bought ${amount} bitcoin for ${amount * price} mystic credits!`)
