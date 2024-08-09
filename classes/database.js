@@ -14,7 +14,7 @@ class Database {
 
     init(){
         this.db.run(`CREATE TABLE IF NOT EXISTS User (
-            id INTEGER PRIMARY KEY,
+            id VARCHAR PRIMARY KEY,
             credits INTEGER DEFAULT 0,
             bitcoin FLOAT DEFAULT 0,
             last_bought_price FLOAT DEFAULT 0,
@@ -98,6 +98,17 @@ class Database {
         });
     }
 
+    async executeSelectAllQuery(query, params = []) {
+        return new Promise((resolve, reject) => {
+            this.db.all(query, params, (err, rows) => {
+                if (err) {
+                    return reject(err);
+                }
+                resolve(rows);
+            });
+        });
+    }
+
     async getUser(userId) {
         try {
             const row = await this.executeSelectQuery(`SELECT * FROM User WHERE id = ?`, [userId]);
@@ -156,6 +167,18 @@ class Database {
         try {
             const user = await this.getUser(userId);
             return user[attribute];
+        } catch (err) {
+            console.error(`Failed to get ${attribute}:`, err.message);
+            return null;
+        }
+    }
+
+    async getEveryoneAttr(attribute) {
+        try {
+            const query = `SELECT id, ${attribute} FROM User WHERE ${attribute} <> 0 ORDER BY ${attribute} DESC;`;
+            const rows = await this.executeSelectAllQuery(query);
+            console.log(rows);
+            return rows;
         } catch (err) {
             console.error(`Failed to get ${attribute}:`, err.message);
             return null;
