@@ -22,13 +22,57 @@ class Database {
             total_bought_price FLOAT DEFAULT 0,
             total_bought_amount FLOAT DEFAULT 0,
             total_sold_price FLOAT DEFAULT 0,
-            total_sold_amount FLOAT DEFAULT 0
+            total_sold_amount FLOAT DEFAULT 0,
+            dinonuggies INTEGER DEFAULT 0,
+            dinonuggies_last_claimed DATETIME DEFAULT NULL,
+            dinonuggies_claim_streak INTEGER DEFAULT 0
         )`, (err) => {
             if (err) {
                 console.error(err.message);
             } else {
                 console.log('Created the User table.');
+                this.updateSchema();
             }
+        });
+    }
+
+    updateSchema() {
+        const columnsToAdd = [
+            { name: 'dinonuggies', type: 'INTEGER', defaultValue: 0 },
+            { name: 'dinonuggies_last_claimed', type: 'DATETIME', defaultValue: 'NULL' },
+            { name: 'dinonuggies_claim_streak', type: 'INTEGER', defaultValue: 0 }
+        ];
+
+        columnsToAdd.forEach(async (column) => {
+            try {
+                const columnExists = await this.checkIfColumnExists('User', column.name);
+                if (!columnExists) {
+                    const addColumnQuery = `ALTER TABLE User ADD COLUMN ${column.name} ${column.type} DEFAULT ${column.defaultValue}`;
+                    this.db.run(addColumnQuery, (err) => {
+                        if (err) {
+                            console.error(`Failed to add column ${column.name}:`, err.message);
+                        } else {
+                            console.log(`Column ${column.name} added successfully.`);
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error(`Failed to check or add column ${column.name}:`, err.message);
+            }
+        });
+    }
+
+    // Method to check if a column exists in the table
+    checkIfColumnExists(tableName, columnName) {
+        return new Promise((resolve, reject) => {
+            const query = `PRAGMA table_info(${tableName})`;
+            this.db.all(query, [], (err, rows) => {
+                if (err) {
+                    return reject(err);
+                }
+                const columnExists = rows.some(row => row.name === columnName);
+                resolve(columnExists);
+            });
         });
     }
 
@@ -74,8 +118,8 @@ class Database {
 
     async createUser(userId) {
         const query = `
-            INSERT INTO User (id, credits, bitcoin, last_bought_price, last_bought_amount, total_bought_price, total_bought_amount, total_sold_price, total_sold_amount) 
-            VALUES (?, 10000, 0, 0, 0, 0, 0, 0, 0)`;
+            INSERT INTO User (id, credits, bitcoin, last_bought_price, last_bought_amount, total_bought_price, total_bought_amount, total_sold_price, total_sold_amount, dinonuggies, dinonuggies_last_claimed, dinonuggies_claim_streak)
+            VALUES (?, 10000, 0, 0, 0, 0, 0, 0, 0, 0, NULL, 0);`;
         
         try {
             await this.executeQuery(query, [userId]);
