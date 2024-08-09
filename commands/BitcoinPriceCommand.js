@@ -1,18 +1,17 @@
 const Discord = require('discord.js');
-const axios = require('axios');
 const { Command } = require('./classes/command.js'); // Adjust the path if necessary
+const { Bitcoin } = require('../classes/bitcoin.js'); 
 
 class BitcoinPriceCommand extends Command {
     constructor(client) {
         super(client, "bitcoin-price", "Fetches the current Bitcoin price", []);
-        this.bitcoinPriceUrl = 'https://api.coindesk.com/v1/bpi/currentprice.json';
     }
 
     async run(interaction) {
         try {
             // Fetch Bitcoin price data
-            const response = await axios.get(this.bitcoinPriceUrl);
-            const data = response.data;
+            const bitcoin = new Bitcoin();
+            const data = await bitcoin.getData();
             const date = new Date(data.time.updatedISO);
 
             // Create the embed message

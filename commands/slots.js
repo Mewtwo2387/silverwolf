@@ -15,7 +15,7 @@ class Slots extends Command {
 
     async run(interaction){
         const amount = interaction.options.getInteger('amount');
-        const credits = await this.client.db.getCredits(interaction.user.id);
+        const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
         if(amount > credits){
             await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
                 .setColor('#AA0000')
@@ -57,7 +57,7 @@ class Slots extends Command {
             }
         }
 
-        await this.client.db.addCredits(interaction.user.id, winnings - amount);
+        await this.client.db.updateUserAttr(interaction.user.id, 'credits', winnings - amount);
 
         if(amount >= 0){
             if (winnings == 0){
