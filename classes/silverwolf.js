@@ -84,7 +84,7 @@ class Silverwolf extends Client {
         console.log(`Message received from ${message.author.username}: ${message.content}`);
         const msg = message.content.toLowerCase();
 
-        if (message.mentions.has(this.user.id) && message.reference) {
+        if (message.mentions.has(this.user.id) && message.reference && message.content.includes(this.user.id)) {
             const referencedMessageId = message.reference.messageId;
             message.channel.messages.fetch(referencedMessageId).then(async referencedMessage => {
                 const guildMember = await message.guild.members.fetch(referencedMessage.author.id);
