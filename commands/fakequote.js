@@ -1,3 +1,10 @@
+/*
+Credits:
+- ChatGPT
+- Copilot
+- Mystic's Collei bot
+*/
+
 const { Command } = require('./classes/command.js');
 const Canvas = require('canvas');
 
@@ -54,32 +61,56 @@ class FakeQuote extends Command {
             const maxWidth = 480;
             let fontSize = 36;
 
+            // Create gradient 
+            const gradient = ctx.createLinearGradient(384, 0, 512, 0);
+            gradient.addColorStop(0, 'rgba(0, 0, 0, 0)'); // Start color (transparent)
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 1)'); // End color (opaque black)
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(384, 0, 128, 512);
+            console.log("Filled gradient");
+
+            ctx.fillStyle = '#ffffff';
+
             // Split text into lines and adjust font size if necessary
             const lines = this.wrapText(ctx, message, maxWidth, fontSize);
             fontSize = this.adjustFontSize(ctx, lines, maxWidth, fontSize);
             ctx.font = `italic ${fontSize}px sans-serif`;
 
-            // Draw each line of text
+            // Calculate total text height
             let lineHeight = fontSize * 1.2;
-            let textY = 50;
+            let textHeight = lines.length * lineHeight;
+            let nicknameHeight = 36; // Height of the nickname font
+            let usernameHeight = 24; // Height of the username font
+            let nicknameMargin = 10; // Margin below the quote for the nickname
+            let usernameMargin = 50; // Margin below the quote for the username
+
+            // Calculate total height including nickname and username
+            let totalHeight = textHeight + nicknameHeight + nicknameMargin;
+            if (username !== nickname) {
+                totalHeight += usernameHeight + usernameMargin;
+            }
+
+            // Calculate starting Y position to center the text vertically
+            let textY = (ctx.canvas.height - totalHeight) / 2;
+
+            // Draw each line of text
             lines.forEach((line, index) => {
                 ctx.fillText(`${line}`, 768, textY + (index * lineHeight));
             });
             console.log("Drew quote");
 
-            const textHeight = lines.length * lineHeight;
-
-            // nickname
+            // Draw nickname
             ctx.fillStyle = '#ffffff';
             ctx.font = '36px sans-serif';
-            ctx.fillText(`- ${nickname}`, 768, textY + textHeight + 10); // 10px margin below the quote
-            console.log("Drew nickname");            
+            ctx.fillText(`- ${nickname}`, 768, textY + textHeight + nicknameMargin);
+            console.log("Drew nickname");
 
-            // username
-            if (username != nickname) {
+            // Draw username if different from nickname
+            if (username !== nickname) {
                 ctx.fillStyle = '#808080';
                 ctx.font = '24px sans-serif';
-                ctx.fillText(`@${username}`, 768, textY + textHeight + 50); // 50px margin below the quote
+                ctx.fillText(`@${username}`, 768, textY + textHeight + nicknameMargin + usernameMargin);
                 console.log("Drew username");
             }
             
