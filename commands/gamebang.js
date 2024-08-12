@@ -1,7 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { NsfwCommand } = require('./classes/nsfwcommand.js');
 
-class Gamebang extends Command {
+class Gamebang extends NsfwCommand{
     constructor(client){
         super(client, "gamebang", "send an embed of peak", []);
     }

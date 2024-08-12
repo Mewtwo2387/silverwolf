@@ -7,10 +7,11 @@ class Donate extends Command {
     }
 
     async run(interaction){
-        await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
-            .setColor('#00AA00')
-            .setTitle('«« ━━ ✦・Donation Links and Rewards・✦ ━━ »»')
-            .setDescription(`Donate for a series of rewards! (real)
+        if(interaction.guild.id == '969953667597893672'){ // basement
+            await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
+                .setColor('#00AA00')
+                .setTitle('«« ━━ ✦・Donation Links and Rewards・✦ ━━ »»')
+                .setDescription(`Donate for a series of rewards! (real)
                 
 https://donate.unrwa.org/
                 
@@ -33,7 +34,35 @@ https://linktr.ee/fundsforgaza/
 **$50** - Admin role
 
 **$100** - Owner role`)
-        ]});
+            ]});
+        }else{
+            await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
+                .setColor('#00AA00')
+                .setTitle('«« ━━ ✦・Donation Links and Rewards・✦ ━━ »»')
+                .setDescription(`Donate for a series of rewards! (real)
+                
+https://donate.unrwa.org/
+                
+https://linktr.ee/fundsforgaza/
+                
+**$5** - A kiss mwwaaahhh
+
+**$10** - A hug <3
+
+**$5** - Access to the secret Xei slander channel
+
+**$10** - Access to the super secret admin furry roleplay channel
+
+**$25** - Mod role
+
+**$50** - Admin role
+
+**$100** - Owner role
+
+**$▮▮** - ▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮
+`)
+            ]});
+        }
     }
 }
 
