@@ -83,6 +83,40 @@ class Silverwolf extends Client {
         if(message.author.bot) return;
         console.log(`Message received from ${message.author.username}: ${message.content}`);
         const msg = message.content.toLowerCase();
+
+        if (message.mentions.has(this.user.id) && message.reference) {
+            const referencedMessageId = message.reference.messageId;
+            message.channel.messages.fetch(referencedMessageId).then(async referencedMessage => {
+                const guildMember = await message.guild.members.fetch(referencedMessage.author.id);
+                const person = referencedMessage.author;
+                const nickname = guildMember.nickname || person.username;
+                const originalMessage = referencedMessage.content;
+                const pfp = guildMember.displayAvatarURL({ extension: 'png', size: 512 });
+    
+                // Find the "fakequote" command and execute it
+                const fakeQuoteCommand = this.commands.get("fakequote");
+                if (fakeQuoteCommand) {
+                    const interaction = {
+                        options: {
+                            getUser: (name) => ({ username: person.username, displayAvatarURL: () => pfp }),
+                            getString: (name) => {
+                                if (name === "message") return originalMessage;
+                                if (name === "nickname") return nickname;
+                                return "";
+                            }
+                        },
+                        editReply: async (content) => {
+                            // Simulate sending the image in the reply
+                            message.reply({ files: [content.files[0]] });
+                        }
+                    };
+                    
+                    fakeQuoteCommand.run(interaction);
+                }
+            }).catch(console.error);
+            return;
+        }
+
         for (const [keyword, reply] of Object.entries(this.keywords)){
             if(msg.includes(keyword)){
                 message.reply(reply);
