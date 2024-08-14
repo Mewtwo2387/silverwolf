@@ -15,8 +15,8 @@ class Upgrades extends Command{
         const gold_chance = 0.025 + 0.005 * multiplier_rarity_level;
         const silver_chance = 0.05 + 0.01 * multiplier_rarity_level;
         const bronze_chance = 0.1 + 0.02 * multiplier_rarity_level;
-        const multiplier_amount_cost = 5000 * multiplier_amount_level * multiplier_amount_level;
-        const multiplier_rarity_cost = 5000 * multiplier_rarity_level * multiplier_rarity_level;
+        const multiplier_amount_cost = 5000 * multiplier_amount_level;
+        const multiplier_rarity_cost = 5000 * multiplier_rarity_level;
         await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
             .setColor('#00AA00')
             .setTitle('Upgrades')

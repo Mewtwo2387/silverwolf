@@ -188,6 +188,25 @@ class Database {
             return null;
         }
     }
+
+    async dump(){
+        // output as a table
+        const query = `SELECT * FROM User;`;
+        const rows = await this.executeSelectAllQuery(query);
+        const keys = Object.keys(rows[0]);
+        const csv = [keys.join(',')];
+        rows.forEach(row => {
+            const values = keys.map(key => {
+                if (key === 'id') {
+                    return `<@${row[key]}>`;
+                } else {
+                    return row[key];
+                }
+            });
+            csv.push(values.join(','));
+        });
+        return csv.join('\n');
+    }
 }
 
 module.exports = { Database };

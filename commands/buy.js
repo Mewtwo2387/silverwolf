@@ -17,7 +17,7 @@ class Buy extends Command{
         const upgrade = interaction.options.getInteger('upgrade');
         if (upgrade == 1){
             const multiplier_amount_level = await this.client.db.getUserAttr(interaction.user.id, 'multiplier_amount_level');
-            const multiplier_amount_cost = 5000 * multiplier_amount_level * multiplier_amount_level;
+            const multiplier_amount_cost = 5000 * multiplier_amount_level;
             const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
             if (credits < multiplier_amount_cost){
                 await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
@@ -49,7 +49,7 @@ Mystic Credits: ${credits} -> ${credits - multiplier_amount_cost}`)
             }
         }else if (upgrade == 2){
             const multiplier_rarity_level = await this.client.db.getUserAttr(interaction.user.id, 'multiplier_rarity_level');
-            const multiplier_rarity_cost = 5000 * multiplier_rarity_level * multiplier_rarity_level;
+            const multiplier_rarity_cost = 5000 * multiplier_rarity_level;
             const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
             if (credits < multiplier_rarity_cost){
                 await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
