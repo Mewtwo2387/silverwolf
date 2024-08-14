@@ -1,7 +1,8 @@
 const { Command } = require("./classes/command.js");
+const Discord = require('discord.js');
 
 class Say extends Command {
-    constructor(client){
+    constructor(client) {
         super(client, "say", "say something", [
             {
                 name: 'message',
@@ -12,18 +13,28 @@ class Say extends Command {
         ], true);
     }
 
-    async run(interaction){
+    async run(interaction) {
+        // Check if the command is being used in a guild (server)
+        if (!interaction.guild) {
+            return interaction.editReply({ content: 'This command can only be used in a server.', ephemeral: true });
+        }
+
+        // Check if the user has the Administrator permission
+        if (!interaction.member.permissions.has(Discord.PermissionsBitField.Flags.Administrator)) {
+            return interaction.editReply({ content: 'You do not have permission to use this command.', ephemeral: true });
+        }
+
         const input = interaction.options.getString('message').replace(/@/g, '');
-        try{
+        try {
             await interaction.channel.send(input);
             await interaction.editReply({
-                content: 'message sent',
+                content: 'Message sent.',
                 ephemeral: true
             });
-        }catch(error){
+        } catch (error) {
             console.error(error);
             interaction.editReply({
-                content: 'error (jez is that you again)',
+                content: 'Error (Jez, is that you again?).',
                 ephemeral: true
             });
         }
