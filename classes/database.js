@@ -145,7 +145,7 @@ class Database {
         }
     }
 
-    async updateUserAttr(userId, field, value) {
+    async addUserAttr(userId, field, value) {
         try {
             await this.getUser(userId);
             const query = `UPDATE User SET ${field} = ${field} + ? WHERE id = ?;`;

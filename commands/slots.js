@@ -58,7 +58,7 @@ class Slots extends Command {
         }
 
         if(amount >= 0){
-            await this.client.db.updateUserAttr(interaction.user.id, 'credits', winnings - amount);
+            await this.client.db.addUserAttr(interaction.user.id, 'credits', winnings - amount);
             if (winnings == 0){
                 await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
                     .setColor('#AA0000')
@@ -73,7 +73,7 @@ class Slots extends Command {
                 ]});
             }
         }else{
-            // await this.client.db.updateUserAttr(interaction.user.id, 'credits', winnings - amount);
+            // await this.client.db.addUserAttr(interaction.user.id, 'credits', winnings - amount);
             // if (winnings == 0){
             //     await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
             //         .setColor('#AA0000')

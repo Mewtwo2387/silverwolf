@@ -89,7 +89,7 @@ class Claim extends Command {
                     .setAuthor({ name: 'dinonuggie', iconURL: 'https://media.forgecdn.net/avatars/thumbnails/375/327/256/256/637550156004612442.png' })
                     .setFooter({ text: 'dinonuggie', iconURL: 'https://media.forgecdn.net/avatars/thumbnails/375/327/256/256/637550156004612442.png' })
                 ]});
-                await this.client.db.updateUserAttr(interaction.user.id, 'dinonuggies', 5);
+                await this.client.db.addUserAttr(interaction.user.id, 'dinonuggies', 5);
                 await this.client.db.setUserAttr(interaction.user.id, 'dinonuggies_last_claimed', now);
                 await this.client.db.setUserAttr(interaction.user.id, 'dinonuggies_claim_streak', 1);
             } else {
@@ -105,9 +105,9 @@ class Claim extends Command {
                     .setImage(imageUrl)
                     .setFooter({ text: `dinonuggie | ${footer}`, iconURL: 'https://media.forgecdn.net/avatars/thumbnails/375/327/256/256/637550156004612442.png' })
                 ]});
-                await this.client.db.updateUserAttr(interaction.user.id, 'dinonuggies', claimedNuggies);
+                await this.client.db.addUserAttr(interaction.user.id, 'dinonuggies', claimedNuggies);
                 await this.client.db.setUserAttr(interaction.user.id, 'dinonuggies_last_claimed', now);
-                await this.client.db.updateUserAttr(interaction.user.id, 'dinonuggies_claim_streak', streak + 1);
+                await this.client.db.addUserAttr(interaction.user.id, 'dinonuggies_claim_streak', 1);
             }
         } catch (error) {
             console.error('Error claiming dinonuggies:', error);

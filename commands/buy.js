@@ -33,8 +33,8 @@ class Buy extends Command{
                 const silver_multiplier = 1.8 + 0.2 * multiplier_amount_level;
                 const gold_multiplier = 2.6 + 0.4 * multiplier_amount_level;
                 
-                await this.client.db.updateUserAttr(interaction.user.id, 'credits', -multiplier_amount_cost);
-                await this.client.db.updateUserAttr(interaction.user.id, 'multiplier_amount_level', 1);
+                await this.client.db.addUserAttr(interaction.user.id, 'credits', -multiplier_amount_cost);
+                await this.client.db.addUserAttr(interaction.user.id, 'multiplier_amount_level', 1);
 
                 await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
                     .setColor('#00AA00')
@@ -64,8 +64,8 @@ Mystic Credits: ${credits} -> ${credits - multiplier_amount_cost}`)
                 const silver_chance = 0.05 + 0.01 * multiplier_rarity_level;
                 const bronze_chance = 0.1 + 0.02 * multiplier_rarity_level;
                 
-                await this.client.db.updateUserAttr(interaction.user.id, 'credits', -multiplier_rarity_cost);
-                await this.client.db.updateUserAttr(interaction.user.id, 'multiplier_rarity_level', 1);
+                await this.client.db.addUserAttr(interaction.user.id, 'credits', -multiplier_rarity_cost);
+                await this.client.db.addUserAttr(interaction.user.id, 'multiplier_rarity_level', 1);
 
                 await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
                     .setColor('#00AA00')
