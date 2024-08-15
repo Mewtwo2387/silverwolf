@@ -16,6 +16,8 @@ class Donate extends Command {
 https://donate.unrwa.org/
                 
 https://linktr.ee/fundsforgaza/
+
+Bonus 100k mystic credits per dollar donated!
                 
 **$5** - A kiss mwwaaahhh
 
@@ -44,6 +46,8 @@ https://linktr.ee/fundsforgaza/
 https://donate.unrwa.org/
                 
 https://linktr.ee/fundsforgaza/
+
+Bonus 100k mystic credits per dollar donated!
                 
 **$5** - A kiss mwwaaahhh
 

@@ -25,7 +25,10 @@ class Database {
             total_sold_amount FLOAT DEFAULT 0,
             dinonuggies INTEGER DEFAULT 0,
             dinonuggies_last_claimed DATETIME DEFAULT NULL,
-            dinonuggies_claim_streak INTEGER DEFAULT 0
+            dinonuggies_claim_streak INTEGER DEFAULT 0,
+            multiplier_amount_level INTEGER DEFAULT 1,
+            multiplier_rarity_level INTEGER DEFAULT 1,
+            beki_level INTEGER DEFAULT 1
         )`, (err) => {
             if (err) {
                 console.error(err.message);
@@ -40,7 +43,10 @@ class Database {
         const columnsToAdd = [
             { name: 'dinonuggies', type: 'INTEGER', defaultValue: 0 },
             { name: 'dinonuggies_last_claimed', type: 'DATETIME', defaultValue: 'NULL' },
-            { name: 'dinonuggies_claim_streak', type: 'INTEGER', defaultValue: 0 }
+            { name: 'dinonuggies_claim_streak', type: 'INTEGER', defaultValue: 0 },
+            { name: 'multiplier_amount_level', type: 'INTEGER', defaultValue: 1 },
+            { name: 'multiplier_rarity_level', type: 'INTEGER', defaultValue: 1 },
+            { name: 'beki_level', type: 'INTEGER', defaultValue: 1 }
         ];
 
         columnsToAdd.forEach(async (column) => {
@@ -129,8 +135,8 @@ class Database {
 
     async createUser(userId) {
         const query = `
-            INSERT INTO User (id, credits, bitcoin, last_bought_price, last_bought_amount, total_bought_price, total_bought_amount, total_sold_price, total_sold_amount, dinonuggies, dinonuggies_last_claimed, dinonuggies_claim_streak)
-            VALUES (?, 10000, 0, 0, 0, 0, 0, 0, 0, 0, NULL, 0);`;
+            INSERT INTO User (id, credits, bitcoin, last_bought_price, last_bought_amount, total_bought_price, total_bought_amount, total_sold_price, total_sold_amount, dinonuggies, dinonuggies_last_claimed, dinonuggies_claim_streak, multiplier_amount_level, multiplier_rarity_level, beki_level)
+            VALUES (?, 10000, 0, 0, 0, 0, 0, 0, 0, 0, NULL, 0, 1, 1, 1);`;
         
         try {
             await this.executeQuery(query, [userId]);
@@ -141,7 +147,7 @@ class Database {
         }
     }
 
-    async updateUserAttr(userId, field, value) {
+    async addUserAttr(userId, field, value) {
         try {
             await this.getUser(userId);
             const query = `UPDATE User SET ${field} = ${field} + ? WHERE id = ?;`;
@@ -183,6 +189,25 @@ class Database {
             console.error(`Failed to get ${attribute}:`, err.message);
             return null;
         }
+    }
+
+    async dump(){
+        // output as a table
+        const query = `SELECT * FROM User;`;
+        const rows = await this.executeSelectAllQuery(query);
+        const keys = Object.keys(rows[0]);
+        const csv = [keys.join(',')];
+        rows.forEach(row => {
+            const values = keys.map(key => {
+                if (key === 'id') {
+                    return `<@${row[key]}>`;
+                } else {
+                    return row[key];
+                }
+            });
+            csv.push(values.join(','));
+        });
+        return csv.join('\n');
     }
 }
 

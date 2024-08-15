@@ -57,9 +57,8 @@ class Slots extends Command {
             }
         }
 
-        await this.client.db.updateUserAttr(interaction.user.id, 'credits', winnings - amount);
-
         if(amount >= 0){
+            await this.client.db.addUserAttr(interaction.user.id, 'credits', winnings - amount);
             if (winnings == 0){
                 await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
                     .setColor('#AA0000')
@@ -74,19 +73,24 @@ class Slots extends Command {
                 ]});
             }
         }else{
-            if (winnings == 0){
-                await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
-                    .setColor('#AA0000')
-                    .setTitle(`You bet ${amount} mystic credits of debt and got rid of all the debt!`)
-                    .setDescription(`${results[0][0].emote} ${results[0][1].emote} ${results[0][2].emote} ${results[0][3].emote} ${results[0][4].emote}\n${results[1][0].emote} ${results[1][1].emote} ${results[1][2].emote} ${results[1][3].emote} ${results[1][4].emote}\n${results[2][0].emote} ${results[2][1].emote} ${results[2][2].emote} ${results[2][3].emote} ${results[2][4].emote}`)
-                ]});
-            }else{
-                await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
-                    .setColor('#00AA00')
-                    .setTitle(`You bet ${amount} mystic credits of debt and won ${winnings} mystic credits of debt!`)
-                    .setDescription(`${results[0][0].emote} ${results[0][1].emote} ${results[0][2].emote} ${results[0][3].emote} ${results[0][4].emote}\n${results[1][0].emote} ${results[1][1].emote} ${results[1][2].emote} ${results[1][3].emote} ${results[1][4].emote}\n${results[2][0].emote} ${results[2][1].emote} ${results[2][2].emote} ${results[2][3].emote} ${results[2][4].emote}`)
-                ]});
-            }
+            // await this.client.db.addUserAttr(interaction.user.id, 'credits', winnings - amount);
+            // if (winnings == 0){
+            //     await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
+            //         .setColor('#AA0000')
+            //         .setTitle(`You bet ${amount} mystic credits of debt and got rid of all the debt!`)
+            //         .setDescription(`${results[0][0].emote} ${results[0][1].emote} ${results[0][2].emote} ${results[0][3].emote} ${results[0][4].emote}\n${results[1][0].emote} ${results[1][1].emote} ${results[1][2].emote} ${results[1][3].emote} ${results[1][4].emote}\n${results[2][0].emote} ${results[2][1].emote} ${results[2][2].emote} ${results[2][3].emote} ${results[2][4].emote}`)
+            //     ]});
+            // }else{
+            //     await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
+            //         .setColor('#00AA00')
+            //         .setTitle(`You bet ${amount} mystic credits of debt and won ${winnings} mystic credits of debt!`)
+            //         .setDescription(`${results[0][0].emote} ${results[0][1].emote} ${results[0][2].emote} ${results[0][3].emote} ${results[0][4].emote}\n${results[1][0].emote} ${results[1][1].emote} ${results[1][2].emote} ${results[1][3].emote} ${results[1][4].emote}\n${results[2][0].emote} ${results[2][1].emote} ${results[2][2].emote} ${results[2][3].emote} ${results[2][4].emote}`)
+            //     ]});
+            // }
+            await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
+                .setColor('#AA0000')
+                .setTitle(`Betting debt is temporarily disabled`)
+            ]});
         }
     }
 }
