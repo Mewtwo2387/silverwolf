@@ -1,7 +1,6 @@
-const { Command } = require('./classes/command.js');
-const Discord = require('discord.js');
+const { AdminCommand } = require('./classes/admincommand.js');
 
-class SayDM extends Command {
+class SayDM extends AdminCommand {
     constructor(client) {
         super(client, "say-dm", "Send a direct message to a user", [
             {
@@ -21,11 +20,6 @@ class SayDM extends Command {
 
     async run(interaction) {
         try {
-            // Check if the user has the Administrator permission
-            if (!interaction.member.permissions.has(Discord.PermissionsBitField.Flags.Administrator)) {
-                return interaction.editReply('You do not have permission to use this command.')
-            }
-
             const targetUser = interaction.options.getUser('user');
             const messageContent = interaction.options.getString('message');
 
