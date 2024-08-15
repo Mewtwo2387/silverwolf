@@ -21,11 +21,6 @@ class SayDM extends Command {
 
     async run(interaction) {
         try {
-            // Check if the command is being used in a guild (server)
-            if (!interaction.guild) {
-                return interaction.editReply('This command can only be used in a server.')
-            }
-
             // Check if the user has the Administrator permission
             if (!interaction.member.permissions.has(Discord.PermissionsBitField.Flags.Administrator)) {
                 return interaction.editReply('You do not have permission to use this command.')

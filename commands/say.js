@@ -14,14 +14,9 @@ class Say extends Command {
     }
 
     async run(interaction) {
-        // Check if the command is being used in a guild (server)
-        if (!interaction.guild) {
-            return interaction.editReply({ content: 'This command can only be used in a server.', ephemeral: true });
-        }
-
         // Check if the user has the Administrator permission
         if (!interaction.member.permissions.has(Discord.PermissionsBitField.Flags.Administrator)) {
-            return interaction.editReply({ content: 'You do not have permission to use this command.', ephemeral: true });
+            return interaction.editReply('You do not have permission to use this command.');
         }
 
         const input = interaction.options.getString('message').replace(/@/g, '');

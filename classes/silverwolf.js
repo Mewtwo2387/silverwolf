@@ -68,6 +68,10 @@ class Silverwolf extends Client {
 
     processInteraction(interaction){
         if(interaction.isCommand()){
+            if(!interaction.guild){
+                interaction.reply("commands can only be used in servers.");
+                return;
+            }
             const command = this.commands.get(interaction.commandName);
             if(!command) return;
             console.log(`Command ${command.name} executed by ${interaction.user.tag}`);
@@ -81,6 +85,7 @@ class Silverwolf extends Client {
 
     processMessage(message){
         if(message.author.bot) return;
+        if(!message.guild) return;
         console.log(`Message received from ${message.author.username}: ${message.content}`);
         const msg = message.content.toLowerCase();
 
