@@ -16,33 +16,33 @@ class SayDM extends Command {
                 description: 'The message you want to send',
                 required: true,
             }
-        ]);
+        ], true);
     }
 
     async run(interaction) {
         try {
             // Check if the command is being used in a guild (server)
             if (!interaction.guild) {
-                return interaction.editReply({ content: 'This command can only be used in a server.', ephemeral: true });
+                return interaction.editReply('This command can only be used in a server.')
             }
 
             // Check if the user has the Administrator permission
             if (!interaction.member.permissions.has(Discord.PermissionsBitField.Flags.Administrator)) {
-                return interaction.editReply({ content: 'You do not have permission to use this command.', ephemeral: true });
+                return interaction.editReply('You do not have permission to use this command.')
             }
 
             const targetUser = interaction.options.getUser('user');
             const messageContent = interaction.options.getString('message');
 
             if (!targetUser || !messageContent) {
-                return interaction.editReply({ content: 'Invalid user or message.', ephemeral: true });
+                return interaction.editReply('Invalid user or message.')
             }
 
             await targetUser.send(messageContent);
-            await interaction.editReply({ content: `Message sent to ${targetUser.tag}.`, ephemeral: true });
+            await interaction.editReply(`Message sent to ${targetUser.tag}.`)
         } catch (error) {
             console.error('Error sending DM:', error);
-            await interaction.editReply({ content: 'Failed to send the DM.', ephemeral: true });
+            await interaction.editReply('Failed to send the DM.');
         }
     }
 }
