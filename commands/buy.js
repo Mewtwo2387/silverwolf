@@ -1,6 +1,9 @@
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 
+
+// We don't talk about the spaghetti code here
+
 class Buy extends Command{
     constructor(client){
         super(client, "buy", "buy upgrades", [
@@ -75,6 +78,33 @@ Gold Chance: ${(gold_chance * 100).toFixed(2)}% -> ${(gold_chance * 100 + 0.5).t
 Silver Chance: ${(silver_chance * 100).toFixed(2)}% -> ${(silver_chance * 100 + 1).toFixed(2)}%
 Bronze Chance: ${(bronze_chance * 100).toFixed(2)}% -> ${(bronze_chance * 100 + 2).toFixed(2)}%
 Mystic Credits: ${credits} -> ${credits - multiplier_rarity_cost}`)
+                    .setFooter({ text : 'dinonuggie'})
+                ]});
+            }
+        }else if (upgrade == 3){
+            const beki_level = await this.client.db.getUserAttr(interaction.user.id, 'beki_level');
+            const beki_cost = 5000 * beki_level;
+            const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
+            if (credits < beki_cost){
+                await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
+                    .setColor('#AA0000')
+                    .setTitle('You dont have enough mystic credits')
+                    .setDescription(`You have ${credits} mystic credits, but you need ${beki_cost} to buy the upgrade`)
+                    .setFooter({ text : 'Credits can sometimes be found when you /eat nuggies. You can also gamble them with /slots or invest them with /buybitcoin'})
+                ]});
+                return;
+            }else{
+                const cooldown = 24 * Math.pow(0.95, beki_level - 1);
+                
+                await this.client.db.addUserAttr(interaction.user.id, 'credits', -beki_cost);
+                await this.client.db.addUserAttr(interaction.user.id, 'beki_level', 1);
+
+                await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
+                    .setColor('#00AA00')
+                    .setTitle('Beki Upgrade Bought')
+                    .setDescription(`Level: ${beki_level} -> ${beki_level + 1}
+Cooldown: ${cooldown.toFixed(2)}hrs -> ${(cooldown * 0.95).toFixed(2)}hrs
+Mystic Credits: ${credits} -> ${credits - beki_cost}`)
                     .setFooter({ text : 'dinonuggie'})
                 ]});
             }

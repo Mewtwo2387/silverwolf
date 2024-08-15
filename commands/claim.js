@@ -2,6 +2,7 @@ const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 
 const DAY_LENGTH = 24 * 60 * 60 * 1000;
+const HOUR_LENGTH = 60 * 60 * 1000;
 
 class Claim extends Command {
     constructor(client) {
@@ -22,6 +23,8 @@ class Claim extends Command {
             }
             const streak = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggies_claim_streak');
             const dinonuggies = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggies');
+            const beki_level = await this.client.db.getUserAttr(interaction.user.id, 'beki_level');
+            const cooldown = 24 * Math.pow(0.95, beki_level - 1)
 
             // Function to determine the multiplier based on probabilities
             const getMultiplier = async () => {
@@ -69,11 +72,11 @@ class Claim extends Command {
                 }
             };
 
-            if (diff < DAY_LENGTH) {
+            if (diff < cooldown * HOUR_LENGTH) {
                 await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
                     .setTitle('Beki is currently cooking the next batch of dinonuggies please wait')
                     .setThumbnail('https://media.forgecdn.net/avatars/thumbnails/375/327/256/256/637550156004612442.png')
-                    .setDescription(`You can claim your next nuggie in ${(DAY_LENGTH - diff) / DAY_LENGTH * 24} hours`)
+                    .setDescription(`You can claim your next nuggie in ${cooldown - diff / HOUR_LENGTH} hours.`)
                     .setColor('#FF0000')
                     .setImage('https://cdn.discordapp.com/attachments/1070612017058160731/1272915299615768687/vEHw5Aq.gif?ex=66bcb641&is=66bb64c1&hm=7e672767e921c7a805bd2d0d32e22b695d9ae2f6d34c2c7658c5ebb37ff78ad6&')
                     .setAuthor({ name: 'dinonuggie', iconURL: 'https://media.forgecdn.net/avatars/thumbnails/375/327/256/256/637550156004612442.png' })

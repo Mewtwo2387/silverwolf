@@ -27,7 +27,8 @@ class Database {
             dinonuggies_last_claimed DATETIME DEFAULT NULL,
             dinonuggies_claim_streak INTEGER DEFAULT 0,
             multiplier_amount_level INTEGER DEFAULT 1,
-            multiplier_rarity_level INTEGER DEFAULT 1
+            multiplier_rarity_level INTEGER DEFAULT 1,
+            beki_level INTEGER DEFAULT 1
         )`, (err) => {
             if (err) {
                 console.error(err.message);
@@ -45,6 +46,7 @@ class Database {
             { name: 'dinonuggies_claim_streak', type: 'INTEGER', defaultValue: 0 },
             { name: 'multiplier_amount_level', type: 'INTEGER', defaultValue: 1 },
             { name: 'multiplier_rarity_level', type: 'INTEGER', defaultValue: 1 },
+            { name: 'beki_level', type: 'INTEGER', defaultValue: 1 }
         ];
 
         columnsToAdd.forEach(async (column) => {
@@ -133,8 +135,8 @@ class Database {
 
     async createUser(userId) {
         const query = `
-            INSERT INTO User (id, credits, bitcoin, last_bought_price, last_bought_amount, total_bought_price, total_bought_amount, total_sold_price, total_sold_amount, dinonuggies, dinonuggies_last_claimed, dinonuggies_claim_streak, multiplier_amount_level, multiplier_rarity_level)
-            VALUES (?, 10000, 0, 0, 0, 0, 0, 0, 0, 0, NULL, 0, 1, 1);`;
+            INSERT INTO User (id, credits, bitcoin, last_bought_price, last_bought_amount, total_bought_price, total_bought_amount, total_sold_price, total_sold_amount, dinonuggies, dinonuggies_last_claimed, dinonuggies_claim_streak, multiplier_amount_level, multiplier_rarity_level, beki_level)
+            VALUES (?, 10000, 0, 0, 0, 0, 0, 0, 0, 0, NULL, 0, 1, 1, 1);`;
         
         try {
             await this.executeQuery(query, [userId]);
