@@ -1,7 +1,7 @@
-const { Command } = require("./classes/command.js");
+const { AdminCommand } = require("./classes/admincommand.js");
 
-class Say extends Command {
-    constructor(client){
+class Say extends AdminCommand {
+    constructor(client) {
         super(client, "say", "say something", [
             {
                 name: 'message',
@@ -12,18 +12,18 @@ class Say extends Command {
         ], true);
     }
 
-    async run(interaction){
+    async run(interaction) {
         const input = interaction.options.getString('message').replace(/@/g, '');
-        try{
+        try {
             await interaction.channel.send(input);
             await interaction.editReply({
-                content: 'message sent',
+                content: 'Message sent.',
                 ephemeral: true
             });
-        }catch(error){
+        } catch (error) {
             console.error(error);
             interaction.editReply({
-                content: 'error (jez is that you again)',
+                content: 'Error (Jez, is that you again?).',
                 ephemeral: true
             });
         }
