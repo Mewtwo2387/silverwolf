@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { Command } = require('./command.js');
 
 class DevCommand extends Command {
@@ -6,7 +7,8 @@ class DevCommand extends Command {
     }
 
     async execute(interaction){
-        if(interaction.user.id !== '595491647132008469'){
+        const allowedUsers = process.env.ALLOWED_USERS.split(',');
+        if(!allowedUsers.includes(interaction.user.id)){
             if(interaction.deferred){
                 await interaction.editReply('No.');
             }else{
