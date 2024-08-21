@@ -6,7 +6,7 @@ class TimestampCommand extends Command {
         super(client, "discord_timestamp", "Displays the current or specified time in various formats", [
             {
                 name: 'timezone',
-                description: 'Timezone offset in ±HH:MM format (relative to GMT+8)',
+                description: 'Timezone offset in ±HH:MM format (e.g. +08:00)',
                 type: 3,
                 required: false
             },
@@ -60,6 +60,7 @@ class TimestampCommand extends Command {
     }
 
     async run(interaction) {
+        try{
         const now = new Date();
 
         let hour = interaction.options.getInteger('hour');
@@ -96,7 +97,7 @@ class TimestampCommand extends Command {
                 totalOffsetMinutes = (gmt8Offset + offsetMinutes) * 60 * 1000;
             }
 
-            now.setTime(now.getTime() - totalOffsetMinutes);
+            now.setTime(now.getTime() + totalOffsetMinutes);
         }
 
         const unixTime = Math.floor(now.getTime() / 1000);
@@ -105,16 +106,19 @@ class TimestampCommand extends Command {
             .setTitle('Specified Time')
             .setColor(0x0099ff)
             .addFields([
-                { name: 'Relative', value: `<t:${unixTime}:R>`, inline: true },
-                { name: 'Short Time', value: `<t:${unixTime}:t>`, inline: true },
-                { name: 'Long Time', value: `<t:${unixTime}:T>`, inline: true },
-                { name: 'Short Date', value: `<t:${unixTime}:d>`, inline: true },
-                { name: 'Long Date', value: `<t:${unixTime}:D>`, inline: true },
-                { name: 'Short Date & Time', value: `<t:${unixTime}:f>`, inline: true },
-                { name: 'Long Date & Time', value: `<t:${unixTime}:F>`, inline: true },
+                { name: 'Relative', value: `<t:${unixTime}:R> (\`<t:${unixTime}:R>\`)`, inline: true },
+                { name: 'Short Time', value: `<t:${unixTime}:t> (\`<t:${unixTime}:t>\`)`, inline: true },
+                { name: 'Long Time', value: `<t:${unixTime}:T> (\`<t:${unixTime}:T>\`)`, inline: true },
+                { name: 'Short Date', value: `<t:${unixTime}:d> (\`<t:${unixTime}:d>\`)`, inline: true },
+                { name: 'Long Date', value: `<t:${unixTime}:D> (\`<t:${unixTime}:D>\`)`, inline: true },
+                { name: 'Short Date & Time', value: `<t:${unixTime}:f> (\`<t:${unixTime}:f>\`)`, inline: true },
+                { name: 'Long Date & Time', value: `<t:${unixTime}:F> (\`<t:${unixTime}:F>\`)`, inline: true },
             ]);
 
         await interaction.editReply({ embeds: [embed] });
+        } catch (error) {
+            await interaction.editReply('error. you probably fucked up some inputs.');
+        }
     }
 }
 
