@@ -1,6 +1,7 @@
 const { Command } = require('./classes/command.js');
 const { Bitcoin } = require('../classes/bitcoin.js');
 const Discord = require('discord.js');
+const { format } = require('../utils/math.js');
 
 class BuyBitcoin extends Command {
     constructor(client){
@@ -54,11 +55,11 @@ class BuyBitcoin extends Command {
                 const lastBoughtPrice = await this.client.db.getUserAttr(interaction.user.id, 'last_bought_price');
                 await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
                     .setColor('#00AA00')
-                    .setTitle(`Sold ${-amount} bitcoin for ${-amount * price} mystic credits!`)
-                    .setDescription(`Current bitcoin price: ${price}
-Last bought price: ${lastBoughtPrice} (${lastBoughtAmount} bitcoin)
+                    .setTitle(`Sold ${-amount} bitcoin for ${format(-amount * price)} mystic credits!`)
+                    .setDescription(`Current bitcoin price: ${format(price)}
+Last bought price: ${format(lastBoughtPrice)} (${lastBoughtAmount} bitcoin)
 Current bitcoin amount: ${bitcoinAmount}
-Current mystic credits: ${credits}`)
+Current mystic credits: ${format(credits)}`)
                 ]});
                 return;
             }
@@ -80,10 +81,10 @@ Current mystic credits: ${credits}`)
                 credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
                 await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
                     .setColor('#00AA00')
-                    .setTitle(`Bought ${amount} bitcoin for ${amount * price} mystic credits!`)
-                    .setDescription(`Current bitcoin price: ${price}
+                    .setTitle(`Bought ${amount} bitcoin for ${format(amount * price)} mystic credits!`)
+                    .setDescription(`Current bitcoin price: ${format(price)}
 Current bitcoin amount: ${bitcoinAmount}
-Current mystic credits: ${credits}`)
+Current mystic credits: ${format(credits)}`)
                 ]});
                 return;
             }

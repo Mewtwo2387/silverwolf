@@ -1,3 +1,4 @@
+const { format } = require('../utils/math.js');
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 
@@ -26,7 +27,7 @@ class Buy extends Command{
                 await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
                     .setColor('#AA0000')
                     .setTitle('You dont have enough mystic credits')
-                    .setDescription(`You have ${credits} mystic credits, but you need ${multiplier_amount_cost} to buy the upgrade`)
+                    .setDescription(`You have ${format(credits)} mystic credits, but you need ${format(multiplier_amount_cost)} to buy the upgrade`)
                     .setFooter({ text : 'Credits can sometimes be found when you /eat nuggies. You can also gamble them with /slots or invest them with /buybitcoin'})
                 ]});
                 return;
@@ -43,10 +44,10 @@ class Buy extends Command{
                     .setColor('#00AA00')
                     .setTitle('Multiplier Amount Upgrade Bought')
                     .setDescription(`Level: ${multiplier_amount_level} -> ${multiplier_amount_level + 1}
-Gold Multiplier: ${gold_multiplier.toFixed(2)}x -> ${(gold_multiplier + 0.4).toFixed(2)}x
-Silver Multiplier: ${silver_multiplier.toFixed(2)}x -> ${(silver_multiplier + 0.2).toFixed(2)}x
-Bronze Multiplier: ${bronze_multiplier.toFixed(2)}x -> ${(bronze_multiplier + 0.1).toFixed(2)}x
-Mystic Credits: ${credits} -> ${credits - multiplier_amount_cost}`)
+Gold Multiplier: ${format(gold_multiplier, true)}x -> ${format(gold_multiplier + 0.4, true)}x
+Silver Multiplier: ${format(silver_multiplier, true)}x -> ${format(silver_multiplier + 0.2, true)}x
+Bronze Multiplier: ${format(bronze_multiplier, true)}x -> ${format(bronze_multiplier + 0.1, true)}x
+Mystic Credits: ${format(credits)} -> ${format(credits - multiplier_amount_cost)}`)
                     .setFooter({ text : 'dinonuggie'})
                 ]});
             }
@@ -58,7 +59,7 @@ Mystic Credits: ${credits} -> ${credits - multiplier_amount_cost}`)
                 await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
                     .setColor('#AA0000')
                     .setTitle('You dont have enough mystic credits')
-                    .setDescription(`You have ${credits} mystic credits, but you need ${multiplier_rarity_cost} to buy the upgrade`)
+                    .setDescription(`You have ${format(credits)} mystic credits, but you need ${format(multiplier_rarity_cost)} to buy the upgrade`)
                     .setFooter({ text : 'Credits can sometimes be found when you /eat nuggies. You can also gamble them with /slots or invest them with /buybitcoin'})
                 ]});
                 return;
@@ -74,10 +75,10 @@ Mystic Credits: ${credits} -> ${credits - multiplier_amount_cost}`)
                     .setColor('#00AA00')
                     .setTitle('Multiplier Rarity Upgrade Bought')
                     .setDescription(`Level: ${multiplier_rarity_level} -> ${multiplier_rarity_level + 1}
-Gold Chance: ${(gold_chance * 100).toFixed(2)}% -> ${(gold_chance * 100 + 0.5).toFixed(2)}%
-Silver Chance: ${(silver_chance * 100).toFixed(2)}% -> ${(silver_chance * 100 + 1).toFixed(2)}%
-Bronze Chance: ${(bronze_chance * 100).toFixed(2)}% -> ${(bronze_chance * 100 + 2).toFixed(2)}%
-Mystic Credits: ${credits} -> ${credits - multiplier_rarity_cost}`)
+Gold Chance: ${format(gold_chance * 100, true)}% -> ${format(gold_chance * 100 + 0.5, true)}%
+Silver Chance: ${format(silver_chance * 100, true)}% -> ${format(silver_chance * 100 + 1, true)}%
+Bronze Chance: ${format(bronze_chance * 100, true)}% -> ${format(bronze_chance * 100 + 2, true)}%
+Mystic Credits: ${format(credits)} -> ${format(credits - multiplier_rarity_cost)}`)
                     .setFooter({ text : 'dinonuggie'})
                 ]});
             }
@@ -89,7 +90,7 @@ Mystic Credits: ${credits} -> ${credits - multiplier_rarity_cost}`)
                 await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
                     .setColor('#AA0000')
                     .setTitle('You dont have enough mystic credits')
-                    .setDescription(`You have ${credits} mystic credits, but you need ${beki_cost} to buy the upgrade`)
+                    .setDescription(`You have ${format(credits)} mystic credits, but you need ${format(beki_cost)} to buy the upgrade`)
                     .setFooter({ text : 'Credits can sometimes be found when you /eat nuggies. You can also gamble them with /slots or invest them with /buybitcoin'})
                 ]});
                 return;
@@ -103,8 +104,8 @@ Mystic Credits: ${credits} -> ${credits - multiplier_rarity_cost}`)
                     .setColor('#00AA00')
                     .setTitle('Beki Upgrade Bought')
                     .setDescription(`Level: ${beki_level} -> ${beki_level + 1}
-Cooldown: ${cooldown.toFixed(2)}hrs -> ${(cooldown * 0.95).toFixed(2)}hrs
-Mystic Credits: ${credits} -> ${credits - beki_cost}`)
+Cooldown: ${format(cooldown, true)}hrs -> ${format(cooldown * 0.95, true)}hrs
+Mystic Credits: ${format(credits)} -> ${format(credits - beki_cost)}`)
                     .setFooter({ text : 'dinonuggie'})
                 ]});
             }

@@ -1,4 +1,5 @@
 const { Command } = require("./classes/command.js");
+const { format } = require("../utils/math.js");
 
 class Eat extends Command {
     constructor(client){
@@ -16,12 +17,12 @@ class Eat extends Command {
             const rand = Math.random();
             if(rand < 0.2){ // 20%
                 const earned = 2000 + Math.floor(Math.random() * 1000);
-                await interaction.editReply("You found a hidden mystichunterzium nugget in the dinonuggie! You earned " + earned + " mystic credits.");
+                await interaction.editReply("You found a hidden mystichunterzium nugget in the dinonuggie! You earned " + format(earned) + " mystic credits.");
                 await this.client.db.addUserAttr(interaction.user.id, 'credits', earned);
                 return;
             }else if(rand < 0.25){ // 5%
                 const earned = 5000 + Math.floor(Math.random() * 2000);
-                await interaction.editReply("You found a huge mystichunterzium nugget in the dinonuggie! You earned " + earned + " mystic credits.");
+                await interaction.editReply("You found a huge mystichunterzium nugget in the dinonuggie! You earned " + format(earned) + " mystic credits.");
                 await this.client.db.addUserAttr(interaction.user.id, 'credits', earned);
                 return;
             }else if (rand < 0.35){ // 10%

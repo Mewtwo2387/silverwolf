@@ -1,5 +1,6 @@
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
+const { format } = require('../utils/math.js');
 
 class Balance extends Command {
     constructor(client){
@@ -20,10 +21,10 @@ class Balance extends Command {
         console.log(credits);
         await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
             .setColor('#00AA00')
-            .setTitle(`You have ${credits} mystic credits, ${bitcoin} bitcoin, and ${dinonuggies} dinonuggies`)
-            .setDescription(`Bitcoin last bought at ${lastBoughtPrice}/bitcoin (${lastBoughtAmount} bitcoin bought)
-Bitcoin total bought: ${totalBoughtAmount} for a total of ${totalBoughtPrice} mystic credits
-Bitcoin total sold: ${totalSoldAmount} for a total of ${totalSoldPrice} mystic credits
+            .setTitle(`You have ${format(credits)} mystic credits, ${bitcoin} bitcoin, and ${format(dinonuggies)} dinonuggies`)
+            .setDescription(`Bitcoin last bought at ${format(lastBoughtPrice)}/bitcoin (${lastBoughtAmount} bitcoin bought)
+Bitcoin total bought: ${totalBoughtAmount} for a total of ${format(totalBoughtPrice)} mystic credits
+Bitcoin total sold: ${totalSoldAmount} for a total of ${format(totalSoldPrice)} mystic credits
 Dinonuggies claim streak: ${dinonuggies_streak}`)
             .setFooter({ text : 'mommy mystic uwu'})
         ]});
