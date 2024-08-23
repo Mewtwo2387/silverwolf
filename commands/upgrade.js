@@ -1,5 +1,6 @@
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
+const { format } = require('../utils/math.js');
 
 class Upgrades extends Command{
     constructor(client){
@@ -25,24 +26,24 @@ class Upgrades extends Command{
             .setTitle('Upgrades')
             .setDescription(`### Multiplier Amount Upgrade
 **Level:** ${multiplier_amount_level} -> ${(multiplier_amount_level + 1)}
-**Gold Multiplier:** ${gold_multiplier.toFixed(2)}x -> ${(gold_multiplier + 0.4).toFixed(2)}x
-**Silver Multiplier:** ${silver_multiplier.toFixed(2)}x -> ${(silver_multiplier + 0.2).toFixed(2)}x
-**Bronze Multiplier:** ${bronze_multiplier.toFixed(2)}x -> ${(bronze_multiplier + 0.1).toFixed(2)}x
-**Cost:** ${multiplier_amount_cost.toFixed(2)} mystic credits
+**Gold Multiplier:** ${format(gold_multiplier, true)}x -> ${format(gold_multiplier + 0.4, true)}x
+**Silver Multiplier:** ${format(silver_multiplier, true)}x -> ${format(silver_multiplier + 0.2, true)}x
+**Bronze Multiplier:** ${format(bronze_multiplier, true)}x -> ${format(bronze_multiplier + 0.1, true)}x
+**Cost:** ${format(multiplier_amount_cost)} mystic credits
 Buy with \`/buy 1\`
 
 ### Multiplier Rarity Upgrade
 **Level:** ${multiplier_rarity_level} -> ${multiplier_rarity_level + 1}
-**Gold Chance:** ${(gold_chance * 100).toFixed(2)}% -> ${(gold_chance * 100 + 0.5).toFixed(2)}%
-**Silver Chance:** ${(silver_chance * 100).toFixed(2)}% -> ${(silver_chance * 100 + 1).toFixed(2)}%
-**Bronze Chance:** ${(bronze_chance * 100).toFixed(2)}% -> ${(bronze_chance * 100 + 2).toFixed(2)}%
-**Cost:** ${multiplier_rarity_cost.toFixed(2)} mystic credits
+**Gold Chance:** ${format(gold_chance * 100, true)}% -> ${format(gold_chance * 100 + 0.5, true)}%
+**Silver Chance:** ${format(silver_chance * 100, true)}% -> ${format(silver_chance * 100 + 1, true)}%
+**Bronze Chance:** ${format(bronze_chance * 100, true)}% -> ${format(bronze_chance * 100 + 2, true)}%
+**Cost:** ${format(multiplier_rarity_cost)} mystic credits
 Buy with \`/buy 2\`
 
 ### Beki Upgrade
 **Level:** ${beki_level} -> ${beki_level + 1}
-**Cooldown:** ${cooldown.toFixed(2)}hrs -> ${(cooldown * 0.95).toFixed(2)}hrs
-**Cost:** ${beki_cost.toFixed(2)} mystic credits
+**Cooldown:** ${format(cooldown, true)} hours -> ${format(cooldown * 0.95, true)} hours
+**Cost:** ${format(beki_cost)} mystic credits
 Buy with \`/buy 3\``)
         ]});
     }

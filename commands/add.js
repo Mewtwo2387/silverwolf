@@ -1,5 +1,6 @@
 const { DevCommand } = require('./classes/devcommand.js');
 const Discord = require('discord.js');
+const { format } = require('../utils/math.js');
 
 class Add extends DevCommand {
     constructor(client){
@@ -25,7 +26,7 @@ class Add extends DevCommand {
         await this.client.db.addUserAttr(user.id, 'credits', amount);
         await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
             .setColor('#00AA00')
-            .setTitle(`Added ${amount} mystic credits to ${user.tag}`)
+            .setTitle(`Added ${format(amount)} mystic credits to ${user.tag}`)
             .setFooter({ text : 'mommy mystic uwu'})
         ]});
     }
