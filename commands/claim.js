@@ -41,7 +41,7 @@ class Claim extends Command {
                 if (rand < gold_chance) {
                     return {
                         multiplier: gold_multiplier,
-                        title: `Congratulations! You've claimed a golden dinonuggie!! ${format(gold_multiplier, true)}x earned this claim for a total of ${format(Math.ceil((5 + streak) * multiplier))} dinonuggies!`,
+                        title: `Congratulations! You've claimed a golden dinonuggie!! ${format(gold_multiplier, true)}x earned this claim for a total of ${format(Math.ceil((5 + streak) * gold_multiplier))} dinonuggies!`,
                         imageUrl: "https://media.discordapp.net/attachments/1070612017058160731/1272801662121283614/AMuYswc.png?ex=66bc4c6b&is=66bafaeb&hm=1d284683c81389bf481ca100eb631a3b4d85ff51c86e22e7032f5cab30e73763&=&format=webp&quality=lossless&width=806&height=1169",
                         colour: '#FFD700',
                         footer: `Gold: ${format(gold_chance * 100, true)}% for ${format(gold_multiplier, true)}x | Silver: ${format(silver_chance * 100, true)}% for ${format(silver_multiplier, true)}x | Bronze: ${format(bronze_chance * 100, true)}% for ${format(bronze_multiplier, true)}x. Check upgrades with /upgrades`
@@ -49,7 +49,7 @@ class Claim extends Command {
                 } else if (rand < gold_chance + silver_chance) {
                     return {
                         multiplier: silver_multiplier,
-                        title: `Congratulations! You've claimed a silver dinonuggie!! ${format(silver_multiplier, true)}x earned this claim for a total of ${format(Math.ceil((5 + streak) * multiplier))} dinonuggies!`,
+                        title: `Congratulations! You've claimed a silver dinonuggie!! ${format(silver_multiplier, true)}x earned this claim for a total of ${format(Math.ceil((5 + streak) * silver_multiplier))} dinonuggies!`,
                         imageUrl: "https://media.discordapp.net/attachments/1070612017058160731/1272804142871609445/r0LVjIF.png?ex=66bc4ebb&is=66bafd3b&hm=75fcdacc2e0e138e0ad0640d7328607fa8a692c626398bf19d8ce4631b4a63ef&=&format=webp&quality=lossless&width=433&height=629",
                         colour: '#C0C0C0',
                         footer: `Gold: ${format(gold_chance * 100, true)}% for ${format(gold_multiplier, true)}x | Silver: ${format(silver_chance * 100, true)}% for ${format(silver_multiplier, true)}x | Bronze: ${format(bronze_chance * 100, true)}% for ${format(bronze_multiplier, true)}x. Check upgrades with /upgrades`
@@ -57,7 +57,7 @@ class Claim extends Command {
                 } else if (rand < gold_chance + silver_chance + bronze_chance) {    
                     return {
                         multiplier: bronze_multiplier,
-                        title: `Congratulations! You've claimed a bronze dinonuggie!! ${format(bronze_multiplier, true)}x earned this claim for a total of ${format(Math.ceil((5 + streak) * multiplier))} dinonuggies!`,
+                        title: `Congratulations! You've claimed a bronze dinonuggie!! ${format(bronze_multiplier, true)}x earned this claim for a total of ${format(Math.ceil((5 + streak) * bronze_multiplier))} dinonuggies!`,
                         imageUrl: "https://media.discordapp.net/attachments/1070612017058160731/1272919852507463773/OXjd97e.png?ex=66bcba7e&is=66bb68fe&hm=34ef60370f5d26896aa8feca56846920228c78299144e9b5deb5d172522df56d&=&format=webp&quality=lossless&width=896&height=1169",
                         colour: '#CD7F32',
                         footer: `Gold: ${format(gold_chance * 100, true)}% for ${format(gold_multiplier, true)}x | Silver: ${format(silver_chance * 100, true)}% for ${format(silver_multiplier, true)}x | Bronze: ${format(bronze_chance * 100, true)}% for ${format(bronze_multiplier, true)}x. Check upgrades with /upgrades`
