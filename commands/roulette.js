@@ -72,19 +72,19 @@ class Roulette extends Command {
 
         // Determine if the bet was successful
         if (betType === 'number' && parseInt(betValue) === wheelResult) {
-            winnings = amount * 35; // 35:1 payout for correct number
+            winnings = amount * 38;
             resultMessage += `You correctly guessed the number!`;
         } else if (betType === 'red' && colorResult === 'red') {
-            winnings = amount * 2; // 2:1 payout for correct color
+            winnings = amount * 2.1;
             resultMessage += `You correctly guessed red!`;
         } else if (betType === 'black' && colorResult === 'black') {
-            winnings = amount * 2; // 2:1 payout for correct color
+            winnings = amount * 2.1; 
             resultMessage += `You correctly guessed black!`;
         } else if (betType === 'even' && wheelResult !== 0 && wheelResult % 2 === 0) {
-            winnings = amount * 2; // 2:1 payout for even
+            winnings = amount * 2.1;
             resultMessage += `You correctly guessed even!`;
         } else if (betType === 'odd' && wheelResult % 2 !== 0) {
-            winnings = amount * 2; // 2:1 payout for odd
+            winnings = amount * 2.1;
             resultMessage += `You correctly guessed odd!`;
         } else {
             resultMessage += `You guessed wrongly. Skill issue.`;
