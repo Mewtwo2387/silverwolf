@@ -21,6 +21,15 @@ class EatMultiple extends Command {
         if(dinonuggies < amount){
             await interaction.editReply("smh you don't have enough dinonuggies to eat");
             return;
+        }else if(amount < 0){
+            await interaction.editReply(`You ate ${amount} dinonuggies! You now have ${dinonuggies - amount} dinonuggies.`);
+            setTimeout(() => {
+                interaction.followUp("You're spotted cheating. Your dinonuggies have been reset to 0.");
+            }, 5000);
+            setTimeout(() => {
+                interaction.followUp("/s");
+            }, 15000);
+            return;
         }else{
             await this.client.db.addUserAttr(interaction.user.id, 'dinonuggies', -amount);
             var message = '';
