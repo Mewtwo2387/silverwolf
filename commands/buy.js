@@ -1,7 +1,10 @@
 const { format } = require('../utils/math.js');
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
+const { getNextUpgradeCost, getTotalUpgradeCost, getMultiplierAmount, getMultiplierChance, getBekiCooldown } = require('../utils/upgrades.js');
 
+const MAX_LEVEL = 30;
+const UPGRADES = ['multiplier_amount', 'multiplier_rarity', 'beki'];
 
 // We don't talk about the spaghetti code here
 
@@ -18,103 +21,88 @@ class Buy extends Command{
     }
 
     async run(interaction){
-        const upgrade = interaction.options.getInteger('upgrade');
-        if (upgrade == 1){
-            const multiplier_amount_level = await this.client.db.getUserAttr(interaction.user.id, 'multiplier_amount_level');
-            const multiplier_amount_cost = 5000 * multiplier_amount_level;
-            const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
-            if (credits < multiplier_amount_cost){
-                await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
-                    .setColor('#AA0000')
-                    .setTitle('You dont have enough mystic credits')
-                    .setDescription(`You have ${format(credits)} mystic credits, but you need ${format(multiplier_amount_cost)} to buy the upgrade`)
-                    .setFooter({ text : 'Credits can sometimes be found when you /eat nuggies. You can also gamble them with /slots or invest them with /buybitcoin'})
-                ]});
-                return;
-            }else{
-                const multiplier_amount_level = await this.client.db.getUserAttr(interaction.user.id, 'multiplier_amount_level');
-                const bronze_multiplier = 1.4 + 0.1 * multiplier_amount_level;
-                const silver_multiplier = 1.8 + 0.2 * multiplier_amount_level;
-                const gold_multiplier = 2.6 + 0.4 * multiplier_amount_level;
-                
-                await this.client.db.addUserAttr(interaction.user.id, 'credits', -multiplier_amount_cost);
-                await this.client.db.addUserAttr(interaction.user.id, 'multiplier_amount_level', 1);
+        const upgradeId = interaction.options.getInteger('upgrade');
 
-                await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
-                    .setColor('#00AA00')
-                    .setTitle('Multiplier Amount Upgrade Bought')
-                    .setDescription(`Level: ${multiplier_amount_level} -> ${multiplier_amount_level + 1}
-Gold Multiplier: ${format(gold_multiplier, true)}x -> ${format(gold_multiplier + 0.4, true)}x
-Silver Multiplier: ${format(silver_multiplier, true)}x -> ${format(silver_multiplier + 0.2, true)}x
-Bronze Multiplier: ${format(bronze_multiplier, true)}x -> ${format(bronze_multiplier + 0.1, true)}x
-Mystic Credits: ${format(credits)} -> ${format(credits - multiplier_amount_cost)}`)
-                    .setFooter({ text : 'dinonuggie'})
-                ]});
-            }
-        }else if (upgrade == 2){
-            const multiplier_rarity_level = await this.client.db.getUserAttr(interaction.user.id, 'multiplier_rarity_level');
-            const multiplier_rarity_cost = 5000 * multiplier_rarity_level;
-            const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
-            if (credits < multiplier_rarity_cost){
-                await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
-                    .setColor('#AA0000')
-                    .setTitle('You dont have enough mystic credits')
-                    .setDescription(`You have ${format(credits)} mystic credits, but you need ${format(multiplier_rarity_cost)} to buy the upgrade`)
-                    .setFooter({ text : 'Credits can sometimes be found when you /eat nuggies. You can also gamble them with /slots or invest them with /buybitcoin'})
-                ]});
-                return;
-            }else{
-                const gold_chance = 0.025 + 0.005 * multiplier_rarity_level;
-                const silver_chance = 0.05 + 0.01 * multiplier_rarity_level;
-                const bronze_chance = 0.1 + 0.02 * multiplier_rarity_level;
-                
-                await this.client.db.addUserAttr(interaction.user.id, 'credits', -multiplier_rarity_cost);
-                await this.client.db.addUserAttr(interaction.user.id, 'multiplier_rarity_level', 1);
-
-                await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
-                    .setColor('#00AA00')
-                    .setTitle('Multiplier Rarity Upgrade Bought')
-                    .setDescription(`Level: ${multiplier_rarity_level} -> ${multiplier_rarity_level + 1}
-Gold Chance: ${format(gold_chance * 100, true)}% -> ${format(gold_chance * 100 + 0.5, true)}%
-Silver Chance: ${format(silver_chance * 100, true)}% -> ${format(silver_chance * 100 + 1, true)}%
-Bronze Chance: ${format(bronze_chance * 100, true)}% -> ${format(bronze_chance * 100 + 2, true)}%
-Mystic Credits: ${format(credits)} -> ${format(credits - multiplier_rarity_cost)}`)
-                    .setFooter({ text : 'dinonuggie'})
-                ]});
-            }
-        }else if (upgrade == 3){
-            const beki_level = await this.client.db.getUserAttr(interaction.user.id, 'beki_level');
-            const beki_cost = 5000 * beki_level;
-            const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
-            if (credits < beki_cost){
-                await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
-                    .setColor('#AA0000')
-                    .setTitle('You dont have enough mystic credits')
-                    .setDescription(`You have ${format(credits)} mystic credits, but you need ${format(beki_cost)} to buy the upgrade`)
-                    .setFooter({ text : 'Credits can sometimes be found when you /eat nuggies. You can also gamble them with /slots or invest them with /buybitcoin'})
-                ]});
-                return;
-            }else{
-                const cooldown = 24 * Math.pow(0.95, beki_level - 1);
-                
-                await this.client.db.addUserAttr(interaction.user.id, 'credits', -beki_cost);
-                await this.client.db.addUserAttr(interaction.user.id, 'beki_level', 1);
-
-                await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
-                    .setColor('#00AA00')
-                    .setTitle('Beki Upgrade Bought')
-                    .setDescription(`Level: ${beki_level} -> ${beki_level + 1}
-Cooldown: ${format(cooldown, true)}hrs -> ${format(cooldown * 0.95, true)}hrs
-Mystic Credits: ${format(credits)} -> ${format(credits - beki_cost)}`)
-                    .setFooter({ text : 'dinonuggie'})
-                ]});
-            }
-        }else{
+        if (upgradeId < 1 || upgradeId > UPGRADES.length){
             await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
                 .setColor('#AA0000')
                 .setTitle('Invalid upgrade')
                 .setFooter({ text : 'dinonuggie'})
             ]});
+            return;
+        }
+
+        const upgrade = UPGRADES[upgradeId - 1];
+
+        const level = await this.client.db.getUserAttr(interaction.user.id, `${upgrade}_level`);
+
+        if (level >= MAX_LEVEL){
+            await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
+                .setColor('#AA0000')
+                .setTitle('Upgrade maxed')
+                .setDescription(`how far do you even want to go`)
+                .setFooter({ text : 'you might be able to increase this cap in the future'})
+            ]});
+            return;
+        }
+
+        const cost = getNextUpgradeCost(level);
+        const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
+
+        if (credits < cost){
+            await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
+                .setColor('#AA0000')
+                .setTitle('You dont have enough mystic credits')
+                .setDescription(`You have ${format(credits)} mystic credits, but you need ${format(cost)} to buy the upgrade`)
+                .setFooter({ text : 'Credits can sometimes be found when you /eat nuggies. You can also gamble them with /slots or invest them with /buybitcoin'})
+            ]});
+            return;
+        }
+
+        await this.client.db.addUserAttr(interaction.user.id, 'credits', -cost);
+        await this.client.db.addUserAttr(interaction.user.id, `${upgrade}_level`, 1);
+
+        switch(upgrade){
+            case 'multiplier_amount':
+                const multiplierAmount = getMultiplierAmount(level);
+                const nextMultiplierAmount = getMultiplierAmount(level + 1);
+                await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
+                    .setColor('#00AA00')
+                    .setTitle('Multiplier Amount Upgrade Bought')
+                    .setDescription(`Level: ${level} -> ${level + 1}
+Gold Multiplier: ${format(multiplierAmount.gold, true)}x -> ${format(nextMultiplierAmount.gold, true)}x
+Silver Multiplier: ${format(multiplierAmount.silver, true)}x -> ${format(nextMultiplierAmount.silver, true)}x
+Bronze Multiplier: ${format(multiplierAmount.bronze, true)}x -> ${format(nextMultiplierAmount.bronze, true)}x
+Mystic Credits: ${format(credits)} -> ${format(credits - cost)}`)
+                    .setFooter({ text : 'dinonuggie'})
+                ]});
+                break;
+            case 'multiplier_rarity':
+                const multiplierRarity = getMultiplierChance(level);
+                const nextMultiplierRarity = getMultiplierChance(level + 1);
+                await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
+                    .setColor('#00AA00')
+                    .setTitle('Multiplier Rarity Upgrade Bought')
+                    .setDescription(`Level: ${level} -> ${level + 1}
+Gold Chance: ${format(multiplierRarity.gold * 100, true)}% -> ${format(nextMultiplierRarity.gold * 100, true)}%
+Silver Chance: ${format(multiplierRarity.silver * 100, true)}% -> ${format(nextMultiplierRarity.silver * 100, true)}%
+Bronze Chance: ${format(multiplierRarity.bronze * 100, true)}% -> ${format(nextMultiplierRarity.bronze * 100, true)}%
+Mystic Credits: ${format(credits)} -> ${format(credits - cost)}`)
+                    .setFooter({ text : 'dinonuggie'})
+                ]});
+                break;
+            case 'beki':
+                const cooldown = getBekiCooldown(level);
+                const nextCooldown = getBekiCooldown(level + 1);
+                await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
+                    .setColor('#00AA00')
+                    .setTitle('Beki Upgrade Bought')
+                    .setDescription(`Level: ${level} -> ${level + 1}
+Cooldown: ${format(cooldown, true)}hrs -> ${format(nextCooldown, true)}hrs
+Mystic Credits: ${format(credits)} -> ${format(credits - cost)}`)
+                    .setFooter({ text : 'dinonuggie'})
+                ]});
+                break;
         }
     }
 }
