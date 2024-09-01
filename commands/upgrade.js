@@ -1,6 +1,9 @@
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 const { format } = require('../utils/math.js');
+const { getNextUpgradeCost, getTotalUpgradeCost, getMultiplierAmount, getMultiplierChance, getBekiCooldown } = require('../utils/upgrades.js');
+
+const MAX_LEVEL = 30;
 
 class Upgrades extends Command{
     constructor(client){
@@ -11,40 +14,63 @@ class Upgrades extends Command{
         const multiplier_amount_level = await this.client.db.getUserAttr(interaction.user.id, 'multiplier_amount_level');
         const multiplier_rarity_level = await this.client.db.getUserAttr(interaction.user.id, 'multiplier_rarity_level');
         const beki_level = await this.client.db.getUserAttr(interaction.user.id, 'beki_level');
-        const bronze_multiplier = 1.4 + 0.1 * multiplier_amount_level;
-        const silver_multiplier = 1.8 + 0.2 * multiplier_amount_level;
-        const gold_multiplier = 2.6 + 0.4 * multiplier_amount_level;
-        const gold_chance = 0.025 + 0.005 * multiplier_rarity_level;
-        const silver_chance = 0.05 + 0.01 * multiplier_rarity_level;
-        const bronze_chance = 0.1 + 0.02 * multiplier_rarity_level;
-        const multiplier_amount_cost = 5000 * multiplier_amount_level;
-        const multiplier_rarity_cost = 5000 * multiplier_rarity_level;
-        const cooldown = 24 * Math.pow(0.95, beki_level - 1);
-        const beki_cost = 5000 * beki_level;
+
+        const multiplier_amount = getMultiplierAmount(multiplier_amount_level);
+        const multipler_amount_next = getMultiplierAmount(Math.min(multiplier_amount_level + 1, MAX_LEVEL));
+        const multiplier_rarity = getMultiplierChance(multiplier_rarity_level);
+        const multiplier_rarity_next = getMultiplierChance(Math.min(multiplier_rarity_level + 1, MAX_LEVEL));
+        const cooldown = getBekiCooldown(beki_level);
+        const cooldown_next = getBekiCooldown(Math.min(beki_level + 1, MAX_LEVEL));
+
+        const multiplier_amount_cost = getNextUpgradeCost(multiplier_amount_level);
+        const multiplier_rarity_cost = getNextUpgradeCost(multiplier_rarity_level);
+        const beki_cost = getNextUpgradeCost(beki_level);
+
+        var desc = "### Multiplier Amount Upgrade\n";
+        if (multiplier_amount_level < MAX_LEVEL){
+            desc += `**Level:** ${multiplier_amount_level}/${MAX_LEVEL} -> ${(multiplier_amount_level + 1)}/${MAX_LEVEL}
+**Gold Multiplier:** ${format(multiplier_amount.gold, true)}x -> ${format(multipler_amount_next.gold, true)}x
+**Silver Multiplier:** ${format(multiplier_amount.silver, true)}x -> ${format(multipler_amount_next.silver, true)}x
+**Bronze Multiplier:** ${format(multiplier_amount.bronze, true)}x -> ${format(multipler_amount_next.bronze, true)}x
+**Cost:** ${format(multiplier_amount_cost)} mystic credits
+Buy with \`/buy 1\``;
+        }else{
+            desc += `**Level:** ${multiplier_amount_level} (maxed)
+**Gold Multiplier:** ${format(multiplier_amount.gold, true)}x
+**Silver Multiplier:** ${format(multiplier_amount.silver, true)}x
+**Bronze Multiplier:** ${format(multiplier_amount.bronze, true)}x`;
+        }
+
+        desc += "\n\n### Multiplier Rarity Upgrade\n";
+        if (multiplier_rarity_level < MAX_LEVEL){
+            desc += `**Level:** ${multiplier_rarity_level}/${MAX_LEVEL} -> ${(multiplier_rarity_level + 1)}/${MAX_LEVEL}
+**Gold Chance:** ${format(multiplier_rarity.gold * 100, true)}% -> ${format(multiplier_rarity_next.gold * 100, true)}%
+**Silver Chance:** ${format(multiplier_rarity.silver * 100, true)}% -> ${format(multiplier_rarity_next.silver * 100, true)}%
+**Bronze Chance:** ${format(multiplier_rarity.bronze * 100, true)}% -> ${format(multiplier_rarity_next.bronze * 100, true)}%
+**Cost:** ${format(multiplier_rarity_cost)} mystic credits
+Buy with \`/buy 2\``;
+        }else{
+            desc += `**Level:** ${multiplier_rarity_level} (maxed)
+**Gold Chance:** ${format(multiplier_rarity.gold * 100, true)}%
+**Silver Chance:** ${format(multiplier_rarity.silver * 100, true)}%
+**Bronze Chance:** ${format(multiplier_rarity.bronze * 100, true)}%`;
+        }
+
+        desc += "\n\n### Beki Upgrade\n";
+        if (beki_level < MAX_LEVEL){
+            desc += `**Level:** ${beki_level}/${MAX_LEVEL} -> ${(beki_level + 1)}/${MAX_LEVEL}
+**Cooldown:** ${format(cooldown, true)} hours -> ${format(cooldown_next, true)} hours
+**Cost:** ${format(beki_cost)} mystic credits
+Buy with \`/buy 3\``;
+        }else{
+            desc += `**Level:** ${beki_level} (maxed)
+**Cooldown:** ${format(cooldown, true)} hours`;
+        }
+
         await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
             .setColor('#00AA00')
             .setTitle('Upgrades')
-            .setDescription(`### Multiplier Amount Upgrade
-**Level:** ${multiplier_amount_level} -> ${(multiplier_amount_level + 1)}
-**Gold Multiplier:** ${format(gold_multiplier, true)}x -> ${format(gold_multiplier + 0.4, true)}x
-**Silver Multiplier:** ${format(silver_multiplier, true)}x -> ${format(silver_multiplier + 0.2, true)}x
-**Bronze Multiplier:** ${format(bronze_multiplier, true)}x -> ${format(bronze_multiplier + 0.1, true)}x
-**Cost:** ${format(multiplier_amount_cost)} mystic credits
-Buy with \`/buy 1\`
-
-### Multiplier Rarity Upgrade
-**Level:** ${multiplier_rarity_level} -> ${multiplier_rarity_level + 1}
-**Gold Chance:** ${format(gold_chance * 100, true)}% -> ${format(gold_chance * 100 + 0.5, true)}%
-**Silver Chance:** ${format(silver_chance * 100, true)}% -> ${format(silver_chance * 100 + 1, true)}%
-**Bronze Chance:** ${format(bronze_chance * 100, true)}% -> ${format(bronze_chance * 100 + 2, true)}%
-**Cost:** ${format(multiplier_rarity_cost)} mystic credits
-Buy with \`/buy 2\`
-
-### Beki Upgrade
-**Level:** ${beki_level} -> ${beki_level + 1}
-**Cooldown:** ${format(cooldown, true)} hours -> ${format(cooldown * 0.95, true)} hours
-**Cost:** ${format(beki_cost)} mystic credits
-Buy with \`/buy 3\``)
+            .setDescription(desc)
         ]});
     }
 }

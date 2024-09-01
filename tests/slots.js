@@ -1,5 +1,5 @@
-const SIMULATION_TIMES = 10000000;
-const GROUP_SIZE = 100;
+const SIMULATION_TIMES = 1000000;
+const GROUP_SIZE = 2000
 
 const smugs = [
     {emote: "<:1yanfeismug:1136925353651228775>", value: 8},

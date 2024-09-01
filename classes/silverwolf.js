@@ -170,7 +170,7 @@ class Silverwolf extends Client {
         const allMembers = await message.guild.members.fetch();
         const members = allMembers.filter(member => !member.user.bot);
         const member = members.random();
-        console.log(member)
+        //console.log(member)
         const pfp = member.user.displayAvatarURL({ format: "png", size: 512 });
         message.channel.send({ embeds:[ new EmbedBuilder()
             .setTitle(`A wild ${member.user.username} appeared!`)
