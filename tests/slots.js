@@ -1,17 +1,20 @@
-const SIMULATION_TIMES = 100000;
+const SIMULATION_TIMES = 1000000;
+const GROUP_SIZE = 2000
 
 const smugs = [
-    {emote: "<:1yanfeismug:1136925353651228775>", value: 10},
-    {emote: "<:1silverwolfsmug1:1212343617113559051>", value: 8},
-    {emote: "<:1keqingsmug:1139794287337414766>", value: 6},
-    {emote: "<:4meltsmug:1141012813997932555>", value: 4},
-    {emote: "<:0mysticsmuguwu:1181410473695002634>", value: 2},
-    {emote: "<:1yanfeismug3:1181812629451317298>", value: 2},
-    {emote: "<:1gumsiefnay:1140883820795666463>", value: 2},
+    {emote: "<:1yanfeismug:1136925353651228775>", value: 8},
+    {emote: "<:1silverwolfsmug1:1212343617113559051>", value: 6},
+    {emote: "<:1keqingsmug:1139794287337414766>", value: 4},
+    {emote: "<:4meltsmug:1141012813997932555>", value: 3},
+    {emote: "<:0mysticsmuguwu:1181410473695002634>", value: 1},
+    {emote: "<:1yanfeismug3:1181812629451317298>", value: 1},
+    {emote: "<:1gumsiefnay:1140883820795666463>", value: 1},
 ]
 
 var winningsCount = {};
 var totalWinnings = 0;
+var winningGroups = 0;
+var winningsinGroup = 0;
 
 for (var t = 0; t < SIMULATION_TIMES; t++) {
 
@@ -38,19 +41,29 @@ for (var t = 0; t < SIMULATION_TIMES; t++) {
         }
     }
 
-    console.log(`${t}: ${winnings}`);
+    // console.log(`${t}: ${winnings}`);
 
     totalWinnings += winnings;
+    winningsinGroup += winnings;
 
     if (winningsCount[winnings]) {
         winningsCount[winnings]++;
     } else {
         winningsCount[winnings] = 1;
     }
+
+    if ((t + 1) % GROUP_SIZE == 0) {
+        if (winningsinGroup > 0) {
+            winningGroups++;
+        }
+        console.log(`Group ${(t + 1) / GROUP_SIZE}: ${winningsinGroup}`);
+        winningsinGroup = -GROUP_SIZE;
+    }
 }
 
-for (const [winnings, count] of Object.entries(winningsCount)) {
-    console.log(`x${winnings}: ${count} times`)
-}
+// for (const [winnings, count] of Object.entries(winningsCount)) {
+//     console.log(`x${winnings}: ${count} times`)
+// }
 
 console.log(`Average winnings: ${totalWinnings / SIMULATION_TIMES}`);
+console.log(`Winning groups: ${winningGroups} out of ${SIMULATION_TIMES / GROUP_SIZE}`);

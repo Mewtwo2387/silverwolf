@@ -1,4 +1,4 @@
-const { Client, REST, Routes } = require("discord.js");
+const { Client, REST, Routes, EmbedBuilder } = require("discord.js");
 const { Database } = require("./database.js");
 const fs = require("fs");
 const path = require("path");
@@ -87,6 +87,12 @@ class Silverwolf extends Client {
         if(message.author.bot) return;
         if(!message.guild) return;
         console.log(`Message received from ${message.author.username}: ${message.content}`);
+
+        if(Math.random() < 0.01 && !(message.channel.name == "super-serious-secret-vent-rant-chat")){
+            console.log("Summoning a pokemon...");
+            this.summonPokemon(message);
+        }
+
         const msg = message.content.toLowerCase();
 
         if (message.mentions.has(this.user.id) && message.reference && message.content.includes(this.user.id)) {
@@ -158,6 +164,20 @@ class Silverwolf extends Client {
     async login(){
         await super.login(this.token);
         console.log(`Logged in as ${this.user.tag}`);
+    }
+
+    async summonPokemon(message){
+        const allMembers = await message.guild.members.fetch();
+        const members = allMembers.filter(member => !member.user.bot);
+        const member = members.random();
+        //console.log(member)
+        const pfp = member.user.displayAvatarURL({ format: "png", size: 512 });
+        message.channel.send({ embeds:[ new EmbedBuilder()
+            .setTitle(`A wild ${member.user.username} appeared!`)
+            .setImage(pfp)
+            .setColor("#00FF00")
+            .setFooter({ text: "catch them with /catch [username]!" })
+        ]})
     }
 }
 
