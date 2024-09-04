@@ -4,7 +4,7 @@ const path = require('path');
 
 class MisfortuneCookieCommand extends Command {
     constructor(client) {
-        super(client, "misfortune", "Get your hilariously unfortunate misfortune cookie!");
+        super(client, "misfortune", "how bad is your day that you are munching virtual misfortune cookies ?");
     }
 
     async run(interaction) {

@@ -4,7 +4,7 @@ const path = require('path');
 
 class FortuneCookieCommand extends Command {
     constructor(client) {
-        super(client, "fortune", "Get your daily fortune cookie!");
+        super(client, "fortune", "how desperate are you to munch virtual fortune cookies ?");
     }
 
     async run(interaction) {
