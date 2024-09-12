@@ -2,7 +2,7 @@ const { Command } = require('./classes/command.js');
 const { EmbedBuilder } = require('discord.js');
 
 class SetBirthdayCommand extends Command {
-    constructor(client, database) {
+    constructor(client) {
         super(client, "set_birthday", "Sets your birthday", [
             {
                 name: 'day',
@@ -29,8 +29,6 @@ class SetBirthdayCommand extends Command {
                 required: false
             }
         ]);
-
-        this.database = database;  // Injecting the database instance
     }
 
     async run(interaction) {
@@ -41,38 +39,33 @@ class SetBirthdayCommand extends Command {
             const day = interaction.options.getInteger('day');
             const month = interaction.options.getInteger('month');
             const year = interaction.options.getInteger('year');
-            const timezone = interaction.options.getString('timezone');
+            const timezone = interaction.options.getString('timezone') || '+00:00'; // Default to UTC if not provided
 
             console.log(`Received inputs: day=${day}, month=${month}, year=${year}, timezone=${timezone}`);
 
             // Validate the inputs
-            if (!day || !month || !year || !timezone) {
-                throw new Error("Invalid inputs: Missing day, month, year, or timezone.");
+            if (!day || !month || !year) {
+                throw new Error("Invalid inputs: Missing day, month, or year.");
             }
 
-            const birthday = new Date(year, month - 1, day); // Months are 0-indexed
+            const birthday = new Date(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00${timezone}`);
             console.log(`Constructed birthday: ${birthday.toISOString()}`);
 
             if (isNaN(birthday.getTime())) {
                 throw new Error("Invalid date constructed. Please check the inputs.");
             }
 
-            // Logging before setting the user birthday in the database
+            // Log before setting the user birthday in the database
             console.log(`Attempting to set birthday for user ${userId} to ${birthday.toISOString()}.`);
-            
-            // Ensure the database object exists and the method is defined
-            if (!this.database || typeof this.database.setUserAttr !== 'function') {
-                throw new Error("Database is not properly initialized or setUserAttr method is missing.");
-            }
 
-            // Set birthday in the database
-            await this.database.setUserAttr(userId, 'birthdays', birthday.toISOString());
-            console.log(`Successfully updated birthday for user ${userId}.`);
+            // Use this.client.db to set the birthday
+            const result = await this.client.db.setUserAttr(userId, 'birthdays', birthday.toISOString());
+            console.log(`Successfully updated birthday for user ${userId}.`, result);
 
             // Send confirmation message
             const embed = new EmbedBuilder()
                 .setTitle('Birthday Set!')
-                .setDescription(`Your birthday has been set to ${birthday.toDateString()} in timezone ${timezone}.`)
+                .setDescription(`Your birthday has been set to ${birthday.toDateString()} (timezone: ${timezone}).`)
                 .setColor(0x00FF00);
 
             await interaction.editReply({ embeds: [embed] });

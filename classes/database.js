@@ -222,6 +222,15 @@ class Database {
     async getUserBirthday(userId) {
         return await this.getUserAttr(userId, 'birthdays');
     }
+
+    async getUsersWithBirthday(today) {
+        const query = `SELECT id FROM User WHERE substr(birthdays, 6, 5) = ?`;
+        const users = await this.executeSelectAllQuery(query, [today]);
+        console.log('Database Response:', users);  // Log response from the database
+        return users;
+    }
+    
+    
     
 
     async dump(){
