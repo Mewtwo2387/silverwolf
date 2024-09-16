@@ -223,12 +223,14 @@ class Database {
         return await this.getUserAttr(userId, 'birthdays');
     }
 
-    async getUsersWithBirthday(today) {
-        const query = `SELECT id FROM User WHERE substr(birthdays, 6, 5) = ?`;
-        const users = await this.executeSelectAllQuery(query, [today]);
-        console.log('Database Response:', users);  // Log response from the database
+    async getUsersWithBirthday(todayHour) {
+        // Check for users whose birthdays fall on the current UTC day and hour (ignoring the year)
+        const query = `SELECT id FROM User WHERE strftime('%m-%dT%H', birthdays) = ?`;
+        const users = await this.executeSelectAllQuery(query, [todayHour]);
+        console.log('Database Response:', users);
         return users;
     }
+    
     
     
     
