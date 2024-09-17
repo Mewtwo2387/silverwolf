@@ -13,7 +13,8 @@ class Sing extends Command {
                 choices: [
                     { name: "If I Can Stop One Heart From Breaking", value: "ifICanStopOneHeartFromBreaking" },
                     { name: "Unauthorized Access", value: "unauthorizedAccess" },
-                    { name: "Fly Me To The Moon", value: "flyMeToTheMoon" }
+                    { name: "Fly Me To The Moon", value: "flyMeToTheMoon" },
+                    { name: "Women cheat", value: "WomenCheat" }
                 ]
             }]
         );

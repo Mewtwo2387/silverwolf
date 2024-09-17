@@ -2,6 +2,7 @@ const { Client, REST, Routes, EmbedBuilder } = require("discord.js");
 const { Database } = require("./database.js");
 const fs = require("fs");
 const path = require("path");
+const BirthdayScheduler = require('./birthdayScheduler');
 
 class Silverwolf extends Client {
     constructor(token, options){
@@ -14,6 +15,7 @@ class Silverwolf extends Client {
         this.singing = false;
         this.db = new Database();
         this.currentPokemon = null;
+        this.birthdayScheduler = new BirthdayScheduler(this);
         this.init();
     }
 
@@ -21,6 +23,9 @@ class Silverwolf extends Client {
         await this.loadCommands();
         await this.loadKeywords();
         await this.loadListeners();
+        
+        this.birthdayScheduler.start();
+
         console.log("Silverwolf initialized.");
     }
 

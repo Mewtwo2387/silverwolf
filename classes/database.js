@@ -28,7 +28,8 @@ class Database {
             dinonuggies_claim_streak INTEGER DEFAULT 0,
             multiplier_amount_level INTEGER DEFAULT 1,
             multiplier_rarity_level INTEGER DEFAULT 1,
-            beki_level INTEGER DEFAULT 1
+            beki_level INTEGER DEFAULT 1,
+            birthdays DATETIME DEFAULT NULL
         )`, (err) => {
             if (err) {
                 console.error(err.message);
@@ -62,9 +63,10 @@ class Database {
             { name: 'dinonuggies_claim_streak', type: 'INTEGER', defaultValue: 0 },
             { name: 'multiplier_amount_level', type: 'INTEGER', defaultValue: 1 },
             { name: 'multiplier_rarity_level', type: 'INTEGER', defaultValue: 1 },
-            { name: 'beki_level', type: 'INTEGER', defaultValue: 1 }
+            { name: 'beki_level', type: 'INTEGER', defaultValue: 1 },
+            { name: 'birthdays', type: 'DATETIME', defaultValue: 'NULL' }  // <-- Add the birthdays column
         ];
-
+    
         columnsToAdd.forEach(async (column) => {
             try {
                 const columnExists = await this.checkIfColumnExists('User', column.name);
@@ -165,9 +167,9 @@ class Database {
 
     async createUser(userId) {
         const query = `
-            INSERT INTO User (id, credits, bitcoin, last_bought_price, last_bought_amount, total_bought_price, total_bought_amount, total_sold_price, total_sold_amount, dinonuggies, dinonuggies_last_claimed, dinonuggies_claim_streak, multiplier_amount_level, multiplier_rarity_level, beki_level)
-            VALUES (?, 10000, 0, 0, 0, 0, 0, 0, 0, 0, NULL, 0, 1, 1, 1);`;
-
+        INSERT INTO User (id, credits, bitcoin, last_bought_price, last_bought_amount, total_bought_price, total_bought_amount, total_sold_price, total_sold_amount, dinonuggies, dinonuggies_last_claimed, dinonuggies_claim_streak, multiplier_amount_level, multiplier_rarity_level, beki_level, birthdays)
+        VALUES (?, 10000, 0, 0, 0, 0, 0, 0, 0, 0, NULL, 0, 1, 1, 1, ?);`;
+       
         try {
             await this.executeQuery(query, [userId]);
             console.log(`New user ${userId} created`);
@@ -244,6 +246,30 @@ class Database {
         return rows;
     }
 
+    async setUserBirthday(userId, birthday) {
+        try {
+            await this.getUser(userId);
+            const query = `UPDATE User SET birthdays = ? WHERE id = ?;`;
+            await this.executeQuery(query, [birthday, userId]);
+            console.log(`Updated user ${userId}: birthday set to ${birthday}.`);
+        } catch (err) {
+            console.error(`Failed to set birthday for user ${userId}:`, err.message);
+        }
+    }
+
+    async getUserBirthday(userId) {
+        return await this.getUserAttr(userId, 'birthdays');
+    }
+
+    async getUsersWithBirthday(todayHour) {
+        // Check for users whose birthdays fall on the current UTC day and hour (ignoring the year)
+        const query = `SELECT id FROM User WHERE strftime('%m-%dT%H', birthdays) = ?`;
+        const users = await this.executeSelectAllQuery(query, [todayHour]);
+        console.log('Database Response:', users);
+        return users;
+    }
+    
+    
     async dump(){
         // output as a table
         const query = `SELECT * FROM User;`;
