@@ -38,6 +38,21 @@ class Database {
                 this.fixTable();
             }
         });
+
+        this.db.run(`CREATE TABLE IF NOT EXISTS Pokemon (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id VARCHAR,
+            pokemon_name TEXT,
+            pokemon_count INTEGER DEFAULT 0,
+            FOREIGN KEY (user_id) REFERENCES User(id)
+            UNIQUE (user_id, pokemon_name)
+        )`, (err) => {
+            if (err) {
+                console.error(err.message);
+            } else {
+                console.log('Created the Pokemon table.');
+            }
+        });
     }
 
     updateSchema() {
@@ -68,7 +83,7 @@ class Database {
             }
         });
     }
-    
+
     fixTable() {
         const levelColumns = ['multiplier_amount_level', 'multiplier_rarity_level', 'beki_level'];
         levelColumns.forEach(async (column) => {
@@ -152,7 +167,7 @@ class Database {
         const query = `
             INSERT INTO User (id, credits, bitcoin, last_bought_price, last_bought_amount, total_bought_price, total_bought_amount, total_sold_price, total_sold_amount, dinonuggies, dinonuggies_last_claimed, dinonuggies_claim_streak, multiplier_amount_level, multiplier_rarity_level, beki_level)
             VALUES (?, 10000, 0, 0, 0, 0, 0, 0, 0, 0, NULL, 0, 1, 1, 1);`;
-        
+
         try {
             await this.executeQuery(query, [userId]);
             console.log(`New user ${userId} created`);
@@ -206,6 +221,23 @@ class Database {
         }
     }
 
+    async catchPokemon(userId, pokemonName) {
+        try {
+            await this.getUser(userId); // Ensure user exists
+            const query = `
+                INSERT INTO Pokemon (user_id, pokemon_name, pokemon_count)
+                VALUES (?, ?, 1)
+                ON CONFLICT(user_id, pokemon_name) DO UPDATE SET
+                pokemon_count = pokemon_count + 1;
+            `;
+            await this.executeQuery(query, [userId, pokemonName]);
+            console.log(`User ${userId} caught a ${pokemonName}`);
+        } catch (err) {
+            console.error('Failed to catch Pokemon:', err.message);
+            throw err;
+        }
+    }
+
     async dump(){
         // output as a table
         const query = `SELECT * FROM User;`;
@@ -215,6 +247,24 @@ class Database {
         rows.forEach(row => {
             const values = keys.map(key => {
                 if (key === 'id') {
+                    return `<@${row[key]}>`;
+                } else {
+                    return row[key];
+                }
+            });
+            csv.push(values.join(','));
+        });
+        return csv.join('\n');
+    }
+
+    async dumpPokemon(){
+        const query = `SELECT * FROM Pokemon;`;
+        const rows = await this.executeSelectAllQuery(query);
+        const keys = Object.keys(rows[0]);
+        const csv = [keys.join(',')];
+        rows.forEach(row => {
+            const values = keys.map(key => {
+                if (key === 'user_id') {
                     return `<@${row[key]}>`;
                 } else {
                     return row[key];

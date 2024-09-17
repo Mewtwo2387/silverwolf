@@ -13,6 +13,7 @@ class Silverwolf extends Client {
         this.editedMessages = [];
         this.singing = false;
         this.db = new Database();
+        this.currentPokemon = null;
         this.init();
     }
 
@@ -103,7 +104,7 @@ class Silverwolf extends Client {
                 const nickname = guildMember.nickname || person.username;
                 const originalMessage = referencedMessage.content;
                 const pfp = guildMember.displayAvatarURL({ extension: 'png', size: 512 });
-    
+
                 // Find the "fakequote" command and execute it
                 const fakeQuoteCommand = this.commands.get("fakequote");
                 if (fakeQuoteCommand) {
@@ -121,7 +122,7 @@ class Silverwolf extends Client {
                             message.reply({ files: [content.files[0]] });
                         }
                     };
-                    
+
                     fakeQuoteCommand.run(interaction);
                 }
             }).catch(console.error);
@@ -178,6 +179,7 @@ class Silverwolf extends Client {
             .setColor("#00FF00")
             .setFooter({ text: "catch them with /catch [username]!" })
         ]})
+        this.currentPokemon = member.user.username;
     }
 }
 
