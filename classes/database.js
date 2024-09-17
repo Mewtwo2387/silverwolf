@@ -238,6 +238,12 @@ class Database {
         }
     }
 
+    async getPokemons(userId){
+        const query = `SELECT * FROM Pokemon WHERE user_id = ?;`;
+        const rows = await this.executeSelectAllQuery(query, [userId]);
+        return rows;
+    }
+
     async dump(){
         // output as a table
         const query = `SELECT * FROM User;`;
