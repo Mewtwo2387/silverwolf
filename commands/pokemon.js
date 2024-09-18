@@ -9,6 +9,8 @@ class Pokemon extends Command {
     async run(interaction){
         const pokemons = await this.client.db.getPokemons(interaction.user.id);
 
+        pokemons.sort((a, b) => a.pokemon_name.localeCompare(b.pokemon_name));
+
         const maxNameLength = Math.max(...pokemons.map(pokemon => pokemon.pokemon_name.length));
 
         const embed = new EmbedBuilder()

@@ -1,4 +1,4 @@
-const { Client, REST, Routes, EmbedBuilder } = require("discord.js");
+const { Client, REST, Routes, EmbedBuilder, escapeMarkdown } = require("discord.js");
 const { Database } = require("./database.js");
 const fs = require("fs");
 const path = require("path");
@@ -23,7 +23,7 @@ class Silverwolf extends Client {
         await this.loadCommands();
         await this.loadKeywords();
         await this.loadListeners();
-        
+
         this.birthdayScheduler.start();
 
         console.log("Silverwolf initialized.");
@@ -179,7 +179,7 @@ class Silverwolf extends Client {
         //console.log(member)
         const pfp = member.user.displayAvatarURL({ format: "png", size: 512 });
         message.channel.send({ embeds:[ new EmbedBuilder()
-            .setTitle(`A wild ${member.user.username} appeared!`)
+            .setTitle(`A wild ${escapeMarkdown(member.user.username)} appeared!`)
             .setImage(pfp)
             .setColor("#00FF00")
             .setFooter({ text: "catch them with /catch [username]!" })

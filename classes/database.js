@@ -66,7 +66,7 @@ class Database {
             { name: 'beki_level', type: 'INTEGER', defaultValue: 1 },
             { name: 'birthdays', type: 'DATETIME', defaultValue: 'NULL' }  // <-- Add the birthdays column
         ];
-    
+
         columnsToAdd.forEach(async (column) => {
             try {
                 const columnExists = await this.checkIfColumnExists('User', column.name);
@@ -169,7 +169,7 @@ class Database {
         const query = `
         INSERT INTO User (id, credits, bitcoin, last_bought_price, last_bought_amount, total_bought_price, total_bought_amount, total_sold_price, total_sold_amount, dinonuggies, dinonuggies_last_claimed, dinonuggies_claim_streak, multiplier_amount_level, multiplier_rarity_level, beki_level, birthdays)
         VALUES (?, 10000, 0, 0, 0, 0, 0, 0, 0, 0, NULL, 0, 1, 1, 1, ?);`;
-       
+
         try {
             await this.executeQuery(query, [userId]);
             console.log(`New user ${userId} created`);
@@ -240,10 +240,41 @@ class Database {
         }
     }
 
+    async sacrificePokemon(userId, pokemonName) {
+        try {
+            await this.getUser(userId);
+
+            // First, check the current count
+            const currentCount = await this.getPokemonCount(userId, pokemonName);
+
+            if (currentCount <= 1) {
+                // If count is 1 or less, remove the entry
+                const deleteQuery = `DELETE FROM Pokemon WHERE user_id = ? AND pokemon_name = ?;`;
+                await this.executeQuery(deleteQuery, [userId, pokemonName]);
+                console.log(`User ${userId} sacrificed their last ${pokemonName} and it was removed from the database`);
+            } else {
+                // If count is greater than 1, decrement it
+                const updateQuery = `UPDATE Pokemon SET pokemon_count = pokemon_count - 1 WHERE user_id = ? AND pokemon_name = ?;`;
+                await this.executeQuery(updateQuery, [userId, pokemonName]);
+                console.log(`User ${userId} sacrificed a ${pokemonName}`);
+            }
+        } catch (err) {
+            console.error('Failed to sacrifice Pokemon:', err.message);
+            throw err;
+        }
+    }
+
+
     async getPokemons(userId){
         const query = `SELECT * FROM Pokemon WHERE user_id = ?;`;
         const rows = await this.executeSelectAllQuery(query, [userId]);
         return rows;
+    }
+
+    async getPokemonCount(userId, pokemonName){
+        const query = `SELECT pokemon_count FROM Pokemon WHERE user_id = ? AND pokemon_name = ?;`;
+        const row = await this.executeSelectQuery(query, [userId, pokemonName]);
+        return row ? row.pokemon_count : 0;
     }
 
     async setUserBirthday(userId, birthday) {
@@ -268,8 +299,8 @@ class Database {
         console.log('Database Response:', users);
         return users;
     }
-    
-    
+
+
     async dump(){
         // output as a table
         const query = `SELECT * FROM User;`;
