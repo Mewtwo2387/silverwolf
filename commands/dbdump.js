@@ -13,6 +13,12 @@ class DBDump extends DevCommand {
             .setTitle('Data')
             .setDescription(data)
         ]});
+        const pokemonData = await this.client.db.dumpPokemon();
+        await interaction.followUp({ embeds: [ new Discord.EmbedBuilder()
+            .setColor('#00AA00')
+            .setTitle('Pokemon Data')
+            .setDescription(pokemonData)
+        ]});
     }
 }
 

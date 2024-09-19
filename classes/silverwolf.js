@@ -1,4 +1,4 @@
-const { Client, REST, Routes, EmbedBuilder } = require("discord.js");
+const { Client, REST, Routes, EmbedBuilder, escapeMarkdown } = require("discord.js");
 const { Database } = require("./database.js");
 const fs = require("fs");
 const path = require("path");
@@ -14,6 +14,7 @@ class Silverwolf extends Client {
         this.editedMessages = [];
         this.singing = false;
         this.db = new Database();
+        this.currentPokemon = null;
         this.birthdayScheduler = new BirthdayScheduler(this);
         this.init();
     }
@@ -22,7 +23,7 @@ class Silverwolf extends Client {
         await this.loadCommands();
         await this.loadKeywords();
         await this.loadListeners();
-        
+
         this.birthdayScheduler.start();
 
         console.log("Silverwolf initialized.");
@@ -108,7 +109,7 @@ class Silverwolf extends Client {
                 const nickname = guildMember.nickname || person.username;
                 const originalMessage = referencedMessage.content;
                 const pfp = guildMember.displayAvatarURL({ extension: 'png', size: 512 });
-    
+
                 // Find the "fakequote" command and execute it
                 const fakeQuoteCommand = this.commands.get("fakequote");
                 if (fakeQuoteCommand) {
@@ -126,7 +127,7 @@ class Silverwolf extends Client {
                             message.reply({ files: [content.files[0]] });
                         }
                     };
-                    
+
                     fakeQuoteCommand.run(interaction);
                 }
             }).catch(console.error);
@@ -178,11 +179,12 @@ class Silverwolf extends Client {
         //console.log(member)
         const pfp = member.user.displayAvatarURL({ format: "png", size: 512 });
         message.channel.send({ embeds:[ new EmbedBuilder()
-            .setTitle(`A wild ${member.user.username} appeared!`)
+            .setTitle(`A wild ${escapeMarkdown(member.user.username)} appeared!`)
             .setImage(pfp)
             .setColor("#00FF00")
             .setFooter({ text: "catch them with /catch [username]!" })
         ]})
+        this.currentPokemon = member.user.username;
     }
 }
 
