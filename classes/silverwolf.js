@@ -16,6 +16,8 @@ class Silverwolf extends Client {
         this.db = new Database();
         this.birthdayScheduler = new BirthdayScheduler(this);
         this.init();
+        this.games = [];
+        this.loadGames(); // Initialize the games list from the JSON file
     }
 
     async init(){
@@ -166,16 +168,39 @@ class Silverwolf extends Client {
         console.log("Commands registered.");
     }
 
+    setRandomGame(){
+        const randomGame = this.games[Math.floor(Math.random() * this.games.length)];
+        this.user.setPresence({
+            activities: [{ 
+                name: randomGame,
+                type: 0 // 0 is for playing, 1 is for streaming, 2 is for listening, etc.
+            }],
+            status: 'online' // Modify this if you want different statuses like 'idle', 'dnd', etc.
+        });
+
+        // Log the game change and schedule the next one
+        const randomInterval = (Math.floor(Math.random() * 3) + 1) * 60 * 60 * 1000; // Random interval between 1 and 3 hours
+        console.log(`Setting status to "${randomGame}". Next change in ${randomInterval / 1000 / 60} minutes.`);
+
+        setTimeout(() => this.setRandomGame(), randomInterval); // Schedule the next game change
+    }
+
+    loadGames(){
+        const filePath = path.join(__dirname, "../data/status.json");
+        try {
+            const data = fs.readFileSync(filePath, "utf8");
+            const json = JSON.parse(data);
+            this.games = json.games || [];
+            console.log("Games loaded from status.json:", this.games);
+        } catch (error) {
+            console.error("Error loading games from status.json:", error);
+        }
+    }
+
     async login(){
         await super.login(this.token);
         console.log(`Logged in as ${this.user.tag}`);
-        this.user.setPresence({
-            activities: [{ 
-                name: 'Honkai: Star Rail', // Change this to whatever you want the status to say
-                type: 0 // 0 is for playing, 1 is for streaming, 2 is for listening, etc.
-            }],
-            status: 'online' // You can set this to 'idle', 'dnd', 'invisible', etc.
-        });
+        this.setRandomGame(); // Start cycling through games after logging in
     }
 
     async summonPokemon(message){
