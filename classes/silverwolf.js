@@ -169,6 +169,13 @@ class Silverwolf extends Client {
     async login(){
         await super.login(this.token);
         console.log(`Logged in as ${this.user.tag}`);
+        this.user.setPresence({
+            activities: [{ 
+                name: 'Honkai: Star Rail', // Change this to whatever you want the status to say
+                type: 0 // 0 is for playing, 1 is for streaming, 2 is for listening, etc.
+            }],
+            status: 'online' // You can set this to 'idle', 'dnd', 'invisible', etc.
+        });
     }
 
     async summonPokemon(message){
