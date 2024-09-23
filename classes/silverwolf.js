@@ -24,7 +24,7 @@ class Silverwolf extends Client {
         await this.loadCommands();
         await this.loadKeywords();
         await this.loadListeners();
-        
+
         this.birthdayScheduler.start();
 
         console.log("Silverwolf initialized.");
@@ -110,7 +110,7 @@ class Silverwolf extends Client {
                 const nickname = guildMember.nickname || person.username;
                 const originalMessage = referencedMessage.content;
                 const pfp = guildMember.displayAvatarURL({ extension: 'png', size: 512 });
-    
+
                 // Find the "fakequote" command and execute it
                 const fakeQuoteCommand = this.commands.get("fakequote");
                 if (fakeQuoteCommand) {
@@ -128,7 +128,7 @@ class Silverwolf extends Client {
                             message.reply({ files: [content.files[0]] });
                         }
                     };
-                    
+
                     fakeQuoteCommand.run(interaction);
                 }
             }).catch(console.error);
@@ -171,7 +171,7 @@ class Silverwolf extends Client {
     setRandomGame(){
         const randomGame = this.games[Math.floor(Math.random() * this.games.length)];
         this.user.setPresence({
-            activities: [{ 
+            activities: [{
                 name: randomGame,
                 type: 0 // 0 is for playing, 1 is for streaming, 2 is for listening, etc.
             }],
@@ -179,7 +179,12 @@ class Silverwolf extends Client {
         });
 
         // Log the game change and schedule the next one
-        const randomInterval = (Math.floor(Math.random() * 3) + 1) * 60 * 60 * 1000; // Random interval between 1 and 3 hours
+        let randomInterval;
+        if (randomGame == "on bed with Ei"){
+            randomInterval = (Math.floor(Math.random() * 3) + 1) * 60 * 1000; // Random interval between 1 and 3 minutes
+        }else{
+            randomInterval = (Math.floor(Math.random() * 3) + 1) * 60 * 60 * 1000; // Random interval between 1 and 3 hours
+        }
         console.log(`Setting status to "${randomGame}". Next change in ${randomInterval / 1000 / 60} minutes.`);
 
         setTimeout(() => this.setRandomGame(), randomInterval); // Schedule the next game change

@@ -26,20 +26,22 @@ for (var t = 0; t < SIMULATION_TIMES; t++) {
         }
     }
 
-    var winnings = 0;
+    var winnings = 0
 
     const lines = [[0,0,0,0,0], [1,1,1,1,1], [2,2,2,2,2], [0,1,2,1,0], [2,1,0,1,2], [0,1,2,2,2], [2,1,0,0,0], [0,0,0,1,2], [2,2,2,1,0]]
 
     for (var i = 0; i < lines.length; i++) {
         const line = lines[i];
         if(results[line[0]][0].emote == results[line[1]][1].emote && results[line[1]][1].emote == results[line[2]][2].emote && results[line[2]][2].emote == results[line[3]][3].emote && results[line[3]][3].emote == results[line[4]][4].emote){
-            winnings += results[line[0]][0].value * 25;
-        } else if(results[line[0]][0].emote == results[line[1]][1].emote && results[line[1]][1].emote == results[line[2]][2].emote && results[line[2]][2].emote == results[line[3]][3].emote){
-            winnings += results[line[0]][0].value * 5;
-        } else if(results[line[0]][0].emote == results[line[1]][1].emote && results[line[1]][1].emote == results[line[2]][2].emote){
+            winnings += results[line[0]][0].value * 25
+        }else if(results[line[0]][0].emote == results[line[1]][1].emote && results[line[1]][1].emote == results[line[2]][2].emote && results[line[2]][2].emote == results[line[3]][3].emote){
+            winnings += results[line[0]][0].value * 5
+        }else if(results[line[0]][0].emote == results[line[1]][1].emote && results[line[1]][1].emote == results[line[2]][2].emote){
             winnings += results[line[1]][1].value;
         }
     }
+
+    // console.log(`${t}: ${winnings}`);
 
     totalWinnings += winnings;
     winningsinGroup += winnings;
@@ -59,4 +61,9 @@ for (var t = 0; t < SIMULATION_TIMES; t++) {
     }
 }
 
+// for (const [winnings, count] of Object.entries(winningsCount)) {
+//     console.log(`x${winnings}: ${count} times`)
+// }
+
 console.log(`Average winnings: ${totalWinnings / SIMULATION_TIMES}`);
+console.log(`Winning groups: ${winningGroups} out of ${SIMULATION_TIMES / GROUP_SIZE}`);
