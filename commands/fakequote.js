@@ -38,18 +38,35 @@ class FakeQuote extends Command {
                     { name: 'Black', value: 'black' },
                     { name: 'White', value: 'white' }
                 ]
+            },
+            {
+                name: "profile_color",
+                description: "profile picture color options",
+                type: 3,
+                required: false,
+                choices: [
+                    { name: 'Normal', value: 'normal' },
+                    { name: 'Black and White', value: 'bw' }
+                ]
             }
         ]);
     }
 
     async run(interaction){
         try{
+            // Send initial loading message
+            await interaction.editReply({
+                content: "<a:quoteLoading:1290494754202583110> Generating...",
+                fetchReply: true
+            });
+
             const person = interaction.options.getUser("person");
             const username = person.username;
             const nickname = interaction.options.getString("nickname") || username;
             const message = `"${interaction.options.getString("message")}"`;
             const backgroundColor = interaction.options.getString("background") || 'black';
             const textColor = backgroundColor === 'white' ? 'black' : 'white';
+            const profileColor = interaction.options.getString("profile_color") || 'normal';
             const pfp = await person.displayAvatarURL({ extension: 'png', size: 512 });
 
             const canvas = Canvas.createCanvas(1024, 512);
@@ -61,10 +78,28 @@ class FakeQuote extends Command {
             ctx.fillRect(0, 0, 1024, 512);
             console.log(`Filled ${backgroundColor} background`);
 
-            // pfp on left
+            // Load and draw pfp
             const pfpImage = await Canvas.loadImage(pfp);
-            ctx.drawImage(pfpImage, 0, 0, 512, 512);
-            console.log("Drew pfp");
+            if (profileColor === 'bw') {
+                // Convert pfp to grayscale
+                ctx.drawImage(pfpImage, 0, 0, 512, 512);
+                const imageData = ctx.getImageData(0, 0, 512, 512);
+                const data = imageData.data;
+
+                // Loop through each pixel and apply grayscale
+                for (let i = 0; i < data.length; i += 4) {
+                    const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    data[i] = avg; // Red
+                    data[i + 1] = avg; // Green
+                    data[i + 2] = avg; // Blue
+                }
+                ctx.putImageData(imageData, 0, 0);
+                console.log("Converted pfp to black and white");
+            } else {
+                // Normal pfp
+                ctx.drawImage(pfpImage, 0, 0, 512, 512);
+                console.log("Drew normal pfp");
+            }
 
             // text on right
             ctx.fillStyle = textColor;
@@ -138,8 +173,8 @@ class FakeQuote extends Command {
             ctx.textBaseline = 'bottom';
             ctx.fillText('silverwolf', 1014, 502);
 
-            // test send
-            await interaction.editReply({ files: [canvas.toBuffer()] });
+            // Edit the message and send the image
+            await interaction.editReply({ content: null, files: [canvas.toBuffer()] });
         }catch(error){
             console.error(error);
             await interaction.editReply("Error: " + error.message);
