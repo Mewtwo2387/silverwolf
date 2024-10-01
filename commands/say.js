@@ -5,7 +5,7 @@ class Say extends AdminCommand {
         super(client, "say", "say something", [
             {
                 name: 'message',
-                description: 'The message to say',
+                description: 'The message to say, use \\n for newlines',
                 type: 3, // STRING type
                 required: true
             },
@@ -19,8 +19,12 @@ class Say extends AdminCommand {
     }
 
     async run(interaction) {
-        const input = interaction.options.getString('message').replace(/@/g, ''); 
-        const attachment = interaction.options.getAttachment('attachment'); 
+        // Replace @ symbols and interpret \n as actual newlines
+        const input = interaction.options.getString('message')
+            .replace(/@/g, '')    // Prevent mentions
+            .replace(/\\n/g, '\n'); // Convert \n to actual newline
+
+        const attachment = interaction.options.getAttachment('attachment');
 
         try {
             // Construct the message object with the optional attachment
