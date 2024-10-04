@@ -1,7 +1,8 @@
-const { DevCommand } = require("./classes/devcommand.js");
+const { Command } = require("./classes/command.js");
 const { EmbedBuilder } = require('discord.js');
+const crypto = require('crypto');
 
-class FakeEightBall extends DevCommand {
+class FakeEightBall extends Command {
     constructor(client) {
         super(client, "eightball", "Ask the magic Eight-ball a question. Wait a sec this is different...", [
             {
@@ -15,6 +16,11 @@ class FakeEightBall extends DevCommand {
 
     async run(interaction) {
         const question = interaction.options.getString('question');
+        const user = interaction.user.id;
+        const combined = question + user;
+
+        const hash = crypto.createHash('md5').update(combined).digest('hex');
+
         const responses = [
             "Don't bother me with your existential dread. Ask Google.",
             "Sure, I can predict the future. You'll still be single.",
@@ -33,8 +39,8 @@ class FakeEightBall extends DevCommand {
             "The answer lies within... yourself. But also within my code, which is way more interesting.",
             "Sure, the future looks bright. For me, not necessarily for you.",
         ];
-        
-        const randomIndex = Math.floor(Math.random() * responses.length);
+
+        const randomIndex = parseInt(hash.slice(0, 4), 16) % responses.length;
         const answer = responses[randomIndex];
 
         const embed = new EmbedBuilder()
