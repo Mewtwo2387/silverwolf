@@ -1,3 +1,4 @@
+const { getNuggieStreakMultiplier, getNuggieFlatMultiplier } = require('../utils/ascensionupgrades.js');
 const { format } = require('../utils/math.js');
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
@@ -27,6 +28,12 @@ class Claim extends Command {
             const beki_level = await this.client.db.getUserAttr(interaction.user.id, 'beki_level');
             const cooldown = 24 * Math.pow(0.95, beki_level - 1)
 
+            const getBaseAmount = async () => {
+                const nuggie_flat_multiplier_level = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_flat_multiplier_level');
+                const nuggie_streak_multiplier_level = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_streak_multiplier_level');
+                return (5 + streak) * (1 + streak * getNuggieStreakMultiplier(nuggie_streak_multiplier_level)) * getNuggieFlatMultiplier(nuggie_flat_multiplier_level);
+            }
+
             // Function to determine the multiplier based on probabilities
             const getMultiplier = async () => {
                 const rand = Math.random(); // Get a random number between 0 and 1
@@ -41,7 +48,7 @@ class Claim extends Command {
                 if (rand < gold_chance) {
                     return {
                         multiplier: gold_multiplier,
-                        title: `Congratulations! You've claimed a golden dinonuggie!! ${format(gold_multiplier, true)}x earned this claim for a total of ${format(Math.ceil((5 + streak) * gold_multiplier))} dinonuggies!`,
+                        title: `Congratulations! You've claimed a golden dinonuggie!! ${format(gold_multiplier, true)}x earned this claim for a total of ${format(Math.ceil(await getBaseAmount() * gold_multiplier))} dinonuggies!`,
                         imageUrl: "https://media.discordapp.net/attachments/1070612017058160731/1272801662121283614/AMuYswc.png?ex=66bc4c6b&is=66bafaeb&hm=1d284683c81389bf481ca100eb631a3b4d85ff51c86e22e7032f5cab30e73763&=&format=webp&quality=lossless&width=806&height=1169",
                         colour: '#FFD700',
                         footer: `Gold: ${format(gold_chance * 100, true)}% for ${format(gold_multiplier, true)}x | Silver: ${format(silver_chance * 100, true)}% for ${format(silver_multiplier, true)}x | Bronze: ${format(bronze_chance * 100, true)}% for ${format(bronze_multiplier, true)}x. Check upgrades with /upgrades`
@@ -49,15 +56,15 @@ class Claim extends Command {
                 } else if (rand < gold_chance + silver_chance) {
                     return {
                         multiplier: silver_multiplier,
-                        title: `Congratulations! You've claimed a silver dinonuggie!! ${format(silver_multiplier, true)}x earned this claim for a total of ${format(Math.ceil((5 + streak) * silver_multiplier))} dinonuggies!`,
+                        title: `Congratulations! You've claimed a silver dinonuggie!! ${format(silver_multiplier, true)}x earned this claim for a total of ${format(Math.ceil(await getBaseAmount() * silver_multiplier))} dinonuggies!`,
                         imageUrl: "https://media.discordapp.net/attachments/1070612017058160731/1272804142871609445/r0LVjIF.png?ex=66bc4ebb&is=66bafd3b&hm=75fcdacc2e0e138e0ad0640d7328607fa8a692c626398bf19d8ce4631b4a63ef&=&format=webp&quality=lossless&width=433&height=629",
                         colour: '#C0C0C0',
                         footer: `Gold: ${format(gold_chance * 100, true)}% for ${format(gold_multiplier, true)}x | Silver: ${format(silver_chance * 100, true)}% for ${format(silver_multiplier, true)}x | Bronze: ${format(bronze_chance * 100, true)}% for ${format(bronze_multiplier, true)}x. Check upgrades with /upgrades`
                     };
-                } else if (rand < gold_chance + silver_chance + bronze_chance) {    
+                } else if (rand < gold_chance + silver_chance + bronze_chance) {
                     return {
                         multiplier: bronze_multiplier,
-                        title: `Congratulations! You've claimed a bronze dinonuggie!! ${format(bronze_multiplier, true)}x earned this claim for a total of ${format(Math.ceil((5 + streak) * bronze_multiplier))} dinonuggies!`,
+                        title: `Congratulations! You've claimed a bronze dinonuggie!! ${format(bronze_multiplier, true)}x earned this claim for a total of ${format(Math.ceil(await getBaseAmount() * bronze_multiplier))} dinonuggies!`,
                         imageUrl: "https://media.discordapp.net/attachments/1070612017058160731/1272919852507463773/OXjd97e.png?ex=66bcba7e&is=66bb68fe&hm=34ef60370f5d26896aa8feca56846920228c78299144e9b5deb5d172522df56d&=&format=webp&quality=lossless&width=896&height=1169",
                         colour: '#CD7F32',
                         footer: `Gold: ${format(gold_chance * 100, true)}% for ${format(gold_multiplier, true)}x | Silver: ${format(silver_chance * 100, true)}% for ${format(silver_multiplier, true)}x | Bronze: ${format(bronze_chance * 100, true)}% for ${format(bronze_multiplier, true)}x. Check upgrades with /upgrades`
@@ -65,7 +72,7 @@ class Claim extends Command {
                 } else {
                     return {
                         multiplier: 1,
-                        title: `${5 + streak} dinonuggies claimed!`,
+                        title: `${Math.ceil(await getBaseAmount())} dinonuggies claimed!`,
                         imageUrl: "https://media.forgecdn.net/avatars/thumbnails/375/327/256/256/637550156004612442.png",
                         colour: '#83F28F',
                         footer: `Gold: ${format(gold_chance * 100, true)}% for ${format(gold_multiplier, true)}x | Silver: ${format(silver_chance * 100, true)}% for ${format(silver_multiplier, true)}x | Bronze: ${format(bronze_chance * 100, true)}% for ${format(bronze_multiplier, true)}x. Check upgrades with /upgrades`
@@ -84,21 +91,22 @@ class Claim extends Command {
                     .setFooter({ text: 'dinonuggie', iconURL: 'https://media.forgecdn.net/avatars/thumbnails/375/327/256/256/637550156004612442.png' })
                 ]});
             } else if (diff > 2 * DAY_LENGTH) {
+                streak = 0;
                 await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
                     .setThumbnail('https://media.forgecdn.net/avatars/thumbnails/375/327/256/256/637550156004612442.png')
-                    .setTitle('5 dinonuggies claimed!')
-                    .setDescription(`You now have ${format(dinonuggies + 5)} dinonuggies. You broke your streak of ${streak} days.`)
+                    .setTitle(`${format(await getBaseAmount())} dinonuggies claimed!`)
+                    .setDescription(`You now have ${format(dinonuggies + await getBaseAmount())} dinonuggies. You broke your streak of ${streak} days.`)
                     .setColor('#83F28F')
                     .setImage('https://media.forgecdn.net/avatars/thumbnails/375/327/256/256/637550156004612442.png')
                     .setAuthor({ name: 'dinonuggie', iconURL: 'https://media.forgecdn.net/avatars/thumbnails/375/327/256/256/637550156004612442.png' })
                     .setFooter({ text: 'dinonuggie', iconURL: 'https://media.forgecdn.net/avatars/thumbnails/375/327/256/256/637550156004612442.png' })
                 ]});
-                await this.client.db.addUserAttr(interaction.user.id, 'dinonuggies', 5);
+                await this.client.db.addUserAttr(interaction.user.id, 'dinonuggies', await getBaseAmount());
                 await this.client.db.setUserAttr(interaction.user.id, 'dinonuggies_last_claimed', now);
                 await this.client.db.setUserAttr(interaction.user.id, 'dinonuggies_claim_streak', 1);
             } else {
                 const { multiplier, title, imageUrl, colour, footer } = await getMultiplier();
-                const claimedNuggies = Math.ceil((5 + streak) * multiplier)
+                const claimedNuggies = Math.ceil(await getBaseAmount() * multiplier)
 
                 await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
                     .setThumbnail('https://media.forgecdn.net/avatars/thumbnails/375/327/256/256/637550156004612442.png')

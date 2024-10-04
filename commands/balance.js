@@ -18,10 +18,11 @@ class Balance extends Command {
         const totalBoughtPrice = await this.client.db.getUserAttr(interaction.user.id, 'total_bought_price');
         const dinonuggies = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggies');
         const dinonuggies_streak = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggies_claim_streak');
+        const heavenly_nuggies = await this.client.db.getUserAttr(interaction.user.id, 'heavenly_nuggies');
         console.log(credits);
         await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
             .setColor('#00AA00')
-            .setTitle(`You have ${format(credits)} mystic credits, ${bitcoin} bitcoin, and ${format(dinonuggies)} dinonuggies`)
+            .setTitle(`You have ${format(credits)} mystic credits, ${bitcoin} bitcoin, ${format(dinonuggies)} dinonuggies, and ${format(heavenly_nuggies)} heavenly nuggies`)
             .setDescription(`Bitcoin last bought at ${format(lastBoughtPrice)}/bitcoin (${lastBoughtAmount} bitcoin bought)
 Bitcoin total bought: ${totalBoughtAmount} for a total of ${format(totalBoughtPrice)} mystic credits
 Bitcoin total sold: ${totalSoldAmount} for a total of ${format(totalSoldPrice)} mystic credits
