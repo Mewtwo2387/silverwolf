@@ -22,10 +22,17 @@ class Execute extends DevCommand {
         const as = interaction.options.getUser("as");
         const command = interaction.options.getString("command");
 
+        // Prevent recursion by checking if the command is 'execute'
+        if (command.toLowerCase() === "execute") {
+            return interaction.editReply({ content: "Cannot execute the 'execute' command as it would cause an infinite loop!", ephemeral: true });
+        }
+        
+        // Set the user and member to the target user
         interaction.user = as;
         interaction.member = await interaction.guild.members.fetch(as.id);
         interaction.commandName = command;
 
+        // Process the interaction as if it came from the target user
         await this.client.processInteraction(interaction);
     }
 }
