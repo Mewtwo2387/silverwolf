@@ -95,14 +95,14 @@ class Silverwolf extends Client {
         if(message.author.bot) return;
         if(!message.guild) return;
         console.log(`Message received from ${message.author.username}: ${message.content}`);
-
+    
         if(Math.random() < 0.01 && !(message.channel.name == "super-serious-secret-vent-rant-chat")){
             console.log("Summoning a pokemon...");
             this.summonPokemon(message);
         }
-
+    
         const msg = message.content.toLowerCase();
-
+    
         if (message.mentions.has(this.user.id) && message.reference && message.content.includes(this.user.id)) {
             const referencedMessageId = message.reference.messageId;
             message.channel.messages.fetch(referencedMessageId).then(async referencedMessage => {
@@ -111,7 +111,7 @@ class Silverwolf extends Client {
                 const nickname = guildMember.nickname || person.username;
                 const originalMessage = referencedMessage.content;
                 const pfp = guildMember.displayAvatarURL({ extension: 'png', size: 512 });
-
+    
                 // Find the "fakequote" command and execute it
                 const fakeQuoteCommand = this.commands.get("fakequote");
                 if (fakeQuoteCommand) {
@@ -126,23 +126,27 @@ class Silverwolf extends Client {
                         },
                         editReply: async (content) => {
                             // Simulate sending the image in the reply
-                            message.reply({ files: [content.files[0]] });
+                            if (content && content.files && content.files[0]) {
+                                message.reply({ files: [content.files[0]] });
+                            } else {
+                                console.error('No file to send in the reply.');
+                            }
                         }
                     };
-
+    
                     fakeQuoteCommand.run(interaction);
                 }
             }).catch(console.error);
             return;
         }
-
+    
         for (const [keyword, reply] of Object.entries(this.keywords)){
             if(msg.includes(keyword)){
                 message.reply(reply);
                 return;
             }
         }
-    }
+    } 
 
     processDelete(message){
         console.log(`Message deleted by ${message.author.username}: ${message.content}`);
