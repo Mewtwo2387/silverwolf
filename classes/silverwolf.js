@@ -107,6 +107,9 @@ class Silverwolf extends Client {
         if (message.mentions.has(this.user.id) && message.reference && message.content.includes(this.user.id)) {
             const referencedMessageId = message.reference.messageId;
             message.channel.messages.fetch(referencedMessageId).then(async referencedMessage => {
+                const sentMessage = await message.reply({
+                    content: "<a:quoteLoading:1290494754202583110> Generating...",
+                });
                 const guildMember = await message.guild.members.fetch(referencedMessage.author.id);
                 const person = referencedMessage.author;
                 const nickname = guildMember.nickname || person.username;
@@ -131,11 +134,7 @@ class Silverwolf extends Client {
                             }
                         },
                         editReply: async (content) => {
-                            if (content && content.files && content.files[0]) {
-                                const sentMessage = await message.reply({
-                                    content: "<a:quoteLoading:1290494754202583110> Generating...",
-                                });
-                                
+                            if (content && content.files && content.files[0]) {                                
                                 // After generating the quote or image...
                                 await sentMessage.edit({ content: null, files: [content.files[0]] });                                                              
                             } else {
