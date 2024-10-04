@@ -182,6 +182,7 @@ class Silverwolf extends Client {
             { body: commandsArray },
         );
         console.log("Commands registered.");
+        console.log("successfully finished startup")
     }
 
     setRandomGame(){
