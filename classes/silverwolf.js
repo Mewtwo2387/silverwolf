@@ -91,18 +91,19 @@ class Silverwolf extends Client {
         }
     }
 
-    processMessage(message){
-        if(message.author.bot) return;
-        if(!message.guild) return;
+    processMessage(message) {
+        if (message.author.bot) return;
+        if (!message.guild) return;
         console.log(`Message received from ${message.author.username}: ${message.content}`);
     
-        if(Math.random() < 0.01 && !(message.channel.name == "super-serious-secret-vent-rant-chat")){
+        if (Math.random() < 0.01 && !(message.channel.name == "super-serious-secret-vent-rant-chat")) {
             console.log("Summoning a pokemon...");
             this.summonPokemon(message);
         }
     
         const msg = message.content.toLowerCase();
     
+        // Check if the message mentions the bot and references another message
         if (message.mentions.has(this.user.id) && message.reference && message.content.includes(this.user.id)) {
             const referencedMessageId = message.reference.messageId;
             message.channel.messages.fetch(referencedMessageId).then(async referencedMessage => {
@@ -111,6 +112,13 @@ class Silverwolf extends Client {
                 const nickname = guildMember.nickname || person.username;
                 const originalMessage = referencedMessage.content;
                 const pfp = guildMember.displayAvatarURL({ extension: 'png', size: 512 });
+    
+                // Parse the style options (n, b, w)
+                const hasBlackAndWhitePfp = msg.includes('b');
+                const hasWhiteBackground = msg.includes('w');
+                
+                const background = hasWhiteBackground ? 'white' : 'black';
+                const profileColor = hasBlackAndWhitePfp ? 'bw' : 'normal';
     
                 // Find the "fakequote" command and execute it
                 const fakeQuoteCommand = this.commands.get("fakequote");
@@ -121,6 +129,8 @@ class Silverwolf extends Client {
                             getString: (name) => {
                                 if (name === "message") return originalMessage;
                                 if (name === "nickname") return nickname;
+                                if (name === "background") return background;
+                                if (name === "profile_color") return profileColor;
                                 return "";
                             }
                         },
@@ -140,13 +150,14 @@ class Silverwolf extends Client {
             return;
         }
     
-        for (const [keyword, reply] of Object.entries(this.keywords)){
-            if(msg.includes(keyword)){
+        for (const [keyword, reply] of Object.entries(this.keywords)) {
+            if (msg.includes(keyword)) {
                 message.reply(reply);
                 return;
             }
         }
-    } 
+    }
+    
 
     processDelete(message){
         console.log(`Message deleted by ${message.author.username}: ${message.content}`);
