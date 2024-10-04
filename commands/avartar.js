@@ -31,12 +31,28 @@ class AvatarCommand extends Command {
         let title;
 
         if (avatarType === 'server' && interaction.guild) {
-            const member = await interaction.guild.members.fetch(user.id);
-            title = `Server Avatar of ${user.username}`;
-            avatarUrl = member.displayAvatarURL({ dynamic: true, format: 'png', size: 4096 });
+            try {
+                const member = await interaction.guild.members.fetch(user.id);
+                if (member.avatar) {
+                    avatarUrl = member.displayAvatarURL({ dynamic: true, format: 'png', size: 4096 });
+                    title = `Server Avatar of ${user.username}`;
+                } else {
+                    avatarUrl = user.displayAvatarURL({ dynamic: true, format: 'png', size: 4096 });
+                    title = `Global avatar of ${user.username} (no server avatar found)`;
+                }
+            } catch (error) {
+                if (error.code === 10007) {
+                    // Handle the 'Unknown Member' error gracefully
+                    avatarUrl = user.displayAvatarURL({ dynamic: true, format: 'png', size: 4096 });
+                    title = `Global avatar of ${user.username} (user not found in this server)`;
+                } else {
+                    console.error('An error occurred while fetching the member:', error);
+                    return interaction.reply('An error occurred while fetching the avatar.');
+                }
+            }
         } else {
-            title = `Global avatar of ${user.username}`;
             avatarUrl = user.displayAvatarURL({ dynamic: true, format: 'png', size: 4096 });
+            title = `Global avatar of ${user.username}`;
         }
         
         const embed = new EmbedBuilder()
