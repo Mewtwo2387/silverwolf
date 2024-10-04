@@ -112,15 +112,11 @@ class Silverwolf extends Client {
                 const nickname = guildMember.nickname || person.username;
                 const originalMessage = referencedMessage.content;
                 const pfp = guildMember.displayAvatarURL({ extension: 'png', size: 512 });
-    
-                // Parse the style options (n, b, w)
                 const hasBlackAndWhitePfp = msg.includes('b');
                 const hasWhiteBackground = msg.includes('w');
                 
                 const background = hasWhiteBackground ? 'white' : 'black';
                 const profileColor = hasBlackAndWhitePfp ? 'bw' : 'normal';
-    
-                // Find the "fakequote" command and execute it
                 const fakeQuoteCommand = this.commands.get("fakequote");
                 if (fakeQuoteCommand) {
                     const interaction = {
@@ -135,18 +131,22 @@ class Silverwolf extends Client {
                             }
                         },
                         editReply: async (content) => {
-                            // Simulate sending the image in the reply
                             if (content && content.files && content.files[0]) {
-                                message.reply({ files: [content.files[0]] });
+                                const sentMessage = await message.reply({
+                                    content: "<a:quoteLoading:1290494754202583110> Generating...",
+                                });
+                                
+                                // After generating the quote or image...
+                                await sentMessage.edit({ content: null, files: [content.files[0]] });                                                              
                             } else {
-                                console.error('No file to send in the reply.');
+                                console.error('No file or content to send in the reply.');
                             }
                         }
-                    };
-    
+                    };            
+                    // Run the fake quote generation
                     fakeQuoteCommand.run(interaction);
                 }
-            }).catch(console.error);
+            }).catch(console.error);            
             return;
         }
     
