@@ -10,8 +10,8 @@ const Canvas = require('canvas');
 
 class FakeQuote extends Command {
     constructor(client){
-        super(client, "fakequote", "fake make it a quote",
-            [{
+        super(client, "fakequote", "fake make it a quote", [
+            {
                 name: "person",
                 description: "person to quote",
                 type: 6,
@@ -28,49 +28,101 @@ class FakeQuote extends Command {
                 description: "nickname of the person",
                 type: 3,
                 required: false
-            }]
-        );
+            },
+            {
+                name: "background",
+                description: "background color (black or white)",
+                type: 3,
+                required: false,
+                choices: [
+                    { name: 'Black', value: 'black' },
+                    { name: 'White', value: 'white' }
+                ]
+            },
+            {
+                name: "profile_color",
+                description: "profile picture color options",
+                type: 3,
+                required: false,
+                choices: [
+                    { name: 'Normal', value: 'normal' },
+                    { name: 'Black and White', value: 'bw' }
+                ]
+            }
+        ]);
     }
 
     async run(interaction){
         try{
+            // Send initial loading message
+            await interaction.editReply({
+                content: "<a:quoteLoading:1290494754202583110> Generating...",
+                fetchReply: true
+            });
+
             const person = interaction.options.getUser("person");
             const username = person.username;
             const nickname = interaction.options.getString("nickname") || username;
-            const message = `"${interaction.options.getString("message")}"`
+            const message = `"${interaction.options.getString("message")}"`;
+            const backgroundColor = interaction.options.getString("background") || 'black';
+            const textColor = backgroundColor === 'white' ? 'black' : 'white';
+            const profileColor = interaction.options.getString("profile_color") || 'normal';
             const pfp = await person.displayAvatarURL({ extension: 'png', size: 512 });
 
             const canvas = Canvas.createCanvas(1024, 512);
             const ctx = canvas.getContext('2d');
             console.log("Created canvas");
 
-            // black background
-            ctx.fillStyle = '#000000';
+            // Set background color
+            ctx.fillStyle = backgroundColor === 'white' ? '#ffffff' : '#000000';
             ctx.fillRect(0, 0, 1024, 512);
-            console.log("Filled background");
+            console.log(`Filled ${backgroundColor} background`);
 
-            // pfp on left
+            // Load and draw pfp
             const pfpImage = await Canvas.loadImage(pfp);
-            ctx.drawImage(pfpImage, 0, 0, 512, 512);
-            console.log("Drew pfp");
+            if (profileColor === 'bw') {
+                // Convert pfp to grayscale
+                ctx.drawImage(pfpImage, 0, 0, 512, 512);
+                const imageData = ctx.getImageData(0, 0, 512, 512);
+                const data = imageData.data;
+
+                // Loop through each pixel and apply grayscale
+                for (let i = 0; i < data.length; i += 4) {
+                    const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    data[i] = avg; // Red
+                    data[i + 1] = avg; // Green
+                    data[i + 2] = avg; // Blue
+                }
+                ctx.putImageData(imageData, 0, 0);
+                console.log("Converted pfp to black and white");
+            } else {
+                // Normal pfp
+                ctx.drawImage(pfpImage, 0, 0, 512, 512);
+                console.log("Drew normal pfp");
+            }
 
             // text on right
-            ctx.fillStyle = '#ffffff';
+            ctx.fillStyle = textColor;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
             const maxWidth = 480;
             let fontSize = 36;
 
-            // Create gradient 
+            // Create gradient based on background color
             const gradient = ctx.createLinearGradient(384, 0, 512, 0);
-            gradient.addColorStop(0, 'rgba(0, 0, 0, 0)'); // Start color (transparent)
-            gradient.addColorStop(1, 'rgba(0, 0, 0, 1)'); // End color (opaque black)
-            
+            if (backgroundColor === 'white') {
+                gradient.addColorStop(0, 'rgba(255, 255, 255, 0)'); // Start transparent
+                gradient.addColorStop(1, 'rgba(255, 255, 255, 1)'); // End white
+            } else {
+                gradient.addColorStop(0, 'rgba(0, 0, 0, 0)'); // Start transparent
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 1)'); // End black
+            }
+
             ctx.fillStyle = gradient;
             ctx.fillRect(384, 0, 128, 512);
             console.log("Filled gradient");
 
-            ctx.fillStyle = '#ffffff';
+            ctx.fillStyle = textColor;
 
             // Split text into lines and adjust font size if necessary
             const lines = this.wrapText(ctx, message, maxWidth, fontSize);
@@ -101,7 +153,7 @@ class FakeQuote extends Command {
             console.log("Drew quote");
 
             // Draw nickname
-            ctx.fillStyle = '#ffffff';
+            ctx.fillStyle = textColor;
             ctx.font = '36px sans-serif';
             ctx.fillText(`- ${nickname}`, 768, textY + textHeight + nicknameMargin);
             console.log("Drew nickname");
@@ -113,7 +165,7 @@ class FakeQuote extends Command {
                 ctx.fillText(`@${username}`, 768, textY + textHeight + nicknameMargin + usernameMargin);
                 console.log("Drew username");
             }
-            
+
             // footer
             ctx.fillStyle = '#808080';
             ctx.font = '24px sans-serif';
@@ -121,8 +173,8 @@ class FakeQuote extends Command {
             ctx.textBaseline = 'bottom';
             ctx.fillText('silverwolf', 1014, 502);
 
-            // test send
-            await interaction.editReply({ files: [canvas.toBuffer()] });
+            // Edit the message and send the image
+            await interaction.editReply({ content: null, files: [canvas.toBuffer()] });
         }catch(error){
             console.error(error);
             await interaction.editReply("Error: " + error.message);
