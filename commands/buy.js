@@ -3,7 +3,6 @@ const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 const { getNextUpgradeCost, getTotalUpgradeCost, getMultiplierAmount, getMultiplierChance, getBekiCooldown } = require('../utils/upgrades.js');
 
-const MAX_LEVEL = 30;
 const UPGRADES = ['multiplier_amount', 'multiplier_rarity', 'beki'];
 
 // We don't talk about the spaghetti code here
@@ -21,6 +20,9 @@ class Buy extends Command{
     }
 
     async run(interaction){
+        const ascensionLevel = await this.client.db.getUserAttr(interaction.user.id, 'ascension_level');
+        const max_level = getMaxLevel(ascensionLevel);
+
         const upgradeId = interaction.options.getInteger('upgrade');
 
         if (upgradeId < 1 || upgradeId > UPGRADES.length){
@@ -36,12 +38,12 @@ class Buy extends Command{
 
         const level = await this.client.db.getUserAttr(interaction.user.id, `${upgrade}_level`);
 
-        if (level >= MAX_LEVEL){
+        if (level >= max_level){
             await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
                 .setColor('#AA0000')
                 .setTitle('Upgrade maxed')
                 .setDescription(`how far do you even want to go`)
-                .setFooter({ text : 'you might be able to increase this cap in the future'})
+                .setFooter({ text : 'increase the cap by ascending'})
             ]});
             return;
         }
