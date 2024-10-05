@@ -9,7 +9,7 @@ class Eval extends DevCommand {
             required: true
         }]);
     }
-    
+
     async run(interaction){
         const input = interaction.options.getString("code");
         try{
