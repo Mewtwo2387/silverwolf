@@ -26,10 +26,10 @@ class Command {
         } catch (error) {
             // Global error handling logic
             console.error(`Error executing command ${this.name}:`, error);
-            
+
             // Inform the user about the error, if needed
             await interaction.editReply({
-                content: "An error occurred while executing the command.\nPlease try again later or modify the inputs.\nIf the issue persists, please contact the bot owner.",
+                content: "An error occurred while executing the command.\nPlease try again later or modify the inputs.\nIf the issue persists, run /blame command_name and spam ping whoever made the command.",
                 ephemeral: true
             });
         }
