@@ -8,19 +8,30 @@ class Command {
     }
 
     async execute(interaction){
-        if (this.run !== undefined) {
-            if (!interaction.deferred) {
-                await interaction.deferReply({
-                    ephemeral: this.ephemeral
+        try {
+            if (this.run !== undefined) {
+                if (!interaction.deferred) {
+                    await interaction.deferReply({
+                        ephemeral: this.ephemeral
+                    });
+                }
+                await this.run(interaction);  // Run the command logic
+            } else {
+                await interaction.editReply({
+                    content: "Not implemented",
+                    ephemeral: true
                 });
+                throw new Error("run() not implemented. (still switching up things)");
             }
-            await this.run(interaction);
-        }else{
-            interaction.editReply({
-                content: "not implemented",
+        } catch (error) {
+            // Global error handling logic
+            console.error(`Error executing command ${this.name}:`, error);
+            
+            // Inform the user about the error, if needed
+            await interaction.editReply({
+                content: "An error occurred while executing the command.\nPlease try again later or modify the inputs.\nIf the issue persists, please contact the bot owner.",
                 ephemeral: true
             });
-            throw new Error("run() not implemented. (still switching up things)");
         }
     }
 }
