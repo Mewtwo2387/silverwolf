@@ -33,7 +33,8 @@ class Database {
             ascension_level INTEGER DEFAULT 1,
             heavenly_nuggies INTEGER DEFAULT 0,
             nuggie_flat_multiplier_level INTEGER DEFAULT 1,
-            nuggie_streak_multiplier_level INTEGER DEFAULT 1
+            nuggie_streak_multiplier_level INTEGER DEFAULT 1,
+            pity INTEGER DEFAULT 0
         )`, (err) => {
             if (err) {
                 console.error(err.message);
@@ -72,7 +73,8 @@ class Database {
             { name: 'ascension_level', type: 'INTEGER', defaultValue: 1 },
             { name: 'heavenly_nuggies', type: 'INTEGER', defaultValue: 0 },
             { name: 'nuggie_flat_multiplier_level', type: 'INTEGER', defaultValue: 1 },
-            { name: 'nuggie_streak_multiplier_level', type: 'INTEGER', defaultValue: 1 }
+            { name: 'nuggie_streak_multiplier_level', type: 'INTEGER', defaultValue: 1 },
+            { name: 'pity', type: 'INTEGER', defaultValue: 0 }
         ];
 
         columnsToAdd.forEach(async (column) => {
@@ -175,8 +177,8 @@ class Database {
 
     async createUser(userId) {
         const query = `
-        INSERT INTO User (id, credits, bitcoin, last_bought_price, last_bought_amount, total_bought_price, total_bought_amount, total_sold_price, total_sold_amount, dinonuggies, dinonuggies_last_claimed, dinonuggies_claim_streak, multiplier_amount_level, multiplier_rarity_level, beki_level, birthdays, ascension_level, heavenly_nuggies, nuggie_flat_multiplier_level, nuggie_streak_multiplier_level)
-        VALUES (?, 10000, 0, 0, 0, 0, 0, 0, 0, 0, NULL, 0, 1, 1, 1, ?, 1, 0, 1, 1);`;
+        INSERT INTO User (id, credits, bitcoin, last_bought_price, last_bought_amount, total_bought_price, total_bought_amount, total_sold_price, total_sold_amount, dinonuggies, dinonuggies_last_claimed, dinonuggies_claim_streak, multiplier_amount_level, multiplier_rarity_level, beki_level, birthdays, ascension_level, heavenly_nuggies, nuggie_flat_multiplier_level, nuggie_streak_multiplier_level, pity)
+        VALUES (?, 10000, 0, 0, 0, 0, 0, 0, 0, 0, NULL, 0, 1, 1, 1, ?, 1, 0, 1, 1, 0);`;
 
         try {
             await this.executeQuery(query, [userId]);

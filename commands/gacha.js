@@ -19,9 +19,6 @@ class GachaRollCommand extends Command {
 
         // Load character pool from JSON
         this.characterPool = JSON.parse(fs.readFileSync('./data/characters.json', 'utf-8'));
-
-        // Store user-specific pity data
-        this.pity = new Map();
     }
 
     getRandomCharacter(rarity) {
@@ -39,7 +36,7 @@ class GachaRollCommand extends Command {
     async run(interaction) {
         const amount = interaction.options.getInteger('amount');
         const userId = interaction.user.id;
-        let pityCount = this.pity.get(userId) || 0;
+        let pityCount = await this.client.db.getUserAttr(interaction.user.id, 'pity');
         let results = [];
         let gotFiveStar = false;
 
@@ -56,17 +53,18 @@ class GachaRollCommand extends Command {
             } else if (roll < 0.056) {
                 // 4-star roll (base rate 5.6%)
                 rollResult = this.getRandomCharacter(4);
+                pityCount++;
             } else {
                 // 3-star roll (common)
                 rollResult = this.getRandomCharacter(3);
+                pityCount++;
             }
 
             results.push(rollResult);
-            pityCount++;
         }
 
         // Update the user's pity count
-        this.pity.set(userId, pityCount);
+        await this.client.db.setUserAttr(userId, 'pity', pityCount);
 
         // Build the result embed
         const embed = new EmbedBuilder()
