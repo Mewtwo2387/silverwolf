@@ -1,3 +1,4 @@
+// probably not needed
 require('dotenv').config();
 const { DevCommand } = require('./classes/devcommand.js');
 const { EmbedBuilder } = require('discord.js');

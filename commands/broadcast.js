@@ -1,3 +1,4 @@
+// probably consider merging with /say command
 require('dotenv').config();
 const { CommandInteraction, TextChannel } = require('discord.js');
 const { DevCommand } = require("./classes/devcommand.js");
