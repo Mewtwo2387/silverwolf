@@ -95,6 +95,10 @@ class Claim extends Command {
                     {
                         title : 'uhhh what is beki doing ?',
                         gifUrl: 'https://media.tenor.com/RYGLfSXNIRIAAAAi/frieren.gif'
+                    },
+                    {
+                        title : 'Beki fucking dies of exhaustion',
+                        gifUrl : 'https://media1.tenor.com/m/kU_EwdsrkLkAAAAC/frieren-dies-cold.gif'
                     }
                 ];
             
