@@ -37,6 +37,25 @@ class GachaRollCommand extends Command {
         const amount = interaction.options.getInteger('amount');
         const userId = interaction.user.id;
         let pityCount = await this.client.db.getUserAttr(interaction.user.id, 'pity');
+        let dinonuggies = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggies');
+
+        // Define roll costs
+        const costPerRoll = 160;
+        const totalCost = costPerRoll * amount;
+
+        // Check if the user has enough dinonuggies
+        if (dinonuggies < totalCost) {
+            const embed = new EmbedBuilder()
+                .setTitle('Not enough dinonuggies!')
+                .setDescription(`You don't have enough dinonuggies! You need ${totalCost}, but you only have ${dinonuggies}.`)
+                .setColor(0xFF0000);
+            return interaction.editReply({ embeds: [embed] });
+        }
+
+        // Deduct the cost from the user's dinonuggies
+        dinonuggies -= totalCost;
+        await this.client.db.setUserAttr(userId, 'dinonuggies', dinonuggies);
+
         let results = [];
         let gotFiveStar = false;
 
@@ -63,13 +82,11 @@ class GachaRollCommand extends Command {
             results.push(rollResult);
         }
 
-        // Update the user's pity count
         await this.client.db.setUserAttr(userId, 'pity', pityCount);
 
         // Build the result embed
         const embed = new EmbedBuilder()
-            .setTitle(`NOT FINAL, TECHNICAL TEST, WORK IN PROGRESS, PROGRESS IS NOT SAVED`)
-            //.setTitle(`Gacha Roll Results (${amount})`)
+            .setTitle(`Gacha Roll Results for ${interaction.user.username} (${amount})`) 
             .setDescription(results.map(char => `**${char.name}** - ${char.type} - ${char.rarity}★`).join('\n'))
             .setColor(gotFiveStar ? 0xFFD700 : 0x00FF00) // Gold for 5-star, green otherwise
             .setFooter({ text: `Pity: ${pityCount}, names are placeholders` });

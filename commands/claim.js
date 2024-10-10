@@ -79,15 +79,40 @@ class Claim extends Command {
             const cooldown = getBekiCooldown(beki_level);
 
             if (diff < cooldown * HOUR_LENGTH) {
-                await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
-                    .setTitle('Beki is currently cooking the next batch of dinonuggies please wait')
-                    .setThumbnail('https://media.forgecdn.net/avatars/thumbnails/375/327/256/256/637550156004612442.png')
-                    .setDescription(`You can claim your next nuggie in ${cooldown - diff / HOUR_LENGTH} hours.`)
-                    .setColor('#FF0000')
-                    .setImage('https://cdn.discordapp.com/attachments/1070612017058160731/1272915299615768687/vEHw5Aq.gif?ex=66bcb641&is=66bb64c1&hm=7e672767e921c7a805bd2d0d32e22b695d9ae2f6d34c2c7658c5ebb37ff78ad6&')
-                    .setAuthor({ name: 'dinonuggie', iconURL: 'https://media.forgecdn.net/avatars/thumbnails/375/327/256/256/637550156004612442.png' })
-                    .setFooter({ text: 'dinonuggie', iconURL: 'https://media.forgecdn.net/avatars/thumbnails/375/327/256/256/637550156004612442.png' })
-                ]});
+                const responses = [
+                    {
+                        title: 'Beki is currently cooking the next batch of dinonuggies please wait',
+                        gifUrl: 'https://media1.tenor.com/m/i6sOwD66MAEAAAAC/frieren-frieren-beyond-journey%27s-end.gif'
+                    },
+                    {
+                        title: 'Beki is having a little bit of an issue. Please hold',
+                        gifUrl: 'https://media1.tenor.com/m/h6XlgMwYBnkAAAAd/frieren-sousou-no-frieren.gif'
+                    },
+                    {
+                        title : 'Ah shit i forgottt, hang on a momentt-',
+                        gifUrl : 'https://media1.tenor.com/m/TYW-RNzp6hEAAAAC/sousou-no-frieren-frieren-beyond-journey.gif'
+                    },
+                    {
+                        title : 'uhhh what is beki doing ?',
+                        gifUrl: 'https://media.tenor.com/RYGLfSXNIRIAAAAi/frieren.gif'
+                    }
+                ];
+            
+                const selectedResponse = responses[Math.floor(Math.random() * responses.length)];
+            
+                // Build and send the embed
+                await interaction.editReply({
+                    embeds: [
+                        new Discord.EmbedBuilder()
+                            .setTitle(selectedResponse.title)
+                            .setThumbnail('https://media.forgecdn.net/avatars/thumbnails/375/327/256/256/637550156004612442.png')
+                            .setDescription(`You can claim your next nuggie in ${cooldown - diff / HOUR_LENGTH} hours.`)
+                            .setColor('#FF0000')
+                            .setImage(selectedResponse.gifUrl)
+                            .setAuthor({ name: 'dinonuggie', iconURL: 'https://media.forgecdn.net/avatars/thumbnails/375/327/256/256/637550156004612442.png' })
+                            .setFooter({ text: 'dinonuggie', iconURL: 'https://media.forgecdn.net/avatars/thumbnails/375/327/256/256/637550156004612442.png' })
+                    ]
+                });
             } else if (diff > 2 * DAY_LENGTH) {
                 const amount = await this.getBaseAmount(interaction, 0);
                 await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
