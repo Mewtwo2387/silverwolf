@@ -221,9 +221,12 @@ class Database {
         }
     }
 
-    async getEveryoneAttr(attribute) {
+    async getEveryoneAttr(attribute, limit = null, offset = 0) {
         try {
-            const query = `SELECT id, ${attribute} FROM User WHERE ${attribute} <> 0 ORDER BY ${attribute} DESC;`;
+            let query = `SELECT id, ${attribute} FROM User WHERE ${attribute} <> 0 ORDER BY ${attribute} DESC`;
+            if (limit !== null) {
+                query += ` LIMIT ${limit} OFFSET ${offset}`;
+            }
             const rows = await this.executeSelectAllQuery(query);
             console.log(rows);
             return rows;
@@ -232,6 +235,18 @@ class Database {
             return null;
         }
     }
+    
+    async getEveryoneAttrCount(attribute) {
+        try {
+            const query = `SELECT COUNT(*) AS count FROM User WHERE ${attribute} <> 0;`;
+            const rows = await this.executeSelectAllQuery(query);
+            return rows[0].count;
+        } catch (err) {
+            console.error(`Failed to count ${attribute}:`, err.message);
+            return 0;
+        }
+    }
+    
 
     async catchPokemon(userId, pokemonName) {
         try {

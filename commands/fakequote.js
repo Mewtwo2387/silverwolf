@@ -46,7 +46,9 @@ class FakeQuote extends Command {
                 required: false,
                 choices: [
                     { name: 'Normal', value: 'normal' },
-                    { name: 'Black and White', value: 'bw' }
+                    { name: 'Black and White', value: 'bw' },
+                    { name: 'inverted', value: 'inverted' },
+                    { name: 'sepia', value: 'sepia' }
                 ]
             }
         ]);
@@ -95,7 +97,38 @@ class FakeQuote extends Command {
                 }
                 ctx.putImageData(imageData, 0, 0);
                 console.log("Converted pfp to black and white");
-            } else {
+            } else if (profileColor === 'inverted') {
+            // draw inverted pfp
+                ctx.drawImage(pfpImage, 0, 0, 512, 512);
+                const imageData = ctx.getImageData(0, 0, 512, 512);
+                const data = imageData.data;
+
+                // Loop through each pixel and invert colors
+                for (let i = 0; i < data.length; i += 4) {
+                    data[i] = 255 - data[i]; // Red
+                    data[i + 1] = 255 - data[i + 1]; // Green
+                    data[i + 2] = 255 - data[i + 2]; // Blue
+                }
+                ctx.putImageData(imageData, 0, 0);
+                console.log("Inverted pfp");
+            } else if (profileColor === 'sepia') {
+            // draw sepia pfp
+                ctx.drawImage(pfpImage, 0, 0, 512, 512);
+                const imageData = ctx.getImageData(0, 0, 512, 512);
+                const data = imageData.data;
+
+                // Loop through each pixel and apply sepia tone
+                for (let i = 0; i < data.length; i += 4) {
+                    const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    data[i] = avg + 100; // Red
+                    data[i + 1] = avg + 50; // Green
+                    data[i + 2] = avg; // Blue
+                }
+                ctx.putImageData(imageData, 0, 0);
+                console.log("Drew sepia pfp");
+
+            }   
+            else {
                 // Normal pfp
                 ctx.drawImage(pfpImage, 0, 0, 512, 512);
                 console.log("Drew normal pfp");

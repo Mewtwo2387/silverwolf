@@ -5,27 +5,49 @@ class LoveCalculator extends Command {
     constructor(client) {
         super(client, "love_calculator", "Calculate love compatibility between two members", [
             {
-                name: 'user1',
-                description: 'The first user',
-                type: 6, // User type
+                name: 'input1',
+                description: 'The first input (user mention or string)',
+                type: 3, // String type
                 required: true
             },
             {
-                name: 'user2',
-                description: 'The second user',
-                type: 6, // User type
+                name: 'input2',
+                description: 'The second input (user mention or string)',
+                type: 3, // String type
                 required: true
             }
         ]);
     }
 
     async run(interaction) {
-        const user1 = interaction.options.getUser('user1');
-        const user2 = interaction.options.getUser('user2');
+        let input1 = interaction.options.getString('input1');
+        let input2 = interaction.options.getString('input2');
 
-        // Combine usernames and generate a hash
-        const combinedNames = (user1.username.toLowerCase() + user2.username.toLowerCase());
-        const hash = crypto.createHash('md5').update(combinedNames).digest('hex');
+        // Helper function to extract user from mention and replace it with the username
+        const replaceMentionWithUsername = async (input) => {
+            const mentionRegex = /<@!?(\d+)>/; // Matches user mentions
+            const match = input.match(mentionRegex);
+            if (match) {
+                try {
+                    const userId = match[1]; // Extract the user ID
+                    const member = await interaction.guild.members.fetch(userId);
+                    return input.replace(mentionRegex, member.user.username); // Replace mention with username
+                } catch {
+                    return input; // If user not found, return the input as is
+                }
+            }
+            return input;
+        };
+
+        // Replace mentions with usernames if they exist in both inputs
+        input1 = await replaceMentionWithUsername(input1);
+        input2 = await replaceMentionWithUsername(input2);
+
+        // Sort inputs alphabetically to ensure consistent results
+        const sortedInputs = [input1.toLowerCase(), input2.toLowerCase()].sort().join('');
+
+        // Generate a hash based on the sorted inputs
+        const hash = crypto.createHash('md5').update(sortedInputs).digest('hex');
         
         // Convert the hash to a percentage
         const percentage = parseInt(hash.slice(0, 4), 16) % 101;
@@ -46,7 +68,7 @@ class LoveCalculator extends Command {
 
         // Respond with the result
         await interaction.editReply({
-            content: `${user1.username} ❤️ ${user2.username}: ${percentage}% compatibility\n${phrase}`
+            content: `${input1} ❤️ ${input2}: ${percentage}% compatibility\n${phrase}`
         });
     }
 }
