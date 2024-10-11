@@ -1,16 +1,18 @@
 class Command {
-    constructor(client, name, description, options, ephemeral = false){
+    constructor(client, name, description, options, ephemeral = false, skipDefer = false) {
         this.client = client;
         this.name = name;
         this.description = description;
         this.options = options;
         this.ephemeral = ephemeral;
+        this.skipDefer = skipDefer;  // New flag to skip deferReply
     }
 
-    async execute(interaction){
+    async execute(interaction) {
         try {
             if (this.run !== undefined) {
-                if (!interaction.deferred) {
+                // Check if deferReply should be skipped
+                if (!this.skipDefer && !interaction.deferred) {
                     await interaction.deferReply({
                         ephemeral: this.ephemeral
                     });
