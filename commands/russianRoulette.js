@@ -55,6 +55,9 @@ class RussianRouletteCommand extends Command {
             return interaction.reply('At least 2 participants are required to play Russian Roulette.');
         }
 
+        // Shuffle participants randomly
+        this.shuffleArray(participants);
+
         let unluckyPerson = Math.floor(Math.random() * participants.length);
         let turn = 0;
 
@@ -82,20 +85,33 @@ class RussianRouletteCommand extends Command {
                 embed.setDescription(`${participants[turn].toString()} was shot! 💥\n\nGame Over!`);
                 await i.update({ embeds: [embed], components: [] });
                 collector.stop();
-            } else if (turn === participants.length - 1) {
-                embed.setDescription(`${participants[turn].toString()} was lucky! 🎉\n\nBut ${participants[unluckyPerson].toString()} was destined to be shot 💥`);
-                await i.update({ embeds: [embed], components: [] });
-                collector.stop();
             } else {
-                turn++;
-                embed.setDescription(`${participants[turn].toString()}'s turn!`);
-                await i.update({ embeds: [embed] });
+                if (turn === participants.length - 1) {
+                    embed.setDescription(`Everyone survived! 🎉\n\nNo one was shot, but ${participants[unluckyPerson].toString()} was the unlucky one.`);
+                    await i.update({ embeds: [embed], components: [] });
+                    collector.stop();
+                } else {
+                    turn++;
+                    embed.setDescription(`${participants[turn].toString()}'s turn!`);
+                    await i.update({ embeds: [embed] });
+                }
             }
         });
 
-        collector.on('end', () => {
-            if (message.editable) message.edit({ components: [] });
+        collector.on('end', (_, reason) => {
+            if (reason === 'time') {
+                embed.setDescription('The game ended due to inactivity. No shots were fired.');
+                if (message.editable) message.edit({ embeds: [embed], components: [] });
+            }
         });
+    }
+
+    // Helper function to shuffle an array
+    shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
     }
 }
 
