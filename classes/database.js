@@ -41,7 +41,6 @@ class Database {
             } else {
                 console.log('Created the User table.');
                 this.updateSchema();
-                this.fixTable();
             }
         });
 
@@ -96,19 +95,7 @@ class Database {
         });
     }
 
-    fixTable() {
-        const levelColumns = ['multiplier_amount_level', 'multiplier_rarity_level', 'beki_level'];
-        levelColumns.forEach(async (column) => {
-            const updateLevelQuery = `UPDATE User SET ${column} = 30 WHERE ${column} > 30`;
-            this.db.run(updateLevelQuery, (err) => {
-                if (err) {
-                    console.error(`Failed to update column ${column} to max level 30:`, err.message);
-                } else {
-                    console.log(`Column ${column} updated to max level 30 where necessary.`);
-                }
-            });
-        });
-    }
+    
 
     // Method to check if a column exists in the table
     checkIfColumnExists(tableName, columnName) {
