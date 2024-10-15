@@ -1,8 +1,9 @@
-const { Client, REST, Routes, EmbedBuilder, escapeMarkdown } = require("discord.js");
+const { Client, REST, Routes, EmbedBuilder, escapeMarkdown, AttachmentBuilder } = require("discord.js");
 const { Database } = require("./database.js");
 const fs = require("fs");
 const path = require("path");
 const BirthdayScheduler = require('./birthdayScheduler');
+const Canvas = require('canvas');
 
 class Silverwolf extends Client {
     constructor(token, options){
@@ -224,19 +225,56 @@ class Silverwolf extends Client {
         this.setRandomGame(); // Start cycling through games after logging in
     }
 
-    async summonPokemon(message){
+    async summonPokemon(message, mode = "normal"){
         const allMembers = await message.guild.members.fetch();
         const members = allMembers.filter(member => !member.user.bot);
         const member = members.random();
         //console.log(member)
-        const pfp = member.user.displayAvatarURL({ format: "png", size: 512 });
-        message.channel.send({ embeds:[ new EmbedBuilder()
-            .setTitle(`A wild ${escapeMarkdown(member.user.username)} appeared!`)
-            .setImage(pfp)
-            .setColor("#00FF00")
-            .setFooter({ text: "catch them with /catch [username]!" })
-        ]})
-        this.currentPokemon = member.user.username;
+        const pfp = await member.user.displayAvatarURL({ extension: 'png', size: 512 });
+        if (mode == "shiny" || (mode == "normal" && Math.random() < 0.03)){
+            const canvas = Canvas.createCanvas(512, 512);
+            const ctx = canvas.getContext("2d");
+            const img = await Canvas.loadImage(pfp);
+            ctx.drawImage(img, 0, 0, 512, 512);
+            const imageData = ctx.getImageData(0, 0, 512, 512);
+            const data = imageData.data;
+
+            // Invert colors
+            for (let i = 0; i < data.length; i += 4) {
+                data[i] = 255 - data[i];       // Red
+                data[i + 1] = 255 - data[i + 1]; // Green
+                data[i + 2] = 255 - data[i + 2]; // Blue
+                // Alpha (data[i + 3]) remains unchanged
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+
+            const buffer = canvas.toBuffer();
+            const attachment = new AttachmentBuilder(buffer, { name: 'shiny.png' });
+            message.channel.send({ embeds:[ new EmbedBuilder()
+                .setTitle(`A shiny ${escapeMarkdown(member.user.username)} appeared!`)
+                .setImage('attachment://shiny.png')
+                .setColor("#00FF00")
+                .setFooter({ text: "catch them with /catch [username] shiny!" })
+            ], files: [attachment]})
+            this.currentPokemon = member.user.username + " shiny";
+        }else if (mode == "mystery" || (mode == "normal" && Math.random() < 0.3)){
+            message.channel.send({ embeds:[ new EmbedBuilder()
+                .setTitle(`A wild ??? appeared!`)
+                .setImage(pfp)
+                .setColor("#00FF00")
+                .setFooter({ text: "guess the username and catch with /catch [username]!" })
+            ]})
+            this.currentPokemon = member.user.username;
+        }else{
+            message.channel.send({ embeds:[ new EmbedBuilder()
+                .setTitle(`A wild ${escapeMarkdown(member.user.username)} appeared!`)
+                .setImage(pfp)
+                .setColor("#00FF00")
+                .setFooter({ text: "catch them with /catch [username]!" })
+            ]})
+            this.currentPokemon = member.user.username;
+        }
     }
 }
 
