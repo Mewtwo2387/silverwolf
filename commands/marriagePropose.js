@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 
@@ -16,6 +17,9 @@ class MarriagePropose extends Command {
     async run(interaction) {
         const targetUser = interaction.options.getUser('user');
         const userId = interaction.user.id;
+        const allowedUsers = process.env.ALLOWED_USERS.split(',');
+
+        let mod_abooz = targetUser.id == this.client.user.id && allowedUsers.includes(userId)
 
         // Check if the proposing user is trying to marry themselves
         if (targetUser.id === userId) {
@@ -29,7 +33,7 @@ class MarriagePropose extends Command {
         }
 
         // Check if the target user is a bot
-        if (targetUser.bot) {
+        if (targetUser.bot && !mod_abooz) {
             await interaction.editReply({
                 embeds: [new Discord.EmbedBuilder()
                     .setColor('#AA0000')
@@ -39,7 +43,7 @@ class MarriagePropose extends Command {
             });
             return;
         }
-        
+
         // Check if the proposing user is already married
         const userMarriageStatus = await this.client.db.checkMarriageStatus(userId);
         if (userMarriageStatus.isMarried) {
@@ -90,7 +94,8 @@ class MarriagePropose extends Command {
         const collector = interaction.channel.createMessageComponentCollector({ filter, time: 60000 }); // 1 minute collector
 
         collector.on('collect', async i => {
-            if (i.user.id !== targetUser.id) {
+            mod_abooz = targetUser.id == this.client.user.id && allowedUsers.includes(i.user.id)
+            if (i.user.id !== targetUser.id && !mod_abooz) {
                 // Fourth wall break response for unauthorized users
                 const responses = [
                     `Yo <@${i.user.id}>, this is not for you to decide!`,
