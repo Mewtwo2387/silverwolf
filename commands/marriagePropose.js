@@ -17,13 +17,37 @@ class MarriagePropose extends Command {
         const targetUser = interaction.options.getUser('user');
         const userId = interaction.user.id;
 
+        // Check if the proposing user is trying to marry themselves
+        if (targetUser.id === userId) {
+            await interaction.editReply({
+                embeds: [new Discord.EmbedBuilder()
+                    .setColor('#AA0000')
+                    .setTitle(`And then... THEY PUT THEMSELF AS THE ONE TO MARRY... KEKW`)
+                    .setImage(`https://media1.tenor.com/m/tFvnLWU0zWMAAAAC/resitas-laugh.gif`)]
+            });
+            return;
+        }
+
+        // Check if the target user is a bot
+        if (targetUser.bot) {
+            await interaction.editReply({
+                embeds: [new Discord.EmbedBuilder()
+                    .setColor('#AA0000')
+                    .setTitle(`Seriously?`)
+                    .setDescription(`How about you go outside instead of trying to marry a bot-`)
+                    .setImage(`https://media1.tenor.com/m/aefLV3eg758AAAAd/silver-wolf-honkai-star-rail.gif`)]
+            });
+            return;
+        }
+        
         // Check if the proposing user is already married
         const userMarriageStatus = await this.client.db.checkMarriageStatus(userId);
         if (userMarriageStatus.isMarried) {
             await interaction.editReply({
                 embeds: [new Discord.EmbedBuilder()
                     .setColor('#AA0000')
-                    .setTitle(`You're already married!`)]
+                    .setTitle(`You're already married!`)
+                    .setImage(`https://media1.tenor.com/m/VCBut_Csl-cAAAAC/yo-stop-trying-to-cheat-conceited.gif`)]
             });
             return;
         }
@@ -44,11 +68,11 @@ class MarriagePropose extends Command {
             .addComponents(
                 new Discord.ButtonBuilder()
                     .setCustomId('accept_proposal')
-                    .setLabel('Accept')
+                    .setLabel('Accept💍')
                     .setStyle(Discord.ButtonStyle.Success),
                 new Discord.ButtonBuilder()
                     .setCustomId('reject_proposal')
-                    .setLabel('Reject')
+                    .setLabel('Reject💔')
                     .setStyle(Discord.ButtonStyle.Danger)
             );
 
@@ -57,7 +81,7 @@ class MarriagePropose extends Command {
             embeds: [new Discord.EmbedBuilder()
                 .setColor('#00AA00')
                 .setTitle(`Marriage Proposal`)
-                .setDescription(`${interaction.user.username} has proposed to you.`)],
+                .setDescription(`✨${interaction.user.username} has proposed to you.✨`)],
             components: [row]
         });
 
@@ -99,6 +123,22 @@ class MarriagePropose extends Command {
             }
 
             if (i.customId === 'accept_proposal') {
+                // Array of acceptance GIFs
+                const acceptanceGifs = [
+                    'https://media1.tenor.com/m/vor_61NjS7oAAAAC/anime-couple.gif',
+                    'https://media1.tenor.com/m/an0diNvfSSwAAAAC/marriage-anime-sailor-moon.gif',
+                    'https://media1.tenor.com/m/WCeJaacSAecAAAAC/anime-wedding.gif',
+                    'https://media1.tenor.com/m/If1oqh_gE0kAAAAC/anime-wedding.gif',
+                    'https://media1.tenor.com/m/nyS7gg5Ii0oAAAAC/gurren-lagann-marriage.gif',
+                    'https://media1.tenor.com/m/fLCsfPKZrlkAAAAC/goku-chichi.gif',
+                    'https://media1.tenor.com/m/R4EeoV4R-kUAAAAd/spy-x-family-loid-forger.gif',
+                    'https://media1.tenor.com/m/3OYmSePDSVUAAAAC/black-clover-licht.gif',
+                    'https://media1.tenor.com/m/UcfxIbNWVyQAAAAC/sailor-moon.gif'
+                ];
+
+                // Randomly select an acceptance GIF
+                const randomAcceptanceGif = acceptanceGifs[Math.floor(Math.random() * acceptanceGifs.length)];
+
                 // Save the marriage to the database
                 await this.client.db.addMarriage(userId, targetUser.id);
 
@@ -107,7 +147,8 @@ class MarriagePropose extends Command {
                     embeds: [new Discord.EmbedBuilder()
                         .setColor('#00AA00')
                         .setTitle(`Proposal Accepted`)
-                        .setDescription(`${targetUser.username} and ${interaction.user.username} are now married!`)],
+                        .setDescription(`${targetUser.username} and ${interaction.user.username} are now married! 🎉💍`)
+                        .setImage(randomAcceptanceGif)],
                     components: []
                 });
 
