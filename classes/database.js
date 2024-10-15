@@ -74,6 +74,18 @@ class Database {
                 console.log('Created the Marriage table.');
             }
         });
+
+        this.db.run(`CREATE TABLE IF NOT EXISTS ServerRoles (
+            server_id VARCHAR PRIMARY KEY,
+            role_name VARCHAR NOT NULL,
+            role_id VARCHAR NOT NULL
+        )`, (err) => {
+            if (err) {
+                console.error('Failed to create ServerRoles table:', err.message);
+            } else {
+                console.log('Created the ServerRoles table.');
+            }
+        });
     }    
 
     updateSchema() {
@@ -403,6 +415,22 @@ class Database {
             console.error('Failed to check marriage status:', err.message);
             return { isMarried: false };
         }
+    }
+
+    async setServerRole(serverId, roleName, roleId) {
+        const query = `INSERT OR REPLACE INTO ServerRoles (server_id, role_name, role_id) VALUES (?, ?, ?)`;
+        try {
+            await this.executeQuery(query, [serverId, roleName, roleId]);
+            console.log(`Server role set for server ${serverId}: ${roleName}.`);
+        } catch (err) {
+            console.error('Failed to set server role:', err.message);
+        }
+    }
+
+    async getServerRole(serverId, roleName) {
+        const query = `SELECT role_id FROM ServerRoles WHERE server_id = ? AND role_name = ?;`;
+        const row = await this.executeSelectQuery(query, [serverId, roleName]);
+        return row ? row.role_id : null;
     }
 }
 
