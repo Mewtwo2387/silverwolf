@@ -49,17 +49,21 @@ class F1Standings extends Command {
                     // Extract driver standings
                     standings = result.MRData.StandingsTable[0].StandingsList[0].DriverStanding;
                     title = 'Current F1 Driver Standings';
-                    standings.slice(0, 10).forEach((driver) => {
-                        description += `${driver.$.position}. **${driver.Driver[0].GivenName[0]} ${driver.Driver[0].FamilyName[0]}** - Points: ${driver.$.points}, Wins: ${driver.$.wins}\n`;
-                    });
                 } else if (type === 'constructors') {
                     // Extract constructor standings
                     standings = result.MRData.StandingsTable[0].StandingsList[0].ConstructorStanding;
                     title = 'Current F1 Constructor Standings';
-                    standings.slice(0, 10).forEach((constructor) => {
-                        description += `${constructor.$.position}. **${constructor.Constructor[0].Name[0]}** (${constructor.Constructor[0].Nationality[0]}) - Points: ${constructor.$.points}, Wins: ${constructor.$.wins}\n`;
-                    });
                 }
+
+                // Dynamically adjust the number of rows to display
+                const maxRows = 25; // Maximum number of rows to display
+                standings.slice(0, Math.min(standings.length, maxRows)).forEach((entry) => {
+                    if (type === 'drivers') {
+                        description += `${entry.$.position}. **${entry.Driver[0].GivenName[0]} ${entry.Driver[0].FamilyName[0]}** - Points: ${entry.$.points}, Wins: ${entry.$.wins}\n`;
+                    } else if (type === 'constructors') {
+                        description += `${entry.$.position}. **${entry.Constructor[0].Name[0]}** (${entry.Constructor[0].Nationality[0]}) - Points: ${entry.$.points}, Wins: ${entry.$.wins}\n`;
+                    }
+                });
 
                 // Create the embed
                 const embed = new Discord.EmbedBuilder()

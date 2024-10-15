@@ -43,7 +43,7 @@ class Database {
                 this.updateSchema();
             }
         });
-
+    
         this.db.run(`CREATE TABLE IF NOT EXISTS Pokemon (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id VARCHAR,
@@ -58,7 +58,23 @@ class Database {
                 console.log('Created the Pokemon table.');
             }
         });
-    }
+    
+        // Create Marriage table
+        this.db.run(`CREATE TABLE IF NOT EXISTS Marriage (
+            user1_id VARCHAR NOT NULL,
+            user2_id VARCHAR NOT NULL,
+            married_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (user1_id, user2_id),
+            FOREIGN KEY (user1_id) REFERENCES User(id),
+            FOREIGN KEY (user2_id) REFERENCES User(id)
+        )`, (err) => {
+            if (err) {
+                console.error('Failed to create Marriage table:', err.message);
+            } else {
+                console.log('Created the Marriage table.');
+            }
+        });
+    }    
 
     updateSchema() {
         const columnsToAdd = [
@@ -348,6 +364,45 @@ class Database {
             csv.push(values.join(','));
         });
         return csv.join('\n');
+    }
+
+    // Add a marriage
+    async addMarriage(user1Id, user2Id) {
+        const query = `INSERT INTO Marriage (user1_id, user2_id) VALUES (?, ?)`;
+        try {
+            await this.executeQuery(query, [user1Id, user2Id]);
+            console.log(`Marriage added between ${user1Id} and ${user2Id}.`);
+        } catch (err) {
+            console.error('Failed to add marriage:', err.message);
+        }
+    }
+
+    // Remove a marriage
+    async removeMarriage(user1Id, user2Id) {
+        const query = `DELETE FROM Marriage WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)`;
+        try {
+            await this.executeQuery(query, [user1Id, user2Id, user2Id, user1Id]);
+            console.log(`Marriage removed between ${user1Id} and ${user2Id}.`);
+        } catch (err) {
+            console.error('Failed to remove marriage:', err.message);
+        }
+    }
+
+    // Check if a user is married
+    async checkMarriageStatus(userId) {
+        const query = `SELECT * FROM Marriage WHERE user1_id = ? OR user2_id = ?`;
+        try {
+            const marriage = await this.executeSelectQuery(query, [userId, userId]);
+            if (marriage) {
+                const partnerId = marriage.user1_id === userId ? marriage.user2_id : marriage.user1_id;
+                return { isMarried: true, partnerId };
+            } else {
+                return { isMarried: false };
+            }
+        } catch (err) {
+            console.error('Failed to check marriage status:', err.message);
+            return { isMarried: false };
+        }
     }
 }
 
