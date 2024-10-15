@@ -23,8 +23,7 @@ class MarriagePropose extends Command {
             await interaction.editReply({
                 embeds: [new Discord.EmbedBuilder()
                     .setColor('#AA0000')
-                    .setTitle(`You're already married!`)
-                ]
+                    .setTitle(`You're already married!`)]
             });
             return;
         }
@@ -35,8 +34,7 @@ class MarriagePropose extends Command {
             await interaction.editReply({
                 embeds: [new Discord.EmbedBuilder()
                     .setColor('#AA0000')
-                    .setTitle(`${targetUser.username} is already married!`)
-                ]
+                    .setTitle(`${targetUser.username} is already married!`)]
             });
             return;
         }
@@ -59,16 +57,47 @@ class MarriagePropose extends Command {
             embeds: [new Discord.EmbedBuilder()
                 .setColor('#00AA00')
                 .setTitle(`Marriage Proposal`)
-                .setDescription(`${interaction.user.username} has proposed to you.`)
-            ],
+                .setDescription(`${interaction.user.username} has proposed to you.`)],
             components: [row]
         });
 
         // Create a collector to handle button interactions
-        const filter = i => (i.customId === 'accept_proposal' || i.customId === 'reject_proposal') && i.user.id === targetUser.id;
+        const filter = i => (i.customId === 'accept_proposal' || i.customId === 'reject_proposal');
         const collector = interaction.channel.createMessageComponentCollector({ filter, time: 60000 }); // 1 minute collector
 
         collector.on('collect', async i => {
+            if (i.user.id !== targetUser.id) {
+                // Fourth wall break response for unauthorized users
+                const responses = [
+                    `Yo <@${i.user.id}>, this is not for you to decide!`,
+                    `Hey <@${i.user.id}>! Are you trying to crash the party?`,
+                    `Hello <@${i.user.id}>? What are you trying to do? This is between them, not you.`,
+                    `Excuse me, <@${i.user.id}>? This is a private matter!`
+                ];
+
+                const gifs = [
+                    'https://media1.tenor.com/m/5IBH0NSUPLQAAAAC/lynette-genshin-impact.gif',
+                    'https://media1.tenor.com/m/Db72dfVmRUoAAAAC/anime-game.gif',
+                    'https://media1.tenor.com/m/VFSdoooIp14AAAAC/genshin-impact.gif',
+                    'https://media1.tenor.com/m/N5jGrowCtRIAAAAC/venti-paimon-slap.gif',
+                    'https://media1.tenor.com/m/DXMFACgb6EsAAAAd/hotaru-firefly.gif'
+                ];
+
+                // Randomly select a response and GIF
+                const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+                const randomGif = gifs[Math.floor(Math.random() * gifs.length)];
+
+                await i.reply({
+                    embeds: [new Discord.EmbedBuilder()
+                        .setColor('#FFAA00')
+                        .setTitle(`Hold On!`)
+                        .setDescription(randomResponse)
+                        .setImage(randomGif)],
+                    ephemeral: true // Only the user who clicked the button will see this
+                });
+                return; // Stop further processing
+            }
+
             if (i.customId === 'accept_proposal') {
                 // Save the marriage to the database
                 await this.client.db.addMarriage(userId, targetUser.id);
@@ -78,8 +107,7 @@ class MarriagePropose extends Command {
                     embeds: [new Discord.EmbedBuilder()
                         .setColor('#00AA00')
                         .setTitle(`Proposal Accepted`)
-                        .setDescription(`${targetUser.username} and ${interaction.user.username} are now married!`)
-                    ],
+                        .setDescription(`${targetUser.username} and ${interaction.user.username} are now married!`)],
                     components: []
                 });
 
@@ -90,8 +118,7 @@ class MarriagePropose extends Command {
                     embeds: [new Discord.EmbedBuilder()
                         .setColor('#AA0000')
                         .setTitle(`Proposal Rejected`)
-                        .setDescription(`${targetUser.username} has rejected the proposal from ${interaction.user.username}.`)
-                    ],
+                        .setDescription(`${targetUser.username} has rejected the proposal from ${interaction.user.username}.`)],
                     components: []
                 });
 
