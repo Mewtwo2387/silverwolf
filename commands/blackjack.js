@@ -1,6 +1,7 @@
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 const { format } = require('../utils/math.js');
+const marriageBenefits = require('../utils/marriageBenefits.js');
 
 class Blackjack extends Command {
     constructor(client) {
@@ -172,6 +173,7 @@ class Blackjack extends Command {
     }
 
     async handleWin(interaction, amount, playerHand, dealerHand, message) {
+        amount = await marriageBenefits(this.client, interaction.user.id, amount);
         await this.client.db.addUserAttr(interaction.user.id, 'credits', amount);
         await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
             .setColor('#00AA00')

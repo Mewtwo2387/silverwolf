@@ -1,6 +1,7 @@
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 const { format } = require('../utils/math.js');
+const marriageBenefits = require('../utils/marriageBenefits.js');
 
 class Slots extends Command {
     constructor(client){
@@ -59,6 +60,7 @@ class Slots extends Command {
         }
 
         if(amount >= 0){
+            winnings = await marriageBenefits(this.client, interaction.user.id, winnings);
             await this.client.db.addUserAttr(interaction.user.id, 'credits', winnings - amount);
             if (winnings == 0){
                 await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
