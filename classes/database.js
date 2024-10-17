@@ -182,7 +182,7 @@ class Database {
             } else {
                 console.log(`User ${userId} not found. Creating new user.`);
                 await this.createUser(userId);
-                return { id: userId, credits: 10000, bitcoin: 0, last_bought_price: 0, last_bought_amount: 0, total_bought_price: 0, total_bought_amount: 0, total_sold_price: 0, total_sold_amount: 0 };
+                return await this.getUser(userId);
             }
         } catch (err) {
             console.error('Failed to get user:', err.message);
