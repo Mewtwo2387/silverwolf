@@ -59,6 +59,11 @@ class Slots extends Command {
         }
 
         if(amount >= 0){
+            await this.client.db.addUserAttr(interaction.user.id, 'slots_times_played', 1);
+            await this.client.db.addUserAttr(interaction.user.id, 'slots_amount_gambled', amount);
+            await this.client.db.addUserAttr(interaction.user.id, 'slots_times_won', winnings > 0 ? 1 : 0);
+            await this.client.db.addUserAttr(interaction.user.id, 'slots_amount_won', winnings);
+            await this.client.db.addUserAttr(interaction.user.id, 'slots_relative_won', winnings / amount);
             await this.client.db.addUserAttr(interaction.user.id, 'credits', winnings - amount);
             if (winnings == 0){
                 await interaction.editReply({embeds: [ new Discord.EmbedBuilder()

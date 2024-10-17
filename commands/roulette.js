@@ -90,6 +90,11 @@ class Roulette extends Command {
             resultMessage += `You guessed wrongly. Skill issue.`;
         }
 
+        await this.client.db.addUserAttr(interaction.user.id, 'roulette_times_played', 1);
+        await this.client.db.addUserAttr(interaction.user.id, 'roulette_amount_gambled', amount);
+        await this.client.db.addUserAttr(interaction.user.id, 'roulette_times_won', winnings > 0 ? 1 : 0);
+        await this.client.db.addUserAttr(interaction.user.id, 'roulette_amount_won', winnings);
+        await this.client.db.addUserAttr(interaction.user.id, 'roulette_relative_won', winnings / amount);
         await this.client.db.addUserAttr(interaction.user.id, 'credits', winnings - amount);
 
         await interaction.editReply({ embeds: [new Discord.EmbedBuilder()

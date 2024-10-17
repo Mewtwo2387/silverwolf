@@ -34,7 +34,24 @@ class Database {
             heavenly_nuggies INTEGER DEFAULT 0,
             nuggie_flat_multiplier_level INTEGER DEFAULT 1,
             nuggie_streak_multiplier_level INTEGER DEFAULT 1,
-            pity INTEGER DEFAULT 0
+            pity INTEGER DEFAULT 0,
+            slots_times_played INTEGER DEFAULT 0,
+            slots_amount_gambled FLOAT DEFAULT 0,
+            slots_times_won INTEGER DEFAULT 0,
+            slots_amount_won FLOAT DEFAULT 0,
+            slots_relative_won FLOAT DEFAULT 0,
+            blackjack_times_played INTEGER DEFAULT 0,
+            blackjack_amount_gambled FLOAT DEFAULT 0,
+            blackjack_times_won INTEGER DEFAULT 0,
+            blackjack_times_drawn INTEGER DEFAULT 0,
+            blackjack_times_lost INTEGER DEFAULT 0,
+            blackjack_amount_won FLOAT DEFAULT 0,
+            blackjack_relative_won FLOAT DEFAULT 0,
+            roulette_times_played INTEGER DEFAULT 0,
+            roulette_amount_gambled FLOAT DEFAULT 0,
+            roulette_times_won INTEGER DEFAULT 0,
+            roulette_amount_won FLOAT DEFAULT 0,
+            roulette_relative_won FLOAT DEFAULT 0
         )`, (err) => {
             if (err) {
                 console.error(err.message);
@@ -101,7 +118,24 @@ class Database {
             { name: 'heavenly_nuggies', type: 'INTEGER', defaultValue: 0 },
             { name: 'nuggie_flat_multiplier_level', type: 'INTEGER', defaultValue: 1 },
             { name: 'nuggie_streak_multiplier_level', type: 'INTEGER', defaultValue: 1 },
-            { name: 'pity', type: 'INTEGER', defaultValue: 0 }
+            { name: 'pity', type: 'INTEGER', defaultValue: 0 },
+            { name: 'slots_times_played', type: 'INTEGER', defaultValue: 0 },
+            { name: 'slots_amount_gambled', type: 'FLOAT', defaultValue: 0 },
+            { name: 'slots_times_won', type: 'INTEGER', defaultValue: 0 },
+            { name: 'slots_amount_won', type: 'FLOAT', defaultValue: 0 },
+            { name: 'slots_relative_won', type: 'FLOAT', defaultValue: 0 },
+            { name: 'blackjack_times_played', type: 'INTEGER', defaultValue: 0 },
+            { name: 'blackjack_amount_gambled', type: 'FLOAT', defaultValue: 0 },
+            { name: 'blackjack_times_won', type: 'INTEGER', defaultValue: 0 },
+            { name: 'blackjack_times_drawn', type: 'INTEGER', defaultValue: 0 },
+            { name: 'blackjack_times_lost', type: 'INTEGER', defaultValue: 0 },
+            { name: 'blackjack_amount_won', type: 'FLOAT', defaultValue: 0 },
+            { name: 'blackjack_relative_won', type: 'FLOAT', defaultValue: 0 },
+            { name: 'roulette_times_played', type: 'INTEGER', defaultValue: 0 },
+            { name: 'roulette_amount_gambled', type: 'FLOAT', defaultValue: 0 },
+            { name: 'roulette_times_won', type: 'INTEGER', defaultValue: 0 },
+            { name: 'roulette_amount_won', type: 'FLOAT', defaultValue: 0 },
+            { name: 'roulette_relative_won', type: 'FLOAT', defaultValue: 0 }
         ];
 
         columnsToAdd.forEach(async (column) => {
@@ -182,7 +216,7 @@ class Database {
             } else {
                 console.log(`User ${userId} not found. Creating new user.`);
                 await this.createUser(userId);
-                return { id: userId, credits: 10000, bitcoin: 0, last_bought_price: 0, last_bought_amount: 0, total_bought_price: 0, total_bought_amount: 0, total_sold_price: 0, total_sold_amount: 0 };
+                return await this.getUser(userId);
             }
         } catch (err) {
             console.error('Failed to get user:', err.message);
@@ -191,9 +225,10 @@ class Database {
     }
 
     async createUser(userId) {
+        //theregottabeabetterwaytodothis.png
         const query = `
-        INSERT INTO User (id, credits, bitcoin, last_bought_price, last_bought_amount, total_bought_price, total_bought_amount, total_sold_price, total_sold_amount, dinonuggies, dinonuggies_last_claimed, dinonuggies_claim_streak, multiplier_amount_level, multiplier_rarity_level, beki_level, birthdays, ascension_level, heavenly_nuggies, nuggie_flat_multiplier_level, nuggie_streak_multiplier_level, pity)
-        VALUES (?, 10000, 0, 0, 0, 0, 0, 0, 0, 0, NULL, 0, 1, 1, 1, ?, 1, 0, 1, 1, 0);`;
+        INSERT INTO User (id, credits, bitcoin, last_bought_price, last_bought_amount, total_bought_price, total_bought_amount, total_sold_price, total_sold_amount, dinonuggies, dinonuggies_last_claimed, dinonuggies_claim_streak, multiplier_amount_level, multiplier_rarity_level, beki_level, birthdays, ascension_level, heavenly_nuggies, nuggie_flat_multiplier_level, nuggie_streak_multiplier_level, pity, slots_times_played, slots_amount_gambled, slots_times_won, slots_amount_won, slots_relative_won, blackjack_times_played, blackjack_amount_gambled, blackjack_times_won, blackjack_times_drawn, blackjack_times_lost, blackjack_amount_won, blackjack_relative_won, roulette_times_played, roulette_amount_gambled, roulette_times_won, roulette_amount_won, roulette_relative_won)
+        VALUES (?, 10000, 0, 0, 0, 0, 0, 0, 0, 0, NULL, 0, 1, 1, 1, ?, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)`
 
         try {
             await this.executeQuery(query, [userId]);
@@ -250,6 +285,36 @@ class Database {
             return null;
         }
     }
+
+    async getRelativeNetWinnings(type, limit = null, offset = 0) {
+        try {
+            let query = `SELECT id, (${type}_relative_won - ${type}_times_played) AS relative_won FROM User WHERE ${type}_times_played <> 0 ORDER BY relative_won DESC`;
+            if (limit !== null) {
+                query += ` LIMIT ${limit} OFFSET ${offset}`;
+            }
+            const rows = await this.executeSelectAllQuery(query);
+            console.log(rows);
+            return rows;
+        } catch (err) {
+            console.error(`Failed to get relative won:`, err.message);
+            return null;
+        }
+    }
+
+    async getAllRelativeNetWinnings(limit = null, offset = 0) {
+        try {
+            let query = `SELECT id, (slots_relative_won + blackjack_relative_won + roulette_relative_won - slots_times_played - blackjack_times_played - roulette_times_played) AS relative_won FROM User WHERE slots_times_played <> 0 OR blackjack_times_played <> 0 OR roulette_times_played <> 0 ORDER BY relative_won DESC`;
+            if (limit !== null) {
+                query += ` LIMIT ${limit} OFFSET ${offset}`;
+            }
+            const rows = await this.executeSelectAllQuery(query);
+            console.log(rows);
+            return rows;
+        } catch (err) {
+            console.error(`Failed to get all relative net winnings:`, err.message);
+            return null;
+        }
+    }
     
     async getEveryoneAttrCount(attribute) {
         try {
@@ -258,6 +323,17 @@ class Database {
             return rows[0].count;
         } catch (err) {
             console.error(`Failed to count ${attribute}:`, err.message);
+            return 0;
+        }
+    }
+
+    async getAllRelativeNetWinningsCount() {
+        try {
+            const query = `SELECT COUNT(*) AS count FROM User WHERE slots_times_played <> 0 OR blackjack_times_played <> 0 OR roulette_times_played <> 0;`;
+            const rows = await this.executeSelectAllQuery(query);
+            return rows[0].count;
+        } catch (err) {
+            console.error(`Failed to count all relative net winnings:`, err.message);
             return 0;
         }
     }
