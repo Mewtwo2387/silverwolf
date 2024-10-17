@@ -300,6 +300,21 @@ class Database {
             return null;
         }
     }
+
+    async getAllRelativeNetWinnings(limit = null, offset = 0) {
+        try {
+            let query = `SELECT id, (slots_relative_won + blackjack_relative_won + roulette_relative_won - slots_times_played - blackjack_times_played - roulette_times_played) AS relative_won FROM User WHERE slots_times_played <> 0 OR blackjack_times_played <> 0 OR roulette_times_played <> 0 ORDER BY relative_won DESC`;
+            if (limit !== null) {
+                query += ` LIMIT ${limit} OFFSET ${offset}`;
+            }
+            const rows = await this.executeSelectAllQuery(query);
+            console.log(rows);
+            return rows;
+        } catch (err) {
+            console.error(`Failed to get all relative net winnings:`, err.message);
+            return null;
+        }
+    }
     
     async getEveryoneAttrCount(attribute) {
         try {
@@ -308,6 +323,17 @@ class Database {
             return rows[0].count;
         } catch (err) {
             console.error(`Failed to count ${attribute}:`, err.message);
+            return 0;
+        }
+    }
+
+    async getAllRelativeNetWinningsCount() {
+        try {
+            const query = `SELECT COUNT(*) AS count FROM User WHERE slots_times_played <> 0 OR blackjack_times_played <> 0 OR roulette_times_played <> 0;`;
+            const rows = await this.executeSelectAllQuery(query);
+            return rows[0].count;
+        } catch (err) {
+            console.error(`Failed to count all relative net winnings:`, err.message);
             return 0;
         }
     }
