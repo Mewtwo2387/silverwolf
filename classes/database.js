@@ -285,6 +285,21 @@ class Database {
             return null;
         }
     }
+
+    async getRelativeNetWinnings(type, limit = null, offset = 0) {
+        try {
+            let query = `SELECT id, (${type}_relative_won - ${type}_times_played) AS relative_won FROM User WHERE ${type}_times_played <> 0 ORDER BY relative_won DESC`;
+            if (limit !== null) {
+                query += ` LIMIT ${limit} OFFSET ${offset}`;
+            }
+            const rows = await this.executeSelectAllQuery(query);
+            console.log(rows);
+            return rows;
+        } catch (err) {
+            console.error(`Failed to get relative won:`, err.message);
+            return null;
+        }
+    }
     
     async getEveryoneAttrCount(attribute) {
         try {
