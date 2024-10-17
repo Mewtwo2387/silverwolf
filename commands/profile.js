@@ -79,6 +79,39 @@ class Profile extends Command {
 **Multiplier From Streak:** 1 + ${format(nuggie_streak_multiplier, true)} * ${format(user.dinonuggies_claim_streak)} = ${format(1 + nuggie_streak_multiplier * user.dinonuggies_claim_streak, true)}x
 **Next Claim:** ${next_claim > 0 ? `\`\`\`${format(next_claim / 60 / 60)}h ${format((next_claim / 60) % 60)}m ${format(next_claim % 60)}s\`\`\`` : "Ready"}
 
+## Gambling
+### Slots
+**Times Played:** ${user.slots_times_played}
+**Times Won:** ${user.slots_times_won}
+**Percentage Won:** ${format(user.slots_times_played > 0 ? (user.slots_times_won / user.slots_times_played * 100) : 0, true)}%
+**Amount Gambled:** ${format(user.slots_amount_gambled)}
+**Amount Won:** ${format(user.slots_amount_won)} 
+**Net Winnings:** ${format(user.slots_amount_won - user.slots_amount_gambled)}
+**Relative Amount Won:** ${format(user.slots_relative_won, true)} bets
+**Relative Net Winnings:** ${format(user.slots_relative_won - user.slots_times_played, true)} bets
+
+### Blackjack
+**Times Played:** ${user.blackjack_times_played}
+**Times Won:** ${user.blackjack_times_won}
+**Times Drew:** ${user.blackjack_times_drawn}
+**Times Lost:** ${user.blackjack_times_lost}
+**Percentage Won (Excluding Draws):** ${format((user.blackjack_times_won + user.blackjack_times_lost) > 0 ? (user.blackjack_times_won / (user.blackjack_times_won + user.blackjack_times_lost) * 100) : 0, true)}%
+**Amount Gambled:** ${format(user.blackjack_amount_gambled)}
+**Amount Won:** ${format(user.blackjack_amount_won)} 
+**Net Winnings:** ${format(user.blackjack_amount_won - user.blackjack_amount_gambled)}
+**Relative Amount Won:** ${format(user.blackjack_relative_won, true)} bets
+**Relative Net Winnings:** ${format(user.blackjack_relative_won - user.blackjack_times_played, true)} bets
+
+### Roulette
+**Times Played:** ${user.roulette_times_played}
+**Times Won:** ${user.roulette_times_won}
+**Percentage Won:** ${format(user.roulette_times_played > 0 ? (user.roulette_times_won / user.roulette_times_played * 100) : 0, true)}%
+**Amount Gambled:** ${format(user.roulette_amount_gambled)}
+**Amount Won:** ${format(user.roulette_amount_won)} 
+**Net Winnings:** ${format(user.roulette_amount_won - user.roulette_amount_gambled)}
+**Relative Amount Won:** ${format(user.roulette_relative_won, true)} bets
+**Relative Net Winnings:** ${format(user.roulette_relative_won - user.roulette_times_played, true)} bets
+
 ## Others
 **Pity:** ${user.pity}
 **Birthday:** ${user.birthdays ? user.birthdays : "No birthday set"}
