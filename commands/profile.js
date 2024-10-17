@@ -43,34 +43,47 @@ class Profile extends Command {
         const embed = new Discord.EmbedBuilder()
             .setColor('#00AA00')
             .setTitle(`${username}'s Profile`)
-            .addFields(
-                { name: 'Mystic Credits', value: `${format(user.credits)}`, inline: true },
-                { name: 'Bitcoin', value: `${user.bitcoin}`, inline: true },
-                { name: 'Dinonuggies', value: `${format(user.dinonuggies)}`, inline: true },
-                { name: 'Heavenly Nuggies', value: `${format(user.heavenly_nuggies)}`, inline: true },
-                { name: 'Ascension Level', value: `${user.ascension_level} (Max Upgrade Level: ${getMaxLevel(user.ascension_level)})`, inline: true },
-                { name: 'Multiplier Amount Upgrade', value: `Level ${user.multiplier_amount_level}/${getMaxLevel(user.multiplier_amount_level)}
-                **Gold Multiplier:** ${format(multiplier_amount.gold, true)}x
-                **Silver Multiplier:** ${format(multiplier_amount.silver, true)}x
-                **Bronze Multiplier:** ${format(multiplier_amount.bronze, true)}x`, inline: true },
-                { name: 'Multiplier Rarity Upgrade', value: `Level ${user.multiplier_rarity_level}/${getMaxLevel(user.multiplier_rarity_level)}
-                **Gold Chance:** ${format(multiplier_rarity.gold * 100, true)}%
-                **Silver Chance:** ${format(multiplier_rarity.silver * 100, true)}%
-                **Bronze Chance:** ${format(multiplier_rarity.bronze * 100, true)}%`, inline: true },
-                { name: 'Beki Upgrade', value: `Level ${user.beki_level}/${getMaxLevel(user.beki_level)}
-                **Beki Cooldown:** ${format(beki_cooldown)}h`, inline: true },
-                { name: 'Nuggie Flat Multiplier Upgrade', value: `Level ${user.nuggie_flat_multiplier_level}/${getMaxLevel(user.nuggie_flat_multiplier_level)}
-                **Nuggie Flat Multiplier:** ${format(nuggie_flat_multiplier)}x`, inline: true },
-                { name: 'Nuggie Streak Multiplier Upgrade', value: `Level ${user.nuggie_streak_multiplier_level}/${getMaxLevel(user.nuggie_streak_multiplier_level)}
-                **Nuggie Streak Multiplier:** ${format(nuggie_streak_multiplier * 100)}%/day`, inline: true },
-                { name: 'Current Streak', value: `${user.dinonuggies_claim_streak} days
-                **Base Claim Amount:** 5 + ${format(user.dinonuggies_claim_streak)} = ${format(5 + user.dinonuggies_claim_streak)}
-                **Multiplier From Streak:** 1 + ${format(nuggie_streak_multiplier, true)} * ${format(user.dinonuggies_claim_streak)} = ${format(1 + nuggie_streak_multiplier * user.dinonuggies_claim_streak, true)}x`, inline: true },
-                { name: 'Next Claim', value: `${next_claim > 0 ? `\`\`\`${format(next_claim / 60 / 60)}h ${format((next_claim / 60) % 60)}m ${format(next_claim % 60)}s\`\`\`` : "Ready"}`, inline: true },
-                { name: 'Pity', value: `${user.pity}`, inline: true }, 
-                { name: 'Birthday', value: `${user.birthdays ? user.birthdays : "No birthday set"}`, inline: true },
-                { name: 'Pokemons', value: `\`\`\`${pokemon_list}\`\`\``, inline: true }
-            )
+            .setDescription(`
+## Currency
+**Mystic Credits:** ${format(user.credits, true)}
+**Bitcoin:** ${user.bitcoin}
+**Dinonuggies:** ${format(user.dinonuggies)}
+**Heavenly Nuggies:** ${format(user.heavenly_nuggies)}
+
+## Levels
+**Ascension Level:** Level ${user.ascension_level}
+**Max Upgrade Level:** ${getMaxLevel(user.ascension_level)}
+
+**Multiplier Amount Upgrade:** Level ${user.multiplier_amount_level}/${getMaxLevel(user.multiplier_amount_level)}
+**Gold Multiplier:** ${format(multiplier_amount.gold, true)}x
+**Silver Multiplier:** ${format(multiplier_amount.silver, true)}x
+**Bronze Multiplier:** ${format(multiplier_amount.bronze, true)}x
+
+**Multiplier Rarity Upgrade:** Level ${user.multiplier_rarity_level}/${getMaxLevel(user.multiplier_rarity_level)}
+**Gold Chance:** ${format(multiplier_rarity.gold * 100, true)}%
+**Silver Chance:** ${format(multiplier_rarity.silver * 100, true)}%
+**Bronze Chance:** ${format(multiplier_rarity.bronze * 100, true)}%
+
+**Beki Upgrade:** Level ${user.beki_level}/${getMaxLevel(user.beki_level)}
+**Beki Cooldown:** ${format(beki_cooldown)}h
+
+**Nuggie Flat Multiplier Upgrade:** Level ${user.nuggie_flat_multiplier_level}/${getMaxLevel(user.nuggie_flat_multiplier_level)}
+**Nuggie Flat Multiplier:** ${format(nuggie_flat_multiplier)}x
+
+**Nuggie Streak Multiplier Upgrade:** Level ${user.nuggie_streak_multiplier_level}/${getMaxLevel(user.nuggie_streak_multiplier_level)}
+**Nuggie Streak Multiplier:** ${format(nuggie_streak_multiplier * 100)}%/day
+
+## Claims
+**Current Streak:** ${user.dinonuggies_claim_streak} days
+**Base Claim Amount:** 5 + ${format(user.dinonuggies_claim_streak)} = ${format(5 + user.dinonuggies_claim_streak)}
+**Multiplier From Streak:** 1 + ${format(nuggie_streak_multiplier, true)} * ${format(user.dinonuggies_claim_streak)} = ${format(1 + nuggie_streak_multiplier * user.dinonuggies_claim_streak, true)}x
+**Next Claim:** ${next_claim > 0 ? `\`\`\`${format(next_claim / 60 / 60)}h ${format((next_claim / 60) % 60)}m ${format(next_claim % 60)}s\`\`\`` : "Ready"}
+
+## Others
+**Pity:** ${user.pity}
+**Birthday:** ${user.birthdays ? user.birthdays : "No birthday set"}
+**Pokemons:** \`\`\`${pokemon_list}\`\`\`
+            `)
             .setTimestamp()
             .setFooter({ text: `ID: ${user.id}` });
         await interaction.editReply({ embeds: [embed] });
