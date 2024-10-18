@@ -173,17 +173,25 @@ class Blackjack extends Command {
     }
 
     async handleWin(interaction, amount, playerHand, dealerHand, message) {
+        await this.client.db.addUserAttr(interaction.user.id, 'blackjack_times_played', 1);
+        await this.client.db.addUserAttr(interaction.user.id, 'blackjack_amount_gambled', amount);
+        await this.client.db.addUserAttr(interaction.user.id, 'blackjack_times_won', 1);
+        await this.client.db.addUserAttr(interaction.user.id, 'blackjack_amount_won', amount * 2);
+        await this.client.db.addUserAttr(interaction.user.id, 'blackjack_relative_won', 2);
         amount = await marriageBenefits(this.client, interaction.user.id, amount);
         await this.client.db.addUserAttr(interaction.user.id, 'credits', amount);
         await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
             .setColor('#00AA00')
-            .setTitle(`${message} You won ${format(amount)} mystic credits!`)
+            .setTitle(`${message} You won ${format(amount * 2)} mystic credits!`)
             .setDescription(`Your hand: ${this.formatHand(playerHand)} (${this.calculateHand(playerHand)})\nSilverwolf's hand: ${this.formatHand(dealerHand)} (${this.calculateHand(dealerHand)})`)], 
             components: [] 
         });
     }
 
     async handleLoss(interaction, amount, playerHand, dealerHand, message) {
+        await this.client.db.addUserAttr(interaction.user.id, 'blackjack_times_played', 1);
+        await this.client.db.addUserAttr(interaction.user.id, 'blackjack_amount_gambled', amount);
+        await this.client.db.addUserAttr(interaction.user.id, 'blackjack_times_lost', 1);
         await this.client.db.addUserAttr(interaction.user.id, 'credits', -amount);
         await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
             .setColor('#AA0000')
@@ -194,6 +202,11 @@ class Blackjack extends Command {
     }
 
     async handleTie(interaction, amount, playerHand, dealerHand, message) {
+        await this.client.db.addUserAttr(interaction.user.id, 'blackjack_times_played', 1);
+        await this.client.db.addUserAttr(interaction.user.id, 'blackjack_amount_gambled', amount);
+        await this.client.db.addUserAttr(interaction.user.id, 'blackjack_times_drawn', 1);
+        await this.client.db.addUserAttr(interaction.user.id, 'blackjack_amount_won', amount);
+        await this.client.db.addUserAttr(interaction.user.id, 'blackjack_relative_won', 1);
         await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
             .setColor('#FFFF00')
             .setTitle(`${message} Nothing happened to your ${format(amount)} mystic credits, boring.`)

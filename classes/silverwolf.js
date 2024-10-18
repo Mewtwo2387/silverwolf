@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const BirthdayScheduler = require('./birthdayScheduler');
 const Canvas = require('canvas');
-const CharacterAI = require('node_characterai')
+// const CharacterAI = require('node_characterai')
 
 class Silverwolf extends Client {
     constructor(token, options){
@@ -22,11 +22,11 @@ class Silverwolf extends Client {
         this.games = [];
         this.loadGames(); // Initialize the games list from the JSON file
         this.chat = null;
-        try{
-            this.loadSilverwolfAI();
-        }catch(error){
-            console.log("Error loading Silverwolf AI: ", error)
-        }
+        // try{
+        //     this.loadSilverwolfAI();
+        // }catch(error){
+        //     console.log("Error loading Silverwolf AI: ", error)
+        // }
     }
 
     async init(){
@@ -226,17 +226,17 @@ class Silverwolf extends Client {
         }
     }
 
-    async loadSilverwolfAI(){
-        const silverwolf = new CharacterAI()
+    // async loadSilverwolfAI(){
+    //     const silverwolf = new CharacterAI()
 
-        await silverwolf.authenticateWithToken(process.env.CAI_TOKEN)
+    //     await silverwolf.authenticateWithToken(process.env.CAI_TOKEN)
 
-        const characterId = "rIY3dqqU-WwbHbjzJlac1f4aXYO1j7aYdri_5k4uDNM"
+    //     const characterId = "rIY3dqqU-WwbHbjzJlac1f4aXYO1j7aYdri_5k4uDNM"
 
-        this.chat = await silverwolf.createOrContinueChat(characterId)
+    //     this.chat = await silverwolf.createOrContinueChat(characterId)
 
-        console.log("Silverwolf AI loaded.")
-    }
+    //     console.log("Silverwolf AI loaded.")
+    // }
 
     async login(){
         await super.login(this.token);
