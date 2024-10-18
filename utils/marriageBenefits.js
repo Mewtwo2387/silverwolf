@@ -7,8 +7,8 @@ async function marriageBenefits(client, uid, amt) {
 
     // If the user is married, increase the amount by 20% (rounding up)
     if (userMarriageStatus.isMarried) {
-        console.log('User is married. Increasing the amount by 20%...');
-        return Math.ceil(amt * 1.2);
+        console.log('User is married. Increasing the amount by 10%...');
+        return Math.ceil(amt * 1.1);
     }
 
     // If the user is single, return the original amount
