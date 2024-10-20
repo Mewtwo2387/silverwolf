@@ -1,6 +1,6 @@
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
-const divorceSettlement = require('./divorceSettlement.js');
+const divorceSettlement = require('../utils/divorceSettlement.js');
 
 class MarriageDivorce extends Command {
     constructor(client) {
