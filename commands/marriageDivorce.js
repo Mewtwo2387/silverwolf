@@ -1,6 +1,7 @@
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 const divorceSettlement = require('../utils/divorceSettlement.js');
+const { format } = require('../utils/math.js');
 
 class MarriageDivorce extends Command {
     constructor(client) {
@@ -44,7 +45,7 @@ class MarriageDivorce extends Command {
             embeds: [new Discord.EmbedBuilder()
                 .setColor('#FFAA00')
                 .setTitle(`Divorce Confirmation`)
-                .setDescription(`Are you sure you want to divorce <@${partnerId}>?`)],
+                .setDescription(`Are you sure you want to divorce <@${partnerId}>? You will receive 20% of <@${partnerId}>'s total assets and they will receive 80% of your total assets.`)],
             components: [row]
         });
 
@@ -96,8 +97,8 @@ class MarriageDivorce extends Command {
                         .setColor('#00AA00')
                         .setTitle(`Divorce Successful`)
                         .setDescription(`You have successfully divorced <@${partnerId}>.\nSettlement:\n` +
-                            `**You received:** ${settlement.initiator.dinonuggies} dinonuggies and ${settlement.initiator.credits} credits.\n` +
-                            `<@${partnerId}> received: ${settlement.target.dinonuggies} dinonuggies and ${settlement.target.credits} credits.`)],
+                            `**You received:** ${format(settlement.initiator.dinonuggies)} dinonuggies and ${format(settlement.initiator.credits)} credits. (20% of <@${partnerId}>'s total assets)\n` +
+                            `**<@${partnerId}> received:** ${format(settlement.target.dinonuggies)} dinonuggies and ${format(settlement.target.credits)} credits. (80% of your total assets)`)],
                     components: []
                 });
 
