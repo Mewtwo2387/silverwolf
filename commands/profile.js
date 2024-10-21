@@ -3,6 +3,7 @@ const Discord = require('discord.js');
 const { format } = require('../utils/math.js');
 const { getMaxLevel, getMultiplierAmount, getMultiplierChance, getBekiCooldown } = require('../utils/upgrades.js');
 const { getNuggieFlatMultiplier, getNuggieStreakMultiplier } = require('../utils/ascensionupgrades.js');
+const marriageBenefits = require('../utils/marriageBenefits.js');
 
 class Profile extends Command {
     constructor(client){
@@ -20,26 +21,27 @@ class Profile extends Command {
         let user;
         let username;
         let avatarURL;
-
+        let pokemons;
         if (interaction.options.getMember('user')) {
             // Get the specified user's data
             user = await this.client.db.getUser(interaction.options.getMember('user').id);
             const discordUser = await this.client.users.fetch(user.id);
             username = discordUser.username;
             avatarURL = discordUser.displayAvatarURL({ dynamic: true, size: 512 });
+            pokemons = await this.client.db.getPokemons(interaction.options.getMember('user').id);
         } else {
             // Get the interaction user's data
             user = await this.client.db.getUser(interaction.user.id);
             username = interaction.user.username;
             avatarURL = interaction.user.displayAvatarURL({ dynamic: true, size: 512 });
+            pokemons = await this.client.db.getPokemons(interaction.user.id);
         }
         const multiplier_amount = getMultiplierAmount(user.multiplier_amount_level);
         const multiplier_rarity = getMultiplierChance(user.multiplier_rarity_level);
-        const beki_cooldown = getBekiCooldown(user.beki_level);
+        const beki_cooldown = getBekiCooldown(user.beki_level) * 60 * 60;
         const nuggie_flat_multiplier = getNuggieFlatMultiplier(user.nuggie_flat_multiplier_level);
         const nuggie_streak_multiplier = getNuggieStreakMultiplier(user.nuggie_streak_multiplier_level);
         const next_claim = beki_cooldown - (Date.now() - user.dinonuggies_last_claimed) / 1000;
-        const pokemons = await this.client.db.getPokemons(interaction.user.id);
         pokemons.sort((a, b) => a.pokemon_name.localeCompare(b.pokemon_name));
         const maxNameLength = Math.max(...pokemons.map(pokemon => pokemon.pokemon_name.length));
         const pokemon_list = pokemons.map(pokemon =>
@@ -84,7 +86,9 @@ class Profile extends Command {
 **Current Streak:** ${user.dinonuggies_claim_streak} days
 **Base Claim Amount:** 5 + ${format(user.dinonuggies_claim_streak)} = ${format(5 + user.dinonuggies_claim_streak)}
 **Multiplier From Streak:** 1 + ${format(nuggie_streak_multiplier, true)} * ${format(user.dinonuggies_claim_streak)} = ${format(1 + nuggie_streak_multiplier * user.dinonuggies_claim_streak, true)}x
-**Next Claim:** ${next_claim > 0 ? `\`\`\`${format(next_claim / 60 / 60)}h ${format((next_claim / 60) % 60)}m ${format(next_claim % 60)}s\`\`\`` : "Ready"}
+**Flat Multiplier:** ${format(nuggie_flat_multiplier, true)}x
+**Marriage Multiplier:** ${format(await marriageBenefits(this.client, user.id), true)}x
+**Next Claim:** ${next_claim > 0 ? `${(next_claim / 60 / 60).toFixed(0)}h ${(next_claim / 60 % 60).toFixed(0)}m ${(next_claim % 60).toFixed(0)}s` : "Ready"}
 
 ## Gambling
 ### Slots
