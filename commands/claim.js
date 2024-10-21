@@ -1,4 +1,4 @@
-const { getNuggieStreakMultiplier, getNuggieFlatMultiplier } = require('../utils/ascensionupgrades.js');
+const { getNuggieStreakMultiplier, getNuggieFlatMultiplier, getNuggieCreditsMultiplier } = require('../utils/ascensionupgrades.js');
 const { getMultiplierAmount, getMultiplierChance, getBekiCooldown } = require('../utils/upgrades.js');
 const { format } = require('../utils/math.js');
 const { Command } = require('./classes/command.js');
@@ -16,7 +16,11 @@ class Claim extends Command {
     async getBaseAmount(interaction, streak) {
         const nuggie_flat_multiplier_level = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_flat_multiplier_level');
         const nuggie_streak_multiplier_level = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_streak_multiplier_level');
-        return (5 + streak) * (1 + streak * getNuggieStreakMultiplier(nuggie_streak_multiplier_level)) * getNuggieFlatMultiplier(nuggie_flat_multiplier_level) * await marriageBenefits(this.client, interaction.user.id);
+        const marriage_benefits = await marriageBenefits(this.client, interaction.user.id);
+        const nuggie_credits_multiplier_level = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_credits_multiplier_level');
+        const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
+        const log2_credits = credits > 1 ? Math.log2(credits) : 0;
+        return (5 + streak) * (1 + streak * getNuggieStreakMultiplier(nuggie_streak_multiplier_level)) * getNuggieFlatMultiplier(nuggie_flat_multiplier_level) * marriage_benefits * (1 + log2_credits * getNuggieCreditsMultiplier(nuggie_credits_multiplier_level));
     }
 
     async getAmount(interaction, streak) {

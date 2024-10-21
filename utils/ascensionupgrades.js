@@ -1,11 +1,11 @@
-function getNextAscensionUpgradeCost(level){
-    return 500 * level * level;
+function getNextAscensionUpgradeCost(level, amplifier){
+    return amplifier * 500 * level * level;
 }
 
-function getTotalAscensionUpgradeCost(level){
+function getTotalAscensionUpgradeCost(level, amplifier){
     let totalCost = 0;
     for (let i = 1; i < level; i++){
-        totalCost += getNextAscensionUpgradeCost(i);
+        totalCost += getNextAscensionUpgradeCost(i, amplifier);
     }
     return totalCost;
 }
@@ -18,7 +18,11 @@ function getNuggieStreakMultiplier(level){
     return 0.01 * (level - 1)
 }
 
-module.exports = { getNextAscensionUpgradeCost, getTotalAscensionUpgradeCost, getNuggieFlatMultiplier, getNuggieStreakMultiplier };
+function getNuggieCreditsMultiplier(level){
+    return 0.01 * (level - 1);
+}
+
+module.exports = { getNextAscensionUpgradeCost, getTotalAscensionUpgradeCost, getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNuggieCreditsMultiplier };
 
 
 
