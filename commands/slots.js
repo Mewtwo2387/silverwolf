@@ -1,6 +1,7 @@
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 const { format } = require('../utils/math.js');
+const marriageBenefits = require('../utils/marriageBenefits.js');
 
 class Slots extends Command {
     constructor(client){
@@ -59,6 +60,7 @@ class Slots extends Command {
         }
 
         if(amount >= 0){
+            winnings *= await marriageBenefits(this.client, interaction.user.id);
             await this.client.db.addUserAttr(interaction.user.id, 'slots_times_played', 1);
             await this.client.db.addUserAttr(interaction.user.id, 'slots_amount_gambled', amount);
             await this.client.db.addUserAttr(interaction.user.id, 'slots_times_won', winnings > 0 ? 1 : 0);

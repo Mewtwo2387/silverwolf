@@ -19,13 +19,19 @@ class Profile extends Command {
     async run(interaction){
         let user;
         let username;
-        if (interaction.options.getMember('user')){
+        let avatarURL;
+
+        if (interaction.options.getMember('user')) {
+            // Get the specified user's data
             user = await this.client.db.getUser(interaction.options.getMember('user').id);
             const discordUser = await this.client.users.fetch(user.id);
             username = discordUser.username;
+            avatarURL = discordUser.displayAvatarURL({ dynamic: true, size: 512 });
         } else {
+            // Get the interaction user's data
             user = await this.client.db.getUser(interaction.user.id);
             username = interaction.user.username;
+            avatarURL = interaction.user.displayAvatarURL({ dynamic: true, size: 512 });
         }
         const multiplier_amount = getMultiplierAmount(user.multiplier_amount_level);
         const multiplier_rarity = getMultiplierChance(user.multiplier_rarity_level);
@@ -43,6 +49,7 @@ class Profile extends Command {
         const embed = new Discord.EmbedBuilder()
             .setColor('#00AA00')
             .setTitle(`${username}'s Profile`)
+            .setThumbnail(avatarURL)
             .setDescription(`
 ## Currency
 **Mystic Credits:** ${format(user.credits, true)}

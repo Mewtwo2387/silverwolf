@@ -3,6 +3,7 @@ const { getMultiplierAmount, getMultiplierChance, getBekiCooldown } = require('.
 const { format } = require('../utils/math.js');
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
+const marriageBenefits = require('../utils/marriageBenefits.js');
 
 const DAY_LENGTH = 24 * 60 * 60 * 1000;
 const HOUR_LENGTH = 60 * 60 * 1000;
@@ -15,7 +16,7 @@ class Claim extends Command {
     async getBaseAmount(interaction, streak) {
         const nuggie_flat_multiplier_level = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_flat_multiplier_level');
         const nuggie_streak_multiplier_level = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_streak_multiplier_level');
-        return (5 + streak) * (1 + streak * getNuggieStreakMultiplier(nuggie_streak_multiplier_level)) * getNuggieFlatMultiplier(nuggie_flat_multiplier_level);
+        return (5 + streak) * (1 + streak * getNuggieStreakMultiplier(nuggie_streak_multiplier_level)) * getNuggieFlatMultiplier(nuggie_flat_multiplier_level) * await marriageBenefits(this.client, interaction.user.id);
     }
 
     async getAmount(interaction, streak) {

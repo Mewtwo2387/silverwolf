@@ -1,5 +1,7 @@
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
+const divorceSettlement = require('../utils/divorceSettlement.js');
+const { format } = require('../utils/math.js');
 
 class MarriageDivorce extends Command {
     constructor(client) {
@@ -43,20 +45,19 @@ class MarriageDivorce extends Command {
             embeds: [new Discord.EmbedBuilder()
                 .setColor('#FFAA00')
                 .setTitle(`Divorce Confirmation`)
-                .setDescription(`Are you sure you want to divorce <@${partnerId}>?`)],
+                .setDescription(`Are you sure you want to divorce <@${partnerId}>? You will receive 20% of <@${partnerId}>'s total assets and they will receive 80% of your total assets.`)],
             components: [row]
         });
 
         // Create a collector to handle button interactions
         const filter = i => i.customId === 'confirm_divorce' || i.customId === 'cancel_divorce';
-        const collector = interaction.channel.createMessageComponentCollector({ filter, time: 60000 }); // 1 minute collector
+        const collector = interaction.channel.createMessageComponentCollector({ filter, time: 60000 });
 
         collector.on('collect', async i => {
             if (i.user.id !== userId) {
-                // Fourth wall break response for unauthorized users
                 const responses = [
                     `Yo <@${i.user.id}>, this is not for you to decide!`,
-                    `Hey <@${i.user.id}>! Are you trying to crash the party?`,
+                    `Hey <@${i.user.id}>! You can't interfere in this divorce!`,
                     `Hello <@${i.user.id}>? What are you trying to do? This is between them, not you.`,
                     `Excuse me, <@${i.user.id}>? This is a private matter!`
                 ];
@@ -85,6 +86,9 @@ class MarriageDivorce extends Command {
             }
 
             if (i.customId === 'confirm_divorce') {
+                // Call divorceSettlement function
+                const settlement = await divorceSettlement(this.client, userId, partnerId);
+
                 // Remove marriage from the database
                 await this.client.db.removeMarriage(userId, partnerId);
 
@@ -92,8 +96,10 @@ class MarriageDivorce extends Command {
                     embeds: [new Discord.EmbedBuilder()
                         .setColor('#00AA00')
                         .setTitle(`Divorce Successful`)
-                        .setDescription(`You have successfully divorced <@${partnerId}>.`)],
-                    components: [] // Remove the buttons
+                        .setDescription(`You have successfully divorced <@${partnerId}>.\nSettlement:\n` +
+                            `**You received:** ${format(settlement.initiator.dinonuggies)} dinonuggies and ${format(settlement.initiator.credits)} credits. (20% of <@${partnerId}>'s total assets)\n` +
+                            `**<@${partnerId}> received:** ${format(settlement.target.dinonuggies)} dinonuggies and ${format(settlement.target.credits)} credits. (80% of your total assets)`)],
+                    components: []
                 });
 
             } else if (i.customId === 'cancel_divorce') {
@@ -102,7 +108,7 @@ class MarriageDivorce extends Command {
                         .setColor('#00AA00')
                         .setTitle(`Divorce Canceled`)
                         .setDescription(`The divorce request has been canceled.`)],
-                    components: [] // Remove the buttons
+                    components: []
                 });
             }
 
@@ -111,13 +117,12 @@ class MarriageDivorce extends Command {
 
         collector.on('end', async collected => {
             if (collected.size === 0) {
-                // If no response was collected, disable the buttons
                 await interaction.editReply({
                     embeds: [new Discord.EmbedBuilder()
                         .setColor('#AA0000')
                         .setTitle(`Divorce Request Timed Out`)
                         .setDescription(`The divorce request has timed out.`)],
-                    components: [] // Disable the buttons
+                    components: []
                 });
             }
         });

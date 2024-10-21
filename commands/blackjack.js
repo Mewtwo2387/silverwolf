@@ -1,6 +1,7 @@
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 const { format } = require('../utils/math.js');
+const marriageBenefits = require('../utils/marriageBenefits.js');
 
 class Blackjack extends Command {
     constructor(client) {
@@ -175,12 +176,15 @@ class Blackjack extends Command {
         await this.client.db.addUserAttr(interaction.user.id, 'blackjack_times_played', 1);
         await this.client.db.addUserAttr(interaction.user.id, 'blackjack_amount_gambled', amount);
         await this.client.db.addUserAttr(interaction.user.id, 'blackjack_times_won', 1);
-        await this.client.db.addUserAttr(interaction.user.id, 'blackjack_amount_won', amount * 2);
-        await this.client.db.addUserAttr(interaction.user.id, 'blackjack_relative_won', 2);
-        await this.client.db.addUserAttr(interaction.user.id, 'credits', amount);
+
+        let multiplier = await marriageBenefits(this.client, interaction.user.id) * 2;
+        await this.client.db.addUserAttr(interaction.user.id, 'blackjack_amount_won', amount * multiplier);
+        await this.client.db.addUserAttr(interaction.user.id, 'blackjack_relative_won', multiplier);
+        await this.client.db.addUserAttr(interaction.user.id, 'credits', amount * multiplier - amount);
+        
         await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
             .setColor('#00AA00')
-            .setTitle(`${message} You won ${format(amount * 2)} mystic credits!`)
+            .setTitle(`${message} You won ${format(amount * multiplier)} mystic credits!`)
             .setDescription(`Your hand: ${this.formatHand(playerHand)} (${this.calculateHand(playerHand)})\nSilverwolf's hand: ${this.formatHand(dealerHand)} (${this.calculateHand(dealerHand)})`)], 
             components: [] 
         });
