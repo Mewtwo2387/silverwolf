@@ -1,4 +1,4 @@
-const MAX_LEVEL = 50;
+const MAX_LEVEL = 100;
 
 // get cost from level to level + 1
 function getNextUpgradeCost(level){
@@ -14,14 +14,10 @@ function getNextUpgradeCost(level){
         // ascension 1
         // level 20->21 to 29->30: cubic from 200k to 610k
         return 25 * level * level * level;
-    }else if(level < 40){
-        // ascension 2
-        // level 30->31 to 39->40: linear from 1m to 10m
-        return 1000000 * (level - 29);
-    }else if(level < 50){
-        // ascension 3
-        // level 40->41 to 49->50: linear from 10m to 100m
-        return 10000000 * (level - 39);
+    }else{
+        // ascension 2+
+        // level 30->31 or above: exponential from 1m, x10 every 10 levels
+        return Math.floor(1000000 * Math.pow(10, (level - 30) / 10));
     }
 }
 
@@ -35,8 +31,8 @@ function getTotalUpgradeCost(level){
 }
 
 function dump(){
-    for (let i = 1; i < 50; i++){
-        console.log(`Level ${String(i).padStart(2, '0')} -> ${String(i + 1).padStart(2, '0')} cost: ${String(getNextUpgradeCost(i)).padStart(6, ' ')} Total cost: ${String(getTotalUpgradeCost(i + 1)).padStart(7, ' ')}`);
+    for (let i = 1; i < MAX_LEVEL; i++){
+        console.log(`Level ${String(i).padStart(2, '0')} -> ${String(i + 1).padStart(2, '0')} cost: ${String(getNextUpgradeCost(i)).padStart(15, ' ')} Total cost: ${String(getTotalUpgradeCost(i + 1)).padStart(7, ' ')}`);
     }
 }
 
@@ -78,6 +74,11 @@ function getBekiCooldown(level) {
         // ascension 3
         // level 40 to 50: 4h to 3h
         return 4 * Math.pow(3/4, (level - 40) / 10);
+    }else{
+        // ascension 4+
+        // level 50 to 100: 3h to 2h
+        // what do you even want to do?
+        return 3 * Math.pow(2/3, (level - 50) / 50);
     }
 }
 
@@ -87,3 +88,4 @@ function getMaxLevel(ascensionLevel){
 
 module.exports = { getNextUpgradeCost, getTotalUpgradeCost, getMultiplierAmount, getMultiplierChance, getBekiCooldown, getMaxLevel };
 
+dump();

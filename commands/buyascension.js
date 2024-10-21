@@ -1,11 +1,12 @@
 const { format } = require('../utils/math.js');
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
-const { getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNextAscensionUpgradeCost } = require('../utils/ascensionupgrades.js');
+const { getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNuggieCreditsMultiplier, getNextAscensionUpgradeCost } = require('../utils/ascensionupgrades.js');
 
 const ASCENSION_UPGRADES = [
     'nuggie_flat_multiplier',
-    'nuggie_streak_multiplier'
+    'nuggie_streak_multiplier',
+    'nuggie_credits_multiplier'
 ];
 
 class BuyAscension extends Command{
@@ -36,7 +37,12 @@ class BuyAscension extends Command{
 
         const level = await this.client.db.getUserAttr(interaction.user.id, `${upgrade}_level`);
 
-        const cost = getNextAscensionUpgradeCost(level);
+        const amplifier = {
+            'nuggie_flat_multiplier': 1,
+            'nuggie_streak_multiplier': 1,
+            'nuggie_credits_multiplier': 3
+        };
+        const cost = getNextAscensionUpgradeCost(level, amplifier[upgrade]);
         const heavenly_nuggies = await this.client.db.getUserAttr(interaction.user.id, 'heavenly_nuggies');
 
         if (heavenly_nuggies < cost){
@@ -73,6 +79,18 @@ Heavenly Nuggies: ${format(heavenly_nuggies)} -> ${format(heavenly_nuggies - cos
                     .setTitle('Nuggie Streak Multiplier Upgrade Bought')
                     .setDescription(`Level: ${level} -> ${level + 1}
 **Multiplier:** +${format(nuggie_streak_multiplier * 100)}%/day -> +${format(next_nuggie_streak_multiplier * 100)}%/day
+Heavenly Nuggies: ${format(heavenly_nuggies)} -> ${format(heavenly_nuggies - cost)}`)
+                    .setFooter({ text : 'dinonuggie'})
+                ]});
+                break;
+            case 'nuggie_credits_multiplier':
+                const nuggie_credits_multiplier = getNuggieCreditsMultiplier(level);
+                const next_nuggie_credits_multiplier = getNuggieCreditsMultiplier(level + 1);
+                await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
+                    .setColor('#00AA00')
+                    .setTitle('Nuggie Credits Multiplier Upgrade Bought')
+                    .setDescription(`Level: ${level} -> ${level + 1}
+**Multiplier:** +${format(nuggie_credits_multiplier * 100)}% * log2(credits) -> +${format(next_nuggie_credits_multiplier * 100)}% * log2(credits)
 Heavenly Nuggies: ${format(heavenly_nuggies)} -> ${format(heavenly_nuggies - cost)}`)
                     .setFooter({ text : 'dinonuggie'})
                 ]});

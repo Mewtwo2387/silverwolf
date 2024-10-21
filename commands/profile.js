@@ -2,7 +2,7 @@ const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 const { format } = require('../utils/math.js');
 const { getMaxLevel, getMultiplierAmount, getMultiplierChance, getBekiCooldown } = require('../utils/upgrades.js');
-const { getNuggieFlatMultiplier, getNuggieStreakMultiplier } = require('../utils/ascensionupgrades.js');
+const { getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNuggieCreditsMultiplier } = require('../utils/ascensionupgrades.js');
 const marriageBenefits = require('../utils/marriageBenefits.js');
 
 class Profile extends Command {
@@ -41,12 +41,17 @@ class Profile extends Command {
         const beki_cooldown = getBekiCooldown(user.beki_level) * 60 * 60;
         const nuggie_flat_multiplier = getNuggieFlatMultiplier(user.nuggie_flat_multiplier_level);
         const nuggie_streak_multiplier = getNuggieStreakMultiplier(user.nuggie_streak_multiplier_level);
+        const nuggie_credits_multiplier = getNuggieCreditsMultiplier(user.nuggie_credits_multiplier_level);
+        const credits = user.credits;
+        const log2_credits = credits > 1 ? Math.log2(credits) : 0;
         const next_claim = beki_cooldown - (Date.now() - user.dinonuggies_last_claimed) / 1000;
         pokemons.sort((a, b) => a.pokemon_name.localeCompare(b.pokemon_name));
         const maxNameLength = Math.max(...pokemons.map(pokemon => pokemon.pokemon_name.length));
         const pokemon_list = pokemons.map(pokemon =>
             `${pokemon.pokemon_name.padEnd(maxNameLength + 2)} ${pokemon.pokemon_count}`
         ).join('\n')
+        const ascension_level = user.ascension_level;
+        const max_level = getMaxLevel(ascension_level);
 
         const embed = new Discord.EmbedBuilder()
             .setColor('#00AA00')
@@ -54,21 +59,21 @@ class Profile extends Command {
             .setThumbnail(avatarURL)
             .setDescription(`
 ## Currency
-**Mystic Credits:** ${format(user.credits, true)}
+**Mystic Credits:** ${format(credits, true)}
 **Bitcoin:** ${user.bitcoin}
 **Dinonuggies:** ${format(user.dinonuggies)}
 **Heavenly Nuggies:** ${format(user.heavenly_nuggies)}
 
 ## Levels
-**Ascension Level:** Level ${user.ascension_level}
-**Max Upgrade Level:** ${getMaxLevel(user.ascension_level)}
+**Ascension Level:** Level ${ascension_level}
+**Max Upgrade Level:** ${max_level}
 
-**Multiplier Amount Upgrade:** Level ${user.multiplier_amount_level}/${getMaxLevel(user.multiplier_amount_level)}
+**Multiplier Amount Upgrade:** Level ${user.multiplier_amount_level}/${max_level}
 **Gold Multiplier:** ${format(multiplier_amount.gold, true)}x
 **Silver Multiplier:** ${format(multiplier_amount.silver, true)}x
 **Bronze Multiplier:** ${format(multiplier_amount.bronze, true)}x
 
-**Multiplier Rarity Upgrade:** Level ${user.multiplier_rarity_level}/${getMaxLevel(user.multiplier_rarity_level)}
+**Multiplier Rarity Upgrade:** Level ${user.multiplier_rarity_level}/${max_level}
 **Gold Chance:** ${format(multiplier_rarity.gold * 100, true)}%
 **Silver Chance:** ${format(multiplier_rarity.silver * 100, true)}%
 **Bronze Chance:** ${format(multiplier_rarity.bronze * 100, true)}%
@@ -76,18 +81,22 @@ class Profile extends Command {
 **Beki Upgrade:** Level ${user.beki_level}/${getMaxLevel(user.beki_level)}
 **Beki Cooldown:** ${format(beki_cooldown)}h
 
-**Nuggie Flat Multiplier Upgrade:** Level ${user.nuggie_flat_multiplier_level}/${getMaxLevel(user.nuggie_flat_multiplier_level)}
+**Nuggie Flat Multiplier Upgrade:** Level ${user.nuggie_flat_multiplier_level}
 **Nuggie Flat Multiplier:** ${format(nuggie_flat_multiplier)}x
 
-**Nuggie Streak Multiplier Upgrade:** Level ${user.nuggie_streak_multiplier_level}/${getMaxLevel(user.nuggie_streak_multiplier_level)}
+**Nuggie Streak Multiplier Upgrade:** Level ${user.nuggie_streak_multiplier_level}
 **Nuggie Streak Multiplier:** ${format(nuggie_streak_multiplier * 100)}%/day
+
+**Nuggie Credits Multiplier Upgrade:** Level ${user.nuggie_credits_multiplier_level}
+**Nuggie Credits Multiplier:** ${format(nuggie_credits_multiplier * 100)}% * log2(credits)
 
 ## Claims
 **Current Streak:** ${user.dinonuggies_claim_streak} days
 **Base Claim Amount:** 5 + ${format(user.dinonuggies_claim_streak)} = ${format(5 + user.dinonuggies_claim_streak)}
-**Multiplier From Streak:** 1 + ${format(nuggie_streak_multiplier, true)} * ${format(user.dinonuggies_claim_streak)} = ${format(1 + nuggie_streak_multiplier * user.dinonuggies_claim_streak, true)}x
+**Streak Multiplier:** 1 + ${format(nuggie_streak_multiplier, true)} * ${format(user.dinonuggies_claim_streak)} = ${format(1 + nuggie_streak_multiplier * user.dinonuggies_claim_streak, true)}x
 **Flat Multiplier:** ${format(nuggie_flat_multiplier, true)}x
 **Marriage Multiplier:** ${format(await marriageBenefits(this.client, user.id), true)}x
+**Credits Multiplier:** 1 + ${format(nuggie_credits_multiplier, true)} * ${format(log2_credits, true)} = ${format(1 + nuggie_credits_multiplier * log2_credits, true)}x
 **Next Claim:** ${next_claim > 0 ? `${(next_claim / 60 / 60).toFixed(0)}h ${(next_claim / 60 % 60).toFixed(0)}m ${(next_claim % 60).toFixed(0)}s` : "Ready"}
 
 ## Gambling
