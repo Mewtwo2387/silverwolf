@@ -419,15 +419,21 @@ class Database {
     }
 
 
-    async dump(){
-        // output as a table
-        const query = `SELECT * FROM User;`;
+    async dumpTable(tableName, formatUserIds = null) {
+        const query = `SELECT * FROM ${tableName};`;
         const rows = await this.executeSelectAllQuery(query);
+    
+        // Check if rows is an array and has at least one item
+        if (!Array.isArray(rows) || rows.length === 0) {
+            throw new Error(`No data found in the ${tableName} table.`);
+        }
+    
         const keys = Object.keys(rows[0]);
         const csv = [keys.join(',')];
+        
         rows.forEach(row => {
             const values = keys.map(key => {
-                if (key === 'id') {
+                if (formatUserIds && formatUserIds.includes(key)) {
                     return `<@${row[key]}>`;
                 } else {
                     return row[key];
@@ -435,26 +441,22 @@ class Database {
             });
             csv.push(values.join(','));
         });
+        
         return csv.join('\n');
     }
-
-    async dumpPokemon(){
-        const query = `SELECT * FROM Pokemon;`;
-        const rows = await this.executeSelectAllQuery(query);
-        const keys = Object.keys(rows[0]);
-        const csv = [keys.join(',')];
-        rows.forEach(row => {
-            const values = keys.map(key => {
-                if (key === 'user_id') {
-                    return `<@${row[key]}>`;
-                } else {
-                    return row[key];
-                }
-            });
-            csv.push(values.join(','));
-        });
-        return csv.join('\n');
+    
+    async dump() {
+        return await this.dumpTable('User', ['id']);
     }
+    
+    async dumpPokemon() {
+        return await this.dumpTable('Pokemon', ['user_id']);
+    }
+    
+    async dumpMarriage() {
+        return await this.dumpTable('Marriage', ['user1_id', 'user2_id']);
+    }
+    
 
     // Add a marriage
     async addMarriage(user1Id, user2Id) {

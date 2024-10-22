@@ -129,46 +129,34 @@ class FakeQuote extends Command {
                 console.log("Drew sepia pfp");
 
             } else if (profileColor === 'nightmare') {
-                // Draw pfp with a red tint and heavy noise + distortion
-                ctx.drawImage(pfpImage, 0, 0, 512, 512);
-                const imageData = ctx.getImageData(0, 0, 512, 512);
-                const data = imageData.data;
-            
-                // Loop through each pixel and apply a red tint with heavy noise
-                for (let i = 0; i < data.length; i += 4) {
-                    // Apply a red tint
-                    data[i] = data[i] + 150; // Increase Red channel
-                    data[i + 1] = data[i + 1] * 0.4; // Further decrease Green channel
-                    data[i + 2] = data[i + 2] * 0.4; // Further decrease Blue channel
-            
-                    // Add more intense random noise
-                    const noise = (Math.random() - 0.5) * 100; // Random value between -50 and 50
-                    data[i] += noise; // Red channel
-                    data[i + 1] += noise; // Green channel
-                    data[i + 2] += noise; // Blue channel
-                }
-            
-                // Apply a pixel shifting distortion effect
-                for (let y = 0; y < 512; y++) {
-                    for (let x = 0; x < 512; x++) {
-                        // Randomly shift some pixels horizontally
-                        if (Math.random() < 0.05) { // 5% chance to distort each pixel
-                            const shiftAmount = (Math.random() - 0.5) * 10; // Shift by up to ±5 pixels
-                            const sourceIndex = ((y * 512 + x) * 4);
-                            const targetIndex = ((y * 512 + Math.min(Math.max(x + shiftAmount, 0), 511)) * 4);
-            
-                            // Swap pixel data
-                            for (let c = 0; c < 4; c++) {
-                                const temp = data[sourceIndex + c];
-                                data[sourceIndex + c] = data[targetIndex + c];
-                                data[targetIndex + c] = temp;
-                            }
-                        }
-                    }
-                }
-            
-                ctx.putImageData(imageData, 0, 0);
-                console.log("Applied red tint, noise, and distortion to pfp");
+// Draw pfp with a lighter red tint and significantly increased colorful static-like noise
+ctx.drawImage(pfpImage, 0, 0, 512, 512);
+const imageData = ctx.getImageData(0, 0, 512, 512);
+const data = imageData.data;
+
+// Loop through each pixel and apply a lighter red tint with increased colorful static-like noise
+for (let i = 0; i < data.length; i += 4) {
+    // Apply a lighter red tint
+    data[i] = Math.min(data[i] + 255, 255); // Cap Red channel at maximum value
+    data[i + 1] = data[i + 1] * 0.5; // Slightly decrease Green channel
+    data[i + 2] = data[i + 2] * 0.5; // Slightly decrease Blue channel
+
+    // Add significantly increased colorful static-like noise
+    if (Math.random() < 0.8) { // 80% chance to apply noise to each pixel
+        // Generate random values for noise in each channel
+        const noiseRed = Math.floor(Math.random() * 180) - 90; // Noise range for Red: -90 to +90
+        const noiseGreen = Math.floor(Math.random() * 180) - 90; // Noise range for Green: -90 to +90
+        const noiseBlue = Math.floor(Math.random() * 180) - 90; // Noise range for Blue:  -90 to +90
+
+        // Apply noise to each channel independently
+        data[i] = Math.min(Math.max(data[i] + noiseRed, 0), 255); // Red channel
+        data[i + 1] = Math.min(Math.max(data[i + 1] + noiseGreen, 0), 255); // Green channel
+        data[i + 2] = Math.min(Math.max(data[i + 2] + noiseBlue, 0), 255); // Blue channel
+    }
+}
+
+ctx.putImageData(imageData, 0, 0);
+console.log("Applied lighter red tint with significantly increased colorful static-like noise to pfp");
             }
              else {
                 // Normal pfp
