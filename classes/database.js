@@ -193,14 +193,14 @@ class Database {
 
     async executeQuery(query, params = []) {
         return new Promise((resolve, reject) => {
-            this.db.run(query, params, (err) => {
+            this.db.run(query, params, function (err) { // Use a regular function to access 'this'
                 if (err) {
                     return reject(err);
                 }
-                resolve();
+                resolve({ changes: this.changes }); // Return the number of changes
             });
         });
-    }
+    }    
 
     async executeSelectQuery(query, params = []) {
         return new Promise((resolve, reject) => {

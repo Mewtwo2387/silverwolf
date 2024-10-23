@@ -5,35 +5,60 @@ const path = require('path');
 
 class DBDump extends DevCommand {
     constructor(client) {
-        super(client, "dbdump", "output whole db", []);
+        super(client, "dbdump", "Output a specific database table or all tables.", [
+            {
+                name: 'table',
+                description: 'The table to dump (user, pokemon, marriage, or all)',
+                type: 3, // String type
+                required: false
+            }
+        ]);
     }
 
     async run(interaction) {
+        const table = interaction.options.getString('table') || 'all';
+        
         try {
-            // Dump data for all tables
-            const userData = await this.client.db.dump();
-            const pokemonData = await this.client.db.dumpPokemon();
-            const marriageData = await this.client.db.dumpMarriage();
+            // Determine which tables to dump based on the user's input
+            const filesToDump = [];
 
-            // Create temporary files
-            const userFilePath = this.createCSVFile('User_Data.csv', userData);
-            const pokemonFilePath = this.createCSVFile('Pokemon_Data.csv', pokemonData);
-            const marriageFilePath = this.createCSVFile('Marriage_Data.csv', marriageData);
+            if (table === 'user' || table === 'all') {
+                const userData = await this.client.db.dump();
+                const userFilePath = this.createCSVFile('User_Data.csv', userData);
+                filesToDump.push({ attachment: userFilePath, name: 'User_Data.csv' });
+            }
 
-            // Send the files as attachments
+            if (table === 'pokemon' || table === 'all') {
+                const pokemonData = await this.client.db.dumpPokemon();
+                const pokemonFilePath = this.createCSVFile('Pokemon_Data.csv', pokemonData);
+                filesToDump.push({ attachment: pokemonFilePath, name: 'Pokemon_Data.csv' });
+            }
+
+            if (table === 'marriage' || table === 'all') {
+                const marriageData = await this.client.db.dumpMarriage();
+                const marriageFilePath = this.createCSVFile('Marriage_Data.csv', marriageData);
+                filesToDump.push({ attachment: marriageFilePath, name: 'Marriage_Data.csv' });
+            }
+
+            // If no valid table name was provided, notify the user
+            if (filesToDump.length === 0) {
+                await interaction.editReply({
+                    content: 'Invalid table name. Please choose from "user", "pokemon", "marriage", or "all".',
+                    ephemeral: true
+                });
+                return;
+            }
+
+            // Send the selected files as attachments
             await interaction.editReply({
                 content: 'Database dump files:',
-                files: [
-                    { attachment: userFilePath, name: 'User_Data.csv' },
-                    { attachment: pokemonFilePath, name: 'Pokemon_Data.csv' },
-                    { attachment: marriageFilePath, name: 'Marriage_Data.csv' }
-                ]
+                files: filesToDump
             });
 
             // Clean up temporary files after sending
-            this.cleanupFile(userFilePath);
-            this.cleanupFile(pokemonFilePath);
-            this.cleanupFile(marriageFilePath);
+            for (const file of filesToDump) {
+                this.cleanupFile(file.attachment);
+            }
         } catch (error) {
             console.error(error);
             await interaction.followUp({ content: 'An error occurred while executing the command.', ephemeral: true });
