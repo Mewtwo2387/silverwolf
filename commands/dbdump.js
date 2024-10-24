@@ -8,16 +8,22 @@ class DBDump extends DevCommand {
         super(client, "dbdump", "Output a specific database table or all tables.", [
             {
                 name: 'table',
-                description: 'The table to dump (user, pokemon, marriage, or all)',
+                description: 'Select the table to dump',
                 type: 3, // String type
-                required: false
+                required: true,
+                choices: [
+                    { name: 'User Data', value: 'user' },
+                    { name: 'Pokemon Data', value: 'pokemon' },
+                    { name: 'Marriage Data', value: 'marriage' },
+                    { name: 'All Data', value: 'all' }
+                ]
             }
         ]);
     }
 
     async run(interaction) {
-        const table = interaction.options.getString('table') || 'all';
-        
+        const table = interaction.options.getString('table');
+
         try {
             // Determine which tables to dump based on the user's input
             const filesToDump = [];
@@ -38,15 +44,6 @@ class DBDump extends DevCommand {
                 const marriageData = await this.client.db.dumpMarriage();
                 const marriageFilePath = this.createCSVFile('Marriage_Data.csv', marriageData);
                 filesToDump.push({ attachment: marriageFilePath, name: 'Marriage_Data.csv' });
-            }
-
-            // If no valid table name was provided, notify the user
-            if (filesToDump.length === 0) {
-                await interaction.editReply({
-                    content: 'Invalid table name. Please choose from "user", "pokemon", "marriage", or "all".',
-                    ephemeral: true
-                });
-                return;
             }
 
             // Send the selected files as attachments
