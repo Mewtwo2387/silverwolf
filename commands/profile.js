@@ -6,7 +6,7 @@ const { getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNuggieCreditsMult
 const marriageBenefits = require('../utils/marriageBenefits.js');
 
 class Profile extends Command {
-    constructor(client){
+    constructor(client) {
         super(client, "profile", "check profile", [
             {
                 name: 'user',
@@ -17,11 +17,12 @@ class Profile extends Command {
         ]);
     }
 
-    async run(interaction){
+    async run(interaction) {
         let user;
         let username;
         let avatarURL;
         let pokemons;
+
         if (interaction.options.getMember('user')) {
             // Get the specified user's data
             user = await this.client.db.getUser(interaction.options.getMember('user').id);
@@ -36,6 +37,8 @@ class Profile extends Command {
             avatarURL = interaction.user.displayAvatarURL({ dynamic: true, size: 512 });
             pokemons = await this.client.db.getPokemons(interaction.user.id);
         }
+
+        // Calculations
         const multiplier_amount = getMultiplierAmount(user.multiplier_amount_level);
         const multiplier_rarity = getMultiplierChance(user.multiplier_rarity_level);
         const beki_cooldown = getBekiCooldown(user.beki_level) * 60 * 60;
@@ -49,21 +52,102 @@ class Profile extends Command {
         const maxNameLength = Math.max(...pokemons.map(pokemon => pokemon.pokemon_name.length));
         const pokemon_list = pokemons.map(pokemon =>
             `${pokemon.pokemon_name.padEnd(maxNameLength + 2)} ${pokemon.pokemon_count}`
-        ).join('\n')
+        ).join('\n');
         const ascension_level = user.ascension_level;
         const max_level = getMaxLevel(ascension_level);
 
-        const embed = new Discord.EmbedBuilder()
+        // Create the initial embed
+        const mainEmbed = new Discord.EmbedBuilder()
             .setColor('#00AA00')
             .setTitle(`${username}'s Profile`)
             .setThumbnail(avatarURL)
+            .setDescription("Choose a category to view:")
+            .setTimestamp();
+
+        // Create a select menu for categories
+        const categorySelect = new Discord.StringSelectMenuBuilder()
+            .setCustomId('categorySelect')
+            .setPlaceholder('Select a category')
+            .addOptions([
+                { label: 'Currency', value: 'currency' },
+                { label: 'Levels', value: 'levels' },
+                { label: 'Claims', value: 'claims' },
+                { label: 'Gambling', value: 'gambling' },
+                { label: 'Others', value: 'others' },
+                { label: 'Pokemons', value: 'pokemons' }
+            ]);
+
+        // Create an action row for the select menu
+        const actionRow = new Discord.ActionRowBuilder().addComponents(categorySelect);
+        
+        // Send the initial message
+        await interaction.editReply({ embeds: [mainEmbed], components: [actionRow] });
+
+        // Create a filter for interaction
+        const filter = i => i.customId === 'categorySelect' && i.user.id === interaction.user.id;
+
+        // Set up a collector with a timeout of 60 seconds
+        const collector = interaction.channel.createMessageComponentCollector({ filter, time: 60000 });
+
+        collector.on('collect', async i => {
+            await i.deferUpdate(); // Acknowledge the interaction
+            
+            let detailsEmbed;
+
+            // Display details based on the selected category
+            switch (i.values[0]) {
+                case 'currency':
+                    detailsEmbed = this.createCurrencyEmbed(credits, user);
+                    break;
+                case 'levels':
+                    detailsEmbed = this.createLevelsEmbed(user, ascension_level, max_level, multiplier_amount, multiplier_rarity, beki_cooldown, nuggie_flat_multiplier, nuggie_streak_multiplier, nuggie_credits_multiplier, log2_credits);
+                    break;
+                    case 'claims':
+                        detailsEmbed = await this.createClaimsEmbed(user, next_claim, nuggie_streak_multiplier, nuggie_flat_multiplier, nuggie_credits_multiplier, log2_credits);
+                        break;                    
+                case 'gambling':
+                    detailsEmbed = this.createGamblingEmbed(user);
+                    break;
+                case 'others':
+                    detailsEmbed = this.createOthersEmbed(user);
+                    break;
+                case 'pokemons':
+                    detailsEmbed = this.createPokemonsEmbed(pokemon_list);
+                    break;
+            }
+
+            // Edit the main embed to show the selected details while keeping the select menu
+            await interaction.editReply({ embeds: [detailsEmbed], components: [actionRow] });
+        });
+
+        collector.on('end', async collected => {
+            // Disable the embed after timeout
+            if (collected.size === 0) {
+                await interaction.editReply({ content: 'The selection timed out.', components: [] });
+            }
+        });
+    }
+
+    // Helper methods to create category embeds
+    createCurrencyEmbed(credits, user) {
+        return new Discord.EmbedBuilder()
+            .setColor('#00AA00')
+            .setTitle('Currency')
             .setDescription(`
 ## Currency
 **Mystic Credits:** ${format(credits, true)}
 **Bitcoin:** ${user.bitcoin}
 **Dinonuggies:** ${format(user.dinonuggies)}
 **Heavenly Nuggies:** ${format(user.heavenly_nuggies)}
+            `)
+            .setTimestamp();
+    }
 
+    createLevelsEmbed(user, ascension_level, max_level, multiplier_amount, multiplier_rarity, beki_cooldown, nuggie_flat_multiplier, nuggie_streak_multiplier, nuggie_credits_multiplier, log2_credits) {
+        return new Discord.EmbedBuilder()
+            .setColor('#00AA00')
+            .setTitle('Levels')
+            .setDescription(`
 ## Levels
 **Ascension Level:** Level ${ascension_level}
 **Max Upgrade Level:** ${max_level}
@@ -89,16 +173,33 @@ class Profile extends Command {
 
 **Nuggie Credits Multiplier Upgrade:** Level ${user.nuggie_credits_multiplier_level}
 **Nuggie Credits Multiplier:** ${format(nuggie_credits_multiplier * 100)}% * log2(credits)
+            `)
+            .setTimestamp();
+    }
 
-## Claims
-**Current Streak:** ${user.dinonuggies_claim_streak} days
-**Base Claim Amount:** 5 + ${format(user.dinonuggies_claim_streak)} = ${format(5 + user.dinonuggies_claim_streak)}
-**Streak Multiplier:** 1 + ${format(nuggie_streak_multiplier, true)} * ${format(user.dinonuggies_claim_streak)} = ${format(1 + nuggie_streak_multiplier * user.dinonuggies_claim_streak, true)}x
-**Flat Multiplier:** ${format(nuggie_flat_multiplier, true)}x
-**Marriage Multiplier:** ${format(await marriageBenefits(this.client, user.id), true)}x
-**Credits Multiplier:** 1 + ${format(nuggie_credits_multiplier, true)} * ${format(log2_credits, true)} = ${format(1 + nuggie_credits_multiplier * log2_credits, true)}x
-**Next Claim:** ${next_claim > 0 ? `${(next_claim / 60 / 60).toFixed(0)}h ${(next_claim / 60 % 60).toFixed(0)}m ${(next_claim % 60).toFixed(0)}s` : "Ready"}
+    async createClaimsEmbed(user, next_claim, nuggie_streak_multiplier, nuggie_flat_multiplier, nuggie_credits_multiplier, log2_credits) {
+        return new Discord.EmbedBuilder()
+            .setColor('#00AA00')
+            .setTitle('Claims')
+            .setDescription(`
+    ## Claims
+    **Current Streak:** ${user.dinonuggies_claim_streak} days
+    **Base Claim Amount:** 5 + ${format(user.dinonuggies_claim_streak)} = ${format(5 + user.dinonuggies_claim_streak)}
+    **Streak Multiplier:** 1 + ${format(nuggie_streak_multiplier, true)} * ${format(user.dinonuggies_claim_streak)} = ${format(1 + nuggie_streak_multiplier * user.dinonuggies_claim_streak, true)}x
+    **Flat Multiplier:** ${format(nuggie_flat_multiplier, true)}x
+    **Marriage Multiplier:** ${format(await marriageBenefits(this.client, user.id), true)}x
+    **Credits Multiplier:** 1 + ${format(nuggie_credits_multiplier, true)} * ${format(log2_credits, true)} = ${format(1 + nuggie_credits_multiplier * log2_credits, true)}x
+    **Next Claim:** ${next_claim > 0 ? `${(next_claim / 60 / 60).toFixed(0)}h ${(next_claim / 60 % 60).toFixed(0)}m ${(next_claim % 60).toFixed(0)}s` : "Ready"}
+            `)
+            .setTimestamp();
+    }
+    
 
+    createGamblingEmbed(user) {
+        return new Discord.EmbedBuilder()
+            .setColor('#00AA00')
+            .setTitle('Gambling')
+            .setDescription(`
 ## Gambling
 ### Slots
 **Times Played:** ${user.slots_times_played}
@@ -131,15 +232,28 @@ class Profile extends Command {
 **Net Winnings:** ${format(user.roulette_amount_won - user.roulette_amount_gambled)}
 **Relative Amount Won:** ${format(user.roulette_relative_won, true)} bets
 **Relative Net Winnings:** ${format(user.roulette_relative_won - user.roulette_times_played, true)} bets
+            `)
+            .setTimestamp();
+    }
 
+    createOthersEmbed(user) {
+        return new Discord.EmbedBuilder()
+            .setColor('#00AA00')
+            .setTitle('Others')
+            .setDescription(`
 ## Others
 **Pity:** ${user.pity}
 **Birthday:** ${user.birthdays ? user.birthdays : "No birthday set"}
-**Pokemons:** \`\`\`${pokemon_list}\`\`\`
             `)
-            .setTimestamp()
-            .setFooter({ text: `ID: ${user.id}` });
-        await interaction.editReply({ embeds: [embed] });
+            .setTimestamp();
+    }
+
+    createPokemonsEmbed(pokemon_list) {
+        return new Discord.EmbedBuilder()
+            .setColor('#00AA00')
+            .setTitle('Pokemons')
+            .setDescription(`**Pokemons:** \`\`\`${pokemon_list}\`\`\``)
+            .setTimestamp();
     }
 }
 

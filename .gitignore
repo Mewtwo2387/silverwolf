@@ -3,3 +3,4 @@ node_modules/*
 */temp/*
 database.db
 *.zip
+*.csv
