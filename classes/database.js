@@ -246,7 +246,7 @@ class Database {
         //theregottabeabetterwaytodothis.png
         const query = `
         INSERT INTO User (id, credits, bitcoin, last_bought_price, last_bought_amount, total_bought_price, total_bought_amount, total_sold_price, total_sold_amount, dinonuggies, dinonuggies_last_claimed, dinonuggies_claim_streak, multiplier_amount_level, multiplier_rarity_level, beki_level, birthdays, ascension_level, heavenly_nuggies, nuggie_flat_multiplier_level, nuggie_streak_multiplier_level, nuggie_credits_multiplier_level, pity, slots_times_played, slots_amount_gambled, slots_times_won, slots_amount_won, slots_relative_won, blackjack_times_played, blackjack_amount_gambled, blackjack_times_won, blackjack_times_drawn, blackjack_times_lost, blackjack_amount_won, blackjack_relative_won, roulette_times_played, roulette_amount_gambled, roulette_times_won, roulette_amount_won, roulette_relative_won)
-        VALUES (?, 10000, 0, 0, 0, 0, 0, 0, 0, 0, NULL, 0, 1, 1, 1, ?, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)`
+        VALUES (?, 10000, 0, 0, 0, 0, 0, 0, 0, 0, NULL, 0, 1, 1, 1, ?, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)`
 
         try {
             await this.executeQuery(query, [userId]);
