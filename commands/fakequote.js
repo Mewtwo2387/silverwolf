@@ -137,7 +137,7 @@ const data = imageData.data;
 // Loop through each pixel and apply a lighter red tint with increased colorful static-like noise
 for (let i = 0; i < data.length; i += 4) {
     // Apply a lighter red tint
-    data[i] = Math.min(data[i] + 255, 255); // Cap Red channel at maximum value
+    data[i] = Math.min(data[i] + 100); // Cap Red channel at maximum value
     data[i + 1] = data[i + 1] * 0.5; // Slightly decrease Green channel
     data[i + 2] = data[i + 2] * 0.5; // Slightly decrease Blue channel
 
