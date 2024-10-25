@@ -5,6 +5,10 @@ const { getMaxLevel, getMultiplierAmount, getMultiplierChance, getBekiCooldown }
 const { getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNuggieCreditsMultiplier } = require('../utils/ascensionupgrades.js');
 const marriageBenefits = require('../utils/marriageBenefits.js');
 
+// Cooldown map
+const cooldowns = new Map();
+const COOLDOWN_DURATION = 60000; // Cooldown duration in milliseconds (e.g., 60 seconds)
+
 class Profile extends Command {
     constructor(client) {
         super(client, "profile", "check profile", [
@@ -18,6 +22,23 @@ class Profile extends Command {
     }
 
     async run(interaction) {
+        const userId = interaction.user.id;
+        const currentTime = Date.now();
+
+        // Check if the user is on cooldown
+        if (cooldowns.has(userId)) {
+            const lastUsed = cooldowns.get(userId);
+            const timeSinceLastUse = currentTime - lastUsed;
+
+            if (timeSinceLastUse < COOLDOWN_DURATION) {
+                const timeLeft = ((COOLDOWN_DURATION - timeSinceLastUse) / 1000).toFixed(1);
+                await interaction.editReply({ content: `Please wait ${timeLeft} seconds before using this command again.`, ephemeral: true });
+                return;
+            }
+        }
+
+        // Update the cooldown map
+        cooldowns.set(userId, currentTime);
         let user;
         let username;
         let avatarURL;
@@ -97,22 +118,22 @@ class Profile extends Command {
             // Display details based on the selected category
             switch (i.values[0]) {
                 case 'currency':
-                    detailsEmbed = this.createCurrencyEmbed(credits, user);
+                    detailsEmbed = this.createCurrencyEmbed(credits, user, username, avatarURL);
                     break;
                 case 'levels':
-                    detailsEmbed = this.createLevelsEmbed(user, ascension_level, max_level, multiplier_amount, multiplier_rarity, beki_cooldown, nuggie_flat_multiplier, nuggie_streak_multiplier, nuggie_credits_multiplier, log2_credits);
+                    detailsEmbed = this.createLevelsEmbed(user, ascension_level, max_level, multiplier_amount, multiplier_rarity, beki_cooldown, nuggie_flat_multiplier, nuggie_streak_multiplier, nuggie_credits_multiplier, log2_credits, username, avatarURL);
                     break;
                     case 'claims':
-                        detailsEmbed = await this.createClaimsEmbed(user, next_claim, nuggie_streak_multiplier, nuggie_flat_multiplier, nuggie_credits_multiplier, log2_credits);
+                        detailsEmbed = await this.createClaimsEmbed(user, next_claim, nuggie_streak_multiplier, nuggie_flat_multiplier, nuggie_credits_multiplier, log2_credits, username, avatarURL);
                         break;                    
                 case 'gambling':
-                    detailsEmbed = this.createGamblingEmbed(user);
+                    detailsEmbed = this.createGamblingEmbed(user, username, avatarURL);
                     break;
                 case 'others':
-                    detailsEmbed = this.createOthersEmbed(user);
+                    detailsEmbed = this.createOthersEmbed(user, username, avatarURL);
                     break;
                 case 'pokemons':
-                    detailsEmbed = this.createPokemonsEmbed(pokemon_list);
+                    detailsEmbed = this.createPokemonsEmbed(pokemon_list, username, avatarURL);
                     break;
             }
 
@@ -129,10 +150,11 @@ class Profile extends Command {
     }
 
     // Helper methods to create category embeds
-    createCurrencyEmbed(credits, user) {
+    createCurrencyEmbed(credits, user, username, avatarURL) {
         return new Discord.EmbedBuilder()
             .setColor('#00AA00')
-            .setTitle('Currency')
+            .setTitle(`${username}'s Profile`)
+            .setThumbnail(avatarURL)
             .setDescription(`
 ## Currency
 **Mystic Credits:** ${format(credits, true)}
@@ -143,10 +165,11 @@ class Profile extends Command {
             .setTimestamp();
     }
 
-    createLevelsEmbed(user, ascension_level, max_level, multiplier_amount, multiplier_rarity, beki_cooldown, nuggie_flat_multiplier, nuggie_streak_multiplier, nuggie_credits_multiplier, log2_credits) {
+    createLevelsEmbed(user, ascension_level, max_level, multiplier_amount, multiplier_rarity, beki_cooldown, nuggie_flat_multiplier, nuggie_streak_multiplier, nuggie_credits_multiplier, log2_credits, username, avatarURL) {
         return new Discord.EmbedBuilder()
             .setColor('#00AA00')
-            .setTitle('Levels')
+            .setTitle(`${username}'s Profile`)
+            .setThumbnail(avatarURL)
             .setDescription(`
 ## Levels
 **Ascension Level:** Level ${ascension_level}
@@ -177,10 +200,11 @@ class Profile extends Command {
             .setTimestamp();
     }
 
-    async createClaimsEmbed(user, next_claim, nuggie_streak_multiplier, nuggie_flat_multiplier, nuggie_credits_multiplier, log2_credits) {
+    async createClaimsEmbed(user, next_claim, nuggie_streak_multiplier, nuggie_flat_multiplier, nuggie_credits_multiplier, log2_credits, username, avatarURL) {
         return new Discord.EmbedBuilder()
             .setColor('#00AA00')
-            .setTitle('Claims')
+            .setTitle(`${username}'s Profile`)
+            .setThumbnail(avatarURL)
             .setDescription(`
     ## Claims
     **Current Streak:** ${user.dinonuggies_claim_streak} days
@@ -195,10 +219,11 @@ class Profile extends Command {
     }
     
 
-    createGamblingEmbed(user) {
+    createGamblingEmbed(user, username, avatarURL) {
         return new Discord.EmbedBuilder()
             .setColor('#00AA00')
-            .setTitle('Gambling')
+            .setTitle(`${username}'s Profile`)
+            .setThumbnail(avatarURL)
             .setDescription(`
 ## Gambling
 ### Slots
@@ -236,10 +261,11 @@ class Profile extends Command {
             .setTimestamp();
     }
 
-    createOthersEmbed(user) {
+    createOthersEmbed(user, username, avatarURL) {
         return new Discord.EmbedBuilder()
             .setColor('#00AA00')
-            .setTitle('Others')
+            .setTitle(`${username}'s Profile`)
+            .setThumbnail(avatarURL)
             .setDescription(`
 ## Others
 **Pity:** ${user.pity}
@@ -248,10 +274,11 @@ class Profile extends Command {
             .setTimestamp();
     }
 
-    createPokemonsEmbed(pokemon_list) {
+    createPokemonsEmbed(pokemon_list, username, avatarURL) {
         return new Discord.EmbedBuilder()
             .setColor('#00AA00')
-            .setTitle('Pokemons')
+            .setTitle(`${username}'s Profile`)
+            .setThumbnail(avatarURL)
             .setDescription(`**Pokemons:** \`\`\`${pokemon_list}\`\`\``)
             .setTimestamp();
     }
