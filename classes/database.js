@@ -104,6 +104,22 @@ class Database {
                 console.log('Created the ServerRoles table.');
             }
         });
+
+        this.db.run(`CREATE TABLE IF NOT EXISTS GameUID (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id VARCHAR NOT NULL,
+            game TEXT NOT NULL,
+            game_uid TEXT NOT NULL,
+            region TEXT DEFAULT NULL,
+            date DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE (user_id, game)
+        )`, (err) => {
+            if (err) {
+                console.error('Failed to create GameUID table:', err.message);
+            } else {
+                console.log('Created the GameUID table.');
+            }
+        });
     }    
 
     updateSchema() {
@@ -177,14 +193,14 @@ class Database {
 
     async executeQuery(query, params = []) {
         return new Promise((resolve, reject) => {
-            this.db.run(query, params, (err) => {
+            this.db.run(query, params, function (err) { // Use a regular function to access 'this'
                 if (err) {
                     return reject(err);
                 }
-                resolve();
+                resolve({ changes: this.changes }); // Return the number of changes
             });
         });
-    }
+    }    
 
     async executeSelectQuery(query, params = []) {
         return new Promise((resolve, reject) => {
@@ -419,15 +435,21 @@ class Database {
     }
 
 
-    async dump(){
-        // output as a table
-        const query = `SELECT * FROM User;`;
+    async dumpTable(tableName, formatUserIds = null) {
+        const query = `SELECT * FROM ${tableName};`;
         const rows = await this.executeSelectAllQuery(query);
+    
+        // Check if rows is an array and has at least one item
+        if (!Array.isArray(rows) || rows.length === 0) {
+            throw new Error(`No data found in the ${tableName} table.`);
+        }
+    
         const keys = Object.keys(rows[0]);
         const csv = [keys.join(',')];
+        
         rows.forEach(row => {
             const values = keys.map(key => {
-                if (key === 'id') {
+                if (formatUserIds && formatUserIds.includes(key)) {
                     return `<@${row[key]}>`;
                 } else {
                     return row[key];
@@ -435,26 +457,22 @@ class Database {
             });
             csv.push(values.join(','));
         });
+        
         return csv.join('\n');
     }
-
-    async dumpPokemon(){
-        const query = `SELECT * FROM Pokemon;`;
-        const rows = await this.executeSelectAllQuery(query);
-        const keys = Object.keys(rows[0]);
-        const csv = [keys.join(',')];
-        rows.forEach(row => {
-            const values = keys.map(key => {
-                if (key === 'user_id') {
-                    return `<@${row[key]}>`;
-                } else {
-                    return row[key];
-                }
-            });
-            csv.push(values.join(','));
-        });
-        return csv.join('\n');
+    
+    async dump() {
+        return await this.dumpTable('User', ['id']);
     }
+    
+    async dumpPokemon() {
+        return await this.dumpTable('Pokemon', ['user_id']);
+    }
+    
+    async dumpMarriage() {
+        return await this.dumpTable('Marriage', ['user1_id', 'user2_id']);
+    }
+    
 
     // Add a marriage
     async addMarriage(user1Id, user2Id) {
@@ -510,6 +528,55 @@ class Database {
         const row = await this.executeSelectQuery(query, [serverId, roleName]);
         return row ? row.role_id : null;
     }
+
+    // Get GameUIDs for a user
+    async getGameUIDsForUser(userId) {
+        const query = `SELECT id, game, game_uid, region, date FROM GameUID WHERE user_id = ?`;
+        try {
+            const rows = await this.executeSelectAllQuery(query, [userId]);
+            return rows; // This will be an array, even if empty
+        } catch (err) {
+            console.error('Error retrieving GameUIDs:', err.message);
+            throw err; // Propagate the error so it can be handled by the caller
+        }
+    }
+    
+
+    // Add or update a GameUID
+    async addOrUpdateGameUID(userId, game, gameUID, region) {
+        const query = `
+            INSERT INTO GameUID (user_id, game, game_uid, region)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(user_id, game)
+            DO UPDATE SET game_uid = excluded.game_uid, region = excluded.region
+        `;
+        try {
+            await this.executeQuery(query, [userId, game, gameUID, region]);
+            console.log(`Added or updated game UID for game: ${game}`);
+        } catch (err) {
+            console.error('Error adding or updating GameUID:', err.message);
+            throw err;
+        }
+    }
+
+    // Delete a GameUID by game name
+    async deleteGameUID(userId, game) {
+        const query = `DELETE FROM GameUID WHERE user_id = ? AND game = ?`;
+        try {
+            const result = await this.executeQuery(query, [userId, game]);
+            if (result.changes > 0) {
+                console.log(`Deleted game UID record for game: ${game}`);
+                return `Successfully deleted the record for game: ${game}`;
+            } else {
+                console.log(`No record found for game: ${game}`);
+                return `No record found for game: ${game}`;
+            }
+        } catch (err) {
+            console.error('Error deleting GameUID:', err.message);
+            throw err;
+        }
+    }
+
 }
 
 module.exports = { Database };
