@@ -186,7 +186,7 @@ class Profile extends Command {
 **Bronze Chance:** ${format(multiplier_rarity.bronze * 100, true)}%
 
 **Beki Upgrade:** Level ${user.beki_level}/${getMaxLevel(user.beki_level)}
-**Beki Cooldown:** ${format(beki_cooldown)}h
+**Beki Cooldown:** ${format(beki_cooldown)}s (${format(beki_cooldown / 60 / 60, true)}h)
 
 **Nuggie Flat Multiplier Upgrade:** Level ${user.nuggie_flat_multiplier_level}
 **Nuggie Flat Multiplier:** ${format(nuggie_flat_multiplier)}x
