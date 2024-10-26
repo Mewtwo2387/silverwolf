@@ -108,6 +108,19 @@ class Silverwolf extends Client {
             console.log("Summoning a pokemon...");
             this.summonPokemon(message);
         }
+
+        if(message.author.id == '993614772354416673' && Math.random() < 0.1){
+            const arlecchino = this.commands.get("arlecchino");
+            const interaction = {
+                editReply: async (content) => {
+                    await message.reply(content);
+                },
+                followUp: async (content) => {
+                    return
+                }
+            }
+            arlecchino.run(interaction);
+        }
     
         const msg = message.content.toLowerCase();
     
