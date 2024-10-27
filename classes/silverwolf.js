@@ -5,6 +5,7 @@ const path = require("path");
 const BirthdayScheduler = require('./birthdayScheduler');
 const Canvas = require('canvas');
 // const CharacterAI = require('node_characterai')
+require('dotenv').config();
 
 class Silverwolf extends Client {
     constructor(token, options){
@@ -189,21 +190,33 @@ class Silverwolf extends Client {
         this.editedMessages.unshift({old: oldMessage, new: newMessage});
     }
 
-    async registerCommands(clientId){
+    async registerCommands(clientId) {
         const commandsArray = Array.from(this.commands.values()).map(command => ({
             name: command.name,
             description: command.description,
             options: command.options
         }));
-        console.log(commandsArray);
+
+        const guildIds = process.env.GUILD_ID.split(','); // Split the GUILD_IDs into an array
+
         const rest = new REST({ version: "10" }).setToken(this.token);
-        await rest.put(
-            Routes.applicationCommands(clientId),
-            { body: commandsArray },
-        );
-        console.log("Commands registered.");
-        console.log("successfully finished startup")
+
+        for (const guildId of guildIds) {
+            try {
+                console.log(`Registering commands for guild: ${guildId}`);
+                const response = await rest.put(
+                    Routes.applicationGuildCommands(clientId, guildId),
+                    { body: commandsArray },
+                );
+                console.log(`Successfully registered commands for guild ${guildId}:`, response);
+            } catch (error) {
+                console.error(`Error registering commands for guild ${guildId}:`, error);
+            }
+        }
+
+        console.log("All commands registered successfully.");
     }
+    
 
     setRandomGame(){
         const randomGame = this.games[Math.floor(Math.random() * this.games.length)];
