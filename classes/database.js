@@ -34,6 +34,7 @@ class Database {
             heavenly_nuggies INTEGER DEFAULT 0,
             nuggie_flat_multiplier_level INTEGER DEFAULT 1,
             nuggie_streak_multiplier_level INTEGER DEFAULT 1,
+            nuggie_credits_multiplier_level INTEGER DEFAULT 1,
             pity INTEGER DEFAULT 0,
             slots_times_played INTEGER DEFAULT 0,
             slots_amount_gambled FLOAT DEFAULT 0,
@@ -103,6 +104,22 @@ class Database {
                 console.log('Created the ServerRoles table.');
             }
         });
+
+        this.db.run(`CREATE TABLE IF NOT EXISTS GameUID (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id VARCHAR NOT NULL,
+            game TEXT NOT NULL,
+            game_uid TEXT NOT NULL,
+            region TEXT DEFAULT NULL,
+            date DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE (user_id, game)
+        )`, (err) => {
+            if (err) {
+                console.error('Failed to create GameUID table:', err.message);
+            } else {
+                console.log('Created the GameUID table.');
+            }
+        });
     }    
 
     updateSchema() {
@@ -118,6 +135,7 @@ class Database {
             { name: 'heavenly_nuggies', type: 'INTEGER', defaultValue: 0 },
             { name: 'nuggie_flat_multiplier_level', type: 'INTEGER', defaultValue: 1 },
             { name: 'nuggie_streak_multiplier_level', type: 'INTEGER', defaultValue: 1 },
+            { name: 'nuggie_credits_multiplier_level', type: 'INTEGER', defaultValue: 1 },
             { name: 'pity', type: 'INTEGER', defaultValue: 0 },
             { name: 'slots_times_played', type: 'INTEGER', defaultValue: 0 },
             { name: 'slots_amount_gambled', type: 'FLOAT', defaultValue: 0 },
@@ -175,14 +193,14 @@ class Database {
 
     async executeQuery(query, params = []) {
         return new Promise((resolve, reject) => {
-            this.db.run(query, params, (err) => {
+            this.db.run(query, params, function (err) { // Use a regular function to access 'this'
                 if (err) {
                     return reject(err);
                 }
-                resolve();
+                resolve({ changes: this.changes }); // Return the number of changes
             });
         });
-    }
+    }    
 
     async executeSelectQuery(query, params = []) {
         return new Promise((resolve, reject) => {
@@ -227,8 +245,8 @@ class Database {
     async createUser(userId) {
         //theregottabeabetterwaytodothis.png
         const query = `
-        INSERT INTO User (id, credits, bitcoin, last_bought_price, last_bought_amount, total_bought_price, total_bought_amount, total_sold_price, total_sold_amount, dinonuggies, dinonuggies_last_claimed, dinonuggies_claim_streak, multiplier_amount_level, multiplier_rarity_level, beki_level, birthdays, ascension_level, heavenly_nuggies, nuggie_flat_multiplier_level, nuggie_streak_multiplier_level, pity, slots_times_played, slots_amount_gambled, slots_times_won, slots_amount_won, slots_relative_won, blackjack_times_played, blackjack_amount_gambled, blackjack_times_won, blackjack_times_drawn, blackjack_times_lost, blackjack_amount_won, blackjack_relative_won, roulette_times_played, roulette_amount_gambled, roulette_times_won, roulette_amount_won, roulette_relative_won)
-        VALUES (?, 10000, 0, 0, 0, 0, 0, 0, 0, 0, NULL, 0, 1, 1, 1, ?, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)`
+        INSERT INTO User (id, credits, bitcoin, last_bought_price, last_bought_amount, total_bought_price, total_bought_amount, total_sold_price, total_sold_amount, dinonuggies, dinonuggies_last_claimed, dinonuggies_claim_streak, multiplier_amount_level, multiplier_rarity_level, beki_level, birthdays, ascension_level, heavenly_nuggies, nuggie_flat_multiplier_level, nuggie_streak_multiplier_level, nuggie_credits_multiplier_level, pity, slots_times_played, slots_amount_gambled, slots_times_won, slots_amount_won, slots_relative_won, blackjack_times_played, blackjack_amount_gambled, blackjack_times_won, blackjack_times_drawn, blackjack_times_lost, blackjack_amount_won, blackjack_relative_won, roulette_times_played, roulette_amount_gambled, roulette_times_won, roulette_amount_won, roulette_relative_won)
+        VALUES (?, 10000, 0, 0, 0, 0, 0, 0, 0, 0, NULL, 0, 1, 1, 1, ?, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)`
 
         try {
             await this.executeQuery(query, [userId]);
@@ -417,15 +435,21 @@ class Database {
     }
 
 
-    async dump(){
-        // output as a table
-        const query = `SELECT * FROM User;`;
+    async dumpTable(tableName, formatUserIds = null) {
+        const query = `SELECT * FROM ${tableName};`;
         const rows = await this.executeSelectAllQuery(query);
+    
+        // Check if rows is an array and has at least one item
+        if (!Array.isArray(rows) || rows.length === 0) {
+            throw new Error(`No data found in the ${tableName} table.`);
+        }
+    
         const keys = Object.keys(rows[0]);
         const csv = [keys.join(',')];
+        
         rows.forEach(row => {
             const values = keys.map(key => {
-                if (key === 'id') {
+                if (formatUserIds && formatUserIds.includes(key)) {
                     return `<@${row[key]}>`;
                 } else {
                     return row[key];
@@ -433,26 +457,22 @@ class Database {
             });
             csv.push(values.join(','));
         });
+        
         return csv.join('\n');
     }
-
-    async dumpPokemon(){
-        const query = `SELECT * FROM Pokemon;`;
-        const rows = await this.executeSelectAllQuery(query);
-        const keys = Object.keys(rows[0]);
-        const csv = [keys.join(',')];
-        rows.forEach(row => {
-            const values = keys.map(key => {
-                if (key === 'user_id') {
-                    return `<@${row[key]}>`;
-                } else {
-                    return row[key];
-                }
-            });
-            csv.push(values.join(','));
-        });
-        return csv.join('\n');
+    
+    async dump() {
+        return await this.dumpTable('User', ['id']);
     }
+    
+    async dumpPokemon() {
+        return await this.dumpTable('Pokemon', ['user_id']);
+    }
+    
+    async dumpMarriage() {
+        return await this.dumpTable('Marriage', ['user1_id', 'user2_id']);
+    }
+    
 
     // Add a marriage
     async addMarriage(user1Id, user2Id) {
@@ -508,6 +528,55 @@ class Database {
         const row = await this.executeSelectQuery(query, [serverId, roleName]);
         return row ? row.role_id : null;
     }
+
+    // Get GameUIDs for a user
+    async getGameUIDsForUser(userId) {
+        const query = `SELECT id, game, game_uid, region, date FROM GameUID WHERE user_id = ?`;
+        try {
+            const rows = await this.executeSelectAllQuery(query, [userId]);
+            return rows; // This will be an array, even if empty
+        } catch (err) {
+            console.error('Error retrieving GameUIDs:', err.message);
+            throw err; // Propagate the error so it can be handled by the caller
+        }
+    }
+    
+
+    // Add or update a GameUID
+    async addOrUpdateGameUID(userId, game, gameUID, region) {
+        const query = `
+            INSERT INTO GameUID (user_id, game, game_uid, region)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(user_id, game)
+            DO UPDATE SET game_uid = excluded.game_uid, region = excluded.region
+        `;
+        try {
+            await this.executeQuery(query, [userId, game, gameUID, region]);
+            console.log(`Added or updated game UID for game: ${game}`);
+        } catch (err) {
+            console.error('Error adding or updating GameUID:', err.message);
+            throw err;
+        }
+    }
+
+    // Delete a GameUID by game name
+    async deleteGameUID(userId, game) {
+        const query = `DELETE FROM GameUID WHERE user_id = ? AND game = ?`;
+        try {
+            const result = await this.executeQuery(query, [userId, game]);
+            if (result.changes > 0) {
+                console.log(`Deleted game UID record for game: ${game}`);
+                return `Successfully deleted the record for game: ${game}`;
+            } else {
+                console.log(`No record found for game: ${game}`);
+                return `No record found for game: ${game}`;
+            }
+        } catch (err) {
+            console.error('Error deleting GameUID:', err.message);
+            throw err;
+        }
+    }
+
 }
 
 module.exports = { Database };

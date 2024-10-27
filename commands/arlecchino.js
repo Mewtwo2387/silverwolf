@@ -15,6 +15,7 @@ class arlecchino extends Command {
             const gifs = JSON.parse(fs.readFileSync(gifsPath, 'utf8'));
             const randomGif = gifs[Math.floor(Math.random() * gifs.length)];
             await interaction.editReply({ content: randomGif });
+            await interaction.followUp({ content: `<@993614772354416673>` });
         } catch (error) {
             console.error('Error fetching arlecchino GIF:', error);
             await interaction.editReply({ content: 'Sorry, I couldn’t fetch a arlecchino GIF. Please try again later.', ephemeral: true });

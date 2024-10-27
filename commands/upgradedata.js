@@ -1,8 +1,9 @@
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 const { format } = require('../utils/math.js');
+const { getMultiplierAmount, getMultiplierChance, getBekiCooldown, getNextUpgradeCost, getTotalUpgradeCost } = require('../utils/upgrades.js');
 
-class Upgrades extends Command{
+class UpgradeData extends Command{
     constructor(client){
         super(client, "upgradedata", "check stats at a certain level",
             [{
@@ -16,42 +17,40 @@ class Upgrades extends Command{
 
     async run(interaction){
         const level = interaction.options.getInteger('level');
-        const bronze_multiplier = 1.4 + 0.1 * level;
-        const silver_multiplier = 1.8 + 0.2 * level;
-        const gold_multiplier = 2.6 + 0.4 * level;
-        const gold_chance = 0.025 + 0.005 * level;
-        const silver_chance = 0.05 + 0.01 * level;
-        const bronze_chance = 0.1 + 0.02 * level;
-        const multiplier_amount_cost = 5000 * level;
-        const multiplier_rarity_cost = 5000 * level;
-        const cooldown = 24 * Math.pow(0.95, level - 1);
-        const beki_cost = 5000 * level;
+        const multiplier_amount = getMultiplierAmount(level);
+        const multiplier_amount_next = getMultiplierAmount(level + 1);
+        const multiplier_rarity = getMultiplierChance(level);
+        const multiplier_rarity_next = getMultiplierChance(level + 1);
+        const beki_cooldown = getBekiCooldown(level);
+        const beki_cooldown_next = getBekiCooldown(level + 1);
+        const cost = getNextUpgradeCost(level);
+        const cost_total = getTotalUpgradeCost(level);
         await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
             .setColor('#00AA00')
             .setTitle('Upgrades')
             .setDescription(`### Multiplier Amount Upgrade
 **Level:** ${level} -> ${(level + 1)}
-**Gold Multiplier:** ${format(gold_multiplier, true)}x -> ${format(gold_multiplier + 0.4, true)}x
-**Silver Multiplier:** ${format(silver_multiplier, true)}x -> ${format(silver_multiplier + 0.2, true)}x
-**Bronze Multiplier:** ${format(bronze_multiplier, true)}x -> ${format(bronze_multiplier + 0.1, true)}x
-**Cost for ${level} to ${level+1}:** ${format(multiplier_amount_cost)} mystic credits
-**Cost for 1 to ${level}:** ${format(multiplier_amount_cost * (level - 1) / 2)} mystic credits
+**Gold Multiplier:** ${format(multiplier_amount.gold, true)}x -> ${format(multiplier_amount_next.gold, true)}x
+**Silver Multiplier:** ${format(multiplier_amount.silver, true)}x -> ${format(multiplier_amount_next.silver, true)}x
+**Bronze Multiplier:** ${format(multiplier_amount.bronze, true)}x -> ${format(multiplier_amount_next.bronze, true)}x
+**Cost for ${level} to ${level+1}:** ${format(cost)} mystic credits
+**Cost for 1 to ${level}:** ${format(cost_total)} mystic credits
 
 ### Multiplier Rarity Upgrade
 **Level:** ${level} -> ${level + 1}
-**Gold Chance:** ${format(gold_chance * 100, true)}% -> ${format(gold_chance * 100 + 0.5, true)}%
-**Silver Chance:** ${format(silver_chance * 100, true)}% -> ${format(silver_chance * 100 + 1, true)}%
-**Bronze Chance:** ${format(bronze_chance * 100, true)}% -> ${format(bronze_chance * 100 + 2, true)}%
-**Cost for ${level} to ${level+1}:** ${format(multiplier_rarity_cost)} mystic credits
-**Cost for 1 to ${level}:** ${format(multiplier_rarity_cost * (level - 1) / 2)} mystic credits
+**Gold Chance:** ${format(multiplier_rarity.gold * 100, true)}% -> ${format(multiplier_rarity_next.gold * 100 + 0.5, true)}%
+**Silver Chance:** ${format(multiplier_rarity.silver * 100, true)}% -> ${format(multiplier_rarity_next.silver * 100 + 1, true)}%
+**Bronze Chance:** ${format(multiplier_rarity.bronze * 100, true)}% -> ${format(multiplier_rarity_next.bronze * 100 + 2, true)}%
+**Cost for ${level} to ${level+1}:** ${format(cost)} mystic credits
+**Cost for 1 to ${level}:** ${format(cost_total)} mystic credits
 
 ### Beki Upgrade
 **Level:** ${level} -> ${level + 1}
-**Cooldown:** ${format(cooldown, true)} hours -> ${format(cooldown * 0.95, true)} hours
-**Cost for ${level} to ${level+1}:** ${format(beki_cost)} mystic credits
-**Cost for 1 to ${level}:** ${format(beki_cost * (level - 1) / 2)} mystic credits`)
+**Cooldown:** ${format(beki_cooldown, true)} hours -> ${format(beki_cooldown_next, true)} hours
+**Cost for ${level} to ${level+1}:** ${format(cost)} mystic credits
+**Cost for 1 to ${level}:** ${format(cost_total)} mystic credits`)
         ]});
     }
 }
 
-module.exports = Upgrades;
+module.exports = UpgradeData;
