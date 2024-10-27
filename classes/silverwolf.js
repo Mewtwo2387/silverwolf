@@ -184,10 +184,11 @@ class Silverwolf extends Client {
         }));
         console.log(commandsArray);
         const rest = new REST({ version: "10" }).setToken(this.token);
-        await rest.put(
+        const response =await rest.put(
             Routes.applicationCommands(clientId),
             { body: commandsArray },
         );
+        console.log(response);
         console.log("Commands registered.");
         console.log("successfully finished startup")
     }
