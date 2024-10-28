@@ -215,6 +215,7 @@ class Silverwolf extends Client {
         }
 
         console.log("All commands registered successfully.");
+        console.log("successfully finished startup");
     }
     
 
