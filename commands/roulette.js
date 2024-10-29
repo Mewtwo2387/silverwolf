@@ -21,6 +21,7 @@ class Roulette extends Command {
                     { name: 'Number', value: 'number' },
                     { name: 'Red', value: 'red' },
                     { name: 'Black', value: 'black' },
+                    { name: 'Green', value: 'green' },
                     { name: 'Even', value: 'even' },
                     { name: 'Odd', value: 'odd' }
                 ]
@@ -81,7 +82,10 @@ class Roulette extends Command {
         } else if (betType === 'black' && colorResult === 'black') {
             multi = 2.1;
             resultMessage += `You correctly guessed black!`;
-        } else if (betType === 'even' && wheelResult !== 0 && wheelResult % 2 === 0) {
+        } else if (betType === 'green' && colorResult === 'green') {
+            multi = 38;
+            resultMessage += `You correctly guessed green!`;
+        } else if (betType === 'even' && wheelResult % 2 === 0) {
             multi = 2.1;
             resultMessage += `You correctly guessed even!`;
         } else if (betType === 'odd' && wheelResult % 2 !== 0) {
