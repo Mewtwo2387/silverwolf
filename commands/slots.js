@@ -44,30 +44,31 @@ class Slots extends Command {
             }
         }
 
-        var winnings = 0
+        var multi = 0
 
         const lines = [[0,0,0,0,0], [1,1,1,1,1], [2,2,2,2,2], [0,1,2,1,0], [2,1,0,1,2], [0,1,2,2,2], [2,1,0,0,0], [0,0,0,1,2], [2,2,2,1,0]]
 
         for (var i = 0; i < lines.length; i++) {
             const line = lines[i];
             if(results[line[0]][0].emote == results[line[1]][1].emote && results[line[1]][1].emote == results[line[2]][2].emote && results[line[2]][2].emote == results[line[3]][3].emote && results[line[3]][3].emote == results[line[4]][4].emote){
-                winnings += results[line[0]][0].value * amount * 25;
+                multi += results[line[0]][0].value * 25;
             }else if(results[line[0]][0].emote == results[line[1]][1].emote && results[line[1]][1].emote == results[line[2]][2].emote && results[line[2]][2].emote == results[line[3]][3].emote){
-                winnings += results[line[0]][0].value * amount * 5;
+                multi += results[line[0]][0].value * 5;
             }else if(results[line[0]][0].emote == results[line[1]][1].emote && results[line[1]][1].emote == results[line[2]][2].emote){
-                winnings += results[line[1]][1].value * amount;
+                multi += results[line[1]][1].value;
             }
         }
 
         if(amount >= 0){
-            winnings *= await marriageBenefits(this.client, interaction.user.id);
+            multi *= await marriageBenefits(this.client, interaction.user.id);
+            const winnings = multi * amount;
             await this.client.db.addUserAttr(interaction.user.id, 'slots_times_played', 1);
             await this.client.db.addUserAttr(interaction.user.id, 'slots_amount_gambled', amount);
-            await this.client.db.addUserAttr(interaction.user.id, 'slots_times_won', winnings > 0 ? 1 : 0);
+            await this.client.db.addUserAttr(interaction.user.id, 'slots_times_won', multi > 0 ? 1 : 0);
             await this.client.db.addUserAttr(interaction.user.id, 'slots_amount_won', winnings);
-            await this.client.db.addUserAttr(interaction.user.id, 'slots_relative_won', winnings / amount);
+            await this.client.db.addUserAttr(interaction.user.id, 'slots_relative_won', multi);
             await this.client.db.addUserAttr(interaction.user.id, 'credits', winnings - amount);
-            if (winnings == 0){
+            if (multi == 0){
                 await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
                     .setColor('#AA0000')
                     .setTitle(`You bet ${format(amount)} mystic credits and didn't win anything!`)

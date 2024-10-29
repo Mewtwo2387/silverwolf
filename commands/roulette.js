@@ -21,6 +21,7 @@ class Roulette extends Command {
                     { name: 'Number', value: 'number' },
                     { name: 'Red', value: 'red' },
                     { name: 'Black', value: 'black' },
+                    { name: 'Green', value: 'green' },
                     { name: 'Even', value: 'even' },
                     { name: 'Odd', value: 'odd' }
                 ]
@@ -68,41 +69,45 @@ class Roulette extends Command {
         const wheelResult = this.spinWheel();
         const colorResult = this.getColor(wheelResult);
 
-        let winnings = 0;
+        let multi = 0;
         let resultMessage = `The wheel landed on **${wheelResult} ${colorResult}**.\n`;
 
         // Determine if the bet was successful
         if (betType === 'number' && parseInt(betValue) === wheelResult) {
-            winnings = amount * 38;
+            multi = 38;
             resultMessage += `You correctly guessed the number!`;
         } else if (betType === 'red' && colorResult === 'red') {
-            winnings = amount * 2.1;
+            multi = 2.1;
             resultMessage += `You correctly guessed red!`;
         } else if (betType === 'black' && colorResult === 'black') {
-            winnings = amount * 2.1; 
+            multi = 2.1;
             resultMessage += `You correctly guessed black!`;
-        } else if (betType === 'even' && wheelResult !== 0 && wheelResult % 2 === 0) {
-            winnings = amount * 2.1;
+        } else if (betType === 'green' && colorResult === 'green') {
+            multi = 38;
+            resultMessage += `You correctly guessed green!`;
+        } else if (betType === 'even' && wheelResult % 2 === 0) {
+            multi = 2.1;
             resultMessage += `You correctly guessed even!`;
         } else if (betType === 'odd' && wheelResult % 2 !== 0) {
-            winnings = amount * 2.1;
+            multi = 2.1;
             resultMessage += `You correctly guessed odd!`;
         } else {
             resultMessage += `You guessed wrongly. Skill issue.`;
         }
 
         // Apply marriage benefits
-        winnings *= await marriageBenefits(this.client, interaction.user.id);
+        multi *= await marriageBenefits(this.client, interaction.user.id);
+        const winnings = multi * amount;
         await this.client.db.addUserAttr(interaction.user.id, 'roulette_times_played', 1);
         await this.client.db.addUserAttr(interaction.user.id, 'roulette_amount_gambled', amount);
-        await this.client.db.addUserAttr(interaction.user.id, 'roulette_times_won', winnings > 0 ? 1 : 0);
+        await this.client.db.addUserAttr(interaction.user.id, 'roulette_times_won', multi > 0 ? 1 : 0);
         await this.client.db.addUserAttr(interaction.user.id, 'roulette_amount_won', winnings);
-        await this.client.db.addUserAttr(interaction.user.id, 'roulette_relative_won', winnings / amount);
+        await this.client.db.addUserAttr(interaction.user.id, 'roulette_relative_won', multi);
         await this.client.db.addUserAttr(interaction.user.id, 'credits', winnings - amount);
 
         await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
-            .setColor(winnings > 0 ? '#00AA00' : '#AA0000')
-            .setTitle(`You bet ${format(amount)} mystic credits and ${winnings > 0 ? `won ${format(winnings)} mystic credits!` : 'lost!'}\n`)
+            .setColor(multi > 0 ? '#00AA00' : '#AA0000')
+            .setTitle(`You bet ${format(amount)} mystic credits and ${multi > 0 ? `won ${format(winnings)} mystic credits!` : 'lost!'}\n`)
             .setDescription(resultMessage)
         ]});
     }

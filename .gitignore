@@ -1,6 +1,7 @@
 .env
 node_modules/*
 */temp/*
-database.db
+*.db
 *.zip
 *.csv
+*.txt

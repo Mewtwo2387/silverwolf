@@ -259,6 +259,12 @@ class Database {
 
     async addUserAttr(userId, field, value) {
         try {
+            if (value == null || value == undefined){
+                if(field != 'dinonuggies_last_claimed'){
+                    console.log(`Skipping update for ${field} as value is null`);
+                    return;
+                }
+            }
             await this.getUser(userId);
             const query = `UPDATE User SET ${field} = ${field} + ? WHERE id = ?;`;
             await this.executeQuery(query, [value, userId]);
@@ -270,6 +276,12 @@ class Database {
 
     async setUserAttr(userId, field, value) {
         try {
+            if (value == null || value == undefined){
+                if(field != 'dinonuggies_last_claimed'){
+                    console.log(`Skipping update for ${field} as value is null`);
+                    return;
+                }
+            }
             await this.getUser(userId);
             const query = `UPDATE User SET ${field} = ? WHERE id = ?;`;
             await this.executeQuery(query, [value, userId]);
