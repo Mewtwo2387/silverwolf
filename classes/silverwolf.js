@@ -191,32 +191,68 @@ class Silverwolf extends Client {
     }
 
     async registerCommands(clientId) {
-        const commandsArray = Array.from(this.commands.values()).map(command => ({
-            name: command.name,
-            description: command.description,
-            options: command.options
-        }));
-
         const guildIds = process.env.GUILD_ID.split(','); // Split the GUILD_IDs into an array
-
         const rest = new REST({ version: "10" }).setToken(this.token);
-
+    
+        // Loop over each guild ID
         for (const guildId of guildIds) {
             try {
-                console.log(`Registering commands for guild: ${guildId}`);
-                const response = await rest.put(
-                    Routes.applicationGuildCommands(clientId, guildId),
-                    { body: commandsArray },
-                );
-                console.log(`Successfully registered commands for guild ${guildId}:`, response);
+                // Retrieve blacklisted commands for the guild
+                const blacklistedCommandsData = await this.db.getBlacklistedCommands(guildId);
+                console.log(`Blacklisted commands for guild ${guildId}:`, blacklistedCommandsData);
+    
+                // Extract just the command names from the data
+                const blacklistedCommands = blacklistedCommandsData.map(item => item.command_name);
+    
+                // Create a copy of the commands array
+                const commandsArray = Array.from(this.commands.values()).map(command => ({
+                    name: command.name,
+                    description: command.description,
+                    options: command.options
+                }));
+    
+                // If there are no blacklisted commands, register all commands
+                if (blacklistedCommands.length === 0) {
+                    console.log(`No blacklisted commands for guild ${guildId}. Registering all commands.`);
+                    const response = await rest.put(
+                        Routes.applicationGuildCommands(clientId, guildId),
+                        { body: commandsArray },
+                    );
+    
+                    console.log(`Successfully registered commands for guild ${guildId}:`, response);
+                } else {
+                    // Remove blacklisted commands from the array
+                    const filteredCommandsArray = commandsArray.filter(command => {
+                        if (blacklistedCommands.includes(command.name)) {
+                            console.log(`Excluding blacklisted command "${command.name}" for guild: ${guildId}`);
+                            return false; // Exclude the command if blacklisted
+                        } else if (!this.commands.has(command.name)) {
+                            console.warn(`Warning: Command "${command.name}" not found in the registered commands for guild: ${guildId}. It may have been misspelled.`);
+                        }
+                        return true; // Include non-blacklisted commands
+                    });
+    
+                    // Register the filtered commands for this guild
+                    console.log(`Registering commands for guild: ${guildId}`);
+                    const response = await rest.put(
+                        Routes.applicationGuildCommands(clientId, guildId),
+                        { body: filteredCommandsArray },
+                    );
+    
+                    console.log(`Successfully registered commands for guild ${guildId}:`, response);
+                }
             } catch (error) {
                 console.error(`Error registering commands for guild ${guildId}:`, error);
             }
         }
-
+    
         console.log("All commands registered successfully.");
-        console.log("successfully finished startup");
+        console.log("Successfully finished startup.");
     }
+    
+    
+    
+    
     
 
     setRandomGame(){

@@ -120,6 +120,22 @@ class Database {
                 console.log('Created the GameUID table.');
             }
         });
+
+        this.db.run(`CREATE TABLE IF NOT EXISTS CommandConfig (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            command_name TEXT NOT NULL,
+            server_id VARCHAR NOT NULL,
+            disabled_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            reason TEXT, 
+            UNIQUE (command_name, server_id)
+        );`, (err) => {
+            if (err) {
+                console.error('Failed to create commandConfig table:', err.message);
+            } else {
+                console.log('Created the commandConfig table.');
+            }
+        });
+        
     }    
 
     updateSchema() {
@@ -576,6 +592,55 @@ class Database {
             throw err;
         }
     }
+
+
+    // Add or update a blacklist entry
+    async addOrUpdateCommandBlacklist(commandName, serverId, reason) {
+        const query = `
+            INSERT INTO CommandConfig (command_name, server_id, reason)
+            VALUES (?, ?, ?)
+            ON CONFLICT(command_name, server_id)
+            DO UPDATE SET reason = excluded.reason, disabled_date = CURRENT_TIMESTAMP
+        `;
+        try {
+            await this.executeQuery(query, [commandName, serverId, reason]);
+            console.log(`Added or updated blacklist for command: ${commandName} in server: ${serverId}`);
+        } catch (err) {
+            console.error('Error adding or updating command blacklist:', err.message);
+            throw err;
+        }
+    }
+
+    // Retrieve all blacklisted commands for a server
+    async getBlacklistedCommands(serverId) {
+        const query = `SELECT id, command_name, disabled_date, reason FROM CommandConfig WHERE server_id = ?`;
+        try {
+            const rows = await this.executeSelectAllQuery(query, [serverId]);
+            return rows; // Returns an array of blacklisted commands or empty array if none found
+        } catch (err) {
+            console.error('Error retrieving blacklisted commands:', err.message);
+            throw err;
+        }
+    }
+
+    // Remove a blacklist entry by command name and server ID
+    async deleteCommandBlacklist(commandName, serverId) {
+        const query = `DELETE FROM CommandConfig WHERE command_name = ? AND server_id = ?`;
+        try {
+            const result = await this.executeQuery(query, [commandName, serverId]);
+            if (result.changes > 0) {
+                console.log(`Deleted blacklist entry for command: ${commandName} in server: ${serverId}`);
+                return `Successfully deleted the blacklist entry for command: ${commandName}`;
+            } else {
+                console.log(`No blacklist entry found for command: ${commandName} in server: ${serverId}`);
+                return `No blacklist entry found for command: ${commandName}`;
+            }
+        } catch (err) {
+            console.error('Error deleting command blacklist:', err.message);
+            throw err;
+        }
+    }
+
 
 }
 

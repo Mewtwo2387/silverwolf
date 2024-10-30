@@ -134,19 +134,27 @@ ctx.drawImage(pfpImage, 0, 0, 512, 512);
 const imageData = ctx.getImageData(0, 0, 512, 512);
 const data = imageData.data;
 
-// Loop through each pixel and apply a lighter red tint with increased colorful static-like noise
+// Step 1: Invert colors
+for (let i = 0; i < data.length; i += 4) {
+    data[i] = 255 - data[i];       // Invert Red channel
+    data[i + 1] = 255 - data[i + 1]; // Invert Green channel
+    data[i + 2] = 255 - data[i + 2]; // Invert Blue channel
+    // Alpha channel remains the same
+}
+
+// Step 2: Apply a lighter red tint with increased colorful static-like noise
 for (let i = 0; i < data.length; i += 4) {
     // Apply a lighter red tint
-    data[i] = Math.min(data[i] + 100); // Cap Red channel at maximum value
+    data[i] = Math.min(data[i] + 100, 255); // Cap Red channel at maximum value
     data[i + 1] = data[i + 1] * 0.5; // Slightly decrease Green channel
     data[i + 2] = data[i + 2] * 0.5; // Slightly decrease Blue channel
 
     // Add significantly increased colorful static-like noise
-    if (Math.random() < 0.8) { // 80% chance to apply noise to each pixel
+    if (Math.random() < 0.4) { // 40% chance to apply noise to each pixel
         // Generate random values for noise in each channel
-        const noiseRed = Math.floor(Math.random() * 180) - 90; // Noise range for Red: -90 to +90
-        const noiseGreen = Math.floor(Math.random() * 180) - 90; // Noise range for Green: -90 to +90
-        const noiseBlue = Math.floor(Math.random() * 180) - 90; // Noise range for Blue:  -90 to +90
+        const noiseRed = Math.floor(Math.random() * 120) - 60; // Noise range for Red: -90 to +90
+        const noiseGreen = Math.floor(Math.random() * 120) - 60; // Noise range for Green: -90 to +90
+        const noiseBlue = Math.floor(Math.random() * 120) - 60; // Noise range for Blue: -90 to +90
 
         // Apply noise to each channel independently
         data[i] = Math.min(Math.max(data[i] + noiseRed, 0), 255); // Red channel
@@ -155,8 +163,9 @@ for (let i = 0; i < data.length; i += 4) {
     }
 }
 
+// Step 3: Draw the modified image data back onto the canvas
 ctx.putImageData(imageData, 0, 0);
-console.log("Applied lighter red tint with significantly increased colorful static-like noise to pfp");
+console.log("Applied color inversion, lighter red tint, and increased colorful static-like noise to pfp");
             }
              else {
                 // Normal pfp
