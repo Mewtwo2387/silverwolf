@@ -307,57 +307,176 @@ class Silverwolf extends Client {
         this.setRandomGame(); // Start cycling through games after logging in
     }
 
-    async summonPokemon(message, mode = "normal"){
+    // async summonPokemon(message, mode = "normal"){
+    //     const allMembers = await message.guild.members.fetch();
+    //     const members = allMembers.filter(member => !member.user.bot);
+    //     const member = members.random();
+    //     //console.log(member)
+    //     const pfp = await member.user.displayAvatarURL({ extension: 'png', size: 512 });
+    //     if (mode == "shiny" || (mode == "normal" && Math.random() < 0.03)){
+    //         const canvas = Canvas.createCanvas(512, 512);
+    //         const ctx = canvas.getContext("2d");
+    //         const img = await Canvas.loadImage(pfp);
+    //         ctx.drawImage(img, 0, 0, 512, 512);
+    //         const imageData = ctx.getImageData(0, 0, 512, 512);
+    //         const data = imageData.data;
+
+    //         // Invert colors
+    //         for (let i = 0; i < data.length; i += 4) {
+    //             data[i] = 255 - data[i];       // Red
+    //             data[i + 1] = 255 - data[i + 1]; // Green
+    //             data[i + 2] = 255 - data[i + 2]; // Blue
+    //             // Alpha (data[i + 3]) remains unchanged
+    //         }
+
+    //         ctx.putImageData(imageData, 0, 0);
+
+    //         const buffer = canvas.toBuffer();
+    //         const attachment = new AttachmentBuilder(buffer, { name: 'shiny.png' });
+    //         message.channel.send({ embeds:[ new EmbedBuilder()
+    //             .setTitle(`A shiny ${escapeMarkdown(member.user.username)} appeared!`)
+    //             .setImage('attachment://shiny.png')
+    //             .setColor("#00FF00")
+    //             .setFooter({ text: "catch them with /catch [username] shiny!" })
+    //         ], files: [attachment]})
+    //         this.currentPokemon = member.user.username + " shiny";
+    //     }else if (mode == "mystery" || (mode == "normal" && Math.random() < 0.3)){
+    //         message.channel.send({ embeds:[ new EmbedBuilder()
+    //             .setTitle(`A wild ??? appeared!`)
+    //             .setImage(pfp)
+    //             .setColor("#00FF00")
+    //             .setFooter({ text: "guess the username and catch with /catch [username]!" })
+    //         ]})
+    //         this.currentPokemon = member.user.username;
+    //     }else{
+    //         message.channel.send({ embeds:[ new EmbedBuilder()
+    //             .setTitle(`A wild ${escapeMarkdown(member.user.username)} appeared!`)
+    //             .setImage(pfp)
+    //             .setColor("#00FF00")
+    //             .setFooter({ text: "catch them with /catch [username]!" })
+    //         ]})
+    //         this.currentPokemon = member.user.username;
+    //     }
+    // }
+    async summonPokemon(message, mode = "normal") {
         const allMembers = await message.guild.members.fetch();
         const members = allMembers.filter(member => !member.user.bot);
         const member = members.random();
-        //console.log(member)
         const pfp = await member.user.displayAvatarURL({ extension: 'png', size: 512 });
-        if (mode == "shiny" || (mode == "normal" && Math.random() < 0.03)){
-            const canvas = Canvas.createCanvas(512, 512);
-            const ctx = canvas.getContext("2d");
-            const img = await Canvas.loadImage(pfp);
+    
+        // Helper function to apply a lighter red tint to the canvas
+        function applyRedTint(ctx, img) {
             ctx.drawImage(img, 0, 0, 512, 512);
             const imageData = ctx.getImageData(0, 0, 512, 512);
             const data = imageData.data;
-
-            // Invert colors
             for (let i = 0; i < data.length; i += 4) {
-                data[i] = 255 - data[i];       // Red
-                data[i + 1] = 255 - data[i + 1]; // Green
-                data[i + 2] = 255 - data[i + 2]; // Blue
-                // Alpha (data[i + 3]) remains unchanged
+                data[i] = Math.min(data[i] + 100, 255); // Increase red
+                data[i + 1] = data[i + 1] * 0.5; // Reduce green
+                data[i + 2] = data[i + 2] * 0.5; // Reduce blue
             }
-
             ctx.putImageData(imageData, 0, 0);
-
+        }
+    
+        // Helper function to apply color inversion
+        function applyColorInversion(ctx, img) {
+            ctx.drawImage(img, 0, 0, 512, 512);
+            const imageData = ctx.getImageData(0, 0, 512, 512);
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                data[i] = 255 - data[i];       // Invert Red
+                data[i + 1] = 255 - data[i + 1]; // Invert Green
+                data[i + 2] = 255 - data[i + 2]; // Invert Blue
+            }
+            ctx.putImageData(imageData, 0, 0);
+        }
+    
+        if (mode === "shiny" || (mode === "normal" && Math.random() < 0.03)) {
+            const canvas = Canvas.createCanvas(512, 512);
+            const ctx = canvas.getContext("2d");
+            const img = await Canvas.loadImage(pfp);
+    
+            // Apply color inversion and red tint with colorful static for "shiny"
+            applyColorInversion(ctx, img);
+    
+            const imageData = ctx.getImageData(0, 0, 512, 512);
+            const data = imageData.data;
+    
+            // Apply red tint and colorful static noise
+            for (let i = 0; i < data.length; i += 4) {
+                data[i] = Math.min(data[i] + 100, 255); // Red tint
+                data[i + 1] = data[i + 1] * 0.5;
+                data[i + 2] = data[i + 2] * 0.5;
+    
+                if (Math.random() < 0.4) {
+                    const noiseRed = Math.floor(Math.random() * 120) - 60;
+                    const noiseGreen = Math.floor(Math.random() * 120) - 60;
+                    const noiseBlue = Math.floor(Math.random() * 120) - 60;
+    
+                    data[i] = Math.min(Math.max(data[i] + noiseRed, 0), 255);
+                    data[i + 1] = Math.min(Math.max(data[i + 1] + noiseGreen, 0), 255);
+                    data[i + 2] = Math.min(Math.max(data[i + 2] + noiseBlue, 0), 255);
+                }
+            }
+    
+            ctx.putImageData(imageData, 0, 0);
             const buffer = canvas.toBuffer();
             const attachment = new AttachmentBuilder(buffer, { name: 'shiny.png' });
-            message.channel.send({ embeds:[ new EmbedBuilder()
-                .setTitle(`A shiny ${escapeMarkdown(member.user.username)} appeared!`)
-                .setImage('attachment://shiny.png')
-                .setColor("#00FF00")
-                .setFooter({ text: "catch them with /catch [username] shiny!" })
-            ], files: [attachment]})
-            this.currentPokemon = member.user.username + " shiny";
-        }else if (mode == "mystery" || (mode == "normal" && Math.random() < 0.3)){
-            message.channel.send({ embeds:[ new EmbedBuilder()
-                .setTitle(`A wild ??? appeared!`)
-                .setImage(pfp)
-                .setColor("#00FF00")
-                .setFooter({ text: "guess the username and catch with /catch [username]!" })
-            ]})
+    
+            message.channel.send({
+                embeds: [new EmbedBuilder()
+                    .setTitle(`A shiny ${escapeMarkdown(member.user.username)} appeared!`)
+                    .setImage('attachment://shiny.png')
+                    .setColor("#00FF00")
+                    .setFooter({ text: "Nightmarish Halloween! Catch it with /catch Nightmare mode [username]!" })
+                ],
+                files: [attachment]
+            });
+            this.currentPokemon = "Nightmare mode "+ member.user.username ;
+    
+        } else if (mode === "mystery" || (mode === "normal" && Math.random() < 0.3)) {
+            // Apply only color inversion for "mystery"
+            const canvas = Canvas.createCanvas(512, 512);
+            const ctx = canvas.getContext("2d");
+            const img = await Canvas.loadImage(pfp);
+            applyColorInversion(ctx, img);
+    
+            const buffer = canvas.toBuffer();
+            const attachment = new AttachmentBuilder(buffer, { name: 'mystery.png' });
+    
+            message.channel.send({
+                embeds: [new EmbedBuilder()
+                    .setTitle(`A wild ??? appeared!`)
+                    .setImage('attachment://mystery.png')
+                    .setColor("#00FF00")
+                    .setFooter({ text: "Horror Halloween! Guess the username and catch with /catch [username]!" })
+                ],
+                files: [attachment]
+            });
             this.currentPokemon = member.user.username;
-        }else{
-            message.channel.send({ embeds:[ new EmbedBuilder()
-                .setTitle(`A wild ${escapeMarkdown(member.user.username)} appeared!`)
-                .setImage(pfp)
-                .setColor("#00FF00")
-                .setFooter({ text: "catch them with /catch [username]!" })
-            ]})
+    
+        } else {
+            // Apply only red tint for normal
+            const canvas = Canvas.createCanvas(512, 512);
+            const ctx = canvas.getContext("2d");
+            const img = await Canvas.loadImage(pfp);
+            applyRedTint(ctx, img);
+    
+            const buffer = canvas.toBuffer();
+            const attachment = new AttachmentBuilder(buffer, { name: 'normal.png' });
+    
+            message.channel.send({
+                embeds: [new EmbedBuilder()
+                    .setTitle(`A wild ${escapeMarkdown(member.user.username)} appeared!`)
+                    .setImage('attachment://normal.png')
+                    .setColor("#00FF00")
+                    .setFooter({ text: "Spooky Halloween! Catch it with /catch [username]!" })
+                ],
+                files: [attachment]
+            });
             this.currentPokemon = member.user.username;
         }
     }
+
 }
 
 module.exports = { Silverwolf };
