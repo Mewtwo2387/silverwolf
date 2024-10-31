@@ -33,7 +33,7 @@ class Transfer extends Command {
             return;
         }
 
-        const { give, receive, description } = this.calculateTransferDetails(amount);
+        const { give, receive, description } = this.calculateTransferDetails(amount, target);
 
         await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
             .setColor('#AA0000')
@@ -61,38 +61,30 @@ class Transfer extends Command {
         return;
     }
 
-    calculateTransferDetails(amount) {
+    calculateTransferDetails(amount, target) {
         const tiers = [
-            { threshold: 10000000, giveFactor: 2.75, receiveFactor: 0.001, taxLevel: 3 },
-            { threshold: 1000000, giveFactor: 2.15, receiveFactor: 0.01, taxLevel: 2 },
-            { threshold: 100000, giveFactor: 1.75, receiveFactor: 0.05, taxLevel: 1 },
+            { threshold: 10000000, giveFactor: 2.75, receiveFactor: 0.001, taxLevel: 3, smallFee: 0 },
+            { threshold: 1000000, giveFactor: 2.15, receiveFactor: 0.01, taxLevel: 2, smallFee: 0 },
+            { threshold: 100000, giveFactor: 1.75, receiveFactor: 0.05, taxLevel: 1, smallFee: 0 },
             { threshold: -1, giveFactor: 1.5, receiveFactor: 0.25, smallFee: 10000 }
         ];
 
         for (const tier of tiers) {
             if (amount > tier.threshold) {
                 return {
-                    give: amount * tier.giveFactor,
+                    give: amount * tier.giveFactor + tier.smallFee,
                     receive: amount * tier.receiveFactor,
                     description: `**You pay:**
 Amount: ${format(amount)}
 VAT: ${format(amount * 0.25)}
 Electricity fee: ${format(amount * 0.1)}
-Transaction fee: ${format(amount * 0.15)}
-${tier.smallFee ? `Small transfer fee: ${format(tier.smallFee)}` : ''}
-${tier.taxLevel > 0 ? `Big transfer fee (>100k): ${format(amount * 0.2)}` : ''}
-${tier.taxLevel > 1 ? `Huge transfer fee (>1m): ${format(amount * 0.4)}` : ''}
-${tier.taxLevel > 2 ? `Yourmom transfer fee (>10m): ${format(amount * 0.6)}` : ''}
-**Total: ${format(amount * tier.giveFactor)}**
+Transaction fee: ${format(amount * 0.15)}${tier.smallFee > 0 ? `\nSmall transfer fee: ${format(tier.smallFee)}` : ''}${tier.taxLevel > 0 ? `\nBig transfer fee (>100k): ${format(amount * 0.2)}` : ''}${tier.taxLevel > 1 ? `\nHuge transfer fee (>1m): ${format(amount * 0.4)}` : ''}${tier.taxLevel > 2 ? `\nYourmom transfer fee (>10m): ${format(amount * 0.6)}` : ''}
+**Total: ${format(amount * tier.giveFactor + tier.smallFee)}**
 
 **${target.username} receives:**
 Amount: ${format(amount)}
 VAT: ${format(amount * -0.25)}
-Transfer tax: ${format(amount * -0.2)}
-Capital gains tax: ${format(amount * -0.3)}
-${tier.taxLevel > 0 ? `Big transfer tax (>100k): ${format(amount * -0.2)}` : ''}
-${tier.taxLevel > 1 ? `Huge transfer tax (>1m): ${format(amount * -0.04)}` : ''}
-${tier.taxLevel > 2 ? `Yourmom transfer tax (>10m): ${format(amount * -0.009)}` : ''}
+Transfer tax: ${format(amount * -0.2)}${tier.taxLevel > 0 ? `\nBig transfer tax (>100k): ${format(amount * -0.2)}` : ''}${tier.taxLevel > 1 ? `\nHuge transfer tax (>1m): ${format(amount * -0.04)}` : ''}${tier.taxLevel > 2 ? `\nYourmom transfer tax (>10m): ${format(amount * -0.009)}` : ''}
 **Total: ${format(amount * tier.receiveFactor)}**`
                 }
             }
