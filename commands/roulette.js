@@ -41,6 +41,7 @@ class Roulette extends Command {
         const betValue = interaction.options.getInteger('bet_value');
         const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
         let streak = await this.client.db.getUserAttr(interaction.user.id, 'roulette_streak');
+        let maxStreak = await this.client.db.getUserAttr(interaction.user.id, 'roulette_max_streak');
 
         if (amount < 0) {
             await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
@@ -113,6 +114,9 @@ class Roulette extends Command {
         await this.client.db.addUserAttr(interaction.user.id, 'roulette_relative_won', multi);
         await this.client.db.addUserAttr(interaction.user.id, 'credits', winnings - amount);
         await this.client.db.setUserAttr(interaction.user.id, 'roulette_streak', streak);
+        if (streak > maxStreak) {
+            await this.client.db.setUserAttr(interaction.user.id, 'roulette_max_streak', streak);
+        }
 
         await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
             .setColor(multi > 0 ? '#00AA00' : '#AA0000')
