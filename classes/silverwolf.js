@@ -307,57 +307,61 @@ class Silverwolf extends Client {
         this.setRandomGame(); // Start cycling through games after logging in
     }
 
-    async summonPokemon(message, mode = "normal"){
-        const allMembers = await message.guild.members.fetch();
-        const members = allMembers.filter(member => !member.user.bot);
-        const member = members.random();
-        //console.log(member)
-        const pfp = await member.user.displayAvatarURL({ extension: 'png', size: 512 });
-        if (mode == "shiny" || (mode == "normal" && Math.random() < 0.03)){
-            const canvas = Canvas.createCanvas(512, 512);
-            const ctx = canvas.getContext("2d");
-            const img = await Canvas.loadImage(pfp);
-            ctx.drawImage(img, 0, 0, 512, 512);
-            const imageData = ctx.getImageData(0, 0, 512, 512);
-            const data = imageData.data;
+    //normal
 
-            // Invert colors
-            for (let i = 0; i < data.length; i += 4) {
-                data[i] = 255 - data[i];       // Red
-                data[i + 1] = 255 - data[i + 1]; // Green
-                data[i + 2] = 255 - data[i + 2]; // Blue
-                // Alpha (data[i + 3]) remains unchanged
-            }
+    // async summonPokemon(message, mode = "normal"){
+    //     const allMembers = await message.guild.members.fetch();
+    //     const members = allMembers.filter(member => !member.user.bot);
+    //     const member = members.random();
+    //     //console.log(member)
+    //     const pfp = await member.user.displayAvatarURL({ extension: 'png', size: 512 });
+    //     if (mode == "shiny" || (mode == "normal" && Math.random() < 0.03)){
+    //         const canvas = Canvas.createCanvas(512, 512);
+    //         const ctx = canvas.getContext("2d");
+    //         const img = await Canvas.loadImage(pfp);
+    //         ctx.drawImage(img, 0, 0, 512, 512);
+    //         const imageData = ctx.getImageData(0, 0, 512, 512);
+    //         const data = imageData.data;
 
-            ctx.putImageData(imageData, 0, 0);
+    //         // Invert colors
+    //         for (let i = 0; i < data.length; i += 4) {
+    //             data[i] = 255 - data[i];       // Red
+    //             data[i + 1] = 255 - data[i + 1]; // Green
+    //             data[i + 2] = 255 - data[i + 2]; // Blue
+    //             // Alpha (data[i + 3]) remains unchanged
+    //         }
 
-            const buffer = canvas.toBuffer();
-            const attachment = new AttachmentBuilder(buffer, { name: 'shiny.png' });
-            message.channel.send({ embeds:[ new EmbedBuilder()
-                .setTitle(`A shiny ${escapeMarkdown(member.user.username)} appeared!`)
-                .setImage('attachment://shiny.png')
-                .setColor("#00FF00")
-                .setFooter({ text: "catch them with /catch [username] shiny!" })
-            ], files: [attachment]})
-            this.currentPokemon = member.user.username + " shiny";
-        }else if (mode == "mystery" || (mode == "normal" && Math.random() < 0.3)){
-            message.channel.send({ embeds:[ new EmbedBuilder()
-                .setTitle(`A wild ??? appeared!`)
-                .setImage(pfp)
-                .setColor("#00FF00")
-                .setFooter({ text: "guess the username and catch with /catch [username]!" })
-            ]})
-            this.currentPokemon = member.user.username;
-        }else{
-            message.channel.send({ embeds:[ new EmbedBuilder()
-                .setTitle(`A wild ${escapeMarkdown(member.user.username)} appeared!`)
-                .setImage(pfp)
-                .setColor("#00FF00")
-                .setFooter({ text: "catch them with /catch [username]!" })
-            ]})
-            this.currentPokemon = member.user.username;
-        }
-    }
+    //         ctx.putImageData(imageData, 0, 0);
+
+    //         const buffer = canvas.toBuffer();
+    //         const attachment = new AttachmentBuilder(buffer, { name: 'shiny.png' });
+    //         message.channel.send({ embeds:[ new EmbedBuilder()
+    //             .setTitle(`A shiny ${escapeMarkdown(member.user.username)} appeared!`)
+    //             .setImage('attachment://shiny.png')
+    //             .setColor("#00FF00")
+    //             .setFooter({ text: "catch them with /catch [username] shiny!" })
+    //         ], files: [attachment]})
+    //         this.currentPokemon = member.user.username + " shiny";
+    //     }else if (mode == "mystery" || (mode == "normal" && Math.random() < 0.3)){
+    //         message.channel.send({ embeds:[ new EmbedBuilder()
+    //             .setTitle(`A wild ??? appeared!`)
+    //             .setImage(pfp)
+    //             .setColor("#00FF00")
+    //             .setFooter({ text: "guess the username and catch with /catch [username]!" })
+    //         ]})
+    //         this.currentPokemon = member.user.username;
+    //     }else{
+    //         message.channel.send({ embeds:[ new EmbedBuilder()
+    //             .setTitle(`A wild ${escapeMarkdown(member.user.username)} appeared!`)
+    //             .setImage(pfp)
+    //             .setColor("#00FF00")
+    //             .setFooter({ text: "catch them with /catch [username]!" })
+    //         ]})
+    //         this.currentPokemon = member.user.username;
+    //     }
+    // }
+    
+    //halloween
     // async summonPokemon(message, mode = "normal") {
     //     const allMembers = await message.guild.members.fetch();
     //     const members = allMembers.filter(member => !member.user.bot);
@@ -476,6 +480,95 @@ class Silverwolf extends Client {
     //         this.currentPokemon = member.user.username;
     //     }
     // }
+
+    //christmas 
+    async summonPokemon(message, mode = "normal") {
+        const allMembers = await message.guild.members.fetch();
+        const members = allMembers.filter(member => !member.user.bot);
+        const member = members.random();
+        const pfp = await member.user.displayAvatarURL({ extension: 'png', size: 512 });
+    
+        if (mode === "shiny" || (mode === "normal" && Math.random() < 0.03)) {
+            const canvas = Canvas.createCanvas(512, 512);
+            const ctx = canvas.getContext("2d");
+            const img = await Canvas.loadImage(pfp);
+            ctx.drawImage(img, 0, 0, 512, 512);
+    
+            // Invert colors for "shiny" mode
+            const imageData = ctx.getImageData(0, 0, 512, 512);
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                data[i] = 255 - data[i];       // Red
+                data[i + 1] = 255 - data[i + 1]; // Green
+                data[i + 2] = 255 - data[i + 2]; // Blue
+            }
+            ctx.putImageData(imageData, 0, 0);
+    
+            const buffer = canvas.toBuffer();
+            const attachment = new AttachmentBuilder(buffer, { name: 'shiny.png' });
+            message.channel.send({ embeds:[ new EmbedBuilder()
+                .setTitle(`A shiny ${escapeMarkdown(member.user.username)} appeared!`)
+                .setImage('attachment://shiny.png')
+                .setColor("#00FF00")
+                .setFooter({ text: "catch them with /catch [username] shiny!" })
+            ], files: [attachment]});
+            this.currentPokemon = member.user.username + " shiny";
+        } else if (mode === "mystery" || (mode === "normal" && Math.random() < 0.3)) {
+            // Load the mystery border
+            const borderPath = path.join(__dirname, '../data/images/3christmasBorder.png');
+            const borderImg = await Canvas.loadImage(borderPath);
+    
+            // Create a canvas to fit both profile picture and border
+            const canvasSize = 512;
+            const canvas = Canvas.createCanvas(canvasSize, canvasSize);
+            const ctx = canvas.getContext("2d");
+    
+            // Load profile picture and scale it to fit the canvas
+            const img = await Canvas.loadImage(pfp);
+            ctx.drawImage(img, 0, 0, canvasSize, canvasSize);
+    
+            // Scale and overlay the border image
+            ctx.drawImage(borderImg, 0, 0, canvasSize, canvasSize);
+    
+            // Send the final image as an attachment
+            const buffer = canvas.toBuffer();
+            const attachment = new AttachmentBuilder(buffer, { name: 'mystery.png' });
+            message.channel.send({ embeds:[ new EmbedBuilder()
+                .setTitle(`A wild ??? appeared!`)
+                .setImage('attachment://mystery.png')
+                .setColor("#00FF00")
+                .setFooter({ text: "guess the username and catch with /catch [username]!" })
+            ], files: [attachment]});
+            this.currentPokemon = member.user.username;
+        } else {
+            // Load the border image
+            const borderPath = path.join(__dirname, '../data/images/1christmasBorder.png');
+            const borderImg = await Canvas.loadImage(borderPath);
+            
+            // Create a canvas to fit both profile picture and border
+            const canvasSize = 512;
+            const canvas = Canvas.createCanvas(canvasSize, canvasSize);
+            const ctx = canvas.getContext("2d");
+    
+            // Load profile picture and scale it to fit the canvas
+            const img = await Canvas.loadImage(pfp);
+            ctx.drawImage(img, 0, 0, canvasSize, canvasSize);
+    
+            // Scale and overlay the border image
+            ctx.drawImage(borderImg, 0, 0, canvasSize, canvasSize);
+    
+            // Send the final image as an attachment
+            const buffer = canvas.toBuffer();
+            const attachment = new AttachmentBuilder(buffer, { name: 'normal.png' });
+            message.channel.send({ embeds:[ new EmbedBuilder()
+                .setTitle(`A wild ${escapeMarkdown(member.user.username)} appeared!`)
+                .setImage('attachment://normal.png')
+                .setColor("#00FF00")
+                .setFooter({ text: "catch them with /catch [username]!" })
+            ], files: [attachment]});
+            this.currentPokemon = member.user.username;
+        }
+    }
 
 }
 
