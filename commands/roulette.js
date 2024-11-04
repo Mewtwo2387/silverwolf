@@ -40,6 +40,7 @@ class Roulette extends Command {
         const betType = interaction.options.getString('bet_type');
         const betValue = interaction.options.getInteger('bet_value');
         const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
+        let streak = await this.client.db.getUserAttr(interaction.user.id, 'roulette_streak');
 
         if (amount < 0) {
             await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
@@ -74,24 +75,31 @@ class Roulette extends Command {
 
         // Determine if the bet was successful
         if (betType === 'number' && parseInt(betValue) === wheelResult) {
-            multi = 38;
-            resultMessage += `You correctly guessed the number!`;
+            multi = 38 * Math.pow(1.06, streak);
+            streak++;
+            resultMessage += `You correctly guessed the number! You are now on a streak of ${streak}`;
         } else if (betType === 'red' && colorResult === 'red') {
-            multi = 2.1;
-            resultMessage += `You correctly guessed red!`;
+            multi = 2 * Math.pow(1.06, streak);
+            streak++;
+            resultMessage += `You correctly guessed red! You are now on a streak of ${streak}`;
         } else if (betType === 'black' && colorResult === 'black') {
-            multi = 2.1;
-            resultMessage += `You correctly guessed black!`;
+            multi = 2 * Math.pow(1.06, streak);
+            streak++;
+            resultMessage += `You correctly guessed black! You are now on a streak of ${streak}`;
         } else if (betType === 'green' && colorResult === 'green') {
-            multi = 38;
-            resultMessage += `You correctly guessed green!`;
+            multi = 38 * Math.pow(1.06, streak);
+            streak++;
+            resultMessage += `You correctly guessed green! You are now on a streak of ${streak}`;
         } else if (betType === 'even' && wheelResult % 2 === 0) {
-            multi = 2.1;
-            resultMessage += `You correctly guessed even!`;
+            multi = 2 * Math.pow(1.06, streak);
+            streak++;
+            resultMessage += `You correctly guessed even! You are now on a streak of ${streak}`;
         } else if (betType === 'odd' && wheelResult % 2 !== 0) {
-            multi = 2.1;
-            resultMessage += `You correctly guessed odd!`;
+            multi = 2 * Math.pow(1.06, streak);
+            streak++;
+            resultMessage += `You correctly guessed odd! You are now on a streak of ${streak}`;
         } else {
+            streak = 0;
             resultMessage += `You guessed wrongly. Skill issue.`;
         }
 
@@ -104,6 +112,7 @@ class Roulette extends Command {
         await this.client.db.addUserAttr(interaction.user.id, 'roulette_amount_won', winnings);
         await this.client.db.addUserAttr(interaction.user.id, 'roulette_relative_won', multi);
         await this.client.db.addUserAttr(interaction.user.id, 'credits', winnings - amount);
+        await this.client.db.setUserAttr(interaction.user.id, 'roulette_streak', streak);
 
         await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
             .setColor(multi > 0 ? '#00AA00' : '#AA0000')
