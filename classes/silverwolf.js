@@ -489,30 +489,48 @@ class Silverwolf extends Client {
         const pfp = await member.user.displayAvatarURL({ extension: 'png', size: 512 });
     
         if (mode === "shiny" || (mode === "normal" && Math.random() < 0.03)) {
-            const canvas = Canvas.createCanvas(512, 512);
+            const canvasSize = 512;
+            const canvas = Canvas.createCanvas(canvasSize, canvasSize);
             const ctx = canvas.getContext("2d");
+        
+            // Load the profile picture and draw it on the canvas
             const img = await Canvas.loadImage(pfp);
-            ctx.drawImage(img, 0, 0, 512, 512);
-    
-            // Invert colors for "shiny" mode
-            const imageData = ctx.getImageData(0, 0, 512, 512);
+            ctx.drawImage(img, 0, 0, canvasSize, canvasSize);
+        
+            // Apply a red tint to the profile picture
+            const imageData = ctx.getImageData(0, 0, canvasSize, canvasSize);
             const data = imageData.data;
             for (let i = 0; i < data.length; i += 4) {
-                data[i] = 255 - data[i];       // Red
-                data[i + 1] = 255 - data[i + 1]; // Green
-                data[i + 2] = 255 - data[i + 2]; // Blue
+                data[i] = Math.min(data[i] + 50, 255);     // Increase red
+                data[i + 1] = Math.max(data[i + 1] - 30, 0); // Reduce green
+                data[i + 2] = Math.max(data[i + 2] - 30, 0); // Reduce blue
             }
             ctx.putImageData(imageData, 0, 0);
-    
+        
+            // Load and overlay the Christmas snow image
+            const snowOverlayPath = path.join(__dirname, '../data/images/1christmasSnow.png');
+            const snowOverlay = await Canvas.loadImage(snowOverlayPath);
+            ctx.drawImage(snowOverlay, 0, 0, canvasSize, canvasSize);
+        
+            // Load and overlay the Christmas decoration image
+            const decoOverlayPath = path.join(__dirname, '../data/images/1christmasDeco.png');
+            const decoOverlay = await Canvas.loadImage(decoOverlayPath);
+            ctx.drawImage(decoOverlay, 0, 0, canvasSize, canvasSize);
+        
+            // Convert to buffer and send as attachment
             const buffer = canvas.toBuffer();
             const attachment = new AttachmentBuilder(buffer, { name: 'shiny.png' });
-            message.channel.send({ embeds:[ new EmbedBuilder()
-                .setTitle(`A shiny ${escapeMarkdown(member.user.username)} appeared!`)
-                .setImage('attachment://shiny.png')
-                .setColor("#00FF00")
-                .setFooter({ text: "catch them with /catch [username] shiny!" })
-            ], files: [attachment]});
-            this.currentPokemon = member.user.username + " shiny";
+            message.channel.send({
+                embeds: [
+                    new EmbedBuilder()
+                        .setTitle(`A Santa ${escapeMarkdown(member.user.username)} appeared!`)
+                        .setImage('attachment://shiny.png')
+                        .setColor("#00FF00")
+                        .setFooter({ text: "catch them with /catch santa [username]!" })
+                ],
+                files: [attachment]
+            });
+            this.currentPokemon = "santa " + member.user.username;
         } else if (mode === "mystery" || (mode === "normal" && Math.random() < 0.3)) {
             // Load the mystery border
             const borderPath = path.join(__dirname, '../data/images/3christmasBorder.png');
