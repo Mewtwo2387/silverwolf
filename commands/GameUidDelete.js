@@ -1,5 +1,6 @@
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
+const { logError } = require('../utils/log');
 
 class DeleteGameUID extends Command {
     constructor(client) {
@@ -45,7 +46,7 @@ class DeleteGameUID extends Command {
                 ]
             });
         } catch (err) {
-            console.error('Failed to delete game UID:', err);
+            logError('Failed to delete game UID:', err);
 
             // Reply with an error message
             await interaction.editReply({

@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const BirthdayScheduler = require('./birthdayScheduler');
 const Canvas = require('canvas');
+const { log } = require('../utils/log');
 // const CharacterAI = require('node_characterai')
 require('dotenv').config();
 
@@ -26,47 +27,62 @@ class Silverwolf extends Client {
         // try{
         //     this.loadSilverwolfAI();
         // }catch(error){
-        //     console.log("Error loading Silverwolf AI: ", error)
+        //     log("Error loading Silverwolf AI: ", error)
         // }
     }
 
     async init(){
+        log("--------------------\nInitializing Silverwolf...\n--------------------");
         await this.loadCommands();
         await this.loadKeywords();
         await this.loadListeners();
 
         this.birthdayScheduler.start();
 
-        console.log("Silverwolf initialized.");
+        log(`Silverwolf initialized.
+----------------------------------------------
+____  _ _                              _  __ 
+/ ___|(_) |_   _____ _ ____      _____ | |/ _|
+\\___ \\| | \\ \\ / / _ \\ '__\\ \\ /\\ / / _ \\| | |_ 
+ ___) | | |\\ V /  __/ |   \\ V  V / (_) | |  _|
+|____/|_|_| \\_/ \\___|_|    \\_/\\_/ \\___/|_|_|  
+----------------------------------------------
+Product of Silverwolf™ Corp.
+All wrongs reserved.
+----------------------------------------------`);
     }
 
     async loadCommands(){
+        log("--------------------\nLoading commands...\n--------------------");
         const commandDir = path.join(__dirname, "../commands");
         const commandFiles = fs.readdirSync(commandDir).filter(file => file.endsWith(".js"));
 
         for (const file of commandFiles) {
             const CommandClass = require(path.join(commandDir, file));
-            console.log(CommandClass);
+            // log(CommandClass);
             const command = new CommandClass(this);
             this.commands.set(command.name, command);
-            console.log(`Command ${command.name} loaded.`);
+            log(`Command ${command.name} loaded.`);
         }
-        console.log("Commands loaded.");
+        log("Commands loaded.");
     }
 
     async loadKeywords(){
+        log("--------------------\nLoading keywords...\n--------------------");
         const keywordsFile = path.join(__dirname, "../data/keywords.json");
         const keywords = fs.readFileSync(keywordsFile, "utf8");
         this.keywords = JSON.parse(keywords);
         for (const [keyword, reply] of Object.entries(this.keywords)){
-            console.log(`Keyword: ${keyword} -> ${reply}`);
+            // log(`Keyword: ${keyword} -> ${reply}`);
+            log(`Keyword ${keyword} loaded.`);
         }
-        console.log("Keywords loaded.");
+        log("Keywords loaded.");
     }
 
     async loadListeners(){
+        log("--------------------\nLoading listeners...\n--------------------");
         this.on("ready", () => {
-            console.log("uwu ready");
+            log("Client ready.");
         });
         this.on("messageCreate", (message) => {
             this.processMessage(message);
@@ -80,7 +96,7 @@ class Silverwolf extends Client {
         this.on("messageUpdate", (oldMessage, newMessage) => {
             this.processEdit(oldMessage, newMessage);
         });
-        console.log("Listeners loaded.");
+        log("Listeners loaded.");
     }
 
     processInteraction(interaction){
@@ -91,11 +107,11 @@ class Silverwolf extends Client {
             }
             const command = this.commands.get(interaction.commandName);
             if(!command) return;
-            console.log(`Command ${command.name} executed by ${interaction.user.tag}`);
+            log(`Command ${command.name} executed by ${interaction.user.username} (${interaction.user.id}) in ${interaction.channel.name} (${interaction.channel.id}) in ${interaction.guild.name} (${interaction.guild.id})`);
             try{
                 command.execute(interaction);
             }catch(error){
-                console.error(error);
+                logError(error);
             }
         }
     }
@@ -103,10 +119,10 @@ class Silverwolf extends Client {
     processMessage(message) {
         if (message.author.bot) return;
         if (!message.guild) return;
-        console.log(`Message received from ${message.author.username}: ${message.content}`);
+        log(`Message received from ${message.author.username} (${message.author.id}) in ${message.channel.name} (${message.channel.id}) in ${message.guild.name} (${message.guild.id}): ${message.content}`);
     
         if (Math.random() < 0.01 && !(message.channel.name == "super-serious-secret-vent-rant-chat")) {
-            console.log("Summoning a pokemon...");
+            log("Summoning a pokemon...");
             this.summonPokemon(message);
         }
 
@@ -160,7 +176,7 @@ class Silverwolf extends Client {
                                 // After generating the quote or image...
                                 await sentMessage.edit({ content: null, files: [content.files[0]] });                                                              
                             } else {
-                                console.error('No file or content to send in the reply.');
+                                logError('No file or content to send in the reply.');
                             }
                         }
                     };            
@@ -181,12 +197,12 @@ class Silverwolf extends Client {
     
 
     processDelete(message){
-        console.log(`Message deleted by ${message.author.username}: ${message.content}`);
+        log(`Message deleted by ${message.author.username} (${message.author.id}) in ${message.channel.name} (${message.channel.id}) in ${message.guild.name} (${message.guild.id}): ${message.content}`);
         this.deletedMessages.unshift(message);
     }
 
     processEdit(oldMessage, newMessage){
-        console.log(`Message edited by ${oldMessage.author.username}: ${oldMessage.content} -> ${newMessage.content}`);
+        log(`Message edited by ${oldMessage.author.username} (${oldMessage.author.id}) in ${oldMessage.channel.name} (${oldMessage.channel.id}) in ${oldMessage.guild.name} (${oldMessage.guild.id}): ${oldMessage.content} -> ${newMessage.content}`);
         this.editedMessages.unshift({old: oldMessage, new: newMessage});
     }
 
@@ -199,7 +215,7 @@ class Silverwolf extends Client {
             try {
                 // Retrieve blacklisted commands for the guild
                 const blacklistedCommandsData = await this.db.getBlacklistedCommands(guildId);
-                console.log(`Blacklisted commands for guild ${guildId}:`, blacklistedCommandsData);
+                log(`Blacklisted commands for guild ${guildId}:`, blacklistedCommandsData);
     
                 // Extract just the command names from the data
                 const blacklistedCommands = blacklistedCommandsData.map(item => item.command_name);
@@ -213,18 +229,18 @@ class Silverwolf extends Client {
     
                 // If there are no blacklisted commands, register all commands
                 if (blacklistedCommands.length === 0) {
-                    console.log(`No blacklisted commands for guild ${guildId}. Registering all commands.`);
+                    log(`No blacklisted commands for guild ${guildId}. Registering all commands.`);
                     const response = await rest.put(
                         Routes.applicationGuildCommands(clientId, guildId),
                         { body: commandsArray },
                     );
     
-                    console.log(`Successfully registered commands for guild ${guildId}:`, response);
+                    log(`Successfully registered commands for guild ${guildId}:`, response);
                 } else {
                     // Remove blacklisted commands from the array
                     const filteredCommandsArray = commandsArray.filter(command => {
                         if (blacklistedCommands.includes(command.name)) {
-                            console.log(`Excluding blacklisted command "${command.name}" for guild: ${guildId}`);
+                            log(`Excluding blacklisted command "${command.name}" for guild: ${guildId}`);
                             return false; // Exclude the command if blacklisted
                         } else if (!this.commands.has(command.name)) {
                             console.warn(`Warning: Command "${command.name}" not found in the registered commands for guild: ${guildId}. It may have been misspelled.`);
@@ -233,21 +249,22 @@ class Silverwolf extends Client {
                     });
     
                     // Register the filtered commands for this guild
-                    console.log(`Registering commands for guild: ${guildId}`);
+                    log(`Registering commands for guild: ${guildId}`);
                     const response = await rest.put(
                         Routes.applicationGuildCommands(clientId, guildId),
                         { body: filteredCommandsArray },
                     );
     
-                    console.log(`Successfully registered commands for guild ${guildId}:`, response);
+                    log(`Successfully registered commands for guild ${guildId}:`, response);
                 }
             } catch (error) {
-                console.error(`Error registering commands for guild ${guildId}:`, error);
+                logError(`Error registering commands for guild ${guildId}:`, error);
             }
         }
     
-        console.log("All commands registered successfully.");
-        console.log("Successfully finished startup.");
+        log("All commands registered successfully.");
+        log("Successfully finished startup.");
+        log("=======================================================")
     }
     
     
@@ -272,7 +289,7 @@ class Silverwolf extends Client {
         }else{
             randomInterval = (Math.floor(Math.random() * 3) + 1) * 60 * 60 * 1000; // Random interval between 1 and 3 hours
         }
-        console.log(`Setting status to "${randomGame}". Next change in ${randomInterval / 1000 / 60} minutes.`);
+        log(`Setting status to "${randomGame}". Next change in ${randomInterval / 1000 / 60} minutes.`);
 
         setTimeout(() => this.setRandomGame(), randomInterval); // Schedule the next game change
     }
@@ -283,9 +300,9 @@ class Silverwolf extends Client {
             const data = fs.readFileSync(filePath, "utf8");
             const json = JSON.parse(data);
             this.games = json.games || [];
-            console.log("Games loaded from status.json:", this.games);
+            log("Games loaded from status.json:", this.games);
         } catch (error) {
-            console.error("Error loading games from status.json:", error);
+            logError("Error loading games from status.json:", error);
         }
     }
 
@@ -298,12 +315,12 @@ class Silverwolf extends Client {
 
     //     this.chat = await silverwolf.createOrContinueChat(characterId)
 
-    //     console.log("Silverwolf AI loaded.")
+    //     log("Silverwolf AI loaded.")
     // }
 
     async login(){
         await super.login(this.token);
-        console.log(`Logged in as ${this.user.tag}`);
+        log(`Logged in as ${this.user.tag}`);
         this.setRandomGame(); // Start cycling through games after logging in
     }
 
@@ -311,7 +328,7 @@ class Silverwolf extends Client {
         const allMembers = await message.guild.members.fetch();
         const members = allMembers.filter(member => !member.user.bot);
         const member = members.random();
-        //console.log(member)
+        //log(member)
         const pfp = await member.user.displayAvatarURL({ extension: 'png', size: 512 });
         if (mode == "shiny" || (mode == "normal" && Math.random() < 0.03)){
             const canvas = Canvas.createCanvas(512, 512);

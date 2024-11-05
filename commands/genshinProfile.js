@@ -6,6 +6,8 @@ const fs = require('fs');
 const genshinPfp = path.join(__dirname, '../data/genshinPfps.json');
 const genshinNamecards = path.join(__dirname, '../data/genshinNamecards.json');
 
+const { logError } = require('../utils/log');
+
 class GenshinProfile extends Command {
     constructor(client) {
         super(client, 'genshinprofile', 'Get Genshin Impact player data. stolen from collei-bot', [
@@ -32,7 +34,7 @@ class GenshinProfile extends Command {
         try {
             const response = await fetch(url, { headers });
             if (!response.ok) {
-                console.error(`HTTP Error Response: Status ${response.status} ${response.statusText}`);
+                logError(`HTTP Error Response: Status ${response.status} ${response.statusText}`);
                 await interaction.editReply({ content: `Failed to fetch data: HTTP status ${response.status}. Please contact mystichunterz for assistance.`, ephemeral: true });
                 return;
             }
@@ -82,7 +84,7 @@ class GenshinProfile extends Command {
 
             await interaction.editReply({ embeds: [embed] });
         } catch (error) {
-            console.error('Error fetching data from Genshin Impact API:', error);
+            logError('Error fetching data from Genshin Impact API:', error);
             await interaction.editReply({ content: 'Failed to fetch data from Genshin Impact API. Please contact mystichunterz for assistance.', ephemeral: true });
         }
     }

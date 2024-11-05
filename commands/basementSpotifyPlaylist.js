@@ -2,6 +2,7 @@ const axios = require('axios');
 const { Command } = require('./classes/command.js');
 const { EmbedBuilder } = require('discord.js');
 const MusicLinks = require('../data/spotifyPlaylist.json');
+const { logError } = require('../utils/log');
 
 class playlistCommand extends Command {
     constructor(client) {
@@ -14,7 +15,7 @@ class playlistCommand extends Command {
     const randomLink = MusicLinks[randomIndex];
     await interaction.editReply(`${randomLink}`); 
         } catch (error) {
-            console.error('Failed to fetch activity:', error);
+            logError('Failed to fetch activity:', error);
             await interaction.editReply({ content: 'Failed to retrieve activity. Please try again later.', ephemeral: true });
         }
     }

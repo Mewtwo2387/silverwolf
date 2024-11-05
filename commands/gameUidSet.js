@@ -1,6 +1,7 @@
 const { Command } = require('./classes/command.js');
 const { DevCommand } = require('./classes/devcommand.js');
 const Discord = require('discord.js');
+const { logError } = require('../utils/log');
 
 class SetGameUID extends Command {
     constructor(client) {
@@ -61,7 +62,7 @@ class SetGameUID extends Command {
                 ]
             });
         } catch (err) {
-            console.error('Failed to set game UID:', err);
+            logError('Failed to set game UID:', err);
 
             // Reply with an error message
             await interaction.editReply({

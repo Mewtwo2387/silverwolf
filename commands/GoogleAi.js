@@ -2,6 +2,7 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { Command } = require('./classes/command.js');
 const { EmbedBuilder } = require('discord.js');
 require('dotenv').config();
+const { logError } = require('../utils/log');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_TOKEN);
 
@@ -40,7 +41,7 @@ class AskGeminiCommand extends Command {
             // Edit the message with the actual response
             await interaction.editReply({ content: null, embeds: [embed] });
         } catch (error) {
-            console.error('Error generating text:', error);
+            logError('Error generating text:', error);
             await interaction.editReply({ content: 'Failed to retrieve response from Gemini AI. Please try again later.', ephemeral: true });
         }
     }

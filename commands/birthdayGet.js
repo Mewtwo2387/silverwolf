@@ -1,5 +1,6 @@
 const { Command } = require('./classes/command.js');
 const { EmbedBuilder } = require('discord.js');
+const { logError } = require('../utils/log');
 
 class GetBirthdayCommand extends Command {
     constructor(client) {
@@ -57,7 +58,7 @@ class GetBirthdayCommand extends Command {
 
             await interaction.editReply({ embeds: [embed] });
         } catch (error) {
-            console.error('Error retrieving birthday:', error);
+            logError('Error retrieving birthday:', error);
             await interaction.editReply('There was an error retrieving the birthday. Please try again later.');
         }
     }

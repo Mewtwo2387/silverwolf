@@ -1,6 +1,7 @@
 const { Command } = require('./classes/command.js');
 const axios = require('axios');
 const { EmbedBuilder } = require('discord.js');
+const { logError } = require('../utils/log');
 
 class CatCommand extends Command {
     constructor(client) {
@@ -66,7 +67,7 @@ class CatCommand extends Command {
             await interaction.editReply({ embeds: [embed] });
 
         } catch (error) {
-            console.error('Error fetching cat data:', error);
+            logError('Error fetching cat data:', error);
             await interaction.editReply({ content: 'Sorry, I couldn’t fetch the cat data. Please try again later.', ephemeral: true });
         }
     }

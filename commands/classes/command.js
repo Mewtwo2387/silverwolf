@@ -1,3 +1,5 @@
+const { logError } = require('../../utils/log');
+
 class Command {
     constructor(client, name, description, options, ephemeral = false, skipDefer = false) {
         this.client = client;
@@ -23,11 +25,11 @@ class Command {
                     content: "Not implemented",
                     ephemeral: true
                 });
-                throw new Error("run() not implemented. (still switching up things)");
+                logError(`Command ${this.name} not implemented`);
             }
         } catch (error) {
             // Global error handling logic
-            console.error(`Error executing command ${this.name}:`, error);
+            logError(`Error executing command ${this.name}:`, error);
 
             // Inform the user about the error, if needed
             await interaction.editReply({

@@ -1,6 +1,7 @@
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 const { format } = require('../utils/math.js');
+const { logError } = require('../utils/log');
 
 class GamblerBoard extends Command {
     constructor(client) {
@@ -121,7 +122,7 @@ class GamblerBoard extends Command {
             });
 
         } catch (error) {
-            console.error('Failed to fetch leaderboard:', error);
+            logError('Failed to fetch leaderboard:', error);
             await interaction.editReply({ content: 'Failed to retrieve leaderboard', ephemeral: true });
         }
     }

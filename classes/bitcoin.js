@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { logError } = require('../utils/log');
 
 class Bitcoin{
     constructor(){
@@ -10,7 +11,7 @@ class Bitcoin{
             const response = await axios.get(this.bitcoinPriceUrl);
             return response.data;
         }catch(err){
-            console.error('Error fetching Bitcoin price:', err);
+            logError('Error fetching Bitcoin price:', err);
             return null;
         }
     }

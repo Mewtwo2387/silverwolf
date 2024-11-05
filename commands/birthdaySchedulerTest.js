@@ -2,7 +2,7 @@
 require('dotenv').config();
 const { DevCommand } = require('./classes/devcommand.js');
 const { EmbedBuilder } = require('discord.js');
-
+const { logError } = require('../utils/log');
 class TestBirthdaySchedulerCommand extends DevCommand {
     constructor(client) {
         super(client, 'test_birthday_scheduler', 'Tests the birthday scheduler to ensure channels are accessible', []);
@@ -26,11 +26,11 @@ class TestBirthdaySchedulerCommand extends DevCommand {
                     await channel.send({ embeds: [testEmbed] });
                     successChannels.push(channelId); // Add to success list if the message was sent successfully
                 } catch (error) {
-                    console.error(`Error sending message to channel ${channelId}:`, error);
+                    logError(`Error sending message to channel ${channelId}:`, error);
                     failedChannels.push(channelId); // Add to failed list if there was an error
                 }
             } else {
-                console.error(`Channel ID ${channelId} is invalid or not found.`);
+                logError(`Channel ID ${channelId} is invalid or not found.`);
                 failedChannels.push(channelId); // Add to failed list if the channel is not found
             }
         }

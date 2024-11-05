@@ -1,5 +1,6 @@
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
+const { logError } = require('../utils/log');
 
 class GetGameUID extends Command {
     constructor(client) {
@@ -48,7 +49,7 @@ class GetGameUID extends Command {
                 ]
             });
         } catch (err) {
-            console.error('Failed to get game UIDs:', err);
+            logError('Failed to get game UIDs:', err);
     
             // Reply with an error message
             await interaction.editReply({

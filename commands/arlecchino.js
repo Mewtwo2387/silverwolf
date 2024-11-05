@@ -3,6 +3,7 @@ const { EmbedBuilder} = require('discord.js');
 const Discord = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+const { logError } = require('../utils/log');
 
 class arlecchino extends Command {
     constructor(client) {
@@ -17,7 +18,7 @@ class arlecchino extends Command {
             await interaction.editReply({ content: randomGif });
             await interaction.followUp({ content: `<@993614772354416673>` });
         } catch (error) {
-            console.error('Error fetching arlecchino GIF:', error);
+            logError('Error fetching arlecchino GIF:', error);
             await interaction.editReply({ content: 'Sorry, I couldn’t fetch a arlecchino GIF. Please try again later.', ephemeral: true });
         }
     }

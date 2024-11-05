@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { Command } = require('./classes/command.js');
+const { logError } = require('../utils/log');
 
 class RandomJokeCommand extends Command {
     constructor(client) {
@@ -22,7 +23,7 @@ class RandomJokeCommand extends Command {
             // Send the punchline message after the delay
             await interaction.followUp({ content: data.punchline });
         } catch (error) {
-            console.error('Failed to retrieve joke:', error);
+            logError('Failed to retrieve joke:', error);
             await interaction.editReply({ content: 'Failed to retrieve joke. Please try again later.', ephemeral: true });
         }
     }

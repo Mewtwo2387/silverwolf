@@ -2,6 +2,7 @@ const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 const axios = require('axios');
 const xml2js = require('xml2js');
+const { logError } = require('../utils/log');
 
 class F1Standings extends Command {
     constructor(client) {
@@ -80,7 +81,7 @@ class F1Standings extends Command {
 
         } catch (error) {
             // Error handling if the request or parsing fails
-            console.error('Error fetching F1 standings:', error);
+            logError('Error fetching F1 standings:', error);
             await interaction.editReply({ content: 'Sorry, I couldn’t fetch the F1 standings. Please try again later.', ephemeral: true });
         }
     }
