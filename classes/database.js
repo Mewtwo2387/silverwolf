@@ -1,4 +1,5 @@
 const sqlite3 = require('sqlite3').verbose();
+const { log, logError } = require('../utils/log');
 
 // Centralized column definitions
 const userColumns = [
@@ -52,23 +53,24 @@ class Database {
     constructor(){
         this.db = new sqlite3.Database('./database.db', (err) => {
             if (err) {
-                console.error('Failed to connect to the database:', err.message);
+                logError('Failed to connect to the database:', err.message);
             } else {
-                console.log('Connected to the database.db SQLite database.');
+                log('Connected to the database.db SQLite database.');
                 this.init();
             }
         });
     }
 
     init(){
+        log("--------------------\nInitializing database...\n--------------------");
         // Create User table
         const createTableSQL = `CREATE TABLE IF NOT EXISTS User (${userColumns.map(col => `${col.name} ${col.type}`).join(', ')})`;
             
         this.db.run(createTableSQL, (err) => {
             if (err) {
-                console.error(err.message);
+                logError(err.message);
             } else {
-                console.log('Created the User table.');
+                log('Created the User table.');
                 this.updateSchema();
             }
         });
@@ -83,9 +85,9 @@ class Database {
             UNIQUE (user_id, pokemon_name)
         )`, (err) => {
             if (err) {
-                console.error(err.message);
+                logError(err.message);
             } else {
-                console.log('Created the Pokemon table.');
+                log('Created the Pokemon table.');
             }
         });
     
@@ -99,9 +101,9 @@ class Database {
             FOREIGN KEY (user2_id) REFERENCES User(id)
         )`, (err) => {
             if (err) {
-                console.error('Failed to create Marriage table:', err.message);
+                logError('Failed to create Marriage table:', err.message);
             } else {
-                console.log('Created the Marriage table.');
+                log('Created the Marriage table.');
             }
         });
 
@@ -112,9 +114,9 @@ class Database {
             role_id VARCHAR NOT NULL
         )`, (err) => {
             if (err) {
-                console.error('Failed to create ServerRoles table:', err.message);
+                logError('Failed to create ServerRoles table:', err.message);
             } else {
-                console.log('Created the ServerRoles table.');
+                log('Created the ServerRoles table.');
             }
         });
 
@@ -129,9 +131,9 @@ class Database {
             UNIQUE (user_id, game)
         )`, (err) => {
             if (err) {
-                console.error('Failed to create GameUID table:', err.message);
+                logError('Failed to create GameUID table:', err.message);
             } else {
-                console.log('Created the GameUID table.');
+                log('Created the GameUID table.');
             }
         });
 
@@ -144,9 +146,9 @@ class Database {
             UNIQUE (command_name, server_id)
         );`, (err) => {
             if (err) {
-                console.error('Failed to create commandConfig table:', err.message);
+                logError('Failed to create commandConfig table:', err.message);
             } else {
-                console.log('Created the commandConfig table.');
+                log('Created the commandConfig table.');
             }
         });
     }    
@@ -160,14 +162,14 @@ class Database {
                     const addColumnQuery = `ALTER TABLE User ADD COLUMN ${column.name} ${column.type}`;
                     this.db.run(addColumnQuery, (err) => {
                         if (err) {
-                            console.error(`Failed to add column ${column.name}:`, err.message);
+                            logError(`Failed to add column ${column.name}:`, err.message);
                         } else {
-                        console.log(`Column ${column.name} added successfully.`);
+                        log(`Column ${column.name} added successfully.`);
                         }
                     });
                 }
             } catch (err) {
-                console.error(`Failed to check or add column ${column.name}:`, err.message);
+                logError(`Failed to check or add column ${column.name}:`, err.message);
             }
         });
     }
@@ -226,15 +228,15 @@ class Database {
             const row = await this.executeSelectQuery(`SELECT * FROM User WHERE id = ?`, [userId]);
 
             if (row) {
-                console.log(`User ${userId} found`);
+                log(`User ${userId} found`);
                 return row;
             } else {
-                console.log(`User ${userId} not found. Creating new user.`);
+                log(`User ${userId} not found. Creating new user.`);
                 await this.createUser(userId);
                 return await this.getUser(userId);
             }
         } catch (err) {
-            console.error('Failed to get user:', err.message);
+            logError('Failed to get user:', err.message);
             throw err;
         }
     }
@@ -244,9 +246,9 @@ class Database {
 
         try {
             await this.executeQuery(query, [userId]);
-            console.log(`New user ${userId} created`);
+            log(`New user ${userId} created`);
         } catch (err) {
-            console.error('Failed to create user:', err.message);
+            logError('Failed to create user:', err.message);
             throw err;
         }
     }
@@ -255,16 +257,16 @@ class Database {
         try {
             if (value == null || value == undefined){
                 if(field != 'dinonuggies_last_claimed'){
-                    console.log(`Skipping update for ${field} as value is null`);
+                    log(`Skipping update for ${field} as value is null`);
                     return;
                 }
             }
             await this.getUser(userId);
             const query = `UPDATE User SET ${field} = ${field} + ? WHERE id = ?;`;
             await this.executeQuery(query, [value, userId]);
-            console.log(`Updated user ${userId}: ${field} increased by ${value}.`);
+            log(`Updated user ${userId}: ${field} increased by ${value}.`);
         } catch (err) {
-            console.error(`Failed to update ${field}:`, err.message);
+            logError(`Failed to update ${field}:`, err.message);
         }
     }
 
@@ -272,16 +274,16 @@ class Database {
         try {
             if (value == null || value == undefined){
                 if(field != 'dinonuggies_last_claimed'){
-                    console.log(`Skipping update for ${field} as value is null`);
+                    log(`Skipping update for ${field} as value is null`);
                     return;
                 }
             }
             await this.getUser(userId);
             const query = `UPDATE User SET ${field} = ? WHERE id = ?;`;
             await this.executeQuery(query, [value, userId]);
-            console.log(`Updated user ${userId}: ${field} set to ${value}.`);
+            log(`Updated user ${userId}: ${field} set to ${value}.`);
         } catch (err) {
-            console.error(`Failed to override ${field}:`, err.message);
+            logError(`Failed to override ${field}:`, err.message);
         }
     }
 
@@ -290,7 +292,7 @@ class Database {
             const user = await this.getUser(userId);
             return user[attribute];
         } catch (err) {
-            console.error(`Failed to get ${attribute}:`, err.message);
+            logError(`Failed to get ${attribute}:`, err.message);
             return null;
         }
     }
@@ -302,10 +304,10 @@ class Database {
                 query += ` LIMIT ${limit} OFFSET ${offset}`;
             }
             const rows = await this.executeSelectAllQuery(query);
-            console.log(rows);
+            log(rows);
             return rows;
         } catch (err) {
-            console.error(`Failed to get ${attribute}:`, err.message);
+            logError(`Failed to get ${attribute}:`, err.message);
             return null;
         }
     }
@@ -317,10 +319,10 @@ class Database {
                 query += ` LIMIT ${limit} OFFSET ${offset}`;
             }
             const rows = await this.executeSelectAllQuery(query);
-            console.log(rows);
+            log(rows);
             return rows;
         } catch (err) {
-            console.error(`Failed to get relative won:`, err.message);
+            logError(`Failed to get relative won:`, err.message);
             return null;
         }
     }
@@ -332,10 +334,10 @@ class Database {
                 query += ` LIMIT ${limit} OFFSET ${offset}`;
             }
             const rows = await this.executeSelectAllQuery(query);
-            console.log(rows);
+            log(rows);
             return rows;
         } catch (err) {
-            console.error(`Failed to get all relative net winnings:`, err.message);
+            logError(`Failed to get all relative net winnings:`, err.message);
             return null;
         }
     }
@@ -346,7 +348,7 @@ class Database {
             const rows = await this.executeSelectAllQuery(query);
             return rows[0].count;
         } catch (err) {
-            console.error(`Failed to count ${attribute}:`, err.message);
+            logError(`Failed to count ${attribute}:`, err.message);
             return 0;
         }
     }
@@ -357,7 +359,7 @@ class Database {
             const rows = await this.executeSelectAllQuery(query);
             return rows[0].count;
         } catch (err) {
-            console.error(`Failed to count all relative net winnings:`, err.message);
+            logError(`Failed to count all relative net winnings:`, err.message);
             return 0;
         }
     }
@@ -373,9 +375,9 @@ class Database {
                 pokemon_count = pokemon_count + 1;
             `;
             await this.executeQuery(query, [userId, pokemonName]);
-            console.log(`User ${userId} caught a ${pokemonName}`);
+            log(`User ${userId} caught a ${pokemonName}`);
         } catch (err) {
-            console.error('Failed to catch Pokemon:', err.message);
+            logError('Failed to catch Pokemon:', err.message);
             throw err;
         }
     }
@@ -391,15 +393,15 @@ class Database {
                 // If count is 1 or less, remove the entry
                 const deleteQuery = `DELETE FROM Pokemon WHERE user_id = ? AND pokemon_name = ?;`;
                 await this.executeQuery(deleteQuery, [userId, pokemonName]);
-                console.log(`User ${userId} sacrificed their last ${pokemonName} and it was removed from the database`);
+                log(`User ${userId} sacrificed their last ${pokemonName} and it was removed from the database`);
             } else {
                 // If count is greater than 1, decrement it
                 const updateQuery = `UPDATE Pokemon SET pokemon_count = pokemon_count - 1 WHERE user_id = ? AND pokemon_name = ?;`;
                 await this.executeQuery(updateQuery, [userId, pokemonName]);
-                console.log(`User ${userId} sacrificed a ${pokemonName}`);
+                log(`User ${userId} sacrificed a ${pokemonName}`);
             }
         } catch (err) {
-            console.error('Failed to sacrifice Pokemon:', err.message);
+            logError('Failed to sacrifice Pokemon:', err.message);
             throw err;
         }
     }
@@ -422,9 +424,9 @@ class Database {
             await this.getUser(userId);
             const query = `UPDATE User SET birthdays = ? WHERE id = ?;`;
             await this.executeQuery(query, [birthday, userId]);
-            console.log(`Updated user ${userId}: birthday set to ${birthday}.`);
+            log(`Updated user ${userId}: birthday set to ${birthday}.`);
         } catch (err) {
-            console.error(`Failed to set birthday for user ${userId}:`, err.message);
+            logError(`Failed to set birthday for user ${userId}:`, err.message);
         }
     }
 
@@ -436,7 +438,7 @@ class Database {
         // Check for users whose birthdays fall on the current UTC day and hour (ignoring the year)
         const query = `SELECT id FROM User WHERE strftime('%m-%dT%H', birthdays) = ?`;
         const users = await this.executeSelectAllQuery(query, [todayHour]);
-        console.log('Database Response:', users);
+        log('Database Response:', users);
         return users;
     }
 
@@ -485,9 +487,9 @@ class Database {
         const query = `INSERT INTO Marriage (user1_id, user2_id) VALUES (?, ?)`;
         try {
             await this.executeQuery(query, [user1Id, user2Id]);
-            console.log(`Marriage added between ${user1Id} and ${user2Id}.`);
+            log(`Marriage added between ${user1Id} and ${user2Id}.`);
         } catch (err) {
-            console.error('Failed to add marriage:', err.message);
+            logError('Failed to add marriage:', err.message);
         }
     }
 
@@ -496,9 +498,9 @@ class Database {
         const query = `DELETE FROM Marriage WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)`;
         try {
             await this.executeQuery(query, [user1Id, user2Id, user2Id, user1Id]);
-            console.log(`Marriage removed between ${user1Id} and ${user2Id}.`);
+            log(`Marriage removed between ${user1Id} and ${user2Id}.`);
         } catch (err) {
-            console.error('Failed to remove marriage:', err.message);
+            logError('Failed to remove marriage:', err.message);
         }
     }
 
@@ -514,7 +516,7 @@ class Database {
                 return { isMarried: false };
             }
         } catch (err) {
-            console.error('Failed to check marriage status:', err.message);
+            logError('Failed to check marriage status:', err.message);
             return { isMarried: false };
         }
     }
@@ -523,9 +525,9 @@ class Database {
         const query = `INSERT OR REPLACE INTO ServerRoles (server_id, role_name, role_id) VALUES (?, ?, ?)`;
         try {
             await this.executeQuery(query, [serverId, roleName, roleId]);
-            console.log(`Server role set for server ${serverId}: ${roleName}.`);
+            log(`Server role set for server ${serverId}: ${roleName}.`);
         } catch (err) {
-            console.error('Failed to set server role:', err.message);
+            logError('Failed to set server role:', err.message);
         }
     }
 
@@ -542,7 +544,7 @@ class Database {
             const rows = await this.executeSelectAllQuery(query, [userId]);
             return rows; // This will be an array, even if empty
         } catch (err) {
-            console.error('Error retrieving GameUIDs:', err.message);
+            logError('Error retrieving GameUIDs:', err.message);
             throw err; // Propagate the error so it can be handled by the caller
         }
     }
@@ -558,9 +560,9 @@ class Database {
         `;
         try {
             await this.executeQuery(query, [userId, game, gameUID, region]);
-            console.log(`Added or updated game UID for game: ${game}`);
+            log(`Added or updated game UID for game: ${game}`);
         } catch (err) {
-            console.error('Error adding or updating GameUID:', err.message);
+            logError('Error adding or updating GameUID:', err.message);
             throw err;
         }
     }
@@ -571,14 +573,14 @@ class Database {
         try {
             const result = await this.executeQuery(query, [userId, game]);
             if (result.changes > 0) {
-                console.log(`Deleted game UID record for game: ${game}`);
+                log(`Deleted game UID record for game: ${game}`);
                 return `Successfully deleted the record for game: ${game}`;
             } else {
-                console.log(`No record found for game: ${game}`);
+                log(`No record found for game: ${game}`);
                 return `No record found for game: ${game}`;
             }
         } catch (err) {
-            console.error('Error deleting GameUID:', err.message);
+            logError('Error deleting GameUID:', err.message);
             throw err;
         }
     }
@@ -594,9 +596,9 @@ class Database {
         `;
         try {
             await this.executeQuery(query, [commandName, serverId, reason]);
-            console.log(`Added or updated blacklist for command: ${commandName} in server: ${serverId}`);
+            log(`Added or updated blacklist for command: ${commandName} in server: ${serverId}`);
         } catch (err) {
-            console.error('Error adding or updating command blacklist:', err.message);
+            logError('Error adding or updating command blacklist:', err.message);
             throw err;
         }
     }
@@ -608,7 +610,7 @@ class Database {
             const rows = await this.executeSelectAllQuery(query, [serverId]);
             return rows; // Returns an array of blacklisted commands or empty array if none found
         } catch (err) {
-            console.error('Error retrieving blacklisted commands:', err.message);
+            logError('Error retrieving blacklisted commands:', err.message);
             throw err;
         }
     }
@@ -619,14 +621,14 @@ class Database {
         try {
             const result = await this.executeQuery(query, [commandName, serverId]);
             if (result.changes > 0) {
-                console.log(`Deleted blacklist entry for command: ${commandName} in server: ${serverId}`);
+                log(`Deleted blacklist entry for command: ${commandName} in server: ${serverId}`);
                 return `Successfully deleted the blacklist entry for command: ${commandName}`;
             } else {
-                console.log(`No blacklist entry found for command: ${commandName} in server: ${serverId}`);
+                log(`No blacklist entry found for command: ${commandName} in server: ${serverId}`);
                 return `No blacklist entry found for command: ${commandName}`;
             }
         } catch (err) {
-            console.error('Error deleting command blacklist:', err.message);
+            logError('Error deleting command blacklist:', err.message);
             throw err;
         }
     }

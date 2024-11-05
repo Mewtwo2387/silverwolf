@@ -88,4 +88,4 @@ function getMaxLevel(ascensionLevel){
 
 module.exports = { getNextUpgradeCost, getTotalUpgradeCost, getMultiplierAmount, getMultiplierChance, getBekiCooldown, getMaxLevel };
 
-dump();
+// dump();
