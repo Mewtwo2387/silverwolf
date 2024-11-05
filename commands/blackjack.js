@@ -173,19 +173,26 @@ class Blackjack extends Command {
     }
 
     async handleWin(interaction, amount, playerHand, dealerHand, message) {
+        let streak = await this.client.db.getUserAttr(interaction.user.id, 'blackjack_streak');
         await this.client.db.addUserAttr(interaction.user.id, 'blackjack_times_played', 1);
         await this.client.db.addUserAttr(interaction.user.id, 'blackjack_amount_gambled', amount);
         await this.client.db.addUserAttr(interaction.user.id, 'blackjack_times_won', 1);
 
-        let multiplier = await marriageBenefits(this.client, interaction.user.id) * 2;
+        let multiplier = await marriageBenefits(this.client, interaction.user.id) * 2.1 * Math.pow(1.08, streak);
+        streak++;
+        if (streak > await this.client.db.getUserAttr(interaction.user.id, 'blackjack_max_streak')) {
+            await this.client.db.setUserAttr(interaction.user.id, 'blackjack_max_streak', streak);
+        }
+
         await this.client.db.addUserAttr(interaction.user.id, 'blackjack_amount_won', amount * multiplier);
         await this.client.db.addUserAttr(interaction.user.id, 'blackjack_relative_won', multiplier);
         await this.client.db.addUserAttr(interaction.user.id, 'credits', amount * multiplier - amount);
-        
+        await this.client.db.setUserAttr(interaction.user.id, 'blackjack_streak', streak);
+
         await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
             .setColor('#00AA00')
             .setTitle(`${message} You won ${format(amount * multiplier)} mystic credits!`)
-            .setDescription(`Your hand: ${this.formatHand(playerHand)} (${this.calculateHand(playerHand)})\nSilverwolf's hand: ${this.formatHand(dealerHand)} (${this.calculateHand(dealerHand)})`)], 
+            .setDescription(`Your hand: ${this.formatHand(playerHand)} (${this.calculateHand(playerHand)})\nSilverwolf's hand: ${this.formatHand(dealerHand)} (${this.calculateHand(dealerHand)})\nYou are now on a streak of ${streak}`)], 
             components: [] 
         });
     }
@@ -195,6 +202,8 @@ class Blackjack extends Command {
         await this.client.db.addUserAttr(interaction.user.id, 'blackjack_amount_gambled', amount);
         await this.client.db.addUserAttr(interaction.user.id, 'blackjack_times_lost', 1);
         await this.client.db.addUserAttr(interaction.user.id, 'credits', -amount);
+        await this.client.db.setUserAttr(interaction.user.id, 'blackjack_streak', 0);
+
         await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
             .setColor('#AA0000')
             .setTitle(`${message} You lost ${format(amount)} mystic credits!`)
