@@ -1,5 +1,53 @@
 const sqlite3 = require('sqlite3').verbose();
 
+// Centralized column definitions
+const userColumns = [
+    { name: 'id', type: 'VARCHAR PRIMARY KEY' },
+    { name: 'credits', type: 'INTEGER DEFAULT 0' },
+    { name: 'bitcoin', type: 'FLOAT DEFAULT 0' },
+    { name: 'last_bought_price', type: 'FLOAT DEFAULT 0' },
+    { name: 'last_bought_amount', type: 'FLOAT DEFAULT 0' },
+    { name: 'total_bought_price', type: 'FLOAT DEFAULT 0' },
+    { name: 'total_bought_amount', type: 'FLOAT DEFAULT 0' },
+    { name: 'total_sold_price', type: 'FLOAT DEFAULT 0' },
+    { name: 'total_sold_amount', type: 'FLOAT DEFAULT 0' },
+    { name: 'dinonuggies', type: 'INTEGER DEFAULT 0' },
+    { name: 'dinonuggies_last_claimed', type: 'DATETIME DEFAULT NULL' },
+    { name: 'dinonuggies_claim_streak', type: 'INTEGER DEFAULT 0' },
+    { name: 'multiplier_amount_level', type: 'INTEGER DEFAULT 1' },
+    { name: 'multiplier_rarity_level', type: 'INTEGER DEFAULT 1' },
+    { name: 'beki_level', type: 'INTEGER DEFAULT 1' },
+    { name: 'birthdays', type: 'DATETIME DEFAULT NULL' },
+    { name: 'ascension_level', type: 'INTEGER DEFAULT 1' },
+    { name: 'heavenly_nuggies', type: 'INTEGER DEFAULT 0' },
+    { name: 'nuggie_flat_multiplier_level', type: 'INTEGER DEFAULT 1' },
+    { name: 'nuggie_streak_multiplier_level', type: 'INTEGER DEFAULT 1' },
+    { name: 'nuggie_credits_multiplier_level', type: 'INTEGER DEFAULT 1' },
+    { name: 'pity', type: 'INTEGER DEFAULT 0' },
+    { name: 'slots_times_played', type: 'INTEGER DEFAULT 0' },
+    { name: 'slots_amount_gambled', type: 'FLOAT DEFAULT 0' },
+    { name: 'slots_times_won', type: 'INTEGER DEFAULT 0' },
+    { name: 'slots_amount_won', type: 'FLOAT DEFAULT 0' },
+    { name: 'slots_relative_won', type: 'FLOAT DEFAULT 0' },
+    { name: 'blackjack_times_played', type: 'INTEGER DEFAULT 0' },
+    { name: 'blackjack_amount_gambled', type: 'FLOAT DEFAULT 0' },
+    { name: 'blackjack_times_won', type: 'INTEGER DEFAULT 0' },
+    { name: 'blackjack_times_drawn', type: 'INTEGER DEFAULT 0' },
+    { name: 'blackjack_times_lost', type: 'INTEGER DEFAULT 0' },
+    { name: 'blackjack_amount_won', type: 'FLOAT DEFAULT 0' },
+    { name: 'blackjack_relative_won', type: 'FLOAT DEFAULT 0' },
+    { name: 'roulette_times_played', type: 'INTEGER DEFAULT 0' },
+    { name: 'roulette_amount_gambled', type: 'FLOAT DEFAULT 0' },
+    { name: 'roulette_times_won', type: 'INTEGER DEFAULT 0' },
+    { name: 'roulette_amount_won', type: 'FLOAT DEFAULT 0' },
+    { name: 'roulette_relative_won', type: 'FLOAT DEFAULT 0' },
+    { name: 'roulette_streak', type: 'INTEGER DEFAULT 0' },
+    { name: 'roulette_max_streak', type: 'INTEGER DEFAULT 0' },
+    { name: 'blackjack_streak', type: 'INTEGER DEFAULT 0' },
+    { name: 'blackjack_max_streak', type: 'INTEGER DEFAULT 0' }
+];
+
+
 class Database {
     constructor(){
         this.db = new sqlite3.Database('./database.db', (err) => {
@@ -13,47 +61,10 @@ class Database {
     }
 
     init(){
-        this.db.run(`CREATE TABLE IF NOT EXISTS User (
-            id VARCHAR PRIMARY KEY,
-            credits INTEGER DEFAULT 0,
-            bitcoin FLOAT DEFAULT 0,
-            last_bought_price FLOAT DEFAULT 0,
-            last_bought_amount FLOAT DEFAULT 0,
-            total_bought_price FLOAT DEFAULT 0,
-            total_bought_amount FLOAT DEFAULT 0,
-            total_sold_price FLOAT DEFAULT 0,
-            total_sold_amount FLOAT DEFAULT 0,
-            dinonuggies INTEGER DEFAULT 0,
-            dinonuggies_last_claimed DATETIME DEFAULT NULL,
-            dinonuggies_claim_streak INTEGER DEFAULT 0,
-            multiplier_amount_level INTEGER DEFAULT 1,
-            multiplier_rarity_level INTEGER DEFAULT 1,
-            beki_level INTEGER DEFAULT 1,
-            birthdays DATETIME DEFAULT NULL,
-            ascension_level INTEGER DEFAULT 1,
-            heavenly_nuggies INTEGER DEFAULT 0,
-            nuggie_flat_multiplier_level INTEGER DEFAULT 1,
-            nuggie_streak_multiplier_level INTEGER DEFAULT 1,
-            nuggie_credits_multiplier_level INTEGER DEFAULT 1,
-            pity INTEGER DEFAULT 0,
-            slots_times_played INTEGER DEFAULT 0,
-            slots_amount_gambled FLOAT DEFAULT 0,
-            slots_times_won INTEGER DEFAULT 0,
-            slots_amount_won FLOAT DEFAULT 0,
-            slots_relative_won FLOAT DEFAULT 0,
-            blackjack_times_played INTEGER DEFAULT 0,
-            blackjack_amount_gambled FLOAT DEFAULT 0,
-            blackjack_times_won INTEGER DEFAULT 0,
-            blackjack_times_drawn INTEGER DEFAULT 0,
-            blackjack_times_lost INTEGER DEFAULT 0,
-            blackjack_amount_won FLOAT DEFAULT 0,
-            blackjack_relative_won FLOAT DEFAULT 0,
-            roulette_times_played INTEGER DEFAULT 0,
-            roulette_amount_gambled FLOAT DEFAULT 0,
-            roulette_times_won INTEGER DEFAULT 0,
-            roulette_amount_won FLOAT DEFAULT 0,
-            roulette_relative_won FLOAT DEFAULT 0
-        )`, (err) => {
+        // Create User table
+        const createTableSQL = `CREATE TABLE IF NOT EXISTS User (${userColumns.map(col => `${col.name} ${col.type}`).join(', ')})`;
+            
+        this.db.run(createTableSQL, (err) => {
             if (err) {
                 console.error(err.message);
             } else {
@@ -61,7 +72,8 @@ class Database {
                 this.updateSchema();
             }
         });
-    
+        
+        
         this.db.run(`CREATE TABLE IF NOT EXISTS Pokemon (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id VARCHAR,
@@ -93,6 +105,7 @@ class Database {
             }
         });
 
+        // Create ServerRoles table
         this.db.run(`CREATE TABLE IF NOT EXISTS ServerRoles (
             server_id VARCHAR PRIMARY KEY,
             role_name VARCHAR NOT NULL,
@@ -105,6 +118,7 @@ class Database {
             }
         });
 
+        // Create GameUID table
         this.db.run(`CREATE TABLE IF NOT EXISTS GameUID (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id VARCHAR NOT NULL,
@@ -135,57 +149,20 @@ class Database {
                 console.log('Created the commandConfig table.');
             }
         });
-        
     }    
 
     updateSchema() {
-        const columnsToAdd = [
-            { name: 'dinonuggies', type: 'INTEGER', defaultValue: 0 },
-            { name: 'dinonuggies_last_claimed', type: 'DATETIME', defaultValue: 'NULL' },
-            { name: 'dinonuggies_claim_streak', type: 'INTEGER', defaultValue: 0 },
-            { name: 'multiplier_amount_level', type: 'INTEGER', defaultValue: 1 },
-            { name: 'multiplier_rarity_level', type: 'INTEGER', defaultValue: 1 },
-            { name: 'beki_level', type: 'INTEGER', defaultValue: 1 },
-            { name: 'birthdays', type: 'DATETIME', defaultValue: 'NULL' },
-            { name: 'ascension_level', type: 'INTEGER', defaultValue: 1 },
-            { name: 'heavenly_nuggies', type: 'INTEGER', defaultValue: 0 },
-            { name: 'nuggie_flat_multiplier_level', type: 'INTEGER', defaultValue: 1 },
-            { name: 'nuggie_streak_multiplier_level', type: 'INTEGER', defaultValue: 1 },
-            { name: 'nuggie_credits_multiplier_level', type: 'INTEGER', defaultValue: 1 },
-            { name: 'pity', type: 'INTEGER', defaultValue: 0 },
-            { name: 'slots_times_played', type: 'INTEGER', defaultValue: 0 },
-            { name: 'slots_amount_gambled', type: 'FLOAT', defaultValue: 0 },
-            { name: 'slots_times_won', type: 'INTEGER', defaultValue: 0 },
-            { name: 'slots_amount_won', type: 'FLOAT', defaultValue: 0 },
-            { name: 'slots_relative_won', type: 'FLOAT', defaultValue: 0 },
-            { name: 'blackjack_times_played', type: 'INTEGER', defaultValue: 0 },
-            { name: 'blackjack_amount_gambled', type: 'FLOAT', defaultValue: 0 },
-            { name: 'blackjack_times_won', type: 'INTEGER', defaultValue: 0 },
-            { name: 'blackjack_times_drawn', type: 'INTEGER', defaultValue: 0 },
-            { name: 'blackjack_times_lost', type: 'INTEGER', defaultValue: 0 },
-            { name: 'blackjack_amount_won', type: 'FLOAT', defaultValue: 0 },
-            { name: 'blackjack_relative_won', type: 'FLOAT', defaultValue: 0 },
-            { name: 'roulette_times_played', type: 'INTEGER', defaultValue: 0 },
-            { name: 'roulette_amount_gambled', type: 'FLOAT', defaultValue: 0 },
-            { name: 'roulette_times_won', type: 'INTEGER', defaultValue: 0 },
-            { name: 'roulette_amount_won', type: 'FLOAT', defaultValue: 0 },
-            { name: 'roulette_relative_won', type: 'FLOAT', defaultValue: 0 },
-            { name: 'roulette_streak', type: 'INTEGER', defaultValue: 0 },
-            { name: 'roulette_max_streak', type: 'INTEGER', defaultValue: 0 },
-            { name: 'blackjack_streak', type: 'INTEGER', defaultValue: 0 },
-            { name: 'blackjack_max_streak', type: 'INTEGER', defaultValue: 0 }
-        ];
-
+        const columnsToAdd = userColumns.filter(col => col.name !== 'id'); // Exclude primary key
         columnsToAdd.forEach(async (column) => {
             try {
                 const columnExists = await this.checkIfColumnExists('User', column.name);
                 if (!columnExists) {
-                    const addColumnQuery = `ALTER TABLE User ADD COLUMN ${column.name} ${column.type} DEFAULT ${column.defaultValue}`;
+                    const addColumnQuery = `ALTER TABLE User ADD COLUMN ${column.name} ${column.type}`;
                     this.db.run(addColumnQuery, (err) => {
                         if (err) {
                             console.error(`Failed to add column ${column.name}:`, err.message);
                         } else {
-                            console.log(`Column ${column.name} added successfully.`);
+                        console.log(`Column ${column.name} added successfully.`);
                         }
                     });
                 }
@@ -263,10 +240,7 @@ class Database {
     }
 
     async createUser(userId) {
-        //theregottabeabetterwaytodothis.png
-        const query = `
-        INSERT INTO User (id, credits, bitcoin, last_bought_price, last_bought_amount, total_bought_price, total_bought_amount, total_sold_price, total_sold_amount, dinonuggies, dinonuggies_last_claimed, dinonuggies_claim_streak, multiplier_amount_level, multiplier_rarity_level, beki_level, birthdays, ascension_level, heavenly_nuggies, nuggie_flat_multiplier_level, nuggie_streak_multiplier_level, nuggie_credits_multiplier_level, pity, slots_times_played, slots_amount_gambled, slots_times_won, slots_amount_won, slots_relative_won, blackjack_times_played, blackjack_amount_gambled, blackjack_times_won, blackjack_times_drawn, blackjack_times_lost, blackjack_amount_won, blackjack_relative_won, roulette_times_played, roulette_amount_gambled, roulette_times_won, roulette_amount_won, roulette_relative_won, roulette_streak, roulette_max_streak, blackjack_streak, blackjack_max_streak)
-        VALUES (?, 10000, 0, 0, 0, 0, 0, 0, 0, 0, NULL, 0, 1, 1, 1, ?, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)`
+        const query = `INSERT INTO User (id) VALUES (?)`;
 
         try {
             await this.executeQuery(query, [userId]);
