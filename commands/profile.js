@@ -247,6 +247,8 @@ class Profile extends Command {
 **Net Winnings:** ${format(user.blackjack_amount_won - user.blackjack_amount_gambled)}
 **Relative Amount Won:** ${format(user.blackjack_relative_won, true)} bets
 **Relative Net Winnings:** ${format(user.blackjack_relative_won - user.blackjack_times_played, true)} bets
+**Current Streak:** ${user.blackjack_streak}
+**Max Streak:** ${user.blackjack_max_streak}
 
 ### Roulette
 **Times Played:** ${user.roulette_times_played}
