@@ -1,3 +1,5 @@
+const { log, logError } = require('./utils/log');
+
 const { GatewayIntentBits } = require("discord.js");
 const { config } = require("dotenv");
 const { Silverwolf } = require("./classes/silverwolf");
@@ -6,15 +8,15 @@ const { Silverwolf } = require("./classes/silverwolf");
 config();
 
 if(!process.env.TOKEN) {
-    console.error("No token provided");
+    logError("No token provided");
     process.exit(1);
 }
 
 const TOKEN = process.env.TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 
-console.log("TOKEN: ", TOKEN);
-console.log("CLIENT_ID: ", CLIENT_ID);
+log("TOKEN: ", TOKEN);
+log("CLIENT_ID: ", CLIENT_ID);
 
 const silverwolf = new Silverwolf(TOKEN, {
     intents: [

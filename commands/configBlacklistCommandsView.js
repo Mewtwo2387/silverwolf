@@ -1,5 +1,6 @@
 const { DevCommand } = require('./classes/devcommand.js');
 const Discord = require('discord.js');
+const { logError } = require('../utils/log');
 
 class GetBlacklistedCommands extends DevCommand {
     constructor(client) {
@@ -48,7 +49,7 @@ class GetBlacklistedCommands extends DevCommand {
                 ]
             });
         } catch (err) {
-            console.error('Failed to retrieve blacklisted commands:', err);
+            logError('Failed to retrieve blacklisted commands:', err);
 
             // Send an error message
             await interaction.editReply({

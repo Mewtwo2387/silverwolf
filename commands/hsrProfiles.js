@@ -2,6 +2,7 @@ const { Command } = require('./classes/command.js');
 const fetch = require('node-fetch');
 const path = require('path');
 const fs = require('fs');
+const { logError } = require('../utils/log');
 
 const hsrAvatars = path.join(__dirname, '../data/hsrAvartars.json'); // Path to your local avatar data
 const hsrCharacters = path.join(__dirname, '../data/hsrCharacters.json'); // Path to character data
@@ -36,7 +37,7 @@ class HsrProfile extends Command {
         try {
             const response = await fetch(url, { headers });
             if (!response.ok) {
-                console.error(`HTTP Error Response: Status ${response.status} ${response.statusText}`);
+                logError(`HTTP Error Response: Status ${response.status} ${response.statusText}`);
                 await interaction.editReply({ content: `Failed to fetch data: HTTP status ${response.status}. Please contact mystichunterz for assistance.`, ephemeral: true });
                 return;
             }
@@ -127,7 +128,7 @@ class HsrProfile extends Command {
 
             await interaction.editReply({ embeds: [embed] });
         } catch (error) {
-            console.error('Error fetching data from Honkai Star Rail API:', error);
+            logError('Error fetching data from Honkai Star Rail API:', error);
             await interaction.editReply({ content: 'Failed to fetch data from Honkai Star Rail API. Please contact mystichunterz for assistance.', ephemeral: true });
         }
     }

@@ -1,5 +1,6 @@
 const { Command } = require('./classes/command.js');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { logError } = require('../utils/log');
 
 class AvatarCommand extends Command {
     constructor(client) {
@@ -46,7 +47,7 @@ class AvatarCommand extends Command {
                     avatarUrl = user.displayAvatarURL({ dynamic: true, format: 'png', size: 4096 });
                     title = `Global avatar of ${user.username} (user not found in this server)`;
                 } else {
-                    console.error('An error occurred while fetching the member:', error);
+                    logError('An error occurred while fetching the member:', error);
                     return interaction.reply('An error occurred while fetching the avatar.');
                 }
             }

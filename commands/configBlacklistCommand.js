@@ -1,5 +1,6 @@
 const { DevCommand } = require('./classes/devcommand.js');
 const Discord = require('discord.js');
+const { logError } = require('../utils/log');
 
 class BlacklistCommand extends DevCommand {
     constructor(client) {
@@ -71,7 +72,7 @@ class BlacklistCommand extends DevCommand {
                 });
             }
         } catch (err) {
-            console.error('Failed to update command blacklist:', err);
+            logError('Failed to update command blacklist:', err);
             
             // Send an error message
             await interaction.editReply({

@@ -7,6 +7,7 @@ Credits:
 
 const { Command } = require('./classes/command.js');
 const Canvas = require('canvas');
+const { log, logError } = require('../utils/log');
 
 class FakeQuote extends Command {
     constructor(client){
@@ -74,12 +75,12 @@ class FakeQuote extends Command {
 
             const canvas = Canvas.createCanvas(1024, 512);
             const ctx = canvas.getContext('2d');
-            console.log("Created canvas");
+            log("Created canvas");
 
             // Set background color
             ctx.fillStyle = backgroundColor === 'white' ? '#ffffff' : '#000000';
             ctx.fillRect(0, 0, 1024, 512);
-            console.log(`Filled ${backgroundColor} background`);
+            log(`Filled ${backgroundColor} background`);
 
             // Load and draw pfp
             const pfpImage = await Canvas.loadImage(pfp);
@@ -97,7 +98,7 @@ class FakeQuote extends Command {
                     data[i + 2] = avg; // Blue
                 }
                 ctx.putImageData(imageData, 0, 0);
-                console.log("Converted pfp to black and white");
+                log("Converted pfp to black and white");
             } else if (profileColor === 'inverted') {
             // draw inverted pfp
                 ctx.drawImage(pfpImage, 0, 0, 512, 512);
@@ -111,7 +112,7 @@ class FakeQuote extends Command {
                     data[i + 2] = 255 - data[i + 2]; // Blue
                 }
                 ctx.putImageData(imageData, 0, 0);
-                console.log("Inverted pfp");
+                log("Inverted pfp");
             } else if (profileColor === 'sepia') {
             // draw sepia pfp
                 ctx.drawImage(pfpImage, 0, 0, 512, 512);
@@ -126,51 +127,50 @@ class FakeQuote extends Command {
                     data[i + 2] = avg; // Blue
                 }
                 ctx.putImageData(imageData, 0, 0);
-                console.log("Drew sepia pfp");
+                log("Drew sepia pfp");
 
             } else if (profileColor === 'nightmare') {
-// Draw pfp with a lighter red tint and significantly increased colorful static-like noise
-ctx.drawImage(pfpImage, 0, 0, 512, 512);
-const imageData = ctx.getImageData(0, 0, 512, 512);
-const data = imageData.data;
+                // Draw pfp with a lighter red tint and significantly increased colorful static-like noise
+                ctx.drawImage(pfpImage, 0, 0, 512, 512);
+                const imageData = ctx.getImageData(0, 0, 512, 512);
+                const data = imageData.data;
 
-// Step 1: Invert colors
-for (let i = 0; i < data.length; i += 4) {
-    data[i] = 255 - data[i];       // Invert Red channel
-    data[i + 1] = 255 - data[i + 1]; // Invert Green channel
-    data[i + 2] = 255 - data[i + 2]; // Invert Blue channel
-    // Alpha channel remains the same
-}
+                // Step 1: Invert colors
+                for (let i = 0; i < data.length; i += 4) {
+                    data[i] = 255 - data[i];       // Invert Red channel
+                    data[i + 1] = 255 - data[i + 1]; // Invert Green channel
+                    data[i + 2] = 255 - data[i + 2]; // Invert Blue channel
+                    // Alpha channel remains the same
+                }
 
-// Step 2: Apply a lighter red tint with increased colorful static-like noise
-for (let i = 0; i < data.length; i += 4) {
-    // Apply a lighter red tint
-    data[i] = Math.min(data[i] + 100, 255); // Cap Red channel at maximum value
-    data[i + 1] = data[i + 1] * 0.5; // Slightly decrease Green channel
-    data[i + 2] = data[i + 2] * 0.5; // Slightly decrease Blue channel
+                // Step 2: Apply a lighter red tint with increased colorful static-like noise
+                for (let i = 0; i < data.length; i += 4) {
+                    // Apply a lighter red tint
+                    data[i] = Math.min(data[i] + 100, 255); // Cap Red channel at maximum value
+                    data[i + 1] = data[i + 1] * 0.5; // Slightly decrease Green channel
+                    data[i + 2] = data[i + 2] * 0.5; // Slightly decrease Blue channel
 
-    // Add significantly increased colorful static-like noise
-    if (Math.random() < 0.4) { // 40% chance to apply noise to each pixel
-        // Generate random values for noise in each channel
-        const noiseRed = Math.floor(Math.random() * 120) - 60; // Noise range for Red: -90 to +90
-        const noiseGreen = Math.floor(Math.random() * 120) - 60; // Noise range for Green: -90 to +90
-        const noiseBlue = Math.floor(Math.random() * 120) - 60; // Noise range for Blue: -90 to +90
+                    // Add significantly increased colorful static-like noise
+                    if (Math.random() < 0.4) { // 40% chance to apply noise to each pixel
+                        // Generate random values for noise in each channel
+                        const noiseRed = Math.floor(Math.random() * 120) - 60; // Noise range for Red: -90 to +90
+                        const noiseGreen = Math.floor(Math.random() * 120) - 60; // Noise range for Green: -90 to +90
+                        const noiseBlue = Math.floor(Math.random() * 120) - 60; // Noise range for Blue: -90 to +90
 
-        // Apply noise to each channel independently
-        data[i] = Math.min(Math.max(data[i] + noiseRed, 0), 255); // Red channel
-        data[i + 1] = Math.min(Math.max(data[i + 1] + noiseGreen, 0), 255); // Green channel
-        data[i + 2] = Math.min(Math.max(data[i + 2] + noiseBlue, 0), 255); // Blue channel
-    }
-}
+                        // Apply noise to each channel independently
+                        data[i] = Math.min(Math.max(data[i] + noiseRed, 0), 255); // Red channel
+                        data[i + 1] = Math.min(Math.max(data[i + 1] + noiseGreen, 0), 255); // Green channel
+                        data[i + 2] = Math.min(Math.max(data[i + 2] + noiseBlue, 0), 255); // Blue channel
+                    }
+                }
 
-// Step 3: Draw the modified image data back onto the canvas
-ctx.putImageData(imageData, 0, 0);
-console.log("Applied color inversion, lighter red tint, and increased colorful static-like noise to pfp");
-            }
-             else {
+                // Step 3: Draw the modified image data back onto the canvas
+                ctx.putImageData(imageData, 0, 0);
+                log("Applied color inversion, lighter red tint, and increased colorful static-like noise to pfp");
+            } else {
                 // Normal pfp
                 ctx.drawImage(pfpImage, 0, 0, 512, 512);
-                console.log("Drew normal pfp");
+                log("Drew normal pfp");
             }
 
             // text on right
@@ -192,7 +192,7 @@ console.log("Applied color inversion, lighter red tint, and increased colorful s
 
             ctx.fillStyle = gradient;
             ctx.fillRect(384, 0, 128, 512);
-            console.log("Filled gradient");
+            log("Filled gradient");
 
             ctx.fillStyle = textColor;
 
@@ -222,20 +222,20 @@ console.log("Applied color inversion, lighter red tint, and increased colorful s
             lines.forEach((line, index) => {
                 ctx.fillText(`${line}`, 768, textY + (index * lineHeight));
             });
-            console.log("Drew quote");
+            log("Drew quote");
 
             // Draw nickname
             ctx.fillStyle = textColor;
             ctx.font = '36px sans-serif';
             ctx.fillText(`- ${nickname}`, 768, textY + textHeight + nicknameMargin);
-            console.log("Drew nickname");
+            log("Drew nickname");
 
             // Draw username if different from nickname
             if (username !== nickname) {
                 ctx.fillStyle = '#808080';
                 ctx.font = '24px sans-serif';
                 ctx.fillText(`@${username}`, 768, textY + textHeight + nicknameMargin + usernameMargin);
-                console.log("Drew username");
+                log("Drew username");
             }
 
             // footer
@@ -248,7 +248,7 @@ console.log("Applied color inversion, lighter red tint, and increased colorful s
             // Edit the message and send the image
             await interaction.editReply({ content: null, files: [canvas.toBuffer()] });
         }catch(error){
-            console.error(error);
+            logError(error);
             await interaction.editReply("Error: " + error.message);
         }
     }

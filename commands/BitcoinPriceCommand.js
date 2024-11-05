@@ -1,6 +1,7 @@
 const Discord = require('discord.js');
 const { Command } = require('./classes/command.js'); // Adjust the path if necessary
 const { Bitcoin } = require('../classes/bitcoin.js'); 
+const { log, logError } = require('../utils/log');
 
 class BitcoinPriceCommand extends Command {
     constructor(client) {
@@ -31,13 +32,15 @@ class BitcoinPriceCommand extends Command {
                 });
             }
 
+            log(`Current Bitcoin price: ${data.bpi.USD.rate} ${data.bpi.USD.symbol}`);
+
             // Add all fields to the embed using addFields
             embed.addFields(fields);
             
             // Send the embed message
             await interaction.editReply({ embeds: [embed] });
         } catch (error) {
-            console.error('Error fetching Bitcoin price:', error);
+            logError('Error fetching Bitcoin price:', error);
             if (!interaction.replied) {
                 await interaction.editReply({ content: 'Failed to retrieve Bitcoin price. Please try again later.', ephemeral: true });
             }

@@ -111,7 +111,7 @@ All wrongs reserved.
             try{
                 command.execute(interaction);
             }catch(error){
-                console.error(error);
+                logError(error);
             }
         }
     }
@@ -176,7 +176,7 @@ All wrongs reserved.
                                 // After generating the quote or image...
                                 await sentMessage.edit({ content: null, files: [content.files[0]] });                                                              
                             } else {
-                                console.error('No file or content to send in the reply.');
+                                logError('No file or content to send in the reply.');
                             }
                         }
                     };            
@@ -258,7 +258,7 @@ All wrongs reserved.
                     log(`Successfully registered commands for guild ${guildId}:`, response);
                 }
             } catch (error) {
-                console.error(`Error registering commands for guild ${guildId}:`, error);
+                logError(`Error registering commands for guild ${guildId}:`, error);
             }
         }
     
@@ -302,7 +302,7 @@ All wrongs reserved.
             this.games = json.games || [];
             log("Games loaded from status.json:", this.games);
         } catch (error) {
-            console.error("Error loading games from status.json:", error);
+            logError("Error loading games from status.json:", error);
         }
     }
 

@@ -1,5 +1,6 @@
 const { AdminCommand } = require("./classes/admincommand.js");
 const { TextChannel, EmbedBuilder } = require('discord.js');
+const { logError } = require('../utils/log');
 
 class Say extends AdminCommand {
     constructor(client) {
@@ -46,7 +47,7 @@ class Say extends AdminCommand {
                             targetChannels.push(channel);
                         }
                     } catch (error) {
-                        console.error(`Failed to fetch channel ${channelId}: ${error}`);
+                        logError(`Failed to fetch channel ${channelId}: ${error}`);
                     }
                 }
             }
@@ -71,7 +72,7 @@ class Say extends AdminCommand {
                 await channel.send(messageOptions);
                 successCount++;
             } catch (error) {
-                console.error(`Failed to send message to channel ${channel.id}: ${error}`);
+                logError(`Failed to send message to channel ${channel.id}: ${error}`);
                 failedChannels.push(`<#${channel.id}>`);
             }
         }

@@ -1,3 +1,5 @@
+const { log } = require('./log');
+
 const MAX_LEVEL = 100;
 
 // get cost from level to level + 1
@@ -32,7 +34,7 @@ function getTotalUpgradeCost(level){
 
 function dump(){
     for (let i = 1; i < MAX_LEVEL; i++){
-        console.log(`Level ${String(i).padStart(2, '0')} -> ${String(i + 1).padStart(2, '0')} cost: ${String(getNextUpgradeCost(i)).padStart(15, ' ')} Total cost: ${String(getTotalUpgradeCost(i + 1)).padStart(7, ' ')}`);
+        log(`Level ${String(i).padStart(2, '0')} -> ${String(i + 1).padStart(2, '0')} cost: ${String(getNextUpgradeCost(i)).padStart(15, ' ')} Total cost: ${String(getTotalUpgradeCost(i + 1)).padStart(7, ' ')}`);
     }
 }
 

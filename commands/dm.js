@@ -1,4 +1,5 @@
 const { AdminCommand } = require('./classes/admincommand.js');
+const { logError } = require('../utils/log');
 
 class SayDM extends AdminCommand {
     constructor(client) {
@@ -30,7 +31,7 @@ class SayDM extends AdminCommand {
             await targetUser.send(messageContent);
             await interaction.editReply(`Message sent to ${targetUser.tag}.`)
         } catch (error) {
-            console.error('Error sending DM:', error);
+            logError('Error sending DM:', error);
             await interaction.editReply('Failed to send the DM.');
         }
     }
