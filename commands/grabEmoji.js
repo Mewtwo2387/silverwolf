@@ -2,6 +2,7 @@ const { Command } = require('./classes/command.js');
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js'); 
 const axios = require('axios');
 const sharp = require('sharp'); 
+const { logError } = require('../utils/log');
 
 class EmojiToFileCommand extends Command {
     constructor(client) {
@@ -67,7 +68,7 @@ class EmojiToFileCommand extends Command {
 
             await interaction.editReply({ embeds: [embed], files: [attachment] });
         } catch (error) {
-            console.error(`Error processing emoji: ${error}`);
+            logError(`Error processing emoji: ${error}`);
             await interaction.editReply({
                 content: 'There was an error processing the emoji. Please check if the emoji exists and the format is valid.',
                 ephemeral: true

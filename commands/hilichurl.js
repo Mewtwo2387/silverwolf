@@ -2,6 +2,7 @@ const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+const { logError } = require('../utils/log');
 
 class Hilichurl extends Command {
     constructor(client) {
@@ -28,7 +29,7 @@ class Hilichurl extends Command {
             // Respond with the embed
             await interaction.editReply({ content: randomGif });
         } catch (error) {
-            console.error('Error fetching Hilichurl GIF:', error);
+            logError('Error fetching Hilichurl GIF:', error);
             await interaction.editReply({ content: 'Sorry, I couldn’t fetch a Hilichurl GIF. Please try again later.', ephemeral: true });
         }
     }

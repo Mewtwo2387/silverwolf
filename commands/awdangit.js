@@ -1,5 +1,6 @@
 const { Command } = require('./classes/command.js');
 const { EmbedBuilder } = require('discord.js');
+const { log } = require('../utils/log');
 
 class Awdangit extends Command {
     constructor(client) {
@@ -11,7 +12,10 @@ class Awdangit extends Command {
             const roleId = await this.client.db.getServerRole(interaction.guild.id, "girl");
             const role = interaction.member.guild.roles.cache.find(role => role.id === roleId);
 
+            log(`${interaction.user.username} became a girl`);
+
             if (roleId == null) {
+                logError(`Girl role is not set up for ${interaction.guild.name}`);
                 await interaction.editReply({
                     embeds: [
                         new EmbedBuilder()
@@ -33,6 +37,8 @@ class Awdangit extends Command {
                 ]
             })
         } else {
+            log(`${interaction.user.username} earned $1M`);
+            
             await interaction.editReply({
                 embeds: [
                     new EmbedBuilder()

@@ -1,5 +1,6 @@
 const { Command } = require('./classes/command.js');
 const { EmbedBuilder } = require('discord.js');
+const { log, logError } = require('../utils/log');
 
 class SetBirthdayCommand extends Command {
     constructor(client) {
@@ -34,14 +35,14 @@ class SetBirthdayCommand extends Command {
     async run(interaction) {
         try {
             const userId = interaction.user.id;
-            console.log(`User ${userId} triggered /set_birthday command.`);
+            log(`User ${userId} triggered /set_birthday command.`);
 
             const day = interaction.options.getInteger('day');
             const month = interaction.options.getInteger('month');
             const year = interaction.options.getInteger('year');
             const timezone = interaction.options.getString('timezone') || '+00:00'; // Default to UTC if not provided
 
-            console.log(`Received inputs: day=${day}, month=${month}, year=${year}, timezone=${timezone}`);
+            log(`Received inputs: day=${day}, month=${month}, year=${year}, timezone=${timezone}`);
 
             // Validate the inputs
             if (!day || !month || !year) {
@@ -49,18 +50,18 @@ class SetBirthdayCommand extends Command {
             }
 
             const birthday = new Date(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00${timezone}`);
-            console.log(`Constructed birthday: ${birthday.toISOString()}`);
+            log(`Constructed birthday: ${birthday.toISOString()}`);
 
             if (isNaN(birthday.getTime())) {
                 throw new Error("Invalid date constructed. Please check the inputs.");
             }
 
             // Log before setting the user birthday in the database
-            console.log(`Attempting to set birthday for user ${userId} to ${birthday.toISOString()}.`);
+            log(`Attempting to set birthday for user ${userId} to ${birthday.toISOString()}.`);
 
             // Use this.client.db to set the birthday
             const result = await this.client.db.setUserAttr(userId, 'birthdays', birthday.toISOString());
-            console.log(`Successfully updated birthday for user ${userId}.`, result);
+            log(`Successfully updated birthday for user ${userId}.`, result);
 
             // Send confirmation message
             const embed = new EmbedBuilder()
@@ -71,7 +72,7 @@ class SetBirthdayCommand extends Command {
             await interaction.editReply({ embeds: [embed] });
         } catch (error) {
             // Log the detailed error
-            console.error(`Error setting birthday for user ${interaction.user.id}:`, error);
+            logError(`Error setting birthday for user ${interaction.user.id}:`, error);
 
             await interaction.editReply(`Error setting birthday: ${error.message}`);
         }

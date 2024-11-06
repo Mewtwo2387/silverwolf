@@ -4,6 +4,7 @@ const { format } = require('../utils/math.js');
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 const marriageBenefits = require('../utils/marriageBenefits.js');
+const { logError } = require('../utils/log');
 
 const DAY_LENGTH = 24 * 60 * 60 * 1000;
 const HOUR_LENGTH = 60 * 60 * 1000;
@@ -238,7 +239,7 @@ class Claim extends Command {
                 await this.client.db.addUserAttr(interaction.user.id, 'dinonuggies_claim_streak', 1);
             }
         } catch (error) {
-            console.error('Error claiming dinonuggies:', error);
+            logError('Error claiming dinonuggies:', error);
             await interaction.editReply({ content: 'Failed to claim dinonuggies.', ephemeral: true });
         }
     }

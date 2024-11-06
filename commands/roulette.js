@@ -21,6 +21,7 @@ class Roulette extends Command {
                     { name: 'Number', value: 'number' },
                     { name: 'Red', value: 'red' },
                     { name: 'Black', value: 'black' },
+                    { name: 'Green', value: 'green' },
                     { name: 'Even', value: 'even' },
                     { name: 'Odd', value: 'odd' }
                 ]
@@ -39,6 +40,8 @@ class Roulette extends Command {
         const betType = interaction.options.getString('bet_type');
         const betValue = interaction.options.getInteger('bet_value');
         const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
+        let streak = await this.client.db.getUserAttr(interaction.user.id, 'roulette_streak');
+        let maxStreak = await this.client.db.getUserAttr(interaction.user.id, 'roulette_max_streak');
 
         if (amount < 0) {
             await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
@@ -68,41 +71,56 @@ class Roulette extends Command {
         const wheelResult = this.spinWheel();
         const colorResult = this.getColor(wheelResult);
 
-        let winnings = 0;
+        let multi = 0;
         let resultMessage = `The wheel landed on **${wheelResult} ${colorResult}**.\n`;
 
         // Determine if the bet was successful
         if (betType === 'number' && parseInt(betValue) === wheelResult) {
-            winnings = amount * 38;
-            resultMessage += `You correctly guessed the number!`;
+            multi = 38 * Math.pow(1.06, streak);
+            streak++;
+            resultMessage += `You correctly guessed the number! You are now on a streak of ${streak}`;
         } else if (betType === 'red' && colorResult === 'red') {
-            winnings = amount * 2.1;
-            resultMessage += `You correctly guessed red!`;
+            multi = 2 * Math.pow(1.06, streak);
+            streak++;
+            resultMessage += `You correctly guessed red! You are now on a streak of ${streak}`;
         } else if (betType === 'black' && colorResult === 'black') {
-            winnings = amount * 2.1; 
-            resultMessage += `You correctly guessed black!`;
-        } else if (betType === 'even' && wheelResult !== 0 && wheelResult % 2 === 0) {
-            winnings = amount * 2.1;
-            resultMessage += `You correctly guessed even!`;
+            multi = 2 * Math.pow(1.06, streak);
+            streak++;
+            resultMessage += `You correctly guessed black! You are now on a streak of ${streak}`;
+        } else if (betType === 'green' && colorResult === 'green') {
+            multi = 38 * Math.pow(1.06, streak);
+            streak++;
+            resultMessage += `You correctly guessed green! You are now on a streak of ${streak}`;
+        } else if (betType === 'even' && wheelResult % 2 === 0) {
+            multi = 2 * Math.pow(1.06, streak);
+            streak++;
+            resultMessage += `You correctly guessed even! You are now on a streak of ${streak}`;
         } else if (betType === 'odd' && wheelResult % 2 !== 0) {
-            winnings = amount * 2.1;
-            resultMessage += `You correctly guessed odd!`;
+            multi = 2 * Math.pow(1.06, streak);
+            streak++;
+            resultMessage += `You correctly guessed odd! You are now on a streak of ${streak}`;
         } else {
+            streak = 0;
             resultMessage += `You guessed wrongly. Skill issue.`;
         }
 
         // Apply marriage benefits
-        winnings *= await marriageBenefits(this.client, interaction.user.id);
+        multi *= await marriageBenefits(this.client, interaction.user.id);
+        const winnings = multi * amount;
         await this.client.db.addUserAttr(interaction.user.id, 'roulette_times_played', 1);
         await this.client.db.addUserAttr(interaction.user.id, 'roulette_amount_gambled', amount);
-        await this.client.db.addUserAttr(interaction.user.id, 'roulette_times_won', winnings > 0 ? 1 : 0);
+        await this.client.db.addUserAttr(interaction.user.id, 'roulette_times_won', multi > 0 ? 1 : 0);
         await this.client.db.addUserAttr(interaction.user.id, 'roulette_amount_won', winnings);
-        await this.client.db.addUserAttr(interaction.user.id, 'roulette_relative_won', winnings / amount);
+        await this.client.db.addUserAttr(interaction.user.id, 'roulette_relative_won', multi);
         await this.client.db.addUserAttr(interaction.user.id, 'credits', winnings - amount);
+        await this.client.db.setUserAttr(interaction.user.id, 'roulette_streak', streak);
+        if (streak > maxStreak) {
+            await this.client.db.setUserAttr(interaction.user.id, 'roulette_max_streak', streak);
+        }
 
         await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
-            .setColor(winnings > 0 ? '#00AA00' : '#AA0000')
-            .setTitle(`You bet ${format(amount)} mystic credits and ${winnings > 0 ? `won ${format(winnings)} mystic credits!` : 'lost!'}\n`)
+            .setColor(multi > 0 ? '#00AA00' : '#AA0000')
+            .setTitle(`You bet ${format(amount)} mystic credits and ${multi > 0 ? `won ${format(winnings)} mystic credits!` : 'lost!'}\n`)
             .setDescription(resultMessage)
         ]});
     }

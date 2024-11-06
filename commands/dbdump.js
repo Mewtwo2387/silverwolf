@@ -2,6 +2,7 @@ const { DevCommand } = require("./classes/devcommand.js");
 const Discord = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+const { logError } = require('../utils/log');
 
 class DBDump extends DevCommand {
     constructor(client) {
@@ -57,7 +58,7 @@ class DBDump extends DevCommand {
                 this.cleanupFile(file.attachment);
             }
         } catch (error) {
-            console.error(error);
+            logError(error);
             await interaction.followUp({ content: 'An error occurred while executing the command.', ephemeral: true });
         }
     }
@@ -72,7 +73,7 @@ class DBDump extends DevCommand {
         try {
             fs.unlinkSync(filePath);
         } catch (err) {
-            console.error(`Failed to delete file ${filePath}:`, err);
+            logError(`Failed to delete file ${filePath}:`, err);
         }
     }
 }

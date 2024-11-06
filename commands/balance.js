@@ -1,6 +1,7 @@
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 const { format } = require('../utils/math.js');
+const { log } = require('../utils/log');
 
 class Balance extends Command {
     constructor(client){
@@ -19,7 +20,7 @@ class Balance extends Command {
         const dinonuggies = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggies');
         const dinonuggies_streak = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggies_claim_streak');
         const heavenly_nuggies = await this.client.db.getUserAttr(interaction.user.id, 'heavenly_nuggies');
-        console.log(credits);
+        log(`${interaction.user.username} have ${format(credits)} mystic credits, ${bitcoin} bitcoin, ${format(dinonuggies)} dinonuggies, and ${format(heavenly_nuggies)} heavenly nuggies`);
         await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
             .setColor('#00AA00')
             .setTitle(`You have ${format(credits)} mystic credits, ${bitcoin} bitcoin, ${format(dinonuggies)} dinonuggies, and ${format(heavenly_nuggies)} heavenly nuggies`)

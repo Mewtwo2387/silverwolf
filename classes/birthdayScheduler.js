@@ -1,5 +1,6 @@
 const cron = require('node-cron');
 const { EmbedBuilder } = require('discord.js');
+const { log, logError } = require('../utils/log');
 require('dotenv').config();  // Load the environment variables
 
 class BirthdayScheduler {
@@ -15,18 +16,18 @@ class BirthdayScheduler {
             const utcDay = now.getUTCDate().toString().padStart(2, '0');
             const utcHour = now.getUTCHours().toString().padStart(2, '0');
             const todayHour = `${utcMonth}-${utcDay}T${utcHour}`;  // MM-DDTHH format
-            console.log(`Checking for birthdays on ${todayHour} (UTC)`);
+            log(`Checking for birthdays on ${todayHour} (UTC)`);
 
             try {
                 const birthdays = await this.client.db.getUsersWithBirthday(todayHour);
-                console.log('Users with birthdays this hour:', birthdays);
+                log('Users with birthdays this hour:', birthdays);
 
                 if (birthdays.length > 0) {
                     const channelIds = process.env.BIRTHDAY_CHANNELS.split(',');  // Get all channel IDs from .env
                     for (const channelId of channelIds) {
                         const channel = this.client.channels.cache.get(channelId.trim());  // Trim spaces and get the channel
                         if (!channel) {
-                            console.error(`Channel ID ${channelId} not found or invalid.`);
+                            logError(`Channel ID ${channelId} not found or invalid.`);
                             continue;
                         }
 
@@ -36,16 +37,16 @@ class BirthdayScheduler {
                                 .setDescription(`Today is <@${user.id}>'s birthday! Let's all wish them a great day! 🥳`)
                                 .setColor(0x00FF00);
 
-                            console.log(`Sending birthday message for ${user.id} to channel ${channelId}`);
+                            log(`Sending birthday message for ${user.id} to channel ${channelId}`);
                             await channel.send({ embeds: [birthdayEmbed] });
                         }
                     }
                 } else {
-                    console.log('No birthdays this hour.');
+                    log('No birthdays this hour.');
                 }
-                console.log('Birthday check complete.');
+                log('Birthday check complete.');
             } catch (error) {
-                console.error('Error during birthday check:', error);
+                logError('Error during birthday check:', error);
             }
         });
     }

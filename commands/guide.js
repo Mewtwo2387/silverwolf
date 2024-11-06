@@ -1,6 +1,7 @@
 const { Command } = require('./classes/command.js');
 const { EmbedBuilder} = require('discord.js'); 
 const Discord = require('discord.js');
+const { logError } = require('../utils/log');
 
 class Guide extends Command {
     constructor(client) {
@@ -33,7 +34,7 @@ class Guide extends Command {
             // Respond with the embed
             await interaction.editReply({ embeds: [embed] });
         } catch (error) {
-            console.error('Error fetching Dinonuggies guide:', error);
+            logError('Error fetching Dinonuggies guide:', error);
             await interaction.editReply({ content: 'Sorry, I couldn’t fetch the Dinonuggies guide. Please try again later.', ephemeral: true });
         }
     }

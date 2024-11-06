@@ -1,8 +1,10 @@
+const { log } = require('./log');
+
 // divorceSettlement.js
 
 async function divorceSettlement(client, initiatorId, targetId) {
     // Fetch current dinonuggies and credits for both users
-    console.log('Fetching assets for users:', initiatorId, targetId);
+    log('Fetching assets for users:', initiatorId, targetId);
     const initiatorDinonuggies = await client.db.getUserAttr(initiatorId, 'dinonuggies');
     const initiatorCredits = await client.db.getUserAttr(initiatorId, 'credits');
     const targetDinonuggies = await client.db.getUserAttr(targetId, 'dinonuggies');
@@ -20,14 +22,14 @@ async function divorceSettlement(client, initiatorId, targetId) {
     const initiatorCreditsShare = totalCredits - targetCreditsShare;
 
     // Update the database with the new values
-    console.log('Updating database with the new split...');
+    log('Updating database with the new split...');
     await client.db.addUserAttr(targetId, 'dinonuggies', targetDinonuggiesShare - targetDinonuggies); // Add the difference
     await client.db.addUserAttr(initiatorId, 'dinonuggies', initiatorDinonuggiesShare - initiatorDinonuggies); // Add the difference
 
     await client.db.addUserAttr(targetId, 'credits', targetCreditsShare - targetCredits); // Add the difference
     await client.db.addUserAttr(initiatorId, 'credits', initiatorCreditsShare - initiatorCredits); // Add the difference
 
-    console.log('Divorce settlement completed successfully.');
+    log('Divorce settlement completed successfully.');
     return {
         initiator: {
             dinonuggies: initiatorDinonuggiesShare,
