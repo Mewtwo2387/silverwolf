@@ -2,6 +2,8 @@ const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 const { format } = require('../utils/math.js');
 const marriageBenefits = require('../utils/marriageBenefits.js');
+const fs = require('fs');
+const path = require('path');
 
 class Slots extends Command {
     constructor(client){
@@ -13,8 +15,11 @@ class Slots extends Command {
                 required: true
             }
         ]);
+        this.skins = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/config/skin/slots.json'), 'utf8'));
+        this.currentSkin = this.skins["christmas"]; // Set skin based on season
     }
 
+       
     async run(interaction){
         const amount = interaction.options.getInteger('amount');
         const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
@@ -25,26 +30,7 @@ class Slots extends Command {
             ]});
             return;
         }
-
-        // const smugs = [
-        //     {emote: "<:1yanfeismug:1136925353651228775>", value: 10},
-        //     {emote: "<:1silverwolfsmug1:1212343617113559051>", value: 8},
-        //     {emote: "<:1keqingsmug:1139794287337414766>", value: 6},
-        //     {emote: "<:4meltsmug:1141012813997932555>", value: 4},
-        //     {emote: "<:0mysticsmuguwu:1181410473695002634>", value: 2},
-        //     {emote: "<:1yanfeismug3:1181812629451317298>", value: 2},
-        //     {emote: "<:1gumsiefnay:1140883820795666463>", value: 2},
-        // ]
-
-        const smugs = [
-            {emote: "🎄"},
-            {emote: "🎁"},
-            {emote: "💝"},
-            {emote: "🎅"},
-            {emote: "🦌"},
-            {emote: "🍪"},
-            {emote: "☃"}
-        ]
+        const smugs = this.currentSkin.emotes;
 
         var results = [[], [], []];
 
