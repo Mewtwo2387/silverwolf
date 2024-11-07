@@ -1,0 +1,19 @@
+{
+    "currentSeason": "Normal",
+    "seasons": {
+        "Christmas": {
+            "handler": "ChristmasHandler",
+            "settings": {
+                "borderPath": "../data/images/1christmasBorder.png",
+                "snowOverlayPath": "../data/images/1christmasSnow.png",
+                "decoOverlayPath": "../data/images/1christmasDeco.png"
+            }
+        },
+        "Normal": {
+            "handler": "NormalHandler"
+        },
+        "Halloween": {
+            "handler": "HalloweenHandler"
+        }
+    }
+}
