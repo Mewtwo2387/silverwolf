@@ -11,8 +11,8 @@ function log(message) {
     }); // Log to file asynchronously
 }
 
-function logError(message) {
-    console.error(message);
+function logError(message, error = "") {
+    console.error(message, error);
     fs.appendFile(logFilePath, `${new Date().toISOString()} - ERROR: ${message}\n`, (err) => {
         if (err) {
             console.error("Failed to write to log file:", err);
