@@ -21,19 +21,34 @@ class Claim extends Command {
     }
 
     async formatReward(skinKey, amount, multiplier, gold, silver, bronze) {
-        const skin = this.currentSkin[skinKey];        
+        const skin = this.currentSkin[skinKey];
+        
+        // Round percentages to 1 decimal place
+        const goldPercentage = (gold * 100).toFixed(1);
+        const silverPercentage = (silver * 100).toFixed(1);
+        const bronzePercentage = (bronze * 100).toFixed(1);
+    
+        // Format footer with unique multipliers for each rarity
+        const formattedFooter = skin.footer
+            .replace(/{gold}/g, goldPercentage)
+            .replace(/{silver}/g, silverPercentage)
+            .replace(/{bronze}/g, bronzePercentage)
+            .replace(/{multiplier_gold}/g, multiplier.gold.toFixed(1))
+            .replace(/{multiplier_silver}/g, multiplier.silver.toFixed(1))
+            .replace(/{multiplier_bronze}/g, multiplier.bronze.toFixed(1));
+    
         return {
             amount: amount,
-            title: skin.title.replace("{amount}", amount).replace("{multiplier}", multiplier),
+            title: skin.title.replace("{amount}", amount).replace("{multiplier}", multiplier[skinKey].toFixed(1)),
             imageUrl: skin.imageUrl,
             colour: skin.colour,
-            footer: skin.footer.replace("{gold}", gold * 100)
-                                .replace("{silver}", silver * 100)
-                                .replace("{bronze}", bronze * 100)
-                                .replace("{multiplier}", multiplier),
+            footer: formattedFooter,
             thumbnail: skin.thumbnail
         };
-    };
+    }
+    
+    
+    
     
 
     async getBaseAmount(interaction, streak) {
@@ -53,21 +68,22 @@ class Claim extends Command {
         const multiplier = getMultiplierAmount(multiplier_amount_level);
         const { gold, silver, bronze } = getMultiplierChance(multiplier_rarity_level);
         log("claiming dinonuggies");
-        
+    
         if (rand < gold) {
             const amount = Math.ceil(await this.getBaseAmount(interaction, streak) * multiplier.gold);
-            return this.formatReward("gold", amount, multiplier.gold, gold, silver, bronze);
+            return this.formatReward("gold", amount, multiplier, gold, silver, bronze);
         } else if (rand < gold + silver) {
             const amount = Math.ceil(await this.getBaseAmount(interaction, streak) * multiplier.silver);
-            return this.formatReward("silver", amount, multiplier.silver, gold, silver, bronze);
+            return this.formatReward("silver", amount, multiplier, gold, silver, bronze);
         } else if (rand < gold + silver + bronze) {
             const amount = Math.ceil(await this.getBaseAmount(interaction, streak) * multiplier.bronze);
-            return this.formatReward("bronze", amount, multiplier.bronze, gold, silver, bronze);
+            return this.formatReward("bronze", amount, multiplier, gold, silver, bronze);
         } else {
             const amount = Math.ceil(await this.getBaseAmount(interaction, streak));
-            return this.formatReward("regular", amount, 1, gold, silver, bronze);
+            return this.formatReward("regular", amount, multiplier, gold, silver, bronze);
         }
-    };
+    }
+    
 
     async run(interaction) {
         try {

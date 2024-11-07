@@ -4,28 +4,28 @@
         "title": "Congratulations! You've claimed a golden dinonuggie!! {multiplier}x earned this claim for a total of {amount} dinonuggies!",
         "imageUrl": "https://media.discordapp.net/attachments/1168356994453885059/1301101446959468594/Xl7UV4y.png?ex=672340a6&is=6721ef26&hm=3c8f62666d10cfbf3a79d18901a390c42483800864a04a08c51417215a7775aa&=&format=webp&quality=lossless&width=876&height=1169",
         "colour": "#FFD700",
-        "footer": "Gold: {gold}% for {multiplier}x | Silver: {silver}% for {multiplier}x | Bronze: {bronze}% for {multiplier}x. Check upgrades with /upgrades",
+  "footer": "Gold: {gold}% for {multiplier_gold}x | Silver: {silver}% for {multiplier_silver}x | Bronze: {bronze}% for {multiplier_bronze}x. Check upgrades with /upgrades",
         "thumbnail": "https://drive.google.com/thumbnail?id=1oVDRweQoYLU6YfB01LWZpTFQiBS1fRRa"
         },
     "silver":{
         "title": "Congratulations! You've claimed a silver gummynuggie!! ${format(multiplier.silver, true)}x earned this claim for a total of ${format(amount)} gummynuggies!",
         "imageUrl": "https://media.discordapp.net/attachments/1168356994453885059/1301101446380523571/tRvkJDb.png?ex=672340a6&is=6721ef26&hm=afdbe8ce45ead0124f6492d82ba689c6d281617fc9a8fe91ed2e523e6439760d&=&format=webp&quality=lossless&width=876&height=1169",
         "colour": "#C0C0C0",
-        "footer": "Gold: {gold}% for {multiplier}x | Silver: {silver}% for {multiplier}x | Bronze: {bronze}% for {multiplier}x. Check upgrades with /upgrades",
+  "footer": "Gold: {gold}% for {multiplier_gold}x | Silver: {silver}% for {multiplier_silver}x | Bronze: {bronze}% for {multiplier_bronze}x. Check upgrades with /upgrades",
         "thumbnail": "https://drive.google.com/thumbnail?id=1oVDRweQoYLU6YfB01LWZpTFQiBS1fRRa"
     },
     "bronze":{
         "title": "Congratulations! You've claimed a bronze dinonuggie!! {multiplier}x earned this claim for a total of {amount} dinonuggies!",
         "imageUrl": "https://media.discordapp.net/attachments/1168356994453885059/1301101447584157696/Fmi8wTB.png?ex=672340a6&is=6721ef26&hm=4ff5a5cb7d4b437d9f942117d2c5987d6d87b0e449a0d46c38a70ec3a7879724&=&format=webp&quality=lossless&width=876&height=1169",
         "colour": "#CD7F32",
-        "footer": "Gold: {gold}% for {multiplier}x | Silver: {silver}% for {multiplier}x | Bronze: {bronze}% for {multiplier}x. Check upgrades with /upgrades",
+  "footer": "Gold: {gold}% for {multiplier_gold}x | Silver: {silver}% for {multiplier_silver}x | Bronze: {bronze}% for {multiplier_bronze}x. Check upgrades with /upgrades",
         "thumbnail": "https://drive.google.com/thumbnail?id=1oVDRweQoYLU6YfB01LWZpTFQiBS1fRRa"
     },
     "regular": {
         "title": "{amount} dinonuggies claimed!",
         "imageUrl": "https://media.discordapp.net/attachments/1168356994453885059/1301102084002943017/jF8vRKZ.png?ex=6723413e&is=6721efbe&hm=ef1c378986d8ba2b5aa6f04f725392621f07147e6c012fa80fa9d7d2b3aa1e3e&=&format=webp&quality=lossless&width=592&height=242",
         "colour": "#83F28F",
-        "footer": "Gold: {gold}% for {multiplier}x | Silver: {silver}% for {multiplier}x | Bronze: {bronze}% for {multiplier}x. Check upgrades with /upgrades",
+  "footer": "Gold: {gold}% for {multiplier_gold}x | Silver: {silver}% for {multiplier_silver}x | Bronze: {bronze}% for {multiplier_bronze}x. Check upgrades with /upgrades",
         "thumbnail": "https://drive.google.com/thumbnail?id=1oVDRweQoYLU6YfB01LWZpTFQiBS1fRRa"
       }
     },
@@ -34,28 +34,28 @@
       "title": "Congratulations! You've claimed a golden dinonuggie!! {multiplier}x earned this claim for a total of {amount} dinonuggies!",
       "imageUrl": "https://drive.google.com/thumbnail?id=1U5oXdCW6LMjLgVxNWN-i4kDH_wow3yPp",
       "colour": "#FFD700",
-      "footer": "Gold: {gold}% for {multiplier}x | Silver: {silver}% for {multiplier}x | Bronze: {bronze}% for {multiplier}x. Check upgrades with /upgrades",
+    "footer": "Gold: {gold}% for {multiplier_gold}x | Silver: {silver}% for {multiplier_silver}x | Bronze: {bronze}% for {multiplier_bronze}x. Check upgrades with /upgrades",
       "thumbnail": "https://drive.google.com/thumbnail?id=1oVDRweQoYLU6YfB01LWZpTFQiBS1fRRa"
     },
     "silver": {
       "title": "Congratulations! You've claimed a silver dinonuggie!! {multiplier}x earned this claim for a total of {amount} dinonuggies!",
       "imageUrl": "https://drive.google.com/thumbnail?id=1Q29dJ1ST1GMxmeM98jub4RKIpm-bZC1v",
       "colour": "#C0C0C0",
-      "footer": "Gold: {gold}% for {multiplier}x | Silver: {silver}% for {multiplier}x | Bronze: {bronze}% for {multiplier}x. Check upgrades with /upgrades",
+    "footer": "Gold: {gold}% for {multiplier_gold}x | Silver: {silver}% for {multiplier_silver}x | Bronze: {bronze}% for {multiplier_bronze}x. Check upgrades with /upgrades",
       "thumbnail": "https://drive.google.com/thumbnail?id=1oVDRweQoYLU6YfB01LWZpTFQiBS1fRRa"
     },
     "bronze": {
       "title": "Congratulations! You've claimed a bronze dinonuggie!! {multiplier}x earned this claim for a total of {amount} dinonuggies!",
       "imageUrl": "https://drive.google.com/thumbnail?id=1oLvRzxrs7b9Z97BVOacNbNCrodr68Fll",
       "colour": "#CD7F32",
-      "footer": "Gold: {gold}% for {multiplier}x | Silver: {silver}% for {multiplier}x | Bronze: {bronze}% for {multiplier}x. Check upgrades with /upgrades",
+    "footer": "Gold: {gold}% for {multiplier_gold}x | Silver: {silver}% for {multiplier_silver}x | Bronze: {bronze}% for {multiplier_bronze}x. Check upgrades with /upgrades",
       "thumbnail": "https://drive.google.com/thumbnail?id=1oVDRweQoYLU6YfB01LWZpTFQiBS1fRRa"
     },
     "regular": {
       "title": "{amount} dinonuggies claimed!",
       "imageUrl": "https://drive.google.com/thumbnail?id=1_RPbZ680d8QFBv8oZMCwom6RrlgSUYBR",
       "colour": "#83F28F",
-      "footer": "Gold: {gold}% for {multiplier}x | Silver: {silver}% for {multiplier}x | Bronze: {bronze}% for {multiplier}x. Check upgrades with /upgrades",
+"footer": "Gold: {gold}% for {multiplier_gold}x | Silver: {silver}% for {multiplier_silver}x | Bronze: {bronze}% for {multiplier_bronze}x. Check upgrades with /upgrades",
       "thumbnail": "https://drive.google.com/thumbnail?id=1oVDRweQoYLU6YfB01LWZpTFQiBS1fRRa"
     }
     }
