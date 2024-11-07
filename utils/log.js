@@ -20,4 +20,11 @@ function logError(message) {
     });
 }
 
+process.on('uncaughtException', handleUncaughtException);
+log("Catching uncaught exceptions...");
+
+function handleUncaughtException(error) {
+    logError(`----- UNCAUGHT EXCEPTION: -----\n${error}`);
+}
+
 module.exports = { log, logError };
