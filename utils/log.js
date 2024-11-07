@@ -11,13 +11,20 @@ function log(message) {
     }); // Log to file asynchronously
 }
 
-function logError(message) {
-    console.error(message);
-    fs.appendFile(logFilePath, `${new Date().toISOString()} - ERROR: ${message}\n`, (err) => {
+function logError(message, error = "") {
+    console.error(message, error);
+    fs.appendFile(logFilePath, `${new Date().toISOString()} - ERROR: ${message}\n${error}\n`, (err) => {
         if (err) {
             console.error("Failed to write to log file:", err);
         }
     });
+}
+
+process.on('uncaughtException', handleUncaughtException);
+log("Catching uncaught exceptions...");
+
+function handleUncaughtException(error) {
+    logError(`----- UNCAUGHT EXCEPTION: -----\n${error}`);
 }
 
 module.exports = { log, logError };
