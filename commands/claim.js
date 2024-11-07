@@ -28,6 +28,9 @@ class Claim extends Command {
         const silverPercentage = (silver * 100).toFixed(1);
         const bronzePercentage = (bronze * 100).toFixed(1);
     
+        // Determine appropriate multiplier based on skinKey, defaulting to 1.0 for "regular"
+        const currentMultiplier = multiplier[skinKey] !== undefined ? multiplier[skinKey] : 1.0;
+    
         // Format footer with unique multipliers for each rarity
         const formattedFooter = skin.footer
             .replace(/{gold}/g, goldPercentage)
@@ -39,13 +42,14 @@ class Claim extends Command {
     
         return {
             amount: amount,
-            title: skin.title.replace("{amount}", amount).replace("{multiplier}", multiplier[skinKey].toFixed(1)),
+            title: skin.title.replace("{amount}", amount).replace("{multiplier}", currentMultiplier.toFixed(1)),
             imageUrl: skin.imageUrl,
             colour: skin.colour,
             footer: formattedFooter,
             thumbnail: skin.thumbnail
         };
     }
+    
     
     
     
