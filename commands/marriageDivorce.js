@@ -97,8 +97,8 @@ class MarriageDivorce extends Command {
                         .setColor('#00AA00')
                         .setTitle(`Divorce Successful`)
                         .setDescription(`You have successfully divorced <@${partnerId}>.\nSettlement:\n` +
-                            `**You received:** ${format(settlement.initiator.dinonuggies)} dinonuggies and ${format(settlement.initiator.credits)} credits. (20% of <@${partnerId}>'s total assets)\n` +
-                            `**<@${partnerId}> received:** ${format(settlement.target.dinonuggies)} dinonuggies and ${format(settlement.target.credits)} credits. (80% of your total assets)`)],
+                            `**You received:** ${format(settlement.initiator.dinonuggies)} dinonuggies and ${format(settlement.initiator.credits)} credits. (20% of combined assets)\n` +
+                            `**<@${partnerId}> received:** ${format(settlement.target.dinonuggies)} dinonuggies and ${format(settlement.target.credits)} credits. (80% of combined assets)`)],
                     components: []
                 });
 
