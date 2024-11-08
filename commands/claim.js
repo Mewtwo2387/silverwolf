@@ -7,7 +7,7 @@ const marriageBenefits = require('../utils/marriageBenefits.js');
 const { logError } = require('../utils/log');
 const fs = require('fs');
 const path = require('path');
-const { log } = require('util');
+const { log } = require('../utils/log');
 
 
 const DAY_LENGTH = 24 * 60 * 60 * 1000;
@@ -16,13 +16,11 @@ const HOUR_LENGTH = 60 * 60 * 1000;
 class Claim extends Command {
     constructor(client) {
         super(client, "claim", "Claim your daily dinonuggies", []);
-        this.skins = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/config/skin/claim.json'), 'utf8'));
-        this.currentSkin = this.skins["christmas"]; // Set skin based on season
     }
 
     async formatReward(skinKey, amount, multiplier, gold, silver, bronze) {
-        const skin = this.currentSkin[skinKey];
-        
+        const season = await this.client.db.getGlobalConfig("season") || "normal";
+        const skin = await JSON.parse(fs.readFileSync(path.join(__dirname, `../data/config/skin/claim.json`), 'utf8'))[season][skinKey];
         const goldPercentage = format(gold * 100, true);
         const silverPercentage = format(silver * 100, true);
         const bronzePercentage = format(bronze * 100, true);

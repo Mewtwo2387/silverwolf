@@ -15,8 +15,6 @@ class Slots extends Command {
                 required: true
             }
         ]);
-        this.skins = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/config/skin/slots.json'), 'utf8'));
-        this.currentSkin = this.skins["christmas"]; // Set skin based on season
     }
 
        
@@ -30,7 +28,12 @@ class Slots extends Command {
             ]});
             return;
         }
-        const smugs = this.currentSkin.emotes;
+        
+        const season = await this.client.db.getGlobalConfig("season") || "Normal";
+
+        const skin = await JSON.parse(fs.readFileSync(path.join(__dirname, `../data/config/skin/slots.json`), 'utf8'))[season];
+
+        const smugs = skin.emotes;
 
         var results = [[], [], []];
 
@@ -65,15 +68,17 @@ class Slots extends Command {
             await this.client.db.addUserAttr(interaction.user.id, 'slots_relative_won', multi);
             await this.client.db.addUserAttr(interaction.user.id, 'credits', winnings - amount);
             if (multi == 0){
+                const loseMessage = skin.loseMessage.replace("{amount}", format(amount));
                 await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
                     .setColor('#AA0000')
-                    .setTitle(this.currentSkin.loseMessage.replace("{amount}", format(amount)).replace("{winnings}", format(winnings)))
+                    .setTitle(loseMessage)
                     .setDescription(`${results[0][0].emote} ${results[0][1].emote} ${results[0][2].emote} ${results[0][3].emote} ${results[0][4].emote}\n${results[1][0].emote} ${results[1][1].emote} ${results[1][2].emote} ${results[1][3].emote} ${results[1][4].emote}\n${results[2][0].emote} ${results[2][1].emote} ${results[2][2].emote} ${results[2][3].emote} ${results[2][4].emote}`)
                 ]});
             }else{
+                const winMessage = skin.winMessage.replace("{amount}", format(amount)).replace("{winnings}", format(winnings));
                 await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
                     .setColor('#00AA00')
-                    .setTitle(this.currentSkin.winMessage.replace("{amount}", format(amount)).replace("{winnings}", format(winnings)))
+                    .setTitle(winMessage)
                     .setDescription(`${results[0][0].emote} ${results[0][1].emote} ${results[0][2].emote} ${results[0][3].emote} ${results[0][4].emote}\n${results[1][0].emote} ${results[1][1].emote} ${results[1][2].emote} ${results[1][3].emote} ${results[1][4].emote}\n${results[2][0].emote} ${results[2][1].emote} ${results[2][2].emote} ${results[2][3].emote} ${results[2][4].emote}`)
                 ]});
             }

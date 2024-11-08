@@ -151,6 +151,19 @@ class Database {
                 log('Created the commandConfig table.');
             }
         });
+
+        this.db.run(`CREATE TABLE IF NOT EXISTS GlobalConfig (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            key TEXT NOT NULL,
+            value TEXT NOT NULL,
+            UNIQUE (key)
+        );`, (err) => {
+            if (err) {
+                logError('Failed to create GlobalConfig table:', err.message);
+            } else {
+                log('Created the GlobalConfig table.');
+            }
+        });
     }    
 
     updateSchema() {
@@ -631,6 +644,19 @@ class Database {
             logError('Error deleting command blacklist:', err.message);
             throw err;
         }
+    }
+
+    async setGlobalConfig(key, value) {
+        const query = `INSERT OR REPLACE INTO GlobalConfig (key, value) VALUES (?, ?)`;
+        await this.executeQuery(query, [key, value]);
+        log(`Set global config ${key} to ${value}`);
+    }
+
+    async getGlobalConfig(key) {
+        const query = `SELECT value FROM GlobalConfig WHERE key = ?`;
+        const row = await this.executeSelectQuery(query, [key]);
+        log(`Global config ${key} is ${row ? row.value : null}`);
+        return row ? row.value : null;
     }
 
 

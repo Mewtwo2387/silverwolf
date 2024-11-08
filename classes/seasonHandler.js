@@ -18,6 +18,7 @@ class ChristmasHandler {
         const pfp = await member.user.displayAvatarURL({ extension: 'png', size: 512 });
     
         if (mode === "shiny" || (mode === "normal" && Math.random() < 0.03)) {
+            log("Santa Pokemon")
             const canvasSize = 512;
             const canvas = Canvas.createCanvas(canvasSize, canvasSize);
             const ctx = canvas.getContext("2d");
@@ -88,6 +89,7 @@ class ChristmasHandler {
             ], files: [attachment]});
             this.currentPokemon = member.user.username;
         } else {
+            log("Normal Pokemon")
             // Load the border image
             const borderPath = path.join(__dirname, '../data/images/1christmasBorder.png');
             const borderImg = await Canvas.loadImage(borderPath);
@@ -127,6 +129,7 @@ class NormalHandler {
         //console.log(member)
         const pfp = await member.user.displayAvatarURL({ extension: 'png', size: 512 });
         if (mode == "shiny" || (mode == "normal" && Math.random() < 0.03)){
+            log("Shiny Pokemon")
             const canvas = Canvas.createCanvas(512, 512);
             const ctx = canvas.getContext("2d");
             const img = await Canvas.loadImage(pfp);
@@ -154,6 +157,7 @@ class NormalHandler {
             ], files: [attachment]})
             this.currentPokemon = member.user.username + " shiny";
         }else if (mode == "mystery" || (mode == "normal" && Math.random() < 0.3)){
+            log("Mystery Pokemon")
             message.channel.send({ embeds:[ new EmbedBuilder()
                 .setTitle(`A wild ??? appeared!`)
                 .setImage(pfp)
@@ -162,6 +166,7 @@ class NormalHandler {
             ]})
             this.currentPokemon = member.user.username;
         }else{
+            log("Normal Pokemon")
             message.channel.send({ embeds:[ new EmbedBuilder()
                 .setTitle(`A wild ${escapeMarkdown(member.user.username)} appeared!`)
                 .setImage(pfp)
@@ -208,6 +213,7 @@ class HalloweenHandler {
         }
     
         if (mode === "shiny" || (mode === "normal" && Math.random() < 0.03)) {
+            log("Nightmare Mode Pokemon")
             const canvas = Canvas.createCanvas(512, 512);
             const ctx = canvas.getContext("2d");
             const img = await Canvas.loadImage(pfp);
@@ -241,7 +247,7 @@ class HalloweenHandler {
     
             message.channel.send({
                 embeds: [new EmbedBuilder()
-                    .setTitle(`A shiny ${escapeMarkdown(member.user.username)} appeared!`)
+                    .setTitle(`A nightmare mode ${escapeMarkdown(member.user.username)} appeared!`)
                     .setImage('attachment://shiny.png')
                     .setColor("#00FF00")
                     .setFooter({ text: "Nightmarish Halloween! Catch it with /catch Nightmare mode [username]!" })
@@ -251,6 +257,7 @@ class HalloweenHandler {
             this.currentPokemon = "Nightmare mode "+ member.user.username ;
     
         } else if (mode === "mystery" || (mode === "normal" && Math.random() < 0.3)) {
+            log("Mystery Pokemon")
             // Apply only color inversion for "mystery"
             const canvas = Canvas.createCanvas(512, 512);
             const ctx = canvas.getContext("2d");
@@ -272,6 +279,7 @@ class HalloweenHandler {
             this.currentPokemon = member.user.username;
     
         } else {
+            log("Normal Pokemon")
             // Apply only red tint for normal
             const canvas = Canvas.createCanvas(512, 512);
             const ctx = canvas.getContext("2d");

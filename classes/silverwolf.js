@@ -329,7 +329,7 @@ All wrongs reserved.
 
 
     async getHandler() {
-        const currentSeason = seasonConfig.currentSeason;
+        const currentSeason = await this.db.getGlobalConfig("season") || "normal";
         const handlerClass = handlers[seasonConfig.seasons[currentSeason].handler];
         const settings = seasonConfig.seasons[currentSeason].settings || {};
         return new handlerClass(settings);
