@@ -1,5 +1,5 @@
 {
-    "currentSeason": "Normal",
+    "currentSeason": "Christmas",
     "seasons": {
         "Christmas": {
             "handler": "ChristmasHandler",
