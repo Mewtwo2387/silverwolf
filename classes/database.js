@@ -659,7 +659,11 @@ class Database {
         return row ? row.value : null;
     }
 
-
+    async getAllGlobalConfig() {
+        const query = `SELECT * FROM GlobalConfig`;
+        const rows = await this.executeSelectAllQuery(query);
+        return rows;
+    }
 }
 
 module.exports = { Database };
