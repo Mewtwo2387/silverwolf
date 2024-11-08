@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const BirthdayScheduler = require('./birthdayScheduler');
 const Canvas = require('canvas');
-const { log } = require('../utils/log');
+const { log, logError } = require('../utils/log');
 // const CharacterAI = require('node_characterai')
 require('dotenv').config();
 const seasonConfig = require('../data/config/skin/pokemon.json');
