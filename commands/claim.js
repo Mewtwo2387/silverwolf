@@ -23,10 +23,12 @@ class Claim extends Command {
     async formatReward(skinKey, amount, multiplier, gold, silver, bronze) {
         const skin = this.currentSkin[skinKey];
         
-        // Round percentages to 1 decimal place
-        const goldPercentage = (gold * 100).toFixed(1);
-        const silverPercentage = (silver * 100).toFixed(1);
-        const bronzePercentage = (bronze * 100).toFixed(1);
+        const goldPercentage = format(gold * 100, true);
+        const silverPercentage = format(silver * 100, true);
+        const bronzePercentage = format(bronze * 100, true);
+        const goldMultiplier = format(multiplier.gold, true);
+        const silverMultiplier = format(multiplier.silver, true);
+        const bronzeMultiplier = format(multiplier.bronze, true);
     
         // Determine appropriate multiplier based on skinKey, defaulting to 1.0 for "regular"
         const currentMultiplier = multiplier[skinKey] !== undefined ? multiplier[skinKey] : 1.0;
@@ -36,13 +38,13 @@ class Claim extends Command {
             .replace(/{gold}/g, goldPercentage)
             .replace(/{silver}/g, silverPercentage)
             .replace(/{bronze}/g, bronzePercentage)
-            .replace(/{multiplier_gold}/g, multiplier.gold.toFixed(1))
-            .replace(/{multiplier_silver}/g, multiplier.silver.toFixed(1))
-            .replace(/{multiplier_bronze}/g, multiplier.bronze.toFixed(1));
+            .replace(/{multiplier_gold}/g, goldMultiplier)
+            .replace(/{multiplier_silver}/g, silverMultiplier)
+            .replace(/{multiplier_bronze}/g, bronzeMultiplier);
     
         return {
             amount: amount,
-            title: skin.title.replace("{amount}", amount).replace("{multiplier}", currentMultiplier.toFixed(1)),
+            title: skin.title.replace("{amount}", format(amount)).replace("{multiplier}", format(currentMultiplier, true)),
             imageUrl: skin.imageUrl,
             colour: skin.colour,
             footer: formattedFooter,
