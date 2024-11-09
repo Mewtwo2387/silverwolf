@@ -2,6 +2,8 @@ const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 const { format } = require('../utils/math.js');
 const marriageBenefits = require('../utils/marriageBenefits.js');
+const fs = require('fs');
+const path = require('path');
 
 class Slots extends Command {
     constructor(client){
@@ -15,6 +17,7 @@ class Slots extends Command {
         ]);
     }
 
+       
     async run(interaction){
         const amount = interaction.options.getInteger('amount');
         const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
@@ -25,16 +28,12 @@ class Slots extends Command {
             ]});
             return;
         }
+        
+        const season = await this.client.db.getGlobalConfig("season") || "Normal";
 
-        const smugs = [
-            {emote: "<:1yanfeismug:1136925353651228775>", value: 10},
-            {emote: "<:1silverwolfsmug1:1212343617113559051>", value: 8},
-            {emote: "<:1keqingsmug:1139794287337414766>", value: 6},
-            {emote: "<:4meltsmug:1141012813997932555>", value: 4},
-            {emote: "<:0mysticsmuguwu:1181410473695002634>", value: 2},
-            {emote: "<:1yanfeismug3:1181812629451317298>", value: 2},
-            {emote: "<:1gumsiefnay:1140883820795666463>", value: 2},
-        ]
+        const skin = await JSON.parse(fs.readFileSync(path.join(__dirname, `../data/config/skin/slots.json`), 'utf8'))[season];
+
+        const smugs = skin.emotes;
 
         var results = [[], [], []];
 
@@ -69,15 +68,17 @@ class Slots extends Command {
             await this.client.db.addUserAttr(interaction.user.id, 'slots_relative_won', multi);
             await this.client.db.addUserAttr(interaction.user.id, 'credits', winnings - amount);
             if (multi == 0){
+                const loseMessage = skin.loseMessage.replace("{amount}", format(amount));
                 await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
                     .setColor('#AA0000')
-                    .setTitle(`You bet ${format(amount)} mystic credits and didn't win anything!`)
+                    .setTitle(loseMessage)
                     .setDescription(`${results[0][0].emote} ${results[0][1].emote} ${results[0][2].emote} ${results[0][3].emote} ${results[0][4].emote}\n${results[1][0].emote} ${results[1][1].emote} ${results[1][2].emote} ${results[1][3].emote} ${results[1][4].emote}\n${results[2][0].emote} ${results[2][1].emote} ${results[2][2].emote} ${results[2][3].emote} ${results[2][4].emote}`)
                 ]});
             }else{
+                const winMessage = skin.winMessage.replace("{amount}", format(amount)).replace("{winnings}", format(winnings));
                 await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
                     .setColor('#00AA00')
-                    .setTitle(`You bet ${format(amount)} mystic credits and won ${format(winnings)} mystic credits!`)
+                    .setTitle(winMessage)
                     .setDescription(`${results[0][0].emote} ${results[0][1].emote} ${results[0][2].emote} ${results[0][3].emote} ${results[0][4].emote}\n${results[1][0].emote} ${results[1][1].emote} ${results[1][2].emote} ${results[1][3].emote} ${results[1][4].emote}\n${results[2][0].emote} ${results[2][1].emote} ${results[2][2].emote} ${results[2][3].emote} ${results[2][4].emote}`)
                 ]});
             }

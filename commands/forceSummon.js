@@ -1,7 +1,7 @@
 const { DevCommand } = require("./classes/devcommand.js");
 
 class ForceSummon extends DevCommand {
-    constructor(client){
+    constructor(client) {
         super(client, "forcesummon", "force summon a pokemon", [
             {
                 name: "mode",
@@ -17,11 +17,16 @@ class ForceSummon extends DevCommand {
         ], true);
     }
 
-    async run(interaction){
-        const mode = interaction.options.getString("mode") || "normal";
-        await this.client.summonPokemon(interaction, mode);
+    async run(interaction) {
+        try {
+            const mode = interaction.options.getString("mode") || "normal";
+            const handler = await this.client.getHandler();  // Get the current seasonal handler
+            await handler.summonPokemon(interaction, mode);   // Use handler's summonPokemon with the specified mode
+        } catch (error) {
+            console.error(`Error executing command forcesummon:`, error);
+            interaction.editReply("There was an error summoning the Pokémon.");
+        }
     }
 }
 
 module.exports = ForceSummon;
-
