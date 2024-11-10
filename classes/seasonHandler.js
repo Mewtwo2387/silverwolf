@@ -9,14 +9,17 @@ const { log } = require('../utils/log');
 require('dotenv').config();
 
 
+
 class ChristmasHandler {
     //christmas
     async summonPokemon(message, mode = "normal") {
         const allMembers = await message.guild.members.fetch();
         const members = allMembers.filter(member => !member.user.bot);
         const member = members.random();
-        const pfp = await member.user.displayAvatarURL({ extension: 'png', size: 512 });
-    
+        const pfp = await member.user.displayAvatarURL({ extension: 'png', size: 512 });    
+        const client = message.client; 
+
+
         if (mode === "shiny" || (mode === "normal" && Math.random() < 0.03)) {
             log("Santa Pokemon")
             const canvasSize = 512;
@@ -60,7 +63,7 @@ class ChristmasHandler {
                 ],
                 files: [attachment]
             });
-            this.currentPokemon = "santa " + member.user.username;
+            client.currentPokemon = "santa " + member.user.username;
         } else if (mode === "mystery" || (mode === "normal" && Math.random() < 0.3)) {
             // Load the mystery border
             const borderPath = path.join(__dirname, '../data/images/3christmasBorder.png');
@@ -87,7 +90,7 @@ class ChristmasHandler {
                 .setColor("#00FF00")
                 .setFooter({ text: "guess the username and catch with /catch [username]!" })
             ], files: [attachment]});
-            this.currentPokemon = member.user.username;
+            client.currentPokemon = member.user.username;
         } else {
             log("Normal Pokemon")
             // Load the border image
@@ -115,7 +118,7 @@ class ChristmasHandler {
                 .setColor("#00FF00")
                 .setFooter({ text: "catch them with /catch [username]!" })
             ], files: [attachment]});
-            this.currentPokemon = member.user.username;
+            client.currentPokemon = member.user.username;
         }
     }
 }
@@ -126,6 +129,8 @@ class NormalHandler {
         const allMembers = await message.guild.members.fetch();
         const members = allMembers.filter(member => !member.user.bot);
         const member = members.random();
+        const client = message.client; 
+
         //console.log(member)
         const pfp = await member.user.displayAvatarURL({ extension: 'png', size: 512 });
         if (mode == "shiny" || (mode == "normal" && Math.random() < 0.03)){
@@ -164,7 +169,8 @@ class NormalHandler {
                 .setColor("#00FF00")
                 .setFooter({ text: "guess the username and catch with /catch [username]!" })
             ]})
-            this.currentPokemon = member.user.username;
+                       client.currentPokemon = member.user.username;
+
         }else{
             log("Normal Pokemon")
             message.channel.send({ embeds:[ new EmbedBuilder()
@@ -173,7 +179,8 @@ class NormalHandler {
                 .setColor("#00FF00")
                 .setFooter({ text: "catch them with /catch [username]!" })
             ]})
-            this.currentPokemon = member.user.username;
+                       client.currentPokemon = member.user.username;
+
         }
     }
 }
@@ -185,7 +192,9 @@ class HalloweenHandler {
         const members = allMembers.filter(member => !member.user.bot);
         const member = members.random();
         const pfp = await member.user.displayAvatarURL({ extension: 'png', size: 512 });
-    
+        const client = message.client; 
+
+
         // Helper function to apply a lighter red tint to the canvas
         function applyRedTint(ctx, img) {
             ctx.drawImage(img, 0, 0, 512, 512);
@@ -276,7 +285,8 @@ class HalloweenHandler {
                 ],
                 files: [attachment]
             });
-            this.currentPokemon = member.user.username;
+                       client.currentPokemon = member.user.username;
+
     
         } else {
             log("Normal Pokemon")
@@ -298,7 +308,8 @@ class HalloweenHandler {
                 ],
                 files: [attachment]
             });
-            this.currentPokemon = member.user.username;
+                       client.currentPokemon = member.user.username;
+
         }
     }
 }
