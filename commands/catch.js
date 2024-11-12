@@ -25,11 +25,11 @@ class Catch extends Command {
         }
         if (currentPokemon.toLowerCase() == pokemonName.toLowerCase()) {
             await interaction.editReply({ embeds: [new EmbedBuilder()
-                .setTitle(`You caught a wild ${pokemonName}!`)
+                .setTitle(`You caught a wild ${currentPokemon}!`)
                 .setDescription(`Ummm congrats I guess?`)
                 .setColor("#00FF00")
             ]})
-            this.client.db.catchPokemon(interaction.user.id, pokemonName);
+            this.client.db.catchPokemon(interaction.user.id, currentPokemon);
             this.client.currentPokemon = null;
         } else {
             await interaction.editReply({ embeds: [new EmbedBuilder()

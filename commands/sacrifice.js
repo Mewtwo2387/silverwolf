@@ -60,7 +60,8 @@ class Sacrifice extends Command {
         await this.client.db.sacrificePokemon(userId, pokemon2);
         await this.client.db.sacrificePokemon(userId, pokemon3);
 
-        await this.client.summonPokemon(interaction);
+        const handler = await this.client.getHandler();  // Get the current seasonal handler
+        await handler.summonPokemon(interaction);   // Use handler's summonPokemon with the specified mode
     }
 }
 

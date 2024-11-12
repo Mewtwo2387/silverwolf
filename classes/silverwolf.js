@@ -204,9 +204,29 @@ All wrongs reserved.
     }
     
 
-    processDelete(message){
-        log(`Message deleted by ${message.author.username} (${message.author.id}) in ${message.channel.name} (${message.channel.id}) in ${message.guild.name} (${message.guild.id}): ${message.content}`);
-        this.deletedMessages.unshift(message);
+    processDelete(message) {
+        const logMsg = `Message deleted by ${message.author.username} (${message.author.id}) in ${message.channel.name} (${message.channel.id}) in ${message.guild.name} (${message.guild.id}): ${message.content}`;
+        log(logMsg);
+    
+        const replyReference = message.reference?.messageId;
+        let repliedMessageContent = null;
+        let repliedMessageAuthor = null;
+        
+        if (replyReference) {
+            // Try to fetch the replied message
+            const repliedMessage = message.channel.messages.cache.get(replyReference);
+            if (repliedMessage) {
+                repliedMessageContent = repliedMessage.content;
+                repliedMessageAuthor = repliedMessage.author;
+            }
+        }
+    
+        // Add the deleted message and replied message details
+        this.deletedMessages.unshift({
+            message,
+            repliedMessageContent,
+            repliedMessageAuthor
+        });
     }
 
     processEdit(oldMessage, newMessage){

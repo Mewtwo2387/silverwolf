@@ -52,6 +52,16 @@ class FakeQuote extends Command {
                     { name: 'sepia', value: 'sepia' },
                     { name: 'nightmare fuel', value: 'nightmare' }
                 ]
+            },
+            {
+                name: "avatar_source",
+                description: "Choose between the server avatar or global avatar",
+                type: 3,
+                required: false,
+                choices: [
+                    { name: 'Server Avatar', value: 'server' },
+                    { name: 'Global Avatar', value: 'global' }
+                ]
             }
         ]);
     }
@@ -71,7 +81,24 @@ class FakeQuote extends Command {
             const backgroundColor = interaction.options.getString("background") || 'black';
             const textColor = backgroundColor === 'white' ? 'black' : 'white';
             const profileColor = interaction.options.getString("profile_color") || 'normal';
-            const pfp = await person.displayAvatarURL({ extension: 'png', size: 512 });
+            const avatarSource = interaction.options.getString("avatar_source") || 'global';
+
+            let pfp;
+            if (avatarSource === 'server') {
+                try {
+                    const member = interaction.guild.members.cache.get(person.id);
+                    if (member && member.avatar) {
+                        pfp = member.displayAvatarURL({ extension: 'png', size: 512 });
+                    } else {
+                        throw new Error("Server avatar not found, falling back to global avatar.");
+                    }
+                } catch (error) {
+                    logError(`Failed to fetch server avatar: ${error.message}`);
+                    pfp = person.displayAvatarURL({ extension: 'png', size: 512 }); // Fallback to global avatar
+                }
+            } else {
+                pfp = person.displayAvatarURL({ extension: 'png', size: 512 });
+            }
 
             const canvas = Canvas.createCanvas(1024, 512);
             const ctx = canvas.getContext('2d');
