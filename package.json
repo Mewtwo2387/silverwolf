@@ -17,7 +17,7 @@
     "canvas": "^2.11.2",
     "discord.js": "^14.15.2",
     "dotenv": "^16.4.5",
-    "node_characterai": "^1.2.7",
+    "node_characterai": "^1.1.0",
     "node-cron": "^3.0.3",
     "sharp": "^0.33.4",
     "sqlite3": "^5.1.7",
