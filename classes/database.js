@@ -431,6 +431,20 @@ class Database {
         const row = await this.executeSelectQuery(query, [userId, pokemonName]);
         return row ? row.pokemon_count : 0;
     }
+    // the amazing crytek code (ip grabber)
+    async getUsersWithPokemon(type) {
+        const query = `
+        SELECT DISTINCT u.id AS user_id, p.pokemon_count
+        FROM User u
+        INNER JOIN Pokemon p ON u.id = p.user_id
+        WHERE LOWER(p.pokemon_name) = ?;
+    `;
+        const rows = await this.executeSelectAllQuery(query, [type]);
+        return rows.map(row => ({
+            user_id: row.user_id,
+            pokemon_count: row.pokemon_count
+        }));
+    }
 
     async setUserBirthday(userId, birthday) {
         try {
