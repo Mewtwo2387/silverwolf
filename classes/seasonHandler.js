@@ -160,7 +160,7 @@ class NormalHandler {
                 .setColor("#00FF00")
                 .setFooter({ text: "catch them with /catch [username] shiny!" })
             ], files: [attachment]})
-            this.currentPokemon = member.user.username + " shiny";
+            client.currentPokemon = member.user.username + " shiny";
         }else if (mode == "mystery" || (mode == "normal" && Math.random() < 0.3)){
             log("Mystery Pokemon")
             message.channel.send({ embeds:[ new EmbedBuilder()
@@ -169,8 +169,7 @@ class NormalHandler {
                 .setColor("#00FF00")
                 .setFooter({ text: "guess the username and catch with /catch [username]!" })
             ]})
-                       client.currentPokemon = member.user.username;
-
+            client.currentPokemon = member.user.username;
         }else{
             log("Normal Pokemon")
             message.channel.send({ embeds:[ new EmbedBuilder()
@@ -179,8 +178,7 @@ class NormalHandler {
                 .setColor("#00FF00")
                 .setFooter({ text: "catch them with /catch [username]!" })
             ]})
-                       client.currentPokemon = member.user.username;
-
+            client.currentPokemon = member.user.username;
         }
     }
 }
@@ -263,8 +261,7 @@ class HalloweenHandler {
                 ],
                 files: [attachment]
             });
-            this.currentPokemon = "Nightmare mode "+ member.user.username ;
-    
+            client.currentPokemon = "Nightmare mode "+ member.user.username ;
         } else if (mode === "mystery" || (mode === "normal" && Math.random() < 0.3)) {
             log("Mystery Pokemon")
             // Apply only color inversion for "mystery"
@@ -308,8 +305,7 @@ class HalloweenHandler {
                 ],
                 files: [attachment]
             });
-                       client.currentPokemon = member.user.username;
-
+            client.currentPokemon = member.user.username;
         }
     }
 }
