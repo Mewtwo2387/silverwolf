@@ -14,7 +14,7 @@ class Add extends DevCommand {
             {
                 name: 'amount',
                 description: 'the amount of credits to add',
-                type: 4,
+                type: 3,
                 required: true
             },
             {
@@ -28,7 +28,19 @@ class Add extends DevCommand {
 
     async run(interaction){
         const user = interaction.options.getUser('user');
-        const amount = interaction.options.getInteger('amount');
+        
+        const amountString = interaction.options.getString('amount');
+        const amount = parseInt(amountString.replace(/,/g, ''));
+        if (isNaN(amount)) {
+            await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
+                .setColor('#AA0000')
+                .setTitle(`Invalid amount`)
+                .setDescription(`idk if this parsing actually works`)
+            ]});
+            return;
+            
+        }
+        
         const attr = interaction.options.getString('attr');
         try{
             await this.client.db.addUserAttr(user.id, attr, amount);

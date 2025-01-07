@@ -9,7 +9,7 @@ class Roulette extends Command {
             {
                 name: 'amount',
                 description: 'the amount of mystic credits to bet',
-                type: 4,
+                type: 3,
                 required: true
             },
             {
@@ -36,7 +36,18 @@ class Roulette extends Command {
     }
 
     async run(interaction) {
-        const amount = interaction.options.getInteger('amount');
+        const amountString = interaction.options.getString('amount');
+        const amount = parseInt(amountString.replace(/,/g, ''));
+        if (isNaN(amount)) {
+            await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
+                .setColor('#AA0000')
+                .setTitle(`Invalid amount`)
+                .setDescription(`idk if this parsing actually works`)
+            ]});
+            return;
+            
+        }
+        
         const betType = interaction.options.getString('bet_type');
         const betValue = interaction.options.getInteger('bet_value');
         const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');

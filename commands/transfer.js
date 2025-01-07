@@ -22,7 +22,18 @@ class Transfer extends Command {
 
     async run(interaction) {
         const target = interaction.options.getUser('user');
-        const amount = interaction.options.getNumber('amount');
+        const amountString = interaction.options.getString('amount');
+        const amount = parseInt(amountString.replace(/,/g, ''));
+        if (isNaN(amount)) {
+            await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
+                .setColor('#AA0000')
+                .setTitle(`Invalid amount`)
+                .setDescription(`idk if this parsing actually works`)
+            ]});
+            return;
+            
+        }
+        
         const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
 
         if (amount < 0) {
