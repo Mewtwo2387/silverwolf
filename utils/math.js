@@ -36,12 +36,13 @@ function format(num, alwaysFixed = false, shortenThreshold = 6){
     return formattedNum.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
+
+const t1a = ["K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No"]
+const t1b = ["", "U", "D", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No"]
+const t2 = ["", "Dc", "Vg", "Tg", "Qg", "Qig", "Sxg", "Spg", "Og", "Ng"]
+const t3 = ["", "Ce", "De", "Te", "Qe", "Qie", "Sxe", "Spe", "Oe", "Ne"]
+
 function getPrefix(n) {
-    const t1a = ["K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No"]
-    const t1b = ["", "U", "D", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No"]
-    const t2 = ["", "Dc", "Vg", "Tg", "Qg", "Qig", "Sxg", "Spg", "Og", "Ng"]
-    const t3 = ["", "Ce", "De", "Te", "Qe", "Qie", "Sxe", "Spe", "Oe", "Ne"]
-    
     if(n < 10){
         return t1a[n]
     }
@@ -54,4 +55,55 @@ function getPrefix(n) {
     return "OWO"
 }
 
-module.exports = { format };
+function getNumberFromPrefix(prefix) {
+    // t1a
+    const t1aIndex = t1a.indexOf(prefix);
+    if (t1aIndex !== -1) {
+        return t1aIndex;
+    }
+
+    // t1b + t2
+    for (let i = 0; i < t1b.length; i++) {
+        for (let j = 0; j < t2.length; j++) {
+            if (prefix === t1b[i] + t2[j]) {
+                return i + j * 10;
+            }
+        }
+    }
+
+    // t1b + t2 + t3
+    for (let i = 0; i < t1b.length; i++) {
+        for (let j = 0; j < t2.length; j++) {
+            for (let k = 0; k < t3.length; k++) {
+                if (prefix === t1b[i] + t2[j] + t3[k]) {
+                    return i + j * 10 + k * 100;
+                }
+            }
+        }
+    }
+    
+    return -1;
+}
+
+function antiFormat(input) {
+    // Extract the numeric part and the prefix
+    const match = input.match(/^([0-9.]+)([a-zA-Z]*)$/);
+    if (!match) {
+        return NaN; // Invalid input format
+    }
+
+    const number = parseFloat(match[1]);
+    const prefix = match[2];
+
+    // Get the corresponding n using getNumberFromPrefix
+    const n = getNumberFromPrefix(prefix);
+    if (n === -1) {
+        return NaN; // Invalid prefix
+    }
+
+    // Calculate the exponent from n
+    const exponent = n * 3 + 3;
+    return number * Math.pow(10, exponent);
+}
+
+module.exports = { format, antiFormat };
