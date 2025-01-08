@@ -12,24 +12,24 @@
 function format(num, alwaysFixed = false, shortenThreshold = 6){
     let formattedNum;
     
-    const magnitude = Math.floor(Math.log10(num));
-    if (magnitude >= shortenThreshold) {
-        const prefix = getPrefix(Math.floor(magnitude / 3) - 1);
-        const magnitudeUsed = magnitude - (magnitude % 3);
-        const numUsed = num / Math.pow(10, magnitudeUsed);
-        return `${numUsed.toFixed(3)}${prefix}`;
-    }
-    
     if (alwaysFixed) {
         formattedNum = num.toFixed(2);
     } else {
-        const numStr = num.toString();
-        const decimalIndex = numStr.indexOf('.');
-        
-        if (decimalIndex === -1 || numStr.length - decimalIndex - 1 <= 2) {
-            formattedNum = num.toString();
-        } else {
-            formattedNum = num.toFixed(2);
+        const magnitude = Math.floor(Math.log10(num));
+        if (magnitude >= shortenThreshold && num >= 1000){
+            const prefix = getPrefix(Math.floor(magnitude / 3) - 1);
+            const magnitudeUsed = magnitude - (magnitude % 3);
+            const numUsed = num / Math.pow(10, magnitudeUsed);
+            return `${numUsed.toFixed(3)}${prefix}`;
+        } else{
+            const numStr = num.toString();
+            const decimalIndex = numStr.indexOf('.');
+            
+            if (decimalIndex === -1 || numStr.length - decimalIndex - 1 <= 2) {
+                formattedNum = num.toString();
+            } else {
+                formattedNum = num.toFixed(2);
+            }
         }
     }
     
@@ -56,38 +56,22 @@ function getPrefix(n) {
 }
 
 function getNumberFromPrefix(prefix) {
-    // t1a
-    const t1aIndex = t1a.indexOf(prefix);
-    if (t1aIndex !== -1) {
-        return t1aIndex;
-    }
-
-    // t1b + t2
-    for (let i = 0; i < t1b.length; i++) {
-        for (let j = 0; j < t2.length; j++) {
-            if (prefix === t1b[i] + t2[j]) {
-                return i + j * 10;
-            }
+    for (let i = 0; i < 1000; i++){
+        if (getPrefix(i) === prefix){
+            return i;
         }
     }
-
-    // t1b + t2 + t3
-    for (let i = 0; i < t1b.length; i++) {
-        for (let j = 0; j < t2.length; j++) {
-            for (let k = 0; k < t3.length; k++) {
-                if (prefix === t1b[i] + t2[j] + t3[k]) {
-                    return i + j * 10 + k * 100;
-                }
-            }
-        }
-    }
-    
     return -1;
 }
 
 function antiFormat(input) {
+    input = input.replace(/,/g, '');
+    // pure numerical
+    if (!isNaN(input)) {
+        return parseFloat(input);
+    }
     // Extract the numeric part and the prefix
-    const match = input.match(/^([0-9.]+)([a-zA-Z]*)$/);
+    const match = input.match(/^([0-9.]+)([a-zA-Z]+)$/);
     if (!match) {
         return NaN; // Invalid input format
     }
@@ -106,4 +90,4 @@ function antiFormat(input) {
     return number * Math.pow(10, exponent);
 }
 
-module.exports = { format, antiFormat };
+module.exports = { format, antiFormat, getPrefix, getNumberFromPrefix };
