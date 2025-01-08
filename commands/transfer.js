@@ -1,6 +1,6 @@
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
-const { format } = require('../utils/math.js');
+const { format, antiFormat } = require('../utils/math.js');
 
 class Transfer extends Command {
     constructor(client){
@@ -14,7 +14,7 @@ class Transfer extends Command {
             {
                 name: 'amount',
                 description: 'the amount of credits to transfer',
-                type: 10,
+                type: 3,
                 required: true
             }
         ]);
@@ -23,7 +23,7 @@ class Transfer extends Command {
     async run(interaction) {
         const target = interaction.options.getUser('user');
         const amountString = interaction.options.getString('amount');
-        const amount = parseInt(amountString.replace(/,/g, ''));
+        const amount = antiFormat(amountString);
         if (isNaN(amount)) {
             await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
                 .setColor('#AA0000')

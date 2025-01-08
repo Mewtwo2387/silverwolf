@@ -1,6 +1,6 @@
 const { DevCommand } = require('./classes/devcommand.js');
 const Discord = require('discord.js');
-const { format } = require('../utils/math.js');
+const { format, antiFormat } = require('../utils/math.js');
 
 class Add extends DevCommand {
     constructor(client){
@@ -30,7 +30,7 @@ class Add extends DevCommand {
         const user = interaction.options.getUser('user');
         
         const amountString = interaction.options.getString('amount');
-        const amount = parseInt(amountString.replace(/,/g, ''));
+        const amount = antiFormat(amountString);
         if (isNaN(amount)) {
             await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
                 .setColor('#AA0000')

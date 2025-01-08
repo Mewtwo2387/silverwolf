@@ -98,4 +98,14 @@ describe('anti-formatting numbers', () => {
         expect(antiFormat("123Silverwolf is really fucking hot")).toBeNaN();
         expect(antiFormat("1U")).toBeNaN();
     });
+    test('randomly generated', () => {
+        for (let i = 0; i < 100; i++) {
+            const exponent = Math.floor(Math.random() * 300);
+            const value = Math.ceil(Math.random() * 1000);
+            const number = value * Math.pow(10, exponent);
+            const formatted = format(number);
+            const antiFormatted = antiFormat(formatted);
+                
+        }
+    });
 });
