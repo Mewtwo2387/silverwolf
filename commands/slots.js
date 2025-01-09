@@ -21,15 +21,80 @@ class Slots extends Command {
     async run(interaction){
         const amountString = interaction.options.getString('amount');
         const amount = antiFormat(amountString);
+        
+        const season = await this.client.db.getGlobalConfig("season") || "Normal";
+
+        const skin = await JSON.parse(fs.readFileSync(path.join(__dirname, `../data/config/skin/slots.json`), 'utf8'))[season];
+
+        const smugs = skin.emotes;    
         if (isNaN(amount)) {
-            await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
-                .setColor('#AA0000')
-                .setTitle(`Invalid amount`)
-                .setDescription(`idk if this parsing actually works`)
-            ]});
-            return;
+        
+            // Generate three rows of smugs, each row using the same random smug
+            const smugRows = [
+                Array(5).fill(smugs[Math.floor(Math.random() * smugs.length)].emote).join(" "),
+                Array(5).fill(smugs[Math.floor(Math.random() * smugs.length)].emote).join(" "),
+                Array(5).fill(smugs[Math.floor(Math.random() * smugs.length)].emote).join(" "),
+            ];
+            const infinityKeywords = [
+                "infinity",
+                "inf",
+                "∞",
+                "unlimited",
+                "forever",
+                "endless",
+                "neverending",
+                "boundless",
+                "limitless",
+                "eternal",
+                "never-ending"
+            ];
             
+        
+            if (infinityKeywords.some(keyword => amountString.toLowerCase().includes(keyword.toLowerCase()))) {
+                // Handle infinity case
+                await interaction.editReply({
+                    embeds: [new Discord.EmbedBuilder()
+                        .setColor('#FFFF00')
+                        .setTitle(`You bet ${amountString} and won ${amountString} mystic credits!`)
+                        .setDescription(`${smugRows.join("\n")}`)
+                    ]
+                });
+            
+                // Comedic follow-up messages
+                setTimeout(async () => {
+                    await interaction.followUp({
+                        embeds: [new Discord.EmbedBuilder()
+                            .setColor('#FF0000')
+                            .setTitle(`You have been spotted cheating!`)
+                            .setDescription(`Mystic credits set to 0!`)
+                        ]
+                    });
+                }, 5000);
+            
+                setTimeout(async () => {
+                    await interaction.followUp({
+                        content: "/j" // Just joking message
+                    });
+                }, 10000);
+                return;
+            } else {
+                // Handle generic non-numerical strings
+                await interaction.editReply({
+                    embeds: [new Discord.EmbedBuilder()
+                        .setColor('#AA0000')
+                        .setTitle(`You bet ${amountString} and won ${amountString} mystic credits!`)
+                        .setDescription(`${smugRows.join("\n")}`)
+                    ]
+                });
+                return;
+            }
         }
+        
+        // const season = await this.client.db.getGlobalConfig("season") || "Normal";
+
+        // const skin = await JSON.parse(fs.readFileSync(path.join(__dirname, `../data/config/skin/slots.json`), 'utf8'))[season];
+
+        // const smugs = skin.emotes;    
         
         const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
         if(amount > credits){
@@ -40,11 +105,7 @@ class Slots extends Command {
             return;
         }
         
-        const season = await this.client.db.getGlobalConfig("season") || "Normal";
 
-        const skin = await JSON.parse(fs.readFileSync(path.join(__dirname, `../data/config/skin/slots.json`), 'utf8'))[season];
-
-        const smugs = skin.emotes;
 
         var results = [[], [], []];
 
