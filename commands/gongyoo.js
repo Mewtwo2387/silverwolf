@@ -38,17 +38,19 @@ class WinOrBust extends Command {
         const dinonuggies = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggies');
 
         const fee = Math.floor(credits * 0.05);
-        const winCredits = Math.floor(credits * 0.10);
-        const loseCredits = Math.floor(credits * 0.10);
+        const winCredits = Math.floor(credits * 0.20);
+        const loseCredits = Math.floor(credits * 0.20);
+        
+        const multiplier = Math.max(1, Math.min(100, Math.log2(dinonuggies)));
 
         const embed = new Discord.EmbedBuilder()
             .setColor('#00AAFF')
             .setTitle('Win or Bust!')
             .setDescription(`Test your luck! You have 60 seconds to decide:
 
-**Left Button**: Gain **10%** of your current credits (**+${format(winCredits)} credits**).
-**Right Button**: Risk **10%** of your credits (**-${format(loseCredits)} credits**) for:
-- A chance to win **50x your current dinonuggie count!**`)
+**Left Button**: Gain **20%** of your current credits (**+${format(winCredits)} credits**).
+**Right Button**: Risk **20%** of your credits (**-${format(loseCredits)} credits**) for:
+- A chance to win **${format(multiplier, true)}x your current dinonuggie count! (Multiplier is based on your dinonuggie count)**`)
             .setFooter({ text: 'Make your choice wisely!' })
             .setImage('https://media1.tenor.com/m/jYKFyMNCsPgAAAAC/choose-one-squid-game-season-2.gif');
 
@@ -56,7 +58,7 @@ class WinOrBust extends Command {
             .addComponents(
                 new Discord.ButtonBuilder()
                     .setCustomId('win_or_bust_left')
-                    .setLabel('Take +10% Credits')
+                    .setLabel('Take +20% Credits')
                     .setStyle(Discord.ButtonStyle.Success),
                 new Discord.ButtonBuilder()
                     .setCustomId('win_or_bust_right')
@@ -97,11 +99,10 @@ class WinOrBust extends Command {
                 await interaction.editReply({ embeds: [winEmbed], components: [] });
             } else if (buttonInteraction.customId === 'win_or_bust_right') {
                 const rng = Math.random();
-                const winMultiplier = 50;
 
                 if (rng <= 0.003) {
                     // 0.3% chance: Win 50x dinonuggies
-                    const winnings = dinonuggies * winMultiplier;
+                    const winnings = dinonuggies * multiplier;
                     await this.client.db.addUserAttr(interaction.user.id, 'dinonuggies', winnings);
 
                     const jackpotEmbed = new Discord.EmbedBuilder()
@@ -125,7 +126,7 @@ You gained **+${format(winnings)} dinonuggies**!`)
 
                     await interaction.editReply({ embeds: [loseStreakEmbed], components: [] });
                 } else {
-                    // Normal loss: Lose 10% credits
+                    // Normal loss: Lose 20% credits
                     await this.client.db.addUserAttr(interaction.user.id, 'credits', -loseCredits);
 
                     const lossEmbed = new Discord.EmbedBuilder()
