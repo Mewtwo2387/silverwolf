@@ -45,7 +45,8 @@ const userColumns = [
     { name: 'roulette_streak', type: 'INTEGER DEFAULT 0' },
     { name: 'roulette_max_streak', type: 'INTEGER DEFAULT 0' },
     { name: 'blackjack_streak', type: 'INTEGER DEFAULT 0' },
-    { name: 'blackjack_max_streak', type: 'INTEGER DEFAULT 0' }
+    { name: 'blackjack_max_streak', type: 'INTEGER DEFAULT 0' },
+    { name: 'dinonuggie_last_gambled', type: 'DATETIME DEFAULT NULL' },
 ];
 
 

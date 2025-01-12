@@ -2,8 +2,8 @@ const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 const { format } = require('../utils/math.js');
 
-const cooldowns = new Map(); // Map to track cooldowns
-const COOLDOWN_TIME = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+const COOLDOWN_HOURS = 24;
+const HOUR_LENGTH = 60 * 60 * 1000;
 
 class WinOrBust extends Command {
     constructor(client) {
@@ -11,33 +11,28 @@ class WinOrBust extends Command {
     }
 
     async run(interaction) {
-        const userId = interaction.user.id;
         const now = Date.now();
-
-        // Check cooldown
-        if (cooldowns.has(userId)) {
-            const cooldownEnd = cooldowns.get(userId);
-            if (now < cooldownEnd) {
-                const remainingTime = cooldownEnd - now;
-                const hours = Math.floor(remainingTime / (60 * 60 * 1000));
-                const minutes = Math.floor((remainingTime % (60 * 60 * 1000)) / (60 * 1000));
-                const seconds = Math.floor((remainingTime % (60 * 1000)) / 1000);
-
-                const cooldownEmbed = new Discord.EmbedBuilder()
-                    .setColor('#FF0000')
-                    .setTitle('Cooldown Active')
-                    .setDescription(
-                        `You can use this command again in **${hours}h ${minutes}m ${seconds}s**.\n\nSee you again tomorrow for more!`
-                    )
+        
+        const lastGambledInt = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggie_last_gambled')
+        const lastGambled = lastGambledInt ? new Date(lastGambledInt) : null;
+        const diff = lastGambled ? now - lastGambled : COOLDOWN_HOURS * HOUR_LENGTH;
+        
+        
+        if (diff < COOLDOWN_HOURS * HOUR_LENGTH) {
+            const cooldownEmbed = new Discord.EmbedBuilder()
+                .setColor('#FF0000')
+                .setTitle('Cooldown Active')
+                .setDescription(
+                    `You can use this command again in ${COOLDOWN_HOURS - diff / HOUR_LENGTH} hours.`
+                )
                     .setImage('https://media1.tenor.com/m/MUGXIqovlEoAAAAd/salesman-gong-yoo.gif');
 
-                await interaction.editReply({ embeds: [cooldownEmbed] });
-                return;
-            }
+            await interaction.editReply({ embeds: [cooldownEmbed] });
+            return;
         }
 
         // Set cooldown for user
-        cooldowns.set(userId, now + COOLDOWN_TIME);
+        await this.client.db.setUserAttr(interaction.user.id, 'dinonuggie_last_gambled', now);
 
         const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
         const dinonuggies = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggies');
