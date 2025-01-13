@@ -1,6 +1,6 @@
 const { log } = require('./log');
 
-const MAX_LEVEL = 100;
+const MAX_LEVEL = 200;
 
 // get cost from level to level + 1
 function getNextUpgradeCost(level){
