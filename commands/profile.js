@@ -70,7 +70,7 @@ class Profile extends Command {
         const nuggie_nuggie_multiplier = getNuggieNuggieMultiplier(user.nuggie_nuggie_multiplier_level);
         const credits = user.credits;
         const log2_credits = credits > 1 ? Math.log2(credits) : 0;
-        const pokemon_count = await this.client.db.getUniquePokemonCount(interaction.user.id);
+        const pokemon_count = await this.client.db.getUniquePokemonCount(interaction.options.getMember('user') ? interaction.options.getMember('user').id : interaction.user.id);
         const log2_nuggies = user.dinonuggies > 1 ? Math.log2(user.dinonuggies) : 0;
         const next_claim = beki_cooldown - (Date.now() - user.dinonuggies_last_claimed) / 1000;
         pokemons.sort((a, b) => a.pokemon_name.localeCompare(b.pokemon_name));
