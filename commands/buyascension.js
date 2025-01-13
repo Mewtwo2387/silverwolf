@@ -38,6 +38,8 @@ class BuyAscension extends Command{
         const upgrade = ASCENSION_UPGRADES[upgradeId - 1];
 
         const level = await this.client.db.getUserAttr(interaction.user.id, `${upgrade}_level`);
+        
+        const ascension_level = await this.client.db.getUserAttr(interaction.user.id, 'ascension_level');
 
         const amplifier = {
             'nuggie_flat_multiplier': 1,
@@ -46,6 +48,25 @@ class BuyAscension extends Command{
             'nuggie_pokemon_multiplier': 9,
             'nuggie_nuggie_multiplier': 27
         };
+        
+        const levelRequirement = {
+            'nuggie_flat_multiplier': 1,
+            'nuggie_streak_multiplier': 1,
+            'nuggie_credits_multiplier': 2,
+            'nuggie_pokemon_multiplier': 4,
+            'nuggie_nuggie_multiplier': 6
+        };
+        
+        if (ascension_level < levelRequirement[upgrade]){
+            await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
+                .setColor('#AA0000')
+                .setTitle('You cannot buy this upgrade!')
+                .setDescription(`You need to be at least ascension ${levelRequirement[upgrade]} to buy this upgrade. You are currently at ascension ${ascension_level}`)
+                .setFooter({ text : 'dinonuggie'})
+            ]});
+            return;
+        }
+
         const cost = getNextAscensionUpgradeCost(level, amplifier[upgrade]);
         const heavenly_nuggies = await this.client.db.getUserAttr(interaction.user.id, 'heavenly_nuggies');
 
