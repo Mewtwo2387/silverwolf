@@ -1,12 +1,14 @@
 const { format } = require('../utils/math.js');
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
-const { getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNuggieCreditsMultiplier, getNextAscensionUpgradeCost } = require('../utils/ascensionupgrades.js');
+const { getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNuggieCreditsMultiplier, getNextAscensionUpgradeCost, getNuggiePokeMultiplier, getNuggieNuggieMultiplier } = require('../utils/ascensionupgrades.js');
 
 const ASCENSION_UPGRADES = [
     'nuggie_flat_multiplier',
     'nuggie_streak_multiplier',
-    'nuggie_credits_multiplier'
+    'nuggie_credits_multiplier',
+    'nuggie_pokemon_multiplier',
+    'nuggie_nuggie_multiplier'
 ];
 
 class BuyAscension extends Command{
@@ -40,7 +42,9 @@ class BuyAscension extends Command{
         const amplifier = {
             'nuggie_flat_multiplier': 1,
             'nuggie_streak_multiplier': 1,
-            'nuggie_credits_multiplier': 3
+            'nuggie_credits_multiplier': 3,
+            'nuggie_pokemon_multiplier': 9,
+            'nuggie_nuggie_multiplier': 27
         };
         const cost = getNextAscensionUpgradeCost(level, amplifier[upgrade]);
         const heavenly_nuggies = await this.client.db.getUserAttr(interaction.user.id, 'heavenly_nuggies');
@@ -91,6 +95,30 @@ Heavenly Nuggies: ${format(heavenly_nuggies)} -> ${format(heavenly_nuggies - cos
                     .setTitle('Nuggie Credits Multiplier Upgrade Bought')
                     .setDescription(`Level: ${level} -> ${level + 1}
 **Multiplier:** +${format(nuggie_credits_multiplier * 100)}% * log2(credits) -> +${format(next_nuggie_credits_multiplier * 100)}% * log2(credits)
+Heavenly Nuggies: ${format(heavenly_nuggies)} -> ${format(heavenly_nuggies - cost)}`)
+                    .setFooter({ text : 'dinonuggie'})
+                ]});
+                break;
+            case 'nuggie_pokemon_multiplier':
+                const nuggie_pokemon_multiplier = getNuggiePokeMultiplier(level);
+                const next_nuggie_pokemon_multiplier = getNuggiePokeMultiplier(level + 1);
+                await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
+                    .setColor('#00AA00')
+                    .setTitle('Nuggie PokeMultiplier Upgrade Bought')
+                    .setDescription(`Level: ${level} -> ${level + 1}
+**Multiplier:** +${format(nuggie_pokemon_multiplier * 100)}%/pokemon -> +${format(next_nuggie_pokemon_multiplier * 100)}%/pokemon
+Heavenly Nuggies: ${format(heavenly_nuggies)} -> ${format(heavenly_nuggies - cost)}`)
+                    .setFooter({ text : 'dinonuggie'})
+                ]});
+                break;
+            case 'nuggie_nuggie_multiplier':
+                const nuggie_nuggie_multiplier = getNuggieNuggieMultiplier(level);
+                const next_nuggie_nuggie_multiplier = getNuggieNuggieMultiplier(level + 1);
+                await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
+                    .setColor('#00AA00')
+                    .setTitle('Nuggie Nuggie Multiplier Upgrade Bought')
+                    .setDescription(`Level: ${level} -> ${level + 1}
+**Multiplier:** +${format(nuggie_nuggie_multiplier * 100)}% * log2(nuggies) -> +${format(next_nuggie_nuggie_multiplier * 100)}% * log2(nuggies)
 Heavenly Nuggies: ${format(heavenly_nuggies)} -> ${format(heavenly_nuggies - cost)}`)
                     .setFooter({ text : 'dinonuggie'})
                 ]});

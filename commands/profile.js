@@ -2,7 +2,7 @@ const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 const { format } = require('../utils/math.js');
 const { getMaxLevel, getMultiplierAmount, getMultiplierChance, getBekiCooldown } = require('../utils/upgrades.js');
-const { getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNuggieCreditsMultiplier } = require('../utils/ascensionupgrades.js');
+const { getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNuggieCreditsMultiplier, getNuggiePokeMultiplier, getNuggieNuggieMultiplier } = require('../utils/ascensionupgrades.js');
 const marriageBenefits = require('../utils/marriageBenefits.js');
 
 // Cooldown map
@@ -66,8 +66,12 @@ class Profile extends Command {
         const nuggie_flat_multiplier = getNuggieFlatMultiplier(user.nuggie_flat_multiplier_level);
         const nuggie_streak_multiplier = getNuggieStreakMultiplier(user.nuggie_streak_multiplier_level);
         const nuggie_credits_multiplier = getNuggieCreditsMultiplier(user.nuggie_credits_multiplier_level);
+        const nuggie_pokemon_multiplier = getNuggiePokeMultiplier(user.nuggie_pokemon_multiplier_level);
+        const nuggie_nuggie_multiplier = getNuggieNuggieMultiplier(user.nuggie_nuggie_multiplier_level);
         const credits = user.credits;
         const log2_credits = credits > 1 ? Math.log2(credits) : 0;
+        const pokemon_count = await this.client.db.getUniquePokemonCount(interaction.user.id);
+        const log2_nuggies = user.dinonuggies > 1 ? Math.log2(user.dinonuggies) : 0;
         const next_claim = beki_cooldown - (Date.now() - user.dinonuggies_last_claimed) / 1000;
         pokemons.sort((a, b) => a.pokemon_name.localeCompare(b.pokemon_name));
         const maxNameLength = Math.max(...pokemons.map(pokemon => pokemon.pokemon_name.length));
@@ -121,11 +125,11 @@ class Profile extends Command {
                     detailsEmbed = this.createCurrencyEmbed(credits, user, username, avatarURL);
                     break;
                 case 'levels':
-                    detailsEmbed = this.createLevelsEmbed(user, ascension_level, max_level, multiplier_amount, multiplier_rarity, beki_cooldown, nuggie_flat_multiplier, nuggie_streak_multiplier, nuggie_credits_multiplier, log2_credits, username, avatarURL);
+                    detailsEmbed = this.createLevelsEmbed(user, ascension_level, max_level, multiplier_amount, multiplier_rarity, beki_cooldown, nuggie_flat_multiplier, nuggie_streak_multiplier, nuggie_credits_multiplier, log2_credits, username, avatarURL, nuggie_pokemon_multiplier, nuggie_nuggie_multiplier);
                     break;
-                    case 'claims':
-                        detailsEmbed = await this.createClaimsEmbed(user, next_claim, nuggie_streak_multiplier, nuggie_flat_multiplier, nuggie_credits_multiplier, log2_credits, username, avatarURL);
-                        break;                    
+                case 'claims':
+                    detailsEmbed = await this.createClaimsEmbed(user, next_claim, nuggie_streak_multiplier, nuggie_flat_multiplier, nuggie_credits_multiplier, log2_credits, username, avatarURL, pokemon_count, log2_nuggies, nuggie_pokemon_multiplier, nuggie_nuggie_multiplier);
+                    break;                    
                 case 'gambling':
                     detailsEmbed = this.createGamblingEmbed(user, username, avatarURL);
                     break;
@@ -165,7 +169,7 @@ class Profile extends Command {
             .setTimestamp();
     }
 
-    createLevelsEmbed(user, ascension_level, max_level, multiplier_amount, multiplier_rarity, beki_cooldown, nuggie_flat_multiplier, nuggie_streak_multiplier, nuggie_credits_multiplier, log2_credits, username, avatarURL) {
+    createLevelsEmbed(user, ascension_level, max_level, multiplier_amount, multiplier_rarity, beki_cooldown, nuggie_flat_multiplier, nuggie_streak_multiplier, nuggie_credits_multiplier, log2_credits, username, avatarURL, nuggie_pokemon_multiplier, nuggie_nuggie_multiplier) {
         return new Discord.EmbedBuilder()
             .setColor('#00AA00')
             .setTitle(`${username}'s Profile`)
@@ -196,11 +200,17 @@ class Profile extends Command {
 
 **Nuggie Credits Multiplier Upgrade:** Level ${user.nuggie_credits_multiplier_level}
 **Nuggie Credits Multiplier:** ${format(nuggie_credits_multiplier * 100)}% * log2(credits)
+
+**Nuggie Pokemon Multiplier Upgrade:** Level ${user.nuggie_pokemon_multiplier_level}
+**Nuggie Pokemon Multiplier:** ${format(nuggie_pokemon_multiplier * 100)}% * pokemon_count
+
+**Nuggie Nuggie Multiplier Upgrade:** Level ${user.nuggie_nuggie_multiplier_level}
+**Nuggie Nuggie Multiplier:** ${format(nuggie_nuggie_multiplier * 100)}% * log2(nuggies)
             `)
             .setTimestamp();
     }
 
-    async createClaimsEmbed(user, next_claim, nuggie_streak_multiplier, nuggie_flat_multiplier, nuggie_credits_multiplier, log2_credits, username, avatarURL) {
+    async createClaimsEmbed(user, next_claim, nuggie_streak_multiplier, nuggie_flat_multiplier, nuggie_credits_multiplier, log2_credits, username, avatarURL, pokemon_count, log2_nuggies, nuggie_pokemon_multiplier, nuggie_nuggie_multiplier) {
         return new Discord.EmbedBuilder()
             .setColor('#00AA00')
             .setTitle(`${username}'s Profile`)
@@ -213,6 +223,8 @@ class Profile extends Command {
     **Flat Multiplier:** ${format(nuggie_flat_multiplier, true)}x
     **Marriage Multiplier:** ${format(await marriageBenefits(this.client, user.id), true)}x
     **Credits Multiplier:** 1 + ${format(nuggie_credits_multiplier, true)} * ${format(log2_credits, true)} = ${format(1 + nuggie_credits_multiplier * log2_credits, true)}x
+    **Pokemon Multiplier:** 1 + ${format(nuggie_pokemon_multiplier, true)} * ${format(pokemon_count, true)} = ${format(1 + nuggie_pokemon_multiplier * pokemon_count, true)}x
+    **Nuggie Multiplier:** 1 + ${format(nuggie_nuggie_multiplier, true)} * ${format(log2_nuggies, true)} = ${format(1 + nuggie_nuggie_multiplier * log2_nuggies, true)}x
     **Next Claim:** ${next_claim > 0 ? `${(next_claim / 60 / 60).toFixed(0)}h ${(next_claim / 60 % 60).toFixed(0)}m ${(next_claim % 60).toFixed(0)}s` : "Ready"}
             `)
             .setTimestamp();

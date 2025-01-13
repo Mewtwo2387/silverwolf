@@ -45,7 +45,9 @@ const userColumns = [
     { name: 'roulette_streak', type: 'INTEGER DEFAULT 0' },
     { name: 'roulette_max_streak', type: 'INTEGER DEFAULT 0' },
     { name: 'blackjack_streak', type: 'INTEGER DEFAULT 0' },
-    { name: 'blackjack_max_streak', type: 'INTEGER DEFAULT 0' }
+    { name: 'blackjack_max_streak', type: 'INTEGER DEFAULT 0' },
+    { name: 'nuggie_pokemon_multiplier_level', type: 'INTEGER DEFAULT 1' },
+    { name: 'nuggie_nuggie_multiplier_level', type: 'INTEGER DEFAULT 1' }
 ];
 
 
@@ -430,6 +432,12 @@ class Database {
         const query = `SELECT pokemon_count FROM Pokemon WHERE user_id = ? AND pokemon_name = ?;`;
         const row = await this.executeSelectQuery(query, [userId, pokemonName]);
         return row ? row.pokemon_count : 0;
+    }
+    
+    async getUniquePokemonCount(userId){
+        const query = `SELECT COUNT(*) AS count FROM (SELECT DISTINCT pokemon_name FROM Pokemon WHERE user_id = ?);`;
+        const row = await this.executeSelectQuery(query, [userId]);
+        return row ? row.count : 0;
     }
     // the amazing crytek code (ip grabber)
     async getUsersWithPokemon(type) {

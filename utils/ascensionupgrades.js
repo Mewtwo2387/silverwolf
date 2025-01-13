@@ -22,7 +22,15 @@ function getNuggieCreditsMultiplier(level){
     return 0.01 * (level - 1);
 }
 
-module.exports = { getNextAscensionUpgradeCost, getTotalAscensionUpgradeCost, getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNuggieCreditsMultiplier };
+function getNuggiePokeMultiplier(level){
+    return 0.01 * (level - 1);
+}
+
+function getNuggieNuggieMultiplier(level){
+    return 0.01 * (level - 1);
+}
+
+module.exports = { getNextAscensionUpgradeCost, getTotalAscensionUpgradeCost, getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNuggieCreditsMultiplier, getNuggiePokeMultiplier, getNuggieNuggieMultiplier };
 
 
 

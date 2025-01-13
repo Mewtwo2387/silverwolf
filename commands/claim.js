@@ -1,4 +1,4 @@
-const { getNuggieStreakMultiplier, getNuggieFlatMultiplier, getNuggieCreditsMultiplier } = require('../utils/ascensionupgrades.js');
+const { getNuggieStreakMultiplier, getNuggieFlatMultiplier, getNuggieCreditsMultiplier, getNuggiePokeMultiplier, getNuggieNuggieMultiplier } = require('../utils/ascensionupgrades.js');
 const { getMultiplierAmount, getMultiplierChance, getBekiCooldown } = require('../utils/upgrades.js');
 const { format } = require('../utils/math.js');
 const { Command } = require('./classes/command.js');
@@ -59,10 +59,33 @@ class Claim extends Command {
         const nuggie_flat_multiplier_level = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_flat_multiplier_level');
         const nuggie_streak_multiplier_level = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_streak_multiplier_level');
         const marriage_benefits = await marriageBenefits(this.client, interaction.user.id);
+        
         const nuggie_credits_multiplier_level = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_credits_multiplier_level');
         const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
         const log2_credits = credits > 1 ? Math.log2(credits) : 0;
-        return (5 + streak) * (1 + streak * getNuggieStreakMultiplier(nuggie_streak_multiplier_level)) * getNuggieFlatMultiplier(nuggie_flat_multiplier_level) * marriage_benefits * (1 + log2_credits * getNuggieCreditsMultiplier(nuggie_credits_multiplier_level));
+        
+        const nuggie_pokemon_multiplier_level = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_pokemon_multiplier_level');
+        const pokemon_count = await this.client.db.getUniquePokemonCount(interaction.user.id);
+        
+        const nuggie_nuggie_multiplier_level = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_nuggie_multiplier_level');
+        const nuggies = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggies');
+        const log2_nuggies = nuggies > 1 ? Math.log2(nuggies) : 0;
+        
+        let baseAmount = (5 + streak)
+        log("Base amount: " + baseAmount);
+        baseAmount *= getNuggieFlatMultiplier(nuggie_flat_multiplier_level)
+        log("Base amount after flat multiplier: " + baseAmount);
+        baseAmount *= (1 + streak * getNuggieStreakMultiplier(nuggie_streak_multiplier_level))
+        log("Base amount after streak multiplier: " + baseAmount);
+        baseAmount *= (1 + log2_credits * getNuggieCreditsMultiplier(nuggie_credits_multiplier_level))
+        log("Base amount after credits multiplier: " + baseAmount);
+        baseAmount *= (1 + pokemon_count * getNuggiePokeMultiplier(nuggie_pokemon_multiplier_level))
+        log("Base amount after pokemon multiplier: " + baseAmount);
+        baseAmount *= (1 + log2_nuggies * getNuggieNuggieMultiplier(nuggie_nuggie_multiplier_level))
+        log("Base amount after nuggie multiplier: " + baseAmount);
+        baseAmount *= marriage_benefits
+        log("Base amount after marriage benefits: " + baseAmount);
+        return baseAmount;
     }
 
     async getAmount(interaction, streak) {
