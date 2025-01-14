@@ -84,24 +84,34 @@ class MarriageDivorce extends Command {
                 });
                 return; // Stop further processing
             }
-
             if (i.customId === 'confirm_divorce') {
-                // Call divorceSettlement function
                 const settlement = await divorceSettlement(this.client, userId, partnerId);
-
+            
                 // Remove marriage from the database
                 await this.client.db.removeMarriage(userId, partnerId);
-
+            
+                // Generate a list of fees for the embed
+                const fixedFeesBreakdown = settlement.fixedFees
+                    .map(fee => `- **${fee.name}:** ${fee.dinonuggies} dinonuggies, ${fee.credits} credits`)
+                    .join('\n');
+                const dynamicFeesBreakdown = settlement.dynamicFees
+                    .map(fee => `- **${fee.name}:** ${fee.dinonuggies} dinonuggies, ${fee.credits} credits`)
+                    .join('\n');
+            
                 await i.update({
                     embeds: [new Discord.EmbedBuilder()
                         .setColor('#00AA00')
                         .setTitle(`Divorce Successful`)
-                        .setDescription(`You have successfully divorced <@${partnerId}>.\nSettlement:\n` +
-                            `**You received:** ${format(settlement.initiator.dinonuggies)} dinonuggies and ${format(settlement.initiator.credits)} credits. (20% of combined assets)\n` +
-                            `**<@${partnerId}> received:** ${format(settlement.target.dinonuggies)} dinonuggies and ${format(settlement.target.credits)} credits. (80% of combined assets)`)],
+                        .setDescription(
+                            `You have successfully divorced <@${partnerId}>.\n\n` +
+                            `**Fixed Fees:**\n${fixedFeesBreakdown}\n\n` +
+                            `**Dynamic Fees:**\n${dynamicFeesBreakdown}\n\n` +
+                            `**Post-Settlement Distribution:**\n` +
+                            `**You received:** ${format(settlement.initiator.dinonuggies)} dinonuggies and ${format(settlement.initiator.credits)} credits.\n` +
+                            `**<@${partnerId}> received:** ${format(settlement.target.dinonuggies)} dinonuggies and ${format(settlement.target.credits)} credits.`
+                        )],
                     components: []
                 });
-
             } else if (i.customId === 'cancel_divorce') {
                 await i.update({
                     embeds: [new Discord.EmbedBuilder()

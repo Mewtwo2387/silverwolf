@@ -101,14 +101,13 @@ class WinOrBust extends Command {
                 const rng = Math.random();
 
                 if (rng <= 0.003) {
-                    // 0.3% chance: Win 50x dinonuggies
                     const winnings = dinonuggies * multiplier;
                     await this.client.db.addUserAttr(interaction.user.id, 'dinonuggies', winnings);
 
                     const jackpotEmbed = new Discord.EmbedBuilder()
                         .setColor('#FFD700')
                         .setTitle('Jackpot!')
-                        .setDescription(`🎉 YOU WON **50x YOUR DINONUGGIE COUNT**! 🎉
+                        .setDescription(`🎉 YOU WON **${format(multiplier, true)}x YOUR DINONUGGIE COUNT**! 🎉
 You gained **+${format(winnings)} dinonuggies**!`)
                         .setImage('https://media1.tenor.com/m/dGx7QjIRZ7wAAAAd/celebrating-seong-gi-hun.gif');
 
