@@ -38,16 +38,58 @@ class Roulette extends Command {
     async run(interaction) {
         const amountString = interaction.options.getString('amount');
         const amount = antiFormat(amountString);
+
+        const infinityKeywords = [
+            "infinity", "inf", "∞", "unlimited", "forever",
+            "endless", "neverending", "boundless", "limitless", 
+            "eternal", "never-ending"
+        ];
+
         if (isNaN(amount)) {
-            await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
-                .setColor('#AA0000')
-                .setTitle(`Invalid amount`)
-                .setDescription(`idk if this parsing actually works`)
-            ]});
-            return;
-            
+            if (infinityKeywords.some(keyword => amountString.toLowerCase().includes(keyword.toLowerCase()))) {
+                // Handle the infinity case
+                const allResults = Array.from({ length: 37 }, (_, i) => 
+                    `**${i} ${this.getColor(i)}**`
+                ).join(", ");
+
+                await interaction.editReply({
+                    embeds: [new Discord.EmbedBuilder()
+                        .setColor('#FFFF00')
+                        .setTitle(`You bet ${amountString} and won ${amountString} mystic credits!`)
+                        .setDescription(`The wheel landed on all possible results:\n${allResults}`)
+                    ]
+                });
+
+                // Comedic follow-up messages
+                setTimeout(async () => {
+                    await interaction.followUp({
+                        embeds: [new Discord.EmbedBuilder()
+                            .setColor('#FF0000')
+                            .setTitle(`You have been spotted cheating!`)
+                            .setDescription(`Mystic credits set to 0!`)
+                        ]
+                    });
+                }, 5000);
+
+                setTimeout(async () => {
+                    await interaction.followUp({ content: "/j" });
+                }, 10000);
+
+                return;
+            } else {
+                // Handle other strings as normal roulette but without affecting credits
+                await interaction.editReply({
+                    embeds: [new Discord.EmbedBuilder()
+                        .setColor('#AA0000')
+                        .setTitle(`Invalid amount`)
+                        .setDescription(`"${amountString}" is not a valid number. Please try again.`)
+                    ]
+                });
+                return;
+            }
         }
-        
+
+        // Proceed with normal roulette logic for numerical input
         const betType = interaction.options.getString('bet_type');
         const betValue = interaction.options.getInteger('bet_value');
         const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
@@ -78,7 +120,7 @@ class Roulette extends Command {
             return;
         }
 
-        // Spin the wheel
+        // Spin the wheel and continue normal logic
         const wheelResult = this.spinWheel();
         const colorResult = this.getColor(wheelResult);
 
