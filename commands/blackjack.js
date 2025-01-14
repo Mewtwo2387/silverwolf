@@ -82,6 +82,7 @@ class Blackjack extends Command {
         collector.on('end', async (collected, reason) => {
             if (reason === 'time') {
                 await interaction.editReply({ content: "Time ran out! The game has ended.", components: [] });
+                await this.handleLoss(interaction, amount, playerHand, dealerHand, "You ran out of time! (No, soren, you cant do that anymore)");
                 return;
             }
 
