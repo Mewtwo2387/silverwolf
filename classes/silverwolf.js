@@ -70,7 +70,7 @@ All wrongs reserved.
             // log(CommandClass);
             const command = new CommandClass(this);
             this.commands.set(command.name, command);
-            log(`Command ${command.name} loaded.`);
+            log(`Command ${command.name} loaded. ${command.ephemeral ? "ephemeral" : ""} ${command.skipDefer ? "skipDefer" : ""} ${command.isSubcommand ? "isSubcommand" : ""}`);
         }
         log("Commands loaded.");
     }
@@ -249,11 +249,7 @@ All wrongs reserved.
                 const blacklistedCommands = blacklistedCommandsData.map(item => item.command_name);
     
                 // Create a copy of the commands array
-                const commandsArray = Array.from(this.commands.values()).map(command => ({
-                    name: command.name,
-                    description: command.description,
-                    options: command.options
-                }));
+                const commandsArray = Array.from(this.commands.values()).map(command => command.toJSON());
     
                 // If there are no blacklisted commands, register all commands
                 if (blacklistedCommands.length === 0) {

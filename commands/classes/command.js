@@ -1,13 +1,14 @@
 const { logError } = require('../../utils/log');
 
 class Command {
-    constructor(client, name, description, options, ephemeral = false, skipDefer = false) {
+    constructor(client, name, description, options, args = {ephemeral: false, skipDefer: false, isSubcommand: false}) {
         this.client = client;
         this.name = name;
         this.description = description;
         this.options = options;
-        this.ephemeral = ephemeral;
-        this.skipDefer = skipDefer;  // New flag to skip deferReply
+        this.ephemeral = args.ephemeral;
+        this.skipDefer = args.skipDefer;
+        this.isSubcommand = args.isSubcommand;
     }
 
     async execute(interaction) {
@@ -37,6 +38,14 @@ class Command {
                 ephemeral: true
             });
         }
+    }
+    
+    toJSON() {
+        return {
+            name: this.name,
+            description: this.description,
+            options: this.options
+        };
     }
 }
 

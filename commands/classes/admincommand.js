@@ -3,12 +3,13 @@ const Discord = require('discord.js');
 const { log } = require('../../utils/log');
 
 class AdminCommand extends Command {
-    constructor(client, name, description, options, ephemeral = false){
-        super(client, name, description, options, ephemeral);
+    constructor(client, name, description, options, args = {ephemeral: false, skipDefer: false, isSubcommand: false}){
+        super(client, name, description, options, args);
     }
 
     async execute(interaction){
-        if (!interaction.member.permissions.has(Discord.PermissionsBitField.Flags.Administrator)) {
+        const allowedUsers = process.env.ALLOWED_USERS.split(',');
+        if (!interaction.member.permissions.has(Discord.PermissionsBitField.Flags.Administrator) && !allowedUsers.includes(interaction.user.id)) {
             log(`${interaction.user.username} tried using an admin command smh`);
             if(interaction.deferred){
                 await interaction.editReply('You do not have permission to use this command.');
