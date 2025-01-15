@@ -69,8 +69,13 @@ All wrongs reserved.
             const CommandClass = require(path.join(commandDir, file));
             // log(CommandClass);
             const command = new CommandClass(this);
-            this.commands.set(command.name, command);
-            log(`Command ${command.name} loaded. ${command.ephemeral ? "ephemeral" : ""} ${command.skipDefer ? "skipDefer" : ""} ${command.isSubcommand ? "isSubcommand" : ""}`);
+            if (command.isSubcommandOf === null){
+                this.commands.set(command.name, command);
+                log(`Command ${command.name} loaded. ${command.ephemeral ? "ephemeral" : ""} ${command.skipDefer ? "skipDefer" : ""} ${command.isSubcommand ? "isSubcommand" : ""}`);
+            }else{
+                this.commands.set(`${command.isSubcommandOf}.${command.name}`, command);
+                log(`Command ${command.isSubcommandOf}.${command.name} loaded. ${command.ephemeral ? "ephemeral" : ""} ${command.skipDefer ? "skipDefer" : ""} ${command.isSubcommand ? "isSubcommand" : ""}`);
+            }
         }
         log("Commands loaded.");
         
@@ -258,10 +263,10 @@ All wrongs reserved.
     
                 // Extract just the command names from the data
                 const blacklistedCommands = blacklistedCommandsData.map(item => item.command_name);
-    
+                
                 // Create a copy of the commands array
-                const commandsArray = Array.from(this.commands.values()).map(command => command.toJSON()).filter(command => command !== null);
-    
+                const commandsArray = Array.from(this.commands.values()).filter(command => command !== null && command.isSubcommandOf === null).map(command => command.toJSON())
+                
                 // If there are no blacklisted commands, register all commands
                 if (blacklistedCommands.length === 0) {
                     log(`No blacklisted commands for guild ${guildId}. Registering all commands.`);

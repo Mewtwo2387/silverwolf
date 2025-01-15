@@ -3,7 +3,7 @@ const Discord = require('discord.js');
 const { log } = require('../../utils/log');
 
 class AdminCommand extends Command {
-    constructor(client, name, description, options, args = {ephemeral: false, skipDefer: false, isSubcommand: false}){
+    constructor(client, name, description, options, args = {ephemeral: false, skipDefer: false, isSubcommandOf: null}){
         super(client, name, description, options, args);
     }
 

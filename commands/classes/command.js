@@ -1,14 +1,14 @@
 const { logError } = require('../../utils/log');
 
 class Command {
-    constructor(client, name, description, options, args = {ephemeral: false, skipDefer: false, isSubcommand: false}) {
+    constructor(client, name, description, options, args = {ephemeral: false, skipDefer: false, isSubcommandOf: null}) {
         this.client = client;
         this.name = name;
         this.description = description;
         this.options = options;
         this.ephemeral = args.ephemeral;
         this.skipDefer = args.skipDefer;
-        this.isSubcommand = args.isSubcommand;
+        this.isSubcommandOf = args.isSubcommandOf;
     }
 
     async execute(interaction) {
@@ -41,7 +41,7 @@ class Command {
     }
     
     toJSON() {
-        if (!this.isSubcommand) {
+        if (this.isSubcommandOf === null) {
             return {
                 name: this.name,
                 description: this.description,
