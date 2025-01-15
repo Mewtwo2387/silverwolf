@@ -6,9 +6,9 @@ class Command {
         this.name = name;
         this.description = description;
         this.options = options;
-        this.ephemeral = args.ephemeral;
-        this.skipDefer = args.skipDefer;
-        this.isSubcommandOf = args.isSubcommandOf;
+        this.ephemeral = args.ephemeral || false;
+        this.skipDefer = args.skipDefer || false;
+        this.isSubcommandOf = args.isSubcommandOf || null;
     }
 
     async execute(interaction) {
