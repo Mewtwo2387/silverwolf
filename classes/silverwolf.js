@@ -64,7 +64,8 @@ All wrongs reserved.
         log("--------------------\nLoading commands...\n--------------------");
         const commandDir = path.join(__dirname, "../commands");
         const commandFiles = fs.readdirSync(commandDir).filter(file => file.endsWith(".js"));
-
+        
+        let commandCount = 0;
         for (const file of commandFiles) {
             const CommandClass = require(path.join(commandDir, file));
             // log(CommandClass);
@@ -76,19 +77,23 @@ All wrongs reserved.
                 this.commands.set(`${command.isSubcommandOf}.${command.name}`, command);
                 log(`Command ${command.isSubcommandOf}.${command.name} loaded. ${command.ephemeral ? "ephemeral" : ""} ${command.skipDefer ? "skipDefer" : ""} ${command.isSubcommand ? "isSubcommand" : ""}`);
             }
+            commandCount++;
         }
-        log("Commands loaded.");
+        log(`${commandCount} commands loaded.`);
         
         log("--------------------\nLoading command groups...\n--------------------");
         const commandGroupDir = path.join(__dirname, "../commands/commandgroups");
         const commandGroupFiles = fs.readdirSync(commandGroupDir).filter(file => file.endsWith(".js"));
+        
+        let commandGroupCount = 0;
         for (const file of commandGroupFiles) {
             const CommandGroupClass = require(path.join(commandGroupDir, file));
             const commandGroup = new CommandGroupClass(this);
             this.commands.set(commandGroup.name, commandGroup);
             log(`Command group ${commandGroup.name} loaded.`);
+            commandGroupCount++;
         }
-        log("Command groups loaded.");
+        log(`${commandGroupCount} command groups loaded.`);
     }
 
     async loadKeywords(){

@@ -23,7 +23,7 @@ class Add extends DevCommand {
                 type: 3,
                 required: true
             }
-        ]);
+        ], {isSubcommandOf: "dev"});
     }
 
     async run(interaction){

@@ -14,7 +14,7 @@ class ForceSummon extends DevCommand {
                     { name: "mystery", value: "mystery" },
                 ]
             }
-        ], true);
+        ], {ephemeral: true, isSubcommandOf: "dev"});
     }
 
     async run(interaction) {

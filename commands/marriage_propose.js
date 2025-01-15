@@ -4,14 +4,14 @@ const Discord = require('discord.js');
 
 class MarriagePropose extends Command {
     constructor(client) {
-        super(client, "marriage-propose", "Propose to a user", [
+        super(client, "propose", "Propose to a user", [
             {
                 name: 'user',
                 description: 'The user you want to propose to',
                 type: 6, // user
                 required: true
             }
-        ]);
+        ], {isSubcommandOf: "marriage"});
     }
 
     async run(interaction) {

@@ -2,7 +2,7 @@ const { DevCommand } = require("./classes/devcommand.js");
 
 class TestSummon extends DevCommand {
     constructor(client){
-        super(client, "testsummon", "summon a pokemon at random intervals", [], {ephemeral: true});
+        super(client, "testsummon", "summon a pokemon at random intervals", [], {ephemeral: true, isSubcommandOf: "dev"});
     }
 
     async run(interaction){

@@ -1,17 +1,17 @@
 const { Command } = require('./classes/command.js');
 const { EmbedBuilder } = require('discord.js');
-const { logError } = require('../utils/log');
+const { logError } = require('../utils/log.js');
 
 class GetBirthdayCommand extends Command {
     constructor(client) {
-        super(client, "get_birthday", "Retrieve a user's birthday", [
+        super(client, "get", "Retrieve a user's birthday", [
             {
                 name: 'user',
                 description: 'The user whose birthday you want to retrieve',
                 type: 6, // User type
                 required: true
             }
-        ]);
+        ], {isSubcommandOf: "birthday"});
     }
 
     async run(interaction) {

@@ -2,10 +2,10 @@
 require('dotenv').config();
 const { DevCommand } = require('./classes/devcommand.js');
 const { EmbedBuilder } = require('discord.js');
-const { logError } = require('../utils/log');
+const { logError } = require('../utils/log.js');
 class TestBirthdaySchedulerCommand extends DevCommand {
     constructor(client) {
-        super(client, 'test_birthday_scheduler', 'Tests the birthday scheduler to ensure channels are accessible', []);
+        super(client, 'test', 'Tests the birthday scheduler to ensure channels are accessible', [], {isSubcommandOf: "birthday"});
     }
 
     async execute(interaction) {

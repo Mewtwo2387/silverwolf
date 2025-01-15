@@ -5,7 +5,7 @@ const { format } = require('../utils/math.js');
 
 class MarriageDivorce extends Command {
     constructor(client) {
-        super(client, "marriage-divorce", "Divorce your spouse", []);
+        super(client, "divorce", "Divorce your spouse", [], {isSubcommandOf: "marriage"});
     }
 
     async run(interaction) {

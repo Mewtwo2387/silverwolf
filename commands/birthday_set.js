@@ -1,10 +1,10 @@
 const { Command } = require('./classes/command.js');
 const { EmbedBuilder } = require('discord.js');
-const { log, logError } = require('../utils/log');
+const { log, logError } = require('../utils/log.js');
 
 class SetBirthdayCommand extends Command {
     constructor(client) {
-        super(client, "set_birthday", "Sets your birthday", [
+        super(client, "set", "Sets your birthday", [
             {
                 name: 'day',
                 description: 'Day of the month (1-31)',
@@ -29,7 +29,7 @@ class SetBirthdayCommand extends Command {
                 type: 3,
                 required: false
             }
-        ]);
+        ], {isSubcommandOf: "birthday"});
     }
 
     async run(interaction) {

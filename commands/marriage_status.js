@@ -3,14 +3,14 @@ const Discord = require('discord.js');
 
 class MarriageStatus extends Command {
     constructor(client) {
-        super(client, "marriage-status", "Check your or another user's marriage status", [
+        super(client, "status", "Check your or another user's marriage status", [
             {
                 name: 'user',
                 description: 'The user whose marriage status you want to check (optional)',
                 type: 6, // user
                 required: false
             }
-        ]);
+        ], {isSubcommandOf: "marriage"});
     }
 
     async run(interaction) {
