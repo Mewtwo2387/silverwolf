@@ -2,7 +2,7 @@ const { DevCommand } = require("./classes/devcommand.js");
 
 class DPing extends DevCommand {
     constructor(client){
-        super(client, "dping", "pong but for dev", []);
+        super(client, "dev", "pong but for dev", [], {isSubcommand: true});
     }
 
     async run(interaction){

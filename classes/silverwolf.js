@@ -73,6 +73,17 @@ All wrongs reserved.
             log(`Command ${command.name} loaded. ${command.ephemeral ? "ephemeral" : ""} ${command.skipDefer ? "skipDefer" : ""} ${command.isSubcommand ? "isSubcommand" : ""}`);
         }
         log("Commands loaded.");
+        
+        log("--------------------\nLoading command groups...\n--------------------");
+        const commandGroupDir = path.join(__dirname, "../commands/commandgroups");
+        const commandGroupFiles = fs.readdirSync(commandGroupDir).filter(file => file.endsWith(".js"));
+        for (const file of commandGroupFiles) {
+            const CommandGroupClass = require(path.join(commandGroupDir, file));
+            const commandGroup = new CommandGroupClass(this);
+            this.commands.set(commandGroup.name, commandGroup);
+            log(`Command group ${commandGroup.name} loaded.`);
+        }
+        log("Command groups loaded.");
     }
 
     async loadKeywords(){
@@ -249,7 +260,7 @@ All wrongs reserved.
                 const blacklistedCommands = blacklistedCommandsData.map(item => item.command_name);
     
                 // Create a copy of the commands array
-                const commandsArray = Array.from(this.commands.values()).map(command => command.toJSON());
+                const commandsArray = Array.from(this.commands.values()).map(command => command.toJSON()).filter(command => command !== null);
     
                 // If there are no blacklisted commands, register all commands
                 if (blacklistedCommands.length === 0) {

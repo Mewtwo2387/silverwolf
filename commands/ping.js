@@ -2,7 +2,7 @@ const { Command } = require("./classes/command.js");
 
 class Ping extends Command {
     constructor(client){
-        super(client, "ping", "pong", []);
+        super(client, "regular", "pong", [], {isSubcommand: false});
     }
 
     async run(interaction){

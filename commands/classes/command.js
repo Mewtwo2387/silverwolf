@@ -41,11 +41,14 @@ class Command {
     }
     
     toJSON() {
-        return {
-            name: this.name,
-            description: this.description,
-            options: this.options
-        };
+        if (!this.isSubcommand) {
+            return {
+                name: this.name,
+                description: this.description,
+                options: this.options
+            };
+        }
+        return null;
     }
 }
 
