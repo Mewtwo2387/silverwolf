@@ -13,7 +13,7 @@ const ASCENSION_UPGRADES = [
 
 class BuyAscension extends Command{
     constructor(client){
-        super(client, "buyascension", "buy ascension upgrades", [
+        super(client, "ascension", "buy ascension upgrades", [
             {
                 name: "upgrade",
                 description: "The upgrade to buy",
@@ -26,7 +26,7 @@ class BuyAscension extends Command{
                 type: 4,
                 required: false
             }
-        ]);
+        ], {isSubcommandOf: "buy"});
     }
 
     async run(interaction){

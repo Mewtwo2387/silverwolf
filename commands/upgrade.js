@@ -34,7 +34,7 @@ class Upgrades extends Command{
 **Silver Multiplier:** ${format(multiplier_amount.silver, true)}x -> ${format(multipler_amount_next.silver, true)}x
 **Bronze Multiplier:** ${format(multiplier_amount.bronze, true)}x -> ${format(multipler_amount_next.bronze, true)}x
 **Cost:** ${format(multiplier_amount_cost)} mystic credits
-Buy with \`/buy 1\``;
+Buy with \`/buy upgrades 1\``;
         }else{
             desc += `**Level:** ${multiplier_amount_level} (maxed)
 **Gold Multiplier:** ${format(multiplier_amount.gold, true)}x
@@ -49,7 +49,7 @@ Buy with \`/buy 1\``;
 **Silver Chance:** ${format(multiplier_rarity.silver * 100, true)}% -> ${format(multiplier_rarity_next.silver * 100, true)}%
 **Bronze Chance:** ${format(multiplier_rarity.bronze * 100, true)}% -> ${format(multiplier_rarity_next.bronze * 100, true)}%
 **Cost:** ${format(multiplier_rarity_cost)} mystic credits
-Buy with \`/buy 2\``;
+Buy with \`/buy upgrades 2\``;
         }else{
             desc += `**Level:** ${multiplier_rarity_level} (maxed)
 **Gold Chance:** ${format(multiplier_rarity.gold * 100, true)}%
@@ -62,7 +62,7 @@ Buy with \`/buy 2\``;
             desc += `**Level:** ${beki_level}/${max_level} -> ${(beki_level + 1)}/${max_level}
 **Cooldown:** ${format(cooldown, true)} hours -> ${format(cooldown_next, true)} hours
 **Cost:** ${format(beki_cost)} mystic credits
-Buy with \`/buy 3\``;
+Buy with \`/buy upgrades 3\``;
         }else{
             desc += `**Level:** ${beki_level} (maxed)
 **Cooldown:** ${format(cooldown, true)} hours`;

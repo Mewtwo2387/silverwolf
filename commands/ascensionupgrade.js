@@ -42,14 +42,14 @@ Applies a flat multiplier to all claims.
 **Level:** ${nuggie_flat_multiplier_level} -> ${nuggie_flat_multiplier_level + 1}
 **Multiplier:** ${format(nuggie_flat_multiplier)}x -> ${format(nuggie_flat_multiplier_next)}x
 **Cost:** ${format(nuggie_flat_multiplier_cost)} heavenly nuggies
-Buy with \`/buyascension 1\`
+Buy with \`/buy ascension 1\`
 
 ### Nuggie Streak Multiplier Upgrade
 Applies a multiplier to all claims based on your current streak.
 **Level:** ${nuggie_streak_multiplier_level} -> ${nuggie_streak_multiplier_level + 1}
 **Multiplier:** +${format(nuggie_streak_multiplier * 100)}%/day -> +${format(nuggie_streak_multiplier_next * 100)}%/day
 **Cost:** ${format(nuggie_streak_multiplier_cost)} heavenly nuggies
-Buy with \`/buyascension 2\`
+Buy with \`/buy ascension 2\`
 
 ### Unlocks at Ascension 2 ${ascension_level >= 2 ? "✅" : "❌"}
 
@@ -58,7 +58,7 @@ Applies a multiplier to all claims based on your current credits.
 **Level:** ${nuggie_credits_multiplier_level} -> ${nuggie_credits_multiplier_level + 1}
 **Multiplier:** +${format(nuggie_credits_multiplier * 100)}% * log2(credits) -> +${format(nuggie_credits_multiplier_next * 100)}% * log2(credits)
 **Cost:** ${format(nuggie_credits_multiplier_cost)} heavenly nuggies
-Buy with \`/buyascension 3\`
+Buy with \`/buy ascension 3\`
 
 ### Unlocks at Ascension 4 ${ascension_level >= 4 ? "✅" : "❌"}
 
@@ -67,7 +67,7 @@ Applies a multiplier to all claims based on the number of unique pokemons you ha
 **Level:** ${nuggie_pokemon_multiplier_level} -> ${nuggie_pokemon_multiplier_level + 1}
 **Multiplier:** +${format(nuggie_pokemon_multiplier * 100)}%/pokemon -> +${format(nuggie_pokemon_multiplier_next * 100)}%/pokemon
 **Cost:** ${format(nuggie_pokemon_multiplier_cost)} heavenly nuggies
-Buy with \`/buyascension 4\`
+Buy with \`/buy ascension 4\`
 
 ### Unlocks at Ascension 6 ${ascension_level >= 6 ? "✅" : "❌"}
 
@@ -76,7 +76,7 @@ Applies a multiplier to all claims based on the number of nuggies you have.
 **Level:** ${nuggie_nuggie_multiplier_level} -> ${nuggie_nuggie_multiplier_level + 1}
 **Multiplier:** +${format(nuggie_nuggie_multiplier * 100)}% * log2(nuggies) -> +${format(nuggie_nuggie_multiplier_next * 100)}% * log2(nuggies)
 **Cost:** ${format(nuggie_nuggie_multiplier_cost)} heavenly nuggies
-Buy with \`/buyascension 5\`
+Buy with \`/buy ascension 5\`
 
 ### Unlocks at Ascension 10 ${ascension_level >= 10 ? "✅" : "❌"}
 

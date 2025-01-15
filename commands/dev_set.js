@@ -2,24 +2,24 @@ const { DevCommand } = require('./classes/devcommand.js');
 const Discord = require('discord.js');
 const { format, antiFormat } = require('../utils/math.js');
 
-class Add extends DevCommand {
+class SetAttr extends DevCommand {
     constructor(client){
-        super(client, "add", "add something to a user", [
+        super(client, "set", "set data of a user", [
             {
                 name: 'user',
-                description: 'the user to add something to',
+                description: 'the user to set something of',
                 type: 6,
                 required: true
             },
             {
                 name: 'attr',
-                description: 'the thing to add',
+                description: 'the thing to set',
                 type: 3,
                 required: true
             },
             {
-                name: 'amount',
-                description: 'the amount of something to add',
+                name: 'value',
+                description: 'the value to set',
                 type: 3,
                 required: true
             }
@@ -28,8 +28,9 @@ class Add extends DevCommand {
 
     async run(interaction){
         const user = interaction.options.getUser('user');
+        const attr = interaction.options.getString('attr');
+        const amountString = interaction.options.getString('value');
         
-        const amountString = interaction.options.getString('amount');
         const amount = antiFormat(amountString);
         if (isNaN(amount)) {
             await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
@@ -40,22 +41,20 @@ class Add extends DevCommand {
             return;
             
         }
-        
-        const attr = interaction.options.getString('attr');
         try{
-            await this.client.db.addUserAttr(user.id, attr, amount);
+            await this.client.db.setUserAttr(user.id, attr, amount);
         }catch(e){
             await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
                 .setColor('#AA0000')
-                .setTitle(`Failed to add ${format(amount)} ${attr} to ${user.tag}`)
+                .setTitle(`Failed to set ${format(amount)} ${attr} to ${user.tag}`)
             ]});
             return;
         }
         await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
             .setColor('#00AA00')
-            .setTitle(`Added ${format(amount)} ${attr} to ${user.tag}`)
+            .setTitle(`Set ${format(amount)} ${attr} to ${user.tag}`)
         ]});
     }
 }
 
-module.exports = Add;
+module.exports = SetAttr;

@@ -9,14 +9,14 @@ const UPGRADES = ['multiplier_amount', 'multiplier_rarity', 'beki'];
 
 class Buy extends Command{
     constructor(client){
-        super(client, "buy", "buy upgrades", [
+        super(client, "upgrades", "buy upgrades", [
             {
                 name: "upgrade",
                 description: "The upgrade to buy",
                 type: 4,
                 required: true
             }
-        ]);
+        ], {isSubcommandOf: "buy"});
     }
 
     async run(interaction){
