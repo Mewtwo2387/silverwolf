@@ -5,13 +5,14 @@ const { getMultiplierAmount, getMultiplierChance, getBekiCooldown, getNextUpgrad
 
 class UpgradeData extends Command{
     constructor(client){
-        super(client, "upgradedata", "check stats at a certain level",
+        super(client, "upgradesdata", "check stats at a certain level",
             [{
                 name: "level",
                 description: "level",
                 type: 4,
                 required: true
-            }]
+            }], 
+            {isSubcommandOf: "shop"}
         );
     }
 

@@ -5,7 +5,7 @@ const { getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNuggieCreditsMult
 
 class AscensionUpgrade extends Command{
     constructor(client){
-        super(client, "ascensionupgrade", "buy strong upgrades with your heavenly nuggies", []);
+        super(client, "ascension", "buy strong upgrades with your heavenly nuggies", [], {isSubcommandOf: "shop"});
     }
 
     async run(interaction){

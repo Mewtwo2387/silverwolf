@@ -5,7 +5,7 @@ const { getNextUpgradeCost, getTotalUpgradeCost, getMultiplierAmount, getMultipl
 
 class Upgrades extends Command{
     constructor(client){
-        super(client, "upgrades", "upgrade your dinonuggie multipliers", []);
+        super(client, "upgrades", "upgrade your dinonuggie multipliers", [], {isSubcommandOf: "shop"});
     }
 
     async run(interaction){
