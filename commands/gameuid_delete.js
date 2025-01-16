@@ -1,10 +1,10 @@
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
-const { logError } = require('../utils/log');
+const { logError } = require('../utils/log.js');
 
 class DeleteGameUID extends Command {
     constructor(client) {
-        super(client, "deletegameuid", "Delete a game UID for the user", [
+        super(client, "delete", "Delete a game UID for the user", [
             {
                 name: 'game',
                 description: 'The name of the game to delete the UID for',
@@ -26,7 +26,7 @@ class DeleteGameUID extends Command {
                     { name: 'Blue Archive', value: 'Blue Archive' }
                 ]
             }
-        ]);
+        ], { isSubcommandOf: 'gameuid' });
     }
 
     async run(interaction) {

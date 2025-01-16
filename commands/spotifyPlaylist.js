@@ -2,11 +2,11 @@ const axios = require('axios');
 const { Command } = require('./classes/command.js');
 const { EmbedBuilder } = require('discord.js');
 const MusicLinks = require('../data/spotifyPlaylist.json');
-const { logError } = require('../utils/log');
+const { logError } = require('../utils/log.js');
 
 class playlistCommand extends Command {
     constructor(client) {
-        super(client, "spotify-playlist", "Get a random song", []);
+        super(client, "spotifyplaylist", "Get a random song", []);
     }
 
     async run(interaction) {

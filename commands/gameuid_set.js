@@ -1,11 +1,11 @@
 const { Command } = require('./classes/command.js');
 const { DevCommand } = require('./classes/devcommand.js');
 const Discord = require('discord.js');
-const { logError } = require('../utils/log');
+const { logError } = require('../utils/log.js');
 
 class SetGameUID extends Command {
     constructor(client) {
-        super(client, "setgameuid", "Set a game UID for a user", [
+        super(client, "set", "Set a game UID for a user", [
             {
                 name: 'game',
                 description: 'The name of the game',
@@ -39,7 +39,7 @@ class SetGameUID extends Command {
                 type: 3, // String type
                 required: true
             }
-        ]);
+        ], { isSubcommandOf: 'gameuid' });
     }
 
     async run(interaction) {

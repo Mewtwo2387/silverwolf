@@ -3,14 +3,14 @@ const { EmbedBuilder } = require('discord.js');
 
 class GlobalConfigGet extends DevCommand {
     constructor(client) {
-        super(client, "getglobalconfig", "Get a global config value", [
+        super(client, "get", "Get a global config value", [
             {
                 name: 'key',
                 description: 'config key (ALL to get all)',
                 type: 3, // String type
                 required: true
             }
-        ]);
+        ], { isSubcommandOf: 'globalconfig' });
     }
 
     async run(interaction) {

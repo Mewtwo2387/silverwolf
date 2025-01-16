@@ -2,7 +2,7 @@ const { DevCommand } = require('./classes/devcommand.js');
 
 class GlobalConfigSet extends DevCommand {
     constructor(client) {
-        super(client, "setglobalconfig", "Set a global config value", [
+        super(client, "set", "Set a global config value", [
             {
                 name: 'key',
                 description: 'config key',
@@ -15,7 +15,7 @@ class GlobalConfigSet extends DevCommand {
                 type: 3, // String type
                 required: true
             }
-        ]);
+        ], { isSubcommandOf: 'globalconfig' });
     }
 
     async run(interaction) {

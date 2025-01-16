@@ -3,7 +3,7 @@ const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('
 
 class SinglePlayerRussianRouletteCommand extends Command {
     constructor(client) {
-        super(client, "russian_roulette_sp", "Play a single-player game of Russian Roulette", []);
+        super(client, "singleplayer", "Play a single-player game of Russian Roulette", [], { isSubcommandOf: 'russianroulette' });
     }
 
     async run(interaction) {

@@ -1,17 +1,17 @@
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
-const { logError } = require('../utils/log');
+const { logError } = require('../utils/log.js');
 
 class GetGameUID extends Command {
     constructor(client) {
-        super(client, "getgameuid", "Get all game UIDs for a user", [
+        super(client, "get", "Get all game UIDs for a user", [
             {
                 name: 'user',
                 description: 'The user to get the game UIDs for',
                 type: 6, // User type
                 required: true
             }
-        ]);
+        ], { isSubcommandOf: 'gameuid' });
     }
 
     async run(interaction) {

@@ -1,6 +1,6 @@
 const axios = require('axios');
 const { Command } = require('./classes/command.js');
-const { logError } = require('../utils/log');
+const { logError } = require('../utils/log.js');
 
 class RandomJokeCommand extends Command {
     constructor(client) {

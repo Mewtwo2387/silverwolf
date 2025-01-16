@@ -1,6 +1,6 @@
 const { Command } = require('./classes/command.js');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { logError } = require('../utils/log');
+const { logError } = require('../utils/log.js');
 
 class AvatarCommand extends Command {
     constructor(client) {

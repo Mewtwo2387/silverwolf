@@ -2,7 +2,7 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { Command } = require('./classes/command.js');
 const { EmbedBuilder } = require('discord.js');
 require('dotenv').config();
-const { logError } = require('../utils/log');
+const { logError } = require('../utils/log.js');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_TOKEN);
 

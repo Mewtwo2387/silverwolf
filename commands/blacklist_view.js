@@ -1,17 +1,17 @@
 const { DevCommand } = require('./classes/devcommand.js');
 const Discord = require('discord.js');
-const { logError } = require('../utils/log');
+const { logError } = require('../utils/log.js');
 
 class GetBlacklistedCommands extends DevCommand {
     constructor(client) {
-        super(client, "getblacklistedcommands", "Retrieve blacklisted commands for a specific server", [
+        super(client, "view", "Retrieve blacklisted commands for a specific server", [
             {
                 name: 'server',
                 description: 'The ID of the server to retrieve blacklisted commands for',
                 type: 3, // String type
                 required: true
             }
-        ]);
+        ], { isSubcommandOf: 'blacklist' });
     }
 
     async run(interaction) {

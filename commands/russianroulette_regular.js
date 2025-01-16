@@ -3,7 +3,7 @@ const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('
 
 class RussianRouletteCommand extends Command {
     constructor(client) {
-        super(client, "russian_roulette", "Play a game of Russian Roulette", [
+        super(client, "regular", "Play a game of Russian Roulette", [
             {
                 name: 'user1',
                 type: 6, // USER type
@@ -40,7 +40,7 @@ class RussianRouletteCommand extends Command {
                 description: 'The sixth participant',
                 required: false,
             }
-        ]);
+        ], { isSubcommandOf: 'russianroulette' });
     }
 
     async run(interaction) {

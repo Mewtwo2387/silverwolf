@@ -1,10 +1,10 @@
 const { DevCommand } = require('./classes/devcommand.js');
 const Discord = require('discord.js');
-const { logError } = require('../utils/log');
+const { logError } = require('../utils/log.js');
 
 class BlacklistCommand extends DevCommand {
     constructor(client) {
-        super(client, "blacklistcommand", "Add or remove a command from the blacklist for a specific server", [
+        super(client, "configure", "Add or remove a command from the blacklist for a specific server", [
             {
                 name: 'command',
                 description: 'The name of the command to blacklist or remove',
@@ -33,7 +33,7 @@ class BlacklistCommand extends DevCommand {
                 type: 3, // String type
                 required: false
             }
-        ]);
+        ], { isSubcommandOf: 'blacklist' });
     }
 
     async run(interaction) {
