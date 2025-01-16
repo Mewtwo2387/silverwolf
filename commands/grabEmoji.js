@@ -6,7 +6,7 @@ const { logError } = require('../utils/log');
 
 class EmojiToFileCommand extends Command {
     constructor(client) {
-        super(client, "grab_emoji", "Converts an emoji to a selected file format", [
+        super(client, "grab-emoji", "Converts an emoji to a selected file format", [
             {
                 name: 'emoji',
                 description: 'The emoji to be converted, for example "<:1silverwolf_thumb:1217078357129302048>"',

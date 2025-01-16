@@ -16,7 +16,7 @@ class SayDM extends AdminCommand {
                 description: 'The message you want to send',
                 required: true,
             }
-        ], true);
+        ], {ephemeral: true});
     }
 
     async run(interaction) {

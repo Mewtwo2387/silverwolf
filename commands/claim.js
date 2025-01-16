@@ -111,6 +111,30 @@ class Claim extends Command {
         }
     }
     
+    async handleSuccessfulClaim(interaction, newMessage = false) {
+        testerror;
+        const streak = await this.client.db.getUserAttr(interaction.user.id, "dinonuggies_claim_streak");
+        const dinonuggies = await this.client.db.getUserAttr(interaction.user.id, "dinonuggies");
+        const now = new Date();
+        const { amount, title, imageUrl, colour, footer, thumbnail } = await this.getAmount(interaction, streak);
+        const embed = new Discord.EmbedBuilder()
+            .setThumbnail(thumbnail)
+            .setColor(colour)
+            .setAuthor({ name: 'dinonuggie', iconURL: 'https://drive.google.com/thumbnail?id=1oVDRweQoYLU6YfB01LWZpTFQiBS1fRRa' })
+            .setTitle(title)
+            .setDescription(`You now have ${format(dinonuggies + amount)} dinonuggies. You are on a streak of ${streak + 1} days.`)
+            .setImage(imageUrl)
+            .setFooter({ text: `dinonuggie | ${footer}`, iconURL: 'https://drive.google.com/thumbnail?id=1oVDRweQoYLU6YfB01LWZpTFQiBS1fRRa' })
+            
+        await this.client.db.addUserAttr(interaction.user.id, 'dinonuggies', amount);
+        await this.client.db.setUserAttr(interaction.user.id, 'dinonuggies_last_claimed', now);
+        await this.client.db.addUserAttr(interaction.user.id, 'dinonuggies_claim_streak', 1);
+        if(newMessage){
+            await interaction.followUp({ embeds: [embed] });
+        } else {
+            await interaction.editReply({ embeds: [embed] });
+        }
+    }
 
     async run(interaction) {
         try {
@@ -180,19 +204,7 @@ class Claim extends Command {
                 await this.client.db.setUserAttr(interaction.user.id, 'dinonuggies_last_claimed', now);
                 await this.client.db.setUserAttr(interaction.user.id, 'dinonuggies_claim_streak', 1);
             } else {
-                const { amount, title, imageUrl, colour, footer, thumbnail } = await this.getAmount(interaction, streak);
-                await interaction.editReply({ embeds: [new Discord.EmbedBuilder()
-                    .setThumbnail(thumbnail)
-                    .setColor(colour)
-                    .setAuthor({ name: 'dinonuggie', iconURL: 'https://drive.google.com/thumbnail?id=1oVDRweQoYLU6YfB01LWZpTFQiBS1fRRa' })
-                    .setTitle(title)
-                    .setDescription(`You now have ${format(dinonuggies + amount)} dinonuggies. You are on a streak of ${streak + 1} days.`)
-                    .setImage(imageUrl)
-                    .setFooter({ text: `dinonuggie | ${footer}`, iconURL: 'https://drive.google.com/thumbnail?id=1oVDRweQoYLU6YfB01LWZpTFQiBS1fRRa' })
-                ]});
-                await this.client.db.addUserAttr(interaction.user.id, 'dinonuggies', amount);
-                await this.client.db.setUserAttr(interaction.user.id, 'dinonuggies_last_claimed', now);
-                await this.client.db.addUserAttr(interaction.user.id, 'dinonuggies_claim_streak', 1);
+                await this.handleSuccessfulClaim(interaction);
             }
         } catch (error) {
             logError('Error claiming dinonuggies:', error);

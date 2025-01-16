@@ -4,7 +4,7 @@ const { log } = require('../utils/log');
 
 class Awdangit extends Command {
     constructor(client) {
-        super(client, "awdangit", "99% chance to earn $1M, 1% chance to become a girl", [], false)
+        super(client, "awdangit", "99% chance to earn $1M, 1% chance to become a girl", [])
     }
 
     async run(interaction){

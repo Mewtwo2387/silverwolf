@@ -12,12 +12,29 @@ class Donate extends Command {
                 .setColor('#00AA00')
                 .setTitle('«« ━━ ✦・Donation Links and Rewards・✦ ━━ »»')
                 .setDescription(`Donate for a series of rewards! (real)
-                
-https://donate.unrwa.org/
-                
+
+Silverwolf funds:
+https://www.gofundme.com/f/melissa-fahns-family-needs-your-support
+                    
+Gaza:
+https://donate.unrwa.org/    
 https://linktr.ee/fundsforgaza/
 
-Bonus 100k mystic credits per dollar donated!
+Send a screenshot of your donation to get your rewards!
+
+**$1** - 60 stellar nuggies
+
+**$5** - 300 + 30 stellar nuggies
+
+**$15** - 980 + 110 stellar nuggies
+
+**$30** - 1980 + 260 stellar nuggies
+
+**$50** - 3280 + 600 stellar nuggies
+
+**$100** - 6480 + 1600 stellar nuggies
+
+----
                 
 **$5** - A kiss mwwaaahhh
 
@@ -42,12 +59,29 @@ Bonus 100k mystic credits per dollar donated!
                 .setColor('#00AA00')
                 .setTitle('«« ━━ ✦・Donation Links and Rewards・✦ ━━ »»')
                 .setDescription(`Donate for a series of rewards! (real)
-                
-https://donate.unrwa.org/
-                
+
+Silverwolf funds:
+https://www.gofundme.com/f/melissa-fahns-family-needs-your-support
+
+Gaza:
+https://donate.unrwa.org/    
 https://linktr.ee/fundsforgaza/
 
-Bonus 100k mystic credits per dollar donated!
+Send a screenshot of your donation to get your rewards!
+
+**$1** - 60 stellar nuggies
+
+**$5** - 300 + 30 stellar nuggies
+
+**$15** - 980 + 110 stellar nuggies
+
+**$30** - 1980 + 260 stellar nuggies
+
+**$50** - 3280 + 600 stellar nuggies
+
+**$100** - 6480 + 1600 stellar nuggies
+
+----
                 
 **$5** - A kiss mwwaaahhh
 

@@ -6,7 +6,7 @@ const { logError } = require('../utils/log');
 
 class F1Standings extends Command {
     constructor(client) {
-        super(client, "f1_standings", "Fetch the current F1 standings (drivers or constructors)", [
+        super(client, "f1-standings", "Fetch the current F1 standings (drivers or constructors)", [
             {
                 name: 'type',
                 description: 'Choose between driver or constructor standings',

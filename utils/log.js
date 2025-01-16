@@ -13,7 +13,8 @@ function log(message) {
 
 function logError(message, error = "") {
     console.error(message, error);
-    fs.appendFile(logFilePath, `${new Date().toISOString()} - ERROR: ${message}\n${error}\n`, (err) => {
+    const errorStack = error.stack || error;
+    fs.appendFile(logFilePath, `${new Date().toISOString()} - ERROR: ${message}\n${errorStack}\n`, (err) => {
         if (err) {
             console.error("Failed to write to log file:", err);
         }
@@ -24,7 +25,7 @@ process.on('uncaughtException', handleUncaughtException);
 log("Catching uncaught exceptions...");
 
 function handleUncaughtException(error) {
-    logError(`----- UNCAUGHT EXCEPTION: -----\n${error}`);
+    logError(`----- UNCAUGHT EXCEPTION: -----`, error);
 }
 
 module.exports = { log, logError };

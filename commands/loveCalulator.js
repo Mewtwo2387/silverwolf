@@ -3,7 +3,7 @@ const crypto = require('crypto');
 
 class LoveCalculator extends Command {
     constructor(client) {
-        super(client, "love_calculator", "Calculate love compatibility between two members", [
+        super(client, "love-calculator", "Calculate love compatibility between two members", [
             {
                 name: 'input1',
                 description: 'The first input (user mention or string)',

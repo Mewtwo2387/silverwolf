@@ -64,15 +64,36 @@ All wrongs reserved.
         log("--------------------\nLoading commands...\n--------------------");
         const commandDir = path.join(__dirname, "../commands");
         const commandFiles = fs.readdirSync(commandDir).filter(file => file.endsWith(".js"));
-
+        
+        let commandCount = 0;
         for (const file of commandFiles) {
             const CommandClass = require(path.join(commandDir, file));
             // log(CommandClass);
             const command = new CommandClass(this);
-            this.commands.set(command.name, command);
-            log(`Command ${command.name} loaded.`);
+            if (command.isSubcommandOf === null){
+                this.commands.set(command.name, command);
+                log(`Command ${command.name} loaded. ${command.ephemeral ? "ephemeral" : ""} ${command.skipDefer ? "skipDefer" : ""} ${command.isSubcommand ? "isSubcommand" : ""}`);
+            }else{
+                this.commands.set(`${command.isSubcommandOf}.${command.name}`, command);
+                log(`Command ${command.isSubcommandOf}.${command.name} loaded. ${command.ephemeral ? "ephemeral" : ""} ${command.skipDefer ? "skipDefer" : ""} ${command.isSubcommand ? "isSubcommand" : ""}`);
+            }
+            commandCount++;
         }
-        log("Commands loaded.");
+        log(`${commandCount} commands loaded.`);
+        
+        log("--------------------\nLoading command groups...\n--------------------");
+        const commandGroupDir = path.join(__dirname, "../commands/commandgroups");
+        const commandGroupFiles = fs.readdirSync(commandGroupDir).filter(file => file.endsWith(".js"));
+        
+        let commandGroupCount = 0;
+        for (const file of commandGroupFiles) {
+            const CommandGroupClass = require(path.join(commandGroupDir, file));
+            const commandGroup = new CommandGroupClass(this);
+            this.commands.set(commandGroup.name, commandGroup);
+            log(`Command group ${commandGroup.name} loaded.`);
+            commandGroupCount++;
+        }
+        log(`${commandGroupCount} command groups loaded.`);
     }
 
     async loadKeywords(){
@@ -115,7 +136,7 @@ All wrongs reserved.
             }
             const command = this.commands.get(interaction.commandName);
             if(!command) return;
-            log(`Command ${command.name} executed by ${interaction.user.username} (${interaction.user.id}) in ${interaction.channel.name} (${interaction.channel.id}) in ${interaction.guild.name} (${interaction.guild.id})`);
+            log(`> Command ${command.name} executed by ${interaction.user.username} (${interaction.user.id}) in ${interaction.channel.name} (${interaction.channel.id}) in ${interaction.guild.name} (${interaction.guild.id})`);
             try{
                 command.execute(interaction);
             }catch(error){
@@ -125,8 +146,18 @@ All wrongs reserved.
     }
 
     async processMessage(message) {
-        if (message.author.bot || !message.guild) return;
-        log(`Message received from ${message.author.username} (${message.author.id}) in ${message.channel.name} (${message.channel.id}) in ${message.guild.name} (${message.guild.id}): ${message.content}`);
+        if (!message.guild){
+            log(`> Message received from ${message.author.username} (${message.author.id}) in DM: ${message.content}`);
+            return;
+        }
+        
+        if (message.author.bot){
+            log(`Bot message received from ${message.author.username} (${message.author.id}) in ${message.channel.name} (${message.channel.id}) in ${message.guild.name} (${message.guild.id}): ${message.content}`);
+            return;
+        }
+        
+        log(`> Message received from ${message.author.username} (${message.author.id}) in ${message.channel.name} (${message.channel.id}) in ${message.guild.name} (${message.guild.id}): ${message.content}`);
+        
         
         if (Math.random() < 0.01 && message.channel.name !== "super-serious-secret-vent-rant-chat") {
             log("Summoning a pokemon...");
@@ -230,7 +261,17 @@ All wrongs reserved.
     }
 
     processEdit(oldMessage, newMessage){
-        log(`Message edited by ${oldMessage.author.username} (${oldMessage.author.id}) in ${oldMessage.channel.name} (${oldMessage.channel.id}) in ${oldMessage.guild.name} (${oldMessage.guild.id}): ${oldMessage.content} -> ${newMessage.content}`);
+        if (!oldMessage.guild){
+            log(`> Message edited by ${oldMessage.author.username} (${oldMessage.author.id}) in DM: ${oldMessage.content} -> ${newMessage.content}`);
+            return;
+        }
+        
+        if (oldMessage.author.bot){
+            log(`Bot message edited by ${oldMessage.author.username} (${oldMessage.author.id}) in ${oldMessage.channel.name} (${oldMessage.channel.id}) in ${oldMessage.guild.name} (${oldMessage.guild.id}): ${oldMessage.content} -> ${newMessage.content}`);
+            return;
+        }
+
+        log(`> Message edited by ${oldMessage.author.username} (${oldMessage.author.id}) in ${oldMessage.channel.name} (${oldMessage.channel.id}) in ${oldMessage.guild.name} (${oldMessage.guild.id}): ${oldMessage.content} -> ${newMessage.content}`);
         this.editedMessages.unshift({old: oldMessage, new: newMessage});
     }
 
@@ -247,14 +288,10 @@ All wrongs reserved.
     
                 // Extract just the command names from the data
                 const blacklistedCommands = blacklistedCommandsData.map(item => item.command_name);
-    
+                
                 // Create a copy of the commands array
-                const commandsArray = Array.from(this.commands.values()).map(command => ({
-                    name: command.name,
-                    description: command.description,
-                    options: command.options
-                }));
-    
+                const commandsArray = Array.from(this.commands.values()).filter(command => command !== null && command.isSubcommandOf === null).map(command => command.toJSON())
+                
                 // If there are no blacklisted commands, register all commands
                 if (blacklistedCommands.length === 0) {
                     log(`No blacklisted commands for guild ${guildId}. Registering all commands.`);
