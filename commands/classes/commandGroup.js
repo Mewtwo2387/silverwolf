@@ -1,3 +1,5 @@
+const { log } = require("../../utils/log");
+
 class CommandGroup {
     constructor(client, name, description, commands) {
         this.client = client;
@@ -9,6 +11,7 @@ class CommandGroup {
     
     async execute(interaction) {
         const commandName = interaction.options.getSubcommand();
+        log(`> Subcommand: ${commandName}`);
         const command = this.client.commands.get(`${this.name}.${commandName}`);
         if (!command) return;
         await command.execute(interaction);

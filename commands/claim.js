@@ -112,6 +112,7 @@ class Claim extends Command {
     }
     
     async handleSuccessfulClaim(interaction, newMessage = false) {
+        testerror;
         const streak = await this.client.db.getUserAttr(interaction.user.id, "dinonuggies_claim_streak");
         const dinonuggies = await this.client.db.getUserAttr(interaction.user.id, "dinonuggies");
         const now = new Date();

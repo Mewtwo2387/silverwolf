@@ -136,7 +136,7 @@ All wrongs reserved.
             }
             const command = this.commands.get(interaction.commandName);
             if(!command) return;
-            log(`Command ${command.name} executed by ${interaction.user.username} (${interaction.user.id}) in ${interaction.channel.name} (${interaction.channel.id}) in ${interaction.guild.name} (${interaction.guild.id})`);
+            log(`> Command ${command.name} executed by ${interaction.user.username} (${interaction.user.id}) in ${interaction.channel.name} (${interaction.channel.id}) in ${interaction.guild.name} (${interaction.guild.id})`);
             try{
                 command.execute(interaction);
             }catch(error){
@@ -146,8 +146,18 @@ All wrongs reserved.
     }
 
     async processMessage(message) {
-        if (message.author.bot || !message.guild) return;
-        log(`Message received from ${message.author.username} (${message.author.id}) in ${message.channel.name} (${message.channel.id}) in ${message.guild.name} (${message.guild.id}): ${message.content}`);
+        if (!message.guild){
+            log(`> Message received from ${message.author.username} (${message.author.id}) in DM: ${message.content}`);
+            return;
+        }
+        
+        if (message.author.bot){
+            log(`Bot message received from ${message.author.username} (${message.author.id}) in ${message.channel.name} (${message.channel.id}) in ${message.guild.name} (${message.guild.id}): ${message.content}`);
+            return;
+        }
+        
+        log(`> Message received from ${message.author.username} (${message.author.id}) in ${message.channel.name} (${message.channel.id}) in ${message.guild.name} (${message.guild.id}): ${message.content}`);
+        
         
         if (Math.random() < 0.01 && message.channel.name !== "super-serious-secret-vent-rant-chat") {
             log("Summoning a pokemon...");
@@ -251,7 +261,17 @@ All wrongs reserved.
     }
 
     processEdit(oldMessage, newMessage){
-        log(`Message edited by ${oldMessage.author.username} (${oldMessage.author.id}) in ${oldMessage.channel.name} (${oldMessage.channel.id}) in ${oldMessage.guild.name} (${oldMessage.guild.id}): ${oldMessage.content} -> ${newMessage.content}`);
+        if (!oldMessage.guild){
+            log(`> Message edited by ${oldMessage.author.username} (${oldMessage.author.id}) in DM: ${oldMessage.content} -> ${newMessage.content}`);
+            return;
+        }
+        
+        if (oldMessage.author.bot){
+            log(`Bot message edited by ${oldMessage.author.username} (${oldMessage.author.id}) in ${oldMessage.channel.name} (${oldMessage.channel.id}) in ${oldMessage.guild.name} (${oldMessage.guild.id}): ${oldMessage.content} -> ${newMessage.content}`);
+            return;
+        }
+
+        log(`> Message edited by ${oldMessage.author.username} (${oldMessage.author.id}) in ${oldMessage.channel.name} (${oldMessage.channel.id}) in ${oldMessage.guild.name} (${oldMessage.guild.id}): ${oldMessage.content} -> ${newMessage.content}`);
         this.editedMessages.unshift({old: oldMessage, new: newMessage});
     }
 
