@@ -205,6 +205,16 @@ class Claim extends Command {
             } else {
                 await this.handleSuccessfulClaim(interaction);
             }
+               
+            if (await this.client.db.getGlobalConfig('banned') == 'removed') {
+                const embed = new Discord.EmbedBuilder()
+                    .setColor('Green')
+                    .setTitle('Welcome back!')
+                    .setDescription(`Thanks for your patience and support. As a result of Iruma's efforts, commands are back in ${interaction.guild.name}!
+                        
+Please continue to claim, gamble, and catch!`)
+                await interaction.channel.send({ embeds: [embed] });
+            }
         } catch (error) {
             logError('Error claiming dinonuggies:', error);
             await interaction.editReply({ content: 'Failed to claim dinonuggies.', ephemeral: true });
