@@ -1,6 +1,6 @@
 const { Command } = require('./classes/command.js');
 const fs = require('fs');
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 class GachaRollCommand extends Command {
     constructor(client) {
@@ -8,7 +8,7 @@ class GachaRollCommand extends Command {
             {
                 name: 'amount',
                 description: 'Number of rolls (1 or 10)',
-                type: 4, // integer
+                type: 4,
                 required: true,
                 choices: [
                     { name: '1', value: 1 },
@@ -17,12 +17,10 @@ class GachaRollCommand extends Command {
             }
         ]);
 
-        // Load JSON data
         const charactersRaw = JSON.parse(fs.readFileSync('./data/hsrCharacters.json', 'utf-8'));
         const lightconesRaw = JSON.parse(fs.readFileSync('./data/hsrLC.json', 'utf-8'));
         this.namesData = JSON.parse(fs.readFileSync('./data/hsr.json', 'utf-8'));
 
-        // Convert JSON objects into arrays
         this.characterPool = Object.values(charactersRaw);
         this.lightconePool = Object.values(lightconesRaw);
     }
@@ -35,24 +33,20 @@ class GachaRollCommand extends Command {
         return pityCount >= 74 ? Math.min(1, (pityCount - 73) * 0.1) : 0.006;
     }
 
-    getItemName(item) {
-        if (!item) return 'Unknown';
+    getItemDetails(item) {
+        if (!item) return { name: 'Unknown', imagePath: null, rarity: 'Unknown' };
     
-        // Check for character name first
-        if (item.AvatarName?.Hash) {
-            let nameHash = item.AvatarName.Hash.toString();
-            return this.namesData.en[nameHash] || 'Unknown';
-        }
+        let nameHash = item.AvatarName?.Hash?.toString() || item.EquipmentName?.Hash?.toString();
+        let name = this.namesData.en[nameHash] || 'Unknown';
+        let imagePath = item.AvatarCutinFrontImgPath || item.ImagePath || null;
+        let rarity = item.Rarity || 'Unknown';  // Assuming Rarity is a property in your item data
     
-        // Check for lightcone name
-        if (item.EquipmentName?.Hash) {
-            let nameHash = item.EquipmentName.Hash.toString();
-            return this.namesData.en[nameHash] || 'Unknown';
-        }
-    
-        return 'Unknown';
-    }
-    
+        return {
+            name,
+            imageUrl: imagePath ? `https://enka.network/ui/hsr/${imagePath}` : null,
+            rarity: rarity
+        };
+    }    
 
     async run(interaction) {
         const amount = interaction.options.getInteger('amount');
@@ -64,14 +58,14 @@ class GachaRollCommand extends Command {
         const totalCost = costPerRoll * amount;
 
         if (dinonuggies < totalCost) {
-            const embed = new EmbedBuilder()
-                .setTitle('Not enough dinonuggies!')
-                .setDescription(`You need ${totalCost}, but you only have ${dinonuggies}.`)
-                .setColor(0xFF0000);
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply({
+                embeds: [new EmbedBuilder()
+                    .setTitle('Not enough dinonuggies!')
+                    .setDescription(`You need ${totalCost}, but you only have ${dinonuggies}.`)
+                    .setColor(0xFF0000)]
+            });
         }
 
-        // Deduct cost
         dinonuggies -= totalCost;
         await this.client.db.setUserAttr(userId, 'dinonuggies', dinonuggies);
 
@@ -91,26 +85,84 @@ class GachaRollCommand extends Command {
                 rollResult = Math.random() < 0.5 ? this.getRandomItem(this.characterPool.filter(c => c.Rarity === 4)) : this.getRandomItem(this.lightconePool.filter(lc => lc.Rarity === 4));
                 pityCount++;
             } else {
-                rollResult =  this.getRandomItem(this.lightconePool.filter(lc => lc.Rarity === 3));
+                rollResult = this.getRandomItem(this.lightconePool.filter(lc => lc.Rarity === 3));
                 pityCount++;
             }
 
-            results.push({
-                name: this.getItemName(rollResult),
-                type: rollResult?.AvatarName ? 'Character' : 'Lightcone',
-                rarity: rollResult?.Rarity || '?'
-            });
+            results.push(this.getItemDetails(rollResult));
         }
 
         await this.client.db.setUserAttr(userId, 'pity', pityCount);
 
-        const embed = new EmbedBuilder()
-            .setTitle(`Gacha Roll Results for ${interaction.user.username} (${amount})`)
-            .setDescription(results.map(item => `**${item.name}** - ${item.type} - ${item.rarity}★`).join('\n'))
+        let currentIndex = 0;
+
+        const updateMessage = async (i) => {
+            const item = results[currentIndex];
+            const embed = new EmbedBuilder()
+                .setTitle(`Gacha Roll #${currentIndex + 1}`)
+                .setDescription(`**${item.name}**`)
+                .setImage(item.imageUrl)
+                .setColor(gotFiveStar ? 0xFFD700 : 0x00FF00)
+                .setFooter({ text: `Pity: ${pityCount}` });
+
+            const row = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('next_roll')
+                        .setLabel('➡️ Next')
+                        .setStyle(ButtonStyle.Primary)
+                        .setDisabled(currentIndex === results.length - 1),
+                    new ButtonBuilder()
+                        .setCustomId('skip_results')
+                        .setLabel('Skip to Results')
+                        .setStyle(ButtonStyle.Danger)
+                );
+
+            await i.update({ embeds: [embed], components: [row] });
+        };
+
+        const initialEmbed = new EmbedBuilder()
+            .setTitle(`Gacha Roll #1`)
+            .setDescription(`**${results[0].name}**`)
+            .setImage(results[0].imageUrl)
             .setColor(gotFiveStar ? 0xFFD700 : 0x00FF00)
             .setFooter({ text: `Pity: ${pityCount}` });
 
-        await interaction.editReply({ embeds: [embed] });
+        const initialRow = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('next_roll')
+                    .setLabel('➡️ Next')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId('skip_results')
+                    .setLabel('Skip to Results')
+                    .setStyle(ButtonStyle.Danger)
+            );
+
+        const message = await interaction.editReply({ embeds: [initialEmbed], components: [initialRow] });
+        
+        const collector = message.createMessageComponentCollector({ time: 60000 });
+        
+        collector.on('collect', async i => {
+            if (i.customId === 'next_roll') {
+                currentIndex++;
+                if (currentIndex < results.length) {
+                    await updateMessage(i);
+                }
+            } else if (i.customId === 'skip_results') {
+                collector.stop();
+            }
+        });
+
+        collector.on('end', async () => {
+            await message.edit({ components: [] });
+            const finalEmbed = new EmbedBuilder()
+                .setTitle(`Gacha Roll Results for ${interaction.user.username} (${amount})`)
+                .setDescription(results.map(item => `**${item.name}** - ${item.rarity}★`).join('\n'))
+                .setColor(gotFiveStar ? 0xFFD700 : 0x00FF00);
+            await interaction.followUp({ embeds: [finalEmbed] });
+        });
     }
 }
 
