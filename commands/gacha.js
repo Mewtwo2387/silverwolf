@@ -17,42 +17,61 @@ class GachaRollCommand extends Command {
             }
         ]);
 
-        // Load character pool from JSON
-        this.characterPool = JSON.parse(fs.readFileSync('./data/characters.json', 'utf-8'));
+        // Load JSON data
+        const charactersRaw = JSON.parse(fs.readFileSync('./data/hsrCharacters.json', 'utf-8'));
+        const lightconesRaw = JSON.parse(fs.readFileSync('./data/hsrLC.json', 'utf-8'));
+        this.namesData = JSON.parse(fs.readFileSync('./data/hsr.json', 'utf-8'));
+
+        // Convert JSON objects into arrays
+        this.characterPool = Object.values(charactersRaw);
+        this.lightconePool = Object.values(lightconesRaw);
     }
 
-    getRandomCharacter(rarity) {
-        const filteredPool = this.characterPool.filter(character => character.rarity === rarity);
-        return filteredPool[Math.floor(Math.random() * filteredPool.length)];
+    getRandomItem(pool) {
+        return pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : null;
     }
 
     calculatePityRate(pityCount) {
-        if (pityCount >= 74) {
-            return Math.min(1, (pityCount - 73) * 0.1); // Increase rate from 74 rolls onwards
-        }
-        return 0.006; // Base rate for 5-star (0.6%)
+        return pityCount >= 74 ? Math.min(1, (pityCount - 73) * 0.1) : 0.006;
     }
+
+    getItemName(item) {
+        if (!item) return 'Unknown';
+    
+        // Check for character name first
+        if (item.AvatarName?.Hash) {
+            let nameHash = item.AvatarName.Hash.toString();
+            return this.namesData.en[nameHash] || 'Unknown';
+        }
+    
+        // Check for lightcone name
+        if (item.EquipmentName?.Hash) {
+            let nameHash = item.EquipmentName.Hash.toString();
+            return this.namesData.en[nameHash] || 'Unknown';
+        }
+    
+        return 'Unknown';
+    }
+    
 
     async run(interaction) {
         const amount = interaction.options.getInteger('amount');
         const userId = interaction.user.id;
-        let pityCount = await this.client.db.getUserAttr(interaction.user.id, 'pity');
-        let dinonuggies = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggies');
+        let pityCount = await this.client.db.getUserAttr(userId, 'pity');
+        let dinonuggies = await this.client.db.getUserAttr(userId, 'dinonuggies');
 
-        // Define roll costs
         const costPerRoll = 160;
         const totalCost = costPerRoll * amount;
 
-        // Check if the user has enough dinonuggies
         if (dinonuggies < totalCost) {
             const embed = new EmbedBuilder()
                 .setTitle('Not enough dinonuggies!')
-                .setDescription(`You don't have enough dinonuggies! You need ${totalCost}, but you only have ${dinonuggies}.`)
+                .setDescription(`You need ${totalCost}, but you only have ${dinonuggies}.`)
                 .setColor(0xFF0000);
             return interaction.editReply({ embeds: [embed] });
         }
 
-        // Deduct the cost from the user's dinonuggies
+        // Deduct cost
         dinonuggies -= totalCost;
         await this.client.db.setUserAttr(userId, 'dinonuggies', dinonuggies);
 
@@ -65,31 +84,31 @@ class GachaRollCommand extends Command {
             const roll = Math.random();
 
             if (roll < pityRate) {
-                // 5-star roll
-                rollResult = this.getRandomCharacter(5);
+                rollResult = Math.random() < 0.5 ? this.getRandomItem(this.characterPool.filter(c => c.Rarity === 5)) : this.getRandomItem(this.lightconePool.filter(lc => lc.Rarity === 5));
                 gotFiveStar = true;
-                pityCount = 0; // Reset pity
+                pityCount = 0;
             } else if (roll < 0.056) {
-                // 4-star roll (base rate 5.6%)
-                rollResult = this.getRandomCharacter(4);
+                rollResult = Math.random() < 0.5 ? this.getRandomItem(this.characterPool.filter(c => c.Rarity === 4)) : this.getRandomItem(this.lightconePool.filter(lc => lc.Rarity === 4));
                 pityCount++;
             } else {
-                // 3-star roll (common)
-                rollResult = this.getRandomCharacter(3);
+                rollResult =  this.getRandomItem(this.lightconePool.filter(lc => lc.Rarity === 3));
                 pityCount++;
             }
 
-            results.push(rollResult);
+            results.push({
+                name: this.getItemName(rollResult),
+                type: rollResult?.AvatarName ? 'Character' : 'Lightcone',
+                rarity: rollResult?.Rarity || '?'
+            });
         }
 
         await this.client.db.setUserAttr(userId, 'pity', pityCount);
 
-        // Build the result embed
         const embed = new EmbedBuilder()
-            .setTitle(`Gacha Roll Results for ${interaction.user.username} (${amount})`) 
-            .setDescription(results.map(char => `**${char.name}** - ${char.type} - ${char.rarity}★`).join('\n'))
-            .setColor(gotFiveStar ? 0xFFD700 : 0x00FF00) // Gold for 5-star, green otherwise
-            .setFooter({ text: `Pity: ${pityCount}, names are placeholders` });
+            .setTitle(`Gacha Roll Results for ${interaction.user.username} (${amount})`)
+            .setDescription(results.map(item => `**${item.name}** - ${item.type} - ${item.rarity}★`).join('\n'))
+            .setColor(gotFiveStar ? 0xFFD700 : 0x00FF00)
+            .setFooter({ text: `Pity: ${pityCount}` });
 
         await interaction.editReply({ embeds: [embed] });
     }
