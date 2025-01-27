@@ -52,7 +52,8 @@ If it occurs, you will be warned, then additional occurrences will be dealt with
                 embeds: [new Discord.EmbedBuilder()
                     .setColor('#AA0000')
                     .setTitle(`You're already fucking someone!`)
-                    .setDescription(`You are already fucking <@${this.client.sex_sessions.find(session => session.hasUser(userId)).otherUser(userId)}>!`)]
+                    .setDescription(`You are already fucking <@${this.client.sex_sessions.find(session => session.hasUser(userId)).otherUser(userId)}>!`)
+                    .setFooter({text: `Finish your current session with /sex thrust`})]
             });
             return;
         }
@@ -63,7 +64,8 @@ If it occurs, you will be warned, then additional occurrences will be dealt with
                 embeds: [new Discord.EmbedBuilder()
                     .setColor('#AA0000')
                     .setTitle(`${targetUser.username} is already fucking someone!`)
-                    .setDescription(`<@${targetId}> is already fucking <@${this.client.sex_sessions.find(session => session.hasUser(targetId)).otherUser(targetId)}>!`)]
+                    .setDescription(`<@${targetId}> is already fucking <@${this.client.sex_sessions.find(session => session.hasUser(targetId)).otherUser(targetId)}>!`)
+                    .setFooter({text: `be patient smh`})]
             });
             return;
         }
@@ -109,7 +111,8 @@ If it occurs, you will be warned, then additional occurrences will be dealt with
                     embeds: [new Discord.EmbedBuilder()
                         .setColor('#FFAA00')
                         .setTitle(`Hold On!`)
-                        .setDescription(randomResponse)]
+                        .setDescription(randomResponse)
+                        .setFooter({text: `smh start your own sex session with /sex start`})]
                 });
                 return; // Stop further processing
             }
@@ -122,7 +125,8 @@ If it occurs, you will be warned, then additional occurrences will be dealt with
                     embeds: [new Discord.EmbedBuilder()
                         .setColor('#00AA00')
                         .setTitle(`Here we go`)
-                        .setDescription(`<@${userId}> and <@${targetUser.id}> are now fucking!`)]
+                        .setDescription(`<@${userId}> and <@${targetUser.id}> are now fucking!`)
+                        .setFooter({text: `Continue with /sex thrust`})]
                 });
 
                 collector.stop();
@@ -132,7 +136,8 @@ If it occurs, you will be warned, then additional occurrences will be dealt with
                     embeds: [new Discord.EmbedBuilder()
                         .setColor('#AA0000')
                         .setTitle(`Ew no`)
-                        .setDescription(`<@${targetUser.id}> refused to fuck with <@${userId}>`)]
+                        .setDescription(`<@${targetUser.id}> refused to fuck with <@${userId}>`)
+                        .setFooter({text: `Laugh at this user`})]
                 });
 
                 collector.stop();
