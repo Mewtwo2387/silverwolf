@@ -112,7 +112,6 @@ class Claim extends Command {
     }
     
     async handleSuccessfulClaim(interaction, newMessage = false) {
-        testerror;
         const streak = await this.client.db.getUserAttr(interaction.user.id, "dinonuggies_claim_streak");
         const dinonuggies = await this.client.db.getUserAttr(interaction.user.id, "dinonuggies");
         const now = new Date();
@@ -205,6 +204,16 @@ class Claim extends Command {
                 await this.client.db.setUserAttr(interaction.user.id, 'dinonuggies_claim_streak', 1);
             } else {
                 await this.handleSuccessfulClaim(interaction);
+            }
+               
+            if (await this.client.db.getGlobalConfig('banned') == 'removed') {
+                const embed = new Discord.EmbedBuilder()
+                    .setColor('Green')
+                    .setTitle('Welcome back!')
+                    .setDescription(`Thanks for your patience and support. As a result of Iruma's efforts, commands are back in ${interaction.guild.name}!
+                        
+Please continue to claim, gamble, and catch!`)
+                await interaction.channel.send({ embeds: [embed] });
             }
         } catch (error) {
             logError('Error claiming dinonuggies:', error);
