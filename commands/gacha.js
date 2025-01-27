@@ -53,10 +53,10 @@ class GachaRollCommand extends Command {
         const userId = interaction.user.id;
         let pityCount = await this.client.db.getUserAttr(userId, 'pity');
         let dinonuggies = await this.client.db.getUserAttr(userId, 'dinonuggies');
-
+    
         const costPerRoll = 160;
         const totalCost = costPerRoll * amount;
-
+    
         if (dinonuggies < totalCost) {
             return interaction.editReply({
                 embeds: [new EmbedBuilder()
@@ -65,18 +65,18 @@ class GachaRollCommand extends Command {
                     .setColor(0xFF0000)]
             });
         }
-
+    
         dinonuggies -= totalCost;
         await this.client.db.setUserAttr(userId, 'dinonuggies', dinonuggies);
-
+    
         let results = [];
         let gotFiveStar = false;
-
+    
         for (let i = 0; i < amount; i++) {
             let rollResult;
             const pityRate = this.calculatePityRate(pityCount);
             const roll = Math.random();
-
+    
             if (roll < pityRate) {
                 rollResult = Math.random() < 0.5 ? this.getRandomItem(this.characterPool.filter(c => c.Rarity === 5)) : this.getRandomItem(this.lightconePool.filter(lc => lc.Rarity === 5));
                 gotFiveStar = true;
@@ -88,10 +88,17 @@ class GachaRollCommand extends Command {
                 rollResult = this.getRandomItem(this.lightconePool.filter(lc => lc.Rarity === 3));
                 pityCount++;
             }
-
-            results.push(this.getItemDetails(rollResult));
+    
+            let itemDetails = this.getItemDetails(rollResult);
+            results.push(itemDetails);
+    
+            // Determine if it's a character or lightcone
+            let itemType = this.characterPool.includes(rollResult) ? 'Character' : 'Lightcone';
+    
+            // Store roll in the database
+            await this.client.db.addGachaItem(userId, itemDetails.name, itemType, itemDetails.rarity);
         }
-
+    
         await this.client.db.setUserAttr(userId, 'pity', pityCount);
 
         let currentIndex = 0;

@@ -167,6 +167,22 @@ class Database {
                 log('Created the GlobalConfig table.');
             }
         });
+
+        this.db.run(`CREATE TABLE IF NOT EXISTS GachaInventory (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id VARCHAR NOT NULL,
+            item_name TEXT,
+            item_type TEXT CHECK(item_type IN ('Character', 'Lightcone')),
+            rarity INTEGER,
+            quantity INTEGER DEFAULT 1,
+            UNIQUE(user_id, item_name)
+        )`, (err) => {
+            if (err) {
+                console.error('Failed to create GachaInventory table:', err.message);
+            } else {
+                console.log('GachaInventory table is ready.');
+            }
+        });
     }    
 
     updateSchema() {
@@ -686,6 +702,32 @@ class Database {
         const query = `SELECT * FROM GlobalConfig`;
         const rows = await this.executeSelectAllQuery(query);
         return rows;
+    }
+
+    async addGachaItem(userId, itemName, itemType, rarity) {
+        const query = `
+            INSERT INTO GachaInventory (user_id, item_name, item_type, rarity, quantity)
+            VALUES (?, ?, ?, ?, 1)
+            ON CONFLICT(user_id, item_name) DO UPDATE SET
+            quantity = quantity + 1;
+        `;
+        return this.executeQuery(query, [userId, itemName, itemType, rarity]);
+    }
+
+    async removeGachaItem(userId, itemName) {
+        const currentCount = await this.getItemCount(userId, itemName);
+        if (currentCount <= 1) {
+            const deleteQuery = `DELETE FROM GachaInventory WHERE user_id = ? AND item_name = ?;`;
+            return this.executeQuery(deleteQuery, [userId, itemName]);
+        } else {
+            const updateQuery = `UPDATE GachaInventory SET quantity = quantity - 1 WHERE user_id = ? AND item_name = ?;`;
+            return this.executeQuery(updateQuery, [userId, itemName]);
+        }
+    }
+
+    async getInventory(userId) {
+        const query = `SELECT * FROM GachaInventory WHERE user_id = ?;`;
+        return this.executeSelectAllQuery(query, [userId]);
     }
 }
 
