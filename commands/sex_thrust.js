@@ -28,6 +28,7 @@ class SexThrust extends Command {
             embeds: [new Discord.EmbedBuilder()
                 .setColor('#00FF00')
                 .setTitle(`You ejaculated!`)
+                .setDescription(`Total thrusts: ${session.thrusts}`)
                 .setFooter({text: `so quick smh`})
               ]
           });
