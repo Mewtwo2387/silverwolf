@@ -32,6 +32,7 @@ class Silverwolf extends Client {
         this.games = [];
         this.loadGames(); // Initialize the games list from the JSON file
         this.chat = null;
+        this.sex_sessions = [];
         // try{
         //     this.loadSilverwolfAI();
         // }catch(error){

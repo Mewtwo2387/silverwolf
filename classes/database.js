@@ -168,6 +168,25 @@ class Database {
                 log('Created the GlobalConfig table.');
             }
         });
+
+        this.db.run(`CREATE TABLE IF NOT EXISTS Baby (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            mother_id VARCHAR NOT NULL,
+            father_id VARCHAR NOT NULL,
+            status TEXT NOT NULL,
+            name TEXT DEFAULT 'baby',
+            created DATETIME DEFAULT CURRENT_TIMESTAMP,
+            born DATETIME DEFAULT NULL,
+            FOREIGN KEY (mother_id) REFERENCES User(id),
+            FOREIGN KEY (father_id) REFERENCES User(id),
+            UNIQUE (mother_id, father_id)
+        )`, (err) => {
+            if (err) {
+                logError('Failed to create Baby table:', err.message);
+            } else {
+                log('Created the Baby table.');
+            }
+        });
     }    
 
     updateSchema() {
@@ -688,6 +707,94 @@ class Database {
         const rows = await this.executeSelectAllQuery(query);
         return rows;
     }
+
+    async addBaby(motherId, fatherId) {
+        const query = `INSERT INTO Baby (mother_id, father_id, status, name) VALUES (?, ?, "unborn", "baby")`;
+        await this.executeQuery(query, [motherId, fatherId]);
+        log(`Added baby to the database. Mother: ${motherId}, Father: ${fatherId}, Status: unborn, Name: baby`);
+        return true;
+    }
+
+    async nameBaby(motherId, fatherId, name) {
+        let query = `UPDATE Baby SET name = ? WHERE mother_id = ? AND father_id = ?`;
+        let result = await this.executeQuery(query, [name, motherId, fatherId]);
+
+        if (result.changes === 0) { // If no rows were updated, try the reverse order
+            result = await this.executeQuery(query, [name, fatherId, motherId]);
+        }
+
+        if (result.changes > 0) {
+            log(`Named baby ${name} for mother ${motherId} and father ${fatherId}`);
+            return true;
+        } else {
+            logError(`Failed to name baby for mother ${motherId} and father ${fatherId}`);
+            return false;
+        }
+    }
+
+    async getBaby(motherId, fatherId) {
+        let query = `SELECT * FROM Baby WHERE mother_id = ? AND father_id = ?`;
+        let row = await this.executeSelectQuery(query, [motherId, fatherId]);
+        if (!row){
+            query = `SELECT * FROM Baby WHERE mother_id = ? AND father_id = ?`;
+            row = await this.executeSelectQuery(query, [fatherId, motherId]);
+        }
+        return row;
+    }
+
+    async haveBaby(motherId, fatherId) {
+        const baby = await this.getBaby(motherId, fatherId);
+        return baby ? true : false;
+    }
+
+    async babyIsUnborn(motherId, fatherId) {
+        const baby = await this.getBaby(motherId, fatherId);
+        return baby ? baby.status === "unborn" : false;
+    }
+
+    async bornBaby(motherId, fatherId) {
+        if (!(await this.babyIsUnborn(motherId, fatherId))) {
+            log(`Baby is not unborn`);
+            return false;
+        }
+        await this.updateBaby(motherId, fatherId, "born");
+        await this.updateBabyBirthday(motherId, fatherId);
+        log(`${motherId} and ${fatherId} gave birth to a baby!`);
+        return true;
+    }
+
+    async updateBaby(motherId, fatherId, status) {
+        let query = `UPDATE Baby SET status = ? WHERE mother_id = ? AND father_id = ?`;
+        let result = await this.executeQuery(query, [status, motherId, fatherId]);
+
+        if (result.changes === 0) { // If no rows were updated, try the reverse order
+            query = `UPDATE Baby SET status = ? WHERE mother_id = ? AND father_id = ?`;
+            result = await this.executeQuery(query, [status, fatherId, motherId]);
+        }
+
+        if (result.changes > 0) {
+            log(`Updated baby ${motherId} and ${fatherId} to status ${status}`);
+        } else {
+            logError(`Failed to update baby status for ${motherId} and ${fatherId}`);
+        }
+    }
+
+    async updateBabyBirthday(motherId, fatherId) {
+        let query = `UPDATE Baby SET born = CURRENT_TIMESTAMP WHERE mother_id = ? AND father_id = ?`;
+        let result = await this.executeQuery(query, [motherId, fatherId]);
+
+        if (result.changes === 0) { // If no rows were updated, try the reverse order
+            query = `UPDATE Baby SET born = CURRENT_TIMESTAMP WHERE mother_id = ? AND father_id = ?`;
+            result = await this.executeQuery(query, [fatherId, motherId]);
+        }
+        
+        if (result.changes > 0) {
+            log(`Updated baby ${motherId} and ${fatherId} to status ${status}`);
+        } else {
+            logError(`Failed to update baby birthday for ${motherId} and ${fatherId}`);
+        }
+    }
 }
+
 
 module.exports = { Database };
