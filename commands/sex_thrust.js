@@ -1,6 +1,7 @@
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 const SexSession = require('../classes/sexSession.js');
+const { log } = require('../utils/log.js');
 
 class SexThrust extends Command {
     constructor(client){
@@ -23,6 +24,7 @@ class SexThrust extends Command {
 
 
         if (session.thrust()){
+          log(`Ejaculated!`);
           this.client.sex_sessions = this.client.sex_sessions.filter(s => s !== session);
           await interaction.editReply({
             embeds: [new Discord.EmbedBuilder()
@@ -32,6 +34,27 @@ class SexThrust extends Command {
                 .setFooter({text: `so quick smh`})
               ]
           });
+
+          const fatherId = interaction.user.id;
+          const motherId = session.otherUser(fatherId);
+
+          // already have a baby
+          if (await this.client.db.haveBaby(motherId, fatherId)){
+            log(`Already have a baby for ${motherId} and ${fatherId}`);
+            return
+          }
+
+          if (Math.random() < 0.5){
+            await interaction.followUp({
+              embeds: [new Discord.EmbedBuilder()
+                  .setColor('#00FF00')
+                  .setTitle(`Oh...`)
+                  .setDescription(`<@${motherId}> is pregnant! Please name the baby with /baby name <name>`)
+                ]
+            });
+            await this.client.db.addBaby(motherId, fatherId);
+          }
+
           return;
         }
 
