@@ -48,7 +48,8 @@ const userColumns = [
     { name: 'blackjack_max_streak', type: 'INTEGER DEFAULT 0' },
     { name: 'dinonuggie_last_gambled', type: 'DATETIME DEFAULT NULL' },
     { name: 'nuggie_pokemon_multiplier_level', type: 'INTEGER DEFAULT 1' },
-    { name: 'nuggie_nuggie_multiplier_level', type: 'INTEGER DEFAULT 1' }
+    { name: 'nuggie_nuggie_multiplier_level', type: 'INTEGER DEFAULT 1' },
+    { name: 'stellar_nuggies', type: 'INTEGER DEFAULT 0' }
 ];
 
 

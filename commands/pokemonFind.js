@@ -10,7 +10,7 @@ class HasPokemon extends Command {
                 type: 3,
                 required: true
             }
-        ], true);
+        ]);
     }
 
     async run(interaction) {

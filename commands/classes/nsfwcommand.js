@@ -2,8 +2,8 @@ const { Command } = require('./command.js');
 const { log } = require('../../utils/log');
 
 class NsfwCommand extends Command {
-    constructor(client, name, description, options, ephemeral = false){
-        super(client, name, description, options, ephemeral);
+    constructor(client, name, description, options, args = {ephemeral: false, skipDefer: false, isSubcommandOf: null}){
+        super(client, name, description, options, args);
     }
 
     async execute(interaction){
