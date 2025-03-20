@@ -184,6 +184,21 @@ class Database {
                 console.log('GachaInventory table is ready.');
             }
         });
+        // ai chat history, session id for future use
+        this.db.run(`CREATE TABLE IF NOT EXISTS ChatHistory (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id INTEGER NOT NULL,
+            role TEXT CHECK(role IN ('user', 'model')) NOT NULL,
+            message TEXT NOT NULL,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );`, (err) => {
+            if (err) {
+                logError('Failed to create ChatHistory table:', err.message);
+            } else {
+                log('Created the ChatHistory table.');
+            }
+        });
+        
     }    
 
     updateSchema() {
@@ -729,6 +744,16 @@ class Database {
     async getInventory(userId) {
         const query = `SELECT * FROM GachaInventory WHERE user_id = ?;`;
         return this.executeSelectAllQuery(query, [userId]);
+    }
+
+    async addChatHistory(sessionId, role, message) {
+        const query = `INSERT INTO ChatHistory (session_id, role, message) VALUES (?, ?, ?)`;
+        return this.executeQuery(query, [sessionId, role, message]);
+    }
+
+    async getChatHistory(sessionId) {
+        const query = `SELECT role, message, timestamp FROM ChatHistory WHERE session_id = ? ORDER BY id DESC LIMIT 100`;
+        return this.executeSelectAllQuery(query, [sessionId]);
     }
 }
 

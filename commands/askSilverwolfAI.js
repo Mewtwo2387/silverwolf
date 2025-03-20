@@ -21,15 +21,15 @@ class AskGeminiCommand extends Command {
 
     async run(interaction) {
         const prompt = interaction.options.getString('prompt');
-
+    
         const loadingMessage = await interaction.editReply({ content: 'Loading...', fetchReply: true });
-
+    
         try {
             const model = genAI.getGenerativeModel({ 
                 model: "gemini-2.0-flash",
                 systemInstruction: systemInstruction  
             });
-
+    
             const generationConfig = {
                 temperature: 1,
                 topP: 0.95,
@@ -37,8 +37,17 @@ class AskGeminiCommand extends Command {
                 maxOutputTokens: 8192,
                 responseMimeType: "text/plain",
             };
+    
+            const rawChatHistory = await this.client.db.getChatHistory(1);
+    
+            const chatHistory = rawChatHistory.map(entry => ({
+                role: entry.role === 'assistant' ? 'model' : entry.role,
+                parts: [{ text: entry.message }]
+            }));
 
-            const chatSession = model.startChat({ generationConfig, history: [] });
+            console.log(chatHistory);
+    
+            const chatSession = model.startChat({ generationConfig, history: chatHistory });
             const result = await chatSession.sendMessage(prompt);
             const response = await result.response;
             const text = await response.text();
@@ -48,9 +57,13 @@ class AskGeminiCommand extends Command {
                 .setDescription(text)
                 .setColor(0x0099ff)
                 .setFooter({ text: 'Powered by ChatTGP', iconURL: 'https://media.discordapp.net/attachments/969953667597893675/1272422507533828106/Qzrb7Us.png?ex=66baeb4e&is=66b999ce&hm=cf4e7ed0da32e823e5ceb90cd94b1abf3e54cc19f447e38a0aef572af68cd04b&=&format=webp&quality=lossless&width=899&height=899' });
-
+    
             await interaction.editReply({ content: null, embeds: [embed] });
-
+    
+            // Store user and assistant messages in the database
+            await this.client.db.addChatHistory(1, 'user', prompt);
+            await this.client.db.addChatHistory(1, 'assistant', text);
+    
         } catch (error) {
             logError('Error generating text:', error);
             await interaction.editReply({ content: 'Failed to retrieve response from Gemini AI. Please try again later.', ephemeral: true });
