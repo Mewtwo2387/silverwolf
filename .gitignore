@@ -5,3 +5,8 @@ node_modules/*
 *.zip
 *.csv
 *.txt
+
+
+
+# whitelist
+!data/SilverwolfSystemPrompt.txt
