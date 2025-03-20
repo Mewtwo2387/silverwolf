@@ -16,6 +16,7 @@ class DBDump extends DevCommand {
                     { name: 'User Data', value: 'user' },
                     { name: 'Pokemon Data', value: 'pokemon' },
                     { name: 'Marriage Data', value: 'marriage' },
+                    { name: 'Baby Data', value: 'baby' },
                     { name: 'All Data', value: 'all' }
                 ]
             }
@@ -45,6 +46,12 @@ class DBDump extends DevCommand {
                 const marriageData = await this.client.db.dumpMarriage();
                 const marriageFilePath = this.createCSVFile('Marriage_Data.csv', marriageData);
                 filesToDump.push({ attachment: marriageFilePath, name: 'Marriage_Data.csv' });
+            }
+
+            if (table === 'baby' || table === 'all') {
+                const babyData = await this.client.db.dumpBaby();
+                const babyFilePath = this.createCSVFile('Baby_Data.csv', babyData);
+                filesToDump.push({ attachment: babyFilePath, name: 'Baby_Data.csv' });
             }
 
             // Send the selected files as attachments
