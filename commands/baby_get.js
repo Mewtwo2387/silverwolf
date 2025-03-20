@@ -1,5 +1,8 @@
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
+const { format } = require('../utils/math.js');
+
+const PREGNANCY_DURATION = 7 * 24 * 60 * 60 * 1000; // 1 week
 
 class BabyGet extends Command {
     constructor(client){
@@ -31,10 +34,23 @@ class BabyGet extends Command {
             });
             return;
         }
-        
+        let bornStatus = "";
+        if (baby.status == "unborn"){
+            const created = new Date(baby.created);
+            const now = new Date();
+
+            const diffTime = Math.abs(now - created);
+            if (diffTime > PREGNANCY_DURATION){
+              bornStatus = "Can give birth now! Use /baby birth";
+            } else {
+              bornStatus = `Can give birth in ${format(Math.ceil((PREGNANCY_DURATION - diffTime) / (1000 * 60 * 60 * 24)), true)} days`;
+            }
+        } else {
+          bornStatus = `Born: ${baby.born}`;
+        }
         const embed = new Discord.EmbedBuilder()
             .setTitle(`Baby of ${parent1.username} and ${parent2.username}`)
-            .setDescription(`Name: ${baby.name}\nStatus: ${baby.status}\nCreated: ${baby.created}\nBorn: ${baby.born}`);
+            .setDescription(`Name: ${baby.name}\nStatus: ${baby.status}\nCreated: ${baby.created}\n${bornStatus}`);
 
         await interaction.editReply({
             embeds: [embed]

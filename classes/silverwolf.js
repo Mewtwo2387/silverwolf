@@ -178,6 +178,13 @@ All wrongs reserved.
             }
             arlecchino.run(interaction);
         }
+
+        if (message.author.id == '595491647132008469'){
+            if (message.content.includes("marry")){
+                message.reply("yes babe~");
+                return;
+            }
+        }
     
         const msg = message.content.toLowerCase();
     
