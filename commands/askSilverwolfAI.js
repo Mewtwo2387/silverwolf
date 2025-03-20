@@ -3,8 +3,10 @@ const { Command } = require('./classes/command.js');
 const { EmbedBuilder } = require('discord.js');
 require('dotenv').config();
 const { logError } = require('../utils/log.js');
+const fs = require('fs');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_TOKEN);
+const systemInstruction = fs.readFileSync('./data/SilverwolfSystemPrompt.txt', 'utf-8');
 
 class AskGeminiCommand extends Command {
     constructor(client) {
@@ -26,8 +28,26 @@ class AskGeminiCommand extends Command {
 
         try {
             // Get the model and generate content
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-            const result = await model.generateContent(prompt);
+            const model = genAI.getGenerativeModel({ 
+                model: "gemini-2.0-flash",
+                systemInstruction: systemInstruction
+            });
+            const generationConfig = {
+                temperature: 1,
+                topP: 0.95,
+                topK: 40,
+                maxOutputTokens: 8192,
+                responseMimeType: "text/plain",
+              };
+
+
+              const chatSession = model.startChat({
+                generationConfig,
+                history: [
+                ],
+              });
+
+            const result = await chatSession.sendMessage(prompt);
             const response = await result.response;
             const text = await response.text();  // Await the text extraction
 
