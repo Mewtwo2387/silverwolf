@@ -6,7 +6,7 @@ const PREGNANCY_DURATION = 7 * 24 * 60 * 60 * 1000; // 1 week
 
 class BabyGet extends Command {
     constructor(client){
-        super(client, "get", "name your baby", [
+        super(client, "get", "get details about a baby", [
             {
                 name: "parent1",
                 description: "The first parent of the baby",

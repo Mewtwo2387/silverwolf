@@ -25,13 +25,23 @@ class SexThrust extends Command {
 
         if (session.thrust()){
           log(`Ejaculated!`);
+          var footer = ''
+          if (session.thrusts < 30){
+            footer = (Math.random() < 0.5) ? 'so quick smh' : 'that was fast'
+          } else if (session.thrusts < 60){
+            footer = 'mmmwwahhh'
+          } else if (session.thrusts < 100){
+            footer = 'woah, you lasted quite a while'
+          } else {
+            footer = 'holy shit, you lasted forever'
+          }
           this.client.sex_sessions = this.client.sex_sessions.filter(s => s !== session);
           await interaction.editReply({
             embeds: [new Discord.EmbedBuilder()
                 .setColor('#00FF00')
                 .setTitle(`You ejaculated!`)
                 .setDescription(`Total thrusts: ${session.thrusts}`)
-                .setFooter({text: `so quick smh`})
+                .setFooter({text: footer})
               ]
           });
 

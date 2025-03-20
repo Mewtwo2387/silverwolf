@@ -179,12 +179,12 @@ All wrongs reserved.
             arlecchino.run(interaction);
         }
 
-        if (message.author.id == '595491647132008469'){
-            if (message.content.includes("marry")){
-                message.reply("yes babe~");
-                return;
-            }
-        }
+        // if (message.author.id == '595491647132008469'){
+        //     if (message.content.includes("marry")){
+        //         message.reply("yes babe~");
+        //         return;
+        //     }
+        // }
     
         const msg = message.content.toLowerCase();
     
@@ -299,6 +299,8 @@ All wrongs reserved.
                 
                 // Create a copy of the commands array
                 const commandsArray = Array.from(this.commands.values()).filter(command => command !== null && command.isSubcommandOf === null).map(command => command.toJSON())
+
+                console.log(commandsArray);
                 
                 // If there are no blacklisted commands, register all commands
                 if (blacklistedCommands.length === 0) {

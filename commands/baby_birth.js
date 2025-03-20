@@ -1,5 +1,6 @@
 const { Command } = require('./classes/command.js');
 const { EmbedBuilder } = require('discord.js');
+const { log } = require('../utils/log.js');
 
 const PREGNANCY_DURATION = 7 * 24 * 60 * 60 * 1000;
 
@@ -20,6 +21,8 @@ class BabyBirth extends Command {
         const otherParentId = interaction.options.getUser("other_parent").id;
         const baby = await this.client.db.getBaby(userId, otherParentId);
 
+        log(`baby: ${JSON.stringify(baby)}`);
+
         if (!baby){
             await interaction.editReply({
                 content: "You don't have a baby to give birth to!"
@@ -33,7 +36,7 @@ class BabyBirth extends Command {
             return;
         }
 
-        if (baby.motherId != userId) {
+        if (baby.mother_id != userId) {
             await interaction.editReply({
                 content: "You are not the mother of this baby!"
             });

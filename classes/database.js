@@ -505,7 +505,8 @@ class Database {
     
         // Check if rows is an array and has at least one item
         if (!Array.isArray(rows) || rows.length === 0) {
-            throw new Error(`No data found in the ${tableName} table.`);
+            log(`No data found in the ${tableName} table.`);
+            return "";
         }
     
         const keys = Object.keys(rows[0]);
@@ -536,8 +537,11 @@ class Database {
     async dumpMarriage() {
         return await this.dumpTable('Marriage', ['user1_id', 'user2_id']);
     }
-    
 
+    async dumpBaby() {
+        return await this.dumpTable('Baby', ['mother_id', 'father_id']);
+    }
+    
     // Add a marriage
     async addMarriage(user1Id, user2Id) {
         const query = `INSERT INTO Marriage (user1_id, user2_id) VALUES (?, ?)`;
@@ -789,7 +793,7 @@ class Database {
         }
         
         if (result.changes > 0) {
-            log(`Updated baby ${motherId} and ${fatherId} to status ${status}`);
+            log(`Updated baby birthday for ${motherId} and ${fatherId}`);
         } else {
             logError(`Failed to update baby birthday for ${motherId} and ${fatherId}`);
         }
