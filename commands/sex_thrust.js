@@ -59,7 +59,7 @@ class SexThrust extends Command {
               embeds: [new Discord.EmbedBuilder()
                   .setColor('#00FF00')
                   .setTitle(`Oh...`)
-                  .setDescription(`<@${motherId}> is pregnant! Please name the baby with /baby name <name>`)
+                  .setDescription(`<@${motherId}> is pregnant! Check /baby get to see your babies!`)
                 ]
             });
             await this.client.db.addBaby(motherId, fatherId);

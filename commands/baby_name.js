@@ -5,9 +5,9 @@ class BabyName extends Command {
     constructor(client){
         super(client, "name", "name your baby", [
             {
-                name: "other_parent",
-                description: "The other parent of the baby",
-                type: 6,
+                name: "id",
+                description: "The id of the baby",
+                type: 4,
                 required: true
             },
             {
@@ -22,23 +22,33 @@ class BabyName extends Command {
 
     async run(interaction){
         const name = interaction.options.getString("name");
-        const motherId = interaction.user.id;
-        const fatherId = interaction.options.getUser("other_parent").id;
+        const babyId = interaction.options.getInteger("id");
 
-        const baby = await this.client.db.getBaby(motherId, fatherId);
+        const baby = await this.client.db.getBabyFromId(babyId);
 
         if (!baby){
             await interaction.editReply({
-                content: "You don't have a baby to name!"
+                content: "Invalid baby id!"
             });
             return;
         }
 
+        if (baby.mother_id != interaction.user.id && baby.father_id != interaction.user.id){
+            await interaction.editReply({
+                content: "This is not your baby smh smh"
+            });
+            return;
+        }
 
-        await this.client.db.nameBaby(motherId, fatherId, name);
+        await this.client.db.nameBaby(babyId, name);
 
         await interaction.editReply({
-            content: `Baby of <@${motherId}> and <@${fatherId}> is now named ${name}!`
+            embeds: [
+                new Discord.EmbedBuilder()
+                    .setColor('#00AA00')
+                    .setTitle(`Baby ${babyId} is now named ${name}!`)
+                    .setDescription(`Mother: <@${baby.mother_id}>\nFather: <@${baby.father_id}>\nStatus: ${baby.status}`)
+            ]
         });
     }
 }

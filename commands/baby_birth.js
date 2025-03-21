@@ -8,9 +8,9 @@ class BabyBirth extends Command {
     constructor(client){
         super(client, "birth", "give birth to your baby", [
             {
-                name: "other_parent",
-                description: "The other parent of the baby",
-                type: 6,
+                name: "id",
+                description: "The id of the baby",
+                type: 4,
                 required: true
             }
         ], { isSubcommandOf: "baby" });
@@ -18,27 +18,33 @@ class BabyBirth extends Command {
 
     async run(interaction){
         const userId = interaction.user.id;
-        const otherParentId = interaction.options.getUser("other_parent").id;
-        const baby = await this.client.db.getBaby(userId, otherParentId);
-
-        log(`baby: ${JSON.stringify(baby)}`);
+        const babyId = interaction.options.getInteger("id");
+        const baby = await this.client.db.getBabyFromId(babyId);
 
         if (!baby){
             await interaction.editReply({
-                content: "You don't have a baby to give birth to!"
-            });
-        }
-
-        if (baby.born){
-            await interaction.editReply({
-                content: "Your baby has already been born!"
+                content: "Invalid baby id!"
             });
             return;
         }
 
-        if (baby.mother_id != userId) {
+        if (baby.mother_id != userId){
+            if (baby.father_id == userId){
+                await interaction.editReply({
+                    content: "You are not the mother of this baby!"
+                });
+                return;
+            } else {
+                await interaction.editReply({
+                    content: "This is not your baby smh smh"
+                });
+                return;
+            }
+        }
+
+        if (baby.status != "unborn"){
             await interaction.editReply({
-                content: "You are not the mother of this baby!"
+                content: "Your baby is already born!"
             });
             return;
         }
@@ -55,7 +61,7 @@ class BabyBirth extends Command {
             return;
         }
         
-        await this.client.db.bornBaby(userId, otherParentId);
+        await this.client.db.bornBaby(userId, babyId);
 
         await interaction.editReply({
             embeds: [

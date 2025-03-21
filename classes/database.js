@@ -178,8 +178,7 @@ class Database {
             created DATETIME DEFAULT CURRENT_TIMESTAMP,
             born DATETIME DEFAULT NULL,
             FOREIGN KEY (mother_id) REFERENCES User(id),
-            FOREIGN KEY (father_id) REFERENCES User(id),
-            UNIQUE (mother_id, father_id)
+            FOREIGN KEY (father_id) REFERENCES User(id)
         )`, (err) => {
             if (err) {
                 logError('Failed to create Baby table:', err.message);
@@ -714,89 +713,68 @@ class Database {
 
     async addBaby(motherId, fatherId) {
         const query = `INSERT INTO Baby (mother_id, father_id, status, name) VALUES (?, ?, "unborn", "baby")`;
-        await this.executeQuery(query, [motherId, fatherId]);
-        log(`Added baby to the database. Mother: ${motherId}, Father: ${fatherId}, Status: unborn, Name: baby`);
-        return true;
+        const result = await this.executeQuery(query, [motherId, fatherId]);
+        const babyId = result.lastID;
+        const query2 = `UPDATE Baby SET name = ? WHERE id = ?`;
+        await this.executeQuery(query2, [`baby${babyId}`, babyId]);
+        log(`Added baby to the database. Mother: ${motherId}, Father: ${fatherId}, Status: unborn, Name: baby${babyId}`);
+        return babyId;
     }
 
-    async nameBaby(motherId, fatherId, name) {
-        let query = `UPDATE Baby SET name = ? WHERE mother_id = ? AND father_id = ?`;
-        let result = await this.executeQuery(query, [name, motherId, fatherId]);
-
-        if (result.changes === 0) { // If no rows were updated, try the reverse order
-            result = await this.executeQuery(query, [name, fatherId, motherId]);
-        }
-
-        if (result.changes > 0) {
-            log(`Named baby ${name} for mother ${motherId} and father ${fatherId}`);
-            return true;
-        } else {
-            logError(`Failed to name baby for mother ${motherId} and father ${fatherId}`);
-            return false;
-        }
+    async nameBaby(babyId, name) {
+        let query = `UPDATE Baby SET name = ? WHERE id = ?`;
+        let result = await this.executeQuery(query, [name, babyId]);
+        let baby = await this.getBabyFromId(babyId);
+        log(`Named baby ${babyId}. Mother: ${baby.mother_id}, Father: ${baby.father_id}, Status: ${baby.status}, Name: ${baby.name}`);
     }
 
-    async getBaby(motherId, fatherId) {
-        let query = `SELECT * FROM Baby WHERE mother_id = ? AND father_id = ?`;
-        let row = await this.executeSelectQuery(query, [motherId, fatherId]);
-        if (!row){
-            query = `SELECT * FROM Baby WHERE mother_id = ? AND father_id = ?`;
-            row = await this.executeSelectQuery(query, [fatherId, motherId]);
-        }
+    async getBabyFromId(babyId) {
+        let query = `SELECT * FROM Baby WHERE id = ?`;
+        let row = await this.executeSelectQuery(query, [babyId]);
         return row;
     }
 
+    async getBabies(motherId, fatherId) {
+        let query = `SELECT * FROM Baby WHERE mother_id = ? AND father_id = ?`;
+        let rows1 = await this.executeSelectAllQuery(query, [motherId, fatherId]);
+        let rows2 = await this.executeSelectAllQuery(query, [fatherId, motherId]);
+        return [...rows1, ...rows2];
+    }
+
     async haveBaby(motherId, fatherId) {
-        const baby = await this.getBaby(motherId, fatherId);
-        return baby ? true : false;
+        const babies = await this.getBabies(motherId, fatherId);
+        return babies.length > 0;
     }
 
-    async babyIsUnborn(motherId, fatherId) {
-        const baby = await this.getBaby(motherId, fatherId);
-        return baby ? baby.status === "unborn" : false;
+    async babyIsUnborn(babyId) {
+        let baby = await this.getBabyFromId(babyId);
+        return baby.status === "unborn";
     }
 
-    async bornBaby(motherId, fatherId) {
-        if (!(await this.babyIsUnborn(motherId, fatherId))) {
+    async bornBaby(babyId) {
+        if (!(await this.babyIsUnborn(babyId))) {
             log(`Baby is not unborn`);
             return false;
         }
-        await this.updateBaby(motherId, fatherId, "born");
-        await this.updateBabyBirthday(motherId, fatherId);
-        log(`${motherId} and ${fatherId} gave birth to a baby!`);
+        await this.updateBabyStatus(babyId, "born");
+        await this.updateBabyBirthday(babyId);
+        let baby = await this.getBabyFromId(babyId);
+        log(`Baby ${babyId} was born. Mother: ${baby.mother_id}, Father: ${baby.father_id}, Status: ${baby.status}, Birthday: ${baby.born}`);
         return true;
     }
 
-    async updateBaby(motherId, fatherId, status) {
-        let query = `UPDATE Baby SET status = ? WHERE mother_id = ? AND father_id = ?`;
-        let result = await this.executeQuery(query, [status, motherId, fatherId]);
-
-        if (result.changes === 0) { // If no rows were updated, try the reverse order
-            query = `UPDATE Baby SET status = ? WHERE mother_id = ? AND father_id = ?`;
-            result = await this.executeQuery(query, [status, fatherId, motherId]);
-        }
-
-        if (result.changes > 0) {
-            log(`Updated baby ${motherId} and ${fatherId} to status ${status}`);
-        } else {
-            logError(`Failed to update baby status for ${motherId} and ${fatherId}`);
-        }
+    async updateBabyStatus(babyId, status) {
+        let query = `UPDATE Baby SET status = ? WHERE id = ?`;
+        await this.executeQuery(query, [status, babyId]);
+        let baby = await this.getBabyFromId(babyId);
+        log(`Updated baby ${babyId} to status ${status}. Mother: ${baby.mother_id}, Father: ${baby.father_id}, Status: ${baby.status}`);
     }
 
-    async updateBabyBirthday(motherId, fatherId) {
-        let query = `UPDATE Baby SET born = CURRENT_TIMESTAMP WHERE mother_id = ? AND father_id = ?`;
-        let result = await this.executeQuery(query, [motherId, fatherId]);
-
-        if (result.changes === 0) { // If no rows were updated, try the reverse order
-            query = `UPDATE Baby SET born = CURRENT_TIMESTAMP WHERE mother_id = ? AND father_id = ?`;
-            result = await this.executeQuery(query, [fatherId, motherId]);
-        }
-        
-        if (result.changes > 0) {
-            log(`Updated baby birthday for ${motherId} and ${fatherId}`);
-        } else {
-            logError(`Failed to update baby birthday for ${motherId} and ${fatherId}`);
-        }
+    async updateBabyBirthday(babyId) {
+        let query = `UPDATE Baby SET born = CURRENT_TIMESTAMP WHERE id = ?`;
+        await this.executeQuery(query, [babyId]);
+        let baby = await this.getBabyFromId(babyId);
+        log(`Updated baby ${babyId} to birthday ${baby.born}. Mother: ${baby.mother_id}, Father: ${baby.father_id}, Status: ${baby.status}`);
     }
 }
 
