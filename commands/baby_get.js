@@ -43,6 +43,8 @@ class BabyGet extends Command {
             result += `**${baby.name}**\n`;
             result += `ID: ${baby.id}\n`;
             result += `Status: ${baby.status}\n`;
+            result += `Job: ${baby.job || "None"}\n`;
+            result += `Level: Lv ${baby.level}\n`;
             result += `Mother: <@${baby.mother_id}>\n`;
             result += `Father: <@${baby.father_id}>\n`;
             if (baby.status == "unborn"){

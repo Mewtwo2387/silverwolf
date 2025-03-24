@@ -62,7 +62,8 @@ class BabyBirth extends Command {
         }
         
         await this.client.db.bornBaby(userId, babyId);
-
+        await this.client.db.levelUpBaby(babyId);
+        
         await interaction.editReply({
             embeds: [
                 new EmbedBuilder()

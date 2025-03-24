@@ -177,6 +177,8 @@ class Database {
             name TEXT DEFAULT 'baby',
             created DATETIME DEFAULT CURRENT_TIMESTAMP,
             born DATETIME DEFAULT NULL,
+            level INTEGER DEFAULT 0,
+            job TEXT DEFAULT NULL,
             FOREIGN KEY (mother_id) REFERENCES User(id),
             FOREIGN KEY (father_id) REFERENCES User(id)
         )`, (err) => {
@@ -768,6 +770,20 @@ class Database {
         await this.executeQuery(query, [status, babyId]);
         let baby = await this.getBabyFromId(babyId);
         log(`Updated baby ${babyId} to status ${status}. Mother: ${baby.mother_id}, Father: ${baby.father_id}, Status: ${baby.status}`);
+    }
+
+    async updateBabyJob(babyId, job) {
+        let query = `UPDATE Baby SET job = ? WHERE id = ?`;
+        await this.executeQuery(query, [job, babyId]);
+        let baby = await this.getBabyFromId(babyId);
+        log(`Updated baby ${babyId} to job ${job}. Mother: ${baby.mother_id}, Father: ${baby.father_id}, Status: ${baby.status}`);
+    }
+
+    async levelUpBaby(babyId) {
+        let query = `UPDATE Baby SET level = level + 1 WHERE id = ?`;
+        await this.executeQuery(query, [babyId]);
+        let baby = await this.getBabyFromId(babyId);
+        log(`Baby ${babyId} leveled up. Mother: ${baby.mother_id}, Father: ${baby.father_id}, Status: ${baby.status}, Level: ${baby.level}`);
     }
 
     async updateBabyBirthday(babyId) {
