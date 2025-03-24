@@ -52,6 +52,23 @@ const userColumns = [
     { name: 'stellar_nuggies', type: 'INTEGER DEFAULT 0' }
 ];
 
+const babyColumns = [
+    { name: 'id', type: 'INTEGER PRIMARY KEY AUTOINCREMENT' },
+    { name: 'mother_id', type: 'VARCHAR NOT NULL' },
+    { name: 'father_id', type: 'VARCHAR NOT NULL' },
+    { name: 'status', type: 'TEXT NOT NULL' },
+    { name: 'name', type: 'TEXT DEFAULT "baby"' },
+    { name: 'created', type: 'DATETIME DEFAULT CURRENT_TIMESTAMP' },
+    { name: 'born', type: 'DATETIME DEFAULT NULL' },
+    { name: 'level', type: 'INTEGER DEFAULT 0' },
+    { name: 'job', type: 'TEXT DEFAULT NULL' }
+];
+
+const babyConstraints = [
+    'FOREIGN KEY (mother_id) REFERENCES User(id)',
+    'FOREIGN KEY (father_id) REFERENCES User(id)'
+];
+
 
 class Database {
     constructor(){
@@ -68,9 +85,10 @@ class Database {
     init(){
         log("--------------------\nInitializing database...\n--------------------");
         // Create User table
-        const createTableSQL = `CREATE TABLE IF NOT EXISTS User (${userColumns.map(col => `${col.name} ${col.type}`).join(', ')})`;
+        const createUserTableSQL = `CREATE TABLE IF NOT EXISTS User (${userColumns.map(col => `${col.name} ${col.type}`).join(', ')})`;
+        const createBabyTableSQL = `CREATE TABLE IF NOT EXISTS Baby (${babyColumns.map(col => `${col.name} ${col.type}`).join(', ')}, ${babyConstraints.join(', ')})`;
             
-        this.db.run(createTableSQL, (err) => {
+        this.db.run(createUserTableSQL, (err) => {
             if (err) {
                 logError(err.message);
             } else {
@@ -78,7 +96,14 @@ class Database {
                 this.updateSchema();
             }
         });
-        
+
+        this.db.run(createBabyTableSQL, (err) => {
+            if (err) {
+                logError(err.message);
+            } else {
+                log('Created the Baby table.');
+            }
+        });
         
         this.db.run(`CREATE TABLE IF NOT EXISTS Pokemon (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -168,26 +193,6 @@ class Database {
                 log('Created the GlobalConfig table.');
             }
         });
-
-        this.db.run(`CREATE TABLE IF NOT EXISTS Baby (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            mother_id VARCHAR NOT NULL,
-            father_id VARCHAR NOT NULL,
-            status TEXT NOT NULL,
-            name TEXT DEFAULT 'baby',
-            created DATETIME DEFAULT CURRENT_TIMESTAMP,
-            born DATETIME DEFAULT NULL,
-            level INTEGER DEFAULT 0,
-            job TEXT DEFAULT NULL,
-            FOREIGN KEY (mother_id) REFERENCES User(id),
-            FOREIGN KEY (father_id) REFERENCES User(id)
-        )`, (err) => {
-            if (err) {
-                logError('Failed to create Baby table:', err.message);
-            } else {
-                log('Created the Baby table.');
-            }
-        });
     }    
 
     updateSchema() {
@@ -202,6 +207,25 @@ class Database {
                             logError(`Failed to add column ${column.name}:`, err.message);
                         } else {
                         log(`Column ${column.name} added successfully.`);
+                        }
+                    });
+                }
+            } catch (err) {
+                logError(`Failed to check or add column ${column.name}:`, err.message);
+            }
+        });
+
+        const babyColumnsToAdd = babyColumns.filter(col => col.name !== 'id'); // Exclude primary key
+        babyColumnsToAdd.forEach(async (column) => {
+            try {
+                const columnExists = await this.checkIfColumnExists('Baby', column.name);
+                if (!columnExists) {
+                    const addColumnQuery = `ALTER TABLE Baby ADD COLUMN ${column.name} ${column.type}`;
+                    this.db.run(addColumnQuery, (err) => {
+                        if (err) {
+                            logError(`Failed to add column ${column.name}:`, err.message);
+                        } else {
+                            log(`Column ${column.name} added successfully.`);
                         }
                     });
                 }

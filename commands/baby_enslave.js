@@ -50,6 +50,13 @@ class BabyEnslave extends Command {
           return;
       }
 
+      if (baby.status != "born"){
+        await interaction.editReply({
+            content: "This baby is not born yet!"
+        });
+        return;
+      }
+
       await this.client.db.updateBabyJob(babyId, job);
 
       await interaction.editReply({
