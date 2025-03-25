@@ -1,73 +1,179 @@
 const sqlite3 = require('sqlite3').verbose();
 const { log, logError } = require('../utils/log');
 
-// Centralized column definitions
-const userColumns = [
-    { name: 'id', type: 'VARCHAR PRIMARY KEY' },
-    { name: 'credits', type: 'INTEGER DEFAULT 0' },
-    { name: 'bitcoin', type: 'FLOAT DEFAULT 0' },
-    { name: 'last_bought_price', type: 'FLOAT DEFAULT 0' },
-    { name: 'last_bought_amount', type: 'FLOAT DEFAULT 0' },
-    { name: 'total_bought_price', type: 'FLOAT DEFAULT 0' },
-    { name: 'total_bought_amount', type: 'FLOAT DEFAULT 0' },
-    { name: 'total_sold_price', type: 'FLOAT DEFAULT 0' },
-    { name: 'total_sold_amount', type: 'FLOAT DEFAULT 0' },
-    { name: 'dinonuggies', type: 'INTEGER DEFAULT 0' },
-    { name: 'dinonuggies_last_claimed', type: 'DATETIME DEFAULT NULL' },
-    { name: 'dinonuggies_claim_streak', type: 'INTEGER DEFAULT 0' },
-    { name: 'multiplier_amount_level', type: 'INTEGER DEFAULT 1' },
-    { name: 'multiplier_rarity_level', type: 'INTEGER DEFAULT 1' },
-    { name: 'beki_level', type: 'INTEGER DEFAULT 1' },
-    { name: 'birthdays', type: 'DATETIME DEFAULT NULL' },
-    { name: 'ascension_level', type: 'INTEGER DEFAULT 1' },
-    { name: 'heavenly_nuggies', type: 'INTEGER DEFAULT 0' },
-    { name: 'nuggie_flat_multiplier_level', type: 'INTEGER DEFAULT 1' },
-    { name: 'nuggie_streak_multiplier_level', type: 'INTEGER DEFAULT 1' },
-    { name: 'nuggie_credits_multiplier_level', type: 'INTEGER DEFAULT 1' },
-    { name: 'pity', type: 'INTEGER DEFAULT 0' },
-    { name: 'slots_times_played', type: 'INTEGER DEFAULT 0' },
-    { name: 'slots_amount_gambled', type: 'FLOAT DEFAULT 0' },
-    { name: 'slots_times_won', type: 'INTEGER DEFAULT 0' },
-    { name: 'slots_amount_won', type: 'FLOAT DEFAULT 0' },
-    { name: 'slots_relative_won', type: 'FLOAT DEFAULT 0' },
-    { name: 'blackjack_times_played', type: 'INTEGER DEFAULT 0' },
-    { name: 'blackjack_amount_gambled', type: 'FLOAT DEFAULT 0' },
-    { name: 'blackjack_times_won', type: 'INTEGER DEFAULT 0' },
-    { name: 'blackjack_times_drawn', type: 'INTEGER DEFAULT 0' },
-    { name: 'blackjack_times_lost', type: 'INTEGER DEFAULT 0' },
-    { name: 'blackjack_amount_won', type: 'FLOAT DEFAULT 0' },
-    { name: 'blackjack_relative_won', type: 'FLOAT DEFAULT 0' },
-    { name: 'roulette_times_played', type: 'INTEGER DEFAULT 0' },
-    { name: 'roulette_amount_gambled', type: 'FLOAT DEFAULT 0' },
-    { name: 'roulette_times_won', type: 'INTEGER DEFAULT 0' },
-    { name: 'roulette_amount_won', type: 'FLOAT DEFAULT 0' },
-    { name: 'roulette_relative_won', type: 'FLOAT DEFAULT 0' },
-    { name: 'roulette_streak', type: 'INTEGER DEFAULT 0' },
-    { name: 'roulette_max_streak', type: 'INTEGER DEFAULT 0' },
-    { name: 'blackjack_streak', type: 'INTEGER DEFAULT 0' },
-    { name: 'blackjack_max_streak', type: 'INTEGER DEFAULT 0' },
-    { name: 'dinonuggie_last_gambled', type: 'DATETIME DEFAULT NULL' },
-    { name: 'nuggie_pokemon_multiplier_level', type: 'INTEGER DEFAULT 1' },
-    { name: 'nuggie_nuggie_multiplier_level', type: 'INTEGER DEFAULT 1' },
-    { name: 'stellar_nuggies', type: 'INTEGER DEFAULT 0' }
-];
 
-const babyColumns = [
-    { name: 'id', type: 'INTEGER PRIMARY KEY AUTOINCREMENT' },
-    { name: 'mother_id', type: 'VARCHAR NOT NULL' },
-    { name: 'father_id', type: 'VARCHAR NOT NULL' },
-    { name: 'status', type: 'TEXT NOT NULL' },
-    { name: 'name', type: 'TEXT DEFAULT "baby"' },
-    { name: 'created', type: 'DATETIME DEFAULT CURRENT_TIMESTAMP' },
-    { name: 'born', type: 'DATETIME DEFAULT NULL' },
-    { name: 'level', type: 'INTEGER DEFAULT 0' },
-    { name: 'job', type: 'TEXT DEFAULT NULL' }
-];
+const userTable = {
+    name: 'User',
+    columns: [
+        { name: 'id', type: 'VARCHAR PRIMARY KEY' },
+        { name: 'credits', type: 'INTEGER DEFAULT 0' },
+        { name: 'bitcoin', type: 'FLOAT DEFAULT 0' },
+        { name: 'last_bought_price', type: 'FLOAT DEFAULT 0' },
+        { name: 'last_bought_amount', type: 'FLOAT DEFAULT 0' },
+        { name: 'total_bought_price', type: 'FLOAT DEFAULT 0' },
+        { name: 'total_bought_amount', type: 'FLOAT DEFAULT 0' },
+        { name: 'total_sold_price', type: 'FLOAT DEFAULT 0' },
+        { name: 'total_sold_amount', type: 'FLOAT DEFAULT 0' },
+        { name: 'dinonuggies', type: 'INTEGER DEFAULT 0' },
+        { name: 'dinonuggies_last_claimed', type: 'DATETIME DEFAULT NULL' },
+        { name: 'dinonuggies_claim_streak', type: 'INTEGER DEFAULT 0' },
+        { name: 'multiplier_amount_level', type: 'INTEGER DEFAULT 1' },
+        { name: 'multiplier_rarity_level', type: 'INTEGER DEFAULT 1' },
+        { name: 'beki_level', type: 'INTEGER DEFAULT 1' },
+        { name: 'birthdays', type: 'DATETIME DEFAULT NULL' },
+        { name: 'ascension_level', type: 'INTEGER DEFAULT 1' },
+        { name: 'heavenly_nuggies', type: 'INTEGER DEFAULT 0' },
+        { name: 'nuggie_flat_multiplier_level', type: 'INTEGER DEFAULT 1' },
+        { name: 'nuggie_streak_multiplier_level', type: 'INTEGER DEFAULT 1' },
+        { name: 'nuggie_credits_multiplier_level', type: 'INTEGER DEFAULT 1' },
+        { name: 'pity', type: 'INTEGER DEFAULT 0' },
+        { name: 'slots_times_played', type: 'INTEGER DEFAULT 0' },
+        { name: 'slots_amount_gambled', type: 'FLOAT DEFAULT 0' },
+        { name: 'slots_times_won', type: 'INTEGER DEFAULT 0' },
+        { name: 'slots_amount_won', type: 'FLOAT DEFAULT 0' },
+        { name: 'slots_relative_won', type: 'FLOAT DEFAULT 0' },
+        { name: 'blackjack_times_played', type: 'INTEGER DEFAULT 0' },
+        { name: 'blackjack_amount_gambled', type: 'FLOAT DEFAULT 0' },
+        { name: 'blackjack_times_won', type: 'INTEGER DEFAULT 0' },
+        { name: 'blackjack_times_drawn', type: 'INTEGER DEFAULT 0' },
+        { name: 'blackjack_times_lost', type: 'INTEGER DEFAULT 0' },
+        { name: 'blackjack_amount_won', type: 'FLOAT DEFAULT 0' },
+        { name: 'blackjack_relative_won', type: 'FLOAT DEFAULT 0' },
+        { name: 'roulette_times_played', type: 'INTEGER DEFAULT 0' },
+        { name: 'roulette_amount_gambled', type: 'FLOAT DEFAULT 0' },
+        { name: 'roulette_times_won', type: 'INTEGER DEFAULT 0' },
+        { name: 'roulette_amount_won', type: 'FLOAT DEFAULT 0' },
+        { name: 'roulette_relative_won', type: 'FLOAT DEFAULT 0' },
+        { name: 'roulette_streak', type: 'INTEGER DEFAULT 0' },
+        { name: 'roulette_max_streak', type: 'INTEGER DEFAULT 0' },
+        { name: 'blackjack_streak', type: 'INTEGER DEFAULT 0' },
+        { name: 'blackjack_max_streak', type: 'INTEGER DEFAULT 0' },
+        { name: 'dinonuggie_last_gambled', type: 'DATETIME DEFAULT NULL' },
+        { name: 'nuggie_pokemon_multiplier_level', type: 'INTEGER DEFAULT 1' },
+        { name: 'nuggie_nuggie_multiplier_level', type: 'INTEGER DEFAULT 1' },
+        { name: 'stellar_nuggies', type: 'INTEGER DEFAULT 0' }
+    ],
+    primaryKey: ['id'],
+    specialConstraints: [],
+    constraints: []
+};
 
-const babyConstraints = [
-    'FOREIGN KEY (mother_id) REFERENCES User(id)',
-    'FOREIGN KEY (father_id) REFERENCES User(id)'
-];
+const pokemonTable = {
+    name: 'Pokemon',
+    columns: [
+        { name: 'id', type: 'INTEGER PRIMARY KEY AUTOINCREMENT' },
+        { name: 'user_id', type: 'VARCHAR' },
+        { name: 'pokemon_name', type: 'TEXT' },
+        { name: 'pokemon_count', type: 'INTEGER DEFAULT 0' }
+    ],
+    primaryKey: ['id'],
+    specialConstraints: [],
+    constraints: [
+        'FOREIGN KEY (user_id) REFERENCES User(id)',
+        'UNIQUE (user_id, pokemon_name)'
+    ]
+};
+
+const marriageTable = {
+    name: 'Marriage',
+    columns: [
+        { name: 'user1_id', type: 'VARCHAR NOT NULL' },
+        { name: 'user2_id', type: 'VARCHAR NOT NULL' },
+        { name: 'married_on', type: 'DATETIME DEFAULT CURRENT_TIMESTAMP' }
+    ],
+    primaryKey: ['user1_id', 'user2_id'],
+    specialConstraints: [
+        'PRIMARY KEY (user1_id, user2_id)'
+    ],
+    constraints: [
+        'FOREIGN KEY (user1_id) REFERENCES User(id)',
+        'FOREIGN KEY (user2_id) REFERENCES User(id)'
+    ]
+};
+
+
+const serverRolesTable = {
+    name: 'ServerRoles',
+    columns: [
+        { name: 'server_id', type: 'VARCHAR PRIMARY KEY' },
+        { name: 'role_name', type: 'VARCHAR NOT NULL' },
+        { name: 'role_id', type: 'VARCHAR NOT NULL' }
+    ],
+    primaryKey: ['server_id'],
+    specialConstraints: [],
+    constraints: []
+};
+
+const gameUIDTable = {
+    name: 'GameUID',
+    columns: [
+        { name: 'id', type: 'INTEGER PRIMARY KEY AUTOINCREMENT' },
+        { name: 'user_id', type: 'VARCHAR NOT NULL' },
+        { name: 'game', type: 'TEXT NOT NULL' },
+        { name: 'game_uid', type: 'TEXT NOT NULL' },
+        { name: 'region', type: 'TEXT DEFAULT NULL' },
+        { name: 'date', type: 'DATETIME DEFAULT CURRENT_TIMESTAMP' }
+    ],
+    primaryKey: ['id'],
+    specialConstraints: [],
+    constraints: [
+        'UNIQUE (user_id, game)'
+    ]
+};
+
+const commandConfigTable = {
+    name: 'CommandConfig',
+    columns: [
+        { name: 'id', type: 'INTEGER PRIMARY KEY AUTOINCREMENT' },
+        { name: 'command_name', type: 'TEXT NOT NULL' },
+        { name: 'server_id', type: 'VARCHAR NOT NULL' },
+        { name: 'disabled_date', type: 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP' },
+        { name: 'reason', type: 'TEXT' }
+    ],
+    primaryKey: ['id'],
+    specialConstraints: [],
+    constraints: [
+        'UNIQUE (command_name, server_id)'
+    ]
+};
+
+const globalConfigTable = {
+    name: 'GlobalConfig',
+    columns: [
+        { name: 'id', type: 'INTEGER PRIMARY KEY AUTOINCREMENT' },
+        { name: 'key', type: 'TEXT NOT NULL' },
+        { name: 'value', type: 'TEXT NOT NULL' }
+    ],
+    primaryKey: ['id'],
+    specialConstraints: [],
+    constraints: [
+        'UNIQUE (key)'
+    ]
+};
+
+
+const babyTable = {
+    name: 'Baby',
+    columns: [
+        { name: 'id', type: 'INTEGER PRIMARY KEY AUTOINCREMENT' },
+        { name: 'mother_id', type: 'VARCHAR NOT NULL' },
+        { name: 'father_id', type: 'VARCHAR NOT NULL' },
+        { name: 'status', type: 'TEXT NOT NULL' },
+        { name: 'name', type: 'TEXT DEFAULT "baby"' },
+        { name: 'created', type: 'DATETIME DEFAULT CURRENT_TIMESTAMP' },
+        { name: 'born', type: 'DATETIME DEFAULT NULL' },
+        { name: 'level', type: 'INTEGER DEFAULT 0' },
+        { name: 'job', type: 'TEXT DEFAULT NULL' }
+    ],
+    primaryKey: ['id'],
+    specialConstraints: [],
+    constraints: [
+        'FOREIGN KEY (mother_id) REFERENCES User(id)',
+        'FOREIGN KEY (father_id) REFERENCES User(id)'
+    ]
+};
+
+const tables = [userTable, pokemonTable, marriageTable, serverRolesTable, gameUIDTable, commandConfigTable, globalConfigTable, babyTable];
 
 
 class Database {
@@ -82,145 +188,30 @@ class Database {
         });
     }
 
-    init(){
-        log("--------------------\nInitializing database...\n--------------------");
-        // Create User table
-        const createUserTableSQL = `CREATE TABLE IF NOT EXISTS User (${userColumns.map(col => `${col.name} ${col.type}`).join(', ')})`;
-        const createBabyTableSQL = `CREATE TABLE IF NOT EXISTS Baby (${babyColumns.map(col => `${col.name} ${col.type}`).join(', ')}, ${babyConstraints.join(', ')})`;
-            
-        this.db.run(createUserTableSQL, (err) => {
+    createTable(tableJSON){
+        let rows = tableJSON.columns.map(col => `${col.name} ${col.type}`).join(', ');
+        if (tableJSON.specialConstraints.length > 0){
+            rows += `, ${tableJSON.specialConstraints.join(', ')}`;
+        }
+        if (tableJSON.constraints.length > 0){
+            rows += `, ${tableJSON.constraints.join(', ')}`;
+        }
+        this.db.run(`CREATE TABLE IF NOT EXISTS ${tableJSON.name} (${rows})`, (err) => {
             if (err) {
-                logError(err.message);
+                logError(`Failed to create ${tableJSON.name} table:`, err.message);
             } else {
-                log('Created the User table.');
-                this.updateSchema();
+                log(`Created the ${tableJSON.name} table.`);
             }
         });
+    }
 
-        this.db.run(createBabyTableSQL, (err) => {
-            if (err) {
-                logError(err.message);
-            } else {
-                log('Created the Baby table.');
-            }
-        });
-        
-        this.db.run(`CREATE TABLE IF NOT EXISTS Pokemon (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id VARCHAR,
-            pokemon_name TEXT,
-            pokemon_count INTEGER DEFAULT 0,
-            FOREIGN KEY (user_id) REFERENCES User(id)
-            UNIQUE (user_id, pokemon_name)
-        )`, (err) => {
-            if (err) {
-                logError(err.message);
-            } else {
-                log('Created the Pokemon table.');
-            }
-        });
-    
-        // Create Marriage table
-        this.db.run(`CREATE TABLE IF NOT EXISTS Marriage (
-            user1_id VARCHAR NOT NULL,
-            user2_id VARCHAR NOT NULL,
-            married_on DATETIME DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (user1_id, user2_id),
-            FOREIGN KEY (user1_id) REFERENCES User(id),
-            FOREIGN KEY (user2_id) REFERENCES User(id)
-        )`, (err) => {
-            if (err) {
-                logError('Failed to create Marriage table:', err.message);
-            } else {
-                log('Created the Marriage table.');
-            }
-        });
-
-        // Create ServerRoles table
-        this.db.run(`CREATE TABLE IF NOT EXISTS ServerRoles (
-            server_id VARCHAR PRIMARY KEY,
-            role_name VARCHAR NOT NULL,
-            role_id VARCHAR NOT NULL
-        )`, (err) => {
-            if (err) {
-                logError('Failed to create ServerRoles table:', err.message);
-            } else {
-                log('Created the ServerRoles table.');
-            }
-        });
-
-        // Create GameUID table
-        this.db.run(`CREATE TABLE IF NOT EXISTS GameUID (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id VARCHAR NOT NULL,
-            game TEXT NOT NULL,
-            game_uid TEXT NOT NULL,
-            region TEXT DEFAULT NULL,
-            date DATETIME DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE (user_id, game)
-        )`, (err) => {
-            if (err) {
-                logError('Failed to create GameUID table:', err.message);
-            } else {
-                log('Created the GameUID table.');
-            }
-        });
-
-        this.db.run(`CREATE TABLE IF NOT EXISTS CommandConfig (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            command_name TEXT NOT NULL,
-            server_id VARCHAR NOT NULL,
-            disabled_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            reason TEXT, 
-            UNIQUE (command_name, server_id)
-        );`, (err) => {
-            if (err) {
-                logError('Failed to create commandConfig table:', err.message);
-            } else {
-                log('Created the commandConfig table.');
-            }
-        });
-
-        this.db.run(`CREATE TABLE IF NOT EXISTS GlobalConfig (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            key TEXT NOT NULL,
-            value TEXT NOT NULL,
-            UNIQUE (key)
-        );`, (err) => {
-            if (err) {
-                logError('Failed to create GlobalConfig table:', err.message);
-            } else {
-                log('Created the GlobalConfig table.');
-            }
-        });
-    }    
-
-    updateSchema() {
-        const columnsToAdd = userColumns.filter(col => col.name !== 'id'); // Exclude primary key
+    updateTable(tableJSON){
+        let columnsToAdd = tableJSON.columns.filter(col => !tableJSON.primaryKey.includes(col.name));
         columnsToAdd.forEach(async (column) => {
             try {
-                const columnExists = await this.checkIfColumnExists('User', column.name);
+                const columnExists = await this.checkIfColumnExists(tableJSON.name, column.name);
                 if (!columnExists) {
-                    const addColumnQuery = `ALTER TABLE User ADD COLUMN ${column.name} ${column.type}`;
-                    this.db.run(addColumnQuery, (err) => {
-                        if (err) {
-                            logError(`Failed to add column ${column.name}:`, err.message);
-                        } else {
-                        log(`Column ${column.name} added successfully.`);
-                        }
-                    });
-                }
-            } catch (err) {
-                logError(`Failed to check or add column ${column.name}:`, err.message);
-            }
-        });
-
-        const babyColumnsToAdd = babyColumns.filter(col => col.name !== 'id'); // Exclude primary key
-        babyColumnsToAdd.forEach(async (column) => {
-            try {
-                const columnExists = await this.checkIfColumnExists('Baby', column.name);
-                if (!columnExists) {
-                    const addColumnQuery = `ALTER TABLE Baby ADD COLUMN ${column.name} ${column.type}`;
+                    const addColumnQuery = `ALTER TABLE ${tableJSON.name} ADD COLUMN ${column.name} ${column.type}`;
                     this.db.run(addColumnQuery, (err) => {
                         if (err) {
                             logError(`Failed to add column ${column.name}:`, err.message);
@@ -235,7 +226,19 @@ class Database {
         });
     }
 
-    
+
+    init(){
+        log("--------------------\nInitializing database...\n--------------------");
+
+        for (const table of tables){
+            this.createTable(table);
+        }
+
+        for (const table of tables){
+            this.updateTable(table);
+        }
+    }    
+
 
     // Method to check if a column exists in the table
     checkIfColumnExists(tableName, columnName) {
