@@ -50,9 +50,16 @@ class BabyEnslave extends Command {
           return;
       }
 
-      if (baby.status != "born"){
+      if (baby.status == "unborn"){
         await interaction.editReply({
             content: "This baby is not born yet!"
+        });
+        return;
+      }
+
+      if (baby.status == "dead"){
+        await interaction.editReply({
+            content: "This baby is dead!"
         });
         return;
       }
