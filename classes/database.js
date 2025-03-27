@@ -51,7 +51,10 @@ const userTable = {
         { name: 'dinonuggie_last_gambled', type: 'DATETIME DEFAULT NULL' },
         { name: 'nuggie_pokemon_multiplier_level', type: 'INTEGER DEFAULT 1' },
         { name: 'nuggie_nuggie_multiplier_level', type: 'INTEGER DEFAULT 1' },
-        { name: 'stellar_nuggies', type: 'INTEGER DEFAULT 0' }
+        { name: 'stellar_nuggies', type: 'INTEGER DEFAULT 0' },
+        { name: 'last_murder', type: 'DATETIME DEFAULT NULL' },
+        { name: 'murder_success', type: 'INTEGER DEFAULT 0' },
+        { name: 'murder_fail', type: 'INTEGER DEFAULT 0' }
     ],
     primaryKey: ['id'],
     specialConstraints: [],
