@@ -1,6 +1,24 @@
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 
+const jobs = [
+    {
+        name: "Nuggie Claimer",
+        value: "nuggie_claimer",
+        description: "Auto claim nuggies every 24 hours, for an amount equivalent to no streak and no bronze/silver/gold."
+    },
+    {
+        name: "Gambler",
+        value: "gambler",
+        description: "Auto play slots once every 10 minutes, using 1% of your credits each time."
+    },
+    {
+        name: "Pinger",
+        value: "pinger",
+        description: "Ping someone of your choice every day."
+    }
+]
+
 class BabyEnslave extends Command {
     constructor(client){
         super(client, "enslave", "enslave a baby", [
@@ -15,18 +33,7 @@ class BabyEnslave extends Command {
                 description: "The job to force the baby to do",
                 type: 3,
                 required: true,
-                choices: [
-                    {
-                        name: "Nuggie Claimer",
-                        value: "nuggie_claimer",
-                        description: "Auto claim nuggies"
-                    },
-                    {
-                        name: "Gambler",
-                        value: "gambler",
-                        description: "Auto play slots"
-                    }
-                ]
+                choices: jobs
             }
         ], { isSubcommandOf: "baby" });
     }
@@ -89,7 +96,8 @@ class BabyEnslave extends Command {
         embeds: [
             new Discord.EmbedBuilder()
                 .setColor('#00AA00')
-                .setTitle(`${baby.name} is now a ${job}!`)
+                .setTitle(`${baby.name} is now a ${jobs.find(j => j.value === job).name}!`)
+                .setDescription(jobs.find(j => j.value === job).description)
         ]
       });
     }
