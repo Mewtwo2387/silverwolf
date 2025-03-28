@@ -28,14 +28,24 @@ class BabyName extends Command {
 
         if (!baby){
             await interaction.editReply({
-                content: "Invalid baby id!"
+                embeds: [
+                    new Discord.EmbedBuilder()
+                        .setColor('#FF0000')
+                        .setTitle('Invalid baby id!')
+                        .setFooter({ text: 'Check your baby id with /baby get' })
+                ]
             });
             return;
         }
 
         if (baby.mother_id != interaction.user.id && baby.father_id != interaction.user.id){
             await interaction.editReply({
-                content: "This is not your baby smh smh"
+                embeds: [
+                    new Discord.EmbedBuilder()
+                        .setColor('#FF0000')
+                        .setTitle('This is not your baby smh smh')
+                        .setFooter({ text: 'Check your baby id with /baby get' })
+                ]
             });
             return;
         }

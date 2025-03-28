@@ -32,7 +32,11 @@ class BabyGet extends Command {
 
         if (babies.length == 0){
             await interaction.editReply({
-                content: "404 Baby Not Found"
+                embeds: [
+                    new Discord.EmbedBuilder()
+                        .setColor('#FF0000')
+                        .setTitle('404 Baby Not Found')
+                ]
             });
             return;
         }

@@ -1,6 +1,7 @@
 const { Command } = require('./classes/command.js');
 const { EmbedBuilder } = require('discord.js');
 const { log } = require('../utils/log.js');
+const { format } = require('../utils/math.js');
 
 const PREGNANCY_DURATION = 7 * 24 * 60 * 60 * 1000;
 
@@ -23,7 +24,12 @@ class BabyBirth extends Command {
 
         if (!baby){
             await interaction.editReply({
-                content: "Invalid baby id!"
+                embeds: [
+                    new EmbedBuilder()
+                        .setColor('#FF0000')
+                        .setTitle('Invalid baby id!')
+                        .setFooter({ text: 'Check your baby id with /baby get' })
+                ]
             });
             return;
         }
@@ -31,12 +37,22 @@ class BabyBirth extends Command {
         if (baby.mother_id != userId){
             if (baby.father_id == userId){
                 await interaction.editReply({
-                    content: "You are not the mother of this baby!"
+                    embeds: [
+                        new EmbedBuilder()
+                            .setColor('#FF0000')
+                            .setTitle('You are not the mother of this baby!')
+                            .setDescription(`Fun fact: Only mothers can give birth.`)
+                    ]
                 });
                 return;
             } else {
                 await interaction.editReply({
-                    content: "This is not your baby smh smh"
+                    embeds: [
+                        new EmbedBuilder()
+                            .setColor('#FF0000')
+                            .setTitle('This is not your baby smh smh')
+                            .setFooter({ text: 'Check your baby id with /baby get' })
+                    ]
                 });
                 return;
             }
@@ -44,7 +60,11 @@ class BabyBirth extends Command {
 
         if (baby.status != "unborn"){
             await interaction.editReply({
-                content: "Your baby is already born!"
+                embeds: [
+                    new EmbedBuilder()
+                        .setColor('#FF0000')
+                        .setTitle('Your baby is already born!')
+                ]
             });
             return;
         }
@@ -56,7 +76,12 @@ class BabyBirth extends Command {
 
         if (diffTime < PREGNANCY_DURATION){
             await interaction.editReply({
-                content: "Your baby is not ready to be born yet!"
+                embeds: [
+                    new EmbedBuilder()
+                        .setColor('#FF0000')
+                        .setTitle('Your baby is not ready to be born yet!')
+                        .setDescription(`Can give birth in ${format(Math.ceil((PREGNANCY_DURATION - diffTime) / (1000 * 60 * 60 * 24)), true)} days!`)
+                ]
             });
             return;
         }

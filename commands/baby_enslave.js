@@ -1,4 +1,5 @@
 const { Command } = require('./classes/command.js');
+const Discord = require('discord.js');
 
 class BabyEnslave extends Command {
     constructor(client){
@@ -38,28 +39,46 @@ class BabyEnslave extends Command {
 
       if (!baby){
           await interaction.editReply({
-              content: "Invalid baby id!"
+              embeds: [
+                  new Discord.EmbedBuilder()
+                      .setColor('#FF0000')
+                      .setTitle('Invalid baby id!')
+                      .setFooter({ text: 'Check your baby id with /baby get' })
+              ]
           });
           return;
       }
 
       if (baby.mother_id != interaction.user.id && baby.father_id != interaction.user.id){
           await interaction.editReply({
-              content: "This is not your baby smh smh"
+              embeds: [
+                  new Discord.EmbedBuilder()
+                      .setColor('#FF0000')
+                      .setTitle('This is not your baby smh smh')
+                      .setFooter({ text: 'Check your baby id with /baby get' })
+              ]
           });
           return;
       }
 
       if (baby.status == "unborn"){
         await interaction.editReply({
-            content: "This baby is not born yet!"
+            embeds: [
+                new Discord.EmbedBuilder()
+                    .setColor('#FF0000')
+                    .setTitle('This baby is not born yet!')
+            ]
         });
         return;
       }
 
       if (baby.status == "dead"){
         await interaction.editReply({
-            content: "This baby is dead!"
+            embeds: [
+                new Discord.EmbedBuilder()
+                    .setColor('#FF0000')
+                    .setTitle('This baby is dead!')
+            ]
         });
         return;
       }
@@ -67,7 +86,11 @@ class BabyEnslave extends Command {
       await this.client.db.updateBabyJob(babyId, job);
 
       await interaction.editReply({
-        content: `${baby.name} is now a ${job}!`
+        embeds: [
+            new Discord.EmbedBuilder()
+                .setColor('#00AA00')
+                .setTitle(`${baby.name} is now a ${job}!`)
+        ]
       });
     }
 }

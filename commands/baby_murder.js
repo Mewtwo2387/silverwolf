@@ -1,5 +1,6 @@
 const { Command } = require('./classes/command.js');
 const { format } = require('../utils/math.js');
+const Discord = require('discord.js');
 
 class BabyMurder extends Command {
     constructor(client){
@@ -23,20 +24,33 @@ class BabyMurder extends Command {
 
         if (!baby){
             await interaction.editReply({
-                content: "Invalid baby id!"
+                embeds: [
+                    new Discord.EmbedBuilder()
+                        .setColor('#FF0000')
+                        .setTitle('Invalid baby id!')
+                        .setFooter({ text: 'Check baby id with /baby get' })
+                ]
             });
         }
 
         if (baby.status == "unborn"){
             await interaction.editReply({
-                content: "You can't murder an unborn baby!"
+                embeds: [
+                    new Discord.EmbedBuilder()
+                        .setColor('#FF0000')
+                        .setTitle('You can\'t murder an unborn baby!')
+                ]
             });
             return;
         }
 
         if (baby.status == "dead"){
             await interaction.editReply({
-                content: "You can't murder a dead baby!"
+                embeds: [
+                    new Discord.EmbedBuilder()
+                        .setColor('#FF0000')
+                        .setTitle('You can\'t murder a dead baby!')
+                ]
             });
             return;
         }
@@ -49,7 +63,11 @@ class BabyMurder extends Command {
 
         if (diffTime < cooldown){
             await interaction.editReply({
-                content: `You can murder again in ${format(cooldown / 1000 / 60 / 60, true)} hours.`
+                embeds: [
+                    new Discord.EmbedBuilder()
+                        .setColor('#FF0000')
+                        .setTitle(`You can murder again in ${format(cooldown / 1000 / 60 / 60, true)} hours.`)
+                ]
             });
             return;
         }
