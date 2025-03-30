@@ -3,6 +3,7 @@ const { Database } = require("./database.js");
 const fs = require("fs");
 const path = require("path");
 const BirthdayScheduler = require('./birthdayScheduler');
+const BabyScheduler = require('./babyScheduler');
 const Canvas = require('canvas');
 const { log, logError } = require('../utils/log');
 // const CharacterAI = require('node_characterai')
@@ -28,6 +29,7 @@ class Silverwolf extends Client {
         this.db = new Database();
         this.currentPokemon = null;
         this.birthdayScheduler = new BirthdayScheduler(this);
+        this.babyScheduler = new BabyScheduler(this);
         this.init();
         this.games = [];
         this.loadGames(); // Initialize the games list from the JSON file

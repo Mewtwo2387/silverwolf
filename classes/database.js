@@ -773,6 +773,12 @@ class Database {
         return [...rows1, ...rows2];
     }
 
+    async getAllBabies() {
+        let query = `SELECT * FROM Baby`;
+        let rows = await this.executeSelectAllQuery(query);
+        return rows;
+    }
+
     async haveBaby(motherId, fatherId) {
         const babies = await this.getBabies(motherId, fatherId);
         return babies.length > 0;
