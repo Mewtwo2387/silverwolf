@@ -34,6 +34,12 @@ class BabyEnslave extends Command {
                 type: 3,
                 required: true,
                 choices: jobs
+            },
+            {
+                name: "pinger_target",
+                description: "The user to ping if the job is pinger",
+                type: 6,
+                required: false
             }
         ], { isSubcommandOf: "baby" });
     }
@@ -90,7 +96,23 @@ class BabyEnslave extends Command {
         return;
       }
 
-      await this.client.db.updateBabyJob(babyId, job);
+      if (job == "pinger"){
+        const pingerTarget = interaction.options.get("pinger_target");
+        if (!pingerTarget){
+          await interaction.editReply({
+            embeds: [
+              new Discord.EmbedBuilder()
+                .setColor('#FF0000')
+                .setTitle('No pinger target provided!')
+            ]
+          });
+          return;
+        } else {
+            await this.client.db.updateBabyJob(babyId, job, pingerTarget.value, interaction.channel.id);
+        }
+      } else {
+        await this.client.db.updateBabyJob(babyId, job);
+      }
 
       await interaction.editReply({
         embeds: [

@@ -26,7 +26,13 @@ class BabyScheduler {
                 // TODO
                 break;
               case "pinger":
-                // TODO
+                const channel = await this.client.channels.cache.get(baby.pinger_channel);
+                if (channel){
+                  await channel.send(`${baby.name}: <@${baby.pinger_target}>`);
+                  log(`${baby.name} (${baby.id}) pinged ${baby.pinger_target} in ${channel.name}`);
+                } else {
+                  log(`Channel ${baby.pinger_channel} not found`);
+                }
                 break;
               default:
                 log(`${baby.name} (${baby.id}) is doing nothing`);

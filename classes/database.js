@@ -166,7 +166,9 @@ const babyTable = {
         { name: 'created', type: 'DATETIME DEFAULT CURRENT_TIMESTAMP' },
         { name: 'born', type: 'DATETIME DEFAULT NULL' },
         { name: 'level', type: 'INTEGER DEFAULT 0' },
-        { name: 'job', type: 'TEXT DEFAULT NULL' }
+        { name: 'job', type: 'TEXT DEFAULT NULL' },
+        { name: 'pinger_target', type: 'VARCHAR DEFAULT NULL' },
+        { name: 'pinger_channel', type: 'VARCHAR DEFAULT NULL' }
     ],
     primaryKey: ['id'],
     specialConstraints: [],
@@ -808,9 +810,15 @@ class Database {
         log(`Updated baby ${babyId} to status ${status}. Mother: ${baby.mother_id}, Father: ${baby.father_id}, Status: ${baby.status}`);
     }
 
-    async updateBabyJob(babyId, job) {
-        let query = `UPDATE Baby SET job = ? WHERE id = ?`;
-        await this.executeQuery(query, [job, babyId]);
+    async updateBabyJob(babyId, job, pingerTarget = null, pingerChannel = null) {
+        if (pingerTarget){
+            let query = `UPDATE Baby SET job = ?, pinger_target = ?, pinger_channel = ? WHERE id = ?`;
+            await this.executeQuery(query, [job, pingerTarget, pingerChannel, babyId]);
+            log(`Updated pinger target to ${pingerTarget} and channel to ${pingerChannel} for baby ${babyId}`);
+        } else {
+            let query = `UPDATE Baby SET job = ? WHERE id = ?`;
+            await this.executeQuery(query, [job, babyId]);
+        }
         let baby = await this.getBabyFromId(babyId);
         log(`Updated baby ${babyId} to job ${job}. Mother: ${baby.mother_id}, Father: ${baby.father_id}, Status: ${baby.status}`);
     }
