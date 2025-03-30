@@ -15,9 +15,9 @@ class BabyScheduler {
           if (baby.status == "born"){
             switch (baby.job){
               case "nuggie_claimer":
-                parents = [baby.mother_id, baby.father_id];
+                const parents = [baby.mother_id, baby.father_id];
                 for (const parent of parents){
-                  baseAmount = await Claim.getBaseAmount(parent, 0);
+                  const baseAmount = await new Claim(this.client).getBaseAmount(parent, 0);
                   await this.client.db.addUserAttr(parent, 'dinonuggies', baseAmount);
                   log(`${baby.name} (${baby.id}) claimed ${baseAmount} dinonuggies for ${parent}`);
                 }
