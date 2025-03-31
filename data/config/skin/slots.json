@@ -31,6 +31,22 @@
       "loseMessage": "You bet {amount} mystic credits and didn't win anything!"
     },
 
+    "aprilFools": {
+      "name": "April Fools",
+      "emotes": [
+        { "emote": "<:1silverwolfsmug1:1212343617113559051>", "value": 8 },
+        { "emote": "<:1silverwolfsmug1:1212343617113559051>", "value": 6 },
+        { "emote": "<:1silverwolfsmug1:1212343617113559051>", "value": 4 },
+        { "emote": "<:1silverwolfsmug1:1212343617113559051>", "value": 3 },
+        { "emote": "<:1silverwolfsmug1:1212343617113559051>", "value": 1 },
+        { "emote": "<:1silverwolfsmug1:1212343617113559051>", "value": 1 },
+        { "emote": "<:1silverwolfsmug1:1212343617113559051>", "value": 1 }
+      ],
+      "color": "#AA0000",
+      "winMessage": "<:1silverwolfsmug1:1212343617113559051> <:1silverwolfsmug1:1212343617113559051> {amount} <:1silverwolfsmug1:1212343617113559051> <:1silverwolfsmug1:1212343617113559051> <:1silverwolfsmug1:1212343617113559051> {winnings} <:1silverwolfsmug1:1212343617113559051> <:1silverwolfsmug1:1212343617113559051>!",
+      "loseMessage": "<:1silverwolfsmug1:1212343617113559051> <:1silverwolfsmug1:1212343617113559051> {amount} <:1silverwolfsmug1:1212343617113559051> <:1silverwolfsmug1:1212343617113559051> <:1silverwolfsmug1:1212343617113559051> <:1silverwolfsmug1:1212343617113559051> <:1silverwolfsmug1:1212343617113559051> <:1silverwolfsmug1:1212343617113559051>!"
+    },
+
     "halloween": {
       "name": "Halloween",
       "emotes": [
