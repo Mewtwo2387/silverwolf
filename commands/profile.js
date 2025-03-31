@@ -286,6 +286,8 @@ class Profile extends Command {
 ## Others
 **Pity:** ${user.pity}
 **Birthday:** ${user.birthdays ? user.birthdays : "No birthday set"}
+**Murders:** ${user.murder_success} Successes, ${user.murder_fail} Fails
+**Last Murder:** ${user.last_murder ? new Date(user.last_murder).toLocaleString() : "Never"}
             `)
             .setTimestamp();
     }
