@@ -310,8 +310,23 @@ class HalloweenHandler {
     }
 }
 
+class AprilFoolsHandler {
+    async summonPokemon(message, mode = "normal"){
+        const client = message.client; 
+
+        message.channel.send({ embeds:[ new EmbedBuilder()
+            .setTitle(`A Silverwolf appeared!`)
+            .setImage('https://cdn.donmai.us/sample/2d/4a/__silver_wolf_honkai_and_1_more_drawn_by_caisena__sample-2d4a2a28c06586827eb8a3dc66b44e38.jpg')
+            .setColor("#00FF00")
+            .setFooter({ text: "catch them with /catch [username]!" })
+        ]})
+        client.currentPokemon = "Silverwolf";
+    }
+}
+
 module.exports = {
     ChristmasHandler,
     NormalHandler,
-    HalloweenHandler
+    HalloweenHandler,
+    AprilFoolsHandler
 };

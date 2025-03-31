@@ -9,12 +9,13 @@ const { log, logError } = require('../utils/log');
 // const CharacterAI = require('node_characterai')
 require('dotenv').config();
 const seasonConfig = require('../data/config/skin/pokemon.json');
-const { ChristmasHandler, NormalHandler, HalloweenHandler } = require('./seasonHandler.js');
+const { ChristmasHandler, NormalHandler, HalloweenHandler, AprilFoolsHandler } = require('./seasonHandler.js');
 
 const handlers = {
     ChristmasHandler,
     NormalHandler,
-    HalloweenHandler
+    HalloweenHandler,
+    AprilFoolsHandler
 };
 
 class Silverwolf extends Client {
