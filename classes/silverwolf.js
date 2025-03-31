@@ -49,6 +49,9 @@ class Silverwolf extends Client {
         await this.loadListeners();
 
         this.birthdayScheduler.start();
+        log("Birthday scheduler started.");
+        this.babyScheduler.start();
+        log("Baby scheduler started.");
 
         log(`Silverwolf initialized.
 ----------------------------------------------

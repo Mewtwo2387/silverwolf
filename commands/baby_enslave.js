@@ -10,7 +10,7 @@ const jobs = [
     {
         name: "Gambler",
         value: "gambler",
-        description: "Auto play slots once every 10 minutes, using 1% of your credits each time."
+        description: "Auto bet on red once every 10 minutes, using 1% of your credits each time."
     },
     {
         name: "Pinger",
