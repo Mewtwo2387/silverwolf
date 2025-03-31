@@ -47,7 +47,20 @@ class BabyGet extends Command {
             result += `**${baby.name}**\n`;
             result += `ID: ${baby.id}\n`;
             result += `Status: ${baby.status}\n`;
-            result += `Job: ${baby.job || "None"}\n`;
+            switch (baby.job){
+                case "nuggie_claimer":
+                    result += `Nuggie Claimer - ${baby.nuggie_claimer_claims} claims, ${format(baby.nuggie_claimer_claimed)} nuggies claimed\n`;
+                    break;
+                case "gambler":
+                    result += `Gambler - ${baby.gambler_games} games (${baby.gambler_wins} wins, ${baby.gambler_losses} losses), ${format(baby.gambler_credits_won - baby.gambler_credits_gambled)} net winnings (${format(baby.gambler_credits_won)} won, ${format(baby.gambler_credits_gambled)} gambled)\n`;
+                    break;
+                case "pinger":
+                    result += `Pinger - ${baby.pinger_pings} pings\n`;
+                    break;
+                default:
+                    result += `No job\n`;
+                    break;
+            }
             result += `Level: Lv ${baby.level}\n`;
             result += `Mother: <@${baby.mother_id}>\n`;
             result += `Father: <@${baby.father_id}>\n`;

@@ -168,7 +168,15 @@ const babyTable = {
         { name: 'level', type: 'INTEGER DEFAULT 0' },
         { name: 'job', type: 'TEXT DEFAULT NULL' },
         { name: 'pinger_target', type: 'VARCHAR DEFAULT NULL' },
-        { name: 'pinger_channel', type: 'VARCHAR DEFAULT NULL' }
+        { name: 'pinger_channel', type: 'VARCHAR DEFAULT NULL' },
+        { name: 'nuggie_claimer_claims', type: 'INTEGER DEFAULT 0'},
+        { name: 'nuggie_claimer_claimed', type: 'INTEGER DEFAULT 0'},
+        { name: 'gambler_games', type: 'INTEGER DEFAULT 0'},
+        { name: 'gambler_wins', type: 'INTEGER DEFAULT 0'},
+        { name: 'gambler_losses', type: 'INTEGER DEFAULT 0'},
+        { name: 'gambler_credits_gambled', type: 'INTEGER DEFAULT 0'},
+        { name: 'gambler_credits_won', type: 'INTEGER DEFAULT 0'},
+        { name: 'pinger_pings', type: 'INTEGER DEFAULT 0'}
     ],
     primaryKey: ['id'],
     specialConstraints: [],
@@ -821,6 +829,26 @@ class Database {
         }
         let baby = await this.getBabyFromId(babyId);
         log(`Updated baby ${babyId} to job ${job}. Mother: ${baby.mother_id}, Father: ${baby.father_id}, Status: ${baby.status}`);
+    }
+
+    async addBabyAttr(babyId, attr, value) {
+        let query = `UPDATE Baby SET ${attr} = ${attr} + ? WHERE id = ?`;
+        await this.executeQuery(query, [value, babyId]);
+        let baby = await this.getBabyFromId(babyId);
+        log(`Updated baby ${babyId} ${attr} to ${value}. Mother: ${baby.mother_id}, Father: ${baby.father_id}, Status: ${baby.status}`);
+    }
+
+    async getBabyAttr(babyId, attr) {
+        let query = `SELECT ${attr} FROM Baby WHERE id = ?`;
+        let row = await this.executeSelectQuery(query, [babyId]);
+        return row[attr];
+    }
+
+    async setBabyAttr(babyId, attr, value) {
+        let query = `UPDATE Baby SET ${attr} = ? WHERE id = ?`;
+        await this.executeQuery(query, [value, babyId]);
+        let baby = await this.getBabyFromId(babyId);
+        log(`Updated baby ${babyId} ${attr} to ${value}. Mother: ${baby.mother_id}, Father: ${baby.father_id}, Status: ${baby.status}`);
     }
 
     async levelUpBaby(babyId) {
