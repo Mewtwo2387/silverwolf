@@ -3,17 +3,19 @@ const { Database } = require("./database.js");
 const fs = require("fs");
 const path = require("path");
 const BirthdayScheduler = require('./birthdayScheduler');
+const BabyScheduler = require('./babyScheduler');
 const Canvas = require('canvas');
 const { log, logError } = require('../utils/log');
 // const CharacterAI = require('node_characterai')
 require('dotenv').config();
 const seasonConfig = require('../data/config/skin/pokemon.json');
-const { ChristmasHandler, NormalHandler, HalloweenHandler } = require('./seasonHandler.js');
+const { ChristmasHandler, NormalHandler, HalloweenHandler, AprilFoolsHandler } = require('./seasonHandler.js');
 
 const handlers = {
     ChristmasHandler,
     NormalHandler,
-    HalloweenHandler
+    HalloweenHandler,
+    AprilFoolsHandler
 };
 
 class Silverwolf extends Client {
@@ -28,10 +30,12 @@ class Silverwolf extends Client {
         this.db = new Database();
         this.currentPokemon = null;
         this.birthdayScheduler = new BirthdayScheduler(this);
+        this.babyScheduler = new BabyScheduler(this);
         this.init();
         this.games = [];
         this.loadGames(); // Initialize the games list from the JSON file
         this.chat = null;
+        this.sex_sessions = [];
         // try{
         //     this.loadSilverwolfAI();
         // }catch(error){
@@ -46,6 +50,9 @@ class Silverwolf extends Client {
         await this.loadListeners();
 
         this.birthdayScheduler.start();
+        log("Birthday scheduler started.");
+        this.babyScheduler.start();
+        log("Baby scheduler started.");
 
         log(`Silverwolf initialized.
 ----------------------------------------------
@@ -177,6 +184,13 @@ All wrongs reserved.
             }
             arlecchino.run(interaction);
         }
+
+        // if (message.author.id == '595491647132008469'){
+        //     if (message.content.includes("marry")){
+        //         message.reply("yes babe~");
+        //         return;
+        //     }
+        // }
     
         const msg = message.content.toLowerCase();
     
@@ -291,6 +305,8 @@ All wrongs reserved.
                 
                 // Create a copy of the commands array
                 const commandsArray = Array.from(this.commands.values()).filter(command => command !== null && command.isSubcommandOf === null).map(command => command.toJSON())
+
+                console.log(commandsArray);
                 
                 // If there are no blacklisted commands, register all commands
                 if (blacklistedCommands.length === 0) {

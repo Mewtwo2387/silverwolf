@@ -13,6 +13,9 @@
         },
         "halloween": {
             "handler": "HalloweenHandler"
+        },
+        "aprilFools": {
+            "handler": "AprilFoolsHandler"
         }
     }
 }
