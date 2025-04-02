@@ -38,13 +38,15 @@ class AskGeminiCommand extends Command {
                 responseMimeType: "text/plain",
             };
     
-            const rawChatHistory = await this.client.db.getChatHistory(1);
-    
-            const chatHistory = rawChatHistory.map(entry => ({
+            let rawChatHistory = await this.client.db.getChatHistory(1);
+            let chatHistory = rawChatHistory.reverse().map(entry => ({
                 role: entry.role === 'assistant' ? 'model' : entry.role,
                 parts: [{ text: entry.message }]
             }));
-
+            
+            if (chatHistory.length > 0 && chatHistory[0].role === 'model') {
+                chatHistory.shift();
+            }
             console.log(chatHistory);
     
             const chatSession = model.startChat({ generationConfig, history: chatHistory });
@@ -62,7 +64,7 @@ class AskGeminiCommand extends Command {
     
             // Store user and assistant messages in the database
             await this.client.db.addChatHistory(1, 'user', prompt);
-            await this.client.db.addChatHistory(1, 'assistant', text);
+            await this.client.db.addChatHistory(1, 'model', text);
     
         } catch (error) {
             logError('Error generating text:', error);
