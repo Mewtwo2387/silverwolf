@@ -122,9 +122,9 @@ class Slots extends Command {
         for (var i = 0; i < lines.length; i++) {
             const line = lines[i];
             if(results[line[0]][0].emote == results[line[1]][1].emote && results[line[1]][1].emote == results[line[2]][2].emote && results[line[2]][2].emote == results[line[3]][3].emote && results[line[3]][3].emote == results[line[4]][4].emote){
-                multi += results[line[0]][0].value * 25;
+                multi += results[line[0]][0].value * 20;
             }else if(results[line[0]][0].emote == results[line[1]][1].emote && results[line[1]][1].emote == results[line[2]][2].emote && results[line[2]][2].emote == results[line[3]][3].emote){
-                multi += results[line[0]][0].value * 5;
+                multi += results[line[0]][0].value * 4;
             }else if(results[line[0]][0].emote == results[line[1]][1].emote && results[line[1]][1].emote == results[line[2]][2].emote){
                 multi += results[line[1]][1].value;
             }
