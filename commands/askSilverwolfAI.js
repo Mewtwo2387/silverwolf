@@ -20,8 +20,10 @@ class AskGeminiCommand extends Command {
     }
 
     async run(interaction) {
-        const prompt = interaction.options.getString('prompt');
+        let prompt = interaction.options.getString('prompt');
         const username = interaction.user.username;
+
+        prompt = `${username}: ${prompt}`;
     
         const loadingMessage = await interaction.editReply({ content: 'Loading...', fetchReply: true });
     
@@ -64,7 +66,7 @@ class AskGeminiCommand extends Command {
             await interaction.editReply({ content: null, embeds: [embed] });
     
             // Store user and assistant messages in the database
-            await this.client.db.addChatHistory(1, 'user', `User (${username}): ${prompt}`);
+            await this.client.db.addChatHistory(1, 'user', prompt);
             await this.client.db.addChatHistory(1, 'model', text);
     
         } catch (error) {

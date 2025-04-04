@@ -796,6 +796,7 @@ class Database {
 
     async addChatHistory(sessionId, role, message) {
         const query = `INSERT INTO ChatHistory (session_id, role, message) VALUES (?, ?, ?)`;
+        log(`Adding chat history for session ${sessionId}: ${role} - ${message}`);
         return this.executeQuery(query, [sessionId, role, message]);
     }
 
