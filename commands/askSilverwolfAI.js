@@ -2,7 +2,7 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { Command } = require('./classes/command.js');
 const { EmbedBuilder } = require('discord.js');
 require('dotenv').config();
-const { logError } = require('../utils/log.js');
+const { log, logError } = require('../utils/log.js');
 const fs = require('fs');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_TOKEN);
@@ -44,22 +44,26 @@ class AskGeminiCommand extends Command {
             let rawChatHistory = await this.client.db.getChatHistory(1);
             let chatHistory = rawChatHistory.reverse().map(entry => ({
                 role: entry.role === 'assistant' ? 'model' : entry.role,
-                parts: [{ text: entry.role === 'user' ? `User (${username}): ${entry.message}` : entry.message }]
+                parts: [{ text: entry.message }]
             }));            
             
             if (chatHistory.length > 0 && chatHistory[0].role === 'model') {
                 chatHistory.shift();
             }
-            console.log(chatHistory);
+            console.log(chatHistory.map(entry => `${entry.role}: ${entry.parts[0].text}`).join('\n'));
     
             const chatSession = model.startChat({ generationConfig, history: chatHistory });
             const result = await chatSession.sendMessage(prompt);
             const response = await result.response;
-            const text = await response.text();
+            const text = await response.text()
+            const processedText = text.replace("(Trailblazer)", username);
+
+            log(`Original: ${text}`);
+            log(`Processed: ${processedText}`);
 
             const embed = new EmbedBuilder()
                 .setTitle('Silverwolf Ai says:')
-                .setDescription(text)
+                .setDescription(processedText)
                 .setColor(0x0099ff)
                 .setFooter({ text: 'Powered by ChatTGP', iconURL: 'https://media.discordapp.net/attachments/969953667597893675/1272422507533828106/Qzrb7Us.png?ex=66baeb4e&is=66b999ce&hm=cf4e7ed0da32e823e5ceb90cd94b1abf3e54cc19f447e38a0aef572af68cd04b&=&format=webp&quality=lossless&width=899&height=899' });
     
@@ -67,7 +71,7 @@ class AskGeminiCommand extends Command {
     
             // Store user and assistant messages in the database
             await this.client.db.addChatHistory(1, 'user', prompt);
-            await this.client.db.addChatHistory(1, 'model', text);
+            await this.client.db.addChatHistory(1, 'model', processedText);
     
         } catch (error) {
             logError('Error generating text:', error);
