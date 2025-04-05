@@ -16,12 +16,19 @@ class AskGeminiCommand extends Command {
                 description: "The prompt",
                 type: 3,
                 required: true
+            },
+            {
+                name: "reset",
+                description: "Reset the chat session",
+                type: 5,
+                required: false
             }
         ]);
     }
 
     async run(interaction) {
         let prompt = interaction.options.getString('prompt');
+        const reset = interaction.options.getBoolean('reset');
         const username = interaction.user.username;
 
         prompt = `${username}: ${prompt}`;
@@ -41,8 +48,30 @@ class AskGeminiCommand extends Command {
                 maxOutputTokens: 8192,
                 responseMimeType: "text/plain",
             };
+
+            const lastSession = await this.client.db.getLastActiveServerChatSession(interaction.guild.id);
+
+            log(`Last session: ${lastSession}`);
+
+            let session = lastSession;
+
+            if (reset) {
+                if (!lastSession || lastSession == undefined) {
+                    session = await this.client.db.startChatSession(interaction.user.id, interaction.guild.id);
+                } else {
+                    await this.client.db.endChatSession(lastSession.session_id);
+                    session = await this.client.db.startChatSession(interaction.user.id, interaction.guild.id);
+                }
+            } else {
+                if (!lastSession || lastSession == undefined) {
+                    session = await this.client.db.startChatSession(interaction.user.id, interaction.guild.id);
+                } else {
+                    session = lastSession;
+                }
+            }
     
-            let rawChatHistory = await this.client.db.getChatHistory(1);
+            let rawChatHistory = await this.client.db.getChatHistory(session.session_id);
+
             let chatHistory = rawChatHistory.reverse().map(entry => ({
                 role: entry.role === 'assistant' ? 'model' : entry.role,
                 parts: [{ text: entry.message }]
@@ -71,8 +100,8 @@ class AskGeminiCommand extends Command {
             await interaction.editReply({ content: null, embeds: [embed] });
     
             // Store user and assistant messages in the database
-            await this.client.db.addChatHistory(1, 'user', prompt);
-            await this.client.db.addChatHistory(1, 'model', processedText);
+            await this.client.db.addChatHistory(session.session_id, 'user', prompt);
+            await this.client.db.addChatHistory(session.session_id, 'model', processedText);
     
         } catch (error) {
             logError('Error generating text:', error);

@@ -186,6 +186,21 @@ const babyTable = {
     ]
 };
 
+const chatSessionTable = {
+    name: 'ChatSession',
+    columns: [
+        { name: 'session_id', type: 'INTEGER PRIMARY KEY AUTOINCREMENT' },
+        { name: 'started_by', type: 'VARCHAR NOT NULL' },
+        { name: 'server_id', type: 'VARCHAR NOT NULL' },
+        { name: 'active', type: 'INTEGER DEFAULT 1' }
+    ],
+    primaryKey: ['session_id'],
+    specialConstraints: [],
+    constraints: [
+        'FOREIGN KEY (started_by) REFERENCES User(id)'
+    ]
+};
+
 const chatHistoryTable = {
     name: 'ChatHistory',
     columns: [
@@ -197,11 +212,13 @@ const chatHistoryTable = {
     ],
     primaryKey: ['id'],
     specialConstraints: [],
-    constraints: []
+    constraints: [
+        'FOREIGN KEY (session_id) REFERENCES ChatSession(session_id)'
+    ]
 };
 
 
-const tables = [userTable, pokemonTable, marriageTable, serverRolesTable, gameUIDTable, commandConfigTable, globalConfigTable, babyTable, chatHistoryTable];
+const tables = [userTable, pokemonTable, marriageTable, serverRolesTable, gameUIDTable, commandConfigTable, globalConfigTable, babyTable, chatHistoryTable, chatSessionTable];
 
 
 class Database {
@@ -288,7 +305,7 @@ class Database {
                 if (err) {
                     return reject(err);
                 }
-                resolve({ changes: this.changes }); // Return the number of changes
+                resolve({ changes: this.changes, lastID: this.lastID }); // Return the number of changes
             });
         });
     }    
@@ -792,6 +809,35 @@ class Database {
     async getInventory(userId) {
         const query = `SELECT * FROM GachaInventory WHERE user_id = ?;`;
         return this.executeSelectAllQuery(query, [userId]);
+    }
+
+    async startChatSession(startedBy, serverId) {
+        const query = `INSERT INTO ChatSession (started_by, server_id) VALUES (?, ?)`;
+        const result = await this.executeQuery(query, [startedBy, serverId]);
+        log(`Started chat session ${result.lastID} for user ${startedBy} in server ${serverId}`);
+        return await this.getChatSession(result.lastID);
+    }
+
+    async endChatSession(sessionId) {
+        const query = `UPDATE ChatSession SET active = 0 WHERE session_id = ?`;
+        const result = await this.executeQuery(query, [sessionId]);
+        log(`Ended chat session ${sessionId}`);
+        return await this.getChatSession(sessionId);
+    }
+
+    async getActiveChatSessions() {
+        const query = `SELECT * FROM ChatSession WHERE active = 1`;
+        return this.executeSelectAllQuery(query);
+    }
+
+    async getLastActiveServerChatSession(serverId) {
+        const query = `SELECT * FROM ChatSession WHERE server_id = ? AND active = 1 ORDER BY session_id DESC LIMIT 1`;
+        return this.executeSelectQuery(query, [serverId]);
+    }
+
+    async getChatSession(sessionId) {
+        const query = `SELECT * FROM ChatSession WHERE session_id = ?`;
+        return this.executeSelectQuery(query, [sessionId]);
     }
 
     async addChatHistory(sessionId, role, message) {
