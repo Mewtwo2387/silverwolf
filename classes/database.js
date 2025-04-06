@@ -186,7 +186,39 @@ const babyTable = {
     ]
 };
 
-const tables = [userTable, pokemonTable, marriageTable, serverRolesTable, gameUIDTable, commandConfigTable, globalConfigTable, babyTable];
+const chatSessionTable = {
+    name: 'ChatSession',
+    columns: [
+        { name: 'session_id', type: 'INTEGER PRIMARY KEY AUTOINCREMENT' },
+        { name: 'started_by', type: 'VARCHAR NOT NULL' },
+        { name: 'server_id', type: 'VARCHAR NOT NULL' },
+        { name: 'active', type: 'INTEGER DEFAULT 1' }
+    ],
+    primaryKey: ['session_id'],
+    specialConstraints: [],
+    constraints: [
+        'FOREIGN KEY (started_by) REFERENCES User(id)'
+    ]
+};
+
+const chatHistoryTable = {
+    name: 'ChatHistory',
+    columns: [
+        { name: 'id', type: 'INTEGER PRIMARY KEY AUTOINCREMENT' },
+        { name: 'session_id', type: 'INTEGER NOT NULL' },
+        { name: 'role', type: "TEXT CHECK(role IN ('user', 'model')) NOT NULL" },
+        { name: 'message', type: 'TEXT NOT NULL' },
+        { name: 'timestamp', type: 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP' }
+    ],
+    primaryKey: ['id'],
+    specialConstraints: [],
+    constraints: [
+        'FOREIGN KEY (session_id) REFERENCES ChatSession(session_id)'
+    ]
+};
+
+
+const tables = [userTable, pokemonTable, marriageTable, serverRolesTable, gameUIDTable, commandConfigTable, globalConfigTable, babyTable, chatHistoryTable, chatSessionTable];
 
 
 class Database {
@@ -273,7 +305,7 @@ class Database {
                 if (err) {
                     return reject(err);
                 }
-                resolve({ changes: this.changes }); // Return the number of changes
+                resolve({ changes: this.changes, lastID: this.lastID }); // Return the number of changes
             });
         });
     }    
@@ -330,6 +362,16 @@ class Database {
         }
     }
 
+    async createUserIfNotExists(userId) {
+        const query = `INSERT INTO User (id) VALUES (?)`;
+        try {
+            await this.executeQuery(query, [userId]);
+            log(`New user ${userId} created`);
+        } catch (err) {
+            log(`User ${userId} already exists`);
+        }
+    }
+
     async addUserAttr(userId, field, value) {
         try {
             if (value == null || value == undefined){
@@ -338,7 +380,7 @@ class Database {
                     return;
                 }
             }
-            await this.getUser(userId);
+            await this.createUserIfNotExists(userId);
             const query = `UPDATE User SET ${field} = ${field} + ? WHERE id = ?;`;
             await this.executeQuery(query, [value, userId]);
             log(`Updated user ${userId}: ${field} increased by ${value}.`);
@@ -355,7 +397,7 @@ class Database {
                     return;
                 }
             }
-            await this.getUser(userId);
+            await this.createUserIfNotExists(userId);
             const query = `UPDATE User SET ${field} = ? WHERE id = ?;`;
             await this.executeQuery(query, [value, userId]);
             log(`Updated user ${userId}: ${field} set to ${value}.`);
@@ -444,7 +486,7 @@ class Database {
 
     async catchPokemon(userId, pokemonName) {
         try {
-            await this.getUser(userId); // Ensure user exists
+            await this.createUserIfNotExists(userId); // Ensure user exists
             const query = `
                 INSERT INTO Pokemon (user_id, pokemon_name, pokemon_count)
                 VALUES (?, ?, 1)
@@ -461,7 +503,7 @@ class Database {
 
     async sacrificePokemon(userId, pokemonName) {
         try {
-            await this.getUser(userId);
+            await this.createUserIfNotExists(userId);
 
             // First, check the current count
             const currentCount = await this.getPokemonCount(userId, pokemonName);
@@ -518,7 +560,7 @@ class Database {
 
     async setUserBirthday(userId, birthday) {
         try {
-            await this.getUser(userId);
+            await this.createUserIfNotExists(userId);
             const query = `UPDATE User SET birthdays = ? WHERE id = ?;`;
             await this.executeQuery(query, [birthday, userId]);
             log(`Updated user ${userId}: birthday set to ${birthday}.`);
@@ -585,6 +627,8 @@ class Database {
     
     // Add a marriage
     async addMarriage(user1Id, user2Id) {
+        await this.createUserIfNotExists(user1Id);
+        await this.createUserIfNotExists(user2Id);
         const query = `INSERT INTO Marriage (user1_id, user2_id) VALUES (?, ?)`;
         try {
             await this.executeQuery(query, [user1Id, user2Id]);
@@ -596,6 +640,8 @@ class Database {
 
     // Remove a marriage
     async removeMarriage(user1Id, user2Id) {
+        await this.createUserIfNotExists(user1Id);
+        await this.createUserIfNotExists(user2Id);
         const query = `DELETE FROM Marriage WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)`;
         try {
             await this.executeQuery(query, [user1Id, user2Id, user2Id, user1Id]);
@@ -653,6 +699,7 @@ class Database {
 
     // Add or update a GameUID
     async addOrUpdateGameUID(userId, game, gameUID, region) {
+        await this.createUserIfNotExists(userId);
         const query = `
             INSERT INTO GameUID (user_id, game, game_uid, region)
             VALUES (?, ?, ?, ?)
@@ -670,6 +717,7 @@ class Database {
 
     // Delete a GameUID by game name
     async deleteGameUID(userId, game) {
+        await this.createUserIfNotExists(userId);
         const query = `DELETE FROM GameUID WHERE user_id = ? AND game = ?`;
         try {
             const result = await this.executeQuery(query, [userId, game]);
@@ -753,7 +801,78 @@ class Database {
         return rows;
     }
 
+    async addGachaItem(userId, itemName, itemType, rarity) {
+        await this.createUserIfNotExists(userId);
+        const query = `
+            INSERT INTO GachaInventory (user_id, item_name, item_type, rarity, quantity)
+            VALUES (?, ?, ?, ?, 1)
+            ON CONFLICT(user_id, item_name) DO UPDATE SET
+            quantity = quantity + 1;
+        `;
+        return this.executeQuery(query, [userId, itemName, itemType, rarity]);
+    }
+
+    async removeGachaItem(userId, itemName) {
+        await this.createUserIfNotExists(userId);
+        const currentCount = await this.getItemCount(userId, itemName);
+        if (currentCount <= 1) {
+            const deleteQuery = `DELETE FROM GachaInventory WHERE user_id = ? AND item_name = ?;`;
+            return this.executeQuery(deleteQuery, [userId, itemName]);
+        } else {
+            const updateQuery = `UPDATE GachaInventory SET quantity = quantity - 1 WHERE user_id = ? AND item_name = ?;`;
+            return this.executeQuery(updateQuery, [userId, itemName]);
+        }
+    }
+
+    async getInventory(userId) {
+        const query = `SELECT * FROM GachaInventory WHERE user_id = ?;`;
+        return this.executeSelectAllQuery(query, [userId]);
+    }
+
+    async startChatSession(startedBy, serverId) {
+        await this.createUserIfNotExists(startedBy);
+        const query = `INSERT INTO ChatSession (started_by, server_id) VALUES (?, ?)`;
+        const result = await this.executeQuery(query, [startedBy, serverId]);
+        log(`Started chat session ${result.lastID} for user ${startedBy} in server ${serverId}`);
+        return await this.getChatSession(result.lastID);
+    }
+
+    async endChatSession(sessionId) {
+        const query = `UPDATE ChatSession SET active = 0 WHERE session_id = ?`;
+        const result = await this.executeQuery(query, [sessionId]);
+        log(`Ended chat session ${sessionId}`);
+        return await this.getChatSession(sessionId);
+    }
+
+    async getActiveChatSessions() {
+        const query = `SELECT * FROM ChatSession WHERE active = 1`;
+        return this.executeSelectAllQuery(query);
+    }
+
+    async getLastActiveServerChatSession(serverId) {
+        const query = `SELECT * FROM ChatSession WHERE server_id = ? AND active = 1 ORDER BY session_id DESC LIMIT 1`;
+        return this.executeSelectQuery(query, [serverId]);
+    }
+
+    async getChatSession(sessionId) {
+        const query = `SELECT * FROM ChatSession WHERE session_id = ?`;
+        return this.executeSelectQuery(query, [sessionId]);
+    }
+
+    async addChatHistory(sessionId, role, message) {
+        const query = `INSERT INTO ChatHistory (session_id, role, message) VALUES (?, ?, ?)`;
+        log(`Adding chat history for session ${sessionId}: ${role} - ${message}`);
+        return this.executeQuery(query, [sessionId, role, message]);
+    }
+
+    async getChatHistory(sessionId) {
+        const query = `SELECT role, message, timestamp FROM ChatHistory WHERE session_id = ? ORDER BY id DESC LIMIT 100`;
+        return this.executeSelectAllQuery(query, [sessionId]);
+    }
+
     async addBaby(motherId, fatherId) {
+        await this.createUserIfNotExists(motherId);
+        await this.createUserIfNotExists(fatherId);
         const query = `INSERT INTO Baby (mother_id, father_id, status, name) VALUES (?, ?, "unborn", "baby")`;
         const result = await this.executeQuery(query, [motherId, fatherId]);
         const babyId = result.lastID;
