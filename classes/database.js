@@ -362,6 +362,16 @@ class Database {
         }
     }
 
+    async createUserIfNotExists(userId) {
+        const query = `INSERT INTO User (id) VALUES (?)`;
+        try {
+            await this.executeQuery(query, [userId]);
+            log(`New user ${userId} created`);
+        } catch (err) {
+            log(`User ${userId} already exists`);
+        }
+    }
+
     async addUserAttr(userId, field, value) {
         try {
             if (value == null || value == undefined){
@@ -370,7 +380,7 @@ class Database {
                     return;
                 }
             }
-            await this.getUser(userId);
+            await this.createUserIfNotExists(userId);
             const query = `UPDATE User SET ${field} = ${field} + ? WHERE id = ?;`;
             await this.executeQuery(query, [value, userId]);
             log(`Updated user ${userId}: ${field} increased by ${value}.`);
@@ -387,7 +397,7 @@ class Database {
                     return;
                 }
             }
-            await this.getUser(userId);
+            await this.createUserIfNotExists(userId);
             const query = `UPDATE User SET ${field} = ? WHERE id = ?;`;
             await this.executeQuery(query, [value, userId]);
             log(`Updated user ${userId}: ${field} set to ${value}.`);
@@ -476,7 +486,7 @@ class Database {
 
     async catchPokemon(userId, pokemonName) {
         try {
-            await this.getUser(userId); // Ensure user exists
+            await this.createUserIfNotExists(userId); // Ensure user exists
             const query = `
                 INSERT INTO Pokemon (user_id, pokemon_name, pokemon_count)
                 VALUES (?, ?, 1)
@@ -493,7 +503,7 @@ class Database {
 
     async sacrificePokemon(userId, pokemonName) {
         try {
-            await this.getUser(userId);
+            await this.createUserIfNotExists(userId);
 
             // First, check the current count
             const currentCount = await this.getPokemonCount(userId, pokemonName);
@@ -550,7 +560,7 @@ class Database {
 
     async setUserBirthday(userId, birthday) {
         try {
-            await this.getUser(userId);
+            await this.createUserIfNotExists(userId);
             const query = `UPDATE User SET birthdays = ? WHERE id = ?;`;
             await this.executeQuery(query, [birthday, userId]);
             log(`Updated user ${userId}: birthday set to ${birthday}.`);
@@ -617,6 +627,8 @@ class Database {
     
     // Add a marriage
     async addMarriage(user1Id, user2Id) {
+        await this.createUserIfNotExists(user1Id);
+        await this.createUserIfNotExists(user2Id);
         const query = `INSERT INTO Marriage (user1_id, user2_id) VALUES (?, ?)`;
         try {
             await this.executeQuery(query, [user1Id, user2Id]);
@@ -628,6 +640,8 @@ class Database {
 
     // Remove a marriage
     async removeMarriage(user1Id, user2Id) {
+        await this.createUserIfNotExists(user1Id);
+        await this.createUserIfNotExists(user2Id);
         const query = `DELETE FROM Marriage WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)`;
         try {
             await this.executeQuery(query, [user1Id, user2Id, user2Id, user1Id]);
@@ -685,6 +699,7 @@ class Database {
 
     // Add or update a GameUID
     async addOrUpdateGameUID(userId, game, gameUID, region) {
+        await this.createUserIfNotExists(userId);
         const query = `
             INSERT INTO GameUID (user_id, game, game_uid, region)
             VALUES (?, ?, ?, ?)
@@ -702,6 +717,7 @@ class Database {
 
     // Delete a GameUID by game name
     async deleteGameUID(userId, game) {
+        await this.createUserIfNotExists(userId);
         const query = `DELETE FROM GameUID WHERE user_id = ? AND game = ?`;
         try {
             const result = await this.executeQuery(query, [userId, game]);
@@ -786,6 +802,7 @@ class Database {
     }
 
     async addGachaItem(userId, itemName, itemType, rarity) {
+        await this.createUserIfNotExists(userId);
         const query = `
             INSERT INTO GachaInventory (user_id, item_name, item_type, rarity, quantity)
             VALUES (?, ?, ?, ?, 1)
@@ -796,6 +813,7 @@ class Database {
     }
 
     async removeGachaItem(userId, itemName) {
+        await this.createUserIfNotExists(userId);
         const currentCount = await this.getItemCount(userId, itemName);
         if (currentCount <= 1) {
             const deleteQuery = `DELETE FROM GachaInventory WHERE user_id = ? AND item_name = ?;`;
@@ -812,6 +830,7 @@ class Database {
     }
 
     async startChatSession(startedBy, serverId) {
+        await this.createUserIfNotExists(startedBy);
         const query = `INSERT INTO ChatSession (started_by, server_id) VALUES (?, ?)`;
         const result = await this.executeQuery(query, [startedBy, serverId]);
         log(`Started chat session ${result.lastID} for user ${startedBy} in server ${serverId}`);
@@ -852,6 +871,8 @@ class Database {
     }
 
     async addBaby(motherId, fatherId) {
+        await this.createUserIfNotExists(motherId);
+        await this.createUserIfNotExists(fatherId);
         const query = `INSERT INTO Baby (mother_id, father_id, status, name) VALUES (?, ?, "unborn", "baby")`;
         const result = await this.executeQuery(query, [motherId, fatherId]);
         const babyId = result.lastID;
