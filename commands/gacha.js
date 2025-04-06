@@ -93,8 +93,7 @@ class GachaRollCommand extends Command {
             results.push(itemDetails);
     
             // Determine if it's a character or lightcone
-            let itemType = this.characterPool.some(c => c.name === rollResult.name) ? 'Character' : 'Lightcone';
-    
+            let itemType = this.characterPool.some(c => c.name === itemDetails.name) ? 'Character' : 'Lightcone';
             // Store roll in the database
             await this.client.db.addGachaItem(userId, itemDetails.name, itemType, itemDetails.rarity);
         }
