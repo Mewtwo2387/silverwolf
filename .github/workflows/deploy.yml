@@ -1,0 +1,22 @@
+name: Deploy my wife Silverwolf
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VM
+        uses: appleboy/ssh-action@master
+        with:
+          host: 165.232.171.127
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /root/silverwolf
+            git pull origin master
+            npm install
+            pm2 restart 0 
