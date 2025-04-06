@@ -1,0 +1,46 @@
+{
+  "env": {
+    "node": true,
+    "es2021": true,
+    "jest": true
+  },
+  "extends": [
+    "airbnb-base",
+    "plugin:jest/recommended",
+    "plugin:node/recommended",
+    "plugin:promise/recommended"
+  ],
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module"
+  },
+  "rules": {
+    "no-console": "off",
+    "import/no-extraneous-dependencies": ["error", {
+      "devDependencies": ["**/*.test.js", "**/*.spec.js", "tests/**/*.js"]
+    }],
+    "node/no-unpublished-require": ["error", {
+      "allowModules": ["jest", "@jest/globals"]
+    }],
+    "node/no-missing-require": ["error", {
+      "allowModules": ["jest", "@jest/globals"]
+    }],
+    "promise/always-return": "off",
+    "promise/catch-or-return": "off",
+    "no-underscore-dangle": ["error", {
+      "allow": ["_id"]
+    }],
+    "max-len": ["error", {
+      "code": 120,
+      "ignoreComments": true,
+      "ignoreStrings": true,
+      "ignoreTemplateLiterals": true
+    }]
+  },
+  "ignorePatterns": [
+    "node_modules/",
+    "coverage/",
+    "dist/",
+    ".git/"
+  ]
+} 

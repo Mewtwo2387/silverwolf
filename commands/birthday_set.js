@@ -1,82 +1,82 @@
-const { Command } = require('./classes/command.js');
 const { EmbedBuilder } = require('discord.js');
+const { Command } = require('./classes/command.js');
 const { log, logError } = require('../utils/log.js');
 
 class SetBirthdayCommand extends Command {
-    constructor(client) {
-        super(client, "set", "Sets your birthday", [
-            {
-                name: 'day',
-                description: 'Day of the month (1-31)',
-                type: 4,
-                required: true
-            },
-            {
-                name: 'month',
-                description: 'Month (1-12)',
-                type: 4,
-                required: true
-            },
-            {
-                name: 'year',
-                description: 'Year (e.g., 1990)',
-                type: 4,
-                required: true
-            },
-            {
-                name: 'timezone',
-                description: 'Timezone offset in ±HH:MM format (e.g. +08:00)',
-                type: 3,
-                required: false
-            }
-        ], {isSubcommandOf: "birthday"});
+  constructor(client) {
+    super(client, 'set', 'Sets your birthday', [
+      {
+        name: 'day',
+        description: 'Day of the month (1-31)',
+        type: 4,
+        required: true,
+      },
+      {
+        name: 'month',
+        description: 'Month (1-12)',
+        type: 4,
+        required: true,
+      },
+      {
+        name: 'year',
+        description: 'Year (e.g., 1990)',
+        type: 4,
+        required: true,
+      },
+      {
+        name: 'timezone',
+        description: 'Timezone offset in ±HH:MM format (e.g. +08:00)',
+        type: 3,
+        required: false,
+      },
+    ], { isSubcommandOf: 'birthday' });
+  }
+
+  async run(interaction) {
+    try {
+      const userId = interaction.user.id;
+      log(`User ${userId} triggered /set_birthday command.`);
+
+      const day = interaction.options.getInteger('day');
+      const month = interaction.options.getInteger('month');
+      const year = interaction.options.getInteger('year');
+      const timezone = interaction.options.getString('timezone') || '+00:00'; // Default to UTC if not provided
+
+      log(`Received inputs: day=${day}, month=${month}, year=${year}, timezone=${timezone}`);
+
+      // Validate the inputs
+      if (!day || !month || !year) {
+        throw new Error('Invalid inputs: Missing day, month, or year.');
+      }
+
+      const birthday = new Date(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00${timezone}`);
+      log(`Constructed birthday: ${birthday.toISOString()}`);
+
+      if (isNaN(birthday.getTime())) {
+        throw new Error('Invalid date constructed. Please check the inputs.');
+      }
+
+      // Log before setting the user birthday in the database
+      log(`Attempting to set birthday for user ${userId} to ${birthday.toISOString()}.`);
+
+      // Use this.client.db to set the birthday
+      const result = await this.client.db.setUserAttr(userId, 'birthdays', birthday.toISOString());
+      log(`Successfully updated birthday for user ${userId}.`, result);
+
+      // Send confirmation message
+      const embed = new EmbedBuilder()
+        .setTitle('Birthday Set!')
+        .setDescription(`Your birthday has been set to ${birthday.toDateString()} (timezone: ${timezone}).`)
+        .setColor(0x00FF00);
+
+      await interaction.editReply({ embeds: [embed] });
+    } catch (error) {
+      // Log the detailed error
+      logError(`Error setting birthday for user ${interaction.user.id}:`, error);
+
+      await interaction.editReply(`Error setting birthday: ${error.message}`);
     }
-
-    async run(interaction) {
-        try {
-            const userId = interaction.user.id;
-            log(`User ${userId} triggered /set_birthday command.`);
-
-            const day = interaction.options.getInteger('day');
-            const month = interaction.options.getInteger('month');
-            const year = interaction.options.getInteger('year');
-            const timezone = interaction.options.getString('timezone') || '+00:00'; // Default to UTC if not provided
-
-            log(`Received inputs: day=${day}, month=${month}, year=${year}, timezone=${timezone}`);
-
-            // Validate the inputs
-            if (!day || !month || !year) {
-                throw new Error("Invalid inputs: Missing day, month, or year.");
-            }
-
-            const birthday = new Date(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00${timezone}`);
-            log(`Constructed birthday: ${birthday.toISOString()}`);
-
-            if (isNaN(birthday.getTime())) {
-                throw new Error("Invalid date constructed. Please check the inputs.");
-            }
-
-            // Log before setting the user birthday in the database
-            log(`Attempting to set birthday for user ${userId} to ${birthday.toISOString()}.`);
-
-            // Use this.client.db to set the birthday
-            const result = await this.client.db.setUserAttr(userId, 'birthdays', birthday.toISOString());
-            log(`Successfully updated birthday for user ${userId}.`, result);
-
-            // Send confirmation message
-            const embed = new EmbedBuilder()
-                .setTitle('Birthday Set!')
-                .setDescription(`Your birthday has been set to ${birthday.toDateString()} (timezone: ${timezone}).`)
-                .setColor(0x00FF00);
-
-            await interaction.editReply({ embeds: [embed] });
-        } catch (error) {
-            // Log the detailed error
-            logError(`Error setting birthday for user ${interaction.user.id}:`, error);
-
-            await interaction.editReply(`Error setting birthday: ${error.message}`);
-        }
-    }
+  }
 }
 
 module.exports = SetBirthdayCommand;

@@ -2,16 +2,17 @@ const Discord = require('discord.js');
 const { Command } = require('./classes/command.js');
 
 class Donate extends Command {
-    constructor(client){
-        super(client, "donate", "our server's donation links and rewards (real)", []);
-    }
+  constructor(client) {
+    super(client, 'donate', "our server's donation links and rewards (real)", []);
+  }
 
-    async run(interaction){
-        if(interaction.guild.id == '969953667597893672'){ // basement
-            await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
-                .setColor('#00AA00')
-                .setTitle('«« ━━ ✦・Donation Links and Rewards・✦ ━━ »»')
-                .setDescription(`Donate for a series of rewards! (real)
+  async run(interaction) {
+    if (interaction.guild.id == '969953667597893672') { // basement
+      await interaction.editReply({
+        embeds: [new Discord.EmbedBuilder()
+          .setColor('#00AA00')
+          .setTitle('«« ━━ ✦・Donation Links and Rewards・✦ ━━ »»')
+          .setDescription(`Donate for a series of rewards! (real)
 
 Silverwolf funds:
 https://www.gofundme.com/f/melissa-fahns-family-needs-your-support
@@ -52,13 +53,15 @@ Send a screenshot of your donation to get your rewards!
 
 **$50** - Admin role
 
-**$100** - Owner role`)
-            ]});
-        }else{
-            await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
-                .setColor('#00AA00')
-                .setTitle('«« ━━ ✦・Donation Links and Rewards・✦ ━━ »»')
-                .setDescription(`Donate for a series of rewards! (real)
+**$100** - Owner role`),
+        ],
+      });
+    } else {
+      await interaction.editReply({
+        embeds: [new Discord.EmbedBuilder()
+          .setColor('#00AA00')
+          .setTitle('«« ━━ ✦・Donation Links and Rewards・✦ ━━ »»')
+          .setDescription(`Donate for a series of rewards! (real)
 
 Silverwolf funds:
 https://www.gofundme.com/f/melissa-fahns-family-needs-your-support
@@ -98,10 +101,11 @@ Send a screenshot of your donation to get your rewards!
 **$100** - Owner role
 
 **$▮▮** - ▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮
-`)
-            ]});
-        }
+`),
+        ],
+      });
     }
+  }
 }
 
 module.exports = Donate;

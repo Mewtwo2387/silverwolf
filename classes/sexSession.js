@@ -1,20 +1,20 @@
 class SexSession {
-  constructor(top, bottom, thrusts){
+  constructor(top, bottom, thrusts) {
     this.top = top;
     this.bottom = bottom;
     this.thrusts = thrusts;
   }
 
-  thrust(){
+  thrust() {
     this.thrusts++;
     return Math.random() < 0.03;
   }
 
-  hasUser(user){
+  hasUser(user) {
     return this.top === user || this.bottom === user;
   }
 
-  otherUser(user){
+  otherUser(user) {
     return this.top === user ? this.bottom : this.top;
   }
 }
