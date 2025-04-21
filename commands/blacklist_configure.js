@@ -37,17 +37,15 @@ class BlacklistCommand extends DevCommand {
     }
 
     async run(interaction) {
-        const commandName = interaction.options.getString('command');
+        let commandName = interaction.options.getString('command').toLowerCase().replace(/\s+/g, '.');
         const serverId = interaction.options.getString('server');
         const action = interaction.options.getString('action');
         const reason = interaction.options.getString('reason') || 'No reason provided';
-
+    
         try {
             if (action === 'add') {
-                // Add the command to the blacklist
                 await this.client.db.addOrUpdateCommandBlacklist(commandName, serverId, reason);
-                
-                // Send a success message
+    
                 await interaction.editReply({
                     embeds: [
                         new Discord.EmbedBuilder()
@@ -57,11 +55,10 @@ class BlacklistCommand extends DevCommand {
                             .addFields({ name: 'Reason', value: reason })
                     ]
                 });
+    
             } else if (action === 'remove') {
-                // Remove the command from the blacklist
                 const resultMessage = await this.client.db.deleteCommandBlacklist(commandName, serverId);
-                
-                // Send a success or info message based on whether the entry was found
+    
                 await interaction.editReply({
                     embeds: [
                         new Discord.EmbedBuilder()
@@ -71,10 +68,12 @@ class BlacklistCommand extends DevCommand {
                     ]
                 });
             }
+    
+            await this.client.registerCommands(this.client.user.id);
+    
         } catch (err) {
             logError('Failed to update command blacklist:', err);
-            
-            // Send an error message
+    
             await interaction.editReply({
                 embeds: [
                     new Discord.EmbedBuilder()

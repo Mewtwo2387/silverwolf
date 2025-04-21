@@ -10,6 +10,8 @@ const { log, logError } = require('../utils/log');
 require('dotenv').config();
 const seasonConfig = require('../data/config/skin/pokemon.json');
 const { ChristmasHandler, NormalHandler, HalloweenHandler, AprilFoolsHandler } = require('./seasonHandler.js');
+const { CommandGroup } = require('../commands/classes/commandGroup.js');
+
 
 const handlers = {
     ChristmasHandler,
@@ -290,54 +292,20 @@ All wrongs reserved.
     }
 
     async registerCommands(clientId) {
-        const guildIds = process.env.GUILD_ID.split(','); // Split the GUILD_IDs into an array
+        const guildIds = process.env.GUILD_ID.split(',');
         const rest = new REST({ version: "10" }).setToken(this.token);
     
-        // Loop over each guild ID
         for (const guildId of guildIds) {
             try {
-                // Retrieve blacklisted commands for the guild
-                const blacklistedCommandsData = await this.db.getBlacklistedCommands(guildId);
-                log(`Blacklisted commands for guild ${guildId}:`, blacklistedCommandsData);
+                const blacklisted = await this.getBlacklistedSet(guildId);
+                const commandsArray = this.buildCommandList(blacklisted);
     
-                // Extract just the command names from the data
-                const blacklistedCommands = blacklistedCommandsData.map(item => item.command_name);
-                
-                // Create a copy of the commands array
-                const commandsArray = Array.from(this.commands.values()).filter(command => command !== null && command.isSubcommandOf === null).map(command => command.toJSON())
-
-                console.log(commandsArray);
-                
-                // If there are no blacklisted commands, register all commands
-                if (blacklistedCommands.length === 0) {
-                    log(`No blacklisted commands for guild ${guildId}. Registering all commands.`);
-                    const response = await rest.put(
-                        Routes.applicationGuildCommands(clientId, guildId),
-                        { body: commandsArray },
-                    );
+                const response = await rest.put(
+                    Routes.applicationGuildCommands(clientId, guildId),
+                    { body: commandsArray }
+                );
     
-                    log(`Successfully registered commands for guild ${guildId}:`, response);
-                } else {
-                    // Remove blacklisted commands from the array
-                    const filteredCommandsArray = commandsArray.filter(command => {
-                        if (blacklistedCommands.includes(command.name)) {
-                            log(`Excluding blacklisted command "${command.name}" for guild: ${guildId}`);
-                            return false; // Exclude the command if blacklisted
-                        } else if (!this.commands.has(command.name)) {
-                            console.warn(`Warning: Command "${command.name}" not found in the registered commands for guild: ${guildId}. It may have been misspelled.`);
-                        }
-                        return true; // Include non-blacklisted commands
-                    });
-    
-                    // Register the filtered commands for this guild
-                    log(`Registering commands for guild: ${guildId}`);
-                    const response = await rest.put(
-                        Routes.applicationGuildCommands(clientId, guildId),
-                        { body: filteredCommandsArray },
-                    );
-    
-                    log(`Successfully registered commands for guild ${guildId}:`, response);
-                }
+                log(`Successfully registered commands for guild ${guildId}:`, response);
             } catch (error) {
                 logError(`Error registering commands for guild ${guildId}:`, error);
             }
@@ -345,8 +313,58 @@ All wrongs reserved.
     
         log("All commands registered successfully.");
         log("Successfully finished startup.");
-        log("=======================================================")
+        log("=======================================================");
     }
+    
+    // Converts blacklist array to Set for faster lookup
+    getBlacklistedSet = async (guildId) => {
+        const data = await this.db.getBlacklistedCommands(guildId);
+        const blacklist = new Set(data.map(item => item.command_name));
+        log(`Blacklisted commands for guild ${guildId}:`, [...blacklist]);
+        return blacklist;
+    }
+    
+    // Builds filtered command array, including support for command groups
+    buildCommandList = (blacklist) => {
+        const commands = [];
+    
+        for (const command of this.commands.values()) {
+            if (!command || command.isSubcommandOf) continue;
+    
+            if (command instanceof CommandGroup) {
+                const groupJSON = command.toJSON();
+                const filteredSubs = this.filterSubcommands(groupJSON, blacklist);
+    
+                if (filteredSubs.length > 0) {
+                    groupJSON.options = filteredSubs;
+                    commands.push(groupJSON);
+                } else {
+                    log(`Skipping group "${groupJSON.name}" — all subcommands are blacklisted`);
+                }
+            } else {
+                if (blacklist.has(command.name)) {
+                    log(`Excluding blacklisted command "${command.name}"`);
+                    continue;
+                }
+                commands.push(command.toJSON());
+            }
+        }
+    
+        return commands;
+    }
+    
+    // Filters out blacklisted subcommands within a group
+    filterSubcommands = (groupJSON, blacklist) => {
+        return groupJSON.options.filter(sub => {
+            const fullName = `${groupJSON.name}.${sub.name}`;
+            if (blacklist.has(fullName)) {
+                log(`Excluding blacklisted subcommand "${fullName}"`);
+                return false;
+            }
+            return true;
+        });
+    }
+    
 
     setRandomGame(){
         const randomGame = this.games[Math.floor(Math.random() * this.games.length)];
