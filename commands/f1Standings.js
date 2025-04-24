@@ -1,90 +1,115 @@
 const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 const axios = require('axios');
-const xml2js = require('xml2js');
 const { logError } = require('../utils/log');
+const { JSDOM } = require('jsdom');
+
+function extractStandings(html, type) {
+  const dom = new JSDOM(html);
+  const rows = dom.window.document.querySelector('.f1-table-with-data tbody')?.querySelectorAll('tr') || [];
+  return Array.from(rows).map(row => {
+    const columns = row.querySelectorAll('td');
+    if (type === 'drivers' && columns.length === 5) {
+      const driverEl = columns[1].querySelector('a');
+      const driverName = driverEl
+        ? driverEl.querySelector('.max-desktop\\:hidden')?.textContent.trim() + ' ' +
+          driverEl.querySelector('.max-tablet\\:hidden')?.textContent.trim()
+        : columns[1].textContent.trim();
+
+      return {
+        position: parseInt(columns[0].textContent.trim(), 10),
+        driver: driverName,
+        nationality: columns[2].textContent.trim(),
+        car: columns[3].textContent.trim(),
+        points: parseInt(columns[4].textContent.trim(), 10),
+      };
+    }
+
+    if (type === 'teams' && columns.length === 3) {
+      return {
+        position: parseInt(columns[0].textContent.trim(), 10),
+        team: columns[1].textContent.trim(),
+        points: parseInt(columns[2].textContent.trim(), 10),
+      };
+    }
+
+    return null;
+  }).filter(Boolean);
+}
+
+function buildEmbed(data, type, year) {
+    const title = type === 'drivers' ? `F1 Driver Standings (${year})` : `F1 Team Standings (${year})`;
+    const color = type === 'drivers' ? '#FF0000' : '#008000';
+    const rows = type === 'drivers' ? 25 : 10;
+  
+    const description = data.slice(0, rows).map(entry => {
+      return type === 'drivers'
+        ? `${entry.position}. **${entry.driver}** (${entry.nationality}) - Car: ${entry.car}, Points: ${entry.points}`
+        : `${entry.position}. **${entry.team}** - Points: ${entry.points}`;
+    }).join('\n');
+  
+    return new Discord.EmbedBuilder()
+      .setTitle(title)
+      .setColor(color)
+      .setDescription(description)
+      .setTimestamp()
+      .setThumbnail('https://logodownload.org/wp-content/uploads/2016/11/formula-1-logo-0.png')
+      .setFooter({ text: 'Data provided by Formula1.com' });
+  }  
 
 class F1Standings extends Command {
-    constructor(client) {
-        super(client, "f1-standings", "Fetch the current F1 standings (drivers or constructors)", [
-            {
-                name: 'type',
-                description: 'Choose between driver or constructor standings',
-                type: 3,  // String type
-                required: true,
-                choices: [
-                    { name: 'Drivers', value: 'drivers' },
-                    { name: 'Constructors', value: 'constructors' }
-                ]
-            }
-        ]);
+  constructor(client) {
+    super(client, "f1-standings", "Fetch F1 standings (drivers or constructors)", [
+      {
+        name: 'type',
+        description: 'Choose between driver or constructor standings',
+        type: 3,
+        required: true,
+        choices: [
+          { name: 'Drivers', value: 'drivers' },
+          { name: 'Teams', value: 'teams' }
+        ]
+      },
+      {
+        name: 'year',
+        description: 'Select a year (default: current year)',
+        type: 4,
+        required: false
+      }
+    ]);
+  }
+
+  async run(interaction) {
+    const type = interaction.options.getString('type');
+    const yearInput = interaction.options.getInteger('year');
+    const currentYear = new Date().getFullYear();
+    const year = yearInput || currentYear;
+
+    const minYear = type === 'drivers' ? 1950 : 1958;
+
+    if (year > currentYear || year < minYear) {
+      return interaction.editReply({
+        content: `Invalid year for ${type} standings. Must be between ${minYear} and ${currentYear}.`,
+        ephemeral: true
+      });
     }
 
-    async run(interaction) {
-        const type = interaction.options.getString('type');
-        let apiUrl;
+    const endpoint = type === 'drivers' ? 'drivers' : 'team';
+    const apiUrl = `https://www.formula1.com/en/results/${year}/${endpoint}`;
 
-        // Determine the API URL based on the type selected
-        if (type === 'drivers') {
-            apiUrl = 'http://ergast.com/api/f1/current/driverStandings';
-        } else if (type === 'constructors') {
-            apiUrl = 'http://ergast.com/api/f1/current/constructorStandings';
-        }
-
-        try {
-            // Fetch the F1 standings (driver or constructor) from the API
-            const response = await axios.get(apiUrl);
-            const xmlData = response.data;
-
-            // Parse the XML to JSON
-            xml2js.parseString(xmlData, (err, result) => {
-                if (err) {
-                    throw new Error('Error parsing F1 standings data.');
-                }
-
-                let standings;
-                let description = '';
-                let title;
-
-                if (type === 'drivers') {
-                    // Extract driver standings
-                    standings = result.MRData.StandingsTable[0].StandingsList[0].DriverStanding;
-                    title = 'Current F1 Driver Standings';
-                } else if (type === 'constructors') {
-                    // Extract constructor standings
-                    standings = result.MRData.StandingsTable[0].StandingsList[0].ConstructorStanding;
-                    title = 'Current F1 Constructor Standings';
-                }
-
-                // Dynamically adjust the number of rows to display
-                const maxRows = 25; // Maximum number of rows to display
-                standings.slice(0, Math.min(standings.length, maxRows)).forEach((entry) => {
-                    if (type === 'drivers') {
-                        description += `${entry.$.position}. **${entry.Driver[0].GivenName[0]} ${entry.Driver[0].FamilyName[0]}** - Points: ${entry.$.points}, Wins: ${entry.$.wins}\n`;
-                    } else if (type === 'constructors') {
-                        description += `${entry.$.position}. **${entry.Constructor[0].Name[0]}** (${entry.Constructor[0].Nationality[0]}) - Points: ${entry.$.points}, Wins: ${entry.$.wins}\n`;
-                    }
-                });
-
-                // Create the embed
-                const embed = new Discord.EmbedBuilder()
-                    .setTitle(title)
-                    .setColor('#FF0000')
-                    .setDescription(description)
-                    .setTimestamp()
-                    .setThumbnail('https://logodownload.org/wp-content/uploads/2016/11/formula-1-logo-0.png')
-                    .setFooter({ text: 'Data provided by Ergast API' });
-
-                // Send the embed
-                interaction.editReply({ embeds: [embed] });
-            });
-
-        } catch (error) {
-            // Error handling if the request or parsing fails
-            logError('Error fetching F1 standings:', error);
-            await interaction.editReply({ content: 'Sorry, I couldn’t fetch the F1 standings. Please try again later.', ephemeral: true });
-        }
+    try {
+      const response = await axios.get(apiUrl);
+      const standings = extractStandings(response.data, type);
+      const embed = buildEmbed(standings, type, year);
+      await interaction.editReply({ embeds: [embed] });
+    } catch (error) {
+      logError('Error fetching F1 standings:', error);
+      await interaction.editReply({
+        content: 'Failed to fetch the F1 standings. Please try again later.',
+        ephemeral: true
+      });
     }
+  }
 }
 
 module.exports = F1Standings;
