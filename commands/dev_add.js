@@ -1,6 +1,7 @@
 const { DevCommand } = require('./classes/devcommand.js');
 const Discord = require('discord.js');
 const { format, antiFormat } = require('../utils/math.js');
+const { logError } = require('../utils/log.js');
 
 class Add extends DevCommand {
     constructor(client){
@@ -43,12 +44,15 @@ class Add extends DevCommand {
         
         const attr = interaction.options.getString('attr');
         try{
-            await this.client.db.addUserAttr(user.id, attr, amount);
+            logError(this.client.db.userService);
+            await  this.client.db.userService.addUserAttr(user.id, attr, amount);
+            
         }catch(e){
             await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
                 .setColor('#AA0000')
                 .setTitle(`Failed to add ${format(amount)} ${attr} to ${user.tag}`)
             ]});
+            logError(e.message);
             return;
         }
         await interaction.editReply({embeds: [ new Discord.EmbedBuilder()

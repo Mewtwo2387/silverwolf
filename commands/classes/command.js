@@ -14,22 +14,22 @@ class Command {
     }
 
     async execute(interaction) {
-        if (await this.client.db.getGlobalConfig('banned') == 'true') {
-            const allowedUsers = process.env.ALLOWED_USERS.split(',');
-            if (!allowedUsers.includes(interaction.user.id)) {  
-                log('ehe banned')
-                const embed = new Discord.EmbedBuilder()
-                    .setColor('Red')
-                    .setTitle(`Sorry, ${this.name} isn't available right now.`)
-                    .setDescription(`A law banning ${this.name} has been enacted in ${interaction.guild.name}. Unfortunately, that means you can't use this command here. 
+//         if (await this.client.db.getGlobalConfig('banned') == 'true') {
+//             const allowedUsers = process.env.ALLOWED_USERS.split(',');
+//             if (!allowedUsers.includes(interaction.user.id)) {  
+//                 log('ehe banned')
+//                 const embed = new Discord.EmbedBuilder()
+//                     .setColor('Red')
+//                     .setTitle(`Sorry, ${this.name} isn't available right now.`)
+//                     .setDescription(`A law banning ${this.name} has been enacted in ${interaction.guild.name}. Unfortunately, that means you can't use this command here. 
 
-We are fortunate that Iruma has indication he will work with us on a solution to reinstate ${this.name} once he is unbanned. Please stay tuned!`)
-                await interaction.reply({
-                    embeds: [embed]
-                });
-                return;
-            }
-        }
+// We are fortunate that Iruma has indication he will work with us on a solution to reinstate ${this.name} once he is unbanned. Please stay tuned!`)
+//                 await interaction.reply({
+//                     embeds: [embed]
+//                 });
+//                 return;
+//             }
+//         }
 
         try {
             if (this.run !== undefined) {

@@ -1,5 +1,5 @@
 const { Client, REST, Routes, EmbedBuilder, escapeMarkdown, AttachmentBuilder } = require("discord.js");
-const { Database } = require("./database.js");
+const { Database } = require("./database/database.js");
 const fs = require("fs");
 const path = require("path");
 const BirthdayScheduler = require('./birthdayScheduler');
@@ -50,6 +50,7 @@ class Silverwolf extends Client {
         await this.loadCommands();
         await this.loadKeywords();
         await this.loadListeners();
+        await this.db.ready(); 
 
         this.birthdayScheduler.start();
         log("Birthday scheduler started.");
