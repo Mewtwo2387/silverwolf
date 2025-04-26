@@ -5,10 +5,10 @@ const marriage = require('../schemas/marriage');
 const serverRoles = require('../schemas/serverRoles');
 const gameUID = require('../schemas/gameUid');
 const commandConfig = require('../schemas/commandConfig');
-const globalConfig = require('../schemas/globalConfig'); // small typo fixed: should be ../schemas/
+const globalConfig = require('../schemas/globalConfig');
 const baby = require('../schemas/baby');
 const chatSession = require('../schemas/chatSession');
-const chatHistory = require('../schemas/chatHistory'); // lowercase c!
+const chatHistory = require('../schemas/chatHistory'); 
 
 const schemas = [
     user,
