@@ -1,6 +1,7 @@
 const Discord = require('discord.js');
 const { logError } = require('../../utils/log');
 const { log } = require('../../utils/log');
+const { isAllowedUser } = require('../../utils/accessControl');
 
 class Command {
   constructor(client, name, description, options, args = { ephemeral: false, skipDefer: false, isSubcommandOf: null }) {
@@ -14,16 +15,18 @@ class Command {
   }
 
   async execute(interaction) {
-    if (await this.client.db.getGlobalConfig('banned') == 'true') {
-      const allowedUsers = process.env.ALLOWED_USERS.split(',');
-      if (!allowedUsers.includes(interaction.user.id)) {
+    if (await this.client.db.getGlobalConfig('banned') === 'true') {
+      if (!isAllowedUser(interaction)) {
         log('ehe banned');
         const embed = new Discord.EmbedBuilder()
           .setColor('Red')
           .setTitle(`Sorry, ${this.name} isn't available right now.`)
-          .setDescription(`A law banning ${this.name} has been enacted in ${interaction.guild.name}. Unfortunately, that means you can't use this command here. 
-
-We are fortunate that Iruma has indication he will work with us on a solution to reinstate ${this.name} once he is unbanned. Please stay tuned!`);
+          .setDescription(
+            `A law banning ${this.name} has been enacted in ${interaction.guild.name}. `
+            + 'Unfortunately, that means you can\'t use this command here.\n\n'
+            + 'We are fortunate that Iruma has indication he will work with us on a solution to '
+            + `reinstate ${this.name} once he is unbanned. Please stay tuned!`,
+          );
         await interaction.reply({
           embeds: [embed],
         });
@@ -53,10 +56,17 @@ We are fortunate that Iruma has indication he will work with us on a solution to
 
       // Inform the user about the error, if needed
       await interaction.editReply({
-        content: 'An error occurred while executing the command.\nPlease try again later or modify the inputs.\nIf the issue persists, run /blame command_name and spam ping whoever made the command.',
+        content: 'An error occurred while executing the command.\n'
+        + 'Please try again later or modify the inputs.\n'
+        + 'If the issue persists, run /blame command_name and spam ping whoever made the command.',
         ephemeral: true,
       });
     }
+  }
+
+  // eslint-disable-next-line class-methods-use-this, no-unused-vars
+  async run(_interaction) {
+    throw new Error('run method must be implemented by subclasses');
   }
 
   toJSON() {
