@@ -1,5 +1,5 @@
-const { Command } = require('./classes/command.js');
-const LeaderboardMixin = require('./mixins/leaderboardMixin.js');
+const { Command } = require('./classes/command');
+const LeaderboardMixin = require('./mixins/leaderboardMixin');
 
 class MurderBoard extends LeaderboardMixin(Command) {
   constructor(client) {

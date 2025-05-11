@@ -1,6 +1,6 @@
 const Discord = require('discord.js');
 const quotes = require('../data/2022.json');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 class OldTGP extends Command {
   constructor(client) {

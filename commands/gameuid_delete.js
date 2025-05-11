@@ -1,6 +1,6 @@
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
-const { logError } = require('../utils/log.js');
+const { Command } = require('./classes/command');
+const { logError } = require('../utils/log');
 
 class DeleteGameUID extends Command {
   constructor(client) {

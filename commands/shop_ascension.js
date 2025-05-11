@@ -1,9 +1,10 @@
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
-const { format } = require('../utils/math.js');
+const { Command } = require('./classes/command');
+const { format } = require('../utils/math');
 const {
-  getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNuggieCreditsMultiplier, getNextAscensionUpgradeCost, getNuggiePokeMultiplier, getNuggieNuggieMultiplier,
-} = require('../utils/ascensionupgrades.js');
+  getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNuggieCreditsMultiplier,
+  getNextAscensionUpgradeCost, getNuggiePokeMultiplier, getNuggieNuggieMultiplier,
+} = require('../utils/ascensionupgrades');
 
 class AscensionUpgrade extends Command {
   constructor(client) {

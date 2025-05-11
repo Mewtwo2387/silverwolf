@@ -1,7 +1,7 @@
 const {
   ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder,
 } = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 class RussianRouletteCommand extends Command {
   constructor(client) {

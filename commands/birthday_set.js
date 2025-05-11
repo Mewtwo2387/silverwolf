@@ -1,6 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
-const { Command } = require('./classes/command.js');
-const { log, logError } = require('../utils/log.js');
+const { Command } = require('./classes/command');
+const { log, logError } = require('../utils/log');
 
 class SetBirthdayCommand extends Command {
   constructor(client) {

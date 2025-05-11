@@ -1,6 +1,6 @@
 const axios = require('axios');
 const { EmbedBuilder } = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 const { logError } = require('../utils/log');
 
 class CatCommand extends Command {

@@ -1,8 +1,8 @@
 // probably not needed
 require('dotenv').config();
 const { EmbedBuilder } = require('discord.js');
-const { DevCommand } = require('./classes/devcommand.js');
-const { logError } = require('../utils/log.js');
+const { DevCommand } = require('./classes/devcommand');
+const { logError } = require('../utils/log');
 
 class TestBirthdaySchedulerCommand extends DevCommand {
   constructor(client) {

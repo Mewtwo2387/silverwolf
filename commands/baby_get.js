@@ -1,7 +1,7 @@
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
-const { format } = require('../utils/math.js');
-const { log } = require('../utils/log.js');
+const { Command } = require('./classes/command');
+const { format } = require('../utils/math');
+const { log } = require('../utils/log');
 
 const PREGNANCY_DURATION = 7 * 24 * 60 * 60 * 1000; // 1 week
 

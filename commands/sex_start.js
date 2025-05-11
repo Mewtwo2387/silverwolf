@@ -1,7 +1,7 @@
 require('dotenv').config();
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
-const SexSession = require('../classes/sexSession.js');
+const { Command } = require('./classes/command');
+const SexSession = require('../classes/sexSession');
 
 class SexStart extends Command {
   constructor(client) {

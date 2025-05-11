@@ -1,6 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
-const { Command } = require('./classes/command.js');
-const { format } = require('../utils/math.js');
+const { Command } = require('./classes/command');
+const { format } = require('../utils/math');
 
 class Eat extends Command {
   constructor(client) {

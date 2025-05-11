@@ -1,6 +1,6 @@
 const Discord = require('discord.js');
-const { DevCommand } = require('./classes/devcommand.js');
-const { format, antiFormat } = require('../utils/math.js');
+const { DevCommand } = require('./classes/devcommand');
+const { format, antiFormat } = require('../utils/math');
 
 class Add extends DevCommand {
   constructor(client) {

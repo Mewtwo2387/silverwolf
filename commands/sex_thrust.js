@@ -1,7 +1,6 @@
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
-const SexSession = require('../classes/sexSession.js');
-const { log } = require('../utils/log.js');
+const { Command } = require('./classes/command');
+const { log } = require('../utils/log');
 
 class SexThrust extends Command {
   constructor(client) {

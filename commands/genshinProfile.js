@@ -1,7 +1,7 @@
 const fetch = require('node-fetch');
 const path = require('path');
 const fs = require('fs');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 const genshinPfp = path.join(__dirname, '../data/genshinPfps.json');
 const genshinNamecards = path.join(__dirname, '../data/genshinNamecards.json');

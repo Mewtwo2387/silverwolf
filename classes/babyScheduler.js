@@ -1,5 +1,5 @@
 const cron = require('node-cron');
-const { log, logError } = require('../utils/log');
+const { log } = require('../utils/log');
 require('dotenv').config();
 const Claim = require('../commands/claim');
 

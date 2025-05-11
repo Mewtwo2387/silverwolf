@@ -1,5 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 class SilverwolfAI extends Command {
   constructor(client) {

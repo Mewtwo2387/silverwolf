@@ -1,5 +1,4 @@
-const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 class BuyDonation extends Command {
   constructor(client) {

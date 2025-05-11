@@ -1,6 +1,6 @@
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
-const { format, antiFormat } = require('../utils/math.js');
+const { Command } = require('./classes/command');
+const { format, antiFormat } = require('../utils/math');
 
 class Transfer extends Command {
   constructor(client) {

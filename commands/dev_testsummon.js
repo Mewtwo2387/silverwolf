@@ -1,4 +1,4 @@
-const { DevCommand } = require('./classes/devcommand.js');
+const { DevCommand } = require('./classes/devcommand');
 
 class TestSummon extends DevCommand {
   constructor(client) {

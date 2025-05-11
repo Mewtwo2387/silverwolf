@@ -1,11 +1,8 @@
 const {
-  Client, REST, Routes, EmbedBuilder, escapeMarkdown, AttachmentBuilder,
+  EmbedBuilder, escapeMarkdown, AttachmentBuilder,
 } = require('discord.js');
-const fs = require('fs');
 const path = require('path');
 const Canvas = require('canvas');
-const BirthdayScheduler = require('./birthdayScheduler');
-const { Database } = require('./database.js');
 const { log } = require('../utils/log');
 // const CharacterAI = require('node_characterai')
 require('dotenv').config();

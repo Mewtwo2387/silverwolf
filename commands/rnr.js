@@ -1,7 +1,7 @@
 const {
-  SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
+  EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
 } = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 class RnRCommand extends Command {
   constructor(client) {

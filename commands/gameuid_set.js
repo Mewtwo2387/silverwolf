@@ -1,7 +1,6 @@
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
-const { DevCommand } = require('./classes/devcommand.js');
-const { logError } = require('../utils/log.js');
+const { Command } = require('./classes/command');
+const { logError } = require('../utils/log');
 
 class SetGameUID extends Command {
   constructor(client) {

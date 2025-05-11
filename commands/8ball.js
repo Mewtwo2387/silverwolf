@@ -1,6 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 const crypto = require('crypto');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 class CombinedEightBall extends Command {
   constructor(client) {

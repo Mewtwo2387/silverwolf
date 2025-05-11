@@ -1,5 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 const cooldowns = new Map();
 require('dotenv').config();

@@ -1,6 +1,6 @@
 require('dotenv').config();
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 class MarriagePropose extends Command {
   constructor(client) {

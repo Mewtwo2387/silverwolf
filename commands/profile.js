@@ -1,13 +1,14 @@
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
-const { format } = require('../utils/math.js');
+const { Command } = require('./classes/command');
+const { format } = require('../utils/math');
 const {
   getMaxLevel, getMultiplierAmount, getMultiplierChance, getBekiCooldown,
-} = require('../utils/upgrades.js');
+} = require('../utils/upgrades');
 const {
-  getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNuggieCreditsMultiplier, getNuggiePokeMultiplier, getNuggieNuggieMultiplier,
-} = require('../utils/ascensionupgrades.js');
-const marriageBenefits = require('../utils/marriageBenefits.js');
+  getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNuggieCreditsMultiplier,
+  getNuggiePokeMultiplier, getNuggieNuggieMultiplier,
+} = require('../utils/ascensionupgrades');
+const marriageBenefits = require('../utils/marriageBenefits');
 
 // Cooldown map
 const cooldowns = new Map();

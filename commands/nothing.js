@@ -1,4 +1,4 @@
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 class Nothing extends Command {
   constructor(client) {

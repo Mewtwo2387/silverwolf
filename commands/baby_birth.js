@@ -1,7 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
-const { Command } = require('./classes/command.js');
-const { log } = require('../utils/log.js');
-const { format } = require('../utils/math.js');
+const { Command } = require('./classes/command');
+const { format } = require('../utils/math');
 
 const PREGNANCY_DURATION = 7 * 24 * 60 * 60 * 1000;
 

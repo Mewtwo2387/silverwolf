@@ -1,4 +1,4 @@
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 const wordlist = require('../data/words_dictionary.json');
 
 class NWord extends Command {

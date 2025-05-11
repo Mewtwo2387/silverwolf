@@ -1,6 +1,6 @@
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
-const { format } = require('../utils/math.js');
+const { Command } = require('./classes/command');
+const { format } = require('../utils/math');
 
 const COOLDOWN_HOURS = 24;
 const HOUR_LENGTH = 60 * 60 * 1000;

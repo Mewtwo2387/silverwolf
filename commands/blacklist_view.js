@@ -1,6 +1,6 @@
 const Discord = require('discord.js');
-const { DevCommand } = require('./classes/devcommand.js');
-const { logError } = require('../utils/log.js');
+const { DevCommand } = require('./classes/devcommand');
+const { logError } = require('../utils/log');
 
 class GetBlacklistedCommands extends DevCommand {
   constructor(client) {

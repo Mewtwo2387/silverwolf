@@ -1,9 +1,9 @@
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
-const { format } = require('../utils/math.js');
+const { Command } = require('./classes/command');
+const { format } = require('../utils/math');
 const {
   getMultiplierAmount, getMultiplierChance, getBekiCooldown, getNextUpgradeCost, getTotalUpgradeCost,
-} = require('../utils/upgrades.js');
+} = require('../utils/upgrades');
 
 class UpgradeData extends Command {
   constructor(client) {

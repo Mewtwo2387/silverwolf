@@ -1,10 +1,10 @@
 const {
-  Client, REST, Routes, EmbedBuilder, escapeMarkdown, AttachmentBuilder,
+  Client, REST, Routes,
 } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-const Canvas = require('canvas');
-const { Database } = require('./database.js');
+// const Canvas = require('canvas');
+const { Database } = require('./database');
 const BirthdayScheduler = require('./birthdayScheduler');
 const BabyScheduler = require('./babyScheduler');
 const { log, logError } = require('../utils/log');
@@ -13,7 +13,7 @@ require('dotenv').config();
 const seasonConfig = require('../data/config/skin/pokemon.json');
 const {
   ChristmasHandler, NormalHandler, HalloweenHandler, AprilFoolsHandler,
-} = require('./seasonHandler.js');
+} = require('./seasonHandler');
 
 const handlers = {
   ChristmasHandler,

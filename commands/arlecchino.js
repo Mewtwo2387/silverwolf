@@ -1,8 +1,6 @@
-const { EmbedBuilder } = require('discord.js');
-const Discord = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 const { logError } = require('../utils/log');
 
 class arlecchino extends Command {

@@ -1,10 +1,9 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { EmbedBuilder } = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 require('dotenv').config();
-const { log, logError } = require('../utils/log.js');
-const { unformatFile } = require('../utils/formatter.js');
-const fs = require('fs');
+const { log, logError } = require('../utils/log');
+const { unformatFile } = require('../utils/formatter');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_TOKEN);
 const systemInstruction = unformatFile('./data/SilverwolfSystemPrompt.txt');

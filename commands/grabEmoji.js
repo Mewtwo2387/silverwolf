@@ -1,7 +1,7 @@
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const axios = require('axios');
 const sharp = require('sharp');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 const { logError } = require('../utils/log');
 
 class EmojiToFileCommand extends Command {

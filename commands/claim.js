@@ -2,14 +2,14 @@ const Discord = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const {
-  getNuggieStreakMultiplier, getNuggieFlatMultiplier, getNuggieCreditsMultiplier, getNuggiePokeMultiplier, getNuggieNuggieMultiplier,
-} = require('../utils/ascensionupgrades.js');
-const { getMultiplierAmount, getMultiplierChance, getBekiCooldown } = require('../utils/upgrades.js');
-const { format } = require('../utils/math.js');
-const { Command } = require('./classes/command.js');
-const marriageBenefits = require('../utils/marriageBenefits.js');
-const { logError } = require('../utils/log');
-const { log } = require('../utils/log');
+  getNuggieStreakMultiplier, getNuggieFlatMultiplier, getNuggieCreditsMultiplier,
+  getNuggiePokeMultiplier, getNuggieNuggieMultiplier,
+} = require('../utils/ascensionupgrades');
+const { getMultiplierAmount, getMultiplierChance, getBekiCooldown } = require('../utils/upgrades');
+const { format } = require('../utils/math');
+const { Command } = require('./classes/command');
+const marriageBenefits = require('../utils/marriageBenefits');
+const { logError, log } = require('../utils/log');
 
 const DAY_LENGTH = 24 * 60 * 60 * 1000;
 const HOUR_LENGTH = 60 * 60 * 1000;

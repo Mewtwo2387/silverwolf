@@ -1,6 +1,6 @@
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
-const { format } = require('../utils/math.js');
+const { Command } = require('./classes/command');
+const { format } = require('../utils/math');
 const { log } = require('../utils/log');
 
 class Balance extends Command {

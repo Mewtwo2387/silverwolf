@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 class LoveCalculator extends Command {
   constructor(client) {

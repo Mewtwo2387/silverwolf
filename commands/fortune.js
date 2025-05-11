@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 class FortuneCookieCommand extends Command {
   constructor(client) {

@@ -1,9 +1,9 @@
 const Discord = require('discord.js');
-const { format } = require('../utils/math.js');
-const { Command } = require('./classes/command.js');
+const { format } = require('../utils/math');
+const { Command } = require('./classes/command');
 const {
-  getNextUpgradeCost, getTotalUpgradeCost, getMultiplierAmount, getMultiplierChance, getBekiCooldown, getMaxLevel,
-} = require('../utils/upgrades.js');
+  getNextUpgradeCost, getMultiplierAmount, getMultiplierChance, getBekiCooldown, getMaxLevel,
+} = require('../utils/upgrades');
 
 const UPGRADES = ['multiplier_amount', 'multiplier_rarity', 'beki'];
 

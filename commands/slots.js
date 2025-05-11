@@ -1,9 +1,9 @@
 const Discord = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-const { Command } = require('./classes/command.js');
-const { format, antiFormat } = require('../utils/math.js');
-const marriageBenefits = require('../utils/marriageBenefits.js');
+const { Command } = require('./classes/command');
+const { format, antiFormat } = require('../utils/math');
+const marriageBenefits = require('../utils/marriageBenefits');
 
 class Slots extends Command {
   constructor(client) {

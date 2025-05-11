@@ -1,5 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
-const { NsfwCommand } = require('./classes/nsfwcommand.js');
+const { NsfwCommand } = require('./classes/nsfwcommand');
 
 class Gamebang extends NsfwCommand {
   constructor(client) {
