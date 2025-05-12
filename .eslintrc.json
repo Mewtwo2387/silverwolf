@@ -17,6 +17,7 @@
   "rules": {
     "no-console": "off",
     "linebreak-style": "off",
+    "class-methods-use-this": "off",
     "import/no-extraneous-dependencies": ["error", {
       "devDependencies": ["**/*.test.js", "**/*.spec.js", "tests/**/*.js"]
     }],
