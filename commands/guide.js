@@ -1,17 +1,16 @@
-const { Command } = require('./classes/command.js');
-const { EmbedBuilder} = require('discord.js'); 
+const { EmbedBuilder } = require('discord.js');
 const Discord = require('discord.js');
+const { Command } = require('./classes/command.js');
 const { logError } = require('../utils/log');
 
 class Guide extends Command {
-    constructor(client) {
-        super(client, "guide", "Sends a guide on how to play Dinonuggies", []);
-    }
+  constructor(client) {
+    super(client, 'guide', 'Sends a guide on how to play Dinonuggies', []);
+  }
 
-    async run(interaction) {
-        try {
-
-            const guide = `
+  async run(interaction) {
+    try {
+      const guide = `
             ## since you are stupid and you need to learn common sense, let's teach you how to play silverwolf bot!
 
             1. \`/claim\` - this is how you earn dinonuggies. There is a low chance that it will have a bonus attached to it. If you hit the bonus, you'll earn more.
@@ -25,19 +24,19 @@ class Guide extends Command {
             The grind doesn't stop! Rahhh!
             `;
 
-            // Send the guide in an embed
-            const embed = new EmbedBuilder()
-                .setTitle('Dinonuggies Guide')
-                .setColor('#FFD700')
-                .setDescription(guide)
-                .setTimestamp()
-            // Respond with the embed
-            await interaction.editReply({ embeds: [embed] });
-        } catch (error) {
-            logError('Error fetching Dinonuggies guide:', error);
-            await interaction.editReply({ content: 'Sorry, I couldn’t fetch the Dinonuggies guide. Please try again later.', ephemeral: true });
-        }
+      // Send the guide in an embed
+      const embed = new EmbedBuilder()
+        .setTitle('Dinonuggies Guide')
+        .setColor('#FFD700')
+        .setDescription(guide)
+        .setTimestamp();
+      // Respond with the embed
+      await interaction.editReply({ embeds: [embed] });
+    } catch (error) {
+      logError('Error fetching Dinonuggies guide:', error);
+      await interaction.editReply({ content: 'Sorry, I couldn’t fetch the Dinonuggies guide. Please try again later.', ephemeral: true });
     }
+  }
 }
 
 module.exports = Guide;

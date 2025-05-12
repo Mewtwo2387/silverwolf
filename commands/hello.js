@@ -1,13 +1,13 @@
-const { Command } = require("./classes/command.js");
+const { Command } = require('./classes/command.js');
 
 class Hello extends Command {
-    constructor(client){
-        super(client, "hello", "hello", []);
-    }
+  constructor(client) {
+    super(client, 'hello', 'hello', []);
+  }
 
-    async run(interaction){
-        await interaction.editReply(`Hello ${interaction.user.username}!`);
-    }
+  async run(interaction) {
+    await interaction.editReply(`Hello ${interaction.user.username}!`);
+  }
 }
 
 module.exports = Hello;
