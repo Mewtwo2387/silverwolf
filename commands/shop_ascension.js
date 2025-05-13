@@ -12,75 +12,75 @@ class AscensionUpgrade extends Command {
   }
 
   async run(interaction) {
-    const ascensionLevel = await this.client.db.getUserAttr(interaction.user.id, 'ascension_level');
+    const ascension_level = await this.client.db.getUserAttr(interaction.user.id, 'ascension_level');
 
-    const nuggieFlatMultiplierLevel = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_flat_multiplier_level');
-    const nuggieStreakMultiplierLevel = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_streak_multiplier_level');
-    const nuggieCreditsMultiplierLevel = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_credits_multiplier_level');
-    const nuggiePokemonMultiplierLevel = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_pokemon_multiplier_level');
-    const nuggieNuggieMultiplierLevel = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_nuggie_multiplier_level');
+    const nuggie_flat_multiplier_level = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_flat_multiplier_level');
+    const nuggie_streak_multiplier_level = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_streak_multiplier_level');
+    const nuggie_credits_multiplier_level = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_credits_multiplier_level');
+    const nuggie_pokemon_multiplier_level = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_pokemon_multiplier_level');
+    const nuggie_nuggie_multiplier_level = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_nuggie_multiplier_level');
 
-    const nuggieFlatMultiplier = getNuggieFlatMultiplier(nuggieFlatMultiplierLevel);
-    const nuggieFlatMultiplierNext = getNuggieFlatMultiplier(nuggieFlatMultiplierLevel + 1);
-    const nuggieStreakMultiplier = getNuggieStreakMultiplier(nuggieStreakMultiplierLevel);
-    const nuggieStreakMultiplierNext = getNuggieStreakMultiplier(nuggieStreakMultiplierLevel + 1);
-    const nuggieCreditsMultiplier = getNuggieCreditsMultiplier(nuggieCreditsMultiplierLevel);
-    const nuggieCreditsMultiplierNext = getNuggieCreditsMultiplier(nuggieCreditsMultiplierLevel + 1);
-    const nuggiePokemonMultiplier = getNuggiePokeMultiplier(nuggiePokemonMultiplierLevel);
-    const nuggiePokemonMultiplierNext = getNuggiePokeMultiplier(nuggiePokemonMultiplierLevel + 1);
-    const nuggieNuggieMultiplier = getNuggieNuggieMultiplier(nuggieNuggieMultiplierLevel);
-    const nuggieNuggieMultiplierNext = getNuggieNuggieMultiplier(nuggieNuggieMultiplierLevel + 1);
+    const nuggie_flat_multiplier = getNuggieFlatMultiplier(nuggie_flat_multiplier_level);
+    const nuggie_flat_multiplier_next = getNuggieFlatMultiplier(nuggie_flat_multiplier_level + 1);
+    const nuggie_streak_multiplier = getNuggieStreakMultiplier(nuggie_streak_multiplier_level);
+    const nuggie_streak_multiplier_next = getNuggieStreakMultiplier(nuggie_streak_multiplier_level + 1);
+    const nuggie_credits_multiplier = getNuggieCreditsMultiplier(nuggie_credits_multiplier_level);
+    const nuggie_credits_multiplier_next = getNuggieCreditsMultiplier(nuggie_credits_multiplier_level + 1);
+    const nuggie_pokemon_multiplier = getNuggiePokeMultiplier(nuggie_pokemon_multiplier_level);
+    const nuggie_pokemon_multiplier_next = getNuggiePokeMultiplier(nuggie_pokemon_multiplier_level + 1);
+    const nuggie_nuggie_multiplier = getNuggieNuggieMultiplier(nuggie_nuggie_multiplier_level);
+    const nuggie_nuggie_multiplier_next = getNuggieNuggieMultiplier(nuggie_nuggie_multiplier_level + 1);
 
-    const nuggieFlatMultiplierCost = getNextAscensionUpgradeCost(nuggieFlatMultiplierLevel, 1);
-    const nuggieStreakMultiplierCost = getNextAscensionUpgradeCost(nuggieStreakMultiplierLevel, 1);
-    const nuggieCreditsMultiplierCost = getNextAscensionUpgradeCost(nuggieCreditsMultiplierLevel, 3);
-    const nuggiePokemonMultiplierCost = getNextAscensionUpgradeCost(nuggiePokemonMultiplierLevel, 9);
-    const nuggieNuggieMultiplierCost = getNextAscensionUpgradeCost(nuggieNuggieMultiplierLevel, 27);
+    const nuggie_flat_multiplier_cost = getNextAscensionUpgradeCost(nuggie_flat_multiplier_level, 1);
+    const nuggie_streak_multiplier_cost = getNextAscensionUpgradeCost(nuggie_streak_multiplier_level, 1);
+    const nuggie_credits_multiplier_cost = getNextAscensionUpgradeCost(nuggie_credits_multiplier_level, 3);
+    const nuggie_pokemon_multiplier_cost = getNextAscensionUpgradeCost(nuggie_pokemon_multiplier_level, 9);
+    const nuggie_nuggie_multiplier_cost = getNextAscensionUpgradeCost(nuggie_nuggie_multiplier_level, 27);
 
-    const desc = `**Your Ascension level: ${ascensionLevel}**
+    const desc = `**Your Ascension level: ${ascension_level}**
         
 ### Nuggie Flat Multiplier Upgrade
 Applies a flat multiplier to all claims.
-**Level:** ${nuggieFlatMultiplierLevel} -> ${nuggieFlatMultiplierLevel + 1}
-**Multiplier:** ${format(nuggieFlatMultiplier)}x -> ${format(nuggieFlatMultiplierNext)}x
-**Cost:** ${format(nuggieFlatMultiplierCost)} heavenly nuggies
+**Level:** ${nuggie_flat_multiplier_level} -> ${nuggie_flat_multiplier_level + 1}
+**Multiplier:** ${format(nuggie_flat_multiplier)}x -> ${format(nuggie_flat_multiplier_next)}x
+**Cost:** ${format(nuggie_flat_multiplier_cost)} heavenly nuggies
 Buy with \`/buy ascension 1\`
 
 ### Nuggie Streak Multiplier Upgrade
 Applies a multiplier to all claims based on your current streak.
-**Level:** ${nuggieStreakMultiplierLevel} -> ${nuggieStreakMultiplierLevel + 1}
-**Multiplier:** +${format(nuggieStreakMultiplier * 100)}%/day -> +${format(nuggieStreakMultiplierNext * 100)}%/day
-**Cost:** ${format(nuggieStreakMultiplierCost)} heavenly nuggies
+**Level:** ${nuggie_streak_multiplier_level} -> ${nuggie_streak_multiplier_level + 1}
+**Multiplier:** +${format(nuggie_streak_multiplier * 100)}%/day -> +${format(nuggie_streak_multiplier_next * 100)}%/day
+**Cost:** ${format(nuggie_streak_multiplier_cost)} heavenly nuggies
 Buy with \`/buy ascension 2\`
 
-### Unlocks at Ascension 2 ${ascensionLevel >= 2 ? '✅' : '❌'}
+### Unlocks at Ascension 2 ${ascension_level >= 2 ? '✅' : '❌'}
 
 ### Nuggie Credits Multiplier Upgrade
 Applies a multiplier to all claims based on your current credits.
-**Level:** ${nuggieCreditsMultiplierLevel} -> ${nuggieCreditsMultiplierLevel + 1}
-**Multiplier:** +${format(nuggieCreditsMultiplier * 100)}% * log2(credits) -> +${format(nuggieCreditsMultiplierNext * 100)}% * log2(credits)
-**Cost:** ${format(nuggieCreditsMultiplierCost)} heavenly nuggies
+**Level:** ${nuggie_credits_multiplier_level} -> ${nuggie_credits_multiplier_level + 1}
+**Multiplier:** +${format(nuggie_credits_multiplier * 100)}% * log2(credits) -> +${format(nuggie_credits_multiplier_next * 100)}% * log2(credits)
+**Cost:** ${format(nuggie_credits_multiplier_cost)} heavenly nuggies
 Buy with \`/buy ascension 3\`
 
-### Unlocks at Ascension 4 ${ascensionLevel >= 4 ? '✅' : '❌'}
+### Unlocks at Ascension 4 ${ascension_level >= 4 ? '✅' : '❌'}
 
 ### Nuggie PokeMultiplier Upgrade
 Applies a multiplier to all claims based on the number of unique pokemons you have.
-**Level:** ${nuggiePokemonMultiplierLevel} -> ${nuggiePokemonMultiplierLevel + 1}
-**Multiplier:** +${format(nuggiePokemonMultiplier * 100)}%/pokemon -> +${format(nuggiePokemonMultiplierNext * 100)}%/pokemon
-**Cost:** ${format(nuggiePokemonMultiplierCost)} heavenly nuggies
+**Level:** ${nuggie_pokemon_multiplier_level} -> ${nuggie_pokemon_multiplier_level + 1}
+**Multiplier:** +${format(nuggie_pokemon_multiplier * 100)}%/pokemon -> +${format(nuggie_pokemon_multiplier_next * 100)}%/pokemon
+**Cost:** ${format(nuggie_pokemon_multiplier_cost)} heavenly nuggies
 Buy with \`/buy ascension 4\`
 
-### Unlocks at Ascension 6 ${ascensionLevel >= 6 ? '✅' : '❌'}
+### Unlocks at Ascension 6 ${ascension_level >= 6 ? '✅' : '❌'}
 
 ### Nuggie Nuggie Multiplier Upgrade
 Applies a multiplier to all claims based on the number of nuggies you have.
-**Level:** ${nuggieNuggieMultiplierLevel} -> ${nuggieNuggieMultiplierLevel + 1}
-**Multiplier:** +${format(nuggieNuggieMultiplier * 100)}% * log2(nuggies) -> +${format(nuggieNuggieMultiplierNext * 100)}% * log2(nuggies)
-**Cost:** ${format(nuggieNuggieMultiplierCost)} heavenly nuggies
+**Level:** ${nuggie_nuggie_multiplier_level} -> ${nuggie_nuggie_multiplier_level + 1}
+**Multiplier:** +${format(nuggie_nuggie_multiplier * 100)}% * log2(nuggies) -> +${format(nuggie_nuggie_multiplier_next * 100)}% * log2(nuggies)
+**Cost:** ${format(nuggie_nuggie_multiplier_cost)} heavenly nuggies
 Buy with \`/buy ascension 5\`
 
-### Unlocks at Ascension 10 ${ascensionLevel >= 10 ? '✅' : '❌'}
+### Unlocks at Ascension 10 ${ascension_level >= 10 ? '✅' : '❌'}
 
 ### Aeons
 TBA

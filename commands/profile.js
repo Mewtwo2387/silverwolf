@@ -65,24 +65,24 @@ class Profile extends Command {
     }
 
     // Calculations
-    const multiplierAmount = getMultiplierAmount(user.multiplierAmountLevel);
-    const multiplierRarity = getMultiplierChance(user.multiplierRarityLevel);
-    const bekiCooldown = getBekiCooldown(user.bekiLevel) * 60 * 60;
-    const nuggieFlatMultiplier = getNuggieFlatMultiplier(user.nuggieFlatMultiplierLevel);
-    const nuggieStreakMultiplier = getNuggieStreakMultiplier(user.nuggieStreakMultiplierLevel);
-    const nuggieCreditsMultiplier = getNuggieCreditsMultiplier(user.nuggieCreditsMultiplierLevel);
-    const nuggiePokemonMultiplier = getNuggiePokeMultiplier(user.nuggiePokemonMultiplierLevel);
-    const nuggieNuggieMultiplier = getNuggieNuggieMultiplier(user.nuggieNuggieMultiplierLevel);
+    const multiplier_amount = getMultiplierAmount(user.multiplier_amount_level);
+    const multiplier_rarity = getMultiplierChance(user.multiplier_rarity_level);
+    const beki_cooldown = getBekiCooldown(user.beki_level) * 60 * 60;
+    const nuggie_flat_multiplier = getNuggieFlatMultiplier(user.nuggie_flat_multiplier_level);
+    const nuggie_streak_multiplier = getNuggieStreakMultiplier(user.nuggie_streak_multiplier_level);
+    const nuggie_credits_multiplier = getNuggieCreditsMultiplier(user.nuggie_credits_multiplier_level);
+    const nuggie_pokemon_multiplier = getNuggiePokeMultiplier(user.nuggie_pokemon_multiplier_level);
+    const nuggie_nuggie_multiplier = getNuggieNuggieMultiplier(user.nuggie_nuggie_multiplier_level);
     const { credits } = user;
-    const log2Credits = credits > 1 ? Math.log2(credits) : 0;
-    const pokemonCount = await this.client.db.getUniquePokemonCount(interaction.options.getMember('user') ? interaction.options.getMember('user').id : interaction.user.id);
-    const log2Nuggies = user.dinonuggies > 1 ? Math.log2(user.dinonuggies) : 0;
-    const nextClaim = bekiCooldown - (Date.now() - user.dinonuggiesLastClaimed) / 1000;
+    const log2_credits = credits > 1 ? Math.log2(credits) : 0;
+    const pokemon_count = await this.client.db.getUniquePokemonCount(interaction.options.getMember('user') ? interaction.options.getMember('user').id : interaction.user.id);
+    const log2_nuggies = user.dinonuggies > 1 ? Math.log2(user.dinonuggies) : 0;
+    const next_claim = beki_cooldown - (Date.now() - user.dinonuggies_last_claimed) / 1000;
     pokemons.sort((a, b) => a.pokemon_name.localeCompare(b.pokemon_name));
     const maxNameLength = Math.max(...pokemons.map((pokemon) => pokemon.pokemon_name.length));
-    const pokemonList = pokemons.map((pokemon) => `${pokemon.pokemonName.padEnd(maxNameLength + 2)} ${pokemon.pokemonCount}`).join('\n');
-    const { ascensionLevel } = user;
-    const maxLevel = getMaxLevel(ascensionLevel);
+    const pokemon_list = pokemons.map((pokemon) => `${pokemon.pokemon_name.padEnd(maxNameLength + 2)} ${pokemon.pokemon_count}`).join('\n');
+    const { ascension_level } = user;
+    const max_level = getMaxLevel(ascension_level);
 
     // Create the initial embed
     const mainEmbed = new Discord.EmbedBuilder()
@@ -142,8 +142,6 @@ class Profile extends Command {
         case 'pokemons':
           detailsEmbed = this.createPokemonsEmbed(pokemon_list, username, avatarURL);
           break;
-        default:
-          break;
       }
 
       // Edit the main embed to show the selected details while keeping the select menu
@@ -174,48 +172,48 @@ class Profile extends Command {
       .setTimestamp();
   }
 
-  createLevelsEmbed(user, ascensionLevel, maxLevel, multiplierAmount, multiplierRarity, bekiCooldown, nuggieFlatMultiplier, nuggieStreakMultiplier, nuggieCreditsMultiplier, log2Credits, username, avatarURL, nuggiePokemonMultiplier, nuggieNuggieMultiplier) {
+  createLevelsEmbed(user, ascension_level, max_level, multiplier_amount, multiplier_rarity, beki_cooldown, nuggie_flat_multiplier, nuggie_streak_multiplier, nuggie_credits_multiplier, log2_credits, username, avatarURL, nuggie_pokemon_multiplier, nuggie_nuggie_multiplier) {
     return new Discord.EmbedBuilder()
       .setColor('#00AA00')
       .setTitle(`${username}'s Profile`)
       .setThumbnail(avatarURL)
       .setDescription(`
 ## Levels
-**Ascension Level:** Level ${ascensionLevel}
-**Max Upgrade Level:** ${maxLevel}
+**Ascension Level:** Level ${ascension_level}
+**Max Upgrade Level:** ${max_level}
 
 **Multiplier Amount Upgrade:** Level ${user.multiplier_amount_level}/${max_level}
-**Gold Multiplier:** ${format(multiplierAmount.gold, true)}x
-**Silver Multiplier:** ${format(multiplierAmount.silver, true)}x
-**Bronze Multiplier:** ${format(multiplierAmount.bronze, true)}x
+**Gold Multiplier:** ${format(multiplier_amount.gold, true)}x
+**Silver Multiplier:** ${format(multiplier_amount.silver, true)}x
+**Bronze Multiplier:** ${format(multiplier_amount.bronze, true)}x
 
-**Multiplier Rarity Upgrade:** Level ${user.multiplierRarityLevel}/${maxLevel}
-**Gold Chance:** ${format(multiplierRarity.gold * 100, true)}%
-**Silver Chance:** ${format(multiplierRarity.silver * 100, true)}%
-**Bronze Chance:** ${format(multiplierRarity.bronze * 100, true)}%
+**Multiplier Rarity Upgrade:** Level ${user.multiplier_rarity_level}/${max_level}
+**Gold Chance:** ${format(multiplier_rarity.gold * 100, true)}%
+**Silver Chance:** ${format(multiplier_rarity.silver * 100, true)}%
+**Bronze Chance:** ${format(multiplier_rarity.bronze * 100, true)}%
 
-**Beki Upgrade:** Level ${user.bekiLevel}/${maxLevel}
-**Beki Cooldown:** ${format(bekiCooldown)}s (${format(bekiCooldown / 60 / 60, true)}h)
+**Beki Upgrade:** Level ${user.beki_level}/${max_level}
+**Beki Cooldown:** ${format(beki_cooldown)}s (${format(beki_cooldown / 60 / 60, true)}h)
 
-**Nuggie Flat Multiplier Upgrade:** Level ${user.nuggieFlatMultiplierLevel}
-**Nuggie Flat Multiplier:** ${format(nuggieFlatMultiplier)}x
+**Nuggie Flat Multiplier Upgrade:** Level ${user.nuggie_flat_multiplier_level}
+**Nuggie Flat Multiplier:** ${format(nuggie_flat_multiplier)}x
 
-**Nuggie Streak Multiplier Upgrade:** Level ${user.nuggieStreakMultiplierLevel}
-**Nuggie Streak Multiplier:** ${format(nuggieStreakMultiplier * 100)}%/day
+**Nuggie Streak Multiplier Upgrade:** Level ${user.nuggie_streak_multiplier_level}
+**Nuggie Streak Multiplier:** ${format(nuggie_streak_multiplier * 100)}%/day
 
-**Nuggie Credits Multiplier Upgrade:** Level ${user.nuggieCreditsMultiplierLevel}
-**Nuggie Credits Multiplier:** ${format(nuggieCreditsMultiplier * 100)}% * log2(credits)
+**Nuggie Credits Multiplier Upgrade:** Level ${user.nuggie_credits_multiplier_level}
+**Nuggie Credits Multiplier:** ${format(nuggie_credits_multiplier * 100)}% * log2(credits)
 
-**Nuggie Pokemon Multiplier Upgrade:** Level ${user.nuggiePokemonMultiplierLevel}
-**Nuggie Pokemon Multiplier:** ${format(nuggiePokemonMultiplier * 100)}% * pokemonCount
+**Nuggie Pokemon Multiplier Upgrade:** Level ${user.nuggie_pokemon_multiplier_level}
+**Nuggie Pokemon Multiplier:** ${format(nuggie_pokemon_multiplier * 100)}% * pokemon_count
 
-**Nuggie Nuggie Multiplier Upgrade:** Level ${user.nuggieNuggieMultiplierLevel}
-**Nuggie Nuggie Multiplier:** ${format(nuggieNuggieMultiplier * 100)}% * log2(nuggies)
+**Nuggie Nuggie Multiplier Upgrade:** Level ${user.nuggie_nuggie_multiplier_level}
+**Nuggie Nuggie Multiplier:** ${format(nuggie_nuggie_multiplier * 100)}% * log2(nuggies)
             `)
       .setTimestamp();
   }
 
-  async createClaimsEmbed(user, nextClaim, nuggieStreakMultiplier, nuggieFlatMultiplier, nuggieCreditsMultiplier, log2Credits, username, avatarURL, pokemonCount, log2Nuggies, nuggiePokemonMultiplier, nuggieNuggieMultiplier) {
+  async createClaimsEmbed(user, next_claim, nuggie_streak_multiplier, nuggie_flat_multiplier, nuggie_credits_multiplier, log2_credits, username, avatarURL, pokemon_count, log2_nuggies, nuggie_pokemon_multiplier, nuggie_nuggie_multiplier) {
     return new Discord.EmbedBuilder()
       .setColor('#00AA00')
       .setTitle(`${username}'s Profile`)
@@ -223,14 +221,14 @@ class Profile extends Command {
       .setDescription(`
     ## Claims
     **Current Streak:** ${user.dinonuggies_claim_streak} days
-    **Base Claim Amount:** 5 + ${format(user.dinonuggiesClaimStreak)} = ${format(5 + user.dinonuggiesClaimStreak)}
-    **Streak Multiplier:** 1 + ${format(nuggieStreakMultiplier, true)} * ${format(user.dinonuggiesClaimStreak)} = ${format(1 + nuggieStreakMultiplier * user.dinonuggiesClaimStreak, true)}x
-    **Flat Multiplier:** ${format(nuggieFlatMultiplier, true)}x
+    **Base Claim Amount:** 5 + ${format(user.dinonuggies_claim_streak)} = ${format(5 + user.dinonuggies_claim_streak)}
+    **Streak Multiplier:** 1 + ${format(nuggie_streak_multiplier, true)} * ${format(user.dinonuggies_claim_streak)} = ${format(1 + nuggie_streak_multiplier * user.dinonuggies_claim_streak, true)}x
+    **Flat Multiplier:** ${format(nuggie_flat_multiplier, true)}x
     **Marriage Multiplier:** ${format(await marriageBenefits(this.client, user.id), true)}x
-    **Credits Multiplier:** 1 + ${format(nuggieCreditsMultiplier, true)} * ${format(log2Credits, true)} = ${format(1 + nuggieCreditsMultiplier * log2Credits, true)}x
-    **Pokemon Multiplier:** 1 + ${format(nuggiePokemonMultiplier, true)} * ${format(pokemonCount, true)} = ${format(1 + nuggiePokemonMultiplier * pokemonCount, true)}x
-    **Nuggie Multiplier:** 1 + ${format(nuggieNuggieMultiplier, true)} * ${format(log2Nuggies, true)} = ${format(1 + nuggieNuggieMultiplier * log2Nuggies, true)}x
-    **Next Claim:** ${nextClaim > 0 ? `${(nextClaim / 60 / 60).toFixed(0)}h ${(nextClaim / 60 % 60).toFixed(0)}m ${(nextClaim % 60).toFixed(0)}s` : 'Ready'}
+    **Credits Multiplier:** 1 + ${format(nuggie_credits_multiplier, true)} * ${format(log2_credits, true)} = ${format(1 + nuggie_credits_multiplier * log2_credits, true)}x
+    **Pokemon Multiplier:** 1 + ${format(nuggie_pokemon_multiplier, true)} * ${format(pokemon_count, true)} = ${format(1 + nuggie_pokemon_multiplier * pokemon_count, true)}x
+    **Nuggie Multiplier:** 1 + ${format(nuggie_nuggie_multiplier, true)} * ${format(log2_nuggies, true)} = ${format(1 + nuggie_nuggie_multiplier * log2_nuggies, true)}x
+    **Next Claim:** ${next_claim > 0 ? `${(next_claim / 60 / 60).toFixed(0)}h ${(next_claim / 60 % 60).toFixed(0)}m ${(next_claim % 60).toFixed(0)}s` : 'Ready'}
             `)
       .setTimestamp();
   }
@@ -296,12 +294,12 @@ class Profile extends Command {
       .setTimestamp();
   }
 
-  createPokemonsEmbed(pokemonList, username, avatarURL) {
+  createPokemonsEmbed(pokemon_list, username, avatarURL) {
     return new Discord.EmbedBuilder()
       .setColor('#00AA00')
       .setTitle(`${username}'s Profile`)
       .setThumbnail(avatarURL)
-      .setDescription(`**Pokemons:** \`\`\`${pokemonList}\`\`\``)
+      .setDescription(`**Pokemons:** \`\`\`${pokemon_list}\`\`\``)
       .setTimestamp();
   }
 }

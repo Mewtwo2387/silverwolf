@@ -12,14 +12,14 @@ class Ascend extends Command {
     const ascensionLevel = await this.client.db.getUserAttr(interaction.user.id, 'ascension_level');
     const currentMaxLevel = getMaxLevel(ascensionLevel);
 
-    const multiplierAmountLevel = await this.client.db.getUserAttr(interaction.user.id, 'multiplier_amount_level');
-    const multiplierRarityLevel = await this.client.db.getUserAttr(interaction.user.id, 'multiplier_rarity_level');
-    const bekiLevel = await this.client.db.getUserAttr(interaction.user.id, 'beki_level');
+    const multiplier_amount_level = await this.client.db.getUserAttr(interaction.user.id, 'multiplier_amount_level');
+    const multiplier_rarity_level = await this.client.db.getUserAttr(interaction.user.id, 'multiplier_rarity_level');
+    const beki_level = await this.client.db.getUserAttr(interaction.user.id, 'beki_level');
     const dinonuggies = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggies');
 
-    const allMaxed = multiplierAmountLevel >= currentMaxLevel
-                         && multiplierRarityLevel >= currentMaxLevel
-                         && bekiLevel >= currentMaxLevel;
+    const allMaxed = multiplier_amount_level >= currentMaxLevel
+                         && multiplier_rarity_level >= currentMaxLevel
+                         && beki_level >= currentMaxLevel;
 
     if (dinonuggies < 500) {
       await interaction.editReply({
@@ -41,9 +41,9 @@ class Ascend extends Command {
 - If you ascend with all upgrades maxed, you will gain an ascension level, which increases the level cap by 10
 
 Your current upgrades:
-• Multiplier amount: ${multiplierAmountLevel}/${currentMaxLevel}
-• Multiplier rarity: ${multiplierRarityLevel}/${currentMaxLevel}
-• Beki cooldown: ${bekiLevel}/${currentMaxLevel}
+• Multiplier amount: ${multiplier_amount_level}/${currentMaxLevel}
+• Multiplier rarity: ${multiplier_rarity_level}/${currentMaxLevel}
+• Beki cooldown: ${beki_level}/${currentMaxLevel}
 
 ${allMaxed ? `Your ascension level will increase from ${ascensionLevel} to ${ascensionLevel + 1} if you ascend now, allowing you to buy upgrades up to level ${getMaxLevel(ascensionLevel + 1)}` : `Your ascension level will remain at ${ascensionLevel} as not all upgrades are maxed.`}`)
       .setFooter({ text: 'what even is this game now' });
