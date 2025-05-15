@@ -23,7 +23,7 @@ class Buy extends Command {
 
   async run(interaction) {
     const ascensionLevel = await this.client.db.getUserAttr(interaction.user.id, 'ascension_level');
-    const max_level = getMaxLevel(ascensionLevel);
+    const maxLevel = getMaxLevel(ascensionLevel);
 
     const upgradeId = interaction.options.getInteger('upgrade');
 
@@ -42,7 +42,7 @@ class Buy extends Command {
 
     const level = await this.client.db.getUserAttr(interaction.user.id, `${upgrade}_level`);
 
-    if (level >= max_level) {
+    if (level >= maxLevel) {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')
