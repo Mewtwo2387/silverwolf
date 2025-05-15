@@ -3,7 +3,7 @@ const path = require('path');
 const { Command } = require('./classes/command');
 const { logError } = require('../utils/log');
 
-class arlecchino extends Command {
+class Arlecchino extends Command {
   constructor(client) {
     super(client, 'arlecchino', 'scare leon away', []);
   }
@@ -22,4 +22,4 @@ class arlecchino extends Command {
   }
 }
 
-module.exports = arlecchino;
+module.exports = Arlecchino;

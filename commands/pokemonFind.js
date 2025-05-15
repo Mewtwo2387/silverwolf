@@ -3,7 +3,7 @@ const {
 } = require('discord.js');
 const { Command } = require('./classes/command');
 
-class HasPokemon extends Command {
+class PokemonFind extends Command {
   constructor(client) {
     super(client, 'pokemonfind', 'Find users with Pokemon of a specific type', [
       {
@@ -90,4 +90,4 @@ class HasPokemon extends Command {
   }
 }
 
-module.exports = HasPokemon;
+module.exports = PokemonFind;

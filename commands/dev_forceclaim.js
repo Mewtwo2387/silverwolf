@@ -1,6 +1,6 @@
 const { DevCommand } = require('./classes/devcommand');
 
-class forceclaim extends DevCommand {
+class ForceClaim extends DevCommand {
   constructor(client) {
     super(client, 'forceclaim', 'claim dinonuggies ignoring cooldown', [], { isSubcommandOf: 'dev' });
   }
@@ -11,4 +11,4 @@ class forceclaim extends DevCommand {
   }
 }
 
-module.exports = forceclaim;
+module.exports = ForceClaim;

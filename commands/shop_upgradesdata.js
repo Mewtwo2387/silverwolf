@@ -5,7 +5,7 @@ const {
   getMultiplierAmount, getMultiplierChance, getBekiCooldown, getNextUpgradeCost, getTotalUpgradeCost,
 } = require('../utils/upgrades');
 
-class UpgradeData extends Command {
+class ShopUpgradesData extends Command {
   constructor(client) {
     super(
       client,
@@ -61,4 +61,4 @@ class UpgradeData extends Command {
   }
 }
 
-module.exports = UpgradeData;
+module.exports = ShopUpgradesData;

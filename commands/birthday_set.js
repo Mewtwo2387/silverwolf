@@ -2,7 +2,7 @@ const { EmbedBuilder } = require('discord.js');
 const { Command } = require('./classes/command');
 const { log, logError } = require('../utils/log');
 
-class SetBirthdayCommand extends Command {
+class BirthdaySet extends Command {
   constructor(client) {
     super(client, 'set', 'Sets your birthday', [
       {
@@ -79,4 +79,4 @@ class SetBirthdayCommand extends Command {
   }
 }
 
-module.exports = SetBirthdayCommand;
+module.exports = BirthdaySet;

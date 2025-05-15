@@ -4,7 +4,7 @@ const {
 const { Command } = require('./classes/command');
 const { logError } = require('../utils/log');
 
-class AvatarCommand extends Command {
+class Avatar extends Command {
   constructor(client) {
     super(client, 'avatar', 'Displays the avatar of a user', [
       {
@@ -84,4 +84,4 @@ class AvatarCommand extends Command {
   }
 }
 
-module.exports = AvatarCommand;
+module.exports = Avatar;

@@ -1,6 +1,6 @@
 const { DevCommand } = require('./classes/devcommand');
 
-class TestSummon extends DevCommand {
+class DevTestSummon extends DevCommand {
   constructor(client) {
     super(client, 'testsummon', 'summon a pokemon at random intervals', [], { ephemeral: true, isSubcommandOf: 'dev' });
   }
@@ -18,4 +18,4 @@ class TestSummon extends DevCommand {
   }
 }
 
-module.exports = TestSummon;
+module.exports = DevTestSummon;

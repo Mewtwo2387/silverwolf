@@ -2,7 +2,7 @@ const Discord = require('discord.js');
 const { DevCommand } = require('./classes/devcommand');
 const { logError } = require('../utils/log');
 
-class BlacklistCommand extends DevCommand {
+class BlacklistConfigure extends DevCommand {
   constructor(client) {
     super(client, 'configure', 'Add or remove a command from the blacklist for a specific server', [
       {
@@ -87,4 +87,4 @@ class BlacklistCommand extends DevCommand {
   }
 }
 
-module.exports = BlacklistCommand;
+module.exports = BlacklistConfigure;

@@ -3,7 +3,7 @@ const { Command } = require('./classes/command');
 const cooldowns = new Map();
 require('dotenv').config();
 
-class FartCommand extends Command {
+class Fart extends Command {
   constructor(client) {
     super(client, 'fart', 'Let out a big... one?');
   }
@@ -42,4 +42,4 @@ class FartCommand extends Command {
   }
 }
 
-module.exports = FartCommand;
+module.exports = Fart;

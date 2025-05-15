@@ -2,7 +2,7 @@ const { EmbedBuilder } = require('discord.js');
 const crypto = require('crypto');
 const { Command } = require('./classes/command');
 
-class CombinedEightBall extends Command {
+class EightBall extends Command {
   constructor(client) {
     super(client, '8ball', 'Ask the combined magic 8-ball a question', [
       {
@@ -82,4 +82,4 @@ class CombinedEightBall extends Command {
   }
 }
 
-module.exports = CombinedEightBall;
+module.exports = EightBall;

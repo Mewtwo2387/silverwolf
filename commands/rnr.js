@@ -3,7 +3,7 @@ const {
 } = require('discord.js');
 const { Command } = require('./classes/command');
 
-class RnRCommand extends Command {
+class RnR extends Command {
   constructor(client) {
     super(client, 'risk-n-reward', 'Risk & Reward: how much are you willing to?', [{
       name: 'amount',
@@ -109,4 +109,4 @@ class RnRCommand extends Command {
   }
 }
 
-module.exports = RnRCommand;
+module.exports = RnR;

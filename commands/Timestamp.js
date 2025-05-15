@@ -1,7 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const { Command } = require('./classes/command');
 
-class TimestampCommand extends Command {
+class Timestamp extends Command {
   constructor(client) {
     super(client, 'discord_timestamp', 'Displays the current or specified time in various formats', [
       {
@@ -122,4 +122,4 @@ class TimestampCommand extends Command {
   }
 }
 
-module.exports = TimestampCommand;
+module.exports = Timestamp;

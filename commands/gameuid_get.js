@@ -2,7 +2,7 @@ const Discord = require('discord.js');
 const { Command } = require('./classes/command');
 const { logError } = require('../utils/log');
 
-class GetGameUID extends Command {
+class GameUIDGet extends Command {
   constructor(client) {
     super(client, 'get', 'Get all game UIDs for a user', [
       {
@@ -62,4 +62,4 @@ class GetGameUID extends Command {
   }
 }
 
-module.exports = GetGameUID;
+module.exports = GameUIDGet;

@@ -4,7 +4,7 @@ const sharp = require('sharp');
 const { Command } = require('./classes/command');
 const { logError } = require('../utils/log');
 
-class EmojiToFileCommand extends Command {
+class GrabEmoji extends Command {
   constructor(client) {
     super(client, 'grab-emoji', 'Converts an emoji to a selected file format', [
       {
@@ -77,4 +77,4 @@ class EmojiToFileCommand extends Command {
   }
 }
 
-module.exports = EmojiToFileCommand;
+module.exports = GrabEmoji;

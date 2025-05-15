@@ -1,6 +1,6 @@
 const { Command } = require('./classes/command');
 
-class Ping extends Command {
+class PingRegular extends Command {
   constructor(client) {
     super(client, 'regular', 'pong', [], { isSubcommandOf: 'ping' });
   }
@@ -10,4 +10,4 @@ class Ping extends Command {
   }
 }
 
-module.exports = Ping;
+module.exports = PingRegular;

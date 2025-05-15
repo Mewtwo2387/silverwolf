@@ -1,6 +1,6 @@
 const { DevCommand } = require('./classes/devcommand');
 
-class DPing extends DevCommand {
+class PingDev extends DevCommand {
   constructor(client) {
     super(client, 'dev', 'pong but for dev', [], { isSubcommandOf: 'ping' });
   }
@@ -10,4 +10,4 @@ class DPing extends DevCommand {
   }
 }
 
-module.exports = DPing;
+module.exports = PingDev;

@@ -3,7 +3,7 @@ const {
 } = require('discord.js');
 const { Command } = require('./classes/command');
 
-class RussianRouletteCommand extends Command {
+class RussianRouletteRegular extends Command {
   constructor(client) {
     super(client, 'regular', 'Play a game of Russian Roulette', [
       {
@@ -115,4 +115,4 @@ class RussianRouletteCommand extends Command {
   }
 }
 
-module.exports = RussianRouletteCommand;
+module.exports = RussianRouletteRegular;

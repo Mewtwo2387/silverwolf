@@ -5,7 +5,7 @@ const {
   getNextUpgradeCost, getMultiplierAmount, getMultiplierChance, getBekiCooldown, getMaxLevel,
 } = require('../utils/upgrades');
 
-class Upgrades extends Command {
+class ShopUpgrades extends Command {
   constructor(client) {
     super(client, 'upgrades', 'upgrade your dinonuggie multipliers', [], { isSubcommandOf: 'shop' });
   }
@@ -80,4 +80,4 @@ Buy with \`/buy upgrades 3\``;
   }
 }
 
-module.exports = Upgrades;
+module.exports = ShopUpgrades;

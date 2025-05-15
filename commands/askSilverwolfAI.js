@@ -7,7 +7,7 @@ const { unformatFile } = require('../utils/formatter');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_TOKEN);
 const systemInstruction = unformatFile('./data/SilverwolfSystemPrompt.txt');
-class AskGeminiCommand extends Command {
+class AskSilverwolfAI extends Command {
   constructor(client) {
     super(client, 'ask-silverwolf-ai', 'wow this is so cool, should i add an ai art command ?', [
       {
@@ -106,4 +106,4 @@ class AskGeminiCommand extends Command {
   }
 }
 
-module.exports = AskGeminiCommand;
+module.exports = AskSilverwolfAI;

@@ -5,7 +5,7 @@ const { format } = require('../utils/math');
 const COOLDOWN_HOURS = 24;
 const HOUR_LENGTH = 60 * 60 * 1000;
 
-class WinOrBust extends Command {
+class Gongyoo extends Command {
   constructor(client) {
     super(client, 'recruiter-game-오징어게임', 'is this a squid game reference?', []);
   }
@@ -154,4 +154,4 @@ You gained **+${format(winnings)} dinonuggies**!`)
   }
 }
 
-module.exports = WinOrBust;
+module.exports = Gongyoo;

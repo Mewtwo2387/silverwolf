@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { Command } = require('./classes/command');
 
-class FortuneCookieCommand extends Command {
+class Fortune extends Command {
   constructor(client) {
     super(client, 'fortune', 'how desperate are you to munch virtual fortune cookies ?');
   }
@@ -19,4 +19,4 @@ class FortuneCookieCommand extends Command {
   }
 }
 
-module.exports = FortuneCookieCommand;
+module.exports = Fortune;

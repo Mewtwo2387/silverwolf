@@ -9,7 +9,7 @@ const UPGRADES = ['multiplierAmount', 'multiplierRarity', 'beki'];
 
 // We don't talk about the spaghetti code here
 
-class Buy extends Command {
+class BuyUpgrades extends Command {
   constructor(client) {
     super(client, 'upgrades', 'buy upgrades', [
       {
@@ -123,4 +123,4 @@ Mystic Credits: ${format(credits)} -> ${format(credits - cost)}`)
   }
 }
 
-module.exports = Buy;
+module.exports = BuyUpgrades;

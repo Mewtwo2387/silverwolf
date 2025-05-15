@@ -4,7 +4,7 @@ const {
 } = require('discord.js');
 const { Command } = require('./classes/command');
 
-class GachaRollCommand extends Command {
+class Gacha extends Command {
   constructor(client) {
     super(client, 'gacha', 'TECHNICAL TEST, WORK IN PROGRESS', [
       {
@@ -174,4 +174,4 @@ class GachaRollCommand extends Command {
   }
 }
 
-module.exports = GachaRollCommand;
+module.exports = Gacha;

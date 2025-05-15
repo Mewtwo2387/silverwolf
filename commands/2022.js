@@ -2,7 +2,7 @@ const Discord = require('discord.js');
 const quotes = require('../data/2022.json');
 const { Command } = require('./classes/command');
 
-class OldTGP extends Command {
+class TwentyTwentyTwo extends Command {
   constructor(client) {
     super(client, '2022', '2022 flashbacks', []);
   }
@@ -19,4 +19,4 @@ class OldTGP extends Command {
   }
 }
 
-module.exports = OldTGP;
+module.exports = TwentyTwentyTwo;
