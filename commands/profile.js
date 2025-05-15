@@ -78,8 +78,8 @@ class Profile extends Command {
     const pokemonCount = await this.client.db.getUniquePokemonCount(interaction.options.getMember('user') ? interaction.options.getMember('user').id : interaction.user.id);
     const log2Nuggies = user.dinonuggies > 1 ? Math.log2(user.dinonuggies) : 0;
     const nextClaim = bekiCooldown - (Date.now() - user.dinonuggiesLastClaimed) / 1000;
-    pokemons.sort((a, b) => a.pokemon_name.localeCompare(b.pokemon_name));
-    const maxNameLength = Math.max(...pokemons.map((pokemon) => pokemon.pokemon_name.length));
+    pokemons.sort((a, b) => a.pokemonName.localeCompare(b.pokemonName));
+    const maxNameLength = Math.max(...pokemons.map((pokemon) => pokemon.pokemonName.length));
     const pokemonList = pokemons.map((pokemon) => `${pokemon.pokemonName.padEnd(maxNameLength + 2)} ${pokemon.pokemonCount}`).join('\n');
     const { ascensionLevel } = user;
     const maxLevel = getMaxLevel(ascensionLevel);
@@ -128,10 +128,10 @@ class Profile extends Command {
           detailsEmbed = this.createCurrencyEmbed(credits, user, username, avatarURL);
           break;
         case 'levels':
-          detailsEmbed = this.createLevelsEmbed(user, ascension_level, max_level, multiplier_amount, multiplier_rarity, beki_cooldown, nuggie_flat_multiplier, nuggie_streak_multiplier, nuggie_credits_multiplier, log2_credits, username, avatarURL, nuggie_pokemon_multiplier, nuggie_nuggie_multiplier);
+          detailsEmbed = this.createLevelsEmbed(user, ascensionLevel, maxLevel, multiplierAmount, multiplierRarity, bekiCooldown, nuggieFlatMultiplier, nuggieStreakMultiplier, nuggieCreditsMultiplier, log2Credits, username, avatarURL, nuggiePokemonMultiplier, nuggieNuggieMultiplier);
           break;
         case 'claims':
-          detailsEmbed = await this.createClaimsEmbed(user, next_claim, nuggie_streak_multiplier, nuggie_flat_multiplier, nuggie_credits_multiplier, log2_credits, username, avatarURL, pokemon_count, log2_nuggies, nuggie_pokemon_multiplier, nuggie_nuggie_multiplier);
+          detailsEmbed = await this.createClaimsEmbed(user, nextClaim, nuggieStreakMultiplier, nuggieFlatMultiplier, nuggieCreditsMultiplier, log2Credits, username, avatarURL, pokemonCount, log2Nuggies, nuggiePokemonMultiplier, nuggieNuggieMultiplier);
           break;
         case 'gambling':
           detailsEmbed = this.createGamblingEmbed(user, username, avatarURL);
@@ -140,7 +140,7 @@ class Profile extends Command {
           detailsEmbed = this.createOthersEmbed(user, username, avatarURL);
           break;
         case 'pokemons':
-          detailsEmbed = this.createPokemonsEmbed(pokemon_list, username, avatarURL);
+          detailsEmbed = this.createPokemonsEmbed(pokemonList, username, avatarURL);
           break;
         default:
           break;
@@ -169,7 +169,7 @@ class Profile extends Command {
 **Mystic Credits:** ${format(credits, true)}
 **Bitcoin:** ${user.bitcoin}
 **Dinonuggies:** ${format(user.dinonuggies)}
-**Heavenly Nuggies:** ${format(user.heavenly_nuggies)}
+**Heavenly Nuggies:** ${format(user.heavenlyNuggies)}
             `)
       .setTimestamp();
   }
@@ -184,7 +184,7 @@ class Profile extends Command {
 **Ascension Level:** Level ${ascensionLevel}
 **Max Upgrade Level:** ${maxLevel}
 
-**Multiplier Amount Upgrade:** Level ${user.multiplier_amount_level}/${max_level}
+**Multiplier Amount Upgrade:** Level ${user.multiplierAmountLevel}/${maxLevel}
 **Gold Multiplier:** ${format(multiplierAmount.gold, true)}x
 **Silver Multiplier:** ${format(multiplierAmount.silver, true)}x
 **Bronze Multiplier:** ${format(multiplierAmount.bronze, true)}x
@@ -222,7 +222,7 @@ class Profile extends Command {
       .setThumbnail(avatarURL)
       .setDescription(`
     ## Claims
-    **Current Streak:** ${user.dinonuggies_claim_streak} days
+    **Current Streak:** ${user.dinonuggiesClaimStreak} days
     **Base Claim Amount:** 5 + ${format(user.dinonuggiesClaimStreak)} = ${format(5 + user.dinonuggiesClaimStreak)}
     **Streak Multiplier:** 1 + ${format(nuggieStreakMultiplier, true)} * ${format(user.dinonuggiesClaimStreak)} = ${format(1 + nuggieStreakMultiplier * user.dinonuggiesClaimStreak, true)}x
     **Flat Multiplier:** ${format(nuggieFlatMultiplier, true)}x
@@ -243,40 +243,40 @@ class Profile extends Command {
       .setDescription(`
 ## Gambling
 ### Slots
-**Times Played:** ${user.slots_times_played}
-**Times Won:** ${user.slots_times_won}
-**Percentage Won:** ${format(user.slots_times_played > 0 ? (user.slots_times_won / user.slots_times_played * 100) : 0, true)}%
-**Amount Gambled:** ${format(user.slots_amount_gambled)}
-**Amount Won:** ${format(user.slots_amount_won)} 
-**Net Winnings:** ${format(user.slots_amount_won - user.slots_amount_gambled)}
-**Relative Amount Won:** ${format(user.slots_relative_won, true)} bets
-**Relative Net Winnings:** ${format(user.slots_relative_won - user.slots_times_played, true)} bets
+**Times Played:** ${user.slotsTimesPlayed}
+**Times Won:** ${user.slotsTimesWon}
+**Percentage Won:** ${format(user.slotsTimesPlayed > 0 ? (user.slotsTimesWon / user.slotsTimesPlayed * 100) : 0, true)}%
+**Amount Gambled:** ${format(user.slotsAmountGambled)}
+**Amount Won:** ${format(user.slotsAmountWon)} 
+**Net Winnings:** ${format(user.slotsAmountWon - user.slotsAmountGambled)}
+**Relative Amount Won:** ${format(user.slotsRelativeWon, true)} bets
+**Relative Net Winnings:** ${format(user.slotsRelativeWon - user.slotsTimesPlayed, true)} bets
 
 ### Blackjack
-**Times Played:** ${user.blackjack_times_played}
-**Times Won:** ${user.blackjack_times_won}
-**Times Drew:** ${user.blackjack_times_drawn}
-**Times Lost:** ${user.blackjack_times_lost}
-**Percentage Won (Excluding Draws):** ${format((user.blackjack_times_won + user.blackjack_times_lost) > 0 ? (user.blackjack_times_won / (user.blackjack_times_won + user.blackjack_times_lost) * 100) : 0, true)}%
-**Amount Gambled:** ${format(user.blackjack_amount_gambled)}
-**Amount Won:** ${format(user.blackjack_amount_won)} 
-**Net Winnings:** ${format(user.blackjack_amount_won - user.blackjack_amount_gambled)}
-**Relative Amount Won:** ${format(user.blackjack_relative_won, true)} bets
-**Relative Net Winnings:** ${format(user.blackjack_relative_won - user.blackjack_times_played, true)} bets
-**Current Streak:** ${user.blackjack_streak}
-**Max Streak:** ${user.blackjack_max_streak}
+**Times Played:** ${user.blackjackTimesPlayed}
+**Times Won:** ${user.blackjackTimesWon}
+**Times Drew:** ${user.blackjackTimesDrawn}
+**Times Lost:** ${user.blackjackTimesLost}
+**Percentage Won (Excluding Draws):** ${format((user.blackjackTimesWon + user.blackjackTimesLost) > 0 ? (user.blackjackTimesWon / (user.blackjackTimesWon + user.blackjackTimesLost) * 100) : 0, true)}%
+**Amount Gambled:** ${format(user.blackjackAmountGambled)}
+**Amount Won:** ${format(user.blackjackAmountWon)} 
+**Net Winnings:** ${format(user.blackjackAmountWon - user.blackjackAmountGambled)}
+**Relative Amount Won:** ${format(user.blackjackRelativeWon, true)} bets
+**Relative Net Winnings:** ${format(user.blackjackRelativeWon - user.blackjackTimesPlayed, true)} bets
+**Current Streak:** ${user.blackjackStreak}
+**Max Streak:** ${user.blackjackMaxStreak}
 
 ### Roulette
-**Times Played:** ${user.roulette_times_played}
-**Times Won:** ${user.roulette_times_won}
-**Percentage Won:** ${format(user.roulette_times_played > 0 ? (user.roulette_times_won / user.roulette_times_played * 100) : 0, true)}%
-**Amount Gambled:** ${format(user.roulette_amount_gambled)}
-**Amount Won:** ${format(user.roulette_amount_won)} 
-**Net Winnings:** ${format(user.roulette_amount_won - user.roulette_amount_gambled)}
-**Relative Amount Won:** ${format(user.roulette_relative_won, true)} bets
-**Relative Net Winnings:** ${format(user.roulette_relative_won - user.roulette_times_played, true)} bets
-**Current Streak:** ${user.roulette_streak}
-**Max Streak:** ${user.roulette_max_streak}
+**Times Played:** ${user.rouletteTimesPlayed}
+**Times Won:** ${user.rouletteTimesWon}
+**Percentage Won:** ${format(user.rouletteTimesPlayed > 0 ? (user.rouletteTimesWon / user.rouletteTimesPlayed * 100) : 0, true)}%
+**Amount Gambled:** ${format(user.rouletteAmountGambled)}
+**Amount Won:** ${format(user.rouletteAmountWon)} 
+**Net Winnings:** ${format(user.rouletteAmountWon - user.rouletteAmountGambled)}
+**Relative Amount Won:** ${format(user.rouletteRelativeWon, true)} bets
+**Relative Net Winnings:** ${format(user.rouletteRelativeWon - user.rouletteTimesPlayed, true)} bets
+**Current Streak:** ${user.rouletteStreak}
+**Max Streak:** ${user.rouletteMaxStreak}
             `)
       .setTimestamp();
   }
@@ -290,8 +290,8 @@ class Profile extends Command {
 ## Others
 **Pity:** ${user.pity}
 **Birthday:** ${user.birthdays ? user.birthdays : 'No birthday set'}
-**Murders:** ${user.murder_success} Successes, ${user.murder_fail} Fails
-**Last Murder:** ${user.last_murder ? new Date(user.last_murder).toLocaleString() : 'Never'}
+**Murders:** ${user.murderSuccess} Successes, ${user.murderFail} Fails
+**Last Murder:** ${user.lastMurder ? new Date(user.lastMurder).toLocaleString() : 'Never'}
             `)
       .setTimestamp();
   }

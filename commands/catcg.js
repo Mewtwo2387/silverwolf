@@ -17,11 +17,11 @@ class Catcg extends Command {
     const pokemons = await this.client.db.getPokemons(interaction.user.id);
     if (pokemons.length > 0) {
       const pokemon = pokemons[Math.floor(Math.random() * pokemons.length)];
-      await this.client.db.sacrificePokemon(interaction.user.id, pokemon.pokemon_name);
+      await this.client.db.sacrificePokemon(interaction.user.id, pokemon.pokemonName);
       await interaction.editReply({
         embeds: [new EmbedBuilder()
           .setTitle('You used the wrong catch command!')
-          .setDescription(`A random pokemon you own, ${pokemon.pokemon_name}, was released.`)
+          .setDescription(`A random pokemon you own, ${pokemon.pokemonName}, was released.`)
           .setColor('#FF0000'),
         ],
       });

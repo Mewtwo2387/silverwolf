@@ -4,7 +4,7 @@ const { Command } = require('./classes/command');
 const jobs = [
   {
     name: 'Nuggie Claimer',
-    value: 'nuggie_claimer',
+    value: 'nuggieClaimer',
     description: 'Auto claim nuggies every 24 hours, for an amount equivalent to no streak and no bronze/silver/gold.',
   },
   {
@@ -36,7 +36,7 @@ class BabyEnslave extends Command {
         choices: jobs,
       },
       {
-        name: 'pinger_target',
+        name: 'pingerTarget',
         description: 'The user to ping if the job is pinger',
         type: 6,
         required: false,
@@ -62,7 +62,7 @@ class BabyEnslave extends Command {
       return;
     }
 
-    if (baby.mother_id != interaction.user.id && baby.father_id != interaction.user.id) {
+    if (baby.motherId !== interaction.user.id && baby.fatherId !== interaction.user.id) {
       await interaction.editReply({
         embeds: [
           new Discord.EmbedBuilder()
@@ -74,7 +74,7 @@ class BabyEnslave extends Command {
       return;
     }
 
-    if (baby.status == 'unborn') {
+    if (baby.status === 'unborn') {
       await interaction.editReply({
         embeds: [
           new Discord.EmbedBuilder()
@@ -85,7 +85,7 @@ class BabyEnslave extends Command {
       return;
     }
 
-    if (baby.status == 'dead') {
+    if (baby.status === 'dead') {
       await interaction.editReply({
         embeds: [
           new Discord.EmbedBuilder()
@@ -96,8 +96,8 @@ class BabyEnslave extends Command {
       return;
     }
 
-    if (job == 'pinger') {
-      const pingerTarget = interaction.options.get('pinger_target');
+    if (job === 'pinger') {
+      const pingerTarget = interaction.options.get('pingerTarget');
       if (!pingerTarget) {
         await interaction.editReply({
           embeds: [

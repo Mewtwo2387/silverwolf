@@ -13,7 +13,7 @@ class Pokemon extends Command {
     try {
       // Fetch all Pokémon from the database for the user
       const allPokemons = await this.client.db.getPokemons(interaction.user.id);
-      allPokemons.sort((a, b) => a.pokemon_name.localeCompare(b.pokemon_name));
+      allPokemons.sort((a, b) => a.pokemonName.localeCompare(b.pokemonName));
 
       // Set up initial page data
       let currentPage = 0;
@@ -23,8 +23,8 @@ class Pokemon extends Command {
       // Helper function to generate the embed for a given page
       const generateEmbed = (page) => {
         const pagePokemons = allPokemons.slice(page * this.itemsPerPage, (page + 1) * this.itemsPerPage);
-        const maxNameLength = Math.max(...pagePokemons.map((pokemon) => pokemon.pokemon_name.length));
-        const description = pagePokemons.map((pokemon) => `${pokemon.pokemon_name.padEnd(maxNameLength + 2)} ${pokemon.pokemon_count}`).join('\n');
+        const maxNameLength = Math.max(...pagePokemons.map((pokemon) => pokemon.pokemonName.length));
+        const description = pagePokemons.map((pokemon) => `${pokemon.pokemonName.padEnd(maxNameLength + 2)} ${pokemon.pokemonCount}`).join('\n');
 
         return new EmbedBuilder()
           .setColor('#00AA00')
@@ -38,12 +38,12 @@ class Pokemon extends Command {
       const row = new ActionRowBuilder()
         .addComponents(
           new ButtonBuilder()
-            .setCustomId('prev_page')
+            .setCustomId('prevPage')
             .setLabel('⬅️ Back')
             .setStyle(ButtonStyle.Primary)
             .setDisabled(true),
           new ButtonBuilder()
-            .setCustomId('next_page')
+            .setCustomId('nextPage')
             .setLabel('Next ➡️')
             .setStyle(ButtonStyle.Primary)
             .setDisabled(currentPage === maxPage),
@@ -59,9 +59,9 @@ class Pokemon extends Command {
       const collector = message.createMessageComponentCollector({ time: 60000 }); // 1 minute timeout
 
       collector.on('collect', async (i) => {
-        if (i.customId === 'prev_page' && currentPage > 0) {
+        if (i.customId === 'prevPage' && currentPage > 0) {
           currentPage--;
-        } else if (i.customId === 'next_page' && currentPage < maxPage) {
+        } else if (i.customId === 'nextPage' && currentPage < maxPage) {
           currentPage++;
         }
 
@@ -70,12 +70,12 @@ class Pokemon extends Command {
         const newRow = new ActionRowBuilder()
           .addComponents(
             new ButtonBuilder()
-              .setCustomId('prev_page')
+              .setCustomId('prevPage')
               .setLabel('⬅️ Back')
               .setStyle(ButtonStyle.Primary)
               .setDisabled(currentPage === 0),
             new ButtonBuilder()
-              .setCustomId('next_page')
+              .setCustomId('nextPage')
               .setLabel('Next ➡️')
               .setStyle(ButtonStyle.Primary)
               .setDisabled(currentPage === maxPage),
@@ -90,12 +90,12 @@ class Pokemon extends Command {
         const disabledRow = new ActionRowBuilder()
           .addComponents(
             new ButtonBuilder()
-              .setCustomId('prev_page')
+              .setCustomId('prevPage')
               .setLabel('⬅️ Back')
               .setStyle(ButtonStyle.Primary)
               .setDisabled(true),
             new ButtonBuilder()
-              .setCustomId('next_page')
+              .setCustomId('nextPage')
               .setLabel('Next ➡️')
               .setStyle(ButtonStyle.Primary)
               .setDisabled(true),

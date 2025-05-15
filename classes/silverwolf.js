@@ -39,7 +39,7 @@ class Silverwolf extends Client {
     this.games = [];
     this.loadGames(); // Initialize the games list from the JSON file
     this.chat = null;
-    this.sex_sessions = [];
+    this.sexSessions = [];
     // try{
     //     this.loadSilverwolfAI();
     // }catch(error){
@@ -223,7 +223,7 @@ All wrongs reserved.
                 if (name === 'message') return originalMessage;
                 if (name === 'nickname') return nickname;
                 if (name === 'background') return background;
-                if (name === 'profile_color') return profileColor;
+                if (name === 'profileColor') return profileColor;
                 return '';
               },
             },
@@ -303,7 +303,7 @@ All wrongs reserved.
         log(`Blacklisted commands for guild ${guildId}:`, blacklistedCommandsData);
 
         // Extract just the command names from the data
-        const blacklistedCommands = blacklistedCommandsData.map((item) => item.command_name);
+        const blacklistedCommands = blacklistedCommandsData.map((item) => item.commandName);
 
         // Create a copy of the commands array
         const commandsArray = Array.from(this.commands.values()).filter((command) => command !== null && command.isSubcommandOf === null).map((command) => command.toJSON());

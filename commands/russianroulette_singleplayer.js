@@ -29,7 +29,7 @@ class SinglePlayerRussianRouletteCommand extends Command {
     const collector = message.createMessageComponentCollector({ time: 120000 }); // 2-minute timeout
 
     collector.on('collect', async (i) => {
-      if (i.customId === 'shoot_self') {
+      if (i.customId === 'shootSelf') {
         if (currentChamber === loadedChamber) {
           // Player loses
           embed.setDescription('💥 You pulled the trigger and the chamber was loaded! You lose.');
@@ -59,7 +59,7 @@ class SinglePlayerRussianRouletteCommand extends Command {
             await i.update({ embeds: [embed], components: [this.createButtons(thisChamberCooldown)] });
           }
         }
-      } else if (i.customId === 'this_chamber') {
+      } else if (i.customId === 'thisChamber') {
         if (thisChamberCooldown) {
           // Prevent consecutive presses of "This Chamber"
           await i.reply({ content: 'You cannot press "This Chamber" consecutively!', ephemeral: true });
@@ -115,11 +115,11 @@ class SinglePlayerRussianRouletteCommand extends Command {
     return new ActionRowBuilder()
       .addComponents(
         new ButtonBuilder()
-          .setCustomId('shoot_self')
+          .setCustomId('shootSelf')
           .setLabel('Shoot Self')
           .setStyle(ButtonStyle.Danger),
         new ButtonBuilder()
-          .setCustomId('this_chamber')
+          .setCustomId('thisChamber')
           .setLabel('This Chamber')
           .setStyle(ButtonStyle.Primary)
           .setDisabled(thisChamberCooldown),

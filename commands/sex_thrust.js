@@ -8,7 +8,7 @@ class SexThrust extends Command {
   }
 
   async run(interaction) {
-    if (!this.client.sex_sessions.some((session) => session.hasUser(interaction.user.id))) {
+    if (!this.client.sexSessions.some((s) => s.hasUser(interaction.user.id))) {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')
@@ -18,7 +18,7 @@ class SexThrust extends Command {
       return;
     }
 
-    const session = this.client.sex_sessions.find((session) => session.hasUser(interaction.user.id));
+    const session = this.client.sexSessions.find((s) => s.hasUser(interaction.user.id));
 
     if (session.thrust()) {
       log('Ejaculated!');
@@ -32,7 +32,7 @@ class SexThrust extends Command {
       } else {
         footer = 'holy shit, you lasted forever';
       }
-      this.client.sex_sessions = this.client.sex_sessions.filter((s) => s !== session);
+      this.client.sexSessions = this.client.sexSessions.filter((s) => s !== session);
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#00FF00')

@@ -16,7 +16,7 @@ class SexStatus extends Command {
   async run(interaction) {
     const user = interaction.options.getUser('user') || interaction.user;
     const userId = user.id;
-    const session = this.client.sex_sessions.find((session) => session.hasUser(userId));
+    const session = this.client.sexSessions.find((s) => s.hasUser(userId));
     if (session) {
       const embed = new Discord.EmbedBuilder()
         .setColor('#00FF00')

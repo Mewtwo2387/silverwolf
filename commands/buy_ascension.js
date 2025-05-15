@@ -7,11 +7,11 @@ const {
 } = require('../utils/ascensionupgrades');
 
 const ASCENSION_UPGRADES = [
-  'nuggie_flat_multiplier',
-  'nuggie_streak_multiplier',
-  'nuggie_credits_multiplier',
-  'nuggie_pokemon_multiplier',
-  'nuggie_nuggie_multiplier',
+  'nuggieFlatMultiplier',
+  'nuggieStreakMultiplier',
+  'nuggieCreditsMultiplier',
+  'nuggiePokeMultiplier',
+  'nuggieNuggieMultiplier',
 ];
 
 class BuyAscension extends Command {
@@ -48,24 +48,24 @@ class BuyAscension extends Command {
 
     const upgrade = ASCENSION_UPGRADES[upgradeId - 1];
 
-    const level = await this.client.db.getUserAttr(interaction.user.id, `${upgrade}_level`);
+    const level = await this.client.db.getUserAttr(interaction.user.id, `${upgrade}Level`);
 
-    const ascensionLevel = await this.client.db.getUserAttr(interaction.user.id, 'ascension_level');
+    const ascensionLevel = await this.client.db.getUserAttr(interaction.user.id, 'ascensionLevel');
 
     const amplifier = {
-      nuggie_flat_multiplier: 1,
-      nuggie_streak_multiplier: 1,
-      nuggie_credits_multiplier: 3,
-      nuggie_pokemon_multiplier: 9,
-      nuggie_nuggie_multiplier: 27,
+      nuggieFlatMultiplier: 1,
+      nuggieStreakMultiplier: 1,
+      nuggieCreditsMultiplier: 3,
+      nuggiePokeMultiplier: 9,
+      nuggieNuggieMultiplier: 27,
     };
 
     const levelRequirement = {
-      nuggie_flat_multiplier: 1,
-      nuggie_streak_multiplier: 1,
-      nuggie_credits_multiplier: 2,
-      nuggie_pokemon_multiplier: 4,
-      nuggie_nuggie_multiplier: 6,
+      nuggieFlatMultiplier: 1,
+      nuggieStreakMultiplier: 1,
+      nuggieCreditsMultiplier: 2,
+      nuggiePokeMultiplier: 4,
+      nuggieNuggieMultiplier: 6,
     };
 
     if (ascensionLevel < levelRequirement[upgrade]) {
@@ -86,7 +86,7 @@ class BuyAscension extends Command {
     for (let i = 0; i < amount; i++) {
       cost += getNextAscensionUpgradeCost(level + i, amplifier[upgrade]);
     }
-    const heavenlyNuggies = await this.client.db.getUserAttr(interaction.user.id, 'heavenly_nuggies');
+    const heavenlyNuggies = await this.client.db.getUserAttr(interaction.user.id, 'heavenlyNuggies');
 
     if (heavenlyNuggies < cost) {
       await interaction.editReply({
@@ -100,11 +100,11 @@ class BuyAscension extends Command {
       return;
     }
 
-    await this.client.db.addUserAttr(interaction.user.id, 'heavenly_nuggies', -cost);
-    await this.client.db.addUserAttr(interaction.user.id, `${upgrade}_level`, amount);
+    await this.client.db.addUserAttr(interaction.user.id, 'heavenlyNuggies', -cost);
+    await this.client.db.addUserAttr(interaction.user.id, `${upgrade}Level`, amount);
 
     switch (upgrade) {
-      case 'nuggie_flat_multiplier': {
+      case 'nuggieFlatMultiplier': {
         const nuggieFlatMultiplier = getNuggieFlatMultiplier(level);
         const nextNuggieFlatMultiplier = getNuggieFlatMultiplier(level + amount);
         await interaction.editReply({
@@ -119,7 +119,7 @@ Heavenly Nuggies: ${format(heavenlyNuggies)} -> ${format(heavenlyNuggies - cost)
         });
         break;
       }
-      case 'nuggie_streak_multiplier': {
+      case 'nuggieStreakMultiplier': {
         const nuggieStreakMultiplier = getNuggieStreakMultiplier(level);
         const nextNuggieStreakMultiplier = getNuggieStreakMultiplier(level + amount);
         await interaction.editReply({
@@ -134,7 +134,7 @@ Heavenly Nuggies: ${format(heavenlyNuggies)} -> ${format(heavenlyNuggies - cost)
         });
         break;
       }
-      case 'nuggie_credits_multiplier': {
+      case 'nuggieCreditsMultiplier': {
         const nuggieCreditsMultiplier = getNuggieCreditsMultiplier(level);
         const nextNuggieCreditsMultiplier = getNuggieCreditsMultiplier(level + amount);
         await interaction.editReply({
@@ -149,7 +149,7 @@ Heavenly Nuggies: ${format(heavenlyNuggies)} -> ${format(heavenlyNuggies - cost)
         });
         break;
       }
-      case 'nuggie_pokemon_multiplier': {
+      case 'nuggiePokeMultiplier': {
         const nuggiePokeMultiplier = getNuggiePokeMultiplier(level);
         const nextNuggiePokeMultiplier = getNuggiePokeMultiplier(level + amount);
         await interaction.editReply({
@@ -164,7 +164,7 @@ Heavenly Nuggies: ${format(heavenlyNuggies)} -> ${format(heavenlyNuggies - cost)
         });
         break;
       }
-      case 'nuggie_nuggie_multiplier': {
+      case 'nuggieNuggieMultiplier': {
         const nuggieNuggieMultiplier = getNuggieNuggieMultiplier(level);
         const nextNuggieNuggieMultiplier = getNuggieNuggieMultiplier(level + amount);
         await interaction.editReply({

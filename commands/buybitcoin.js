@@ -50,12 +50,12 @@ class BuyBitcoin extends Command {
       } else {
         await this.client.db.addUserAttr(interaction.user.id, 'bitcoin', amount);
         await this.client.db.addUserAttr(interaction.user.id, 'credits', -amount * price);
-        await this.client.db.addUserAttr(interaction.user.id, 'total_sold_amount', -amount);
-        await this.client.db.addUserAttr(interaction.user.id, 'total_sold_price', -amount * price);
+        await this.client.db.addUserAttr(interaction.user.id, 'totalSoldAmount', -amount);
+        await this.client.db.addUserAttr(interaction.user.id, 'totalSoldPrice', -amount * price);
         bitcoinAmount = await this.client.db.getUserAttr(interaction.user.id, 'bitcoin');
         credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
-        const lastBoughtAmount = await this.client.db.getUserAttr(interaction.user.id, 'last_bought_amount');
-        const lastBoughtPrice = await this.client.db.getUserAttr(interaction.user.id, 'last_bought_price');
+        const lastBoughtAmount = await this.client.db.getUserAttr(interaction.user.id, 'lastBoughtAmount');
+        const lastBoughtPrice = await this.client.db.getUserAttr(interaction.user.id, 'lastBoughtPrice');
         await interaction.editReply({
           embeds: [new Discord.EmbedBuilder()
             .setColor('#00AA00')
@@ -77,10 +77,10 @@ Current mystic credits: ${format(credits)}`),
     } else {
       await this.client.db.addUserAttr(interaction.user.id, 'bitcoin', amount);
       await this.client.db.addUserAttr(interaction.user.id, 'credits', -amount * price);
-      await this.client.db.addUserAttr(interaction.user.id, 'total_bought_amount', amount);
-      await this.client.db.addUserAttr(interaction.user.id, 'total_bought_price', amount * price);
-      await this.client.db.setUserAttr(interaction.user.id, 'last_bought_amount', amount);
-      await this.client.db.setUserAttr(interaction.user.id, 'last_bought_price', price);
+      await this.client.db.addUserAttr(interaction.user.id, 'totalBoughtAmount', amount);
+      await this.client.db.addUserAttr(interaction.user.id, 'totalBoughtPrice', amount * price);
+      await this.client.db.setUserAttr(interaction.user.id, 'lastBoughtAmount', amount);
+      await this.client.db.setUserAttr(interaction.user.id, 'lastBoughtPrice', price);
       bitcoinAmount = await this.client.db.getUserAttr(interaction.user.id, 'bitcoin');
       credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
       await interaction.editReply({

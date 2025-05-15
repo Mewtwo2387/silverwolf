@@ -37,7 +37,7 @@ class BabyName extends Command {
       return;
     }
 
-    if (baby.mother_id != interaction.user.id && baby.father_id != interaction.user.id) {
+    if (baby.motherId != interaction.user.id && baby.fatherId != interaction.user.id) {
       await interaction.editReply({
         embeds: [
           new Discord.EmbedBuilder()
@@ -56,7 +56,7 @@ class BabyName extends Command {
         new Discord.EmbedBuilder()
           .setColor('#00AA00')
           .setTitle(`Baby ${babyId} is now named ${name}!`)
-          .setDescription(`Mother: <@${baby.mother_id}>\nFather: <@${baby.father_id}>\nStatus: ${baby.status}`),
+          .setDescription(`Mother: <@${baby.motherId}>\nFather: <@${baby.fatherId}>\nStatus: ${baby.status}`),
       ],
     });
   }

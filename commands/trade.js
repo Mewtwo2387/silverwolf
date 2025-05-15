@@ -71,11 +71,11 @@ class Trade extends Command {
     const row = new Discord.ActionRowBuilder()
       .addComponents(
         new Discord.ButtonBuilder()
-          .setCustomId('accept_trade')
+          .setCustomId('acceptTrade')
           .setLabel('Accept')
           .setStyle(Discord.ButtonStyle.Success),
         new Discord.ButtonBuilder()
-          .setCustomId('reject_trade')
+          .setCustomId('rejectTrade')
           .setLabel('Reject')
           .setStyle(Discord.ButtonStyle.Danger),
       );
@@ -91,7 +91,7 @@ class Trade extends Command {
       components: [row],
     });
 
-    const filter = (i) => (i.customId === 'accept_trade' || i.customId === 'reject_trade');
+    const filter = (i) => (i.customId === 'acceptTrade' || i.customId === 'rejectTrade');
     const collector = interaction.channel.createMessageComponentCollector({ filter, time: 60000 }); // 1 minute collector
 
     collector.on('collect', async (i) => {
@@ -106,7 +106,7 @@ class Trade extends Command {
         return;
       }
 
-      if (i.customId === 'accept_trade') {
+      if (i.customId === 'acceptTrade') {
         selfPokemonCount = await this.client.db.getPokemonCount(self, pokemonSending);
         targetPokemonCount = await this.client.db.getPokemonCount(target, pokemonRequesting);
 
@@ -163,7 +163,7 @@ class Trade extends Command {
         return;
       }
 
-      if (i.customId === 'reject_trade') {
+      if (i.customId === 'rejectTrade') {
         await i.reply({
           embeds: [
             new Discord.EmbedBuilder()

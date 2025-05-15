@@ -76,21 +76,21 @@ ${allMaxed ? `Your ascension level will increase from ${ascensionLevel} to ${asc
       if (i.customId === 'confirm_ascend') {
         await this.client.db.setUserAttr(interaction.user.id, 'credits', 0);
         await this.client.db.setUserAttr(interaction.user.id, 'bitcoin', 0);
-        await this.client.db.setUserAttr(interaction.user.id, 'last_bought_price', 0);
-        await this.client.db.setUserAttr(interaction.user.id, 'last_bought_amount', 0);
-        await this.client.db.setUserAttr(interaction.user.id, 'total_bought_price', 0);
-        await this.client.db.setUserAttr(interaction.user.id, 'total_bought_amount', 0);
-        await this.client.db.setUserAttr(interaction.user.id, 'total_sold_price', 0);
-        await this.client.db.setUserAttr(interaction.user.id, 'total_sold_amount', 0);
+        await this.client.db.setUserAttr(interaction.user.id, 'lastBoughtPrice', 0);
+        await this.client.db.setUserAttr(interaction.user.id, 'lastBoughtAmount', 0);
+        await this.client.db.setUserAttr(interaction.user.id, 'totalBoughtPrice', 0);
+        await this.client.db.setUserAttr(interaction.user.id, 'totalBoughtAmount', 0);
+        await this.client.db.setUserAttr(interaction.user.id, 'totalSoldPrice', 0);
+        await this.client.db.setUserAttr(interaction.user.id, 'totalSoldAmount', 0);
         await this.client.db.setUserAttr(interaction.user.id, 'dinonuggies', 0);
-        await this.client.db.setUserAttr(interaction.user.id, 'dinonuggies_last_claimed', null);
-        await this.client.db.setUserAttr(interaction.user.id, 'dinonuggies_claim_streak', 0);
-        await this.client.db.setUserAttr(interaction.user.id, 'multiplier_amount_level', 1);
-        await this.client.db.setUserAttr(interaction.user.id, 'multiplier_rarity_level', 1);
-        await this.client.db.setUserAttr(interaction.user.id, 'beki_level', 1);
-        await this.client.db.addUserAttr(interaction.user.id, 'heavenly_nuggies', dinonuggies);
+        await this.client.db.setUserAttr(interaction.user.id, 'dinonuggiesLastClaimed', null);
+        await this.client.db.setUserAttr(interaction.user.id, 'dinonuggiesClaimStreak', 0);
+        await this.client.db.setUserAttr(interaction.user.id, 'multiplierAmountLevel', 1);
+        await this.client.db.setUserAttr(interaction.user.id, 'multiplierRarityLevel', 1);
+        await this.client.db.setUserAttr(interaction.user.id, 'bekiLevel', 1);
+        await this.client.db.addUserAttr(interaction.user.id, 'heavenlyNuggies', dinonuggies);
         if (allMaxed) {
-          await this.client.db.setUserAttr(interaction.user.id, 'ascension_level', ascensionLevel + 1);
+          await this.client.db.setUserAttr(interaction.user.id, 'ascensionLevel', ascensionLevel + 1);
         }
 
         const resultEmbed = new Discord.EmbedBuilder()

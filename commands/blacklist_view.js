@@ -35,7 +35,7 @@ class GetBlacklistedCommands extends DevCommand {
       }
 
       // Format the blacklisted commands for display
-      const formattedCommands = blacklistedCommands.map((cmd, index) => `**${index + 1}. Command**: ${cmd.command_name}\n**Reason**: ${cmd.reason || 'No reason provided'}\n**Date Disabled**: ${cmd.disabled_date}`).join('\n\n');
+      const formattedCommands = blacklistedCommands.map((cmd, index) => `**${index + 1}. Command**: ${cmd.commandName}\n**Reason**: ${cmd.reason || 'No reason provided'}\n**Date Disabled**: ${cmd.disabled_date}`).join('\n\n');
 
       // Send the list of blacklisted commands as a message
       await interaction.editReply({

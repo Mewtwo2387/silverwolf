@@ -39,7 +39,7 @@ class GamblerBoard extends Command {
       if (leaderboardType === 'all') {
         totalCount = await this.client.db.getAllRelativeNetWinningsCount();
       } else {
-        totalCount = await this.client.db.getEveryoneAttrCount(`${leaderboardType}_times_played`);
+        totalCount = await this.client.db.getEveryoneAttrCount(`${leaderboardType}TimesPlayed`);
       }
       const maxPage = Math.ceil(totalCount / this.itemsPerPage) - 1;
       const leaderboard = await this.generateLeaderboard(winnings, currentPage, leaderboardType);
@@ -48,12 +48,12 @@ class GamblerBoard extends Command {
       const row = new Discord.ActionRowBuilder()
         .addComponents(
           new Discord.ButtonBuilder()
-            .setCustomId('prev_page')
+            .setCustomId('prevPage')
             .setLabel('⬅️ Back')
             .setStyle(Discord.ButtonStyle.Primary)
             .setDisabled(true), // Disable at first page
           new Discord.ButtonBuilder()
-            .setCustomId('next_page')
+            .setCustomId('nextPage')
             .setLabel('Next ➡️')
             .setStyle(Discord.ButtonStyle.Primary)
             .setDisabled(currentPage === maxPage), // Disable if no more pages
@@ -69,9 +69,9 @@ class GamblerBoard extends Command {
       const collector = message.createMessageComponentCollector({ time: 60000 }); // 1 minute timeout
 
       collector.on('collect', async (i) => {
-        if (i.customId === 'prev_page' && currentPage > 0) {
+        if (i.customId === 'prevPage' && currentPage > 0) {
           currentPage--;
-        } else if (i.customId === 'next_page' && currentPage < maxPage) {
+        } else if (i.customId === 'nextPage' && currentPage < maxPage) {
           currentPage++;
         }
 
@@ -88,12 +88,12 @@ class GamblerBoard extends Command {
         const newRow = new Discord.ActionRowBuilder()
           .addComponents(
             new Discord.ButtonBuilder()
-              .setCustomId('prev_page')
+              .setCustomId('prevPage')
               .setLabel('⬅️ Back')
               .setStyle(Discord.ButtonStyle.Primary)
               .setDisabled(currentPage === 0), // Disable at first page
             new Discord.ButtonBuilder()
-              .setCustomId('next_page')
+              .setCustomId('nextPage')
               .setLabel('Next ➡️')
               .setStyle(Discord.ButtonStyle.Primary)
               .setDisabled(currentPage === maxPage), // Disable at last page
@@ -108,12 +108,12 @@ class GamblerBoard extends Command {
         const disabledRow = new Discord.ActionRowBuilder()
           .addComponents(
             new Discord.ButtonBuilder()
-              .setCustomId('prev_page')
+              .setCustomId('prevPage')
               .setLabel('⬅️ Back')
               .setStyle(Discord.ButtonStyle.Primary)
               .setDisabled(true),
             new Discord.ButtonBuilder()
-              .setCustomId('next_page')
+              .setCustomId('nextPage')
               .setLabel('Next ➡️')
               .setStyle(Discord.ButtonStyle.Primary)
               .setDisabled(true),
@@ -130,7 +130,7 @@ class GamblerBoard extends Command {
   async generateLeaderboard(winnings, page, leaderboardType) {
     let result = '';
     for (let i = 0; i < winnings.length; i++) {
-      result += `${i + 1 + (page * this.itemsPerPage)}. <@${winnings[i].id}>: ${winnings[i].relative_won > 0 ? '+' : ''}${format(winnings[i].relative_won, true)} bets\n`;
+      result += `${i + 1 + (page * this.itemsPerPage)}. <@${winnings[i].id}>: ${winnings[i].relativeWon > 0 ? '+' : ''}${format(winnings[i].relativeWon, true)} bets\n`;
     }
 
     let title;

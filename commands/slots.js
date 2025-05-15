@@ -129,11 +129,11 @@ class Slots extends Command {
     if (amount >= 0) {
       multi *= await marriageBenefits(this.client, interaction.user.id);
       const winnings = multi * amount;
-      await this.client.db.addUserAttr(interaction.user.id, 'slots_times_played', 1);
-      await this.client.db.addUserAttr(interaction.user.id, 'slots_amount_gambled', amount);
-      await this.client.db.addUserAttr(interaction.user.id, 'slots_times_won', multi > 0 ? 1 : 0);
-      await this.client.db.addUserAttr(interaction.user.id, 'slots_amount_won', winnings);
-      await this.client.db.addUserAttr(interaction.user.id, 'slots_relative_won', multi);
+      await this.client.db.addUserAttr(interaction.user.id, 'slotsTimesPlayed', 1);
+      await this.client.db.addUserAttr(interaction.user.id, 'slotsTimesGambled', amount);
+      await this.client.db.addUserAttr(interaction.user.id, 'slotsTimesWon', multi > 0 ? 1 : 0);
+      await this.client.db.addUserAttr(interaction.user.id, 'slotsAmountWon', winnings);
+      await this.client.db.addUserAttr(interaction.user.id, 'slotsRelativeWon', multi);
       await this.client.db.addUserAttr(interaction.user.id, 'credits', winnings - amount);
       if (multi == 0) {
         const loseMessage = skin.loseMessage.replace('{amount}', format(amount));

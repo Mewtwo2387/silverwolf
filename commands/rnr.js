@@ -49,7 +49,7 @@ class RnRCommand extends Command {
           .setLabel('Continue')
           .setStyle(ButtonStyle.Success),
         new ButtonBuilder()
-          .setCustomId('step_out')
+          .setCustomId('stepOut')
           .setLabel('No balls')
           .setStyle(ButtonStyle.Danger),
       );
@@ -82,7 +82,7 @@ class RnRCommand extends Command {
           });
           collector.stop();
         }
-      } else if (i.customId === 'step_out') {
+      } else if (i.customId === 'stepOut') {
         // Calculate the 5% entrance fee
         const entranceFee = currentAmount * 0.05;
         await this.client.db.addUserAttr(interaction.user.id, 'credits', -entranceFee); // Deduct the entrance fee

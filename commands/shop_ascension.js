@@ -12,13 +12,13 @@ class AscensionUpgrade extends Command {
   }
 
   async run(interaction) {
-    const ascensionLevel = await this.client.db.getUserAttr(interaction.user.id, 'ascension_level');
+    const ascensionLevel = await this.client.db.getUserAttr(interaction.user.id, 'ascensionLevel');
 
-    const nuggieFlatMultiplierLevel = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_flat_multiplier_level');
-    const nuggieStreakMultiplierLevel = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_streak_multiplier_level');
-    const nuggieCreditsMultiplierLevel = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_credits_multiplier_level');
-    const nuggiePokemonMultiplierLevel = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_pokemon_multiplier_level');
-    const nuggieNuggieMultiplierLevel = await this.client.db.getUserAttr(interaction.user.id, 'nuggie_nuggie_multiplier_level');
+    const nuggieFlatMultiplierLevel = await this.client.db.getUserAttr(interaction.user.id, 'nuggieFlatMultiplierLevel');
+    const nuggieStreakMultiplierLevel = await this.client.db.getUserAttr(interaction.user.id, 'nuggieStreakMultiplierLevel');
+    const nuggieCreditsMultiplierLevel = await this.client.db.getUserAttr(interaction.user.id, 'nuggieCreditsMultiplierLevel');
+    const nuggiePokemonMultiplierLevel = await this.client.db.getUserAttr(interaction.user.id, 'nuggiePokemonMultiplierLevel');
+    const nuggieNuggieMultiplierLevel = await this.client.db.getUserAttr(interaction.user.id, 'nuggieNuggieMultiplierLevel');
 
     const nuggieFlatMultiplier = getNuggieFlatMultiplier(nuggieFlatMultiplierLevel);
     const nuggieFlatMultiplierNext = getNuggieFlatMultiplier(nuggieFlatMultiplierLevel + 1);

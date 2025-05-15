@@ -58,7 +58,7 @@ class AskGeminiCommand extends Command {
         if (!lastSession || lastSession == undefined) {
           session = await this.client.db.startChatSession(interaction.user.id, interaction.guild.id);
         } else {
-          await this.client.db.endChatSession(lastSession.session_id);
+          await this.client.db.endChatSession(lastSession.sessionId);
           session = await this.client.db.startChatSession(interaction.user.id, interaction.guild.id);
         }
       } else if (!lastSession || lastSession == undefined) {
@@ -67,7 +67,7 @@ class AskGeminiCommand extends Command {
         session = lastSession;
       }
 
-      const rawChatHistory = await this.client.db.getChatHistory(session.session_id);
+      const rawChatHistory = await this.client.db.getChatHistory(session.sessionId);
 
       const chatHistory = rawChatHistory.reverse().map((entry) => ({
         role: entry.role === 'assistant' ? 'model' : entry.role,
@@ -97,8 +97,8 @@ class AskGeminiCommand extends Command {
       await interaction.editReply({ content: null, embeds: [embed] });
 
       // Store user and assistant messages in the database
-      await this.client.db.addChatHistory(session.session_id, 'user', prompt);
-      await this.client.db.addChatHistory(session.session_id, 'model', processedText);
+      await this.client.db.addChatHistory(session.sessionId, 'user', prompt);
+      await this.client.db.addChatHistory(session.sessionId, 'model', processedText);
     } catch (error) {
       logError('Error generating text:', error);
       await interaction.editReply({ content: 'Failed to retrieve response from Gemini AI. Please try again later.', ephemeral: true });

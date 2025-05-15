@@ -33,8 +33,8 @@ class BabyBirth extends Command {
       return;
     }
 
-    if (baby.mother_id != userId) {
-      if (baby.father_id == userId) {
+    if (baby.motherId !== userId) {
+      if (baby.fatherId === userId) {
         await interaction.editReply({
           embeds: [
             new EmbedBuilder()
@@ -56,7 +56,7 @@ class BabyBirth extends Command {
       return;
     }
 
-    if (baby.status != 'unborn') {
+    if (baby.status !== 'unborn') {
       await interaction.editReply({
         embeds: [
           new EmbedBuilder()

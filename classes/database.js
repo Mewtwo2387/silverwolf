@@ -1,5 +1,6 @@
 const sqlite3 = require('sqlite3').verbose();
 const { log, logError } = require('../utils/log');
+const { snakeToCamelJSON, camelToSnake } = require('../utils/caseConvert');
 
 const userTable = {
   name: 'User',
@@ -309,7 +310,7 @@ class Database {
         if (err) {
           return reject(err);
         }
-        resolve(row);
+        resolve(row ? snakeToCamelJSON(row) : null);
       });
     });
   }
@@ -320,7 +321,7 @@ class Database {
         if (err) {
           return reject(err);
         }
-        resolve(rows);
+        resolve(rows.map((row) => snakeToCamelJSON(row)));
       });
     });
   }
@@ -331,7 +332,7 @@ class Database {
 
       if (row) {
         log(`User ${userId} found`);
-        return row;
+        return snakeToCamelJSON(row);
       }
       log(`User ${userId} not found. Creating new user.`);
       await this.createUser(userId);
@@ -365,36 +366,38 @@ class Database {
   }
 
   async addUserAttr(userId, field, value) {
+    const attribute = camelToSnake(field);
     try {
-      if (value == null || value == undefined) {
-        if (field != 'dinonuggies_last_claimed') {
+      if (value === null || value === undefined) {
+        if (attribute !== 'dinonuggies_last_claimed') {
           log(`Skipping update for ${field} as value is null`);
           return;
         }
       }
       await this.createUserIfNotExists(userId);
-      const query = `UPDATE User SET ${field} = ${field} + ? WHERE id = ?;`;
+      const query = `UPDATE User SET ${attribute} = ${attribute} + ? WHERE id = ?;`;
       await this.executeQuery(query, [value, userId]);
-      log(`Updated user ${userId}: ${field} increased by ${value}.`);
+      log(`Updated user ${userId}: ${attribute} increased by ${value}.`);
     } catch (err) {
-      logError(`Failed to update ${field}:`, err.message);
+      logError(`Failed to update ${attribute}:`, err.message);
     }
   }
 
   async setUserAttr(userId, field, value) {
+    const attribute = camelToSnake(field);
     try {
-      if (value == null || value == undefined) {
-        if (field != 'dinonuggies_last_claimed') {
+      if (value === null || value === undefined) {
+        if (attribute !== 'dinonuggies_last_claimed') {
           log(`Skipping update for ${field} as value is null`);
           return;
         }
       }
       await this.createUserIfNotExists(userId);
-      const query = `UPDATE User SET ${field} = ? WHERE id = ?;`;
+      const query = `UPDATE User SET ${attribute} = ? WHERE id = ?;`;
       await this.executeQuery(query, [value, userId]);
-      log(`Updated user ${userId}: ${field} set to ${value}.`);
+      log(`Updated user ${userId}: ${attribute} set to ${value}.`);
     } catch (err) {
-      logError(`Failed to override ${field}:`, err.message);
+      logError(`Failed to override ${attribute}:`, err.message);
     }
   }
 

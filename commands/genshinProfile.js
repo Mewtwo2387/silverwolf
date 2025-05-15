@@ -73,7 +73,7 @@ class GenshinProfile extends Command {
                     + `**Signature:** ${playerInfo.signature ?? 'No signature provided'}\n`
                     + `**Achievements:** ${playerInfo.finishAchievementNum ?? '0'}\n`
                     + `**Spiral Abyss:** Floor ${playerInfo.towerFloorIndex ?? 'N/A'}, Level ${playerInfo.towerLevelIndex ?? 'N/A'}\n`
-                    + `**namecard_id:** ${playerInfo.nameCardId ?? 'N/A'}\n`,
+                    + `**Namecard ID:** ${playerInfo.nameCardId ?? 'N/A'}\n`,
         thumbnail: profilePictureUrl ? { url: profilePictureUrl } : undefined,
         image: namecardUrl ? { url: namecardUrl } : undefined,
         timestamp: new Date(),

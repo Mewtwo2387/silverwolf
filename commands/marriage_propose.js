@@ -71,11 +71,11 @@ class MarriagePropose extends Command {
     const row = new Discord.ActionRowBuilder()
       .addComponents(
         new Discord.ButtonBuilder()
-          .setCustomId('accept_proposal')
+          .setCustomId('acceptProposal')
           .setLabel('Accept💍')
           .setStyle(Discord.ButtonStyle.Success),
         new Discord.ButtonBuilder()
-          .setCustomId('reject_proposal')
+          .setCustomId('rejectProposal')
           .setLabel('Reject💔')
           .setStyle(Discord.ButtonStyle.Danger),
       );
@@ -90,7 +90,7 @@ class MarriagePropose extends Command {
     });
 
     // Create a collector to handle button interactions
-    const filter = (i) => (i.customId === 'accept_proposal' || i.customId === 'reject_proposal');
+    const filter = (i) => (i.customId === 'acceptProposal' || i.customId === 'rejectProposal');
     const collector = interaction.channel.createMessageComponentCollector({ filter, time: 60000 }); // 1 minute collector
 
     collector.on('collect', async (i) => {
@@ -127,7 +127,7 @@ class MarriagePropose extends Command {
         return; // Stop further processing
       }
 
-      if (i.customId === 'accept_proposal') {
+      if (i.customId === 'acceptProposal') {
         // Array of acceptance GIFs
         const acceptanceGifs = [
           'https://media1.tenor.com/m/vor_61NjS7oAAAAC/anime-couple.gif',
@@ -158,7 +158,7 @@ class MarriagePropose extends Command {
         });
 
         collector.stop();
-      } else if (i.customId === 'reject_proposal') {
+      } else if (i.customId === 'rejectProposal') {
         await i.update({
           content: `<@${targetUser.id}> has rejected the proposal.`,
           embeds: [new Discord.EmbedBuilder()

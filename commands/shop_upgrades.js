@@ -11,12 +11,12 @@ class Upgrades extends Command {
   }
 
   async run(interaction) {
-    const ascensionLevel = await this.client.db.getUserAttr(interaction.user.id, 'ascension_level');
+    const ascensionLevel = await this.client.db.getUserAttr(interaction.user.id, 'ascensionLevel');
     const maxLevel = getMaxLevel(ascensionLevel);
 
-    const multiplierAmountLevel = await this.client.db.getUserAttr(interaction.user.id, 'multiplier_amount_level');
-    const multiplierRarityLevel = await this.client.db.getUserAttr(interaction.user.id, 'multiplier_rarity_level');
-    const bekiLevel = await this.client.db.getUserAttr(interaction.user.id, 'beki_level');
+    const multiplierAmountLevel = await this.client.db.getUserAttr(interaction.user.id, 'multiplierAmountLevel');
+    const multiplierRarityLevel = await this.client.db.getUserAttr(interaction.user.id, 'multiplierRarityLevel');
+    const bekiLevel = await this.client.db.getUserAttr(interaction.user.id, 'bekiLevel');
 
     const multiplierAmount = getMultiplierAmount(multiplierAmountLevel);
     const multiplierAmountNext = getMultiplierAmount(Math.min(multiplierAmountLevel + 1, maxLevel));

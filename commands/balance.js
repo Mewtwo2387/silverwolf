@@ -12,8 +12,8 @@ class Balance extends Command {
     const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
     const bitcoin = await this.client.db.getUserAttr(interaction.user.id, 'bitcoin');
     const dinonuggies = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggies');
-    const dinonuggiesStreak = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggies_claim_streak');
-    const heavenlyNuggies = await this.client.db.getUserAttr(interaction.user.id, 'heavenly_nuggies');
+    const dinonuggiesStreak = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggiesClaimStreak');
+    const heavenlyNuggies = await this.client.db.getUserAttr(interaction.user.id, 'heavenlyNuggies');
     log(`${interaction.user.username} have ${format(credits)} mystic credits, ${bitcoin} bitcoin, ${format(dinonuggies)} dinonuggies, and ${format(heavenlyNuggies)} heavenly nuggies`);
     await interaction.editReply({
       embeds: [new Discord.EmbedBuilder()

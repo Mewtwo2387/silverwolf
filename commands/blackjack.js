@@ -190,21 +190,21 @@ class Blackjack extends Command {
   }
 
   async handleWin(interaction, amount, playerHand, dealerHand, message) {
-    let streak = await this.client.db.getUserAttr(interaction.user.id, 'blackjack_streak');
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjack_times_played', 1);
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjack_amount_gambled', amount);
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjack_times_won', 1);
+    let streak = await this.client.db.getUserAttr(interaction.user.id, 'blackjackStreak');
+    await this.client.db.addUserAttr(interaction.user.id, 'blackjackTimesPlayed', 1);
+    await this.client.db.addUserAttr(interaction.user.id, 'blackjackAmountGambled', amount);
+    await this.client.db.addUserAttr(interaction.user.id, 'blackjackTimesWon', 1);
 
     const multiplier = await marriageBenefits(this.client, interaction.user.id) * 2.1 * 1.08 ** streak;
     streak++;
-    if (streak > await this.client.db.getUserAttr(interaction.user.id, 'blackjack_max_streak')) {
-      await this.client.db.setUserAttr(interaction.user.id, 'blackjack_max_streak', streak);
+    if (streak > await this.client.db.getUserAttr(interaction.user.id, 'blackjackMaxStreak')) {
+      await this.client.db.setUserAttr(interaction.user.id, 'blackjackMaxStreak', streak);
     }
 
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjack_amount_won', amount * multiplier);
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjack_relative_won', multiplier);
+    await this.client.db.addUserAttr(interaction.user.id, 'blackjackAmountWon', amount * multiplier);
+    await this.client.db.addUserAttr(interaction.user.id, 'blackjackRelativeWon', multiplier);
     await this.client.db.addUserAttr(interaction.user.id, 'credits', amount * multiplier - amount);
-    await this.client.db.setUserAttr(interaction.user.id, 'blackjack_streak', streak);
+    await this.client.db.setUserAttr(interaction.user.id, 'blackjackStreak', streak);
 
     await interaction.editReply({
       embeds: [new Discord.EmbedBuilder()
@@ -216,11 +216,11 @@ class Blackjack extends Command {
   }
 
   async handleLoss(interaction, amount, playerHand, dealerHand, message) {
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjack_times_played', 1);
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjack_amount_gambled', amount);
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjack_times_lost', 1);
+    await this.client.db.addUserAttr(interaction.user.id, 'blackjackTimesPlayed', 1);
+    await this.client.db.addUserAttr(interaction.user.id, 'blackjackAmountGambled', amount);
+    await this.client.db.addUserAttr(interaction.user.id, 'blackjackTimesLost', 1);
     await this.client.db.addUserAttr(interaction.user.id, 'credits', -amount);
-    await this.client.db.setUserAttr(interaction.user.id, 'blackjack_streak', 0);
+    await this.client.db.setUserAttr(interaction.user.id, 'blackjackStreak', 0);
 
     await interaction.editReply({
       embeds: [new Discord.EmbedBuilder()
@@ -232,11 +232,11 @@ class Blackjack extends Command {
   }
 
   async handleTie(interaction, amount, playerHand, dealerHand, message) {
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjack_times_played', 1);
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjack_amount_gambled', amount);
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjack_times_drawn', 1);
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjack_amount_won', amount);
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjack_relative_won', 1);
+    await this.client.db.addUserAttr(interaction.user.id, 'blackjackTimesPlayed', 1);
+    await this.client.db.addUserAttr(interaction.user.id, 'blackjackAmountGambled', amount);
+    await this.client.db.addUserAttr(interaction.user.id, 'blackjackTimesDrawn', 1);
+    await this.client.db.addUserAttr(interaction.user.id, 'blackjackAmountWon', amount);
+    await this.client.db.addUserAttr(interaction.user.id, 'blackjackRelativeWon', 1);
     await interaction.editReply({
       embeds: [new Discord.EmbedBuilder()
         .setColor('#FFFF00')

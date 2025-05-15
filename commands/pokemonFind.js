@@ -23,9 +23,9 @@ class HasPokemon extends Command {
       if (rows.length === 0) return interaction.editReply({ content: `No users found with Pokémon of type "${type}".` });
 
       const userList = rows.map((row) => {
-        const user = this.client.users.cache.get(row.user_id)?.username ?? `<@${row.user_id}>`;
+        const user = this.client.users.cache.get(row.userId)?.username ?? `<@${row.userId}>`;
 
-        return `${user}: ${row.pokemon_count}`;
+        return `${user}: ${row.pokemonCount}`;
       });
 
       const itemsPerPage = 10;
@@ -43,12 +43,12 @@ class HasPokemon extends Command {
       const row = new ActionRowBuilder()
         .addComponents(
           new ButtonBuilder()
-            .setCustomId('prev_page')
+            .setCustomId('prevPage')
             .setLabel('⬅️ Back')
             .setStyle(ButtonStyle.Primary)
             .setDisabled(true),
           new ButtonBuilder()
-            .setCustomId('next_page')
+            .setCustomId('nextPage')
             .setLabel('Next ➡️')
             .setStyle(ButtonStyle.Primary)
             .setDisabled(currentPage === totalPages),
@@ -62,9 +62,9 @@ class HasPokemon extends Command {
       const collector = message.createMessageComponentCollector({ time: 60000 }); // 1 minute timeout
 
       collector.on('collect', async (i) => {
-        if (i.customId === 'prev_page' && currentPage > 0) {
+        if (i.customId === 'prevPage' && currentPage > 0) {
           currentPage--;
-        } else if (i.customId === 'next_page' && currentPage < totalPages) {
+        } else if (i.customId === 'nextPage' && currentPage < totalPages) {
           currentPage++;
         }
 

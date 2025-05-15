@@ -8,7 +8,7 @@ class MurderBoard extends LeaderboardMixin(Command) {
       'murderboard',
       'criminal records',
       'Murder Leaderboard',
-      'murder_success',
+      'murderSuccess',
       'Successful Murders',
       'No successful murders yet!',
     );
