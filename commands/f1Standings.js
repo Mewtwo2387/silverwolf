@@ -1,7 +1,7 @@
 const Discord = require('discord.js');
 const axios = require('axios');
 const xml2js = require('xml2js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 const { logError } = require('../utils/log');
 
 class F1Standings extends Command {

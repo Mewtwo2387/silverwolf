@@ -1,14 +1,13 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { EmbedBuilder } = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 require('dotenv').config();
-const { log, logError } = require('../utils/log.js');
-const { unformatFile } = require('../utils/formatter.js');
-const fs = require('fs');
+const { log, logError } = require('../utils/log');
+const { unformatFile } = require('../utils/formatter');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_TOKEN);
 const systemInstruction = unformatFile('./data/SilverwolfSystemPrompt.txt');
-class AskGeminiCommand extends Command {
+class AskSilverwolfAI extends Command {
   constructor(client) {
     super(client, 'ask-silverwolf-ai', 'wow this is so cool, should i add an ai art command ?', [
       {
@@ -56,19 +55,19 @@ class AskGeminiCommand extends Command {
       let session = lastSession;
 
       if (reset) {
-        if (!lastSession || lastSession == undefined) {
+        if (!lastSession || lastSession === undefined) {
           session = await this.client.db.startChatSession(interaction.user.id, interaction.guild.id);
         } else {
-          await this.client.db.endChatSession(lastSession.session_id);
+          await this.client.db.endChatSession(lastSession.sessionId);
           session = await this.client.db.startChatSession(interaction.user.id, interaction.guild.id);
         }
-      } else if (!lastSession || lastSession == undefined) {
+      } else if (!lastSession || lastSession === undefined) {
         session = await this.client.db.startChatSession(interaction.user.id, interaction.guild.id);
       } else {
         session = lastSession;
       }
 
-      const rawChatHistory = await this.client.db.getChatHistory(session.session_id);
+      const rawChatHistory = await this.client.db.getChatHistory(session.sessionId);
 
       const chatHistory = rawChatHistory.reverse().map((entry) => ({
         role: entry.role === 'assistant' ? 'model' : entry.role,
@@ -98,8 +97,8 @@ class AskGeminiCommand extends Command {
       await interaction.editReply({ content: null, embeds: [embed] });
 
       // Store user and assistant messages in the database
-      await this.client.db.addChatHistory(session.session_id, 'user', prompt);
-      await this.client.db.addChatHistory(session.session_id, 'model', processedText);
+      await this.client.db.addChatHistory(session.sessionId, 'user', prompt);
+      await this.client.db.addChatHistory(session.sessionId, 'model', processedText);
     } catch (error) {
       logError('Error generating text:', error);
       await interaction.editReply({ content: 'Failed to retrieve response from Gemini AI. Please try again later.', ephemeral: true });
@@ -107,4 +106,4 @@ class AskGeminiCommand extends Command {
   }
 }
 
-module.exports = AskGeminiCommand;
+module.exports = AskSilverwolfAI;

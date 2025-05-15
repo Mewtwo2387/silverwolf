@@ -2,14 +2,14 @@ const Discord = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const {
-  getNuggieStreakMultiplier, getNuggieFlatMultiplier, getNuggieCreditsMultiplier, getNuggiePokeMultiplier, getNuggieNuggieMultiplier,
-} = require('../utils/ascensionupgrades.js');
-const { getMultiplierAmount, getMultiplierChance, getBekiCooldown } = require('../utils/upgrades.js');
-const { format } = require('../utils/math.js');
-const { Command } = require('./classes/command.js');
-const marriageBenefits = require('../utils/marriageBenefits.js');
-const { logError } = require('../utils/log');
-const { log } = require('../utils/log');
+  getNuggieStreakMultiplier, getNuggieFlatMultiplier, getNuggieCreditsMultiplier,
+  getNuggiePokeMultiplier, getNuggieNuggieMultiplier,
+} = require('../utils/ascensionupgrades');
+const { getMultiplierAmount, getMultiplierChance, getBekiCooldown } = require('../utils/upgrades');
+const { format } = require('../utils/math');
+const { Command } = require('./classes/command');
+const marriageBenefits = require('../utils/marriageBenefits');
+const { logError, log } = require('../utils/log');
 
 const DAY_LENGTH = 24 * 60 * 60 * 1000;
 const HOUR_LENGTH = 60 * 60 * 1000;
@@ -37,9 +37,9 @@ class Claim extends Command {
       .replace(/{gold}/g, goldPercentage)
       .replace(/{silver}/g, silverPercentage)
       .replace(/{bronze}/g, bronzePercentage)
-      .replace(/{multiplier_gold}/g, goldMultiplier)
-      .replace(/{multiplier_silver}/g, silverMultiplier)
-      .replace(/{multiplier_bronze}/g, bronzeMultiplier);
+      .replace(/{multiplierGold}/g, goldMultiplier)
+      .replace(/{multiplierSilver}/g, silverMultiplier)
+      .replace(/{multiplierBronze}/g, bronzeMultiplier);
 
     return {
       amount,
@@ -52,44 +52,44 @@ class Claim extends Command {
   }
 
   async getBaseAmount(uid, streak) {
-    const nuggie_flat_multiplier_level = await this.client.db.getUserAttr(uid, 'nuggie_flat_multiplier_level');
-    const nuggie_streak_multiplier_level = await this.client.db.getUserAttr(uid, 'nuggie_streak_multiplier_level');
-    const marriage_benefits = await marriageBenefits(this.client, uid);
+    const nuggieFlatMultiplierLevel = await this.client.db.getUserAttr(uid, 'nuggieFlatMultiplierLevel');
+    const nuggieStreakMultiplierLevel = await this.client.db.getUserAttr(uid, 'nuggieStreakMultiplierLevel');
+    const marriageBenefitsMultiplier = await marriageBenefits(this.client, uid);
 
-    const nuggie_credits_multiplier_level = await this.client.db.getUserAttr(uid, 'nuggie_credits_multiplier_level');
+    const nuggieCreditsMultiplierLevel = await this.client.db.getUserAttr(uid, 'nuggieCreditsMultiplierLevel');
     const credits = await this.client.db.getUserAttr(uid, 'credits');
-    const log2_credits = credits > 1 ? Math.log2(credits) : 0;
+    const log2Credits = credits > 1 ? Math.log2(credits) : 0;
 
-    const nuggie_pokemon_multiplier_level = await this.client.db.getUserAttr(uid, 'nuggie_pokemon_multiplier_level');
-    const pokemon_count = await this.client.db.getUniquePokemonCount(uid);
+    const nuggiePokemonMultiplierLevel = await this.client.db.getUserAttr(uid, 'nuggiePokemonMultiplierLevel');
+    const pokemonCount = await this.client.db.getUniquePokemonCount(uid);
 
-    const nuggie_nuggie_multiplier_level = await this.client.db.getUserAttr(uid, 'nuggie_nuggie_multiplier_level');
+    const nuggieNuggieMultiplierLevel = await this.client.db.getUserAttr(uid, 'nuggieNuggieMultiplierLevel');
     const nuggies = await this.client.db.getUserAttr(uid, 'dinonuggies');
-    const log2_nuggies = nuggies > 1 ? Math.log2(nuggies) : 0;
+    const log2Nuggies = nuggies > 1 ? Math.log2(nuggies) : 0;
 
     let baseAmount = (5 + streak);
     log(`Base amount: ${baseAmount}`);
-    baseAmount *= getNuggieFlatMultiplier(nuggie_flat_multiplier_level);
+    baseAmount *= getNuggieFlatMultiplier(nuggieFlatMultiplierLevel);
     log(`Base amount after flat multiplier: ${baseAmount}`);
-    baseAmount *= (1 + streak * getNuggieStreakMultiplier(nuggie_streak_multiplier_level));
+    baseAmount *= (1 + streak * getNuggieStreakMultiplier(nuggieStreakMultiplierLevel));
     log(`Base amount after streak multiplier: ${baseAmount}`);
-    baseAmount *= (1 + log2_credits * getNuggieCreditsMultiplier(nuggie_credits_multiplier_level));
+    baseAmount *= (1 + log2Credits * getNuggieCreditsMultiplier(nuggieCreditsMultiplierLevel));
     log(`Base amount after credits multiplier: ${baseAmount}`);
-    baseAmount *= (1 + pokemon_count * getNuggiePokeMultiplier(nuggie_pokemon_multiplier_level));
+    baseAmount *= (1 + pokemonCount * getNuggiePokeMultiplier(nuggiePokemonMultiplierLevel));
     log(`Base amount after pokemon multiplier: ${baseAmount}`);
-    baseAmount *= (1 + log2_nuggies * getNuggieNuggieMultiplier(nuggie_nuggie_multiplier_level));
+    baseAmount *= (1 + log2Nuggies * getNuggieNuggieMultiplier(nuggieNuggieMultiplierLevel));
     log(`Base amount after nuggie multiplier: ${baseAmount}`);
-    baseAmount *= marriage_benefits;
+    baseAmount *= marriageBenefitsMultiplier;
     log(`Base amount after marriage benefits: ${baseAmount}`);
     return baseAmount;
   }
 
   async getAmount(uid, streak) {
     const rand = Math.random();
-    const multiplier_amount_level = await this.client.db.getUserAttr(uid, 'multiplier_amount_level');
-    const multiplier_rarity_level = await this.client.db.getUserAttr(uid, 'multiplier_rarity_level');
-    const multiplier = getMultiplierAmount(multiplier_amount_level);
-    const { gold, silver, bronze } = getMultiplierChance(multiplier_rarity_level);
+    const multiplierAmountLevel = await this.client.db.getUserAttr(uid, 'multiplierAmountLevel');
+    const multiplierRarityLevel = await this.client.db.getUserAttr(uid, 'multiplierRarityLevel');
+    const multiplier = getMultiplierAmount(multiplierAmountLevel);
+    const { gold, silver, bronze } = getMultiplierChance(multiplierRarityLevel);
     log('claiming dinonuggies');
 
     if (rand < gold) {
@@ -107,7 +107,7 @@ class Claim extends Command {
   }
 
   async handleSuccessfulClaim(interaction, newMessage = false) {
-    const streak = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggies_claim_streak');
+    const streak = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggiesClaimStreak');
     const dinonuggies = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggies');
     const now = new Date();
     const {
@@ -123,8 +123,8 @@ class Claim extends Command {
       .setFooter({ text: `dinonuggie | ${footer}`, iconURL: 'https://drive.google.com/thumbnail?id=1oVDRweQoYLU6YfB01LWZpTFQiBS1fRRa' });
 
     await this.client.db.addUserAttr(interaction.user.id, 'dinonuggies', amount);
-    await this.client.db.setUserAttr(interaction.user.id, 'dinonuggies_last_claimed', now);
-    await this.client.db.addUserAttr(interaction.user.id, 'dinonuggies_claim_streak', 1);
+    await this.client.db.setUserAttr(interaction.user.id, 'dinonuggiesLastClaimed', now);
+    await this.client.db.addUserAttr(interaction.user.id, 'dinonuggiesClaimStreak', 1);
     if (newMessage) {
       await interaction.followUp({ embeds: [embed] });
     } else {
@@ -135,16 +135,16 @@ class Claim extends Command {
   async run(interaction) {
     try {
       const now = new Date();
-      const lastClaimedInt = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggies_last_claimed');
+      const lastClaimedInt = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggiesLastClaimed');
 
       const lastClaimed = lastClaimedInt ? new Date(lastClaimedInt) : null;
       const diff = lastClaimed ? now - lastClaimed : DAY_LENGTH;
 
-      const streak = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggies_claim_streak');
+      const streak = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggiesClaimStreak');
       const dinonuggies = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggies');
-      const beki_level = await this.client.db.getUserAttr(interaction.user.id, 'beki_level');
+      const bekiLevel = await this.client.db.getUserAttr(interaction.user.id, 'bekiLevel');
 
-      const cooldown = getBekiCooldown(beki_level);
+      const cooldown = getBekiCooldown(bekiLevel);
 
       if (diff < cooldown * HOUR_LENGTH) {
         const responses = [
@@ -199,13 +199,13 @@ class Claim extends Command {
           ],
         });
         await this.client.db.addUserAttr(interaction.user.id, 'dinonuggies', amount);
-        await this.client.db.setUserAttr(interaction.user.id, 'dinonuggies_last_claimed', now);
-        await this.client.db.setUserAttr(interaction.user.id, 'dinonuggies_claim_streak', 1);
+        await this.client.db.setUserAttr(interaction.user.id, 'dinonuggiesLastClaimed', now);
+        await this.client.db.setUserAttr(interaction.user.id, 'dinonuggiesClaimStreak', 1);
       } else {
         await this.handleSuccessfulClaim(interaction);
       }
 
-      if (await this.client.db.getGlobalConfig('banned') == 'removed') {
+      if (await this.client.db.getGlobalConfig('banned') === 'removed') {
         const embed = new Discord.EmbedBuilder()
           .setColor('Green')
           .setTitle('Welcome back!')

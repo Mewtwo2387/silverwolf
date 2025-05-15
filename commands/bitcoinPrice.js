@@ -1,9 +1,9 @@
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js'); // Adjust the path if necessary
-const { Bitcoin } = require('../classes/bitcoin.js');
-const { log, logError } = require('../utils/log.js');
+const { Command } = require('./classes/command');
+const { Bitcoin } = require('../classes/bitcoin');
+const { log, logError } = require('../utils/log');
 
-class BitcoinPriceCommand extends Command {
+class BitcoinPrice extends Command {
   constructor(client) {
     super(client, 'bitcoinprice', 'Fetches the current Bitcoin price', []);
   }
@@ -48,4 +48,4 @@ class BitcoinPriceCommand extends Command {
   }
 }
 
-module.exports = BitcoinPriceCommand;
+module.exports = BitcoinPrice;

@@ -1,8 +1,8 @@
 const fetch = require('node-fetch');
 const path = require('path');
 const fs = require('fs');
-const { Command } = require('./classes/command.js');
-const { logError } = require('../utils/log.js');
+const { Command } = require('./classes/command');
+const { logError } = require('../utils/log');
 
 const hsrAvatars = path.join(__dirname, '../data/hsrAvartars.json'); // Path to your local avatar data
 const hsrCharacters = path.join(__dirname, '../data/hsrCharacters.json'); // Path to character data

@@ -1,6 +1,6 @@
 const Discord = require('discord.js');
 const songs = require('../data/songs.json');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 class Sing extends Command {
   constructor(client) {

@@ -2,9 +2,9 @@ const fs = require('fs');
 const {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
 } = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
-class GachaRollCommand extends Command {
+class Gacha extends Command {
   constructor(client) {
     super(client, 'gacha', 'TECHNICAL TEST, WORK IN PROGRESS', [
       {
@@ -116,12 +116,12 @@ class GachaRollCommand extends Command {
       const row = new ActionRowBuilder()
         .addComponents(
           new ButtonBuilder()
-            .setCustomId('next_roll')
+            .setCustomId('nextRoll')
             .setLabel('➡️ Next')
             .setStyle(ButtonStyle.Primary)
             .setDisabled(currentIndex === results.length - 1),
           new ButtonBuilder()
-            .setCustomId('skip_results')
+            .setCustomId('skipResults')
             .setLabel('Skip to Results')
             .setStyle(ButtonStyle.Danger),
         );
@@ -139,11 +139,11 @@ class GachaRollCommand extends Command {
     const initialRow = new ActionRowBuilder()
       .addComponents(
         new ButtonBuilder()
-          .setCustomId('next_roll')
+          .setCustomId('nextRoll')
           .setLabel('➡️ Next')
           .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
-          .setCustomId('skip_results')
+          .setCustomId('skipResults')
           .setLabel('Skip to Results')
           .setStyle(ButtonStyle.Danger),
       );
@@ -174,4 +174,4 @@ class GachaRollCommand extends Command {
   }
 }
 
-module.exports = GachaRollCommand;
+module.exports = Gacha;

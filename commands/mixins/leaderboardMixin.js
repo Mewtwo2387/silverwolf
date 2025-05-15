@@ -107,7 +107,7 @@ function LeaderboardMixin(BaseClass) {
       for (let i = 0; i < attrs.length; i++) {
         result += `${i + 1 + (page * this.itemsPerPage)}. <@${attrs[i].id}>: ${format(attrs[i][this.attribute])} ${this.counter}\n`;
       }
-      if (result == '') {
+      if (result === '') {
         result = this.noneSentence;
       }
       return new Discord.EmbedBuilder()

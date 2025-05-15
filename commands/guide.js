@@ -1,6 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
-const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 const { logError } = require('../utils/log');
 
 class Guide extends Command {

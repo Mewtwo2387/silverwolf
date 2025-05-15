@@ -1,7 +1,7 @@
 const fetch = require('node-fetch');
 const path = require('path');
 const fs = require('fs');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 const genshinPfp = path.join(__dirname, '../data/genshinPfps.json');
 const genshinNamecards = path.join(__dirname, '../data/genshinNamecards.json');
@@ -73,7 +73,7 @@ class GenshinProfile extends Command {
                     + `**Signature:** ${playerInfo.signature ?? 'No signature provided'}\n`
                     + `**Achievements:** ${playerInfo.finishAchievementNum ?? '0'}\n`
                     + `**Spiral Abyss:** Floor ${playerInfo.towerFloorIndex ?? 'N/A'}, Level ${playerInfo.towerLevelIndex ?? 'N/A'}\n`
-                    + `**namecard_id:** ${playerInfo.nameCardId ?? 'N/A'}\n`,
+                    + `**Namecard ID:** ${playerInfo.nameCardId ?? 'N/A'}\n`,
         thumbnail: profilePictureUrl ? { url: profilePictureUrl } : undefined,
         image: namecardUrl ? { url: namecardUrl } : undefined,
         timestamp: new Date(),

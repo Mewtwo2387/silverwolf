@@ -1,10 +1,10 @@
 // probably not needed
 require('dotenv').config();
 const { EmbedBuilder } = require('discord.js');
-const { DevCommand } = require('./classes/devcommand.js');
-const { logError } = require('../utils/log.js');
+const { DevCommand } = require('./classes/devcommand');
+const { logError } = require('../utils/log');
 
-class TestBirthdaySchedulerCommand extends DevCommand {
+class BirthdayTest extends DevCommand {
   constructor(client) {
     super(client, 'test', 'Tests the birthday scheduler to ensure channels are accessible', [], { isSubcommandOf: 'birthday' });
   }
@@ -50,4 +50,4 @@ class TestBirthdaySchedulerCommand extends DevCommand {
   }
 }
 
-module.exports = TestBirthdaySchedulerCommand;
+module.exports = BirthdayTest;

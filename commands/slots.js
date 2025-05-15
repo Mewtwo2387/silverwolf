@@ -1,9 +1,9 @@
 const Discord = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-const { Command } = require('./classes/command.js');
-const { format, antiFormat } = require('../utils/math.js');
-const marriageBenefits = require('../utils/marriageBenefits.js');
+const { Command } = require('./classes/command');
+const { format, antiFormat } = require('../utils/math');
+const marriageBenefits = require('../utils/marriageBenefits');
 
 class Slots extends Command {
   constructor(client) {
@@ -117,11 +117,11 @@ class Slots extends Command {
 
     for (var i = 0; i < lines.length; i++) {
       const line = lines[i];
-      if (results[line[0]][0].emote == results[line[1]][1].emote && results[line[1]][1].emote == results[line[2]][2].emote && results[line[2]][2].emote == results[line[3]][3].emote && results[line[3]][3].emote == results[line[4]][4].emote) {
+      if (results[line[0]][0].emote === results[line[1]][1].emote && results[line[1]][1].emote === results[line[2]][2].emote && results[line[2]][2].emote === results[line[3]][3].emote && results[line[3]][3].emote === results[line[4]][4].emote) {
         multi += results[line[0]][0].value * 20;
-      } else if (results[line[0]][0].emote == results[line[1]][1].emote && results[line[1]][1].emote == results[line[2]][2].emote && results[line[2]][2].emote == results[line[3]][3].emote) {
+      } else if (results[line[0]][0].emote === results[line[1]][1].emote && results[line[1]][1].emote === results[line[2]][2].emote && results[line[2]][2].emote === results[line[3]][3].emote) {
         multi += results[line[0]][0].value * 4;
-      } else if (results[line[0]][0].emote == results[line[1]][1].emote && results[line[1]][1].emote == results[line[2]][2].emote) {
+      } else if (results[line[0]][0].emote === results[line[1]][1].emote && results[line[1]][1].emote === results[line[2]][2].emote) {
         multi += results[line[1]][1].value;
       }
     }
@@ -129,13 +129,13 @@ class Slots extends Command {
     if (amount >= 0) {
       multi *= await marriageBenefits(this.client, interaction.user.id);
       const winnings = multi * amount;
-      await this.client.db.addUserAttr(interaction.user.id, 'slots_times_played', 1);
-      await this.client.db.addUserAttr(interaction.user.id, 'slots_amount_gambled', amount);
-      await this.client.db.addUserAttr(interaction.user.id, 'slots_times_won', multi > 0 ? 1 : 0);
-      await this.client.db.addUserAttr(interaction.user.id, 'slots_amount_won', winnings);
-      await this.client.db.addUserAttr(interaction.user.id, 'slots_relative_won', multi);
+      await this.client.db.addUserAttr(interaction.user.id, 'slotsTimesPlayed', 1);
+      await this.client.db.addUserAttr(interaction.user.id, 'slotsTimesGambled', amount);
+      await this.client.db.addUserAttr(interaction.user.id, 'slotsTimesWon', multi > 0 ? 1 : 0);
+      await this.client.db.addUserAttr(interaction.user.id, 'slotsAmountWon', winnings);
+      await this.client.db.addUserAttr(interaction.user.id, 'slotsRelativeWon', multi);
       await this.client.db.addUserAttr(interaction.user.id, 'credits', winnings - amount);
-      if (multi == 0) {
+      if (multi === 0) {
         const loseMessage = skin.loseMessage.replace('{amount}', format(amount));
         await interaction.editReply({
           embeds: [new Discord.EmbedBuilder()
@@ -156,7 +156,7 @@ class Slots extends Command {
       }
     } else {
       // await this.client.db.addUserAttr(interaction.user.id, 'credits', winnings - amount);
-      // if (winnings == 0){
+      // if (winnings === 0){
       //     await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
       //         .setColor('#AA0000')
       //         .setTitle(`You bet ${amount} mystic credits of debt and got rid of all the debt!`)

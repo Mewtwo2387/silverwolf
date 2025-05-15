@@ -1,4 +1,4 @@
-const { CommandGroup } = require('../classes/commandGroup.js');
+const { CommandGroup } = require('../classes/commandGroup');
 
 class RussianRoulette extends CommandGroup {
   constructor(client) {

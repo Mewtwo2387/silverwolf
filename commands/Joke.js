@@ -1,8 +1,8 @@
 const axios = require('axios');
-const { Command } = require('./classes/command.js');
-const { logError } = require('../utils/log.js');
+const { Command } = require('./classes/command');
+const { logError } = require('../utils/log');
 
-class RandomJokeCommand extends Command {
+class Joke extends Command {
   constructor(client) {
     super(client, 'randomjoke', 'A random joke just like your existence that nobody asked for');
   }
@@ -29,4 +29,4 @@ class RandomJokeCommand extends Command {
   }
 }
 
-module.exports = RandomJokeCommand;
+module.exports = Joke;
