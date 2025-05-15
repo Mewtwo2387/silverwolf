@@ -30,7 +30,7 @@ class BabyGet extends Command {
     const babies = await this.client.db.getBabies(parent1.id, parent2.id);
     log(`babies: ${JSON.stringify(babies)}`);
 
-    if (babies.length == 0) {
+    if (babies.length === 0) {
       await interaction.editReply({
         embeds: [
           new Discord.EmbedBuilder()
@@ -64,7 +64,7 @@ class BabyGet extends Command {
       result += `Level: Lv ${baby.level}\n`;
       result += `Mother: <@${baby.motherId}>\n`;
       result += `Father: <@${baby.fatherId}>\n`;
-      if (baby.status == 'unborn') {
+      if (baby.status === 'unborn') {
         const created = new Date(baby.created);
         const now = new Date();
         const diffTime = Math.abs(now - created);

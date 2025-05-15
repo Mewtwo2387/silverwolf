@@ -205,7 +205,7 @@ class Claim extends Command {
         await this.handleSuccessfulClaim(interaction);
       }
 
-      if (await this.client.db.getGlobalConfig('banned') == 'removed') {
+      if (await this.client.db.getGlobalConfig('banned') === 'removed') {
         const embed = new Discord.EmbedBuilder()
           .setColor('Green')
           .setTitle('Welcome back!')

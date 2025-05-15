@@ -135,7 +135,7 @@ class NormalHandler {
 
     // console.log(member)
     const pfp = await member.user.displayAvatarURL({ extension: 'png', size: 512 });
-    if (mode == 'shiny' || (mode == 'normal' && Math.random() < 0.03)) {
+    if (mode === 'shiny' || (mode === 'normal' && Math.random() < 0.03)) {
       log('Shiny Pokemon');
       const canvas = Canvas.createCanvas(512, 512);
       const ctx = canvas.getContext('2d');
@@ -166,7 +166,7 @@ class NormalHandler {
         files: [attachment],
       });
       client.currentPokemon = `${member.user.username} shiny`;
-    } else if (mode == 'mystery' || (mode == 'normal' && Math.random() < 0.3)) {
+    } else if (mode === 'mystery' || (mode === 'normal' && Math.random() < 0.3)) {
       log('Mystery Pokemon');
       message.channel.send({
         embeds: [new EmbedBuilder()

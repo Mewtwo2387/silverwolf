@@ -22,7 +22,7 @@ class BuyBitcoin extends Command {
     let credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
     let bitcoinAmount = await this.client.db.getUserAttr(interaction.user.id, 'bitcoin');
 
-    if (price == null) {
+    if (price === null) {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')
@@ -32,7 +32,7 @@ class BuyBitcoin extends Command {
       return;
     }
 
-    if (amount == 0) {
+    if (amount === 0) {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')

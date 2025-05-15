@@ -37,7 +37,7 @@ class BabyName extends Command {
       return;
     }
 
-    if (baby.motherId != interaction.user.id && baby.fatherId != interaction.user.id) {
+    if (baby.motherId !== interaction.user.id && baby.fatherId !== interaction.user.id) {
       await interaction.editReply({
         embeds: [
           new Discord.EmbedBuilder()

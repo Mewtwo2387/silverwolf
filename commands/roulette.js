@@ -113,7 +113,7 @@ class Roulette extends Command {
       return;
     }
 
-    if (betType === 'number' && (isNaN(betValue) || betValue < 0 || betValue > 36 || betValue == null)) {
+    if (betType === 'number' && (isNaN(betValue) || betValue < 0 || betValue > 36 || betValue === null)) {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')

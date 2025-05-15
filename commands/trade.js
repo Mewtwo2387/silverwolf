@@ -36,7 +36,7 @@ class Trade extends Command {
     let selfPokemonCount = await this.client.db.getPokemonCount(self, pokemonSending);
     let targetPokemonCount = await this.client.db.getPokemonCount(target, pokemonRequesting);
 
-    if (self == target) {
+    if (self === target) {
       await interaction.editReply({
         embeds: [
           new Discord.EmbedBuilder()

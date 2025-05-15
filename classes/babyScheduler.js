@@ -17,7 +17,7 @@ class BabyScheduler {
     cron.schedule('0 0 * * *', async () => {
       const babies = await this.client.db.getAllBabies();
       for (const baby of babies) {
-        if (baby.status == 'born') {
+        if (baby.status === 'born') {
           switch (baby.job) {
             case 'nuggieClaimer':
               const parents = [baby.motherId, baby.fatherId];
@@ -51,7 +51,7 @@ class BabyScheduler {
     cron.schedule('0 * * * *', async () => {
       const babies = await this.client.db.getAllBabies();
       for (const baby of babies) {
-        if (baby.status == 'born') {
+        if (baby.status === 'born') {
           switch (baby.job) {
             case 'gambler':
               const parents = [baby.motherId, baby.fatherId];

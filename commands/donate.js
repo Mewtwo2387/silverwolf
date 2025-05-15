@@ -7,7 +7,7 @@ class Donate extends Command {
   }
 
   async run(interaction) {
-    if (interaction.guild.id == '969953667597893672') { // basement
+    if (interaction.guild.id === '969953667597893672') { // basement
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#00AA00')

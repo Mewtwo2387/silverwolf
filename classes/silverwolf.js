@@ -175,7 +175,7 @@ All wrongs reserved.
       await handler.summonPokemon(message); // Use the season-specific summonPokemon method
     }
 
-    if (message.author.id == '993614772354416673' && Math.random() < 0.1) {
+    if (message.author.id === '993614772354416673' && Math.random() < 0.1) {
       const arlecchino = this.commands.get('arlecchino');
       const interaction = {
         editReply: async (content) => {
@@ -188,7 +188,7 @@ All wrongs reserved.
       arlecchino.run(interaction);
     }
 
-    // if (message.author.id == '595491647132008469'){
+    // if (message.author.id === '595491647132008469'){
     //     if (message.content.includes("marry")){
     //         message.reply("yes babe~");
     //         return;
@@ -362,7 +362,7 @@ All wrongs reserved.
 
     // Log the game change and schedule the next one
     let randomInterval;
-    if (randomGame == 'on bed with Ei') {
+    if (randomGame === 'on bed with Ei') {
       randomInterval = (Math.floor(Math.random() * 3) + 1) * 60 * 1000; // Random interval between 1 and 3 minutes
     } else {
       randomInterval = (Math.floor(Math.random() * 3) + 1) * 60 * 60 * 1000; // Random interval between 1 and 3 hours

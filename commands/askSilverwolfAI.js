@@ -55,13 +55,13 @@ class AskGeminiCommand extends Command {
       let session = lastSession;
 
       if (reset) {
-        if (!lastSession || lastSession == undefined) {
+        if (!lastSession || lastSession === undefined) {
           session = await this.client.db.startChatSession(interaction.user.id, interaction.guild.id);
         } else {
           await this.client.db.endChatSession(lastSession.sessionId);
           session = await this.client.db.startChatSession(interaction.user.id, interaction.guild.id);
         }
-      } else if (!lastSession || lastSession == undefined) {
+      } else if (!lastSession || lastSession === undefined) {
         session = await this.client.db.startChatSession(interaction.user.id, interaction.guild.id);
       } else {
         session = lastSession;

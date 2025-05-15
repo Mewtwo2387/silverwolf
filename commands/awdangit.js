@@ -14,7 +14,7 @@ class Awdangit extends Command {
 
       log(`${interaction.user.username} became a girl`);
 
-      if (roleId == null) {
+      if (roleId === null) {
         logError(`Girl role is not set up for ${interaction.guild.name}`);
         await interaction.editReply({
           embeds: [

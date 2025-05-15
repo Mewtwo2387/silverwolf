@@ -34,10 +34,10 @@ class Sacrifice extends Command {
     const pokemonCount3 = await this.client.db.getPokemonCount(userId, pokemon3);
 
     if (pokemonCount1 < 1 || pokemonCount2 < 1 || pokemonCount3 < 1
-            || (pokemon1 == pokemon2 && pokemonCount1 < 2)
-            || (pokemon2 == pokemon3 && pokemonCount2 < 2)
-            || (pokemon3 == pokemon1 && pokemonCount3 < 2)
-            || (pokemon1 == pokemon2 && pokemon2 == pokemon3 && pokemonCount1 < 3)) {
+            || (pokemon1 === pokemon2 && pokemonCount1 < 2)
+            || (pokemon2 === pokemon3 && pokemonCount2 < 2)
+            || (pokemon3 === pokemon1 && pokemonCount3 < 2)
+            || (pokemon1 === pokemon2 && pokemon2 === pokemon3 && pokemonCount1 < 3)) {
       await interaction.editReply({
         embeds: [
           new EmbedBuilder()
