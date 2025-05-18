@@ -77,36 +77,57 @@ class Database {
   }
 
   async executeQuery(query, params = []) {
-    return new Promise((resolve, reject) => {
-      this.db.run(query, params, function (err) {
-        if (err) {
-          return reject(err);
-        }
-        resolve({ changes: this.changes, lastID: this.lastID });
+    try {
+      const result = await new Promise((resolve, reject) => {
+        this.db.run(query, params, function (err) {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve({ changes: this.changes, lastID: this.lastID });
+        });
       });
-    });
+      return result;
+    } catch (error) {
+      logError(`Error executing query "${query}": ${error.message}`);
+      return { changes: 0, lastID: null };
+    }
   }
 
   async executeSelectQuery(query, params = []) {
-    return new Promise((resolve, reject) => {
-      this.db.get(query, params, (err, row) => {
-        if (err) {
-          return reject(err);
-        }
-        resolve(row ? snakeToCamelJSON(row) : null);
+    try {
+      const result = await new Promise((resolve, reject) => {
+        this.db.get(query, params, (err, row) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve(row ? snakeToCamelJSON(row) : null);
+        });
       });
-    });
+      return result;
+    } catch (error) {
+      logError(`Error executing select query "${query}": ${error.message}`);
+      return null;
+    }
   }
 
   async executeSelectAllQuery(query, params = []) {
-    return new Promise((resolve, reject) => {
-      this.db.all(query, params, (err, rows) => {
-        if (err) {
-          return reject(err);
-        }
-        resolve(rows.map((row) => snakeToCamelJSON(row)));
+    try {
+      const result = await new Promise((resolve, reject) => {
+        this.db.all(query, params, (err, rows) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve(rows.map((row) => snakeToCamelJSON(row)));
+        });
       });
-    });
+      return result;
+    } catch (error) {
+      logError(`Error executing select all query "${query}": ${error.message}`);
+      return [];
+    }
   }
 }
 

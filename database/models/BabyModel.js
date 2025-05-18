@@ -1,4 +1,4 @@
-const { log, logError } = require('../../utils/log');
+const { log } = require('../../utils/log');
 const babyQueries = require('../queries/babyQueries');
 
 class BabyModel {
@@ -7,66 +7,33 @@ class BabyModel {
   }
 
   async createBaby(motherId, fatherId) {
-    try {
-      const query = babyQueries.CREATE_BABY;
-      await this.db.executeQuery(query, [motherId, fatherId]);
-    } catch (error) {
-      logError('Error creating baby:', error);
-      throw error;
-    }
+    const query = babyQueries.CREATE_BABY;
+    await this.db.executeQuery(query, [motherId, fatherId]);
   }
 
   async getBabyById(id) {
-    try {
-      const query = babyQueries.GET_BABY_BY_ID;
-      return await this.db.executeSelectQuery(query, [id]);
-    } catch (error) {
-      logError('Error getting baby by ID:', error);
-      throw error;
-    }
+    const query = babyQueries.GET_BABY_BY_ID;
+    await this.db.executeSelectQuery(query, [id]);
   }
 
   async getBabiesByParentId(parentId) {
-    try {
-      const query = babyQueries.GET_BABIES_BY_PARENT;
-      return await this.db.executeSelectAllQuery(query, [parentId, parentId]);
-    } catch (error) {
-      logError('Error getting babies by parent ID:', error);
-      throw error;
-    }
+    const query = babyQueries.GET_BABIES_BY_PARENT;
+    await this.db.executeSelectAllQuery(query, [parentId, parentId]);
   }
 
   async updateBabyAttr(id, attr, value) {
-    try {
-      const query = babyQueries.SET_BABY_ATTR(attr);
-      await this.db.executeQuery(query, [value, id]);
-      return true;
-    } catch (error) {
-      logError('Error updating baby attribute:', error);
-      throw error;
-    }
+    const query = babyQueries.SET_BABY_ATTR(attr);
+    await this.db.executeQuery(query, [value, id]);
   }
 
   async addBabyAttr(id, attr, value) {
-    try {
-      const query = babyQueries.ADD_BABY_ATTR(attr);
-      await this.db.executeQuery(query, [value, id]);
-      return true;
-    } catch (error) {
-      logError('Error adding baby attribute:', error);
-      throw error;
-    }
+    const query = babyQueries.ADD_BABY_ATTR(attr);
+    await this.db.executeQuery(query, [value, id]);
   }
 
   async deleteBaby(id) {
-    try {
-      const query = babyQueries.DELETE_BABY;
-      await this.db.executeQuery(query, [id]);
-      return true;
-    } catch (error) {
-      logError('Error deleting baby:', error);
-      throw error;
-    }
+    const query = babyQueries.DELETE_BABY;
+    await this.db.executeQuery(query, [id]);
   }
 
   async updateBabyStatus(id, status) {
@@ -78,13 +45,8 @@ class BabyModel {
   }
 
   async updateBabyBirthday(id) {
-    try {
-      const query = babyQueries.SET_BABY_BIRTHDAY;
-      await this.db.executeQuery(query, [id]);
-    } catch (error) {
-      logError('Error updating baby birthday:', error);
-      throw error;
-    }
+    const query = babyQueries.SET_BABY_BIRTHDAY;
+    await this.db.executeQuery(query, [id]);
   }
 
   async babyIsUnborn(id) {
