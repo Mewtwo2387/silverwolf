@@ -1,19 +1,21 @@
-const userQueries = require('./userQueries');
-const chatQueries = require('./chatQueries');
-const pokemonQueries = require('./pokemonQueries');
-const marriageQueries = require('./marriageQueries');
 const babyQueries = require('./babyQueries');
+const chatQueries = require('./chatQueries');
+const commandConfigQueries = require('./commandConfigQueries');
 const gameUIDQueries = require('./gameUIDQueries');
-const updateQueries = require('./updateQueries');
-const insertQueries = require('./insertQueries');
+const globalConfigQueries = require('./globalConfigQueries');
+const marriageQueries = require('./marriageQueries');
+const pokemonQueries = require('./pokemonQueries');
+const serverRolesQueries = require('./serverRolesQueries');
+const userQueries = require('./userQueries');
 
 module.exports = {
-  userQueries,
-  chatQueries,
-  pokemonQueries,
-  marriageQueries,
   babyQueries,
+  chatQueries,
+  commandConfigQueries,
   gameUIDQueries,
-  updateQueries,
-  insertQueries,
+  globalConfigQueries,
+  marriageQueries,
+  pokemonQueries,
+  serverRolesQueries,
+  userQueries,
 };

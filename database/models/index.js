@@ -1,23 +1,21 @@
-const UserModel = require('./UserModel');
-const PokemonModel = require('./PokemonModel');
-const MarriageModel = require('./MarriageModel');
-const ServerRolesModel = require('./ServerRolesModel');
-const GameUIDModel = require('./GameUIDModel');
-const CommandConfigModel = require('./CommandConfigModel');
-const GlobalConfigModel = require('./GlobalConfigModel');
 const BabyModel = require('./BabyModel');
-const ChatSessionModel = require('./ChatSessionModel');
-const ChatHistoryModel = require('./ChatHistoryModel');
+const ChatModel = require('./ChatModel');
+const CommandConfigModel = require('./CommandConfigModel');
+const GameUIDModel = require('./GameUIDModel');
+const GlobalConfigModel = require('./GlobalConfigModel');
+const MarriageModel = require('./MarriageModel');
+const PokemonModel = require('./PokemonModel');
+const ServerRolesModel = require('./ServerRolesModel');
+const UserModel = require('./UserModel');
 
 module.exports = {
-  UserModel,
-  PokemonModel,
-  MarriageModel,
-  ServerRolesModel,
-  GameUIDModel,
-  CommandConfigModel,
-  GlobalConfigModel,
   BabyModel,
-  ChatSessionModel,
-  ChatHistoryModel,
+  ChatModel,
+  CommandConfigModel,
+  GameUIDModel,
+  GlobalConfigModel,
+  MarriageModel,
+  PokemonModel,
+  ServerRolesModel,
+  UserModel,
 };
