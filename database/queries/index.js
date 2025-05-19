@@ -16,4 +16,4 @@ module.exports = {
   gameUIDQueries,
   updateQueries,
   insertQueries,
-}; 
+};

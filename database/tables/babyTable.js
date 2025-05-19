@@ -29,4 +29,4 @@ const babyTable = {
   ],
 };
 
-module.exports = babyTable; 
+module.exports = babyTable;

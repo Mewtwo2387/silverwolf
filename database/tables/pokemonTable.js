@@ -14,4 +14,4 @@ const pokemonTable = {
   ],
 };
 
-module.exports = pokemonTable; 
+module.exports = pokemonTable;

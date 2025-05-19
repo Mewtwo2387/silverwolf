@@ -57,4 +57,4 @@ const userTable = {
   constraints: [],
 };
 
-module.exports = userTable; 
+module.exports = userTable;

@@ -55,4 +55,4 @@ class PokemonModel {
   }
 }
 
-module.exports = PokemonModel; 
+module.exports = PokemonModel;

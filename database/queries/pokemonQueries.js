@@ -38,4 +38,4 @@ const pokemonQueries = {
   `,
 };
 
-module.exports = pokemonQueries; 
+module.exports = pokemonQueries;

@@ -20,4 +20,4 @@ module.exports = {
   babyTable,
   chatSessionTable,
   chatHistoryTable,
-}; 
+};
