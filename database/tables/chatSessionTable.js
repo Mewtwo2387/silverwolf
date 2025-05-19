@@ -1,17 +1,15 @@
 const chatSessionTable = {
   name: 'ChatSession',
   columns: [
-    { name: 'id', type: 'INTEGER PRIMARY KEY AUTOINCREMENT' },
-    { name: 'user_id', type: 'VARCHAR NOT NULL' },
-    { name: 'channel_id', type: 'VARCHAR NOT NULL' },
-    { name: 'started_at', type: 'DATETIME DEFAULT CURRENT_TIMESTAMP' },
-    { name: 'ended_at', type: 'DATETIME DEFAULT NULL' },
-    { name: 'message_count', type: 'INTEGER DEFAULT 0' },
+    { name: 'session_id', type: 'INTEGER PRIMARY KEY AUTOINCREMENT' },
+    { name: 'started_by', type: 'VARCHAR NOT NULL' },
+    { name: 'server_id', type: 'VARCHAR NOT NULL' },
+    { name: 'active', type: 'INTEGER DEFAULT 1' },
   ],
-  primaryKey: ['id'],
+  primaryKey: ['session_id'],
   specialConstraints: [],
   constraints: [
-    'FOREIGN KEY (user_id) REFERENCES User(id)',
+    'FOREIGN KEY (started_by) REFERENCES User(id)',
   ],
 };
 

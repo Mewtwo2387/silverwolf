@@ -4,7 +4,7 @@ const {
 const fs = require('fs');
 const path = require('path');
 // const Canvas = require('canvas');
-const { Database } = require('./database');
+const Database = require('../database/Database');
 const BirthdayScheduler = require('./birthdayScheduler');
 const BabyScheduler = require('./babyScheduler');
 const { log, logError } = require('../utils/log');

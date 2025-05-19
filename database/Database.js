@@ -57,6 +57,7 @@ class Database {
 
   init() {
     log('--------------------\nInitializing database...\n--------------------');
+    log('Database 2.0 - Electric Boogaloo');
     Object.values(tables).forEach((table) => this.createTable(table));
     Object.values(tables).forEach((table) => this.updateTable(table));
     Object.entries(models).forEach(([modelName, ModelClass]) => {

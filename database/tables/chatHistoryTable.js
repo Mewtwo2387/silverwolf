@@ -3,14 +3,14 @@ const chatHistoryTable = {
   columns: [
     { name: 'id', type: 'INTEGER PRIMARY KEY AUTOINCREMENT' },
     { name: 'session_id', type: 'INTEGER NOT NULL' },
-    { name: 'message_id', type: 'VARCHAR NOT NULL' },
-    { name: 'content', type: 'TEXT NOT NULL' },
-    { name: 'timestamp', type: 'DATETIME DEFAULT CURRENT_TIMESTAMP' },
+    { name: 'role', type: "TEXT CHECK(role IN ('user', 'model')) NOT NULL" },
+    { name: 'message', type: 'TEXT NOT NULL' },
+    { name: 'timestamp', type: 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP' },
   ],
   primaryKey: ['id'],
   specialConstraints: [],
   constraints: [
-    'FOREIGN KEY (session_id) REFERENCES ChatSession(id)',
+    'FOREIGN KEY (session_id) REFERENCES ChatSession(session_id)',
   ],
 };
 
