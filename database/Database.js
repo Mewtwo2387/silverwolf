@@ -1,6 +1,8 @@
 const sqlite3 = require('sqlite3').verbose();
 const { log, logError } = require('../utils/log');
 const { snakeToCamelJSON } = require('../utils/caseConvert');
+const tables = require('./tables');
+const models = require('./models');
 
 class Database {
   constructor() {
@@ -12,6 +14,7 @@ class Database {
         this.init();
       }
     });
+    this.models = {};
   }
 
   createTable(tableJSON) {
@@ -54,13 +57,11 @@ class Database {
 
   init() {
     log('--------------------\nInitializing database...\n--------------------');
-    const tables = require('./tables');
-    for (const table of Object.values(tables)) {
-      this.createTable(table);
-    }
-    for (const table of Object.values(tables)) {
-      this.updateTable(table);
-    }
+    Object.values(tables).forEach((table) => this.createTable(table));
+    Object.values(tables).forEach((table) => this.updateTable(table));
+    Object.entries(models).forEach(([modelName, ModelClass]) => {
+      this.models[modelName] = new ModelClass(this.db);
+    });
   }
 
   checkIfColumnExists(tableName, columnName) {
@@ -128,6 +129,42 @@ class Database {
       logError(`Error executing select all query "${query}": ${error.message}`);
       return [];
     }
+  }
+
+  get babyModel() {
+    return this.models.BabyModel;
+  }
+
+  get chatModel() {
+    return this.models.ChatModel;
+  }
+
+  get commandConfigModel() {
+    return this.models.CommandConfigModel;
+  }
+
+  get gameUIDModel() {
+    return this.models.GameUIDModel;
+  }
+
+  get globalConfigModel() {
+    return this.models.GlobalConfigModel;
+  }
+
+  get marriageModel() {
+    return this.models.MarriageModel;
+  }
+
+  get pokemonModel() {
+    return this.models.PokemonModel;
+  }
+
+  get serverRolesModel() {
+    return this.models.ServerRolesModel;
+  }
+
+  get userModel() {
+    return this.models.UserModel;
   }
 }
 
