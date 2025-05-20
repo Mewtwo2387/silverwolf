@@ -5,8 +5,8 @@ const tables = require('./tables');
 const models = require('./models');
 
 class Database {
-  constructor() {
-    this.db = new sqlite3.Database('./database.db', (err) => {
+  constructor(databasePath) {
+    this.db = new sqlite3.Database(databasePath, (err) => {
       if (err) {
         logError('Failed to connect to the database:', err.message);
       } else {
