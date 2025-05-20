@@ -78,6 +78,7 @@ All wrongs reserved.
 
     const commandCount = await commandFiles.reduce(async (countPromise, file) => {
       const count = await countPromise;
+      // eslint-disable-next-line import/no-dynamic-require, global-require
       const CommandClass = require(path.join(commandDir, file));
       const command = new CommandClass(this);
       if (command.isSubcommandOf === null) {
@@ -96,6 +97,7 @@ All wrongs reserved.
     const commandGroupFiles = fs.readdirSync(commandGroupDir).filter((file) => file.endsWith('.js'));
 
     const commandGroupCount = commandGroupFiles.reduce((count, file) => {
+      // eslint-disable-next-line import/no-dynamic-require, global-require
       const CommandGroupClass = require(path.join(commandGroupDir, file));
       const commandGroup = new CommandGroupClass(this);
       this.commands.set(commandGroup.name, commandGroup);

@@ -7,7 +7,7 @@ config();
 
 if (!process.env.TOKEN) {
   logError('No token provided');
-  process.exit(1);
+  throw new Error('No token provided');
 }
 
 const { TOKEN } = process.env;
