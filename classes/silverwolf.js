@@ -13,7 +13,7 @@ require('dotenv').config();
 const seasonConfig = require('../data/config/skin/pokemon.json');
 const {
   ChristmasHandler, NormalHandler, HalloweenHandler, AprilFoolsHandler,
-} = require('./seasonHandler');
+} = require('./handlers/index');
 
 const handlers = {
   ChristmasHandler,
@@ -397,9 +397,13 @@ All wrongs reserved.
 
   async getHandler() {
     const currentSeason = await this.db.globalConfig.getGlobalConfig('season') || 'normal';
-    const handlerClass = handlers[seasonConfig.seasons[currentSeason].handler];
+    const HandlerClass = handlers[seasonConfig.seasons[currentSeason].handler];
     const settings = seasonConfig.seasons[currentSeason].settings || {};
-    return new handlerClass(settings);
+    return new HandlerClass(settings);
+  }
+
+  setCurrentPokemon(pokemon) {
+    this.currentPokemon = pokemon;
   }
 }
 
