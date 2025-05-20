@@ -42,11 +42,6 @@ const babyQueries = {
     WHERE mother_id = ? OR father_id = ?
   `,
 
-  // Get all babies
-  GET_ALL_BABIES: `
-    SELECT * FROM Baby
-  `,
-
   // Create new unborn baby
   CREATE_BABY: `
     INSERT INTO Baby (mother_id, father_id, status, name) VALUES (?, ?, "unborn", "baby")

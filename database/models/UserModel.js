@@ -102,6 +102,12 @@ class UserModel {
     const rows = await this.db.executeSelectAllQuery(query);
     return rows[0].count;
   }
+
+  async getUsersWithBirthday(todayHour) {
+    const query = userQueries.GET_USERS_WITH_BIRTHDAY;
+    const rows = await this.db.executeSelectAllQuery(query, [todayHour]);
+    return rows;
+  }
 }
 
 module.exports = UserModel;

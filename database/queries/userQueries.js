@@ -108,6 +108,13 @@ const userQueries = {
     FROM User
     WHERE slots_times_played <> 0 OR blackjack_times_played <> 0 OR roulette_times_played <> 0
   `,
+
+  GET_USERS_WITH_BIRTHDAY: `
+    SELECT
+      id
+    FROM User
+    WHERE strftime('%m-%dT%H', birthdays) = ?
+  `,
 };
 
 module.exports = userQueries;
