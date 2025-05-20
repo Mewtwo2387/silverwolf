@@ -1,40 +1,40 @@
-const { DevCommand } = require('./classes/devcommand.js');
 const Discord = require('discord.js');
+const { DevCommand } = require('./classes/devcommand.js');
 const { logError } = require('../utils/log.js');
 
 class BlacklistCommand extends DevCommand {
-    constructor(client) {
-        super(client, "configure", "Add or remove a command from the blacklist for a specific server", [
-            {
-                name: 'command',
-                description: 'The name of the command to blacklist or remove',
-                type: 3, // String type
-                required: true
-            },
-            {
-                name: 'server',
-                description: 'The ID of the server to blacklist the command in',
-                type: 3, // String type
-                required: true
-            },
-            {
-                name: 'action',
-                description: 'Add or remove the command from the blacklist',
-                type: 3, // String type
-                required: true,
-                choices: [
-                    { name: 'Add', value: 'add' },
-                    { name: 'Remove', value: 'remove' }
-                ]
-            },
-            {
-                name: 'reason',
-                description: 'Reason for blacklisting the command (optional)',
-                type: 3, // String type
-                required: false
-            }
-        ], { isSubcommandOf: 'blacklist' });
-    }
+  constructor(client) {
+    super(client, 'configure', 'Add or remove a command from the blacklist for a specific server', [
+      {
+        name: 'command',
+        description: 'The name of the command to blacklist or remove',
+        type: 3, // String type
+        required: true,
+      },
+      {
+        name: 'server',
+        description: 'The ID of the server to blacklist the command in',
+        type: 3, // String type
+        required: true,
+      },
+      {
+        name: 'action',
+        description: 'Add or remove the command from the blacklist',
+        type: 3, // String type
+        required: true,
+        choices: [
+          { name: 'Add', value: 'add' },
+          { name: 'Remove', value: 'remove' },
+        ],
+      },
+      {
+        name: 'reason',
+        description: 'Reason for blacklisting the command (optional)',
+        type: 3, // String type
+        required: false,
+      },
+    ], { isSubcommandOf: 'blacklist' });
+  }
 
     async run(interaction) {
         let commandName = interaction.options.getString('command').toLowerCase().replace(/\s+/g, '.');
@@ -84,6 +84,7 @@ class BlacklistCommand extends DevCommand {
             });
         }
     }
+  }
 }
 
 module.exports = BlacklistCommand;

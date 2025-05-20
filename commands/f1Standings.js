@@ -1,4 +1,3 @@
-const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
 const axios = require('axios');
 const { logError } = require('../utils/log');

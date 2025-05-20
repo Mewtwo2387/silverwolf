@@ -1,19 +1,19 @@
-const { Command } = require('./classes/command.js');
 const Discord = require('discord.js');
+const { Command } = require('./classes/command.js');
 
 class ShopDonation extends Command {
-    constructor(client){
-        super(client, "donation", "buy stuff with stellar nuggies", [], {isSubcommandOf: "shop"});
-    }
-    
-    async run(interaction){
-        const stellar_nuggies = await this.client.db.getUserAttr(interaction.user.id, 'stellar_nuggies');
-        const ascension_level = await this.client.db.getUserAttr(interaction.user.id, 'ascension_level');
-        
-        const embed = new Discord.EmbedBuilder()
-            .setColor('#00AA00')
-            .setTitle('Donation Shop')
-            .setDescription(`You have ${stellar_nuggies} stellar nuggies. You can obtain more with /donate.
+  constructor(client) {
+    super(client, 'donation', 'buy stuff with stellar nuggies', [], { isSubcommandOf: 'shop' });
+  }
+
+  async run(interaction) {
+    const stellar_nuggies = await this.client.db.getUserAttr(interaction.user.id, 'stellar_nuggies');
+    const ascension_level = await this.client.db.getUserAttr(interaction.user.id, 'ascension_level');
+
+    const embed = new Discord.EmbedBuilder()
+      .setColor('#00AA00')
+      .setTitle('Donation Shop')
+      .setDescription(`You have ${stellar_nuggies} stellar nuggies. You can obtain more with /donate.
                 
 **Instantly claim dinonuggies once**
 Cost: 10 stellar nuggies
@@ -41,9 +41,8 @@ Buy with \`/buy donation 5\`
 Cost: 200 stellar nuggies
 Buy with \`/buy donation 6\``);
 
-        await interaction.editReply({embeds: [embed]});
-    }
+    await interaction.editReply({ embeds: [embed] });
+  }
 }
 
 module.exports = ShopDonation;
-
