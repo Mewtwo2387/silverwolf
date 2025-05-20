@@ -61,7 +61,7 @@ class Database {
     Object.values(tables).forEach((table) => this.createTable(table));
     Object.values(tables).forEach((table) => this.updateTable(table));
     Object.entries(models).forEach(([modelName, ModelClass]) => {
-      this.models[modelName] = new ModelClass(this.db);
+      this.models[modelName] = new ModelClass(this);
     });
   }
 
