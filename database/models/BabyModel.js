@@ -21,6 +21,11 @@ class BabyModel {
     await this.db.executeSelectAllQuery(query, [parentId, parentId]);
   }
 
+  async getAllBabies() {
+    const query = babyQueries.GET_ALL_BABIES;
+    await this.db.executeSelectAllQuery(query);
+  }
+
   async updateBabyAttr(id, attr, value) {
     const query = babyQueries.SET_BABY_ATTR(attr);
     await this.db.executeQuery(query, [value, id]);

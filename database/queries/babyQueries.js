@@ -1,4 +1,9 @@
 const babyQueries = {
+  // Get all babies
+  GET_ALL_BABIES: `
+    SELECT * FROM Baby
+  `,
+
   // Get baby details and parent names by baby id
   GET_BABY_BY_ID: `
     SELECT 
