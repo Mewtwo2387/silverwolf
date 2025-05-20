@@ -13,7 +13,7 @@ class ChatModel {
   }
 
   async startChatSession(startedBy, serverId) {
-    await this.db.userModel.getUser(startedBy);
+    await this.db.user.getUser(startedBy);
     const query = chatQueries.START_CHAT_SESSION;
     const result = await this.db.executeQuery(query, [startedBy, serverId]);
     log(`Started chat session ${result.lastID} for user ${startedBy} in server ${serverId}`);

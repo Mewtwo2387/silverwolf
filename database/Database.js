@@ -173,39 +173,39 @@ class Database {
     return this.dumpTable('Baby', ['mother_id', 'father_id']);
   }
 
-  get babyModel() {
+  get baby() {
     return this.models.BabyModel;
   }
 
-  get chatModel() {
+  get chat() {
     return this.models.ChatModel;
   }
 
-  get commandConfigModel() {
+  get commandConfig() {
     return this.models.CommandConfigModel;
   }
 
-  get gameUIDModel() {
+  get gameUID() {
     return this.models.GameUIDModel;
   }
 
-  get globalConfigModel() {
+  get globalConfig() {
     return this.models.GlobalConfigModel;
   }
 
-  get marriageModel() {
+  get marriage() {
     return this.models.MarriageModel;
   }
 
-  get pokemonModel() {
+  get pokemon() {
     return this.models.PokemonModel;
   }
 
-  get serverRolesModel() {
+  get serverRoles() {
     return this.models.ServerRolesModel;
   }
 
-  get userModel() {
+  get user() {
     return this.models.UserModel;
   }
 }
