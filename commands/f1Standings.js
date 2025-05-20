@@ -2,6 +2,9 @@ const Discord = require('discord.js');
 const axios = require('axios');
 const { logError } = require('../utils/log');
 const { JSDOM } = require('jsdom');
+const { Command } = require('./classes/command.js');
+
+
 
 function extractStandings(html, type) {
   const dom = new JSDOM(html);

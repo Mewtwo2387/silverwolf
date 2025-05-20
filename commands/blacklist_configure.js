@@ -82,7 +82,6 @@ class BlacklistCommand extends DevCommand {
                         .setDescription(`An error occurred while updating the command blacklist. Please try again.`)
                 ]
             });
-        }
     }
   }
 }
