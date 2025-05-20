@@ -8,7 +8,7 @@ class UserModel {
   }
 
   async getUser(userId) {
-    const query = userQueries.GET_USER_BY_ID;
+    const query = userQueries.GET_USER_STATS;
     const user = await this.db.executeSelectQuery(query, [userId]);
     if (!user) {
       log(`User ${userId} not found. Creating new user.`);
@@ -79,7 +79,7 @@ class UserModel {
   async getAllRelativeNetWinnings(limit = null, offset = 0) {
     const query = (limit !== null)
       ? userQueries.GET_EVERYONE_RELATIVE_NET_WINNINGS_ALL_LIMIT(limit, offset)
-      : userQueries.GET_EVERYONE_RELATIVE_NET_WINNINGS_ALL();
+      : userQueries.GET_EVERYONE_RELATIVE_NET_WINNINGS_ALL;
     const rows = await this.db.executeSelectAllQuery(query);
     log(rows);
     return rows;
@@ -98,7 +98,7 @@ class UserModel {
   }
 
   async getAllRelativeNetWinningsCount() {
-    const query = userQueries.GET_EVERYONE_RELATIVE_NET_WINNINGS_ALL_COUNT();
+    const query = userQueries.GET_EVERYONE_RELATIVE_NET_WINNINGS_ALL_COUNT;
     const rows = await this.db.executeSelectAllQuery(query);
     return rows[0].count;
   }

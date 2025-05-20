@@ -65,7 +65,8 @@ function format(num, alwaysFixed = false, shortenThreshold = 6) {
 function antiFormat(input) {
   const cleanInput = input.replace(/,/g, '');
   // pure numerical
-  if (!Number.isNaN(cleanInput)) {
+  // eslint-disable-next-line no-restricted-globals
+  if (!isNaN(cleanInput)) { // Number.isNan does not work here
     return parseFloat(cleanInput);
   }
   // Extract the numeric part and the prefix
