@@ -1,5 +1,5 @@
 const Discord = require('discord.js');
-const { format } = require('../../utils/math.js');
+const { format } = require('../../utils/math');
 const { logError } = require('../../utils/log');
 
 function LeaderboardMixin(BaseClass) {
@@ -17,10 +17,14 @@ function LeaderboardMixin(BaseClass) {
       try {
         // Get initial data for the first page
         let currentPage = 0;
-        const attrs = await this.client.db.getEveryoneAttr(this.attribute, this.itemsPerPage, currentPage * this.itemsPerPage);
+        const attrs = await this.client.db.user.getEveryoneAttr(
+          this.attribute,
+          this.itemsPerPage,
+          currentPage * this.itemsPerPage,
+        );
 
         // Generate the leaderboard content for the first page
-        const totalCount = await this.client.db.getEveryoneAttrCount(this.attribute); // New method to count total rows
+        const totalCount = await this.client.db.user.getEveryoneAttrCount(this.attribute); // New method to count total rows
         const maxPage = Math.ceil(totalCount / this.itemsPerPage) - 1;
         const leaderboard = await this.generateLeaderboard(attrs, currentPage);
 
@@ -50,13 +54,17 @@ function LeaderboardMixin(BaseClass) {
 
         collector.on('collect', async (i) => {
           if (i.customId === 'prev_page' && currentPage > 0) {
-            currentPage--;
+            currentPage -= 1;
           } else if (i.customId === 'next_page' && currentPage < maxPage) {
-            currentPage++;
+            currentPage += 1;
           }
 
           // Fetch new data for the updated page
-          const newAttrs = await this.client.db.getEveryoneAttr(this.attribute, this.itemsPerPage, currentPage * this.itemsPerPage);
+          const newAttrs = await this.client.db.user.getEveryoneAttr(
+            this.attribute,
+            this.itemsPerPage,
+            currentPage * this.itemsPerPage,
+          );
           const newLeaderboard = await this.generateLeaderboard(newAttrs, currentPage);
 
           // Update the buttons
@@ -104,7 +112,7 @@ function LeaderboardMixin(BaseClass) {
     // Helper function to generate the leaderboard embed
     async generateLeaderboard(attrs, page) {
       let result = '';
-      for (let i = 0; i < attrs.length; i++) {
+      for (let i = 0; i < attrs.length; i += 1) {
         result += `${i + 1 + (page * this.itemsPerPage)}. <@${attrs[i].id}>: ${format(attrs[i][this.attribute])} ${this.counter}\n`;
       }
       if (result === '') {
