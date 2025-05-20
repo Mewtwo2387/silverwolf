@@ -73,7 +73,7 @@ class Database {
           return reject(err);
         }
         const columnExists = rows.some((row) => row.name === columnName);
-        resolve(columnExists);
+        return resolve(columnExists);
       });
     });
   }
@@ -81,7 +81,7 @@ class Database {
   async executeQuery(query, params = []) {
     try {
       const result = await new Promise((resolve, reject) => {
-        this.db.run(query, params, function (err) {
+        this.db.run(query, params, (err) => {
           if (err) {
             reject(err);
             return;
@@ -130,6 +130,47 @@ class Database {
       logError(`Error executing select all query "${query}": ${error.message}`);
       return [];
     }
+  }
+
+  async dumpTable(tableName, formatUserIds = null) {
+    const query = `SELECT * FROM ${tableName};`;
+    const rows = await this.executeSelectAllQuery(query);
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      log(`No data found in the ${tableName} table.`);
+      return '';
+    }
+
+    const keys = Object.keys(rows[0]);
+    const csv = [keys.join(',')];
+
+    rows.forEach((row) => {
+      const values = keys.map((key) => {
+        if (formatUserIds && formatUserIds.includes(key)) {
+          return `<@${row[key]}>`;
+        }
+        return row[key];
+      });
+      csv.push(values.join(','));
+    });
+
+    return csv.join('\n');
+  }
+
+  async dump() {
+    return this.dumpTable('User', ['id']);
+  }
+
+  async dumpPokemon() {
+    return this.dumpTable('Pokemon', ['user_id']);
+  }
+
+  async dumpMarriage() {
+    return this.dumpTable('Marriage', ['user1_id', 'user2_id']);
+  }
+
+  async dumpBaby() {
+    return this.dumpTable('Baby', ['mother_id', 'father_id']);
   }
 
   get babyModel() {
