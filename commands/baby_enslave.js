@@ -36,7 +36,7 @@ class BabyEnslave extends Command {
         choices: jobs,
       },
       {
-        name: 'pingerTarget',
+        name: 'pinger_target',
         description: 'The user to ping if the job is pinger',
         type: 6,
         required: false,
@@ -97,7 +97,7 @@ class BabyEnslave extends Command {
     }
 
     if (job === 'pinger') {
-      const pingerTarget = interaction.options.get('pingerTarget');
+      const pingerTarget = interaction.options.get('pinger_target');
       if (!pingerTarget) {
         await interaction.editReply({
           embeds: [

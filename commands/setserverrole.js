@@ -5,7 +5,7 @@ class SetServerRole extends DevCommand {
   constructor(client) {
     super(client, 'setserverrole', 'set server role', [
       {
-        name: 'roleName',
+        name: 'role_name',
         description: 'the name of the role to set',
         type: 3,
         required: true,
@@ -20,7 +20,7 @@ class SetServerRole extends DevCommand {
   }
 
   async run(interaction) {
-    const roleName = interaction.options.getString('roleName');
+    const roleName = interaction.options.getString('role_name');
     const role = interaction.options.getRole('role');
 
     this.client.db.setServerRole(interaction.guild.id, roleName, role.id);

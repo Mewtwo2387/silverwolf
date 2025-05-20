@@ -301,7 +301,7 @@ All wrongs reserved.
         const validCommands = commandValues.filter((command) => command !== null && command.isSubcommandOf === null);
         const commandsArray = validCommands.map((command) => command.toJSON());
 
-        console.log(commandsArray);
+        console.log(JSON.stringify(commandsArray, null, 2));
 
         // If there are no blacklisted commands, register all commands
         if (blacklistedCommands.length === 0) {

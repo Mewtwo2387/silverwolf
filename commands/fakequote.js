@@ -41,7 +41,7 @@ class FakeQuote extends Command {
         ],
       },
       {
-        name: 'profileColor',
+        name: 'profile_color',
         description: 'profile picture color options',
         type: 3,
         required: false,
@@ -54,7 +54,7 @@ class FakeQuote extends Command {
         ],
       },
       {
-        name: 'avatarSource',
+        name: 'avatar_source',
         description: 'Choose between the server avatar or global avatar',
         type: 3,
         required: false,
@@ -80,8 +80,8 @@ class FakeQuote extends Command {
       const message = `"${interaction.options.getString('message')}"`;
       const backgroundColor = interaction.options.getString('background') || 'black';
       const textColor = backgroundColor === 'white' ? 'black' : 'white';
-      const profileColor = interaction.options.getString('profileColor') || 'normal';
-      const avatarSource = interaction.options.getString('avatarSource') || 'global';
+      const profileColor = interaction.options.getString('profile_color') || 'normal';
+      const avatarSource = interaction.options.getString('avatar_source') || 'global';
 
       let pfp;
       if (avatarSource === 'server') {

@@ -13,7 +13,7 @@ class Roulette extends Command {
         required: true,
       },
       {
-        name: 'betType',
+        name: 'bet_type',
         description: 'the type of bet (number, color, even, odd)',
         type: 3,
         required: true,
@@ -27,7 +27,7 @@ class Roulette extends Command {
         ],
       },
       {
-        name: 'betValue',
+        name: 'bet_value',
         description: 'the value if it is a number bet',
         type: 4,
         required: false,
@@ -87,10 +87,10 @@ class Roulette extends Command {
     }
 
     // Proceed with normal roulette logic for numerical input
-    const betType = interaction.options.getString('betType');
-    const betValue = interaction.options.getInteger('betValue');
+    const betType = interaction.options.getString('bet_type');
+    const betValue = interaction.options.getInteger('bet_value');
     const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
-    let streak = await this.client.db.getUserAttr(interaction.user.id, 'rouletteStreak');
+    let streak = await this.client.db.getUserAttr(interaction.user.id, 'roulette_streak');
     const maxStreak = await this.client.db.getUserAttr(interaction.user.id, 'rouletteMaxStreak');
 
     if (amount < 0) {
