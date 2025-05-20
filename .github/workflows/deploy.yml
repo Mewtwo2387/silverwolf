@@ -18,6 +18,7 @@ jobs:
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
           script: |
             cd /root/silverwolf
+            git stash
             git pull origin master
             npm install
             pm2 restart 0 

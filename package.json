@@ -21,6 +21,7 @@
     "canvas": "^2.11.2",
     "discord.js": "^14.15.2",
     "dotenv": "^16.4.5",
+    "jsdom": "^13.0.0",
     "node_characterai": "^1.2.7",
     "node-cron": "^3.0.3",
     "sharp": "^0.33.4",
