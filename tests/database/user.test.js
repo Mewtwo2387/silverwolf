@@ -1,22 +1,19 @@
-const fs = require('fs');
 const Database = require('../../database/Database');
 
 describe('UserModel', () => {
   let db;
   let userModel;
-  const testDbPath = './test.db';
 
-  beforeAll(() => {
-    // Create test database
-    db = new Database(testDbPath);
-    db.init();
+  beforeAll(async () => {
+    // Create test database using current timestamp
+    const timestamp = Date.now();
+    db = new Database(`./testUser-${timestamp}.db`);
+    await db.ready;
     userModel = db.user;
   });
 
   afterAll(() => {
-    // Close database connection and delete test database
     db.db.close();
-    fs.unlinkSync(testDbPath);
   });
 
   beforeEach(async () => {
