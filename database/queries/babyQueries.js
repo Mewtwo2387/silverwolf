@@ -6,26 +6,12 @@ const babyQueries = {
 
   // Get baby details and parent names by baby id
   GET_BABY_BY_ID: `
-    SELECT 
-      b.*,
-      m.username as mother_name,
-      f.username as father_name
-    FROM Baby b
-    JOIN User m ON b.mother_id = m.id
-    JOIN User f ON b.father_id = f.id
-    WHERE b.id = ?
+    SELECT * FROM Baby WHERE id = ?
   `,
 
   // Get baby details and parent names by parent id
   GET_BABIES_BY_PARENT: `
-    SELECT
-      b.*,
-      m.username as mother_name,
-      f.username as father_name
-    FROM Baby b
-    JOIN User m ON b.mother_id = m.id
-    JOIN User f ON b.father_id = f.id
-    WHERE b.mother_id = ? OR b.father_id = ?
+    SELECT * FROM Baby WHERE mother_id = ? OR father_id = ?
   `,
 
   // Get statistics of a user
@@ -47,9 +33,13 @@ const babyQueries = {
     INSERT INTO Baby (mother_id, father_id, status, name) VALUES (?, ?, "unborn", "baby")
   `,
 
+  DELETE_BABY: `
+    DELETE FROM Baby WHERE id = ?
+  `,
+
   // Update baby attribute by baby id
   SET_BABY_ATTR: (attr) => `
-    UPDATE Baby SET ${attr} = ${attr} + ? WHERE id = ?
+    UPDATE Baby SET ${attr} = ? WHERE id = ?
   `,
 
   ADD_BABY_ATTR: (attr) => `
