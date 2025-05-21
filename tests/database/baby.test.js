@@ -7,7 +7,7 @@ describe('BabyModel', () => {
   beforeAll(async () => {
     // Create test database using current timestamp
     const timestamp = Date.now();
-    db = new Database(`./testBaby-${timestamp}.db`);
+    db = new Database(`./tests/temp/testBaby-${timestamp}.db`);
     await db.ready;
     babyModel = db.baby;
   });

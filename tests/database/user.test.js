@@ -7,7 +7,7 @@ describe('UserModel', () => {
   beforeAll(async () => {
     // Create test database using current timestamp
     const timestamp = Date.now();
-    db = new Database(`./testUser-${timestamp}.db`);
+    db = new Database(`./tests/temp/testUser-${timestamp}.db`);
     await db.ready;
     userModel = db.user;
   });
