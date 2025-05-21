@@ -52,6 +52,7 @@ class Silverwolf extends Client {
     await this.loadCommands();
     await this.loadKeywords();
     await this.loadListeners();
+    await this.db.ready;
 
     this.birthdayScheduler.start();
     log('Birthday scheduler started.');

@@ -6,18 +6,22 @@ const models = require('./models');
 
 class Database {
   constructor(databasePath) {
-    this.db = new sqlite3.Database(databasePath, (err) => {
-      if (err) {
-        logError('Failed to connect to the database:', err.message);
-      } else {
-        log('Connected to the database.db SQLite database.');
-        this.init();
-      }
+    this.ready = new Promise((resolve, reject) => {
+      this.db = new sqlite3.Database(databasePath, async (err) => {
+        if (err) {
+          logError('Failed to connect to the database:', err.message);
+          reject(err);
+        } else {
+          log('Connected to the database.db SQLite database.');
+          await this.init();
+          resolve();
+        }
+      });
     });
     this.models = {};
   }
 
-  createTable(tableJSON) {
+  async createTable(tableJSON) {
     let rows = tableJSON.columns.map((col) => `${col.name} ${col.type}`).join(', ');
     if (tableJSON.specialConstraints.length > 0) {
       rows += `, ${tableJSON.specialConstraints.join(', ')}`;
@@ -25,41 +29,56 @@ class Database {
     if (tableJSON.constraints.length > 0) {
       rows += `, ${tableJSON.constraints.join(', ')}`;
     }
-    this.db.run(`CREATE TABLE IF NOT EXISTS ${tableJSON.name} (${rows})`, (err) => {
-      if (err) {
-        logError(`Failed to create ${tableJSON.name} table:`, err.message);
-      } else {
-        log(`Created the ${tableJSON.name} table.`);
-      }
-    });
+    try {
+      await new Promise((resolve, reject) => {
+        this.db.run(`CREATE TABLE IF NOT EXISTS ${tableJSON.name} (${rows})`, (err) => {
+          if (err) {
+            logError(`Failed to create ${tableJSON.name} table:`, err.message);
+            reject(err);
+          } else {
+            log(`Created the ${tableJSON.name} table.`);
+            resolve();
+          }
+        });
+      });
+    } catch (err) {
+      logError(`Error creating table ${tableJSON.name}:`, err.message);
+    }
   }
 
-  updateTable(tableJSON) {
+  async updateTable(tableJSON) {
     const columnsToAdd = tableJSON.columns.filter((col) => !tableJSON.primaryKey.includes(col.name));
-    columnsToAdd.forEach(async (column) => {
+    await Promise.all(columnsToAdd.map(async (column) => {
       try {
         const columnExists = await this.checkIfColumnExists(tableJSON.name, column.name);
         if (!columnExists) {
-          const addColumnQuery = `ALTER TABLE ${tableJSON.name} ADD COLUMN ${column.name} ${column.type}`;
-          this.db.run(addColumnQuery, (err) => {
-            if (err) {
-              logError(`Failed to add column ${column.name}:`, err.message);
-            } else {
-              log(`Column ${column.name} added successfully.`);
-            }
+          await new Promise((resolve, reject) => {
+            const addColumnQuery = `ALTER TABLE ${tableJSON.name} ADD COLUMN ${column.name} ${column.type}`;
+            this.db.run(addColumnQuery, (err) => {
+              if (err) {
+                logError(`Failed to add column ${column.name}:`, err.message);
+                reject(err);
+              } else {
+                log(`Column ${column.name} added successfully.`);
+                resolve();
+              }
+            });
           });
         }
       } catch (err) {
         logError(`Failed to check or add column ${column.name}:`, err.message);
       }
-    });
+    }));
   }
 
-  init() {
+  async init() {
     log('--------------------\nInitializing database...\n--------------------');
     log('Database 2.0 - Electric Boogaloo');
-    Object.values(tables).forEach((table) => this.createTable(table));
-    Object.values(tables).forEach((table) => this.updateTable(table));
+    // Create all tables
+    await Promise.all(Object.values(tables).map((table) => this.createTable(table)));
+    // Update all tables
+    await Promise.all(Object.values(tables).map((table) => this.updateTable(table)));
+    // Initialize models
     Object.entries(models).forEach(([modelName, ModelClass]) => {
       this.models[modelName] = new ModelClass(this);
     });
