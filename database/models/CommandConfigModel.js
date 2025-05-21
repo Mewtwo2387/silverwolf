@@ -30,7 +30,7 @@ class CommandConfigModel {
 
   async isCommandBlacklisted(commandName, serverId) {
     const blacklist = await this.getBlacklistedCommands(serverId);
-    return blacklist.some((command) => command.command_name === commandName);
+    return blacklist.some((command) => command.commandName === commandName);
   }
 }
 

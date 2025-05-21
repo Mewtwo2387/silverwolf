@@ -5,7 +5,7 @@ const commandConfigQueries = {
     ON CONFLICT(command_name, server_id)
     DO UPDATE SET reason = excluded.reason, disabled_date = CURRENT_TIMESTAMP
   `,
-  GET_BLACKLISTED_COMMANDS: 'SELECT id, command_name, disabled_date, reason FROM CommandConfig WHERE server_id = ?',
+  GET_BLACKLISTED_COMMANDS: 'SELECT * FROM CommandConfig WHERE server_id = ?',
   DELETE_COMMAND_BLACKLIST: 'DELETE FROM CommandConfig WHERE command_name = ? AND server_id = ?',
 };
 
