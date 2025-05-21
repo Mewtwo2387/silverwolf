@@ -100,7 +100,7 @@ class Database {
   async executeQuery(query, params = []) {
     try {
       const result = await new Promise((resolve, reject) => {
-        this.db.run(query, params, (err) => {
+        this.db.run(query, params, function x(err) {
           if (err) {
             reject(err);
             return;
