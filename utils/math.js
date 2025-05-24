@@ -1,3 +1,30 @@
+const t1a = ['K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No'];
+const t1b = ['', 'U', 'D', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No'];
+const t2 = ['', 'Dc', 'Vg', 'Tg', 'Qg', 'Qig', 'Sxg', 'Spg', 'Og', 'Ng'];
+const t3 = ['', 'Ce', 'De', 'Te', 'Qe', 'Qie', 'Sxe', 'Spe', 'Oe', 'Ne'];
+
+function getPrefix(n) {
+  if (n < 10) {
+    return t1a[n];
+  }
+  if (n < 100) {
+    return t1b[n % 10] + t2[Math.floor(n / 10)];
+  }
+  if (n < 1000) {
+    return t1b[n % 10] + t2[Math.floor(n / 10) % 10] + t3[Math.floor(n / 100)];
+  }
+  return 'OWO';
+}
+
+function getNumberFromPrefix(prefix) {
+  for (let i = 0; i < 1000; i += 1) {
+    if (getPrefix(i) === prefix) {
+      return i;
+    }
+  }
+  return -1;
+}
+
 // When alwaysFixed is false, return up to 2 d.p. Used in credits.
 // format(1234) => "1,234"
 // format(1234.1) => "1,234.1"
@@ -35,38 +62,12 @@ function format(num, alwaysFixed = false, shortenThreshold = 6) {
   return formattedNum.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
-const t1a = ['K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No'];
-const t1b = ['', 'U', 'D', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No'];
-const t2 = ['', 'Dc', 'Vg', 'Tg', 'Qg', 'Qig', 'Sxg', 'Spg', 'Og', 'Ng'];
-const t3 = ['', 'Ce', 'De', 'Te', 'Qe', 'Qie', 'Sxe', 'Spe', 'Oe', 'Ne'];
-
-function getPrefix(n) {
-  if (n < 10) {
-    return t1a[n];
-  }
-  if (n < 100) {
-    return t1b[n % 10] + t2[Math.floor(n / 10)];
-  }
-  if (n < 1000) {
-    return t1b[n % 10] + t2[Math.floor(n / 10) % 10] + t3[Math.floor(n / 100)];
-  }
-  return 'OWO';
-}
-
-function getNumberFromPrefix(prefix) {
-  for (let i = 0; i < 1000; i++) {
-    if (getPrefix(i) === prefix) {
-      return i;
-    }
-  }
-  return -1;
-}
-
 function antiFormat(input) {
-  input = input.replace(/,/g, '');
+  const cleanInput = input.replace(/,/g, '');
   // pure numerical
-  if (!isNaN(input)) {
-    return parseFloat(input);
+  // eslint-disable-next-line no-restricted-globals
+  if (!isNaN(cleanInput)) { // Number.isNan does not work here
+    return parseFloat(cleanInput);
   }
   // Extract the numeric part and the prefix
   const match = input.match(/^([0-9.]+)([a-zA-Z]+)$/);

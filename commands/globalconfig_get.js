@@ -1,5 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
-const { DevCommand } = require('./classes/devcommand.js');
+const { DevCommand } = require('./classes/devcommand');
 
 class GlobalConfigGet extends DevCommand {
   constructor(client) {

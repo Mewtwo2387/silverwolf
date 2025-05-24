@@ -6,7 +6,7 @@ class SexSession {
   }
 
   thrust() {
-    this.thrusts++;
+    this.thrusts += 1;
     return Math.random() < 0.03;
   }
 

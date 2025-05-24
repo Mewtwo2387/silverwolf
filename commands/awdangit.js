@@ -1,5 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 const { log } = require('../utils/log');
 
 class Awdangit extends Command {
@@ -14,7 +14,7 @@ class Awdangit extends Command {
 
       log(`${interaction.user.username} became a girl`);
 
-      if (roleId == null) {
+      if (roleId === null) {
         logError(`Girl role is not set up for ${interaction.guild.name}`);
         await interaction.editReply({
           embeds: [

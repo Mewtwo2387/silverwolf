@@ -25,14 +25,15 @@ function getNextUpgradeCost(level) {
 // get total cost from level 1 to level
 function getTotalUpgradeCost(level) {
   let totalCost = 0;
-  for (let i = 1; i < level; i++) {
+  for (let i = 1; i < level; i += 1) {
     totalCost += getNextUpgradeCost(i);
   }
   return totalCost;
 }
 
+// eslint-disable-next-line no-unused-vars
 function dump() {
-  for (let i = 1; i < MAX_LEVEL; i++) {
+  for (let i = 1; i < MAX_LEVEL; i += 1) {
     log(`Level ${String(i).padStart(2, '0')} -> ${String(i + 1).padStart(2, '0')} cost: ${String(getNextUpgradeCost(i)).padStart(15, ' ')} Total cost: ${String(getTotalUpgradeCost(i + 1)).padStart(7, ' ')}`);
   }
 }
@@ -46,9 +47,9 @@ function getMultiplierAmount(level) {
 }
 
 function getMultiplierChance(level) {
-  gold = 0.025 + 0.005 * level;
-  silver = 0.05 + 0.01 * level;
-  bronze = 0.1 + 0.02 * level;
+  let gold = 0.025 + 0.005 * level;
+  let silver = 0.05 + 0.01 * level;
+  let bronze = 0.1 + 0.02 * level;
   if (gold > 1) {
     gold = 1;
     silver = 0;
@@ -87,7 +88,12 @@ function getMaxLevel(ascensionLevel) {
 }
 
 module.exports = {
-  getNextUpgradeCost, getTotalUpgradeCost, getMultiplierAmount, getMultiplierChance, getBekiCooldown, getMaxLevel,
+  getNextUpgradeCost,
+  getTotalUpgradeCost,
+  getMultiplierAmount,
+  getMultiplierChance,
+  getBekiCooldown,
+  getMaxLevel,
 };
 
 // dump();

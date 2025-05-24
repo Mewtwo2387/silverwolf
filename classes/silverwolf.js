@@ -1,10 +1,10 @@
 const {
-  Client, REST, Routes, EmbedBuilder, escapeMarkdown, AttachmentBuilder,
+  Client, REST, Routes,
 } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-const Canvas = require('canvas');
-const { Database } = require('./database.js');
+// const Canvas = require('canvas');
+const Database = require('../database/Database');
 const BirthdayScheduler = require('./birthdayScheduler');
 const BabyScheduler = require('./babyScheduler');
 const { log, logError } = require('../utils/log');
@@ -13,7 +13,7 @@ require('dotenv').config();
 const seasonConfig = require('../data/config/skin/pokemon.json');
 const {
   ChristmasHandler, NormalHandler, HalloweenHandler, AprilFoolsHandler,
-} = require('./seasonHandler.js');
+} = require('./handlers/index');
 
 const handlers = {
   ChristmasHandler,
@@ -31,7 +31,7 @@ class Silverwolf extends Client {
     this.deletedMessages = [];
     this.editedMessages = [];
     this.singing = false;
-    this.db = new Database();
+    this.db = new Database('./database.db');
     this.currentPokemon = null;
     this.birthdayScheduler = new BirthdayScheduler(this);
     this.babyScheduler = new BabyScheduler(this);
@@ -39,7 +39,7 @@ class Silverwolf extends Client {
     this.games = [];
     this.loadGames(); // Initialize the games list from the JSON file
     this.chat = null;
-    this.sex_sessions = [];
+    this.sexSessions = [];
     // try{
     //     this.loadSilverwolfAI();
     // }catch(error){
@@ -52,6 +52,7 @@ class Silverwolf extends Client {
     await this.loadCommands();
     await this.loadKeywords();
     await this.loadListeners();
+    await this.db.ready;
 
     this.birthdayScheduler.start();
     log('Birthday scheduler started.');
@@ -76,10 +77,10 @@ All wrongs reserved.
     const commandDir = path.join(__dirname, '../commands');
     const commandFiles = fs.readdirSync(commandDir).filter((file) => file.endsWith('.js'));
 
-    let commandCount = 0;
-    for (const file of commandFiles) {
+    const commandCount = await commandFiles.reduce(async (countPromise, file) => {
+      const count = await countPromise;
+      // eslint-disable-next-line import/no-dynamic-require, global-require
       const CommandClass = require(path.join(commandDir, file));
-      // log(CommandClass);
       const command = new CommandClass(this);
       if (command.isSubcommandOf === null) {
         this.commands.set(command.name, command);
@@ -88,22 +89,22 @@ All wrongs reserved.
         this.commands.set(`${command.isSubcommandOf}.${command.name}`, command);
         log(`Command ${command.isSubcommandOf}.${command.name} loaded. ${command.ephemeral ? 'ephemeral' : ''} ${command.skipDefer ? 'skipDefer' : ''} ${command.isSubcommand ? 'isSubcommand' : ''}`);
       }
-      commandCount++;
-    }
+      return count + 1;
+    }, 0);
     log(`${commandCount} commands loaded.`);
 
     log('--------------------\nLoading command groups...\n--------------------');
     const commandGroupDir = path.join(__dirname, '../commands/commandgroups');
     const commandGroupFiles = fs.readdirSync(commandGroupDir).filter((file) => file.endsWith('.js'));
 
-    let commandGroupCount = 0;
-    for (const file of commandGroupFiles) {
+    const commandGroupCount = commandGroupFiles.reduce((count, file) => {
+      // eslint-disable-next-line import/no-dynamic-require, global-require
       const CommandGroupClass = require(path.join(commandGroupDir, file));
       const commandGroup = new CommandGroupClass(this);
       this.commands.set(commandGroup.name, commandGroup);
       log(`Command group ${commandGroup.name} loaded.`);
-      commandGroupCount++;
-    }
+      return count + 1;
+    }, 0);
     log(`${commandGroupCount} command groups loaded.`);
   }
 
@@ -112,10 +113,9 @@ All wrongs reserved.
     const keywordsFile = path.join(__dirname, '../data/keywords.json');
     const keywords = fs.readFileSync(keywordsFile, 'utf8');
     this.keywords = JSON.parse(keywords);
-    for (const [keyword, reply] of Object.entries(this.keywords)) {
-      // log(`Keyword: ${keyword} -> ${reply}`);
+    Object.entries(this.keywords).forEach(([keyword]) => {
       log(`Keyword ${keyword} loaded.`);
-    }
+    });
     log('Keywords loaded.');
   }
 
@@ -175,13 +175,14 @@ All wrongs reserved.
       await handler.summonPokemon(message); // Use the season-specific summonPokemon method
     }
 
-    if (message.author.id == '993614772354416673' && Math.random() < 0.1) {
+    if (message.author.id === '993614772354416673' && Math.random() < 0.1) {
       const arlecchino = this.commands.get('arlecchino');
       const interaction = {
         editReply: async (content) => {
           await message.reply(content);
         },
-        followUp: async (content) => {
+        // eslint-disable-next-line no-unused-vars
+        followUp: async (_content) => {
 
         },
       };
@@ -211,12 +212,13 @@ All wrongs reserved.
         if (fakeQuoteCommand) {
           const interaction = {
             options: {
-              getUser: (name) => ({ username: person.username, displayAvatarURL: () => pfp }),
+              // eslint-disable-next-line no-unused-vars
+              getUser: (_name) => ({ username: person.username, displayAvatarURL: () => pfp }),
               getString: (name) => {
                 if (name === 'message') return originalMessage;
                 if (name === 'nickname') return nickname;
                 if (name === 'background') return background;
-                if (name === 'profile_color') return profileColor;
+                if (name === 'profileColor') return profileColor;
                 return '';
               },
             },
@@ -236,12 +238,11 @@ All wrongs reserved.
       return;
     }
 
-    for (const [keyword, reply] of Object.entries(this.keywords)) {
+    Object.entries(this.keywords).forEach(([keyword, reply]) => {
       if (msg.includes(keyword)) {
         message.reply(reply);
-        return;
       }
-    }
+    });
   }
 
   processDelete(message) {
@@ -289,19 +290,21 @@ All wrongs reserved.
     const rest = new REST({ version: '10' }).setToken(this.token);
 
     // Loop over each guild ID
-    for (const guildId of guildIds) {
+    await Promise.all(guildIds.map(async (guildId) => {
       try {
         // Retrieve blacklisted commands for the guild
-        const blacklistedCommandsData = await this.db.getBlacklistedCommands(guildId);
+        const blacklistedCommandsData = await this.db.commandConfig.getBlacklistedCommands(guildId);
         log(`Blacklisted commands for guild ${guildId}:`, blacklistedCommandsData);
 
         // Extract just the command names from the data
-        const blacklistedCommands = blacklistedCommandsData.map((item) => item.command_name);
+        const blacklistedCommands = blacklistedCommandsData.map((item) => item.commandName);
 
         // Create a copy of the commands array
-        const commandsArray = Array.from(this.commands.values()).filter((command) => command !== null && command.isSubcommandOf === null).map((command) => command.toJSON());
+        const commandValues = Array.from(this.commands.values());
+        const validCommands = commandValues.filter((command) => command !== null && command.isSubcommandOf === null);
+        const commandsArray = validCommands.map((command) => command.toJSON());
 
-        console.log(commandsArray);
+        console.log(JSON.stringify(commandsArray, null, 2));
 
         // If there are no blacklisted commands, register all commands
         if (blacklistedCommands.length === 0) {
@@ -336,7 +339,7 @@ All wrongs reserved.
       } catch (error) {
         logError(`Error registering commands for guild ${guildId}:`, error);
       }
-    }
+    }));
 
     log('All commands registered successfully.');
     log('Successfully finished startup.');
@@ -355,7 +358,7 @@ All wrongs reserved.
 
     // Log the game change and schedule the next one
     let randomInterval;
-    if (randomGame == 'on bed with Ei') {
+    if (randomGame === 'on bed with Ei') {
       randomInterval = (Math.floor(Math.random() * 3) + 1) * 60 * 1000; // Random interval between 1 and 3 minutes
     } else {
       randomInterval = (Math.floor(Math.random() * 3) + 1) * 60 * 60 * 1000; // Random interval between 1 and 3 hours
@@ -396,10 +399,14 @@ All wrongs reserved.
   }
 
   async getHandler() {
-    const currentSeason = await this.db.getGlobalConfig('season') || 'normal';
-    const handlerClass = handlers[seasonConfig.seasons[currentSeason].handler];
+    const currentSeason = await this.db.globalConfig.getGlobalConfig('season') || 'normal';
+    const HandlerClass = handlers[seasonConfig.seasons[currentSeason].handler];
     const settings = seasonConfig.seasons[currentSeason].settings || {};
-    return new handlerClass(settings);
+    return new HandlerClass(settings);
+  }
+
+  setCurrentPokemon(pokemon) {
+    this.currentPokemon = pokemon;
   }
 }
 

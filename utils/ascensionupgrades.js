@@ -4,7 +4,7 @@ function getNextAscensionUpgradeCost(level, amplifier) {
 
 function getTotalAscensionUpgradeCost(level, amplifier) {
   let totalCost = 0;
-  for (let i = 1; i < level; i++) {
+  for (let i = 1; i < level; i += 1) {
     totalCost += getNextAscensionUpgradeCost(i, amplifier);
   }
   return totalCost;
@@ -31,5 +31,11 @@ function getNuggieNuggieMultiplier(level) {
 }
 
 module.exports = {
-  getNextAscensionUpgradeCost, getTotalAscensionUpgradeCost, getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNuggieCreditsMultiplier, getNuggiePokeMultiplier, getNuggieNuggieMultiplier,
+  getNextAscensionUpgradeCost,
+  getTotalAscensionUpgradeCost,
+  getNuggieFlatMultiplier,
+  getNuggieStreakMultiplier,
+  getNuggieCreditsMultiplier,
+  getNuggiePokeMultiplier,
+  getNuggieNuggieMultiplier,
 };

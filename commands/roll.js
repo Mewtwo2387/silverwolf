@@ -1,5 +1,5 @@
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 class Roll extends Command {
   constructor(client) {
@@ -60,11 +60,11 @@ class Roll extends Command {
             .setDescription(`### You tried rolling a ${input}-sided die.\n<:yanfeismug:1136925353651228775>`);
         } else {
           const faces = parseInt(input);
-          if (isNaN(faces) || faces == undefined) {
+          if (isNaN(faces) || faces === undefined) {
             embed = new Discord.EmbedBuilder()
               .setColor('#AA0000')
               .setDescription(`### You tried rolling a ${input}-sided die.\nIt landed on a ${input}. Pretty cool, huh?`);
-          } else if (faces != Math.round(faces)) {
+          } else if (faces !== Math.round(faces)) {
             embed = new Discord.EmbedBuilder()
               .setColor('#AA0000')
               .setDescription(`### You tried rolling a ${faces}-sided die.\nIt landed on an edge with an incomplete side.`);

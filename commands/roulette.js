@@ -1,7 +1,7 @@
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
-const { format, antiFormat } = require('../utils/math.js');
-const marriageBenefits = require('../utils/marriageBenefits.js');
+const { Command } = require('./classes/command');
+const { format, antiFormat } = require('../utils/math');
+const marriageBenefits = require('../utils/marriageBenefits');
 
 class Roulette extends Command {
   constructor(client) {
@@ -91,7 +91,7 @@ class Roulette extends Command {
     const betValue = interaction.options.getInteger('bet_value');
     const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
     let streak = await this.client.db.getUserAttr(interaction.user.id, 'roulette_streak');
-    const maxStreak = await this.client.db.getUserAttr(interaction.user.id, 'roulette_max_streak');
+    const maxStreak = await this.client.db.getUserAttr(interaction.user.id, 'rouletteMaxStreak');
 
     if (amount < 0) {
       await interaction.editReply({
@@ -113,7 +113,7 @@ class Roulette extends Command {
       return;
     }
 
-    if (betType === 'number' && (isNaN(betValue) || betValue < 0 || betValue > 36 || betValue == null)) {
+    if (betType === 'number' && (isNaN(betValue) || betValue < 0 || betValue > 36 || betValue === null)) {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')
@@ -163,15 +163,15 @@ class Roulette extends Command {
     // Apply marriage benefits
     multi *= await marriageBenefits(this.client, interaction.user.id);
     const winnings = multi * amount;
-    await this.client.db.addUserAttr(interaction.user.id, 'roulette_times_played', 1);
-    await this.client.db.addUserAttr(interaction.user.id, 'roulette_amount_gambled', amount);
-    await this.client.db.addUserAttr(interaction.user.id, 'roulette_times_won', multi > 0 ? 1 : 0);
-    await this.client.db.addUserAttr(interaction.user.id, 'roulette_amount_won', winnings);
-    await this.client.db.addUserAttr(interaction.user.id, 'roulette_relative_won', multi);
+    await this.client.db.addUserAttr(interaction.user.id, 'rouletteTimesPlayed', 1);
+    await this.client.db.addUserAttr(interaction.user.id, 'rouletteAmountGambled', amount);
+    await this.client.db.addUserAttr(interaction.user.id, 'rouletteTimesWon', multi > 0 ? 1 : 0);
+    await this.client.db.addUserAttr(interaction.user.id, 'rouletteAmountWon', winnings);
+    await this.client.db.addUserAttr(interaction.user.id, 'rouletteRelativeWon', multi);
     await this.client.db.addUserAttr(interaction.user.id, 'credits', winnings - amount);
-    await this.client.db.setUserAttr(interaction.user.id, 'roulette_streak', streak);
+    await this.client.db.setUserAttr(interaction.user.id, 'rouletteStreak', streak);
     if (streak > maxStreak) {
-      await this.client.db.setUserAttr(interaction.user.id, 'roulette_max_streak', streak);
+      await this.client.db.setUserAttr(interaction.user.id, 'rouletteMaxStreak', streak);
     }
 
     await interaction.editReply({

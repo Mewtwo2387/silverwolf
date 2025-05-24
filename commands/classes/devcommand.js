@@ -1,6 +1,6 @@
-require('dotenv').config();
-const { Command } = require('./command.js');
+const { Command } = require('./command');
 const { log } = require('../../utils/log');
+const { isDev } = require('../../utils/accessControl');
 
 class DevCommand extends Command {
   constructor(client, name, description, options, args = { ephemeral: false, skipDefer: false, isSubcommandOf: null }) {
@@ -8,8 +8,7 @@ class DevCommand extends Command {
   }
 
   async execute(interaction) {
-    const allowedUsers = process.env.ALLOWED_USERS.split(',');
-    if (!allowedUsers.includes(interaction.user.id)) {
+    if (!isDev(interaction)) {
       log(`${interaction.user.username} tried using a dev command smh`);
       if (interaction.deferred) {
         await interaction.editReply('No.');

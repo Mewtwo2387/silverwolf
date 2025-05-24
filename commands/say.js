@@ -1,5 +1,5 @@
 const { TextChannel, EmbedBuilder } = require('discord.js');
-const { AdminCommand } = require('./classes/admincommand.js');
+const { AdminCommand } = require('./classes/admincommand');
 const { logError } = require('../utils/log');
 
 class Say extends AdminCommand {

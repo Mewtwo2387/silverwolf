@@ -1,5 +1,4 @@
-const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 class BuyDonation extends Command {
   constructor(client) {
@@ -15,12 +14,12 @@ class BuyDonation extends Command {
 
   async run(interaction) {
     const upgrade = interaction.options.getInteger('upgrade');
-    const stellar_nuggies = await this.client.db.getUserAttr(interaction.user.id, 'stellar_nuggies');
+    const stellarNuggies = await this.client.db.getUserAttr(interaction.user.id, 'stellarNuggies');
 
     switch (upgrade) {
       case 1:
-        if (stellar_nuggies >= 10) {
-          await this.client.db.addUserAttr(interaction.user.id, 'stellar_nuggies', -10);
+        if (stellarNuggies >= 10) {
+          await this.client.db.addUserAttr(interaction.user.id, 'stellarNuggies', -10);
           await interaction.editReply({ content: 'You successfully bought a dinonuggie claim!' });
           await this.client.commands.get('claim').handleSuccessfulClaim(interaction, true);
         } else {
@@ -28,8 +27,8 @@ class BuyDonation extends Command {
         }
         break;
       case 2:
-        if (stellar_nuggies >= 40) {
-          await this.client.db.addUserAttr(interaction.user.id, 'stellar_nuggies', -40);
+        if (stellarNuggies >= 40) {
+          await this.client.db.addUserAttr(interaction.user.id, 'stellarNuggies', -40);
           await interaction.editReply({ content: 'You successfully bought 5 dinonuggie claims!' });
           for (let i = 0; i < 5; i++) {
             await this.client.commands.get('claim').handleSuccessfulClaim(interaction, true);
@@ -39,8 +38,8 @@ class BuyDonation extends Command {
         }
         break;
       case 3:
-        if (stellar_nuggies >= 70) {
-          await this.client.db.addUserAttr(interaction.user.id, 'stellar_nuggies', -70);
+        if (stellarNuggies >= 70) {
+          await this.client.db.addUserAttr(interaction.user.id, 'stellarNuggies', -70);
           await interaction.editReply({ content: 'You successfully bought 10 dinonuggie claims!' });
           for (let i = 0; i < 10; i++) {
             await this.client.commands.get('claim').handleSuccessfulClaim(interaction, true);
@@ -50,8 +49,8 @@ class BuyDonation extends Command {
         }
         break;
       case 4:
-        if (stellar_nuggies >= 120) {
-          await this.client.db.addUserAttr(interaction.user.id, 'stellar_nuggies', -120);
+        if (stellarNuggies >= 120) {
+          await this.client.db.addUserAttr(interaction.user.id, 'stellarNuggies', -120);
           await interaction.editReply({ content: 'You successfully bought 20 dinonuggie claims!' });
           for (let i = 0; i < 20; i++) {
             await this.client.commands.get('claim').handleSuccessfulClaim(interaction, true);
@@ -61,13 +60,13 @@ class BuyDonation extends Command {
         }
         break;
       case 5:
-        const ascension_level = await this.client.db.getUserAttr(interaction.user.id, 'ascension_level');
-        if (stellar_nuggies >= 60 + (ascension_level * 10)) {
-          await this.client.db.addUserAttr(interaction.user.id, 'stellar_nuggies', -60 - (ascension_level * 10));
+        const ascensionLevel = await this.client.db.getUserAttr(interaction.user.id, 'ascensionLevel');
+        if (stellarNuggies >= 60 + (ascensionLevel * 10)) {
+          await this.client.db.addUserAttr(interaction.user.id, 'stellarNuggies', -60 - (ascensionLevel * 10));
           const nuggies = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggies');
-          await this.client.db.addUserAttr(interaction.user.id, 'heavenly_nuggies', nuggies);
-          await this.client.db.addUserAttr(interaction.user.id, 'ascension_level', 1);
-          await interaction.editReply({ content: `You obtained ${nuggies} heavenly nuggies and reached ascension level ${ascension_level + 1}!` });
+          await this.client.db.addUserAttr(interaction.user.id, 'heavenlyNuggies', nuggies);
+          await this.client.db.addUserAttr(interaction.user.id, 'ascensionLevel', 1);
+          await interaction.editReply({ content: `You obtained ${nuggies} heavenly nuggies and reached ascension level ${ascensionLevel + 1}!` });
         } else {
           await interaction.editReply({ content: "You don't have enough stellar nuggies to buy this! Get more with /donate" });
         }

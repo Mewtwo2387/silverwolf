@@ -6,7 +6,7 @@ Credits:
 */
 
 const Canvas = require('canvas');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 const { log, logError } = require('../utils/log');
 
 class FakeQuote extends Command {

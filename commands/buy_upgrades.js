@@ -1,15 +1,15 @@
 const Discord = require('discord.js');
-const { format } = require('../utils/math.js');
-const { Command } = require('./classes/command.js');
+const { format } = require('../utils/math');
+const { Command } = require('./classes/command');
 const {
-  getNextUpgradeCost, getTotalUpgradeCost, getMultiplierAmount, getMultiplierChance, getBekiCooldown, getMaxLevel,
-} = require('../utils/upgrades.js');
+  getNextUpgradeCost, getMultiplierAmount, getMultiplierChance, getBekiCooldown, getMaxLevel,
+} = require('../utils/upgrades');
 
-const UPGRADES = ['multiplier_amount', 'multiplier_rarity', 'beki'];
+const UPGRADES = ['multiplierAmount', 'multiplierRarity', 'beki'];
 
 // We don't talk about the spaghetti code here
 
-class Buy extends Command {
+class BuyUpgrades extends Command {
   constructor(client) {
     super(client, 'upgrades', 'buy upgrades', [
       {
@@ -22,8 +22,8 @@ class Buy extends Command {
   }
 
   async run(interaction) {
-    const ascensionLevel = await this.client.db.getUserAttr(interaction.user.id, 'ascension_level');
-    const max_level = getMaxLevel(ascensionLevel);
+    const ascensionLevel = await this.client.db.getUserAttr(interaction.user.id, 'ascensionLevel');
+    const maxLevel = getMaxLevel(ascensionLevel);
 
     const upgradeId = interaction.options.getInteger('upgrade');
 
@@ -40,9 +40,9 @@ class Buy extends Command {
 
     const upgrade = UPGRADES[upgradeId - 1];
 
-    const level = await this.client.db.getUserAttr(interaction.user.id, `${upgrade}_level`);
+    const level = await this.client.db.getUserAttr(interaction.user.id, `${upgrade}Level`);
 
-    if (level >= max_level) {
+    if (level >= maxLevel) {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')
@@ -70,10 +70,10 @@ class Buy extends Command {
     }
 
     await this.client.db.addUserAttr(interaction.user.id, 'credits', -cost);
-    await this.client.db.addUserAttr(interaction.user.id, `${upgrade}_level`, 1);
+    await this.client.db.addUserAttr(interaction.user.id, `${upgrade}Level`, 1);
 
     switch (upgrade) {
-      case 'multiplier_amount':
+      case 'multiplierAmount':
         const multiplierAmount = getMultiplierAmount(level);
         const nextMultiplierAmount = getMultiplierAmount(level + 1);
         await interaction.editReply({
@@ -89,7 +89,7 @@ Mystic Credits: ${format(credits)} -> ${format(credits - cost)}`)
           ],
         });
         break;
-      case 'multiplier_rarity':
+      case 'multiplierRarity':
         const multiplierRarity = getMultiplierChance(level);
         const nextMultiplierRarity = getMultiplierChance(level + 1);
         await interaction.editReply({
@@ -123,4 +123,4 @@ Mystic Credits: ${format(credits)} -> ${format(credits - cost)}`)
   }
 }
 
-module.exports = Buy;
+module.exports = BuyUpgrades;

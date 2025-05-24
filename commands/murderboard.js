@@ -1,5 +1,5 @@
-const { Command } = require('./classes/command.js');
-const LeaderboardMixin = require('./mixins/leaderboardMixin.js');
+const { Command } = require('./classes/command');
+const LeaderboardMixin = require('./mixins/leaderboardMixin');
 
 class MurderBoard extends LeaderboardMixin(Command) {
   constructor(client) {
@@ -8,7 +8,7 @@ class MurderBoard extends LeaderboardMixin(Command) {
       'murderboard',
       'criminal records',
       'Murder Leaderboard',
-      'murder_success',
+      'murderSuccess',
       'Successful Murders',
       'No successful murders yet!',
     );

@@ -1,7 +1,7 @@
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
-const { format } = require('../utils/math.js');
-const { log } = require('../utils/log.js');
+const { Command } = require('./classes/command');
+const { format } = require('../utils/math');
+const { log } = require('../utils/log');
 
 const PREGNANCY_DURATION = 7 * 24 * 60 * 60 * 1000; // 1 week
 
@@ -30,7 +30,7 @@ class BabyGet extends Command {
     const babies = await this.client.db.getBabies(parent1.id, parent2.id);
     log(`babies: ${JSON.stringify(babies)}`);
 
-    if (babies.length == 0) {
+    if (babies.length === 0) {
       await interaction.editReply({
         embeds: [
           new Discord.EmbedBuilder()
@@ -48,23 +48,23 @@ class BabyGet extends Command {
       result += `ID: ${baby.id}\n`;
       result += `Status: ${baby.status}\n`;
       switch (baby.job) {
-        case 'nuggie_claimer':
-          result += `Nuggie Claimer - ${baby.nuggie_claimer_claims} claims, ${format(baby.nuggie_claimer_claimed)} nuggies claimed\n`;
+        case 'nuggieClaimer':
+          result += `Nuggie Claimer - ${baby.nuggieClaimerClaims} claims, ${format(baby.nuggieClaimerClaimed)} nuggies claimed\n`;
           break;
         case 'gambler':
-          result += `Gambler - ${baby.gambler_games} games (${baby.gambler_wins} wins, ${baby.gambler_losses} losses), ${format(baby.gambler_credits_won - baby.gambler_credits_gambled)} net winnings (${format(baby.gambler_credits_won)} won, ${format(baby.gambler_credits_gambled)} gambled)\n`;
+          result += `Gambler - ${baby.gamblerGames} games (${baby.gamblerWins} wins, ${baby.gamblerLosses} losses), ${format(baby.gamblerCreditsWon - baby.gamblerCreditsGambled)} net winnings (${format(baby.gamblerCreditsWon)} won, ${format(baby.gamblerCreditsGambled)} gambled)\n`;
           break;
         case 'pinger':
-          result += `Pinger - ${baby.pinger_pings} pings\n`;
+          result += `Pinger - ${baby.pingerPings} pings\n`;
           break;
         default:
           result += 'No job\n';
           break;
       }
       result += `Level: Lv ${baby.level}\n`;
-      result += `Mother: <@${baby.mother_id}>\n`;
-      result += `Father: <@${baby.father_id}>\n`;
-      if (baby.status == 'unborn') {
+      result += `Mother: <@${baby.motherId}>\n`;
+      result += `Father: <@${baby.fatherId}>\n`;
+      if (baby.status === 'unborn') {
         const created = new Date(baby.created);
         const now = new Date();
         const diffTime = Math.abs(now - created);

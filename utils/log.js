@@ -22,11 +22,20 @@ function logError(message, error = '') {
   });
 }
 
-process.on('uncaughtException', handleUncaughtException);
-log('Catching uncaught exceptions...');
+function logWarning(message) {
+  console.warn(message);
+  fs.appendFile(logFilePath, `${new Date().toISOString()} - WARNING: ${message}\n`, (err) => {
+    if (err) {
+      console.error('Failed to write to log file:', err);
+    }
+  });
+}
 
 function handleUncaughtException(error) {
   logError('----- UNCAUGHT EXCEPTION: -----', error);
 }
 
-module.exports = { log, logError };
+process.on('uncaughtException', handleUncaughtException);
+log('Catching uncaught exceptions...');
+
+module.exports = { log, logError, logWarning };
