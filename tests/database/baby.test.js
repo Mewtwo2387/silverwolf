@@ -19,9 +19,9 @@ describe('BabyModel', () => {
 
   beforeEach(async () => {
     // Clear the User table before each test
-    await db.executeQuery('DELETE FROM User');
     await db.executeQuery('DELETE FROM Baby');
     await db.executeQuery('DELETE FROM sqlite_sequence WHERE name="Baby"');
+    await db.executeQuery('DELETE FROM User');
   });
 
   describe('createBaby and getBabyById', () => {
