@@ -94,4 +94,4 @@ describe('GlobalConfigModel', () => {
       expect(results[0].key).toBe('key2');
     });
   });
-}); 
+});

@@ -1,5 +1,4 @@
 const gameUIDQueries = require('../queries/gameUIDQueries');
-const { log } = require('../../utils/log');
 
 class GameUIDModel {
   constructor(database) {
