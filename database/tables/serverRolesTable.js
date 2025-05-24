@@ -1,13 +1,16 @@
 const serverRolesTable = {
   name: 'ServerRoles',
   columns: [
-    { name: 'server_id', type: 'VARCHAR PRIMARY KEY' },
+    { name: 'id', type: 'INTEGER PRIMARY KEY AUTOINCREMENT' },
+    { name: 'server_id', type: 'VARCHAR' },
     { name: 'role_name', type: 'VARCHAR NOT NULL' },
     { name: 'role_id', type: 'VARCHAR NOT NULL' },
   ],
-  primaryKey: ['server_id'],
+  primaryKey: ['id'],
   specialConstraints: [],
-  constraints: [],
+  constraints: [
+    'UNIQUE (server_id, role_name)',
+  ],
 };
 
 module.exports = serverRolesTable;
