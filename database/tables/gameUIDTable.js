@@ -12,6 +12,7 @@ const gameUIDTable = {
   specialConstraints: [],
   constraints: [
     'UNIQUE (user_id, game)',
+    'FOREIGN KEY (user_id) REFERENCES User(id)',
   ],
 };
 

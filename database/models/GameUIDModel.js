@@ -1,4 +1,5 @@
 const gameUIDQueries = require('../queries/gameUIDQueries');
+const { log } = require('../../utils/log');
 
 class GameUIDModel {
   constructor(database) {
@@ -11,8 +12,9 @@ class GameUIDModel {
     return result;
   }
 
-  async addGameUID(userId, game, gameUID, region) {
-    const query = gameUIDQueries.ADD_GAME_UID;
+  async setGameUID(userId, game, gameUID, region) {
+    await this.db.user.getUser(userId);
+    const query = gameUIDQueries.ADD_OR_UPDATE_GAME_UID;
     await this.db.executeQuery(query, [userId, game, gameUID, region]);
   }
 
