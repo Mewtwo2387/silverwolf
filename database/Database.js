@@ -82,6 +82,8 @@ class Database {
     Object.entries(models).forEach(([modelName, ModelClass]) => {
       this.models[modelName] = new ModelClass(this);
     });
+
+    await this.db.run('PRAGMA foreign_keys = ON');
   }
 
   checkIfColumnExists(tableName, columnName) {
