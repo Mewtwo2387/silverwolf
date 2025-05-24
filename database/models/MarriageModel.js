@@ -7,6 +7,8 @@ class MarriageModel {
   }
 
   async addMarriage(user1Id, user2Id) {
+    await this.db.user.getUser(user1Id);
+    await this.db.user.getUser(user2Id);
     const query = marriageQueries.ADD_MARRIAGE;
     await this.db.executeQuery(query, [user1Id, user2Id]);
     log(`Marriage added between ${user1Id} and ${user2Id}.`);
@@ -21,17 +23,17 @@ class MarriageModel {
   async checkMarriageStatus(userId) {
     const query = marriageQueries.GET_MARRIAGE;
     const result = await this.db.executeSelectQuery(query, [userId, userId]);
-    if (result.length > 0) {
-      const partnerId = result[0].user1Id === userId ? result[0].user2Id : result[0].user1Id;
+    if (result) {
+      const partnerId = result.user1Id === userId ? result.user2Id : result.user1Id;
       return { isMarried: true, partnerId };
     }
     return { isMarried: false };
   }
 
-  async getMarriageDate(user1Id, user2Id) {
+  async getMarriageDate(userId) {
     const query = marriageQueries.GET_MARRIAGE;
-    const result = await this.db.executeSelectQuery(query, [user1Id, user2Id, user2Id, user1Id]);
-    return result.length > 0 ? result[0].marriedOn : null;
+    const result = await this.db.executeSelectQuery(query, [userId, userId]);
+    return result ? result.marriedOn : null;
   }
 }
 
