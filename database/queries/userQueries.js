@@ -34,6 +34,22 @@ const userQueries = {
     UPDATE User SET ${attr} = ? WHERE id = ?
   `,
 
+  ASCEND_USER: `
+    UPDATE User SET 
+      credits = 0,
+      bitcoin = 0,
+      last_bought_price = 0,
+      last_bought_amount = 0,
+      dinonuggies = 0,
+      dinonuggies_last_claimed = NULL,
+      dinonuggies_claim_streak = 0,
+      multiplier_amount_level = 1,
+      multiplier_rarity_level = 1,
+      beki_level = 1,
+      heavenly_nuggies = heavenly_nuggies + dinonuggies
+    WHERE id = ?
+  `,
+
   // get a sorted list of users by attribute
   GET_EVERYONE_ATTR: (attr) => `
     SELECT

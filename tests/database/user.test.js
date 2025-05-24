@@ -128,6 +128,35 @@ describe('UserModel', () => {
     });
   });
 
+  describe('ascendUser', () => {
+    it('should reset nuggies', async () => {
+      const userId = '123456789';
+      await userModel.createUser(userId);
+      await userModel.setUserAttr(userId, 'dinonuggies', 100);
+      await userModel.ascendUser(userId, true);
+      const user = await userModel.getUser(userId);
+      expect(user.dinonuggies).toBe(0);
+    });
+
+    it('should increase ascension level if all maxed', async () => {
+      const userId = '123456789';
+      await userModel.createUser(userId);
+      await userModel.setUserAttr(userId, 'ascensionLevel', 1);
+      await userModel.ascendUser(userId, true);
+      const user = await userModel.getUser(userId);
+      expect(user.ascensionLevel).toBe(2);
+    });
+
+    it('should not increase ascension level if not all maxed', async () => {
+      const userId = '123456789';
+      await userModel.createUser(userId);
+      await userModel.setUserAttr(userId, 'ascensionLevel', 1);
+      await userModel.ascendUser(userId, false);
+      const user = await userModel.getUser(userId);
+      expect(user.ascensionLevel).toBe(1);
+    });
+  });
+
   describe('getEveryoneAttr and getEveryoneAttrCount', () => {
     it('should return sorted list of users by attribute', async () => {
       const users = [

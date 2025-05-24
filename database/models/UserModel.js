@@ -53,6 +53,15 @@ class UserModel {
     log(`Updated user ${userId}: ${attribute} set to ${value}.`);
   }
 
+  async ascendUser(userId, allMaxed) {
+    const query = userQueries.ASCEND_USER;
+    await this.db.executeQuery(query, [userId]);
+    if (allMaxed) {
+      await this.addUserAttr(userId, 'ascensionLevel', 1);
+    }
+    log(`User ${userId} ascended. ${allMaxed ? 'All upgrades maxed.' : 'Not all upgrades maxed.'}`);
+  }
+
   async getUserAttr(userId, attribute) {
     const user = await this.getUser(userId);
     return user[attribute];
