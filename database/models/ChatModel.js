@@ -39,6 +39,28 @@ class ChatModel {
     return result;
   }
 
+  async endLastActiveServerChatSession(serverId) {
+    const session = await this.getLastActiveServerChatSession(serverId);
+    if (session) {
+      await this.endChatSession(session.sessionId);
+      return true;
+    }
+    return false;
+  }
+
+  async startChatSessionIfNotExists(startedBy, serverId) {
+    const session = await this.getLastActiveServerChatSession(serverId);
+    if (session) {
+      return session;
+    }
+    return this.startChatSession(startedBy, serverId);
+  }
+
+  async endAndStartNewChatSession(startedBy, serverId) {
+    await this.endLastActiveServerChatSession(serverId);
+    return this.startChatSession(startedBy, serverId);
+  }
+
   async addChatHistory(sessionId, role, message) {
     const query = chatQueries.ADD_CHAT_HISTORY;
     await this.db.executeQuery(query, [sessionId, role, message]);
