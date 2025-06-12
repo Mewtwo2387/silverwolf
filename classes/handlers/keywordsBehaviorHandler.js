@@ -1,0 +1,67 @@
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+require('dotenv').config();
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_TOKEN);
+const systemInstruction = 'You are a helpful assistant named Grok. Respond clearly and concisely.';
+
+module.exports = {
+  fxTwitter: async (message) => {
+    const xLinkRegex = /https:\/\/x\.com\/([^/]+)\/status\/(\d+)(\?[^\s]*)?/g;
+    const fxContent = message.content.replace(xLinkRegex, (_, user, id) => `https://fxtwitter.com/${user}/status/${id}`);
+
+    try {
+      const webhooks = await message.channel.fetchWebhooks();
+      let webhook = webhooks.find((wh) => wh.name === 'FXTwitter');
+
+      if (!webhook) {
+        webhook = await message.channel.createWebhook({
+          name: 'FXTwitter',
+          avatar: message.client.user.displayAvatarURL(),
+        });
+      }
+
+      await webhook.send({
+        content: fxContent,
+        username: message.member?.displayName || message.author.username,
+        avatarURL: message.author.displayAvatarURL(),
+      });
+
+      await message.delete();
+    } catch (err) {
+      console.error('Error sending fxtwitter webhook:', err);
+    }
+  },
+  grok: async (message) => {
+    const triggerRegex = /@gro[ck]\w*/gi;
+    const query = message.content.replace(triggerRegex, '').trim();
+
+    if (!query) {
+      await message.reply("Don't ping me if you're not gonna ask anything!");
+      return;
+    }
+
+    const contextMsg = message.reference
+      ? await message.channel.messages.fetch(message.reference.messageId).catch(() => null)
+      : null;
+
+    const prompt = contextMsg
+      ? `User asked a follow-up based on this: "${contextMsg.content}"\n\nQuestion: ${query}`
+      : query;
+
+    try {
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-2.0-flash',
+        systemInstruction,
+      });
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = await response.text();
+
+      await message.reply(text);
+    } catch (err) {
+      console.error('Grok script error:', err);
+      await message.reply('Something went wrong trying to ask Grok. Try again later.');
+    }
+  },
+};
