@@ -5,9 +5,9 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_TOKEN);
 const systemInstruction = 'You are a helpful assistant named Grok. Respond clearly and concisely.';
 
 module.exports = {
-  fxTwitter: async (message) => {
+  girlCockx: async (message) => {
     const xLinkRegex = /https:\/\/x\.com\/([^/]+)\/status\/(\d+)(\?[^\s]*)?/g;
-    const fxContent = message.content.replace(xLinkRegex, (_, user, id) => `https://fxtwitter.com/${user}/status/${id}`);
+    const girlcockxContent = message.content.replace(xLinkRegex, (_, user, id) => `https://girlcockx.com/${user}/status/${id}`);
 
     try {
       const webhooks = await message.channel.fetchWebhooks();
@@ -15,20 +15,20 @@ module.exports = {
 
       if (!webhook) {
         webhook = await message.channel.createWebhook({
-          name: 'FXTwitter',
+          name: 'girlcockx',
           avatar: message.client.user.displayAvatarURL(),
         });
       }
 
       await webhook.send({
-        content: fxContent,
+        content: girlcockxContent,
         username: message.member?.displayName || message.author.username,
         avatarURL: message.author.displayAvatarURL(),
       });
 
       await message.delete();
     } catch (err) {
-      console.error('Error sending fxtwitter webhook:', err);
+      console.error('Error sending girlcockx webhook:', err);
     }
   },
   grok: async (message) => {

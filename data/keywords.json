@@ -9,7 +9,7 @@
   },
   {
     "triggers": ["/https:\\/\\/x\\.com\\/([^/]+)\\/status\\/(\\d+)(\\?[^\\s]*)?/g"],
-    "script": "fxTwitter"
+    "script": "girlCockx"
   },
     {
     "triggers": ["google en passant"],
