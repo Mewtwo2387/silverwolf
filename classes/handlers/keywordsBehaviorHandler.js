@@ -25,7 +25,7 @@ module.exports = {
       await webhook.send({
         content: girlcockxContent,
         username: message.member?.displayName || message.author.username,
-        avatarURL: message.author.displayAvatarURL(),
+        avatarURL: message.member.displayAvatarURL(),
       });
 
       await message.delete();
