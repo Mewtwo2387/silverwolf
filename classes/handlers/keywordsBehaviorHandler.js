@@ -3,6 +3,8 @@ require('dotenv').config();
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_TOKEN);
 const systemInstruction = 'You are a helpful assistant named Grok. Respond clearly and concisely.';
+const { EmbedBuilder } = require('discord.js');
+const { logError } = require('../../utils/log');
 
 module.exports = {
   girlCockx: async (message) => {
@@ -62,6 +64,33 @@ module.exports = {
     } catch (err) {
       console.error('Grok script error:', err);
       await message.reply('Something went wrong trying to ask Grok. Try again later.');
+    }
+  },
+  stealSticker: async (message) => {
+    if (!message.reference) {
+      await message.reply('You need to reply to a message with a sticker to steal it!');
+      return;
+    }
+
+    try {
+      const referenced = await message.channel.messages.fetch(message.reference.messageId);
+      const sticker = referenced.stickers?.first();
+
+      if (!sticker) {
+        await message.reply('CAN YOU LOCK TF IN? THAT MESSAGE DOESNT HAVE A STICKER...[.](https://tenor.com/view/silver-wolf-gif-16998478984526443945)');
+        return;
+      }
+
+      const embed = new EmbedBuilder()
+        .setTitle(`Sticker: ${sticker.name}`)
+        .setImage(sticker.url)
+        .setColor(0x00bcd4)
+        .setFooter({ text: `ID: ${sticker.id}` });
+
+      await message.reply({ embeds: [embed] });
+    } catch (err) {
+      logError('Error fetching sticker:', err);
+      await message.reply("Failed to fetch the sticker. Maybe it's gone or inaccessible.");
     }
   },
 };

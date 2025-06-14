@@ -54,5 +54,9 @@
   {
     "triggers" : ["@grok", "@gork"],
     "script" : "grok"
+  },
+  {
+    "triggers": ["steal sticker", "yoink!"],
+    "script": "stealSticker"
   }
 ]
