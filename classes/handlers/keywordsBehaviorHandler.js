@@ -26,6 +26,9 @@ module.exports = {
         content: girlcockxContent,
         username: message.member?.displayName || message.author.username,
         avatarURL: message.member.displayAvatarURL(),
+        allowedMentions: {
+          parse: [] 
+        }
       });
 
       await message.delete();
@@ -60,7 +63,10 @@ module.exports = {
       const response = await result.response;
       const text = await response.text();
 
-      await message.reply(text);
+      await message.reply({
+        content: text,
+        allowedMentions: { parse: [] }
+      });
     } catch (err) {
       console.error('Grok script error:', err);
       await message.reply('Something went wrong trying to ask Grok. Try again later.');
