@@ -2,6 +2,7 @@ const {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
 } = require('discord.js');
 const { Command } = require('./classes/command');
+const { checkValidBet } = require('../utils/betting');
 
 class RnR extends Command {
   constructor(client) {
@@ -14,20 +15,10 @@ class RnR extends Command {
   }
 
   async run(interaction) {
-    const amount = interaction.options.getInteger('amount');
-    const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
-
-    if (amount <= 0) {
-      return interaction.editReply('Please enter a valid amount greater than 0.');
-    }
-
-    if (amount > credits) {
-      return interaction.editReply({
-        embeds: [new EmbedBuilder()
-          .setColor('#AA0000')
-          .setTitle('You don\'t have enough credits to bet that much!'),
-        ],
-      });
+    const amountString = interaction.options.getString('amount');
+    const amount = await checkValidBet(interaction, amountString);
+    if (amount === null) {
+      return;
     }
 
     const currentAmount = amount;

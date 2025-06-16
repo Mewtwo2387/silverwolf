@@ -1,7 +1,8 @@
 const Discord = require('discord.js');
 const { Command } = require('./classes/command');
-const { format, antiFormat } = require('../utils/math');
+const { format } = require('../utils/math');
 const marriageBenefits = require('../utils/marriageBenefits');
+const { checkValidBet } = require('../utils/betting');
 
 class Blackjack extends Command {
   constructor(client) {
@@ -17,37 +18,8 @@ class Blackjack extends Command {
 
   async run(interaction) {
     const amountString = interaction.options.getString('amount');
-    const amount = antiFormat(amountString);
-    if (isNaN(amount)) {
-      await interaction.editReply({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#AA0000')
-          .setTitle('Invalid amount')
-          .setDescription('idk if this parsing actually works'),
-        ],
-      });
-      return;
-    }
-
-    const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
-
-    if (amount < 0) {
-      await interaction.editReply({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#AA0000')
-          .setTitle('You can\'t bet debt here too'),
-        ],
-      });
-      return;
-    }
-
-    if (amount > credits) {
-      await interaction.editReply({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#AA0000')
-          .setTitle('You don\'t have enough mystic credits to bet that much!'),
-        ],
-      });
+    const amount = await checkValidBet(interaction, amountString);
+    if (amount === null) {
       return;
     }
 

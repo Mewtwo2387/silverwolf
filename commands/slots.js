@@ -2,8 +2,9 @@ const Discord = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const { Command } = require('./classes/command');
-const { format, antiFormat } = require('../utils/math');
+const { format } = require('../utils/math');
 const marriageBenefits = require('../utils/marriageBenefits');
+const { checkValidBet } = require('../utils/betting');
 
 class Slots extends Command {
   constructor(client) {
@@ -19,89 +20,16 @@ class Slots extends Command {
 
   async run(interaction) {
     const amountString = interaction.options.getString('amount');
-    const amount = antiFormat(amountString);
+    const amount = await checkValidBet(interaction, amountString);
+    if (amount === null) {
+      return;
+    }
 
     const season = await this.client.db.getGlobalConfig('season') || 'Normal';
 
     const skin = await JSON.parse(fs.readFileSync(path.join(__dirname, '../data/config/skin/slots.json'), 'utf8'))[season];
 
     const smugs = skin.emotes;
-    if (isNaN(amount)) {
-      // Generate three rows of smugs, each row using the same random smug
-      const smugRows = [
-        Array(5).fill(smugs[Math.floor(Math.random() * smugs.length)].emote).join(' '),
-        Array(5).fill(smugs[Math.floor(Math.random() * smugs.length)].emote).join(' '),
-        Array(5).fill(smugs[Math.floor(Math.random() * smugs.length)].emote).join(' '),
-      ];
-      const infinityKeywords = [
-        'infinity',
-        'inf',
-        '∞',
-        'unlimited',
-        'forever',
-        'endless',
-        'neverending',
-        'boundless',
-        'limitless',
-        'eternal',
-        'never-ending',
-      ];
-
-      if (infinityKeywords.some((keyword) => amountString.toLowerCase().includes(keyword.toLowerCase()))) {
-        // Handle infinity case
-        await interaction.editReply({
-          embeds: [new Discord.EmbedBuilder()
-            .setColor('#FFFF00')
-            .setTitle(`You bet ${amountString} and won ${amountString} mystic credits!`)
-            .setDescription(`${smugRows.join('\n')}`),
-          ],
-        });
-
-        // Comedic follow-up messages
-        setTimeout(async () => {
-          await interaction.followUp({
-            embeds: [new Discord.EmbedBuilder()
-              .setColor('#FF0000')
-              .setTitle('You have been spotted cheating!')
-              .setDescription('Mystic credits set to 0!'),
-            ],
-          });
-        }, 5000);
-
-        setTimeout(async () => {
-          await interaction.followUp({
-            content: '/j', // Just joking message
-          });
-        }, 10000);
-        return;
-      }
-      // Handle generic non-numerical strings
-      await interaction.editReply({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#AA0000')
-          .setTitle(`You bet ${amountString} and won ${amountString} mystic credits!`)
-          .setDescription(`${smugRows.join('\n')}`),
-        ],
-      });
-      return;
-    }
-
-    // const season = await this.client.db.getGlobalConfig("season") || "Normal";
-
-    // const skin = await JSON.parse(fs.readFileSync(path.join(__dirname, `../data/config/skin/slots.json`), 'utf8'))[season];
-
-    // const smugs = skin.emotes;
-
-    const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
-    if (amount > credits) {
-      await interaction.editReply({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#AA0000')
-          .setTitle('You\'re too poor to bet that much smh'),
-        ],
-      });
-      return;
-    }
 
     const results = [[], [], []];
 
