@@ -8,12 +8,12 @@ const { logError } = require('../../utils/log');
 
 module.exports = {
   girlCockx: async (message) => {
-    const xLinkRegex = /https:\/\/x\.com\/([^/]+)\/status\/(\d+)(\?[^\s]*)?/g;
+    const xLinkRegex = /https:\/\/(?:x|twitter|fx|vx|fixupx)\.com\/([^/]+)\/status\/(\d+)(?:\?[^\s]*)?/g;
     const girlcockxContent = message.content.replace(xLinkRegex, (_, user, id) => `https://girlcockx.com/${user}/status/${id}`);
 
     try {
       const webhooks = await message.channel.fetchWebhooks();
-      let webhook = webhooks.find((wh) => wh.name === 'FXTwitter');
+      let webhook = webhooks.find((wh) => wh.name === 'girlcockx');
 
       if (!webhook) {
         webhook = await message.channel.createWebhook({
