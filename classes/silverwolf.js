@@ -266,7 +266,7 @@ All wrongs reserved.
           logError(`Script "${matchedEntry.script}" not found.`);
         }
       }
-    });
+    }
   }
 
   processDelete(message) {
