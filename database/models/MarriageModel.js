@@ -35,6 +35,22 @@ class MarriageModel {
     const result = await this.db.executeSelectQuery(query, [userId, userId]);
     return result ? result.marriedOn : null;
   }
+
+  async getMarriageBenefits(userId) {
+    // Check the user's marriage status
+    log('Checking user marriage status... for user ID:', userId);
+    const userMarriageStatus = await this.checkMarriageStatus(userId);
+
+    // If the user is married, increase the amount by 10% (rounding up)
+    if (userMarriageStatus.isMarried) {
+      log('User is married. Increasing the amount by 10%...');
+      return 1.1;
+    }
+
+    // If the user is single, return the original amount
+    log('User is single. No bonus applied.');
+    return 1;
+  }
 }
 
 module.exports = MarriageModel;

@@ -1,7 +1,6 @@
 const Discord = require('discord.js');
 const { Command } = require('./classes/command');
 const { format } = require('../utils/math');
-const marriageBenefits = require('../utils/marriageBenefits');
 const { checkValidBet } = require('../utils/betting');
 
 class Blackjack extends Command {
@@ -167,7 +166,7 @@ class Blackjack extends Command {
     await this.client.db.addUserAttr(interaction.user.id, 'blackjackAmountGambled', amount);
     await this.client.db.addUserAttr(interaction.user.id, 'blackjackTimesWon', 1);
 
-    const multiplier = await marriageBenefits(this.client, interaction.user.id) * 2.1 * 1.08 ** streak;
+    const multiplier = await this.client.db.marriage.getMarriageBenefits(interaction.user.id) * 2.1 * 1.08 ** streak;
     streak++;
     if (streak > await this.client.db.getUserAttr(interaction.user.id, 'blackjackMaxStreak')) {
       await this.client.db.setUserAttr(interaction.user.id, 'blackjackMaxStreak', streak);

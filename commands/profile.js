@@ -8,7 +8,6 @@ const {
   getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNuggieCreditsMultiplier,
   getNuggiePokeMultiplier, getNuggieNuggieMultiplier,
 } = require('../utils/ascensionupgrades');
-const marriageBenefits = require('../utils/marriageBenefits');
 
 // Cooldown map
 const cooldowns = new Map();
@@ -226,7 +225,7 @@ class Profile extends Command {
     **Base Claim Amount:** 5 + ${format(user.dinonuggiesClaimStreak)} = ${format(5 + user.dinonuggiesClaimStreak)}
     **Streak Multiplier:** 1 + ${format(nuggieStreakMultiplier, true)} * ${format(user.dinonuggiesClaimStreak)} = ${format(1 + nuggieStreakMultiplier * user.dinonuggiesClaimStreak, true)}x
     **Flat Multiplier:** ${format(nuggieFlatMultiplier, true)}x
-    **Marriage Multiplier:** ${format(await marriageBenefits(this.client, user.id), true)}x
+    **Marriage Multiplier:** ${format(await this.client.db.marriage.getMarriageBenefits(user.id), true)}x
     **Credits Multiplier:** 1 + ${format(nuggieCreditsMultiplier, true)} * ${format(log2Credits, true)} = ${format(1 + nuggieCreditsMultiplier * log2Credits, true)}x
     **Pokemon Multiplier:** 1 + ${format(nuggiePokemonMultiplier, true)} * ${format(pokemonCount, true)} = ${format(1 + nuggiePokemonMultiplier * pokemonCount, true)}x
     **Nuggie Multiplier:** 1 + ${format(nuggieNuggieMultiplier, true)} * ${format(log2Nuggies, true)} = ${format(1 + nuggieNuggieMultiplier * log2Nuggies, true)}x

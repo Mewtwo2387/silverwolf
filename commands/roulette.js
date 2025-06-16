@@ -1,7 +1,6 @@
 const Discord = require('discord.js');
 const { Command } = require('./classes/command');
 const { format } = require('../utils/math');
-const marriageBenefits = require('../utils/marriageBenefits');
 const { checkValidBet } = require('../utils/betting');
 
 class Roulette extends Command {
@@ -97,7 +96,7 @@ class Roulette extends Command {
     }
 
     // Apply marriage benefits
-    multi *= await marriageBenefits(this.client, interaction.user.id);
+    multi *= await this.client.db.marriage.getMarriageBenefits(interaction.user.id);
     const winnings = multi * amount;
     await this.client.db.addUserAttr(interaction.user.id, 'rouletteTimesPlayed', 1);
     await this.client.db.addUserAttr(interaction.user.id, 'rouletteAmountGambled', amount);

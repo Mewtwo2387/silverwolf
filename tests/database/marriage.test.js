@@ -110,4 +110,19 @@ describe('MarriageModel', () => {
       expect(date1).toBe(date2);
     });
   });
+
+  describe('getMarriageBenefits', () => {
+    it('should return 1.1 if the user is married', async () => {
+      const userId = '123456789';
+      await marriageModel.addMarriage(userId, '987654321');
+      const benefits = await marriageModel.getMarriageBenefits(userId);
+      expect(benefits).toBe(1.1);
+    });
+
+    it('should return 1 if the user is single', async () => {
+      const userId = '123456789';
+      const benefits = await marriageModel.getMarriageBenefits(userId);
+      expect(benefits).toBe(1);
+    });
+  });
 });

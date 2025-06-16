@@ -3,7 +3,6 @@ const fs = require('fs');
 const path = require('path');
 const { Command } = require('./classes/command');
 const { format } = require('../utils/math');
-const marriageBenefits = require('../utils/marriageBenefits');
 const { checkValidBet } = require('../utils/betting');
 
 class Slots extends Command {
@@ -55,7 +54,7 @@ class Slots extends Command {
     }
 
     if (amount >= 0) {
-      multi *= await marriageBenefits(this.client, interaction.user.id);
+      multi *= await this.client.db.marriage.getMarriageBenefits(interaction.user.id);
       const winnings = multi * amount;
       await this.client.db.addUserAttr(interaction.user.id, 'slotsTimesPlayed', 1);
       await this.client.db.addUserAttr(interaction.user.id, 'slotsTimesGambled', amount);

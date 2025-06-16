@@ -8,7 +8,6 @@ const {
 const { getMultiplierAmount, getMultiplierChance, getBekiCooldown } = require('../utils/upgrades');
 const { format } = require('../utils/math');
 const { Command } = require('./classes/command');
-const marriageBenefits = require('../utils/marriageBenefits');
 const { logError, log } = require('../utils/log');
 
 const DAY_LENGTH = 24 * 60 * 60 * 1000;
@@ -54,7 +53,7 @@ class Claim extends Command {
   async getBaseAmount(uid, streak) {
     const nuggieFlatMultiplierLevel = await this.client.db.getUserAttr(uid, 'nuggieFlatMultiplierLevel');
     const nuggieStreakMultiplierLevel = await this.client.db.getUserAttr(uid, 'nuggieStreakMultiplierLevel');
-    const marriageBenefitsMultiplier = await marriageBenefits(this.client, uid);
+    const marriageBenefitsMultiplier = await this.client.db.marriage.getMarriageBenefits(uid);
 
     const nuggieCreditsMultiplierLevel = await this.client.db.getUserAttr(uid, 'nuggieCreditsMultiplierLevel');
     const credits = await this.client.db.getUserAttr(uid, 'credits');
