@@ -20,9 +20,10 @@ class BirthdayGet extends Command {
       const userId = user.id;
 
       // Retrieve birthday from the database
-      const birthdayData = await this.client.db.getUserAttr(userId, 'birthdays');
+      const birthdayData = await this.client.db.user.getUserAttr(userId, 'birthdays');
       if (!birthdayData) {
-        return interaction.editReply(`${user.username} has not set their birthday.`);
+        await interaction.editReply(`${user.username} has not set their birthday.`);
+        return;
       }
 
       const birthday = new Date(birthdayData);

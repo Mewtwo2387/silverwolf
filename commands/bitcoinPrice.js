@@ -23,14 +23,14 @@ class BitcoinPrice extends Command {
 
       // Add fields for each currency with formatted values
       const fields = [];
-      for (const currency in data.bpi) {
+      Object.keys(data.bpi).forEach((currency) => {
         const priceData = data.bpi[currency];
         fields.push({
           name: `${priceData.code} (${priceData.symbol})`,
           value: `**Rate:** ${priceData.rate} ${priceData.symbol}`,
           inline: true, // Display fields inline (side-by-side)
         });
-      }
+      });
 
       log(`Current Bitcoin price: ${data.bpi.USD.rate} ${data.bpi.USD.symbol}`);
 

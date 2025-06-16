@@ -15,7 +15,7 @@ class BirthdayTest extends DevCommand {
     const failedChannels = [];
 
     // Loop through all the channel IDs and attempt to send a message
-    for (const channelId of channelIds) {
+    channelIds.forEach(async (channelId) => {
       const channel = this.client.channels.cache.get(channelId);
       if (channel) {
         try {
@@ -34,7 +34,7 @@ class BirthdayTest extends DevCommand {
         logError(`Channel ID ${channelId} is invalid or not found.`);
         failedChannels.push(channelId); // Add to failed list if the channel is not found
       }
-    }
+    });
 
     // Build the result message
     let resultMessage = 'Birthday Scheduler Channel Test Results:\n\n';

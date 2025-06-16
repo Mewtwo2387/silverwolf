@@ -23,7 +23,7 @@ class BabyName extends Command {
     const name = interaction.options.getString('name');
     const babyId = interaction.options.getInteger('id');
 
-    const baby = await this.client.db.getBabyFromId(babyId);
+    const baby = await this.client.db.baby.getBabyById(babyId);
 
     if (!baby) {
       await interaction.editReply({
@@ -49,7 +49,7 @@ class BabyName extends Command {
       return;
     }
 
-    await this.client.db.nameBaby(babyId, name);
+    await this.client.db.baby.updateBabyName(babyId, name);
 
     await interaction.editReply({
       embeds: [
