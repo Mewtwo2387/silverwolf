@@ -19,7 +19,7 @@ class BabyBirth extends Command {
   async run(interaction) {
     const userId = interaction.user.id;
     const babyId = interaction.options.getInteger('id');
-    const baby = await this.client.db.getBabyFromId(babyId);
+    const baby = await this.client.db.baby.getBabyById(babyId);
 
     if (!baby) {
       await interaction.editReply({
@@ -84,8 +84,8 @@ class BabyBirth extends Command {
       return;
     }
 
-    await this.client.db.bornBaby(userId, babyId);
-    await this.client.db.levelUpBaby(babyId);
+    await this.client.db.baby.bornBaby(userId, babyId);
+    await this.client.db.baby.levelUpBaby(babyId);
 
     await interaction.editReply({
       embeds: [

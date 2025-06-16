@@ -9,14 +9,8 @@ class BabyGet extends Command {
   constructor(client) {
     super(client, 'get', 'get a list of babies from parents', [
       {
-        name: 'parent1',
-        description: 'The first parent of the baby',
-        type: 6,
-        required: true,
-      },
-      {
-        name: 'parent2',
-        description: 'The second parent of the baby (default: you)',
+        name: 'parent',
+        description: 'The parent of the baby (default: you)',
         type: 6,
         required: false,
       },
@@ -24,10 +18,9 @@ class BabyGet extends Command {
   }
 
   async run(interaction) {
-    const parent1 = interaction.options.getUser('parent1');
-    const parent2 = interaction.options.getUser('parent2') || interaction.user;
+    const parent = interaction.options.getUser('parent') || interaction.user;
 
-    const babies = await this.client.db.getBabies(parent1.id, parent2.id);
+    const babies = await this.client.db.baby.getBabiesByParentId(parent.id);
     log(`babies: ${JSON.stringify(babies)}`);
 
     if (babies.length === 0) {
@@ -43,7 +36,7 @@ class BabyGet extends Command {
 
     let result = '';
 
-    for (const baby of babies) {
+    babies.forEach((baby) => {
       result += `**${baby.name}**\n`;
       result += `ID: ${baby.id}\n`;
       result += `Status: ${baby.status}\n`;
@@ -77,13 +70,13 @@ class BabyGet extends Command {
         result += `Born: ${baby.born}\n`;
       }
       result += '\n';
-    }
+    });
 
     await interaction.editReply({
       embeds: [
         new Discord.EmbedBuilder()
           .setColor('#00AA00')
-          .setTitle(`Babies of ${parent1.username} and ${parent2.username}`)
+          .setTitle(`Babies of ${parent.username}`)
           .setDescription(result),
       ],
     });

@@ -50,7 +50,8 @@ class Avatar extends Command {
           title = `Global avatar of ${user.username} (user not found in this server)`;
         } else {
           logError('An error occurred while fetching the member:', error);
-          return interaction.reply('An error occurred while fetching the avatar.');
+          await interaction.editReply('An error occurred while fetching the avatar.');
+          return;
         }
       }
     } else {

@@ -48,7 +48,7 @@ class BabyEnslave extends Command {
     const babyId = interaction.options.get('id').value;
     const job = interaction.options.get('job').value;
 
-    const baby = await this.client.db.getBabyFromId(babyId);
+    const baby = await this.client.db.baby.getBabyById(babyId);
 
     if (!baby) {
       await interaction.editReply({
@@ -108,9 +108,9 @@ class BabyEnslave extends Command {
         });
         return;
       }
-      await this.client.db.updateBabyJob(babyId, job, pingerTarget.value, interaction.channel.id);
+      await this.client.db.baby.updateBabyJob(babyId, job, pingerTarget.value, interaction.channel.id);
     } else {
-      await this.client.db.updateBabyJob(babyId, job);
+      await this.client.db.baby.updateBabyJob(babyId, job);
     }
 
     await interaction.editReply({

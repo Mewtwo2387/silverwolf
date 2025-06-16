@@ -32,8 +32,6 @@ class AskSilverwolfAI extends Command {
 
     prompt = `${username}: ${prompt}`;
 
-    const loadingMessage = await interaction.editReply({ content: 'Loading...', fetchReply: true });
-
     try {
       const model = genAI.getGenerativeModel({
         model: 'gemini-2.0-flash',
@@ -48,26 +46,15 @@ class AskSilverwolfAI extends Command {
         responseMimeType: 'text/plain',
       };
 
-      const lastSession = await this.client.db.getLastActiveServerChatSession(interaction.guild.id);
-
-      log(`Last session: ${lastSession}`);
-
-      let session = lastSession;
+      let session;
 
       if (reset) {
-        if (!lastSession || lastSession === undefined) {
-          session = await this.client.db.startChatSession(interaction.user.id, interaction.guild.id);
-        } else {
-          await this.client.db.endChatSession(lastSession.sessionId);
-          session = await this.client.db.startChatSession(interaction.user.id, interaction.guild.id);
-        }
-      } else if (!lastSession || lastSession === undefined) {
-        session = await this.client.db.startChatSession(interaction.user.id, interaction.guild.id);
+        session = await this.client.db.chat.endAndStartNewChatSession(interaction.user.id, interaction.guild.id);
       } else {
-        session = lastSession;
+        session = await this.client.db.chat.startChatSessionIfNotExists(interaction.user.id, interaction.guild.id);
       }
 
-      const rawChatHistory = await this.client.db.getChatHistory(session.sessionId);
+      const rawChatHistory = await this.client.db.chat.getChatHistory(session.sessionId);
 
       const chatHistory = rawChatHistory.reverse().map((entry) => ({
         role: entry.role === 'assistant' ? 'model' : entry.role,
@@ -97,8 +84,8 @@ class AskSilverwolfAI extends Command {
       await interaction.editReply({ content: null, embeds: [embed] });
 
       // Store user and assistant messages in the database
-      await this.client.db.addChatHistory(session.sessionId, 'user', prompt);
-      await this.client.db.addChatHistory(session.sessionId, 'model', processedText);
+      await this.client.db.chat.addChatHistory(session.sessionId, 'user', prompt);
+      await this.client.db.chat.addChatHistory(session.sessionId, 'model', processedText);
     } catch (error) {
       logError('Error generating text:', error);
       await interaction.editReply({ content: 'Failed to retrieve response from Gemini AI. Please try again later.', ephemeral: true });
