@@ -1,15 +1,62 @@
-{
-    "google en passant": "holy hell",
-    "nya": "https://www.mentalhealth.gov",
-    "venfei": "aaaaaaaaaaaaaaaa",
-    "keqing": "<:yanfeismug:1136925353651228775>",
-    "water bondage": ":childepanic_Emlette: I literally was on my drive to work this morning and I couldn't stop thinking of Childe- like okay its normal for me- but like-- I started thinking about how Keiko mentioned- water bondage 👀 and it snowballed into something- lewder. And all I could think about was Tartaglia who is tall and im small; starting out with a battle or maybe like a spar, idk man he's very into fighting I wouldn't be surprised if it made him hard. And like- he obviously knows how to use things to his advantage. So like- water bondage- just not in a hot way. Or at least intended. But obviously Tartaglia plays with his opponents- like fr. And hes turned on bc hes gotten a good fight. And I can't stop imagining how grabby he'd get- im rambling ill wrap it up. I can imagine the hair pulling, maybe a smol growl, and how he'd have so little mercy, bc he is a man who destroys. Bonus points if he uses his delusion at all and sparks up the hydro. Extra bonus points if he's rough with little mercy 👀 He doesn't even need gentle aftercare or cuddling- I mean id like to cuddle him but if he doesn't; that's okay :peepoBlushShake: id be a mess after anyone. He can step on me or split me open and i'll say thank you. \n\nI should write a fanfic sometime...\n\nAnyway yall im down bad... what else is new :7qiqipeek:",
-    "hydro bondage": ":childepanic_Emlette: I literally was on my drive to work this morning and I couldn't stop thinking of Childe- like okay its normal for me- but like-- I started thinking about how Keiko mentioned- water bondage 👀 and it snowballed into something- lewder. And all I could think about was Tartaglia who is tall and im small; starting out with a battle or maybe like a spar, idk man he's very into fighting I wouldn't be surprised if it made him hard. And like- he obviously knows how to use things to his advantage. So like- water bondage- just not in a hot way. Or at least intended. But obviously Tartaglia plays with his opponents- like fr. And hes turned on bc hes gotten a good fight. And I can't stop imagining how grabby he'd get- im rambling ill wrap it up. I can imagine the hair pulling, maybe a smol growl, and how he'd have so little mercy, bc he is a man who destroys. Bonus points if he uses his delusion at all and sparks up the hydro. Extra bonus points if he's rough with little mercy 👀 He doesn't even need gentle aftercare or cuddling- I mean id like to cuddle him but if he doesn't; that's okay :peepoBlushShake: id be a mess after anyone. He can step on me or split me open and i'll say thank you. \n\nI should write a fanfic sometime...\n\nAnyway yall im down bad... what else is new :7qiqipeek:",
-    "turtle soup": "how bout we turn charles' mom into a soup too",
-    "gamble": "<@719752311429267566><@1045123549603582042>",
-    "gambling": "<@719752311429267566><@1045123549603582042>",
-    "activate spooky mode" : "https://tenor.com/view/dance-halloween-gif-18647401 ",
-    "holiday cheer": "https://tenor.com/view/holiday-holiday-cheer-gong-guinaifen-star-rail-gif-6738631033750077564 ",
-    "smh": "+1 nickel",
-    "whistles":  "+1 nickel"
-}
+[
+  {
+    "triggers": ["nya"],
+    "reply": "https://www.mentalhealth.gov"
+  },
+  {
+    "triggers": ["gamble", "gambling"],
+    "reply": "<@719752311429267566><@1045123549603582042>"
+  },
+  {
+    "triggers": ["/https:\\/\\/(?:x\\.com|twitter\\.com|fxtwitter\\.com|vxtwitter\\.com|fixupx\\.com)\\/([^/]+)\\/status\\/(\\d+)(?:\\?[^\\s]*)?/g"],
+    "script": "girlCockx"
+  },
+    {
+    "triggers": ["google en passant"],
+    "reply": "holy hell"
+  },
+  {
+    "triggers": ["nya"],
+    "reply": "https://www.mentalhealth.gov"
+  },
+  {
+    "triggers": ["venfei"],
+    "reply": "aaaaaaaaaaaaaaaa"
+  },
+  {
+    "triggers": ["keqing"],
+    "reply": "<:yanfeismug:1136925353651228775>"
+  },
+  {
+    "triggers": ["turtle soup"],
+    "reply": "how bout we turn charles' mom into a soup too"
+  },
+  {
+    "triggers": ["gamble", "gambling"],
+    "reply": "<@719752311429267566><@1045123549603582042>"
+  },
+  {
+    "triggers": ["activate spooky mode"],
+    "reply": "https://tenor.com/view/dance-halloween-gif-18647401"
+  },
+  {
+    "triggers": ["holiday cheer"],
+    "reply": "https://tenor.com/view/holiday-holiday-cheer-gong-guinaifen-star-rail-gif-6738631033750077564"
+  },
+  {
+    "triggers": ["smh", "whistles"],
+    "reply": "+1 nickel"
+  },
+  {
+    "triggers": ["water bondage", "hydro bondage"],
+    "reply": ":childepanic_Emlette: I literally was on my drive to work this morning and I couldn't stop thinking of Childe- like okay its normal for me- but like-- I started thinking about how Keiko mentioned- water bondage 👀 and it snowballed into something- lewder. And all I could think about was Tartaglia who is tall and im small; starting out with a battle or maybe like a spar, idk man he's very into fighting I wouldn't be surprised if it made him hard. And like- he obviously knows how to use things to his advantage. So like- water bondage- just not in a hot way. Or at least intended. But obviously Tartaglia plays with his opponents- like fr. And hes turned on bc hes gotten a good fight. And I can't stop imagining how grabby he'd get- im rambling ill wrap it up. I can imagine the hair pulling, maybe a smol growl, and how he'd have so little mercy, bc he is a man who destroys. Bonus points if he uses his delusion at all and sparks up the hydro. Extra bonus points if he's rough with little mercy 👀 He doesn't even need gentle aftercare or cuddling- I mean id like to cuddle him but if he doesn't; that's okay :peepoBlushShake: id be a mess after anyone. He can step on me or split me open and i'll say thank you. \n\nI should write a fanfic sometime...\n\nAnyway yall im down bad... what else is new :7qiqipeek:"
+  },
+  {
+    "triggers" : ["@grok", "@gork"],
+    "script" : "grok"
+  },
+  {
+    "triggers": ["steal sticker", "yoink!"],
+    "script": "stealSticker"
+  }
+]

@@ -14,6 +14,7 @@ const seasonConfig = require('../data/config/skin/pokemon.json');
 const {
   ChristmasHandler, NormalHandler, HalloweenHandler, AprilFoolsHandler,
 } = require('./handlers/index');
+const scriptHandlers = require('./handlers/keywordsBehaviorHandler');
 
 const handlers = {
   ChristmasHandler,
@@ -111,12 +112,14 @@ All wrongs reserved.
   async loadKeywords() {
     log('--------------------\nLoading keywords...\n--------------------');
     const keywordsFile = path.join(__dirname, '../data/keywords.json');
-    const keywords = fs.readFileSync(keywordsFile, 'utf8');
-    this.keywords = JSON.parse(keywords);
-    Object.entries(this.keywords).forEach(([keyword]) => {
-      log(`Keyword ${keyword} loaded.`);
+    const keywordsRaw = fs.readFileSync(keywordsFile, 'utf8');
+    this.keywords = JSON.parse(keywordsRaw);
+
+    this.keywords.forEach((entry) => {
+      log(`Keyword(s) [${entry.triggers.join(', ')}] loaded.`);
     });
-    log('Keywords loaded.');
+
+    log('ALL Keywords loaded.');
   }
 
   async loadListeners() {
@@ -238,9 +241,30 @@ All wrongs reserved.
       return;
     }
 
-    Object.entries(this.keywords).forEach(([keyword, reply]) => {
-      if (msg.includes(keyword)) {
-        message.reply(reply);
+    const matchedEntry = this.keywords.find((entry) => entry.triggers.some((trigger) => {
+      if (trigger.startsWith('/') && trigger.endsWith('/g')) {
+        const regex = new RegExp(trigger.slice(1, -2), 'g');
+        return regex.test(msg);
+      }
+      return msg.includes(trigger);
+    }));
+
+    if (matchedEntry) {
+      if (matchedEntry.reply) {
+        await message.reply(matchedEntry.reply);
+      }
+
+      if (matchedEntry.script) {
+        const handler = scriptHandlers[matchedEntry.script];
+        if (typeof handler === 'function') {
+          try {
+            await handler(message);
+          } catch (err) {
+            logError(`Error running script ${matchedEntry.script}:`, err);
+          }
+        } else {
+          logError(`Script "${matchedEntry.script}" not found.`);
+        }
       }
     });
   }
