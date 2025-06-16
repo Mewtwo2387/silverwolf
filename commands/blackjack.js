@@ -26,8 +26,6 @@ class Blackjack extends Command {
     const playerHand = [this.drawCard(deck), this.drawCard(deck)];
     const dealerHand = [this.drawCard(deck), this.drawCard(deck)];
 
-    let playerStand = false;
-
     const gameMessage = await interaction.editReply({
       embeds: [this.buildEmbed(playerHand, dealerHand, 'Game Start')],
       components: [this.buildButtons()],
@@ -50,7 +48,6 @@ class Blackjack extends Command {
           await i.update({ embeds: [this.buildEmbed(playerHand, dealerHand, 'Hit')], components: [this.buildButtons()] });
         }
       } else if (i.customId === 'stand') {
-        playerStand = true;
         collector.stop('stand');
       }
     });
@@ -93,14 +90,14 @@ class Blackjack extends Command {
     const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
     const deck = [];
 
-    for (const suit of suits) {
-      for (const value of values) {
+    suits.forEach((suit) => {
+      values.forEach((value) => {
         deck.push({ suit, value });
-      }
-    }
+      });
+    });
 
     // Shuffle the deck
-    for (let i = deck.length - 1; i > 0; i--) {
+    for (let i = deck.length - 1; i > 0; i -= 1) {
       const j = Math.floor(Math.random() * (i + 1));
       [deck[i], deck[j]] = [deck[j], deck[i]];
     }
@@ -116,16 +113,16 @@ class Blackjack extends Command {
     let total = 0;
     let aces = 0;
 
-    for (const card of hand) {
+    hand.forEach((card) => {
       if (card.value === 'A') {
         aces += 1;
         total += 11;
       } else if (['K', 'Q', 'J'].includes(card.value)) {
         total += 10;
       } else {
-        total += parseInt(card.value);
+        total += parseInt(card.value, 10);
       }
-    }
+    });
 
     while (total > 21 && aces > 0) {
       total -= 10;
@@ -161,58 +158,62 @@ class Blackjack extends Command {
   }
 
   async handleWin(interaction, amount, playerHand, dealerHand, message) {
-    let streak = await this.client.db.getUserAttr(interaction.user.id, 'blackjackStreak');
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjackTimesPlayed', 1);
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjackAmountGambled', amount);
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjackTimesWon', 1);
+    let streak = await this.client.db.user.getUserAttr(interaction.user.id, 'blackjackStreak');
+    await this.client.db.user.addUserAttr(interaction.user.id, 'blackjackTimesPlayed', 1);
+    await this.client.db.user.addUserAttr(interaction.user.id, 'blackjackAmountGambled', amount);
+    await this.client.db.user.addUserAttr(interaction.user.id, 'blackjackTimesWon', 1);
 
     const multiplier = await this.client.db.marriage.getMarriageBenefits(interaction.user.id) * 2.1 * 1.08 ** streak;
-    streak++;
-    if (streak > await this.client.db.getUserAttr(interaction.user.id, 'blackjackMaxStreak')) {
-      await this.client.db.setUserAttr(interaction.user.id, 'blackjackMaxStreak', streak);
+    streak += 1;
+    if (streak > await this.client.db.user.getUserAttr(interaction.user.id, 'blackjackMaxStreak')) {
+      await this.client.db.user.setUserAttr(interaction.user.id, 'blackjackMaxStreak', streak);
     }
 
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjackAmountWon', amount * multiplier);
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjackRelativeWon', multiplier);
-    await this.client.db.addUserAttr(interaction.user.id, 'credits', amount * multiplier - amount);
-    await this.client.db.setUserAttr(interaction.user.id, 'blackjackStreak', streak);
+    await this.client.db.user.addUserAttr(interaction.user.id, 'blackjackAmountWon', amount * multiplier);
+    await this.client.db.user.addUserAttr(interaction.user.id, 'blackjackRelativeWon', multiplier);
+    await this.client.db.user.addUserAttr(interaction.user.id, 'credits', amount * multiplier - amount);
+    await this.client.db.user.setUserAttr(interaction.user.id, 'blackjackStreak', streak);
 
     await interaction.editReply({
       embeds: [new Discord.EmbedBuilder()
         .setColor('#00AA00')
         .setTitle(`${message} You won ${format(amount * multiplier)} mystic credits!`)
-        .setDescription(`Your hand: ${this.formatHand(playerHand)} (${this.calculateHand(playerHand)})\nSilverwolf's hand: ${this.formatHand(dealerHand)} (${this.calculateHand(dealerHand)})\nYou are now on a streak of ${streak}`)],
+        .setDescription(`Your hand: ${this.formatHand(playerHand)} (${this.calculateHand(playerHand)})
+Silverwolf's hand: ${this.formatHand(dealerHand)} (${this.calculateHand(dealerHand)})
+You are now on a streak of ${streak}`)],
       components: [],
     });
   }
 
   async handleLoss(interaction, amount, playerHand, dealerHand, message) {
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjackTimesPlayed', 1);
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjackAmountGambled', amount);
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjackTimesLost', 1);
-    await this.client.db.addUserAttr(interaction.user.id, 'credits', -amount);
-    await this.client.db.setUserAttr(interaction.user.id, 'blackjackStreak', 0);
+    await this.client.db.user.addUserAttr(interaction.user.id, 'blackjackTimesPlayed', 1);
+    await this.client.db.user.addUserAttr(interaction.user.id, 'blackjackAmountGambled', amount);
+    await this.client.db.user.addUserAttr(interaction.user.id, 'blackjackTimesLost', 1);
+    await this.client.db.user.addUserAttr(interaction.user.id, 'credits', -amount);
+    await this.client.db.user.setUserAttr(interaction.user.id, 'blackjackStreak', 0);
 
     await interaction.editReply({
       embeds: [new Discord.EmbedBuilder()
         .setColor('#AA0000')
         .setTitle(`${message} You lost ${format(amount)} mystic credits!`)
-        .setDescription(`Your hand: ${this.formatHand(playerHand)} (${this.calculateHand(playerHand)})\nSilverwolf's hand: ${this.formatHand(dealerHand)} (${this.calculateHand(dealerHand)})`)],
+        .setDescription(`Your hand: ${this.formatHand(playerHand)} (${this.calculateHand(playerHand)})
+Silverwolf's hand: ${this.formatHand(dealerHand)} (${this.calculateHand(dealerHand)})`)],
       components: [],
     });
   }
 
   async handleTie(interaction, amount, playerHand, dealerHand, message) {
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjackTimesPlayed', 1);
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjackAmountGambled', amount);
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjackTimesDrawn', 1);
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjackAmountWon', amount);
-    await this.client.db.addUserAttr(interaction.user.id, 'blackjackRelativeWon', 1);
+    await this.client.db.user.addUserAttr(interaction.user.id, 'blackjackTimesPlayed', 1);
+    await this.client.db.user.addUserAttr(interaction.user.id, 'blackjackAmountGambled', amount);
+    await this.client.db.user.addUserAttr(interaction.user.id, 'blackjackTimesDrawn', 1);
+    await this.client.db.user.addUserAttr(interaction.user.id, 'blackjackAmountWon', amount);
+    await this.client.db.user.addUserAttr(interaction.user.id, 'blackjackRelativeWon', 1);
     await interaction.editReply({
       embeds: [new Discord.EmbedBuilder()
         .setColor('#FFFF00')
         .setTitle(`${message} Nothing happened to your ${format(amount)} mystic credits, boring.`)
-        .setDescription(`Your hand: ${this.formatHand(playerHand)} (${this.calculateHand(playerHand)})\nSilverwolf's hand: ${this.formatHand(dealerHand)} (${this.calculateHand(dealerHand)})`)],
+        .setDescription(`Your hand: ${this.formatHand(playerHand)} (${this.calculateHand(playerHand)})
+Silverwolf's hand: ${this.formatHand(dealerHand)} (${this.calculateHand(dealerHand)})`)],
       components: [],
     });
   }

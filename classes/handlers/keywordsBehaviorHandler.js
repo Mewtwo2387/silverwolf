@@ -27,8 +27,8 @@ module.exports = {
         username: message.member?.displayName || message.author.username,
         avatarURL: message.member.displayAvatarURL(),
         allowedMentions: {
-          parse: [] 
-        }
+          parse: [],
+        },
       });
 
       await message.delete();
@@ -65,7 +65,7 @@ module.exports = {
 
       await message.reply({
         content: text,
-        allowedMentions: { parse: [] }
+        allowedMentions: { parse: [] },
       });
     } catch (err) {
       console.error('Grok script error:', err);
