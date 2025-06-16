@@ -8,7 +8,7 @@
     "reply": "<@719752311429267566><@1045123549603582042>"
   },
   {
-    "triggers": ["/https:\\/\\/(?:x|twitter|fx|vx|fixupx)\\.com\\/([^/]+)\\/status\\/(\\d+)(?:\\?[^\\s]*)?/g"],
+    "triggers": ["/https:\\/\\/(?:x\\.com|twitter\\.com|fxtwitter\\.com|vxtwitter\\.com|fixupx\\.com)\\/([^/]+)\\/status\\/(\\d+)(?:\\?[^\\s]*)?/g"],
     "script": "girlCockx"
   },
     {
