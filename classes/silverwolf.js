@@ -15,6 +15,7 @@ const {
   ChristmasHandler, NormalHandler, HalloweenHandler, AprilFoolsHandler,
 } = require('./handlers/index');
 const scriptHandlers = require('./handlers/keywordsBehaviorHandler');
+const quote = require('../utils/quote');
 
 const handlers = {
   ChristmasHandler,
@@ -205,38 +206,24 @@ All wrongs reserved.
         const person = referencedMessage.author;
         const nickname = guildMember.nickname || person.username;
         const originalMessage = referencedMessage.content;
-        const pfp = guildMember.displayAvatarURL({ extension: 'png', size: 512 });
         const hasBlackAndWhitePfp = msg.includes('b');
         const hasWhiteBackground = msg.includes('w');
 
         const background = hasWhiteBackground ? 'white' : 'black';
         const profileColor = hasBlackAndWhitePfp ? 'bw' : 'normal';
-        const fakeQuoteCommand = this.commands.get('fakequote');
-        if (fakeQuoteCommand) {
-          const interaction = {
-            options: {
-              // eslint-disable-next-line no-unused-vars
-              getUser: (_name) => ({ username: person.username, displayAvatarURL: () => pfp }),
-              getString: (name) => {
-                if (name === 'message') return originalMessage;
-                if (name === 'nickname') return nickname;
-                if (name === 'background') return background;
-                if (name === 'profileColor') return profileColor;
-                return '';
-              },
-            },
-            editReply: async (content) => {
-              if (content && content.files && content.files[0]) {
-                // After generating the quote or image...
-                await sentMessage.edit({ content: null, files: [content.files[0]] });
-              } else {
-                logError('No file or content to send in the reply.');
-              }
-            },
-          };
-          // Run the fake quote generation
-          fakeQuoteCommand.run(interaction);
-        }
+        const avatarSource = 'server';
+
+        const result = await quote(
+          message.guild,
+          person,
+          nickname,
+          originalMessage,
+          background,
+          profileColor,
+          avatarSource,
+        );
+
+        await sentMessage.edit({ content: null, files: [result] });
       }).catch(console.error);
       return;
     }
