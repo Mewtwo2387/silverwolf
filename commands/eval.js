@@ -13,6 +13,7 @@ class Eval extends DevCommand {
   async run(interaction) {
     const input = interaction.options.getString('code');
     try {
+      // eslint-disable-next-line no-eval
       interaction.editReply(`${eval(input)}`);
     } catch (error) {
       interaction.editReply(`Error: ${error.message}`);

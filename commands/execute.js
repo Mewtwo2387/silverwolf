@@ -17,6 +17,12 @@ class Execute extends DevCommand {
         description: 'the command to execute',
         type: 3,
         required: true,
+      },
+      {
+        name: 'subcommand',
+        description: 'the subcommand to execute',
+        type: 3,
+        required: false,
       }],
     );
   }
@@ -24,19 +30,24 @@ class Execute extends DevCommand {
   async run(interaction) {
     const as = interaction.options.getUser('as');
     const command = interaction.options.getString('command');
+    const subcommand = interaction.options.getString('subcommand');
+
+    const commandName = subcommand ? `${command}.${subcommand}` : command;
 
     // Prevent recursion by checking if the command is 'execute'
     if (command.toLowerCase() === 'execute') {
-      return interaction.editReply({ content: "Cannot execute the 'execute' command as it would cause an infinite loop!", ephemeral: true });
+      interaction.editReply({ content: "Cannot execute the 'execute' command as it would cause an infinite loop!", ephemeral: true });
+      return;
     }
 
-    // Set the user and member to the target user
-    interaction.user = as;
-    interaction.member = await interaction.guild.members.fetch(as.id);
-    interaction.commandName = command;
+    const newInteraction = interaction.clone();
+
+    newInteraction.user = as;
+    newInteraction.member = await interaction.guild.members.fetch(as.id);
+    newInteraction.commandName = commandName;
 
     // Process the interaction as if it came from the target user
-    await this.client.processInteraction(interaction);
+    await this.client.processInteraction(newInteraction);
   }
 }
 

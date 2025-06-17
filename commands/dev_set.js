@@ -32,7 +32,7 @@ class DevSet extends DevCommand {
     const amountString = interaction.options.getString('value');
 
     const amount = antiFormat(amountString);
-    if (isNaN(amount)) {
+    if (Number.isNaN(amount)) {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')
@@ -43,7 +43,7 @@ class DevSet extends DevCommand {
       return;
     }
     try {
-      await this.client.db.setUserAttr(user.id, attr, amount);
+      await this.client.db.user.setUserAttr(user.id, attr, amount);
     } catch (e) {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()

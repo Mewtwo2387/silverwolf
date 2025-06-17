@@ -25,7 +25,8 @@ class DM extends AdminCommand {
       const messageContent = interaction.options.getString('message');
 
       if (!targetUser || !messageContent) {
-        return interaction.editReply('Invalid user or message.');
+        await interaction.editReply('Invalid user or message.');
+        return;
       }
 
       await targetUser.send(messageContent);
