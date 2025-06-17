@@ -48,9 +48,9 @@ class BuyAscension extends Command {
 
     const upgrade = ASCENSION_UPGRADES[upgradeId - 1];
 
-    const level = await this.client.db.getUserAttr(interaction.user.id, `${upgrade}Level`);
+    const level = await this.client.db.user.getUserAttr(interaction.user.id, `${upgrade}Level`);
 
-    const ascensionLevel = await this.client.db.getUserAttr(interaction.user.id, 'ascensionLevel');
+    const ascensionLevel = await this.client.db.user.getUserAttr(interaction.user.id, 'ascensionLevel');
 
     const amplifier = {
       nuggieFlatMultiplier: 1,
@@ -83,10 +83,10 @@ class BuyAscension extends Command {
     const amount = interaction.options.getInteger('amount') || 1;
 
     let cost = 0;
-    for (let i = 0; i < amount; i++) {
+    for (let i = 0; i < amount; i += 1) {
       cost += getNextAscensionUpgradeCost(level + i, amplifier[upgrade]);
     }
-    const heavenlyNuggies = await this.client.db.getUserAttr(interaction.user.id, 'heavenlyNuggies');
+    const heavenlyNuggies = await this.client.db.user.getUserAttr(interaction.user.id, 'heavenlyNuggies');
 
     if (heavenlyNuggies < cost) {
       await interaction.editReply({
@@ -100,8 +100,8 @@ class BuyAscension extends Command {
       return;
     }
 
-    await this.client.db.addUserAttr(interaction.user.id, 'heavenlyNuggies', -cost);
-    await this.client.db.addUserAttr(interaction.user.id, `${upgrade}Level`, amount);
+    await this.client.db.user.addUserAttr(interaction.user.id, 'heavenlyNuggies', -cost);
+    await this.client.db.user.addUserAttr(interaction.user.id, `${upgrade}Level`, amount);
 
     switch (upgrade) {
       case 'nuggieFlatMultiplier': {

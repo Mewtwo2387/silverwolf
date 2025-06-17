@@ -5,9 +5,11 @@ const {
   getNextUpgradeCost, getMultiplierAmount, getMultiplierChance, getBekiCooldown, getMaxLevel,
 } = require('../utils/upgrades');
 
-const UPGRADES = ['multiplierAmount', 'multiplierRarity', 'beki'];
-
-// We don't talk about the spaghetti code here
+const UPGRADES = [
+  'multiplierAmount',
+  'multiplierRarity',
+  'beki',
+];
 
 class BuyUpgrades extends Command {
   constructor(client) {
@@ -22,7 +24,7 @@ class BuyUpgrades extends Command {
   }
 
   async run(interaction) {
-    const ascensionLevel = await this.client.db.getUserAttr(interaction.user.id, 'ascensionLevel');
+    const ascensionLevel = await this.client.db.user.getUserAttr(interaction.user.id, 'ascensionLevel');
     const maxLevel = getMaxLevel(ascensionLevel);
 
     const upgradeId = interaction.options.getInteger('upgrade');
@@ -40,7 +42,7 @@ class BuyUpgrades extends Command {
 
     const upgrade = UPGRADES[upgradeId - 1];
 
-    const level = await this.client.db.getUserAttr(interaction.user.id, `${upgrade}Level`);
+    const level = await this.client.db.user.getUserAttr(interaction.user.id, `${upgrade}Level`);
 
     if (level >= maxLevel) {
       await interaction.editReply({
@@ -55,7 +57,7 @@ class BuyUpgrades extends Command {
     }
 
     const cost = getNextUpgradeCost(level);
-    const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
+    const credits = await this.client.db.user.getUserAttr(interaction.user.id, 'credits');
 
     if (credits < cost) {
       await interaction.editReply({
@@ -69,57 +71,71 @@ class BuyUpgrades extends Command {
       return;
     }
 
-    await this.client.db.addUserAttr(interaction.user.id, 'credits', -cost);
-    await this.client.db.addUserAttr(interaction.user.id, `${upgrade}Level`, 1);
+    await this.client.db.user.addUserAttr(interaction.user.id, 'credits', -cost);
+    await this.client.db.user.addUserAttr(interaction.user.id, `${upgrade}Level`, 1);
 
     switch (upgrade) {
       case 'multiplierAmount':
-        const multiplierAmount = getMultiplierAmount(level);
-        const nextMultiplierAmount = getMultiplierAmount(level + 1);
-        await interaction.editReply({
-          embeds: [new Discord.EmbedBuilder()
-            .setColor('#00AA00')
-            .setTitle('Multiplier Amount Upgrade Bought')
-            .setDescription(`Level: ${level} -> ${level + 1}
+        await this.handleBuyMultiplierAmount(interaction, level, cost, credits);
+        break;
+      case 'multiplierRarity':
+        await this.handleBuyMultiplierRarity(interaction, level, cost, credits);
+        break;
+      case 'beki':
+        await this.handleBuyBeki(interaction, level, cost, credits);
+        break;
+      default:
+        throw new Error('Unreachable code');
+    }
+  }
+
+  async handleBuyMultiplierAmount(interaction, level, cost, credits) {
+    const multiplierAmount = getMultiplierAmount(level);
+    const nextMultiplierAmount = getMultiplierAmount(level + 1);
+    await interaction.editReply({
+      embeds: [new Discord.EmbedBuilder()
+        .setColor('#00AA00')
+        .setTitle('Multiplier Amount Upgrade Bought')
+        .setDescription(`Level: ${level} -> ${level + 1}
 Gold Multiplier: ${format(multiplierAmount.gold, true)}x -> ${format(nextMultiplierAmount.gold, true)}x
 Silver Multiplier: ${format(multiplierAmount.silver, true)}x -> ${format(nextMultiplierAmount.silver, true)}x
 Bronze Multiplier: ${format(multiplierAmount.bronze, true)}x -> ${format(nextMultiplierAmount.bronze, true)}x
 Mystic Credits: ${format(credits)} -> ${format(credits - cost)}`)
-            .setFooter({ text: 'dinonuggie' }),
-          ],
-        });
-        break;
-      case 'multiplierRarity':
-        const multiplierRarity = getMultiplierChance(level);
-        const nextMultiplierRarity = getMultiplierChance(level + 1);
-        await interaction.editReply({
-          embeds: [new Discord.EmbedBuilder()
-            .setColor('#00AA00')
-            .setTitle('Multiplier Rarity Upgrade Bought')
-            .setDescription(`Level: ${level} -> ${level + 1}
+        .setFooter({ text: 'dinonuggie' }),
+      ],
+    });
+  }
+
+  async handleBuyMultiplierRarity(interaction, level, cost, credits) {
+    const multiplierRarity = getMultiplierChance(level);
+    const nextMultiplierRarity = getMultiplierChance(level + 1);
+    await interaction.editReply({
+      embeds: [new Discord.EmbedBuilder()
+        .setColor('#00AA00')
+        .setTitle('Multiplier Rarity Upgrade Bought')
+        .setDescription(`Level: ${level} -> ${level + 1}
 Gold Chance: ${format(multiplierRarity.gold * 100, true)}% -> ${format(nextMultiplierRarity.gold * 100, true)}%
 Silver Chance: ${format(multiplierRarity.silver * 100, true)}% -> ${format(nextMultiplierRarity.silver * 100, true)}%
 Bronze Chance: ${format(multiplierRarity.bronze * 100, true)}% -> ${format(nextMultiplierRarity.bronze * 100, true)}%
 Mystic Credits: ${format(credits)} -> ${format(credits - cost)}`)
-            .setFooter({ text: 'dinonuggie' }),
-          ],
-        });
-        break;
-      case 'beki':
-        const cooldown = getBekiCooldown(level);
-        const nextCooldown = getBekiCooldown(level + 1);
-        await interaction.editReply({
-          embeds: [new Discord.EmbedBuilder()
-            .setColor('#00AA00')
-            .setTitle('Beki Upgrade Bought')
-            .setDescription(`Level: ${level} -> ${level + 1}
+        .setFooter({ text: 'dinonuggie' }),
+      ],
+    });
+  }
+
+  async handleBuyBeki(interaction, level, cost, credits) {
+    const cooldown = getBekiCooldown(level);
+    const nextCooldown = getBekiCooldown(level + 1);
+    await interaction.editReply({
+      embeds: [new Discord.EmbedBuilder()
+        .setColor('#00AA00')
+        .setTitle('Beki Upgrade Bought')
+        .setDescription(`Level: ${level} -> ${level + 1}
 Cooldown: ${format(cooldown, true)}hrs -> ${format(nextCooldown, true)}hrs
 Mystic Credits: ${format(credits)} -> ${format(credits - cost)}`)
-            .setFooter({ text: 'dinonuggie' }),
-          ],
-        });
-        break;
-    }
+        .setFooter({ text: 'dinonuggie' }),
+      ],
+    });
   }
 }
 

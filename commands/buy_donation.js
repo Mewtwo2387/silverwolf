@@ -14,12 +14,12 @@ class BuyDonation extends Command {
 
   async run(interaction) {
     const upgrade = interaction.options.getInteger('upgrade');
-    const stellarNuggies = await this.client.db.getUserAttr(interaction.user.id, 'stellarNuggies');
+    const stellarNuggies = await this.client.db.user.getUserAttr(interaction.user.id, 'stellarNuggies');
 
     switch (upgrade) {
       case 1:
         if (stellarNuggies >= 10) {
-          await this.client.db.addUserAttr(interaction.user.id, 'stellarNuggies', -10);
+          await this.client.db.user.addUserAttr(interaction.user.id, 'stellarNuggies', -10);
           await interaction.editReply({ content: 'You successfully bought a dinonuggie claim!' });
           await this.client.commands.get('claim').handleSuccessfulClaim(interaction, true);
         } else {
@@ -28,9 +28,9 @@ class BuyDonation extends Command {
         break;
       case 2:
         if (stellarNuggies >= 40) {
-          await this.client.db.addUserAttr(interaction.user.id, 'stellarNuggies', -40);
+          await this.client.db.user.addUserAttr(interaction.user.id, 'stellarNuggies', -40);
           await interaction.editReply({ content: 'You successfully bought 5 dinonuggie claims!' });
-          for (let i = 0; i < 5; i++) {
+          for (let i = 0; i < 5; i += 1) {
             await this.client.commands.get('claim').handleSuccessfulClaim(interaction, true);
           }
         } else {
@@ -39,9 +39,9 @@ class BuyDonation extends Command {
         break;
       case 3:
         if (stellarNuggies >= 70) {
-          await this.client.db.addUserAttr(interaction.user.id, 'stellarNuggies', -70);
+          await this.client.db.user.addUserAttr(interaction.user.id, 'stellarNuggies', -70);
           await interaction.editReply({ content: 'You successfully bought 10 dinonuggie claims!' });
-          for (let i = 0; i < 10; i++) {
+          for (let i = 0; i < 10; i += 1) {
             await this.client.commands.get('claim').handleSuccessfulClaim(interaction, true);
           }
         } else {
@@ -50,27 +50,28 @@ class BuyDonation extends Command {
         break;
       case 4:
         if (stellarNuggies >= 120) {
-          await this.client.db.addUserAttr(interaction.user.id, 'stellarNuggies', -120);
+          await this.client.db.user.addUserAttr(interaction.user.id, 'stellarNuggies', -120);
           await interaction.editReply({ content: 'You successfully bought 20 dinonuggie claims!' });
-          for (let i = 0; i < 20; i++) {
+          for (let i = 0; i < 20; i += 1) {
             await this.client.commands.get('claim').handleSuccessfulClaim(interaction, true);
           }
         } else {
           await interaction.editReply({ content: "You don't have enough stellar nuggies to buy this! Get more with /donate" });
         }
         break;
-      case 5:
-        const ascensionLevel = await this.client.db.getUserAttr(interaction.user.id, 'ascensionLevel');
+      case 5: {
+        const ascensionLevel = await this.client.db.user.getUserAttr(interaction.user.id, 'ascensionLevel');
         if (stellarNuggies >= 60 + (ascensionLevel * 10)) {
-          await this.client.db.addUserAttr(interaction.user.id, 'stellarNuggies', -60 - (ascensionLevel * 10));
-          const nuggies = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggies');
-          await this.client.db.addUserAttr(interaction.user.id, 'heavenlyNuggies', nuggies);
-          await this.client.db.addUserAttr(interaction.user.id, 'ascensionLevel', 1);
+          await this.client.db.user.addUserAttr(interaction.user.id, 'stellarNuggies', -60 - (ascensionLevel * 10));
+          const nuggies = await this.client.db.user.getUserAttr(interaction.user.id, 'dinonuggies');
+          await this.client.db.user.addUserAttr(interaction.user.id, 'heavenlyNuggies', nuggies);
+          await this.client.db.user.addUserAttr(interaction.user.id, 'ascensionLevel', 1);
           await interaction.editReply({ content: `You obtained ${nuggies} heavenly nuggies and reached ascension level ${ascensionLevel + 1}!` });
         } else {
           await interaction.editReply({ content: "You don't have enough stellar nuggies to buy this! Get more with /donate" });
         }
         break;
+      }
       case 6:
         await interaction.editReply({ content: 'This upgrade is not available yet!' });
         break;
