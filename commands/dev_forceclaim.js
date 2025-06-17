@@ -1,4 +1,5 @@
 const { DevCommand } = require('./classes/devcommand');
+const { handleSuccessfulClaim } = require('../utils/claim');
 
 class ForceClaim extends DevCommand {
   constructor(client) {
@@ -6,8 +7,7 @@ class ForceClaim extends DevCommand {
   }
 
   async run(interaction) {
-    const claim = this.client.commands.get('claim');
-    await claim.handleSuccessfulClaim(interaction);
+    await handleSuccessfulClaim(this.client, interaction);
   }
 }
 

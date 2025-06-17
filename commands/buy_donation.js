@@ -1,4 +1,5 @@
 const { Command } = require('./classes/command');
+const { handleSuccessfulClaim } = require('../utils/claim');
 
 class BuyDonation extends Command {
   constructor(client) {
@@ -21,7 +22,7 @@ class BuyDonation extends Command {
         if (stellarNuggies >= 10) {
           await this.client.db.user.addUserAttr(interaction.user.id, 'stellarNuggies', -10);
           await interaction.editReply({ content: 'You successfully bought a dinonuggie claim!' });
-          await this.client.commands.get('claim').handleSuccessfulClaim(interaction, true);
+          await handleSuccessfulClaim(this.client, interaction, true);
         } else {
           await interaction.editReply({ content: "You don't have enough stellar nuggies to buy this! Get more with /donate" });
         }
@@ -31,7 +32,7 @@ class BuyDonation extends Command {
           await this.client.db.user.addUserAttr(interaction.user.id, 'stellarNuggies', -40);
           await interaction.editReply({ content: 'You successfully bought 5 dinonuggie claims!' });
           for (let i = 0; i < 5; i += 1) {
-            await this.client.commands.get('claim').handleSuccessfulClaim(interaction, true);
+            handleSuccessfulClaim(this.client, interaction, true);
           }
         } else {
           await interaction.editReply({ content: "You don't have enough stellar nuggies to buy this! Get more with /donate" });
@@ -42,7 +43,7 @@ class BuyDonation extends Command {
           await this.client.db.user.addUserAttr(interaction.user.id, 'stellarNuggies', -70);
           await interaction.editReply({ content: 'You successfully bought 10 dinonuggie claims!' });
           for (let i = 0; i < 10; i += 1) {
-            await this.client.commands.get('claim').handleSuccessfulClaim(interaction, true);
+            handleSuccessfulClaim(this.client, interaction, true);
           }
         } else {
           await interaction.editReply({ content: "You don't have enough stellar nuggies to buy this! Get more with /donate" });
@@ -53,7 +54,7 @@ class BuyDonation extends Command {
           await this.client.db.user.addUserAttr(interaction.user.id, 'stellarNuggies', -120);
           await interaction.editReply({ content: 'You successfully bought 20 dinonuggie claims!' });
           for (let i = 0; i < 20; i += 1) {
-            await this.client.commands.get('claim').handleSuccessfulClaim(interaction, true);
+            handleSuccessfulClaim(this.client, interaction, true);
           }
         } else {
           await interaction.editReply({ content: "You don't have enough stellar nuggies to buy this! Get more with /donate" });
