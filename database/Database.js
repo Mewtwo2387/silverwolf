@@ -178,7 +178,7 @@ class Database {
     return csv.join('\n');
   }
 
-  async dump() {
+  async dumpUser() {
     return this.dumpTable('User', ['id']);
   }
 
@@ -192,6 +192,30 @@ class Database {
 
   async dumpBaby() {
     return this.dumpTable('Baby', ['mother_id', 'father_id']);
+  }
+
+  async dumpCommandConfig() {
+    return this.dumpTable('CommandConfig', []);
+  }
+
+  async dumpServerRoles() {
+    return this.dumpTable('ServerRoles', []);
+  }
+
+  async dumpChatHistory() {
+    return this.dumpTable('ChatHistory', []);
+  }
+
+  async dumpChatSession() {
+    return this.dumpTable('ChatSession', ['started_by']);
+  }
+
+  async dumpGlobalConfig() {
+    return this.dumpTable('GlobalConfig', []);
+  }
+
+  async dumpGameUID() {
+    return this.dumpTable('GameUID', ['user_id']);
   }
 
   get baby() {
