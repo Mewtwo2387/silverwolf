@@ -44,7 +44,7 @@ class BlacklistConfigure extends DevCommand {
 
     try {
       if (action === 'add') {
-        await this.client.db.addOrUpdateCommandBlacklist(commandName, serverId, reason);
+        await this.client.db.commandConfig.addOrUpdateCommandBlacklist(commandName, serverId, reason);
 
         await interaction.editReply({
           embeds: [
@@ -56,7 +56,7 @@ class BlacklistConfigure extends DevCommand {
           ],
         });
       } else if (action === 'remove') {
-        const resultMessage = await this.client.db.deleteCommandBlacklist(commandName, serverId);
+        const resultMessage = await this.client.db.commandConfig.deleteCommandBlacklist(commandName, serverId);
 
         await interaction.editReply({
           embeds: [

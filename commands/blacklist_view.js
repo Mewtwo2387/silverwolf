@@ -19,7 +19,7 @@ class BlacklistView extends DevCommand {
 
     try {
       // Fetch blacklisted commands for the specified server
-      const blacklistedCommands = await this.client.db.getBlacklistedCommands(serverId);
+      const blacklistedCommands = await this.client.db.commandConfig.getBlacklistedCommands(serverId);
 
       // Check if there are any blacklisted commands
       if (blacklistedCommands.length === 0) {
