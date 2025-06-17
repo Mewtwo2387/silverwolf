@@ -4,7 +4,9 @@ const { log } = require('../../utils/log');
 const { isAllowedUser } = require('../../utils/accessControl');
 
 class Command {
-  constructor(client, name, description, options, args = { ephemeral: false, skipDefer: false, isSubcommandOf: null }) {
+  constructor(client, name, description, options, args = {
+    ephemeral: false, skipDefer: false, isSubcommandOf: null, blame: '',
+  }) {
     this.client = client;
     this.name = name;
     this.description = description;
@@ -12,6 +14,7 @@ class Command {
     this.ephemeral = args.ephemeral || false;
     this.skipDefer = args.skipDefer || false;
     this.isSubcommandOf = args.isSubcommandOf || null;
+    this.blame = args.blame || '';
   }
 
   async execute(interaction) {
