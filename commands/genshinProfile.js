@@ -1,4 +1,4 @@
-const fetch = require('node-fetch');
+const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
 const { Command } = require('./classes/command');
@@ -32,14 +32,12 @@ class GenshinProfile extends Command {
     const namecards = JSON.parse(fs.readFileSync(genshinNamecards, 'utf8'));
 
     try {
-      const response = await fetch(url, { headers });
-      if (!response.ok) {
-        logError(`HTTP Error Response: Status ${response.status} ${response.statusText}`);
-        await interaction.editReply({ content: `Failed to fetch data: HTTP status ${response.status}. Please contact mystichunterz for assistance.`, ephemeral: true });
+      const { status, statusText, data } = await axios.get(url, { headers });
+      if (status !== 200) {
+        logError(`HTTP Error Response: Status ${status} ${statusText}`);
+        await interaction.editReply({ content: `Failed to fetch data: HTTP status ${status}. Please contact mystichunterz for assistance.`, ephemeral: true });
         return;
       }
-
-      const data = await response.json();
 
       if (!data.playerInfo) {
         await interaction.editReply({ content: 'No data found for the given UID. Please check the UID and try again.', ephemeral: true });

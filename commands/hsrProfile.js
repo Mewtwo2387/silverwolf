@@ -1,4 +1,4 @@
-const fetch = require('node-fetch');
+const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
 const { Command } = require('./classes/command');
@@ -35,14 +35,12 @@ class HsrProfile extends Command {
     const lightconeData = JSON.parse(fs.readFileSync(hsrLC, 'utf8')); // Load Lightcone data
 
     try {
-      const response = await fetch(url, { headers });
-      if (!response.ok) {
-        logError(`HTTP Error Response: Status ${response.status} ${response.statusText}`);
-        await interaction.editReply({ content: `Failed to fetch data: HTTP status ${response.status}. Please contact mystichunterz for assistance.`, ephemeral: true });
+      const { status, statusText, data } = await axios.get(url, { headers });
+      if (status !== 200) {
+        logError(`HTTP Error Response: Status ${status} ${statusText}`);
+        await interaction.editReply({ content: `Failed to fetch data: HTTP status ${status}. Please contact mystichunterz for assistance.`, ephemeral: true });
         return;
       }
-
-      const data = await response.json();
 
       if (!data.detailInfo) {
         await interaction.editReply({ content: 'No data found for the given UID. Please check the UID and try again.', ephemeral: true });
@@ -61,7 +59,7 @@ class HsrProfile extends Command {
 
       // Build the Characters on Display section
       const charactersOnDisplay = [];
-      for (const character of detailInfo.avatarDetailList) {
+      detailInfo.avatarDetailList.forEach((character) => {
         const { avatarId } = character;
         const characterInfo = characterData[avatarId];
 
@@ -88,13 +86,10 @@ class HsrProfile extends Command {
             lightconeName, // Add Lightcone name to the character info
           });
         }
-      }
+      });
 
       // Create the characters display string
-      const charactersDisplayString = charactersOnDisplay.map((character) => `**${character.name}**\n` + `Lvl: ${character.level} | ` + `${character.rarity}⭐\n` // Include character name, level, and rarity
-                    + `Lightcone: ${character.lightconeName} | ` + `Lvl: ${character.equipmentLevel || 'N/A'}\n`
-                    + '\n', // Add an empty line between characters
-      ).join('');
+      const charactersDisplayString = charactersOnDisplay.map((character) => `**${character.name}**\nLvl: ${character.level} | ${character.rarity}⭐\nLightcone: ${character.lightconeName} | Lvl: ${character.equipmentLevel || 'N/A'}\n\n`).join('');
 
       // Create an embed to format the response
       const embed = {

@@ -35,7 +35,11 @@ class GrabEmoji extends Command {
       const match = emojiInput.match(emojiRegex);
 
       if (!match) {
-        return interaction.editReply({ content: 'Please provide a valid **``custom``** emoji.', ephemeral: true });
+        interaction.editReply({
+          content: 'Please provide a valid **``custom``** emoji.',
+          ephemeral: true,
+        });
+        return;
       }
 
       const emojiId = match[1];

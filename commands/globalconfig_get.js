@@ -16,7 +16,7 @@ class GlobalConfigGet extends DevCommand {
   async run(interaction) {
     const key = interaction.options.getString('key');
     if (key === 'ALL') {
-      const all = await this.client.db.getAllGlobalConfig();
+      const all = await this.client.db.globalConfig.getAllGlobalConfig();
       await interaction.editReply({
         embeds: [
           new EmbedBuilder()
@@ -26,7 +26,7 @@ class GlobalConfigGet extends DevCommand {
         ],
       });
     } else {
-      const value = await this.client.db.getGlobalConfig(key);
+      const value = await this.client.db.globalConfig.getGlobalConfig(key);
       await interaction.editReply({
         embeds: [
           new EmbedBuilder()

@@ -18,10 +18,9 @@ class Joke extends Command {
       await interaction.editReply({ content: data.setup });
 
       // Delay for 2 seconds before sending the punchline
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // Send the punchline message after the delay
-      await interaction.followUp({ content: data.punchline });
+      setTimeout(() => {
+        interaction.followUp({ content: data.punchline });
+      }, 2000);
     } catch (error) {
       logError('Failed to retrieve joke:', error);
       await interaction.editReply({ content: 'Failed to retrieve joke. Please try again later.', ephemeral: true });
