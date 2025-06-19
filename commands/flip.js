@@ -7,18 +7,19 @@ class Flip extends Command {
   }
 
   async run(interaction) {
+    let embed;
     if (Math.random() < 0.49) {
-      var embed = new Discord.EmbedBuilder()
+      embed = new Discord.EmbedBuilder()
         .setColor('#00AA00')
         .setTitle('You flipped a coin.')
         .setDescription('Silverwolf gave you head.');
     } else if (Math.random() < 0.98) {
-      var embed = new Discord.EmbedBuilder()
+      embed = new Discord.EmbedBuilder()
         .setColor('#00AA00')
         .setTitle('You flipped a coin.')
         .setDescription('Silverwolf gave you tail.');
     } else {
-      var embed = new Discord.EmbedBuilder()
+      embed = new Discord.EmbedBuilder()
         .setColor('#00AA00')
         .setTitle('You flipped a coin.')
         .setDescription('Silverwolf gave you side.');

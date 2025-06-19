@@ -19,7 +19,7 @@ class GameUIDGet extends Command {
 
     try {
       // Get the game UIDs from the database for the specified user
-      const gameUIDs = await this.client.db.getGameUIDsForUser(user.id);
+      const gameUIDs = await this.client.db.gameUID.getAllGameUIDs(user.id);
 
       if (!Array.isArray(gameUIDs) || gameUIDs.length === 0) {
         // If no game UIDs are found, reply with a message indicating that

@@ -49,7 +49,7 @@ class GameUIDSet extends Command {
 
     try {
       // Use the method to add or update the game UID in the database
-      await this.client.db.addOrUpdateGameUID(user.id, game, uid, region);
+      await this.client.db.gameUID.setGameUID(user.id, game, uid, region);
 
       // Reply with a success message
       await interaction.editReply({

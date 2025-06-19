@@ -25,6 +25,7 @@ class Gamebang extends NsfwCommand {
       .addFields({ name: "12. Gamebang and the World's Silence", value: 'https://drive.google.com/file/d/16cflz99qGGRTfpZWiP6ujNg_OJ2dXLRa/view?usp=sharing', inline: false })
       .addFields({ name: '13. Gamebang and the Archon War', value: 'https://drive.google.com/file/d/1lqXnxMjvAHjiFyFyFnGbHFA0ghaFmjdr/view?usp=sharing', inline: false })
       .addFields({ name: '14. Gamebang and the Apocalypse', value: 'https://drive.google.com/file/d/1hY3j3tfDkZWFhddWby5nRf6ICT9h7OFk/view?usp=sharing', inline: false })
+      .addFields({ name: '15. Gamebang and the Final Voices', value: 'https://drive.google.com/file/d/1ufzi0x2UU0vCCFLakoftusuBod1djmtl/view?usp=sharing', inline: false })
       .setFooter({ text: 'holy fuck' });
     interaction.editReply({ embeds: [embed] });
   }

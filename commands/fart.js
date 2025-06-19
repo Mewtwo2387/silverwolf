@@ -1,7 +1,9 @@
 const { Command } = require('./classes/command');
+const { isAllowedServer } = require('../utils/accessControl');
 
 const cooldowns = new Map();
-require('dotenv').config();
+
+const DAY_LENGTH = 24 * 60 * 60 * 1000;
 
 class Fart extends Command {
   constructor(client) {
@@ -12,13 +14,12 @@ class Fart extends Command {
     const { user } = interaction;
     const userId = user.id;
     const now = Date.now();
-    const cooldownAmount = 24 * 60 * 60 * 1000; // 1 day in milliseconds
+    const cooldownAmount = DAY_LENGTH;
 
     if (cooldowns.has(userId)) {
       const expirationTime = cooldowns.get(userId) + cooldownAmount;
 
       if (now < expirationTime) {
-        const timeLeft = Math.round((expirationTime - now) / (60 * 1000)); // Time left in minutes
         await interaction.editReply('you shat yourself.');
 
         // Sending a follow-up message without replying directly to the interaction
@@ -30,15 +31,14 @@ class Fart extends Command {
     // Set the cooldown
     cooldowns.set(userId, now);
 
-    // Check if the server ID matches the one in the .env file
-    const serverId = process.env.ALLOWED_SERVERS;
-    const mention = interaction.guild.id === serverId ? '<@&1182683941308747856>' : '@everyone';
-
-    // Send the fart message
-    await interaction.editReply({
-      content: `# ${mention} ${user} has farted! 💨`,
-      allowedMentions: { parse: ['roles', 'everyone'] }, // Ensure role and everyone mentions are allowed
-    });
+    if (isAllowedServer(interaction)) {
+      await interaction.editReply({
+        content: `# @everyone ${user} has farted! 💨`,
+        allowedMentions: { parse: ['roles', 'everyone'] },
+      });
+    } else {
+      await interaction.editReply(`${user} has farted! 💨`);
+    }
   }
 }
 

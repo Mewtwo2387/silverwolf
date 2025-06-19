@@ -3,6 +3,7 @@ require('dotenv').config();
 
 const ALLOWED_USERS = process.env.ALLOWED_USERS.split(',');
 const BASEMENT_ID = '969953667597893672';
+const ALLOWED_SERVERS = process.env.ALLOWED_SERVERS.split(',');
 
 function isDev(interaction) {
   return ALLOWED_USERS.includes(interaction.user.id);
@@ -16,4 +17,13 @@ function isBasement(interaction) {
   return interaction.guild.id === BASEMENT_ID;
 }
 
-module.exports = { isDev, isAdmin, isBasement };
+function isAllowedServer(interaction) {
+  return ALLOWED_SERVERS.includes(interaction.guild.id);
+}
+
+module.exports = {
+  isDev,
+  isAdmin,
+  isBasement,
+  isAllowedServer,
+};

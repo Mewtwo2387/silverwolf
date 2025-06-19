@@ -35,7 +35,7 @@ class GameUIDDelete extends Command {
 
     try {
       // Delete the game UID for the specified game and user
-      const resultMessage = await this.client.db.deleteGameUID(user.id, game);
+      const resultMessage = await this.client.db.gameUID.deleteGameUID(user.id, game);
 
       // Reply with the result of the deletion
       await interaction.editReply({

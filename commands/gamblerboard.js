@@ -29,17 +29,24 @@ class GamblerBoard extends Command {
       const leaderboardType = interaction.options.getString('leaderboard');
       let winnings;
       if (leaderboardType === 'all') {
-        winnings = await this.client.db.getAllRelativeNetWinnings(this.itemsPerPage, currentPage * this.itemsPerPage);
+        winnings = await this.client.db.user.getAllRelativeNetWinnings(
+          this.itemsPerPage,
+          currentPage * this.itemsPerPage,
+        );
       } else {
-        winnings = await this.client.db.getRelativeNetWinnings(leaderboardType, this.itemsPerPage, currentPage * this.itemsPerPage);
+        winnings = await this.client.db.user.getRelativeNetWinnings(
+          leaderboardType,
+          this.itemsPerPage,
+          currentPage * this.itemsPerPage,
+        );
       }
 
       // Generate the leaderboard content for the first page
       let totalCount;
       if (leaderboardType === 'all') {
-        totalCount = await this.client.db.getAllRelativeNetWinningsCount();
+        totalCount = await this.client.db.user.getAllRelativeNetWinningsCount();
       } else {
-        totalCount = await this.client.db.getEveryoneAttrCount(`${leaderboardType}TimesPlayed`);
+        totalCount = await this.client.db.user.getEveryoneAttrCount(`${leaderboardType}TimesPlayed`);
       }
       const maxPage = Math.ceil(totalCount / this.itemsPerPage) - 1;
       const leaderboard = await this.generateLeaderboard(winnings, currentPage, leaderboardType);
@@ -70,17 +77,24 @@ class GamblerBoard extends Command {
 
       collector.on('collect', async (i) => {
         if (i.customId === 'prevPage' && currentPage > 0) {
-          currentPage--;
+          currentPage -= 1;
         } else if (i.customId === 'nextPage' && currentPage < maxPage) {
-          currentPage++;
+          currentPage += 1;
         }
 
         // Fetch new data for the updated page
         let newWinnings;
         if (leaderboardType === 'all') {
-          newWinnings = await this.client.db.getAllRelativeNetWinnings(this.itemsPerPage, currentPage * this.itemsPerPage);
+          newWinnings = await this.client.db.user.getAllRelativeNetWinnings(
+            this.itemsPerPage,
+            currentPage * this.itemsPerPage,
+          );
         } else {
-          newWinnings = await this.client.db.getRelativeNetWinnings(leaderboardType, this.itemsPerPage, currentPage * this.itemsPerPage);
+          newWinnings = await this.client.db.user.getRelativeNetWinnings(
+            leaderboardType,
+            this.itemsPerPage,
+            currentPage * this.itemsPerPage,
+          );
         }
         const newLeaderboard = await this.generateLeaderboard(newWinnings, currentPage, leaderboardType);
 
@@ -129,7 +143,7 @@ class GamblerBoard extends Command {
   // Helper function to generate the leaderboard embed
   async generateLeaderboard(winnings, page, leaderboardType) {
     let result = '';
-    for (let i = 0; i < winnings.length; i++) {
+    for (let i = 0; i < winnings.length; i += 1) {
       result += `${i + 1 + (page * this.itemsPerPage)}. <@${winnings[i].id}>: ${winnings[i].relativeWon > 0 ? '+' : ''}${format(winnings[i].relativeWon, true)} bets\n`;
     }
 
