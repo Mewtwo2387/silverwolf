@@ -5,9 +5,9 @@ class Nothing extends Command {
     super(client, 'nothing', 'Does absolutely nothing', [], { ephemeral: false, skipDefer: true });
   }
 
-  async run(interaction) {
+  // eslint-disable-next-line class-methods-use-this, no-unused-vars
+  async run(_interaction) {
     // Intentionally do nothing
-
   }
 }
 

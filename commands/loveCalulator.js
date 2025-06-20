@@ -32,7 +32,7 @@ class LoveCalculator extends Command {
           const userId = match[1]; // Extract the user ID
           const member = await interaction.guild.members.fetch(userId);
           return input.replace(mentionRegex, member.user.username); // Replace mention with username
-        } catch {
+        } catch (error) {
           return input; // If user not found, return the input as is
         }
       }

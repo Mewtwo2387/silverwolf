@@ -12,7 +12,7 @@ class Pokemon extends Command {
   async run(interaction) {
     try {
       // Fetch all Pokémon from the database for the user
-      const allPokemons = await this.client.db.getPokemons(interaction.user.id);
+      const allPokemons = await this.client.db.pokemon.getPokemons(interaction.user.id);
       allPokemons.sort((a, b) => a.pokemonName.localeCompare(b.pokemonName));
 
       // Set up initial page data
@@ -23,8 +23,12 @@ class Pokemon extends Command {
       // Helper function to generate the embed for a given page
       const generateEmbed = (page) => {
         const pagePokemons = allPokemons.slice(page * this.itemsPerPage, (page + 1) * this.itemsPerPage);
-        const maxNameLength = Math.max(...pagePokemons.map((pokemon) => pokemon.pokemonName.length));
-        const description = pagePokemons.map((pokemon) => `${pokemon.pokemonName.padEnd(maxNameLength + 2)} ${pokemon.pokemonCount}`).join('\n');
+        const maxNameLength = Math.max(...pagePokemons.map(
+          (pokemon) => pokemon.pokemonName.length,
+        ));
+        const description = pagePokemons.map(
+          (pokemon) => `${pokemon.pokemonName.padEnd(maxNameLength + 2)} ${pokemon.pokemonCount}`,
+        ).join('\n');
 
         return new EmbedBuilder()
           .setColor('#00AA00')
@@ -60,9 +64,9 @@ class Pokemon extends Command {
 
       collector.on('collect', async (i) => {
         if (i.customId === 'prevPage' && currentPage > 0) {
-          currentPage--;
+          currentPage -= 1;
         } else if (i.customId === 'nextPage' && currentPage < maxPage) {
-          currentPage++;
+          currentPage += 1;
         }
 
         // Update the embed and buttons for the new page

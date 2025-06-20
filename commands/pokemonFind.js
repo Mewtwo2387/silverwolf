@@ -19,8 +19,11 @@ class PokemonFind extends Command {
     const type = interaction.options.getString('type').toLowerCase().trim();
 
     try {
-      const rows = await this.client.db.getUsersWithPokemon(type);
-      if (rows.length === 0) return interaction.editReply({ content: `No users found with Pokémon of type "${type}".` });
+      const rows = await this.client.db.pokemon.getUsersWithPokemon(type);
+      if (rows.length === 0) {
+        interaction.editReply({ content: `No users found with Pokémon of type "${type}".` });
+        return;
+      }
 
       const userList = rows.map((row) => {
         const user = this.client.users.cache.get(row.userId)?.username ?? `<@${row.userId}>`;
@@ -63,9 +66,9 @@ class PokemonFind extends Command {
 
       collector.on('collect', async (i) => {
         if (i.customId === 'prevPage' && currentPage > 0) {
-          currentPage--;
+          currentPage -= 1;
         } else if (i.customId === 'nextPage' && currentPage < totalPages) {
-          currentPage++;
+          currentPage += 1;
         }
 
         const nextPage = getNextPage(currentPage);
@@ -85,7 +88,7 @@ class PokemonFind extends Command {
       });
     } catch (error) {
       console.error('Failed to retrieve hasPokemon list.', error);
-      return interaction.editReply({ content: 'Failed to retrieve list.', ephemeral: true });
+      interaction.editReply({ content: 'Failed to retrieve list.', ephemeral: true });
     }
   }
 }

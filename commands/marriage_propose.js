@@ -45,7 +45,7 @@ class MarriagePropose extends Command {
     }
 
     // Check if the proposing user is already married
-    const userMarriageStatus = await this.client.db.checkMarriageStatus(userId);
+    const userMarriageStatus = await this.client.db.marriage.checkMarriageStatus(userId);
     if (userMarriageStatus.isMarried) {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
@@ -57,7 +57,7 @@ class MarriagePropose extends Command {
     }
 
     // Check if the target user is already married
-    const targetMarriageStatus = await this.client.db.checkMarriageStatus(targetUser.id);
+    const targetMarriageStatus = await this.client.db.marriage.checkMarriageStatus(targetUser.id);
     if (targetMarriageStatus.isMarried) {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
@@ -145,7 +145,7 @@ class MarriagePropose extends Command {
         const randomAcceptanceGif = acceptanceGifs[Math.floor(Math.random() * acceptanceGifs.length)];
 
         // Save the marriage to the database
-        await this.client.db.addMarriage(userId, targetUser.id);
+        await this.client.db.marriage.addMarriage(userId, targetUser.id);
 
         await i.update({
           content: `<@${targetUser.id}> has accepted the proposal! Congratulations!`,

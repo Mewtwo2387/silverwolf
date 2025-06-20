@@ -12,7 +12,7 @@ class MarriageDivorce extends Command {
     const userId = interaction.user.id;
 
     // Check marriage status
-    const marriageStatus = await this.client.db.checkMarriageStatus(userId);
+    const marriageStatus = await this.client.db.marriage.checkMarriageStatus(userId);
 
     if (!marriageStatus.isMarried) {
       await interaction.editReply({
@@ -88,7 +88,7 @@ class MarriageDivorce extends Command {
         const settlement = await divorceSettlement(this.client, userId, partnerId);
 
         // Remove marriage from the database
-        await this.client.db.removeMarriage(userId, partnerId);
+        await this.client.db.marriage.removeMarriage(userId, partnerId);
 
         // Generate a list of fees for the embed
         const fixedFeesBreakdown = settlement.fixedFees
