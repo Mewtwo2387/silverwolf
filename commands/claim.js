@@ -17,14 +17,14 @@ class Claim extends Command {
   async run(interaction) {
     try {
       const now = new Date();
-      const lastClaimedInt = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggiesLastClaimed');
+      const lastClaimedInt = await this.client.db.user.getUserAttr(interaction.user.id, 'dinonuggiesLastClaimed');
 
       const lastClaimed = lastClaimedInt ? new Date(lastClaimedInt) : null;
       const diff = lastClaimed ? now - lastClaimed : DAY_LENGTH;
 
-      const streak = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggiesClaimStreak');
-      const dinonuggies = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggies');
-      const bekiLevel = await this.client.db.getUserAttr(interaction.user.id, 'bekiLevel');
+      const streak = await this.client.db.user.getUserAttr(interaction.user.id, 'dinonuggiesClaimStreak');
+      const dinonuggies = await this.client.db.user.getUserAttr(interaction.user.id, 'dinonuggies');
+      const bekiLevel = await this.client.db.user.getUserAttr(interaction.user.id, 'bekiLevel');
 
       const cooldown = getBekiCooldown(bekiLevel);
 

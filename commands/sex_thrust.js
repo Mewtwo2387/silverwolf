@@ -45,12 +45,6 @@ class SexThrust extends Command {
       const fatherId = interaction.user.id;
       const motherId = session.otherUser(fatherId);
 
-      // already have a baby
-      if (await this.client.db.haveBaby(motherId, fatherId)) {
-        log(`Already have a baby for ${motherId} and ${fatherId}`);
-        return;
-      }
-
       if (Math.random() < 0.5) {
         await interaction.followUp({
           embeds: [new Discord.EmbedBuilder()
@@ -59,7 +53,7 @@ class SexThrust extends Command {
             .setDescription(`<@${motherId}> is pregnant! Check /baby get to see your babies!`),
           ],
         });
-        await this.client.db.addBaby(motherId, fatherId);
+        await this.client.db.baby.createBaby(motherId, fatherId);
       }
 
       return;

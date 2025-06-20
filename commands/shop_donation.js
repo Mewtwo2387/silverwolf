@@ -7,8 +7,8 @@ class ShopDonation extends Command {
   }
 
   async run(interaction) {
-    const stellarNuggies = await this.client.db.getUserAttr(interaction.user.id, 'stellarNuggies');
-    const ascensionLevel = await this.client.db.getUserAttr(interaction.user.id, 'ascensionLevel');
+    const stellarNuggies = await this.client.db.user.getUserAttr(interaction.user.id, 'stellarNuggies');
+    const ascensionLevel = await this.client.db.user.getUserAttr(interaction.user.id, 'ascensionLevel');
 
     const embed = new Discord.EmbedBuilder()
       .setColor('#00AA00')
