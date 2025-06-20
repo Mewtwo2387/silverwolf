@@ -3,7 +3,7 @@ require('dotenv').config();
 
 const ALLOWED_USERS = process.env.ALLOWED_USERS.split(',');
 const BASEMENT_ID = '969953667597893672';
-const ALLOWED_SERVERS = process.env.ALLOWED_SERVERS.split(',');
+const ALLOWED_SERVERS = process.env.ALLOWED_SERVERS ? process.env.ALLOWED_SERVERS.split(',') : BASEMENT_ID;
 
 function isDev(interaction) {
   return ALLOWED_USERS.includes(interaction.user.id);

@@ -24,7 +24,7 @@ class Slots extends Command {
       return;
     }
 
-    const season = await this.client.db.getGlobalConfig('season') || 'Normal';
+    const season = await this.client.db.globalConfig.getGlobalConfig('season') || 'Normal';
 
     const skin = await JSON.parse(fs.readFileSync(path.join(__dirname, '../data/config/skin/slots.json'), 'utf8'))[season];
 

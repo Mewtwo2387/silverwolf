@@ -18,7 +18,7 @@ class Command {
   }
 
   async execute(interaction) {
-    if (await this.client.db.getGlobalConfig('banned') === 'true') {
+    if (await this.client.db.globalConfig.getGlobalConfig('banned') === 'true') {
       if (!isAllowedUser(interaction)) {
         log('ehe banned');
         const embed = new Discord.EmbedBuilder()
