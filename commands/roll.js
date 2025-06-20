@@ -19,6 +19,7 @@ class Roll extends Command {
   async run(interaction) {
     const input = interaction.options.getString('sides') || '6';
     let embed;
+    let result;
     switch (input) {
       case '0':
         embed = new Discord.EmbedBuilder()
@@ -36,14 +37,14 @@ class Roll extends Command {
             .setColor('#AA0000')
             .setDescription('### You tried rolling a 2-sided die.\nOr let\'s call it a coin. And it landed on the edge.');
         } else {
-          var result = Math.ceil(Math.random() * 2);
+          result = Math.ceil(Math.random() * 2);
           embed = new Discord.EmbedBuilder()
             .setColor('#00AA00')
             .setDescription(`### You tried rolling a 2-sided die.\nOr let's call it a coin. It landed on a ${result}.`);
         }
         break;
       case '3':
-        var result = Math.ceil(Math.random() * 3);
+        result = Math.ceil(Math.random() * 3);
         embed = new Discord.EmbedBuilder()
           .setColor('#00AA00')
           .setDescription(`### You tried rolling a 3-sided die.\nI have no fucking idea what it's supposed to look like. But it landed on a ${result}.`);
@@ -59,8 +60,8 @@ class Roll extends Command {
             .setColor('#AA0000')
             .setDescription(`### You tried rolling a ${input}-sided die.\n<:yanfeismug:1136925353651228775>`);
         } else {
-          const faces = parseInt(input);
-          if (isNaN(faces) || faces === undefined) {
+          const faces = parseInt(input, 10);
+          if (Number.isNaN(faces) || faces === undefined) {
             embed = new Discord.EmbedBuilder()
               .setColor('#AA0000')
               .setDescription(`### You tried rolling a ${input}-sided die.\nIt landed on a ${input}. Pretty cool, huh?`);
@@ -69,17 +70,17 @@ class Roll extends Command {
               .setColor('#AA0000')
               .setDescription(`### You tried rolling a ${faces}-sided die.\nIt landed on an edge with an incomplete side.`);
           } else if (faces < 0) {
-            var result = -Math.ceil(Math.random() * -faces);
+            result = -Math.ceil(Math.random() * -faces);
             embed = new Discord.EmbedBuilder()
               .setColor('#00AA00')
               .setDescription(`### You rolled a ${faces}-sided die.\nI dont know how, but apparently it worked. It landed on a ${result}.`);
           } else if (faces > 1000) {
-            var result = Math.ceil(Math.random() * faces);
+            result = Math.ceil(Math.random() * faces);
             embed = new Discord.EmbedBuilder()
               .setColor('#AA0000')
               .setDescription(`### You tried rolling a ${faces}-sided die.\nAt this point you might as well as call it a sphere. It landed on a ${result}.`);
           } else {
-            var result = Math.ceil(Math.random() * faces);
+            result = Math.ceil(Math.random() * faces);
             embed = new Discord.EmbedBuilder()
               .setColor('#00AA00')
               .setDescription(`### You rolled a ${faces}-sided die.\nIt landed on a ${result}. Boring.`);

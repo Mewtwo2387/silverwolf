@@ -39,8 +39,8 @@ class RussianRouletteSingleplayer extends Command {
           collector.stop();
         } else {
           // Survive this round
-          shotsFired++;
-          currentChamber++;
+          shotsFired += 1;
+          currentChamber += 1;
           thisChamberCooldown = false; // Reset cooldown for "This Chamber"
 
           embed.setDescription(`Click! You survived round ${shotsFired}. What will you do next?`)
@@ -79,8 +79,8 @@ class RussianRouletteSingleplayer extends Command {
         } else {
           // Cooldown applied, survive this round
           thisChamberCooldown = true;
-          shotsFired++;
-          currentChamber++;
+          shotsFired += 1;
+          currentChamber += 1;
 
           embed.setDescription(
             `The chamber was empty. You have survived round ${shotsFired}. What will you do next?`,

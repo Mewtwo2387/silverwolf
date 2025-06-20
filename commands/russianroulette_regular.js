@@ -46,19 +46,20 @@ class RussianRouletteRegular extends Command {
   }
 
   async run(interaction) {
-    const participants = [];
+    let participants = [];
 
-    for (let i = 1; i <= 6; i++) {
+    for (let i = 1; i <= 6; i += 1) {
       const user = interaction.options.getUser(`user${i}`);
       if (user) participants.push(user);
     }
 
     if (participants.length < 2) {
-      return interaction.reply('At least 2 participants are required to play Russian Roulette.');
+      interaction.reply('At least 2 participants are required to play Russian Roulette.');
+      return;
     }
 
     // Shuffle participants randomly
-    this.shuffleArray(participants);
+    participants = this.shuffleArray(participants);
 
     const unluckyPerson = Math.floor(Math.random() * participants.length);
     let turn = 0;
@@ -92,7 +93,7 @@ class RussianRouletteRegular extends Command {
         await i.update({ embeds: [embed], components: [] });
         collector.stop();
       } else {
-        turn++;
+        turn += 1;
         embed.setDescription(`${participants[turn].toString()}'s turn!`);
         await i.update({ embeds: [embed] });
       }
@@ -108,10 +109,12 @@ class RussianRouletteRegular extends Command {
 
   // Helper function to shuffle an array
   shuffleArray(array) {
-    for (let i = array.length - 1; i > 0; i--) {
+    const shuffledArray = [...array];
+    for (let i = array.length - 1; i > 0; i -= 1) {
       const j = Math.floor(Math.random() * (i + 1));
-      [array[i], array[j]] = [array[j], array[i]];
+      [shuffledArray[i], shuffledArray[j]] = [shuffledArray[j], shuffledArray[i]];
     }
+    return shuffledArray;
   }
 }
 

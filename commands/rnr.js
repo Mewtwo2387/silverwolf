@@ -57,7 +57,7 @@ class RnR extends Command {
         if (rng < failureChance) {
           // Player loses
           const lostAmount = currentAmount * (1 + (winAmount / 100));
-          await this.client.db.addUserAttr(interaction.user.id, 'credits', -lostAmount);
+          await this.client.db.user.addUserAttr(interaction.user.id, 'credits', -lostAmount);
           await i.update({
             embeds: [embed.setDescription(`Aw, you lost! You lost ${lostAmount.toFixed(2)} credits.`).setColor('#FF0000')],
             components: [],
@@ -66,7 +66,7 @@ class RnR extends Command {
         } else {
           // Player wins
           const winnings = currentAmount * (winAmount / 100);
-          await this.client.db.addUserAttr(interaction.user.id, 'credits', winnings);
+          await this.client.db.user.addUserAttr(interaction.user.id, 'credits', winnings);
           await i.update({
             embeds: [embed.setDescription(`Congratulations! You won ${winnings.toFixed(2)} credits with a ${winAmount.toFixed(2)}% chance!`).setColor('#00FF00')],
             components: [],
@@ -76,7 +76,7 @@ class RnR extends Command {
       } else if (i.customId === 'stepOut') {
         // Calculate the 5% entrance fee
         const entranceFee = currentAmount * 0.05;
-        await this.client.db.addUserAttr(interaction.user.id, 'credits', -entranceFee); // Deduct the entrance fee
+        await this.client.db.user.addUserAttr(interaction.user.id, 'credits', -entranceFee); // Deduct the entrance fee
         await i.update({
           embeds: [embed.setDescription(`You chose to step out. You lost ${entranceFee.toFixed(2)} credits as an entrance fee.`).setColor('#0000FF')],
           components: [],
@@ -87,7 +87,7 @@ class RnR extends Command {
 
     collector.on('end', async () => {
       if (!interaction.replied || !interaction.deferred) {
-        await this.client.db.addUserAttr(interaction.user.id, 'credits', -amount); // Deduct initial bet on timeout
+        await this.client.db.user.addUserAttr(interaction.user.id, 'credits', -amount); // Deduct initial bet on timeout
         await interaction.editReply({
           embeds: [new EmbedBuilder()
             .setColor('#AA0000')

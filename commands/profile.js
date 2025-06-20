@@ -50,17 +50,17 @@ class Profile extends Command {
 
     if (interaction.options.getMember('user')) {
       // Get the specified user's data
-      user = await this.client.db.getUser(interaction.options.getMember('user').id);
+      user = await this.client.db.user.getUser(interaction.options.getMember('user').id);
       const discordUser = await this.client.users.fetch(user.id);
       username = discordUser.username;
       avatarURL = discordUser.displayAvatarURL({ dynamic: true, size: 512 });
-      pokemons = await this.client.db.getPokemons(interaction.options.getMember('user').id);
+      pokemons = await this.client.db.pokemon.getPokemons(interaction.options.getMember('user').id);
     } else {
       // Get the interaction user's data
-      user = await this.client.db.getUser(interaction.user.id);
+      user = await this.client.db.user.getUser(interaction.user.id);
       username = interaction.user.username;
       avatarURL = interaction.user.displayAvatarURL({ dynamic: true, size: 512 });
-      pokemons = await this.client.db.getPokemons(interaction.user.id);
+      pokemons = await this.client.db.pokemon.getPokemons(interaction.user.id);
     }
 
     // Calculations
@@ -74,7 +74,7 @@ class Profile extends Command {
     const nuggieNuggieMultiplier = getNuggieNuggieMultiplier(user.nuggieNuggieMultiplierLevel);
     const { credits } = user;
     const log2Credits = credits > 1 ? Math.log2(credits) : 0;
-    const pokemonCount = await this.client.db.getUniquePokemonCount(interaction.options.getMember('user') ? interaction.options.getMember('user').id : interaction.user.id);
+    const pokemonCount = await this.client.db.pokemon.getUniquePokemonCount(interaction.options.getMember('user') ? interaction.options.getMember('user').id : interaction.user.id);
     const log2Nuggies = user.dinonuggies > 1 ? Math.log2(user.dinonuggies) : 0;
     const nextClaim = bekiCooldown - (Date.now() - user.dinonuggiesLastClaimed) / 1000;
     pokemons.sort((a, b) => a.pokemonName.localeCompare(b.pokemonName));
@@ -124,22 +124,66 @@ class Profile extends Command {
       // Display details based on the selected category
       switch (i.values[0]) {
         case 'currency':
-          detailsEmbed = this.createCurrencyEmbed(credits, user, username, avatarURL);
+          detailsEmbed = this.createCurrencyEmbed(
+            credits,
+            user,
+            username,
+            avatarURL,
+          );
           break;
         case 'levels':
-          detailsEmbed = this.createLevelsEmbed(user, ascensionLevel, maxLevel, multiplierAmount, multiplierRarity, bekiCooldown, nuggieFlatMultiplier, nuggieStreakMultiplier, nuggieCreditsMultiplier, log2Credits, username, avatarURL, nuggiePokemonMultiplier, nuggieNuggieMultiplier);
+          detailsEmbed = this.createLevelsEmbed(
+            user,
+            ascensionLevel,
+            maxLevel,
+            multiplierAmount,
+            multiplierRarity,
+            bekiCooldown,
+            nuggieFlatMultiplier,
+            nuggieStreakMultiplier,
+            nuggieCreditsMultiplier,
+            username,
+            avatarURL,
+            nuggiePokemonMultiplier,
+            nuggieNuggieMultiplier,
+          );
           break;
         case 'claims':
-          detailsEmbed = await this.createClaimsEmbed(user, nextClaim, nuggieStreakMultiplier, nuggieFlatMultiplier, nuggieCreditsMultiplier, log2Credits, username, avatarURL, pokemonCount, log2Nuggies, nuggiePokemonMultiplier, nuggieNuggieMultiplier);
+          detailsEmbed = await this.createClaimsEmbed(
+            user,
+            nextClaim,
+            nuggieStreakMultiplier,
+            nuggieFlatMultiplier,
+            nuggieCreditsMultiplier,
+            log2Credits,
+            username,
+            avatarURL,
+            pokemonCount,
+            log2Nuggies,
+            nuggiePokemonMultiplier,
+            nuggieNuggieMultiplier,
+          );
           break;
         case 'gambling':
-          detailsEmbed = this.createGamblingEmbed(user, username, avatarURL);
+          detailsEmbed = this.createGamblingEmbed(
+            user,
+            username,
+            avatarURL,
+          );
           break;
         case 'others':
-          detailsEmbed = this.createOthersEmbed(user, username, avatarURL);
+          detailsEmbed = this.createOthersEmbed(
+            user,
+            username,
+            avatarURL,
+          );
           break;
         case 'pokemons':
-          detailsEmbed = this.createPokemonsEmbed(pokemonList, username, avatarURL);
+          detailsEmbed = this.createPokemonsEmbed(
+            pokemonList,
+            username,
+            avatarURL,
+          );
           break;
         default:
           break;
@@ -173,7 +217,21 @@ class Profile extends Command {
       .setTimestamp();
   }
 
-  createLevelsEmbed(user, ascensionLevel, maxLevel, multiplierAmount, multiplierRarity, bekiCooldown, nuggieFlatMultiplier, nuggieStreakMultiplier, nuggieCreditsMultiplier, log2Credits, username, avatarURL, nuggiePokemonMultiplier, nuggieNuggieMultiplier) {
+  createLevelsEmbed(
+    user,
+    ascensionLevel,
+    maxLevel,
+    multiplierAmount,
+    multiplierRarity,
+    bekiCooldown,
+    nuggieFlatMultiplier,
+    nuggieStreakMultiplier,
+    nuggieCreditsMultiplier,
+    username,
+    avatarURL,
+    nuggiePokemonMultiplier,
+    nuggieNuggieMultiplier,
+  ) {
     return new Discord.EmbedBuilder()
       .setColor('#00AA00')
       .setTitle(`${username}'s Profile`)
@@ -214,7 +272,20 @@ class Profile extends Command {
       .setTimestamp();
   }
 
-  async createClaimsEmbed(user, nextClaim, nuggieStreakMultiplier, nuggieFlatMultiplier, nuggieCreditsMultiplier, log2Credits, username, avatarURL, pokemonCount, log2Nuggies, nuggiePokemonMultiplier, nuggieNuggieMultiplier) {
+  async createClaimsEmbed(
+    user,
+    nextClaim,
+    nuggieStreakMultiplier,
+    nuggieFlatMultiplier,
+    nuggieCreditsMultiplier,
+    log2Credits,
+    username,
+    avatarURL,
+    pokemonCount,
+    log2Nuggies,
+    nuggiePokemonMultiplier,
+    nuggieNuggieMultiplier,
+  ) {
     return new Discord.EmbedBuilder()
       .setColor('#00AA00')
       .setTitle(`${username}'s Profile`)
@@ -229,7 +300,7 @@ class Profile extends Command {
     **Credits Multiplier:** 1 + ${format(nuggieCreditsMultiplier, true)} * ${format(log2Credits, true)} = ${format(1 + nuggieCreditsMultiplier * log2Credits, true)}x
     **Pokemon Multiplier:** 1 + ${format(nuggiePokemonMultiplier, true)} * ${format(pokemonCount, true)} = ${format(1 + nuggiePokemonMultiplier * pokemonCount, true)}x
     **Nuggie Multiplier:** 1 + ${format(nuggieNuggieMultiplier, true)} * ${format(log2Nuggies, true)} = ${format(1 + nuggieNuggieMultiplier * log2Nuggies, true)}x
-    **Next Claim:** ${nextClaim > 0 ? `${(nextClaim / 60 / 60).toFixed(0)}h ${(nextClaim / 60 % 60).toFixed(0)}m ${(nextClaim % 60).toFixed(0)}s` : 'Ready'}
+    **Next Claim:** ${nextClaim > 0 ? `${(nextClaim / 60 / 60).toFixed(0)}h ${((nextClaim / 60) % 60).toFixed(0)}m ${(nextClaim % 60).toFixed(0)}s` : 'Ready'}
             `)
       .setTimestamp();
   }
@@ -244,7 +315,7 @@ class Profile extends Command {
 ### Slots
 **Times Played:** ${user.slotsTimesPlayed}
 **Times Won:** ${user.slotsTimesWon}
-**Percentage Won:** ${format(user.slotsTimesPlayed > 0 ? (user.slotsTimesWon / user.slotsTimesPlayed * 100) : 0, true)}%
+**Percentage Won:** ${format(user.slotsTimesPlayed > 0 ? ((user.slotsTimesWon / user.slotsTimesPlayed) * 100) : 0, true)}%
 **Amount Gambled:** ${format(user.slotsAmountGambled)}
 **Amount Won:** ${format(user.slotsAmountWon)} 
 **Net Winnings:** ${format(user.slotsAmountWon - user.slotsAmountGambled)}
@@ -256,7 +327,7 @@ class Profile extends Command {
 **Times Won:** ${user.blackjackTimesWon}
 **Times Drew:** ${user.blackjackTimesDrawn}
 **Times Lost:** ${user.blackjackTimesLost}
-**Percentage Won (Excluding Draws):** ${format((user.blackjackTimesWon + user.blackjackTimesLost) > 0 ? (user.blackjackTimesWon / (user.blackjackTimesWon + user.blackjackTimesLost) * 100) : 0, true)}%
+**Percentage Won (Excluding Draws):** ${format((user.blackjackTimesWon + user.blackjackTimesLost) > 0 ? ((user.blackjackTimesWon / (user.blackjackTimesWon + user.blackjackTimesLost)) * 100) : 0, true)}%
 **Amount Gambled:** ${format(user.blackjackAmountGambled)}
 **Amount Won:** ${format(user.blackjackAmountWon)} 
 **Net Winnings:** ${format(user.blackjackAmountWon - user.blackjackAmountGambled)}
@@ -268,7 +339,7 @@ class Profile extends Command {
 ### Roulette
 **Times Played:** ${user.rouletteTimesPlayed}
 **Times Won:** ${user.rouletteTimesWon}
-**Percentage Won:** ${format(user.rouletteTimesPlayed > 0 ? (user.rouletteTimesWon / user.rouletteTimesPlayed * 100) : 0, true)}%
+**Percentage Won:** ${format(user.rouletteTimesPlayed > 0 ? ((user.rouletteTimesWon / user.rouletteTimesPlayed) * 100) : 0, true)}%
 **Amount Gambled:** ${format(user.rouletteAmountGambled)}
 **Amount Won:** ${format(user.rouletteAmountWon)} 
 **Net Winnings:** ${format(user.rouletteAmountWon - user.rouletteAmountGambled)}

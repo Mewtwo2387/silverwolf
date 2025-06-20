@@ -38,7 +38,7 @@ class Say extends AdminCommand {
     const targetChannels = [];
     if (channelsInput) {
       const channelMentions = channelsInput.split(',').map((id) => id.trim());
-      for (const mention of channelMentions) {
+      channelMentions.forEach(async (mention) => {
         const channelId = mention.match(/^<#(\d+)>$/)?.[1];
         if (channelId) {
           try {
@@ -50,7 +50,7 @@ class Say extends AdminCommand {
             logError(`Failed to fetch channel ${channelId}: ${error}`);
           }
         }
-      }
+      });
     }
 
     // If no valid target channels found, fallback to the command's current channel
@@ -67,15 +67,15 @@ class Say extends AdminCommand {
     // Send the message to all target channels
     let successCount = 0;
     const failedChannels = [];
-    for (const channel of targetChannels) {
+    targetChannels.forEach(async (channel) => {
       try {
         await channel.send(messageOptions);
-        successCount++;
+        successCount += 1;
       } catch (error) {
         logError(`Failed to send message to channel ${channel.id}: ${error}`);
         failedChannels.push(`<#${channel.id}>`);
       }
-    }
+    });
 
     // Create response message
     const embed = new EmbedBuilder()
