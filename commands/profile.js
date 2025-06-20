@@ -2,7 +2,7 @@ const Discord = require('discord.js');
 const { Command } = require('./classes/command');
 const { format } = require('../utils/math');
 const {
-  getMaxLevel, getMultiplierAmount, getMultiplierChance, getBekiCooldown,
+  getMaxLevel, getBekiCooldown,
 } = require('../utils/upgrades');
 const {
   getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNuggieCreditsMultiplier,
@@ -14,6 +14,13 @@ const {
   getBekiCooldownInfo,
   INFO_LEVEL,
 } = require('../utils/upgradesInfo');
+const {
+  getNuggieFlatMultiplierInfo,
+  getNuggieStreakMultiplierInfo,
+  getNuggieCreditsMultiplierInfo,
+  getNuggiePokeMultiplierInfo,
+  getNuggieNuggieMultiplierInfo,
+} = require('../utils/ascensionupgradesInfo');
 
 // Cooldown map
 const cooldowns = new Map();
@@ -70,8 +77,6 @@ class Profile extends Command {
     }
 
     // Calculations
-    const multiplierAmount = getMultiplierAmount(user.multiplierAmountLevel);
-    const multiplierRarity = getMultiplierChance(user.multiplierRarityLevel);
     const bekiCooldown = getBekiCooldown(user.bekiLevel) * 60 * 60;
     const nuggieFlatMultiplier = getNuggieFlatMultiplier(user.nuggieFlatMultiplierLevel);
     const nuggieStreakMultiplier = getNuggieStreakMultiplier(user.nuggieStreakMultiplierLevel);
@@ -142,16 +147,8 @@ class Profile extends Command {
             user,
             ascensionLevel,
             maxLevel,
-            multiplierAmount,
-            multiplierRarity,
-            bekiCooldown,
-            nuggieFlatMultiplier,
-            nuggieStreakMultiplier,
-            nuggieCreditsMultiplier,
             username,
             avatarURL,
-            nuggiePokemonMultiplier,
-            nuggieNuggieMultiplier,
           );
           break;
         case 'claims':
@@ -227,16 +224,8 @@ class Profile extends Command {
     user,
     ascensionLevel,
     maxLevel,
-    multiplierAmount,
-    multiplierRarity,
-    bekiCooldown,
-    nuggieFlatMultiplier,
-    nuggieStreakMultiplier,
-    nuggieCreditsMultiplier,
     username,
     avatarURL,
-    nuggiePokemonMultiplier,
-    nuggieNuggieMultiplier,
   ) {
     return new Discord.EmbedBuilder()
       .setColor('#00AA00')
@@ -253,20 +242,15 @@ ${getMultiplierChanceInfo(user.multiplierRarityLevel, INFO_LEVEL.THIS_LEVEL)}
 
 ${getBekiCooldownInfo(user.bekiLevel, INFO_LEVEL.THIS_LEVEL)}
 
-**Nuggie Flat Multiplier Upgrade:** Level ${user.nuggieFlatMultiplierLevel}
-**Nuggie Flat Multiplier:** ${format(nuggieFlatMultiplier)}x
+${getNuggieFlatMultiplierInfo(user.nuggieFlatMultiplierLevel, INFO_LEVEL.THIS_LEVEL)}
 
-**Nuggie Streak Multiplier Upgrade:** Level ${user.nuggieStreakMultiplierLevel}
-**Nuggie Streak Multiplier:** ${format(nuggieStreakMultiplier * 100)}%/day
+${getNuggieStreakMultiplierInfo(user.nuggieStreakMultiplierLevel, INFO_LEVEL.THIS_LEVEL)}
 
-**Nuggie Credits Multiplier Upgrade:** Level ${user.nuggieCreditsMultiplierLevel}
-**Nuggie Credits Multiplier:** ${format(nuggieCreditsMultiplier * 100)}% * log2(credits)
+${getNuggieCreditsMultiplierInfo(user.nuggieCreditsMultiplierLevel, INFO_LEVEL.THIS_LEVEL)}
 
-**Nuggie Pokemon Multiplier Upgrade:** Level ${user.nuggiePokemonMultiplierLevel}
-**Nuggie Pokemon Multiplier:** ${format(nuggiePokemonMultiplier * 100)}% * pokemonCount
+${getNuggiePokeMultiplierInfo(user.nuggiePokemonMultiplierLevel, INFO_LEVEL.THIS_LEVEL)}
 
-**Nuggie Nuggie Multiplier Upgrade:** Level ${user.nuggieNuggieMultiplierLevel}
-**Nuggie Nuggie Multiplier:** ${format(nuggieNuggieMultiplier * 100)}% * log2(nuggies)
+${getNuggieNuggieMultiplierInfo(user.nuggieNuggieMultiplierLevel, INFO_LEVEL.THIS_LEVEL)}
             `)
       .setTimestamp();
   }

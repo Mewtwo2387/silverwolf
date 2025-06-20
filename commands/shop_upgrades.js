@@ -14,28 +14,28 @@ class ShopUpgrades extends Command {
   }
 
   async run(interaction) {
-    const ascensionLevel = await this.client.db.getUserAttr(interaction.user.id, 'ascensionLevel');
+    const ascensionLevel = await this.client.db.user.getUserAttr(interaction.user.id, 'ascensionLevel');
     const maxLevel = getMaxLevel(ascensionLevel);
 
-    const multiplierAmountLevel = await this.client.db.getUserAttr(interaction.user.id, 'multiplierAmountLevel');
-    const multiplierRarityLevel = await this.client.db.getUserAttr(interaction.user.id, 'multiplierRarityLevel');
-    const bekiLevel = await this.client.db.getUserAttr(interaction.user.id, 'bekiLevel');
+    const multiplierAmountLevel = await this.client.db.user.getUserAttr(interaction.user.id, 'multiplierAmountLevel');
+    const multiplierRarityLevel = await this.client.db.user.getUserAttr(interaction.user.id, 'multiplierRarityLevel');
+    const bekiLevel = await this.client.db.user.getUserAttr(interaction.user.id, 'bekiLevel');
 
     let desc = '';
     if (multiplierAmountLevel < maxLevel) {
-      desc += getMultiplierAmountInfo(multiplierAmountLevel, INFO_LEVEL.NEXT_LEVEL);
+      desc += getMultiplierAmountInfo(multiplierAmountLevel, INFO_LEVEL.SHOP_INFO);
     } else {
       desc += getMultiplierAmountInfo(multiplierAmountLevel, INFO_LEVEL.THIS_LEVEL);
     }
 
     if (multiplierRarityLevel < maxLevel) {
-      desc += getMultiplierChanceInfo(multiplierRarityLevel, INFO_LEVEL.NEXT_LEVEL);
+      desc += getMultiplierChanceInfo(multiplierRarityLevel, INFO_LEVEL.SHOP_INFO);
     } else {
       desc += getMultiplierChanceInfo(multiplierRarityLevel, INFO_LEVEL.THIS_LEVEL);
     }
 
     if (bekiLevel < maxLevel) {
-      desc += getBekiCooldownInfo(bekiLevel, INFO_LEVEL.NEXT_LEVEL);
+      desc += getBekiCooldownInfo(bekiLevel, INFO_LEVEL.SHOP_INFO);
     } else {
       desc += getBekiCooldownInfo(bekiLevel, INFO_LEVEL.THIS_LEVEL);
     }

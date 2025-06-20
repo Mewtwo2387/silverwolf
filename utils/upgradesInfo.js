@@ -10,7 +10,8 @@ const {
 const INFO_LEVEL = {
   THIS_LEVEL: 0,
   NEXT_LEVEL: 1,
-  COST_TOTAL: 2,
+  SHOP_INFO: 2,
+  COST_TOTAL: 3,
 };
 
 function getMultiplierAmountInfo(level, infoLevel) {
@@ -30,7 +31,9 @@ function getMultiplierAmountInfo(level, infoLevel) {
     `;
   }
 
-  if (infoLevel === INFO_LEVEL.NEXT_LEVEL || infoLevel === INFO_LEVEL.COST_TOTAL) {
+  if (infoLevel === INFO_LEVEL.NEXT_LEVEL
+    || infoLevel === INFO_LEVEL.SHOP_INFO
+    || infoLevel === INFO_LEVEL.COST_TOTAL) {
     multiplierAmountInfo += `
     **Level:** ${level} -> ${(level + 1)}
     **Gold Multiplier:** ${format(multiplierAmount.gold, true)}x -> ${format(multiplierAmountNext.gold, true)}x
@@ -39,8 +42,12 @@ function getMultiplierAmountInfo(level, infoLevel) {
     `;
   }
 
-  if (infoLevel === INFO_LEVEL.NEXT_LEVEL) {
+  if (infoLevel === INFO_LEVEL.NEXT_LEVEL
+    || infoLevel === INFO_LEVEL.SHOP_INFO) {
     multiplierAmountInfo += `**Cost:** ${format(cost)} mystic credits`;
+  }
+
+  if (infoLevel === INFO_LEVEL.SHOP_INFO) {
     multiplierAmountInfo += 'Buy with `/buy upgrades 1`\n';
   }
 
@@ -69,7 +76,9 @@ function getMultiplierChanceInfo(level, infoLevel) {
     `;
   }
 
-  if (infoLevel === INFO_LEVEL.NEXT_LEVEL || infoLevel === INFO_LEVEL.COST_TOTAL) {
+  if (infoLevel === INFO_LEVEL.NEXT_LEVEL
+    || infoLevel === INFO_LEVEL.SHOP_INFO
+    || infoLevel === INFO_LEVEL.COST_TOTAL) {
     multiplierChanceInfo += `
     **Level:** ${level} -> ${(level + 1)}
     **Gold Chance:** ${format(multiplierChance.gold * 100, true)}% -> ${format(multiplierChanceNext.gold * 100, true)}%
@@ -78,8 +87,12 @@ function getMultiplierChanceInfo(level, infoLevel) {
     `;
   }
 
-  if (infoLevel === INFO_LEVEL.NEXT_LEVEL) {
+  if (infoLevel === INFO_LEVEL.NEXT_LEVEL
+    || infoLevel === INFO_LEVEL.SHOP_INFO) {
     multiplierChanceInfo += `**Cost:** ${format(cost)} mystic credits`;
+  }
+
+  if (infoLevel === INFO_LEVEL.SHOP_INFO) {
     multiplierChanceInfo += 'Buy with `/buy upgrades 2`\n';
   }
 
@@ -106,15 +119,21 @@ function getBekiCooldownInfo(level, infoLevel) {
     `;
   }
 
-  if (infoLevel === INFO_LEVEL.NEXT_LEVEL || infoLevel === INFO_LEVEL.COST_TOTAL) {
+  if (infoLevel === INFO_LEVEL.NEXT_LEVEL
+    || infoLevel === INFO_LEVEL.SHOP_INFO
+    || infoLevel === INFO_LEVEL.COST_TOTAL) {
     bekiCooldownInfo += `
     **Level:** ${level} -> ${(level + 1)}
     **Cooldown:** ${format(bekiCooldown, true)} hours -> ${format(bekiCooldownNext, true)} hours
     `;
   }
 
-  if (infoLevel === INFO_LEVEL.NEXT_LEVEL) {
+  if (infoLevel === INFO_LEVEL.NEXT_LEVEL
+    || infoLevel === INFO_LEVEL.SHOP_INFO) {
     bekiCooldownInfo += `**Cost:** ${format(cost)} mystic credits`;
+  }
+
+  if (infoLevel === INFO_LEVEL.SHOP_INFO) {
     bekiCooldownInfo += 'Buy with `/buy upgrades 3`\n';
   }
 
