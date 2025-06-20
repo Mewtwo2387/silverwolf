@@ -1,7 +1,7 @@
-const { AdminCommand } = require('./classes/admincommand.js');
+const { AdminCommand } = require('./classes/admincommand');
 const { logError } = require('../utils/log');
 
-class SayDM extends AdminCommand {
+class DM extends AdminCommand {
   constructor(client) {
     super(client, 'say-dm', 'Send a direct message to a user', [
       {
@@ -25,7 +25,8 @@ class SayDM extends AdminCommand {
       const messageContent = interaction.options.getString('message');
 
       if (!targetUser || !messageContent) {
-        return interaction.editReply('Invalid user or message.');
+        await interaction.editReply('Invalid user or message.');
+        return;
       }
 
       await targetUser.send(messageContent);
@@ -37,4 +38,4 @@ class SayDM extends AdminCommand {
   }
 }
 
-module.exports = SayDM;
+module.exports = DM;

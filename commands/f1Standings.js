@@ -1,21 +1,19 @@
 const Discord = require('discord.js');
 const axios = require('axios');
-const { logError } = require('../utils/log');
 const { JSDOM } = require('jsdom');
-const { Command } = require('./classes/command.js');
-
-
+const { logError } = require('../utils/log');
+const { Command } = require('./classes/command');
 
 function extractStandings(html, type) {
   const dom = new JSDOM(html);
   const rows = dom.window.document.querySelector('.f1-table-with-data tbody')?.querySelectorAll('tr') || [];
-  return Array.from(rows).map(row => {
+  return Array.from(rows).map((row) => {
     const columns = row.querySelectorAll('td');
     if (type === 'drivers' && columns.length === 5) {
       const driverEl = columns[1].querySelector('a');
       const driverName = driverEl
-        ? driverEl.querySelector('.max-desktop\\:hidden')?.textContent.trim() + ' ' +
-          driverEl.querySelector('.max-tablet\\:hidden')?.textContent.trim()
+        ? `${driverEl.querySelector('.max-desktop\\:hidden')?.textContent.trim()} ${
+          driverEl.querySelector('.max-tablet\\:hidden')?.textContent.trim()}`
         : columns[1].textContent.trim();
 
       return {
@@ -40,28 +38,26 @@ function extractStandings(html, type) {
 }
 
 function buildEmbed(data, type, year) {
-    const title = type === 'drivers' ? `F1 Driver Standings (${year})` : `F1 Team Standings (${year})`;
-    const color = type === 'drivers' ? '#FF0000' : '#008000';
-    const rows = type === 'drivers' ? 25 : 10;
-  
-    const description = data.slice(0, rows).map(entry => {
-      return type === 'drivers'
-        ? `${entry.position}. **${entry.driver}** (${entry.nationality}) - Car: ${entry.car}, Points: ${entry.points}`
-        : `${entry.position}. **${entry.team}** - Points: ${entry.points}`;
-    }).join('\n');
-  
-    return new Discord.EmbedBuilder()
-      .setTitle(title)
-      .setColor(color)
-      .setDescription(description)
-      .setTimestamp()
-      .setThumbnail('https://logodownload.org/wp-content/uploads/2016/11/formula-1-logo-0.png')
-      .setFooter({ text: 'Data provided by Formula1.com' });
-  }  
+  const title = type === 'drivers' ? `F1 Driver Standings (${year})` : `F1 Team Standings (${year})`;
+  const color = type === 'drivers' ? '#FF0000' : '#008000';
+  const rows = type === 'drivers' ? 25 : 10;
+
+  const description = data.slice(0, rows).map((entry) => (type === 'drivers'
+    ? `${entry.position}. **${entry.driver}** (${entry.nationality}) - Car: ${entry.car}, Points: ${entry.points}`
+    : `${entry.position}. **${entry.team}** - Points: ${entry.points}`)).join('\n');
+
+  return new Discord.EmbedBuilder()
+    .setTitle(title)
+    .setColor(color)
+    .setDescription(description)
+    .setTimestamp()
+    .setThumbnail('https://logodownload.org/wp-content/uploads/2016/11/formula-1-logo-0.png')
+    .setFooter({ text: 'Data provided by Formula1.com' });
+}
 
 class F1Standings extends Command {
   constructor(client) {
-    super(client, "f1-standings", "Fetch F1 standings (drivers or constructors)", [
+    super(client, 'f1-standings', 'Fetch F1 standings (drivers or constructors)', [
       {
         name: 'type',
         description: 'Choose between driver or constructor standings',
@@ -69,15 +65,15 @@ class F1Standings extends Command {
         required: true,
         choices: [
           { name: 'Drivers', value: 'drivers' },
-          { name: 'Teams', value: 'teams' }
-        ]
+          { name: 'Teams', value: 'teams' },
+        ],
       },
       {
         name: 'year',
         description: 'Select a year (default: current year)',
         type: 4,
-        required: false
-      }
+        required: false,
+      },
     ]);
   }
 
@@ -90,9 +86,9 @@ class F1Standings extends Command {
     const minYear = type === 'drivers' ? 1950 : 1958;
 
     if (year > currentYear || year < minYear) {
-      return interaction.editReply({
+      interaction.editReply({
         content: `Invalid year for ${type} standings. Must be between ${minYear} and ${currentYear}.`,
-        ephemeral: true
+        ephemeral: true,
       });
     }
 
@@ -108,7 +104,7 @@ class F1Standings extends Command {
       logError('Error fetching F1 standings:', error);
       await interaction.editReply({
         content: 'Failed to fetch the F1 standings. Please try again later.',
-        ephemeral: true
+        ephemeral: true,
       });
     }
   }

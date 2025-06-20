@@ -1,8 +1,8 @@
 const Discord = require('discord.js');
-const { DevCommand } = require('./classes/devcommand.js');
-const { logError } = require('../utils/log.js');
+const { DevCommand } = require('./classes/devcommand');
+const { logError } = require('../utils/log');
 
-class GetBlacklistedCommands extends DevCommand {
+class BlacklistView extends DevCommand {
   constructor(client) {
     super(client, 'view', 'Retrieve blacklisted commands for a specific server', [
       {
@@ -19,7 +19,7 @@ class GetBlacklistedCommands extends DevCommand {
 
     try {
       // Fetch blacklisted commands for the specified server
-      const blacklistedCommands = await this.client.db.getBlacklistedCommands(serverId);
+      const blacklistedCommands = await this.client.db.commandConfig.getBlacklistedCommands(serverId);
 
       // Check if there are any blacklisted commands
       if (blacklistedCommands.length === 0) {
@@ -35,7 +35,7 @@ class GetBlacklistedCommands extends DevCommand {
       }
 
       // Format the blacklisted commands for display
-      const formattedCommands = blacklistedCommands.map((cmd, index) => `**${index + 1}. Command**: ${cmd.command_name}\n**Reason**: ${cmd.reason || 'No reason provided'}\n**Date Disabled**: ${cmd.disabled_date}`).join('\n\n');
+      const formattedCommands = blacklistedCommands.map((cmd, index) => `**${index + 1}. Command**: ${cmd.commandName}\n**Reason**: ${cmd.reason || 'No reason provided'}\n**Date Disabled**: ${cmd.disabled_date}`).join('\n\n');
 
       // Send the list of blacklisted commands as a message
       await interaction.editReply({
@@ -62,4 +62,4 @@ class GetBlacklistedCommands extends DevCommand {
   }
 }
 
-module.exports = GetBlacklistedCommands;
+module.exports = BlacklistView;

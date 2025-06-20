@@ -1,9 +1,9 @@
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js'); // Adjust the path if necessary
-const { Bitcoin } = require('../classes/bitcoin.js');
-const { log, logError } = require('../utils/log.js');
+const { Command } = require('./classes/command');
+const { Bitcoin } = require('../classes/bitcoin');
+const { log, logError } = require('../utils/log');
 
-class BitcoinPriceCommand extends Command {
+class BitcoinPrice extends Command {
   constructor(client) {
     super(client, 'bitcoinprice', 'Fetches the current Bitcoin price', []);
   }
@@ -23,14 +23,14 @@ class BitcoinPriceCommand extends Command {
 
       // Add fields for each currency with formatted values
       const fields = [];
-      for (const currency in data.bpi) {
+      Object.keys(data.bpi).forEach((currency) => {
         const priceData = data.bpi[currency];
         fields.push({
           name: `${priceData.code} (${priceData.symbol})`,
           value: `**Rate:** ${priceData.rate} ${priceData.symbol}`,
           inline: true, // Display fields inline (side-by-side)
         });
-      }
+      });
 
       log(`Current Bitcoin price: ${data.bpi.USD.rate} ${data.bpi.USD.symbol}`);
 
@@ -48,4 +48,4 @@ class BitcoinPriceCommand extends Command {
   }
 }
 
-module.exports = BitcoinPriceCommand;
+module.exports = BitcoinPrice;

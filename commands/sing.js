@@ -1,6 +1,6 @@
 const Discord = require('discord.js');
 const songs = require('../data/songs.json');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 class Sing extends Command {
   constructor(client) {
@@ -41,10 +41,15 @@ class Sing extends Command {
 
     await interaction.editReply(lyrics[0]);
 
-    for (let i = 1; i < lyrics.length; i++) {
-      await new Promise((wait) => setTimeout(wait, 1000));
-      await interaction.channel.send(lyrics[i]);
-    }
+    const delay = (ms) => new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
+
+    await lyrics.slice(1).reduce(async (promise, lyric) => {
+      await promise;
+      await delay(1000);
+      return interaction.channel.send(lyric);
+    }, Promise.resolve());
 
     this.client.singing = false;
   }

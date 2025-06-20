@@ -1,10 +1,10 @@
 // probably not needed
 require('dotenv').config();
 const { EmbedBuilder } = require('discord.js');
-const { DevCommand } = require('./classes/devcommand.js');
-const { logError } = require('../utils/log.js');
+const { DevCommand } = require('./classes/devcommand');
+const { logError } = require('../utils/log');
 
-class TestBirthdaySchedulerCommand extends DevCommand {
+class BirthdayTest extends DevCommand {
   constructor(client) {
     super(client, 'test', 'Tests the birthday scheduler to ensure channels are accessible', [], { isSubcommandOf: 'birthday' });
   }
@@ -15,7 +15,7 @@ class TestBirthdaySchedulerCommand extends DevCommand {
     const failedChannels = [];
 
     // Loop through all the channel IDs and attempt to send a message
-    for (const channelId of channelIds) {
+    channelIds.forEach(async (channelId) => {
       const channel = this.client.channels.cache.get(channelId);
       if (channel) {
         try {
@@ -34,7 +34,7 @@ class TestBirthdaySchedulerCommand extends DevCommand {
         logError(`Channel ID ${channelId} is invalid or not found.`);
         failedChannels.push(channelId); // Add to failed list if the channel is not found
       }
-    }
+    });
 
     // Build the result message
     let resultMessage = 'Birthday Scheduler Channel Test Results:\n\n';
@@ -50,4 +50,4 @@ class TestBirthdaySchedulerCommand extends DevCommand {
   }
 }
 
-module.exports = TestBirthdaySchedulerCommand;
+module.exports = BirthdayTest;

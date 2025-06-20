@@ -1,7 +1,7 @@
 require('dotenv').config();
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
-const SexSession = require('../classes/sexSession.js');
+const { Command } = require('./classes/command');
+const SexSession = require('../classes/sexSession');
 
 class SexStart extends Command {
   constructor(client) {
@@ -21,7 +21,7 @@ class SexStart extends Command {
     const targetId = targetUser.id;
     const allowedUsers = process.env.ALLOWED_USERS.split(',');
 
-    let mod_abooz = targetId == this.client.user.id && allowedUsers.includes(userId);
+    let modAbooz = targetId === this.client.user.id && allowedUsers.includes(userId);
 
     // Check if the user is trying to fuck themselves
     if (targetId === userId) {
@@ -37,7 +37,7 @@ If it occurs, you will be warned, then additional occurrences will be dealt with
     }
 
     // Check if the target user is a bot
-    if (targetUser.bot && !mod_abooz) {
+    if (targetUser.bot && !modAbooz) {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')
@@ -47,24 +47,24 @@ If it occurs, you will be warned, then additional occurrences will be dealt with
     }
 
     // Check if the user is already fucking someone
-    if (this.client.sex_sessions.some((session) => session.hasUser(userId))) {
+    if (this.client.sexSessions.some((session) => session.hasUser(userId))) {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')
           .setTitle('You\'re already fucking someone!')
-          .setDescription(`You are already fucking <@${this.client.sex_sessions.find((session) => session.hasUser(userId)).otherUser(userId)}>!`)
+          .setDescription(`You are already fucking <@${this.client.sexSessions.find((session) => session.hasUser(userId)).otherUser(userId)}>!`)
           .setFooter({ text: 'Finish your current session with /sex thrust' })],
       });
       return;
     }
 
     // Check if the target user is already fucking someone
-    if (this.client.sex_sessions.some((session) => session.hasUser(targetId))) {
+    if (this.client.sexSessions.some((session) => session.hasUser(targetId))) {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')
           .setTitle(`${targetUser.username} is already fucking someone!`)
-          .setDescription(`<@${targetId}> is already fucking <@${this.client.sex_sessions.find((session) => session.hasUser(targetId)).otherUser(targetId)}>!`)
+          .setDescription(`<@${targetId}> is already fucking <@${this.client.sexSessions.find((session) => session.hasUser(targetId)).otherUser(targetId)}>!`)
           .setFooter({ text: 'be patient smh' })],
       });
       return;
@@ -74,11 +74,11 @@ If it occurs, you will be warned, then additional occurrences will be dealt with
     const row = new Discord.ActionRowBuilder()
       .addComponents(
         new Discord.ButtonBuilder()
-          .setCustomId('accept_sex')
+          .setCustomId('acceptSex')
           .setLabel('Consent')
           .setStyle(Discord.ButtonStyle.Success),
         new Discord.ButtonBuilder()
-          .setCustomId('reject_sex')
+          .setCustomId('rejectSex')
           .setLabel('Ew no')
           .setStyle(Discord.ButtonStyle.Danger),
       );
@@ -93,12 +93,12 @@ If it occurs, you will be warned, then additional occurrences will be dealt with
     });
 
     // Create a collector to handle button interactions
-    const filter = (i) => (i.customId === 'accept_sex' || i.customId === 'reject_sex');
+    const filter = (i) => (i.customId === 'acceptSex' || i.customId === 'rejectSex');
     const collector = interaction.channel.createMessageComponentCollector({ filter, time: 60000 }); // 1 minute collector
 
     collector.on('collect', async (i) => {
-      mod_abooz = targetId == this.client.user.id && allowedUsers.includes(i.user.id);
-      if (i.user.id !== targetId && !mod_abooz) {
+      modAbooz = targetId === this.client.user.id && allowedUsers.includes(i.user.id);
+      if (i.user.id !== targetId && !modAbooz) {
         // Fourth wall break response for unauthorized users
         const responses = [
           'You wanna... threesome?',
@@ -117,8 +117,8 @@ If it occurs, you will be warned, then additional occurrences will be dealt with
         return; // Stop further processing
       }
 
-      if (i.customId === 'accept_sex') {
-        await this.client.sex_sessions.push(new SexSession(userId, targetId, 0));
+      if (i.customId === 'acceptSex') {
+        await this.client.sexSessions.push(new SexSession(userId, targetId, 0));
 
         await i.update({
           content: `<@${targetUser.id}> agreed to do it!`,
@@ -130,7 +130,7 @@ If it occurs, you will be warned, then additional occurrences will be dealt with
         });
 
         collector.stop();
-      } else if (i.customId === 'reject_sex') {
+      } else if (i.customId === 'rejectSex') {
         await i.update({
           content: `<@${targetUser.id}> refused to do it.`,
           embeds: [new Discord.EmbedBuilder()

@@ -1,5 +1,7 @@
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
+
+const BASEMENT_ID = '969953667597893672';
 
 class Donate extends Command {
   constructor(client) {
@@ -7,7 +9,7 @@ class Donate extends Command {
   }
 
   async run(interaction) {
-    if (interaction.guild.id == '969953667597893672') { // basement
+    if (interaction.guild.id === BASEMENT_ID) {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#00AA00')

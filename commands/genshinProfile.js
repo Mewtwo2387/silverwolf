@@ -1,7 +1,7 @@
-const fetch = require('node-fetch');
+const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 const genshinPfp = path.join(__dirname, '../data/genshinPfps.json');
 const genshinNamecards = path.join(__dirname, '../data/genshinNamecards.json');
@@ -32,14 +32,12 @@ class GenshinProfile extends Command {
     const namecards = JSON.parse(fs.readFileSync(genshinNamecards, 'utf8'));
 
     try {
-      const response = await fetch(url, { headers });
-      if (!response.ok) {
-        logError(`HTTP Error Response: Status ${response.status} ${response.statusText}`);
-        await interaction.editReply({ content: `Failed to fetch data: HTTP status ${response.status}. Please contact mystichunterz for assistance.`, ephemeral: true });
+      const { status, statusText, data } = await axios.get(url, { headers });
+      if (status !== 200) {
+        logError(`HTTP Error Response: Status ${status} ${statusText}`);
+        await interaction.editReply({ content: `Failed to fetch data: HTTP status ${status}. Please contact mystichunterz for assistance.`, ephemeral: true });
         return;
       }
-
-      const data = await response.json();
 
       if (!data.playerInfo) {
         await interaction.editReply({ content: 'No data found for the given UID. Please check the UID and try again.', ephemeral: true });
@@ -73,7 +71,7 @@ class GenshinProfile extends Command {
                     + `**Signature:** ${playerInfo.signature ?? 'No signature provided'}\n`
                     + `**Achievements:** ${playerInfo.finishAchievementNum ?? '0'}\n`
                     + `**Spiral Abyss:** Floor ${playerInfo.towerFloorIndex ?? 'N/A'}, Level ${playerInfo.towerLevelIndex ?? 'N/A'}\n`
-                    + `**namecard_id:** ${playerInfo.nameCardId ?? 'N/A'}\n`,
+                    + `**Namecard ID:** ${playerInfo.nameCardId ?? 'N/A'}\n`,
         thumbnail: profilePictureUrl ? { url: profilePictureUrl } : undefined,
         image: namecardUrl ? { url: namecardUrl } : undefined,
         timestamp: new Date(),

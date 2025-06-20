@@ -1,5 +1,5 @@
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 const DEATH_RATE = 0.05;
 
@@ -33,10 +33,10 @@ class Trade extends Command {
     const pokemonSending = interaction.options.getString('sending');
     const pokemonRequesting = interaction.options.getString('requesting');
 
-    let selfPokemonCount = await this.client.db.getPokemonCount(self, pokemonSending);
-    let targetPokemonCount = await this.client.db.getPokemonCount(target, pokemonRequesting);
+    let selfPokemonCount = await this.client.db.pokemon.getPokemonCount(self, pokemonSending);
+    let targetPokemonCount = await this.client.db.pokemon.getPokemonCount(target, pokemonRequesting);
 
-    if (self == target) {
+    if (self === target) {
       await interaction.editReply({
         embeds: [
           new Discord.EmbedBuilder()
@@ -71,11 +71,11 @@ class Trade extends Command {
     const row = new Discord.ActionRowBuilder()
       .addComponents(
         new Discord.ButtonBuilder()
-          .setCustomId('accept_trade')
+          .setCustomId('acceptTrade')
           .setLabel('Accept')
           .setStyle(Discord.ButtonStyle.Success),
         new Discord.ButtonBuilder()
-          .setCustomId('reject_trade')
+          .setCustomId('rejectTrade')
           .setLabel('Reject')
           .setStyle(Discord.ButtonStyle.Danger),
       );
@@ -91,7 +91,7 @@ class Trade extends Command {
       components: [row],
     });
 
-    const filter = (i) => (i.customId === 'accept_trade' || i.customId === 'reject_trade');
+    const filter = (i) => (i.customId === 'acceptTrade' || i.customId === 'rejectTrade');
     const collector = interaction.channel.createMessageComponentCollector({ filter, time: 60000 }); // 1 minute collector
 
     collector.on('collect', async (i) => {
@@ -106,9 +106,9 @@ class Trade extends Command {
         return;
       }
 
-      if (i.customId === 'accept_trade') {
-        selfPokemonCount = await this.client.db.getPokemonCount(self, pokemonSending);
-        targetPokemonCount = await this.client.db.getPokemonCount(target, pokemonRequesting);
+      if (i.customId === 'acceptTrade') {
+        selfPokemonCount = await this.client.db.pokemon.getPokemonCount(self, pokemonSending);
+        targetPokemonCount = await this.client.db.pokemon.getPokemonCount(target, pokemonRequesting);
 
         if (selfPokemonCount < 1 || targetPokemonCount < 1) {
           await i.reply({
@@ -126,14 +126,14 @@ class Trade extends Command {
         const pokemonSendingDied = Math.random() < DEATH_RATE;
         const pokemonRequestingDied = Math.random() < DEATH_RATE;
 
-        await this.client.db.sacrificePokemon(self, pokemonSending);
-        await this.client.db.sacrificePokemon(target, pokemonRequesting);
+        await this.client.db.pokemon.sacrificePokemon(self, pokemonSending);
+        await this.client.db.pokemon.sacrificePokemon(target, pokemonRequesting);
 
         if (!pokemonSendingDied) {
-          await this.client.db.catchPokemon(target, pokemonSending);
+          await this.client.db.pokemon.catchPokemon(target, pokemonSending);
         }
         if (!pokemonRequestingDied) {
-          await this.client.db.catchPokemon(self, pokemonRequesting);
+          await this.client.db.pokemon.catchPokemon(self, pokemonRequesting);
         }
 
         let message = `<@${self}> traded their ${pokemonSending} for <@${target}>'s ${pokemonRequesting}!`;
@@ -163,7 +163,7 @@ class Trade extends Command {
         return;
       }
 
-      if (i.customId === 'reject_trade') {
+      if (i.customId === 'rejectTrade') {
         await i.reply({
           embeds: [
             new Discord.EmbedBuilder()

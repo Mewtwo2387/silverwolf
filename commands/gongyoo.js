@@ -1,11 +1,11 @@
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
-const { format } = require('../utils/math.js');
+const { Command } = require('./classes/command');
+const { format } = require('../utils/math');
 
 const COOLDOWN_HOURS = 24;
 const HOUR_LENGTH = 60 * 60 * 1000;
 
-class WinOrBust extends Command {
+class Gongyoo extends Command {
   constructor(client) {
     super(client, 'recruiter-game-오징어게임', 'is this a squid game reference?', []);
   }
@@ -13,7 +13,7 @@ class WinOrBust extends Command {
   async run(interaction) {
     const now = Date.now();
 
-    const lastGambledInt = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggie_last_gambled');
+    const lastGambledInt = await this.client.db.user.getUserAttr(interaction.user.id, 'dinonuggieLastGambled');
     const lastGambled = lastGambledInt ? new Date(lastGambledInt) : null;
     const diff = lastGambled ? now - lastGambled : COOLDOWN_HOURS * HOUR_LENGTH;
 
@@ -31,10 +31,10 @@ class WinOrBust extends Command {
     }
 
     // Set cooldown for user
-    await this.client.db.setUserAttr(interaction.user.id, 'dinonuggie_last_gambled', now);
+    await this.client.db.user.setUserAttr(interaction.user.id, 'dinonuggieLastGambled', now);
 
-    const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
-    const dinonuggies = await this.client.db.getUserAttr(interaction.user.id, 'dinonuggies');
+    const credits = await this.client.db.user.getUserAttr(interaction.user.id, 'credits');
+    const dinonuggies = await this.client.db.user.getUserAttr(interaction.user.id, 'dinonuggies');
 
     const fee = Math.floor(credits * 0.05);
     const winCredits = Math.floor(credits * 0.20);
@@ -56,12 +56,12 @@ class WinOrBust extends Command {
     const row = new Discord.ActionRowBuilder()
       .addComponents(
         new Discord.ButtonBuilder()
-          .setCustomId('win_or_bust_left')
+          .setCustomId('winOrBustLeft')
           .setLabel('Take +20% Credits')
           .setStyle(Discord.ButtonStyle.Success),
         new Discord.ButtonBuilder()
-          .setCustomId('win_or_bust_right')
-          .setLabel('Nah I\'d Gamble')
+          .setCustomId('winOrBustRight')
+          .setLabel("Nah I'd Gamble")
           .setStyle(Discord.ButtonStyle.Danger),
       );
 
@@ -85,9 +85,9 @@ class WinOrBust extends Command {
       choiceMade = true;
       collector.stop();
 
-      if (buttonInteraction.customId === 'win_or_bust_left') {
+      if (buttonInteraction.customId === 'winOrBustLeft') {
         // Add 10% credits
-        await this.client.db.addUserAttr(interaction.user.id, 'credits', winCredits);
+        await this.client.db.user.addUserAttr(interaction.user.id, 'credits', winCredits);
 
         const winEmbed = new Discord.EmbedBuilder()
           .setColor('#00FF00')
@@ -96,12 +96,12 @@ class WinOrBust extends Command {
           .setImage('https://media1.tenor.com/m/caIrExQfdiEAAAAd/clap-smile.gif');
 
         await interaction.editReply({ embeds: [winEmbed], components: [] });
-      } else if (buttonInteraction.customId === 'win_or_bust_right') {
+      } else if (buttonInteraction.customId === 'winOrBustRight') {
         const rng = Math.random();
 
         if (rng <= 0.003) {
           const winnings = dinonuggies * multiplier;
-          await this.client.db.addUserAttr(interaction.user.id, 'dinonuggies', winnings);
+          await this.client.db.user.addUserAttr(interaction.user.id, 'dinonuggies', winnings);
 
           const jackpotEmbed = new Discord.EmbedBuilder()
             .setColor('#FFD700')
@@ -113,8 +113,8 @@ You gained **+${format(winnings)} dinonuggies**!`)
           await interaction.editReply({ embeds: [jackpotEmbed], components: [] });
         } else if (rng <= 0.503) {
           // 50% chance: Lose streak
-          await this.client.db.addUserAttr(interaction.user.id, 'credits', -loseCredits);
-          await this.client.db.setUserAttr(interaction.user.id, 'dinonuggies_claim_streak', 0);
+          await this.client.db.user.addUserAttr(interaction.user.id, 'credits', -loseCredits);
+          await this.client.db.user.setUserAttr(interaction.user.id, 'dinonuggiesClaimStreak', 0);
 
           const loseStreakEmbed = new Discord.EmbedBuilder()
             .setColor('#FF0000')
@@ -125,7 +125,7 @@ You gained **+${format(winnings)} dinonuggies**!`)
           await interaction.editReply({ embeds: [loseStreakEmbed], components: [] });
         } else {
           // Normal loss: Lose 20% credits
-          await this.client.db.addUserAttr(interaction.user.id, 'credits', -loseCredits);
+          await this.client.db.user.addUserAttr(interaction.user.id, 'credits', -loseCredits);
 
           const lossEmbed = new Discord.EmbedBuilder()
             .setColor('#FF4500')
@@ -140,7 +140,7 @@ You gained **+${format(winnings)} dinonuggies**!`)
 
     collector.on('end', async () => {
       if (!choiceMade) {
-        await this.client.db.addUserAttr(interaction.user.id, 'credits', -fee);
+        await this.client.db.user.addUserAttr(interaction.user.id, 'credits', -fee);
 
         const timeoutEmbed = new Discord.EmbedBuilder()
           .setColor('#AA0000')
@@ -154,4 +154,4 @@ You gained **+${format(winnings)} dinonuggies**!`)
   }
 }
 
-module.exports = WinOrBust;
+module.exports = Gongyoo;

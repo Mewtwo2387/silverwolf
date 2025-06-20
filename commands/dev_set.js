@@ -1,8 +1,8 @@
 const Discord = require('discord.js');
-const { DevCommand } = require('./classes/devcommand.js');
-const { format, antiFormat } = require('../utils/math.js');
+const { DevCommand } = require('./classes/devcommand');
+const { format, antiFormat } = require('../utils/math');
 
-class SetAttr extends DevCommand {
+class DevSet extends DevCommand {
   constructor(client) {
     super(client, 'set', 'set data of a user', [
       {
@@ -32,7 +32,7 @@ class SetAttr extends DevCommand {
     const amountString = interaction.options.getString('value');
 
     const amount = antiFormat(amountString);
-    if (isNaN(amount)) {
+    if (Number.isNaN(amount)) {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')
@@ -43,7 +43,7 @@ class SetAttr extends DevCommand {
       return;
     }
     try {
-      await this.client.db.setUserAttr(user.id, attr, amount);
+      await this.client.db.user.setUserAttr(user.id, attr, amount);
     } catch (e) {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
@@ -62,4 +62,4 @@ class SetAttr extends DevCommand {
   }
 }
 
-module.exports = SetAttr;
+module.exports = DevSet;

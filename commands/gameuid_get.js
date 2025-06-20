@@ -1,8 +1,8 @@
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
-const { logError } = require('../utils/log.js');
+const { Command } = require('./classes/command');
+const { logError } = require('../utils/log');
 
-class GetGameUID extends Command {
+class GameUIDGet extends Command {
   constructor(client) {
     super(client, 'get', 'Get all game UIDs for a user', [
       {
@@ -19,7 +19,7 @@ class GetGameUID extends Command {
 
     try {
       // Get the game UIDs from the database for the specified user
-      const gameUIDs = await this.client.db.getGameUIDsForUser(user.id);
+      const gameUIDs = await this.client.db.gameUID.getAllGameUIDs(user.id);
 
       if (!Array.isArray(gameUIDs) || gameUIDs.length === 0) {
         // If no game UIDs are found, reply with a message indicating that
@@ -35,7 +35,7 @@ class GetGameUID extends Command {
       }
 
       // Construct the reply message dynamically based on the retrieved data
-      const description = gameUIDs.map((g) => `**Game:** ${g.game}\n**UID:** ${g.game_uid}\n**Region:** ${g.region || 'N/A'}\n`).join('\n');
+      const description = gameUIDs.map((g) => `**Game:** ${g.game}\n**UID:** ${g.gameUid}\n**Region:** ${g.region || 'N/A'}\n`).join('\n');
 
       // Reply with the user's game UIDs
       await interaction.editReply({
@@ -62,4 +62,4 @@ class GetGameUID extends Command {
   }
 }
 
-module.exports = GetGameUID;
+module.exports = GameUIDGet;

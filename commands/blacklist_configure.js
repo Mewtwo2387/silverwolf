@@ -1,8 +1,8 @@
 const Discord = require('discord.js');
-const { DevCommand } = require('./classes/devcommand.js');
-const { logError } = require('../utils/log.js');
+const { DevCommand } = require('./classes/devcommand');
+const { logError } = require('../utils/log');
 
-class BlacklistCommand extends DevCommand {
+class BlacklistConfigure extends DevCommand {
   constructor(client) {
     super(client, 'configure', 'Add or remove a command from the blacklist for a specific server', [
       {
@@ -36,54 +36,52 @@ class BlacklistCommand extends DevCommand {
     ], { isSubcommandOf: 'blacklist' });
   }
 
-    async run(interaction) {
-        let commandName = interaction.options.getString('command').toLowerCase().replace(/\s+/g, '.');
-        const serverId = interaction.options.getString('server');
-        const action = interaction.options.getString('action');
-        const reason = interaction.options.getString('reason') || 'No reason provided';
-    
-        try {
-            if (action === 'add') {
-                await this.client.db.addOrUpdateCommandBlacklist(commandName, serverId, reason);
-    
-                await interaction.editReply({
-                    embeds: [
-                        new Discord.EmbedBuilder()
-                            .setColor('#FF0000')
-                            .setTitle(`Command Blacklisted`)
-                            .setDescription(`Command: **${commandName}** has been blacklisted in server: **${serverId}**.`)
-                            .addFields({ name: 'Reason', value: reason })
-                    ]
-                });
-    
-            } else if (action === 'remove') {
-                const resultMessage = await this.client.db.deleteCommandBlacklist(commandName, serverId);
-    
-                await interaction.editReply({
-                    embeds: [
-                        new Discord.EmbedBuilder()
-                            .setColor('#00AA00')
-                            .setTitle(`Command Blacklist Updated`)
-                            .setDescription(resultMessage)
-                    ]
-                });
-            }
-    
-            await this.client.registerCommands(this.client.user.id);
-    
-        } catch (err) {
-            logError('Failed to update command blacklist:', err);
-    
-            await interaction.editReply({
-                embeds: [
-                    new Discord.EmbedBuilder()
-                        .setColor('#AA0000')
-                        .setTitle(`Failed to update command blacklist`)
-                        .setDescription(`An error occurred while updating the command blacklist. Please try again.`)
-                ]
-            });
+  async run(interaction) {
+    const commandName = interaction.options.getString('command').toLowerCase().replace(/\s+/g, '.');
+    const serverId = interaction.options.getString('server');
+    const action = interaction.options.getString('action');
+    const reason = interaction.options.getString('reason') || 'No reason provided';
+
+    try {
+      if (action === 'add') {
+        await this.client.db.commandConfig.addOrUpdateCommandBlacklist(commandName, serverId, reason);
+
+        await interaction.editReply({
+          embeds: [
+            new Discord.EmbedBuilder()
+              .setColor('#FF0000')
+              .setTitle('Command Blacklisted')
+              .setDescription(`Command: **${commandName}** has been blacklisted in server: **${serverId}**.`)
+              .addFields({ name: 'Reason', value: reason }),
+          ],
+        });
+      } else if (action === 'remove') {
+        const resultMessage = await this.client.db.commandConfig.deleteCommandBlacklist(commandName, serverId);
+
+        await interaction.editReply({
+          embeds: [
+            new Discord.EmbedBuilder()
+              .setColor('#00AA00')
+              .setTitle('Command Blacklist Updated')
+              .setDescription(resultMessage),
+          ],
+        });
+      }
+
+      await this.client.registerCommands(this.client.user.id);
+    } catch (err) {
+      logError('Failed to update command blacklist:', err);
+
+      await interaction.editReply({
+        embeds: [
+          new Discord.EmbedBuilder()
+            .setColor('#AA0000')
+            .setTitle('Failed to update command blacklist')
+            .setDescription('An error occurred while updating the command blacklist. Please try again.'),
+        ],
+      });
     }
   }
 }
 
-module.exports = BlacklistCommand;
+module.exports = BlacklistConfigure;

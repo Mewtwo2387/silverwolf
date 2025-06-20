@@ -1,5 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 class Snipe extends Command {
   constructor(client) {
@@ -47,12 +47,12 @@ class Snipe extends Command {
     const { editedMessages } = this.client;
     let total = 0;
 
-    for (const msg of editedMessages) {
-      if (msg.old.author.bot) continue;
-      if (msg.old.channel.id !== interaction.channel.id) continue;
+    editedMessages.some((msg) => {
+      if (msg.old.author.bot) return false;
+      if (msg.old.channel.id !== interaction.channel.id) return false;
 
-      total++;
-      if (total !== count) continue;
+      total += 1;
+      if (total !== count) return false;
 
       const embed = new EmbedBuilder()
         .setColor('#00AA00')
@@ -60,30 +60,32 @@ class Snipe extends Command {
         .setDescription(`Author: ${msg.old.author.username}\nOld: ${msg.old.content}\nNew: ${msg.new.content}`)
         .setTimestamp(msg.new.createdAt);
 
+      interaction.editReply({ embeds: [embed] });
+      return true;
+    });
+
+    if (total < count) {
+      const embed = new EmbedBuilder()
+        .setColor('#AA0000')
+        .setTitle('Snipe Failed!')
+        .setDescription(`There are only ${total} edited messages to snipe in this channel.`);
+
       await interaction.editReply({ embeds: [embed] });
-      return;
     }
-
-    const embed = new EmbedBuilder()
-      .setColor('#AA0000')
-      .setTitle('Snipe Failed!')
-      .setDescription(`There are only ${total} edited messages to snipe in this channel.`);
-
-    await interaction.editReply({ embeds: [embed] });
   }
 
   async handleDeletedSnipe(interaction, count) {
     const { deletedMessages } = this.client;
     let total = 0;
 
-    for (const msgData of deletedMessages) {
+    deletedMessages.some((msgData) => {
       const { message, repliedMessageContent, repliedMessageAuthor } = msgData;
 
-      if (message.author.bot) continue;
-      if (message.channel.id !== interaction.channel.id) continue;
+      if (message.author.bot) return false;
+      if (message.channel.id !== interaction.channel.id) return false;
 
-      total++;
-      if (total !== count) continue;
+      total += 1;
+      if (total !== count) return false;
 
       const embed = new EmbedBuilder()
         .setColor('#00AA00')
@@ -100,16 +102,18 @@ class Snipe extends Command {
         });
       }
 
+      interaction.editReply({ embeds: [embed] });
+      return true;
+    });
+
+    if (total < count) {
+      const embed = new EmbedBuilder()
+        .setColor('#AA0000')
+        .setTitle('Snipe Failed!')
+        .setDescription(`There are only ${total} deleted messages to snipe in this channel.`);
+
       await interaction.editReply({ embeds: [embed] });
-      return;
     }
-
-    const embed = new EmbedBuilder()
-      .setColor('#AA0000')
-      .setTitle('Snipe Failed!')
-      .setDescription(`There are only ${total} deleted messages to snipe in this channel.`);
-
-    await interaction.editReply({ embeds: [embed] });
   }
 }
 

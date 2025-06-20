@@ -1,6 +1,6 @@
 require('dotenv').config();
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 class MarriagePropose extends Command {
   constructor(client) {
@@ -19,7 +19,7 @@ class MarriagePropose extends Command {
     const userId = interaction.user.id;
     const allowedUsers = process.env.ALLOWED_USERS.split(',');
 
-    let mod_abooz = targetUser.id == this.client.user.id && allowedUsers.includes(userId);
+    let modAbooz = targetUser.id === this.client.user.id && allowedUsers.includes(userId);
 
     // Check if the proposing user is trying to marry themselves
     if (targetUser.id === userId) {
@@ -33,7 +33,7 @@ class MarriagePropose extends Command {
     }
 
     // Check if the target user is a bot
-    if (targetUser.bot && !mod_abooz) {
+    if (targetUser.bot && !modAbooz) {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')
@@ -45,7 +45,7 @@ class MarriagePropose extends Command {
     }
 
     // Check if the proposing user is already married
-    const userMarriageStatus = await this.client.db.checkMarriageStatus(userId);
+    const userMarriageStatus = await this.client.db.marriage.checkMarriageStatus(userId);
     if (userMarriageStatus.isMarried) {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
@@ -57,7 +57,7 @@ class MarriagePropose extends Command {
     }
 
     // Check if the target user is already married
-    const targetMarriageStatus = await this.client.db.checkMarriageStatus(targetUser.id);
+    const targetMarriageStatus = await this.client.db.marriage.checkMarriageStatus(targetUser.id);
     if (targetMarriageStatus.isMarried) {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
@@ -71,11 +71,11 @@ class MarriagePropose extends Command {
     const row = new Discord.ActionRowBuilder()
       .addComponents(
         new Discord.ButtonBuilder()
-          .setCustomId('accept_proposal')
+          .setCustomId('acceptProposal')
           .setLabel('Accept💍')
           .setStyle(Discord.ButtonStyle.Success),
         new Discord.ButtonBuilder()
-          .setCustomId('reject_proposal')
+          .setCustomId('rejectProposal')
           .setLabel('Reject💔')
           .setStyle(Discord.ButtonStyle.Danger),
       );
@@ -90,12 +90,12 @@ class MarriagePropose extends Command {
     });
 
     // Create a collector to handle button interactions
-    const filter = (i) => (i.customId === 'accept_proposal' || i.customId === 'reject_proposal');
+    const filter = (i) => (i.customId === 'acceptProposal' || i.customId === 'rejectProposal');
     const collector = interaction.channel.createMessageComponentCollector({ filter, time: 60000 }); // 1 minute collector
 
     collector.on('collect', async (i) => {
-      mod_abooz = targetUser.id == this.client.user.id && allowedUsers.includes(i.user.id);
-      if (i.user.id !== targetUser.id && !mod_abooz) {
+      modAbooz = targetUser.id === this.client.user.id && allowedUsers.includes(i.user.id);
+      if (i.user.id !== targetUser.id && !modAbooz) {
         // Fourth wall break response for unauthorized users
         const responses = [
           `Yo <@${i.user.id}>, this is not for you to decide!`,
@@ -127,7 +127,7 @@ class MarriagePropose extends Command {
         return; // Stop further processing
       }
 
-      if (i.customId === 'accept_proposal') {
+      if (i.customId === 'acceptProposal') {
         // Array of acceptance GIFs
         const acceptanceGifs = [
           'https://media1.tenor.com/m/vor_61NjS7oAAAAC/anime-couple.gif',
@@ -145,7 +145,7 @@ class MarriagePropose extends Command {
         const randomAcceptanceGif = acceptanceGifs[Math.floor(Math.random() * acceptanceGifs.length)];
 
         // Save the marriage to the database
-        await this.client.db.addMarriage(userId, targetUser.id);
+        await this.client.db.marriage.addMarriage(userId, targetUser.id);
 
         await i.update({
           content: `<@${targetUser.id}> has accepted the proposal! Congratulations!`,
@@ -158,7 +158,7 @@ class MarriagePropose extends Command {
         });
 
         collector.stop();
-      } else if (i.customId === 'reject_proposal') {
+      } else if (i.customId === 'rejectProposal') {
         await i.update({
           content: `<@${targetUser.id}> has rejected the proposal.`,
           embeds: [new Discord.EmbedBuilder()

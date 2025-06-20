@@ -1,5 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 class Catch extends Command {
   constructor(client) {
@@ -25,7 +25,7 @@ class Catch extends Command {
       });
       return;
     }
-    if (currentPokemon.toLowerCase() == pokemonName.toLowerCase()) {
+    if (currentPokemon.toLowerCase() === pokemonName.toLowerCase()) {
       await interaction.editReply({
         embeds: [new EmbedBuilder()
           .setTitle(`You caught a wild ${currentPokemon}!`)
@@ -33,7 +33,7 @@ class Catch extends Command {
           .setColor('#00FF00'),
         ],
       });
-      this.client.db.catchPokemon(interaction.user.id, currentPokemon);
+      this.client.db.pokemon.catchPokemon(interaction.user.id, currentPokemon);
       this.client.currentPokemon = null;
     } else {
       await interaction.editReply({

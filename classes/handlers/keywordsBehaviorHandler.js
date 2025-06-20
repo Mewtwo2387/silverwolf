@@ -8,6 +8,7 @@ const { logError } = require('../../utils/log');
 
 module.exports = {
   girlCockx: async (message) => {
+    // eslint-disable-next-line max-len
     const xLinkRegex = /https:\/\/(?:x\.com|twitter\.com|fxtwitter\.com|vxtwitter\.com|fixupx\.com)\/([^/]+)\/status\/(\d+)(?:\?[^\s]*)?/g;
     const girlcockxContent = message.content.replace(xLinkRegex, (_, user, id) => `https://girlcockx.com/${user}/status/${id}`);
 
@@ -27,8 +28,8 @@ module.exports = {
         username: message.member?.displayName || message.author.username,
         avatarURL: message.member.displayAvatarURL(),
         allowedMentions: {
-          parse: [] 
-        }
+          parse: [],
+        },
       });
 
       await message.delete();
@@ -65,7 +66,7 @@ module.exports = {
 
       await message.reply({
         content: text,
-        allowedMentions: { parse: [] }
+        allowedMentions: { parse: [] },
       });
     } catch (err) {
       console.error('Grok script error:', err);

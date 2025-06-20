@@ -1,8 +1,8 @@
 const axios = require('axios');
-const { Command } = require('./classes/command.js');
-const { logError } = require('../utils/log.js');
+const { Command } = require('./classes/command');
+const { logError } = require('../utils/log');
 
-class RandomJokeCommand extends Command {
+class Joke extends Command {
   constructor(client) {
     super(client, 'randomjoke', 'A random joke just like your existence that nobody asked for');
   }
@@ -18,10 +18,9 @@ class RandomJokeCommand extends Command {
       await interaction.editReply({ content: data.setup });
 
       // Delay for 2 seconds before sending the punchline
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // Send the punchline message after the delay
-      await interaction.followUp({ content: data.punchline });
+      setTimeout(() => {
+        interaction.followUp({ content: data.punchline });
+      }, 2000);
     } catch (error) {
       logError('Failed to retrieve joke:', error);
       await interaction.editReply({ content: 'Failed to retrieve joke. Please try again later.', ephemeral: true });
@@ -29,4 +28,4 @@ class RandomJokeCommand extends Command {
   }
 }
 
-module.exports = RandomJokeCommand;
+module.exports = Joke;

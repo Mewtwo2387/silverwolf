@@ -1,6 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
-const { Command } = require('./classes/command.js');
-const { log } = require('../utils/log');
+const { Command } = require('./classes/command');
+const { log, logError } = require('../utils/log');
 
 class Awdangit extends Command {
   constructor(client) {
@@ -9,12 +9,12 @@ class Awdangit extends Command {
 
   async run(interaction) {
     if (Math.random() < 0.01) {
-      const roleId = await this.client.db.getServerRole(interaction.guild.id, 'girl');
-      const role = interaction.member.guild.roles.cache.find((role) => role.id === roleId);
+      const roleId = await this.client.db.serverRoles.getServerRole(interaction.guild.id, 'girl');
+      const role = interaction.member.guild.roles.cache.find((r) => r.id === roleId);
 
       log(`${interaction.user.username} became a girl`);
 
-      if (roleId == null) {
+      if (roleId === null) {
         logError(`Girl role is not set up for ${interaction.guild.name}`);
         await interaction.editReply({
           embeds: [
