@@ -3,12 +3,10 @@ const {
 } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-// const Canvas = require('canvas');
 const Database = require('../database/Database');
 const BirthdayScheduler = require('./birthdayScheduler');
 const BabyScheduler = require('./babyScheduler');
 const { log, logError } = require('../utils/log');
-// const CharacterAI = require('node_characterai')
 require('dotenv').config();
 const seasonConfig = require('../data/config/skin/pokemon.json');
 const {
@@ -42,11 +40,6 @@ class Silverwolf extends Client {
     this.loadGames(); // Initialize the games list from the JSON file
     this.chat = null;
     this.sexSessions = [];
-    // try{
-    //     this.loadSilverwolfAI();
-    // }catch(error){
-    //     log("Error loading Silverwolf AI: ", error)
-    // }
   }
 
   async init() {
@@ -390,18 +383,6 @@ All wrongs reserved.
       logError('Error loading games from status.json:', error);
     }
   }
-
-  // async loadSilverwolfAI(){
-  //     const silverwolf = new CharacterAI()
-
-  //     await silverwolf.authenticateWithToken(process.env.CAI_TOKEN)
-
-  //     const characterId = "rIY3dqqU-WwbHbjzJlac1f4aXYO1j7aYdri_5k4uDNM"
-
-  //     this.chat = await silverwolf.createOrContinueChat(characterId)
-
-  //     log("Silverwolf AI loaded.")
-  // }
 
   async login() {
     await super.login(this.token);
