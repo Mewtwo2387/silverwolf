@@ -26,7 +26,7 @@ async function getBaseAmount(client, uid, streak) {
   const log2Credits = credits > 1 ? Math.log2(credits) : 0;
 
   const nuggiePokemonMultiplierLevel = await client.db.user.getUserAttr(uid, 'nuggiePokemonMultiplierLevel');
-  const pokemonCount = await client.db.getUniquePokemonCount(uid);
+  const pokemonCount = await client.db.pokemon.getUniquePokemonCount(uid);
 
   const nuggieNuggieMultiplierLevel = await client.db.user.getUserAttr(uid, 'nuggieNuggieMultiplierLevel');
   const nuggies = await client.db.user.getUserAttr(uid, 'dinonuggies');
