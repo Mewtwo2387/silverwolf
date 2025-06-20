@@ -8,6 +8,7 @@ const { logError } = require('../../utils/log');
 
 module.exports = {
   girlCockx: async (message) => {
+    // eslint-disable-next-line max-len
     const xLinkRegex = /https:\/\/(?:x\.com|twitter\.com|fxtwitter\.com|vxtwitter\.com|fixupx\.com)\/([^/]+)\/status\/(\d+)(?:\?[^\s]*)?/g;
     const girlcockxContent = message.content.replace(xLinkRegex, (_, user, id) => `https://girlcockx.com/${user}/status/${id}`);
 

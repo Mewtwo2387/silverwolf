@@ -32,23 +32,40 @@ class Slots extends Command {
 
     const results = [[], [], []];
 
-    for (var i = 0; i < 3; i++) {
-      for (let j = 0; j < 5; j++) {
+    for (let i = 0; i < 3; i += 1) {
+      for (let j = 0; j < 5; j += 1) {
         results[i].push(smugs[Math.floor(Math.random() * smugs.length)]);
       }
     }
 
     let multi = 0;
 
-    const lines = [[0, 0, 0, 0, 0], [1, 1, 1, 1, 1], [2, 2, 2, 2, 2], [0, 1, 2, 1, 0], [2, 1, 0, 1, 2], [0, 1, 2, 2, 2], [2, 1, 0, 0, 0], [0, 0, 0, 1, 2], [2, 2, 2, 1, 0]];
+    const lines = [
+      [0, 0, 0, 0, 0],
+      [1, 1, 1, 1, 1],
+      [2, 2, 2, 2, 2],
+      [0, 1, 2, 1, 0],
+      [2, 1, 0, 1, 2],
+      [0, 1, 2, 2, 2],
+      [2, 1, 0, 0, 0],
+      [0, 0, 0, 1, 2],
+      [2, 2, 2, 1, 0],
+    ];
 
-    for (var i = 0; i < lines.length; i++) {
+    for (let i = 0; i < lines.length; i += 1) {
       const line = lines[i];
-      if (results[line[0]][0].emote === results[line[1]][1].emote && results[line[1]][1].emote === results[line[2]][2].emote && results[line[2]][2].emote === results[line[3]][3].emote && results[line[3]][3].emote === results[line[4]][4].emote) {
+      if (
+        results[line[0]][0].emote === results[line[1]][1].emote
+        && results[line[1]][1].emote === results[line[2]][2].emote
+        && results[line[2]][2].emote === results[line[3]][3].emote
+        && results[line[3]][3].emote === results[line[4]][4].emote) {
         multi += results[line[0]][0].value * 20;
-      } else if (results[line[0]][0].emote === results[line[1]][1].emote && results[line[1]][1].emote === results[line[2]][2].emote && results[line[2]][2].emote === results[line[3]][3].emote) {
+      } else if (results[line[0]][0].emote === results[line[1]][1].emote
+        && results[line[1]][1].emote === results[line[2]][2].emote
+        && results[line[2]][2].emote === results[line[3]][3].emote) {
         multi += results[line[0]][0].value * 4;
-      } else if (results[line[0]][0].emote === results[line[1]][1].emote && results[line[1]][1].emote === results[line[2]][2].emote) {
+      } else if (results[line[0]][0].emote === results[line[1]][1].emote
+        && results[line[1]][1].emote === results[line[2]][2].emote) {
         multi += results[line[1]][1].value;
       }
     }
@@ -56,12 +73,12 @@ class Slots extends Command {
     if (amount >= 0) {
       multi *= await this.client.db.marriage.getMarriageBenefits(interaction.user.id);
       const winnings = multi * amount;
-      await this.client.db.addUserAttr(interaction.user.id, 'slotsTimesPlayed', 1);
-      await this.client.db.addUserAttr(interaction.user.id, 'slotsTimesGambled', amount);
-      await this.client.db.addUserAttr(interaction.user.id, 'slotsTimesWon', multi > 0 ? 1 : 0);
-      await this.client.db.addUserAttr(interaction.user.id, 'slotsAmountWon', winnings);
-      await this.client.db.addUserAttr(interaction.user.id, 'slotsRelativeWon', multi);
-      await this.client.db.addUserAttr(interaction.user.id, 'credits', winnings - amount);
+      await this.client.db.user.addUserAttr(interaction.user.id, 'slotsTimesPlayed', 1);
+      await this.client.db.user.addUserAttr(interaction.user.id, 'slotsTimesGambled', amount);
+      await this.client.db.user.addUserAttr(interaction.user.id, 'slotsTimesWon', multi > 0 ? 1 : 0);
+      await this.client.db.user.addUserAttr(interaction.user.id, 'slotsAmountWon', winnings);
+      await this.client.db.user.addUserAttr(interaction.user.id, 'slotsRelativeWon', multi);
+      await this.client.db.user.addUserAttr(interaction.user.id, 'credits', winnings - amount);
       if (multi === 0) {
         const loseMessage = skin.loseMessage.replace('{amount}', format(amount));
         await interaction.editReply({
@@ -82,24 +99,10 @@ class Slots extends Command {
         });
       }
     } else {
-      // await this.client.db.addUserAttr(interaction.user.id, 'credits', winnings - amount);
-      // if (winnings === 0){
-      //     await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
-      //         .setColor('#AA0000')
-      //         .setTitle(`You bet ${amount} mystic credits of debt and got rid of all the debt!`)
-      //         .setDescription(`${results[0][0].emote} ${results[0][1].emote} ${results[0][2].emote} ${results[0][3].emote} ${results[0][4].emote}\n${results[1][0].emote} ${results[1][1].emote} ${results[1][2].emote} ${results[1][3].emote} ${results[1][4].emote}\n${results[2][0].emote} ${results[2][1].emote} ${results[2][2].emote} ${results[2][3].emote} ${results[2][4].emote}`)
-      //     ]});
-      // }else{
-      //     await interaction.editReply({embeds: [ new Discord.EmbedBuilder()
-      //         .setColor('#00AA00')
-      //         .setTitle(`You bet ${amount} mystic credits of debt and won ${winnings} mystic credits of debt!`)
-      //         .setDescription(`${results[0][0].emote} ${results[0][1].emote} ${results[0][2].emote} ${results[0][3].emote} ${results[0][4].emote}\n${results[1][0].emote} ${results[1][1].emote} ${results[1][2].emote} ${results[1][3].emote} ${results[1][4].emote}\n${results[2][0].emote} ${results[2][1].emote} ${results[2][2].emote} ${results[2][3].emote} ${results[2][4].emote}`)
-      //     ]});
-      // }
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')
-          .setTitle('Betting debt is temporarily disabled'),
+          .setTitle('Betting debt is disabled'),
         ],
       });
     }

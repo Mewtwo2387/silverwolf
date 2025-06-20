@@ -33,8 +33,8 @@ class Trade extends Command {
     const pokemonSending = interaction.options.getString('sending');
     const pokemonRequesting = interaction.options.getString('requesting');
 
-    let selfPokemonCount = await this.client.db.getPokemonCount(self, pokemonSending);
-    let targetPokemonCount = await this.client.db.getPokemonCount(target, pokemonRequesting);
+    let selfPokemonCount = await this.client.db.pokemon.getPokemonCount(self, pokemonSending);
+    let targetPokemonCount = await this.client.db.pokemon.getPokemonCount(target, pokemonRequesting);
 
     if (self === target) {
       await interaction.editReply({
@@ -107,8 +107,8 @@ class Trade extends Command {
       }
 
       if (i.customId === 'acceptTrade') {
-        selfPokemonCount = await this.client.db.getPokemonCount(self, pokemonSending);
-        targetPokemonCount = await this.client.db.getPokemonCount(target, pokemonRequesting);
+        selfPokemonCount = await this.client.db.pokemon.getPokemonCount(self, pokemonSending);
+        targetPokemonCount = await this.client.db.pokemon.getPokemonCount(target, pokemonRequesting);
 
         if (selfPokemonCount < 1 || targetPokemonCount < 1) {
           await i.reply({
@@ -126,14 +126,14 @@ class Trade extends Command {
         const pokemonSendingDied = Math.random() < DEATH_RATE;
         const pokemonRequestingDied = Math.random() < DEATH_RATE;
 
-        await this.client.db.sacrificePokemon(self, pokemonSending);
-        await this.client.db.sacrificePokemon(target, pokemonRequesting);
+        await this.client.db.pokemon.sacrificePokemon(self, pokemonSending);
+        await this.client.db.pokemon.sacrificePokemon(target, pokemonRequesting);
 
         if (!pokemonSendingDied) {
-          await this.client.db.catchPokemon(target, pokemonSending);
+          await this.client.db.pokemon.catchPokemon(target, pokemonSending);
         }
         if (!pokemonRequestingDied) {
-          await this.client.db.catchPokemon(self, pokemonRequesting);
+          await this.client.db.pokemon.catchPokemon(self, pokemonRequesting);
         }
 
         let message = `<@${self}> traded their ${pokemonSending} for <@${target}>'s ${pokemonRequesting}!`;

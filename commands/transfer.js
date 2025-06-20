@@ -24,7 +24,7 @@ class Transfer extends Command {
     const target = interaction.options.getUser('user');
     const amountString = interaction.options.getString('amount');
     const amount = antiFormat(amountString);
-    if (isNaN(amount)) {
+    if (Number.isNaN(amount)) {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')
@@ -94,12 +94,12 @@ class Transfer extends Command {
       },
     ];
 
-    for (const tier of tiers) {
-      if (amount > tier.threshold) {
-        return {
-          give: amount * tier.giveFactor + tier.smallFee,
-          receive: amount * tier.receiveFactor,
-          description: `**You pay:**
+    const tier = tiers.find((t) => amount > t.threshold);
+
+    return {
+      give: amount * tier.giveFactor + tier.smallFee,
+      receive: amount * tier.receiveFactor,
+      description: `**You pay:**
 Amount: ${format(amount)}
 VAT: ${format(amount * 0.25)}
 Electricity fee: ${format(amount * 0.1)}
@@ -111,9 +111,7 @@ Amount: ${format(amount)}
 VAT: ${format(amount * -0.25)}
 Transfer tax: ${format(amount * -0.2)}${tier.taxLevel > 0 ? `\nBig transfer tax (>100k): ${format(amount * -0.2)}` : ''}${tier.taxLevel > 1 ? `\nHuge transfer tax (>1m): ${format(amount * -0.04)}` : ''}${tier.taxLevel > 2 ? `\nYourmom transfer tax (>10m): ${format(amount * -0.009)}` : ''}
 **Total: ${format(amount * tier.receiveFactor)}**`,
-        };
-      }
-    }
+    };
   }
 }
 

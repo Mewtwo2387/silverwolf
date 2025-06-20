@@ -21,7 +21,7 @@ class SexStart extends Command {
     const targetId = targetUser.id;
     const allowedUsers = process.env.ALLOWED_USERS.split(',');
 
-    const modAbooz = targetId === this.client.user.id && allowedUsers.includes(userId);
+    let modAbooz = targetId === this.client.user.id && allowedUsers.includes(userId);
 
     // Check if the user is trying to fuck themselves
     if (targetId === userId) {
