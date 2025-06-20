@@ -2,8 +2,15 @@ const Discord = require('discord.js');
 const { format } = require('../utils/math');
 const { Command } = require('./classes/command');
 const {
-  getNextUpgradeCost, getMultiplierAmount, getMultiplierChance, getBekiCooldown, getMaxLevel,
+  getNextUpgradeCost,
+  getMaxLevel,
 } = require('../utils/upgrades');
+const {
+  getMultiplierChanceInfo,
+  getBekiCooldownInfo,
+  getMultiplierAmountInfo,
+  INFO_LEVEL,
+} = require('../utils/upgradesInfo');
 
 const UPGRADES = [
   'multiplierAmount',
@@ -90,16 +97,11 @@ class BuyUpgrades extends Command {
   }
 
   async handleBuyMultiplierAmount(interaction, level, cost, credits) {
-    const multiplierAmount = getMultiplierAmount(level);
-    const nextMultiplierAmount = getMultiplierAmount(level + 1);
     await interaction.editReply({
       embeds: [new Discord.EmbedBuilder()
         .setColor('#00AA00')
         .setTitle('Multiplier Amount Upgrade Bought')
-        .setDescription(`Level: ${level} -> ${level + 1}
-Gold Multiplier: ${format(multiplierAmount.gold, true)}x -> ${format(nextMultiplierAmount.gold, true)}x
-Silver Multiplier: ${format(multiplierAmount.silver, true)}x -> ${format(nextMultiplierAmount.silver, true)}x
-Bronze Multiplier: ${format(multiplierAmount.bronze, true)}x -> ${format(nextMultiplierAmount.bronze, true)}x
+        .setDescription(`${getMultiplierAmountInfo(level, INFO_LEVEL.NEXT_LEVEL)}
 Mystic Credits: ${format(credits)} -> ${format(credits - cost)}`)
         .setFooter({ text: 'dinonuggie' }),
       ],
@@ -107,16 +109,11 @@ Mystic Credits: ${format(credits)} -> ${format(credits - cost)}`)
   }
 
   async handleBuyMultiplierRarity(interaction, level, cost, credits) {
-    const multiplierRarity = getMultiplierChance(level);
-    const nextMultiplierRarity = getMultiplierChance(level + 1);
     await interaction.editReply({
       embeds: [new Discord.EmbedBuilder()
         .setColor('#00AA00')
         .setTitle('Multiplier Rarity Upgrade Bought')
-        .setDescription(`Level: ${level} -> ${level + 1}
-Gold Chance: ${format(multiplierRarity.gold * 100, true)}% -> ${format(nextMultiplierRarity.gold * 100, true)}%
-Silver Chance: ${format(multiplierRarity.silver * 100, true)}% -> ${format(nextMultiplierRarity.silver * 100, true)}%
-Bronze Chance: ${format(multiplierRarity.bronze * 100, true)}% -> ${format(nextMultiplierRarity.bronze * 100, true)}%
+        .setDescription(`${getMultiplierChanceInfo(level, INFO_LEVEL.NEXT_LEVEL)}
 Mystic Credits: ${format(credits)} -> ${format(credits - cost)}`)
         .setFooter({ text: 'dinonuggie' }),
       ],
@@ -124,14 +121,11 @@ Mystic Credits: ${format(credits)} -> ${format(credits - cost)}`)
   }
 
   async handleBuyBeki(interaction, level, cost, credits) {
-    const cooldown = getBekiCooldown(level);
-    const nextCooldown = getBekiCooldown(level + 1);
     await interaction.editReply({
       embeds: [new Discord.EmbedBuilder()
         .setColor('#00AA00')
         .setTitle('Beki Upgrade Bought')
-        .setDescription(`Level: ${level} -> ${level + 1}
-Cooldown: ${format(cooldown, true)}hrs -> ${format(nextCooldown, true)}hrs
+        .setDescription(`${getBekiCooldownInfo(level, INFO_LEVEL.NEXT_LEVEL)}
 Mystic Credits: ${format(credits)} -> ${format(credits - cost)}`)
         .setFooter({ text: 'dinonuggie' }),
       ],

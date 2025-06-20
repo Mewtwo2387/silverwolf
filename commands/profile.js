@@ -8,6 +8,12 @@ const {
   getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNuggieCreditsMultiplier,
   getNuggiePokeMultiplier, getNuggieNuggieMultiplier,
 } = require('../utils/ascensionupgrades');
+const {
+  getMultiplierAmountInfo,
+  getMultiplierChanceInfo,
+  getBekiCooldownInfo,
+  INFO_LEVEL,
+} = require('../utils/upgradesInfo');
 
 // Cooldown map
 const cooldowns = new Map();
@@ -241,18 +247,11 @@ class Profile extends Command {
 **Ascension Level:** Level ${ascensionLevel}
 **Max Upgrade Level:** ${maxLevel}
 
-**Multiplier Amount Upgrade:** Level ${user.multiplierAmountLevel}/${maxLevel}
-**Gold Multiplier:** ${format(multiplierAmount.gold, true)}x
-**Silver Multiplier:** ${format(multiplierAmount.silver, true)}x
-**Bronze Multiplier:** ${format(multiplierAmount.bronze, true)}x
+${getMultiplierAmountInfo(user.multiplierAmountLevel, INFO_LEVEL.THIS_LEVEL)}
 
-**Multiplier Rarity Upgrade:** Level ${user.multiplierRarityLevel}/${maxLevel}
-**Gold Chance:** ${format(multiplierRarity.gold * 100, true)}%
-**Silver Chance:** ${format(multiplierRarity.silver * 100, true)}%
-**Bronze Chance:** ${format(multiplierRarity.bronze * 100, true)}%
+${getMultiplierChanceInfo(user.multiplierRarityLevel, INFO_LEVEL.THIS_LEVEL)}
 
-**Beki Upgrade:** Level ${user.bekiLevel}/${maxLevel}
-**Beki Cooldown:** ${format(bekiCooldown)}s (${format(bekiCooldown / 60 / 60, true)}h)
+${getBekiCooldownInfo(user.bekiLevel, INFO_LEVEL.THIS_LEVEL)}
 
 **Nuggie Flat Multiplier Upgrade:** Level ${user.nuggieFlatMultiplierLevel}
 **Nuggie Flat Multiplier:** ${format(nuggieFlatMultiplier)}x
