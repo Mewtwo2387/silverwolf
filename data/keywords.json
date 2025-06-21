@@ -5,7 +5,7 @@
   },
   {
     "triggers": ["gamble", "gambling"],
-    "reply": "<@719752311429267566><@1045123549603582042>"
+    "reply": "<@719752311429267566>"
   },
   {
     "triggers": ["/https:\\/\\/(?:x\\.com|twitter\\.com|fxtwitter\\.com|vxtwitter\\.com|fixupx\\.com)\\/([^/]+)\\/status\\/(\\d+)(?:\\?[^\\s]*)?/g"],
