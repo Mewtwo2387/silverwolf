@@ -67,9 +67,9 @@ async function formatReward(client, skinKey, amount, multiplier, percentage) {
     .replace(/{gold}/g, goldPercentage)
     .replace(/{silver}/g, silverPercentage)
     .replace(/{bronze}/g, bronzePercentage)
-    .replace(/{multiplierGold}/g, goldMultiplier)
-    .replace(/{multiplierSilver}/g, silverMultiplier)
-    .replace(/{multiplierBronze}/g, bronzeMultiplier);
+    .replace(/{goldMultiplier}/g, goldMultiplier)
+    .replace(/{silverMultiplier}/g, silverMultiplier)
+    .replace(/{bronzeMultiplier}/g, bronzeMultiplier);
 
   return {
     amount,
@@ -122,7 +122,7 @@ async function handleSuccessfulClaim(client, interaction, newMessage = false) {
     .setFooter({ text: `dinonuggie | ${footer}`, iconURL: 'https://drive.google.com/thumbnail?id=1oVDRweQoYLU6YfB01LWZpTFQiBS1fRRa' });
 
   await client.db.user.addUserAttr(interaction.user.id, 'dinonuggies', amount);
-  await client.db.user.addUserAttr(interaction.user.id, 'dinonuggiesLastClaimed', now);
+  await client.db.user.setUserAttr(interaction.user.id, 'dinonuggiesLastClaimed', now);
   await client.db.user.addUserAttr(interaction.user.id, 'dinonuggiesClaimStreak', 1);
   if (newMessage) {
     await interaction.followUp({ embeds: [embed] });
