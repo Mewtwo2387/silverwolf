@@ -23,7 +23,7 @@ function getAscensionUpgradeInfo(
   const cost = getNextAscensionUpgradeCost(level, amplifier);
   const costTotal = getTotalAscensionUpgradeCost(level, amplifier);
 
-  let info = `### ${title} Upgrade`;
+  let info = `### ${title} Upgrade\n`;
 
   if (infoLevel === INFO_LEVEL.SHOP_INFO) {
     info += description;

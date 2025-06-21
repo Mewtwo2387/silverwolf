@@ -44,7 +44,7 @@ function getMultiplierAmountInfo(level, infoLevel) {
 
   if (infoLevel === INFO_LEVEL.NEXT_LEVEL
     || infoLevel === INFO_LEVEL.SHOP_INFO) {
-    multiplierAmountInfo += `**Cost:** ${format(cost)} mystic credits`;
+    multiplierAmountInfo += `**Cost:** ${format(cost)} mystic credits\n`;
   }
 
   if (infoLevel === INFO_LEVEL.SHOP_INFO) {
@@ -52,8 +52,8 @@ function getMultiplierAmountInfo(level, infoLevel) {
   }
 
   if (infoLevel === INFO_LEVEL.COST_TOTAL) {
-    multiplierAmountInfo += `**Cost for ${level} to ${level + 1}:** ${format(cost)} mystic credits`;
-    multiplierAmountInfo += `**Cost for 1 to ${level}:** ${format(costTotal)} mystic credits`;
+    multiplierAmountInfo += `**Cost for ${level} to ${level + 1}:** ${format(cost)} mystic credits\n`;
+    multiplierAmountInfo += `**Cost for 1 to ${level}:** ${format(costTotal)} mystic credits\n`;
   }
 
   return multiplierAmountInfo;
@@ -89,7 +89,7 @@ function getMultiplierChanceInfo(level, infoLevel) {
 
   if (infoLevel === INFO_LEVEL.NEXT_LEVEL
     || infoLevel === INFO_LEVEL.SHOP_INFO) {
-    multiplierChanceInfo += `**Cost:** ${format(cost)} mystic credits`;
+    multiplierChanceInfo += `**Cost:** ${format(cost)} mystic credits\n`;
   }
 
   if (infoLevel === INFO_LEVEL.SHOP_INFO) {
@@ -97,8 +97,8 @@ function getMultiplierChanceInfo(level, infoLevel) {
   }
 
   if (infoLevel === INFO_LEVEL.COST_TOTAL) {
-    multiplierChanceInfo += `**Cost for ${level} to ${level + 1}:** ${format(cost)} mystic credits`;
-    multiplierChanceInfo += `**Cost for 1 to ${level}:** ${format(costTotal)} mystic credits`;
+    multiplierChanceInfo += `**Cost for ${level} to ${level + 1}:** ${format(cost)} mystic credits\n`;
+    multiplierChanceInfo += `**Cost for 1 to ${level}:** ${format(costTotal)} mystic credits\n`;
   }
 
   return multiplierChanceInfo;
@@ -130,7 +130,7 @@ function getBekiCooldownInfo(level, infoLevel) {
 
   if (infoLevel === INFO_LEVEL.NEXT_LEVEL
     || infoLevel === INFO_LEVEL.SHOP_INFO) {
-    bekiCooldownInfo += `**Cost:** ${format(cost)} mystic credits`;
+    bekiCooldownInfo += `**Cost:** ${format(cost)} mystic credits\n`;
   }
 
   if (infoLevel === INFO_LEVEL.SHOP_INFO) {
@@ -138,8 +138,8 @@ function getBekiCooldownInfo(level, infoLevel) {
   }
 
   if (infoLevel === INFO_LEVEL.COST_TOTAL) {
-    bekiCooldownInfo += `**Cost for ${level} to ${level + 1}:** ${format(cost)} mystic credits`;
-    bekiCooldownInfo += `**Cost for 1 to ${level}:** ${format(costTotal)} mystic credits`;
+    bekiCooldownInfo += `**Cost for ${level} to ${level + 1}:** ${format(cost)} mystic credits\n`;
+    bekiCooldownInfo += `**Cost for 1 to ${level}:** ${format(costTotal)} mystic credits\n`;
   }
 
   return bekiCooldownInfo;
