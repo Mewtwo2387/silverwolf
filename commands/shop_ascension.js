@@ -8,6 +8,7 @@ const {
   getNuggieNuggieMultiplierInfo,
 } = require('../utils/ascensionupgradesInfo');
 const { INFO_LEVEL } = require('../utils/upgradesInfo');
+const { format } = require('../utils/math');
 
 class AscensionUpgrade extends Command {
   constructor(client) {
@@ -23,7 +24,10 @@ class AscensionUpgrade extends Command {
     const nuggiePokemonMultiplierLevel = await this.client.db.user.getUserAttr(interaction.user.id, 'nuggiePokemonMultiplierLevel');
     const nuggieNuggieMultiplierLevel = await this.client.db.user.getUserAttr(interaction.user.id, 'nuggieNuggieMultiplierLevel');
 
+    const heavenlyNuggies = await this.client.db.user.getUserAttr(interaction.user.id, 'heavenlyNuggies');
+
     const desc = `**Your Ascension level: ${ascensionLevel}**
+**Your Heavenly Nuggies: ${format(heavenlyNuggies)}**
         
 ${getNuggieFlatMultiplierInfo(nuggieFlatMultiplierLevel, INFO_LEVEL.SHOP_INFO)}
 

@@ -41,7 +41,7 @@ function getAscensionUpgradeInfo(
 
   if (infoLevel === INFO_LEVEL.NEXT_LEVEL
     || infoLevel === INFO_LEVEL.SHOP_INFO) {
-    info += `**Cost:** ${format(cost)} heavenly nuggies`;
+    info += `**Cost:** ${format(cost)} heavenly nuggies\n`;
   }
 
   if (infoLevel === INFO_LEVEL.SHOP_INFO) {
@@ -49,8 +49,8 @@ function getAscensionUpgradeInfo(
   }
 
   if (infoLevel === INFO_LEVEL.COST_TOTAL) {
-    info += `**Cost for ${level} to ${level + 1}:** ${format(cost)} heavenly nuggies`;
-    info += `**Cost for 1 to ${level}:** ${format(costTotal)} heavenly nuggies`;
+    info += `**Cost for ${level} to ${level + 1}:** ${format(cost)} heavenly nuggies\n`;
+    info += `**Cost for 1 to ${level}:** ${format(costTotal)} heavenly nuggies\n`;
   }
 
   return info;
@@ -66,9 +66,11 @@ function getNuggieFlatMultiplierInfo(level, infoLevel) {
     'Nuggie Flat Multiplier Upgrade',
     'Applies a flat multiplier to all claims.\n',
     `**Level:** ${level}
-    **Multiplier:** ${format(nuggieFlatMultiplier, true)}x`,
+    **Multiplier:** ${format(nuggieFlatMultiplier, true)}x
+    `,
     `**Level:** ${level} -> ${(level + 1)}
-    **Multiplier:** ${format(nuggieFlatMultiplier, true)}x -> ${format(nuggieFlatMultiplierNext, true)}x`,
+    **Multiplier:** ${format(nuggieFlatMultiplier, true)}x -> ${format(nuggieFlatMultiplierNext, true)}x
+    `,
     1,
     1,
   );
@@ -84,9 +86,11 @@ function getNuggieStreakMultiplierInfo(level, infoLevel) {
     'Nuggie Streak Multiplier Upgrade',
     'Applies a multiplier to all claims based on your current streak.\n',
     `**Level:** ${level}
-    **Multiplier:** ${format(nuggieStreakMultiplier * 100, true)}%/day`,
+    **Multiplier:** ${format(nuggieStreakMultiplier * 100, true)}%/day
+    `,
     `**Level:** ${level} -> ${(level + 1)}
-    **Multiplier:** ${format(nuggieStreakMultiplier * 100, true)}%/day -> ${format(nuggieStreakMultiplierNext * 100, true)}%/day`,
+    **Multiplier:** ${format(nuggieStreakMultiplier * 100, true)}%/day -> ${format(nuggieStreakMultiplierNext * 100, true)}%/day
+    `,
     2,
     1,
   );
@@ -102,9 +106,11 @@ function getNuggieCreditsMultiplierInfo(level, infoLevel) {
     'Nuggie Credits Multiplier Upgrade',
     'Applies a multiplier to all claims based on your current credits.\n',
     `**Level:** ${level}
-    **Multiplier:** +${format(nuggieCreditsMultiplier * 100)}% * log2(credits)`,
+    **Multiplier:** +${format(nuggieCreditsMultiplier * 100)}% * log2(credits)
+    `,
     `**Level:** ${level} -> ${(level + 1)}
-    **Multiplier:** +${format(nuggieCreditsMultiplier * 100)}% * log2(credits) -> +${format(nuggieCreditsMultiplierNext * 100)}% * log2(credits)`,
+    **Multiplier:** +${format(nuggieCreditsMultiplier * 100)}% * log2(credits) -> +${format(nuggieCreditsMultiplierNext * 100)}% * log2(credits)
+    `,
     3,
     3,
   );
@@ -120,9 +126,11 @@ function getNuggiePokeMultiplierInfo(level, infoLevel) {
     'Nuggie PokeMultiplier Upgrade',
     'Applies a multiplier to all claims based on the number of unique pokemons you have.\n',
     `**Level:** ${level}
-    **Multiplier:** +${format(nuggiePokeMultiplier * 100)}%/pokemon`,
+    **Multiplier:** +${format(nuggiePokeMultiplier * 100)}%/pokemon
+    `,
     `**Level:** ${level} -> ${(level + 1)}
-    **Multiplier:** +${format(nuggiePokeMultiplier * 100)}%/pokemon -> +${format(nuggiePokeMultiplierNext * 100)}%/pokemon`,
+    **Multiplier:** +${format(nuggiePokeMultiplier * 100)}%/pokemon -> +${format(nuggiePokeMultiplierNext * 100)}%/pokemon
+    `,
     4,
     9,
   );
@@ -138,9 +146,11 @@ function getNuggieNuggieMultiplierInfo(level, infoLevel) {
     'Nuggie Nuggie Multiplier Upgrade',
     'Applies a multiplier to all claims based on the number of nuggies you have.\n',
     `**Level:** ${level}
-    **Multiplier:** +${format(nuggieNuggieMultiplier * 100)}% * log2(nuggies)`,
+    **Multiplier:** +${format(nuggieNuggieMultiplier * 100)}% * log2(nuggies)
+    `,
     `**Level:** ${level} -> ${(level + 1)}
-    **Multiplier:** +${format(nuggieNuggieMultiplier * 100)}% * log2(nuggies) -> +${format(nuggieNuggieMultiplierNext * 100)}% * log2(nuggies)`,
+    **Multiplier:** +${format(nuggieNuggieMultiplier * 100)}% * log2(nuggies) -> +${format(nuggieNuggieMultiplierNext * 100)}% * log2(nuggies)
+    `,
     5,
     27,
   );

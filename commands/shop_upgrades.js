@@ -7,6 +7,7 @@ const {
   INFO_LEVEL,
 } = require('../utils/upgradesInfo');
 const { getMaxLevel } = require('../utils/upgrades');
+const { format } = require('../utils/math');
 
 class ShopUpgrades extends Command {
   constructor(client) {
@@ -21,7 +22,9 @@ class ShopUpgrades extends Command {
     const multiplierRarityLevel = await this.client.db.user.getUserAttr(interaction.user.id, 'multiplierRarityLevel');
     const bekiLevel = await this.client.db.user.getUserAttr(interaction.user.id, 'bekiLevel');
 
-    let desc = '';
+    const dinonuggies = await this.client.db.user.getUserAttr(interaction.user.id, 'dinonuggies');
+
+    let desc = `**Your Dinonuggies: ${format(dinonuggies)}**\n`;
     if (multiplierAmountLevel < maxLevel) {
       desc += getMultiplierAmountInfo(multiplierAmountLevel, INFO_LEVEL.SHOP_INFO);
     } else {
