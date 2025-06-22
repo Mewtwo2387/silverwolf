@@ -70,6 +70,10 @@ class Slots extends Command {
       }
     }
 
+    if (season === 'aprilFools') {
+      multi = 0.9;
+    }
+
     if (amount >= 0) {
       multi *= await this.client.db.marriage.getMarriageBenefits(interaction.user.id);
       const winnings = multi * amount;
