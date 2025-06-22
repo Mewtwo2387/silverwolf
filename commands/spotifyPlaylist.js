@@ -1,10 +1,8 @@
-const axios = require('axios');
-const { EmbedBuilder } = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 const MusicLinks = require('../data/spotifyPlaylist.json');
-const { logError } = require('../utils/log.js');
+const { logError } = require('../utils/log');
 
-class playlistCommand extends Command {
+class SpotifyPlaylist extends Command {
   constructor(client) {
     super(client, 'spotifyplaylist', 'Get a random song', []);
   }
@@ -21,4 +19,4 @@ class playlistCommand extends Command {
   }
 }
 
-module.exports = playlistCommand;
+module.exports = SpotifyPlaylist;

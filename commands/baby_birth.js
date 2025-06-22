@@ -1,7 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
-const { Command } = require('./classes/command.js');
-const { log } = require('../utils/log.js');
-const { format } = require('../utils/math.js');
+const { Command } = require('./classes/command');
+const { format } = require('../utils/math');
 
 const PREGNANCY_DURATION = 7 * 24 * 60 * 60 * 1000;
 
@@ -20,7 +19,7 @@ class BabyBirth extends Command {
   async run(interaction) {
     const userId = interaction.user.id;
     const babyId = interaction.options.getInteger('id');
-    const baby = await this.client.db.getBabyFromId(babyId);
+    const baby = await this.client.db.baby.getBabyById(babyId);
 
     if (!baby) {
       await interaction.editReply({
@@ -34,8 +33,8 @@ class BabyBirth extends Command {
       return;
     }
 
-    if (baby.mother_id != userId) {
-      if (baby.father_id == userId) {
+    if (baby.motherId !== userId) {
+      if (baby.fatherId === userId) {
         await interaction.editReply({
           embeds: [
             new EmbedBuilder()
@@ -57,7 +56,7 @@ class BabyBirth extends Command {
       return;
     }
 
-    if (baby.status != 'unborn') {
+    if (baby.status !== 'unborn') {
       await interaction.editReply({
         embeds: [
           new EmbedBuilder()
@@ -79,14 +78,14 @@ class BabyBirth extends Command {
           new EmbedBuilder()
             .setColor('#FF0000')
             .setTitle('Your baby is not ready to be born yet!')
-            .setDescription(`Can give birth in ${format(Math.ceil((PREGNANCY_DURATION - diffTime) / (1000 * 60 * 60 * 24)), true)} days!`),
+            .setDescription(`Can give birth in ${format((PREGNANCY_DURATION - diffTime) / (1000 * 60 * 60 * 24), true)} days!`),
         ],
       });
       return;
     }
 
-    await this.client.db.bornBaby(userId, babyId);
-    await this.client.db.levelUpBaby(babyId);
+    await this.client.db.baby.bornBaby(userId, babyId);
+    await this.client.db.baby.levelUpBaby(babyId);
 
     await interaction.editReply({
       embeds: [

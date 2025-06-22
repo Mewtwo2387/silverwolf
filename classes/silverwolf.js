@@ -1,20 +1,19 @@
 const {
-  Client, REST, Routes, EmbedBuilder, escapeMarkdown, AttachmentBuilder,
+  Client, REST, Routes,
 } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-const Canvas = require('canvas');
-const { Database } = require('./database.js');
+const Database = require('../database/Database');
 const BirthdayScheduler = require('./birthdayScheduler');
 const BabyScheduler = require('./babyScheduler');
 const { log, logError } = require('../utils/log');
-// const CharacterAI = require('node_characterai')
 require('dotenv').config();
 const seasonConfig = require('../data/config/skin/pokemon.json');
 const {
   ChristmasHandler, NormalHandler, HalloweenHandler, AprilFoolsHandler,
-} = require('./seasonHandler.js');
+} = require('./handlers/index');
 const scriptHandlers = require('./handlers/keywordsBehaviorHandler');
+const quote = require('../utils/quote');
 
 const handlers = {
   ChristmasHandler,
@@ -32,7 +31,7 @@ class Silverwolf extends Client {
     this.deletedMessages = [];
     this.editedMessages = [];
     this.singing = false;
-    this.db = new Database();
+    this.db = new Database('./database.db');
     this.currentPokemon = null;
     this.birthdayScheduler = new BirthdayScheduler(this);
     this.babyScheduler = new BabyScheduler(this);
@@ -40,12 +39,7 @@ class Silverwolf extends Client {
     this.games = [];
     this.loadGames(); // Initialize the games list from the JSON file
     this.chat = null;
-    this.sex_sessions = [];
-    // try{
-    //     this.loadSilverwolfAI();
-    // }catch(error){
-    //     log("Error loading Silverwolf AI: ", error)
-    // }
+    this.sexSessions = [];
   }
 
   async init() {
@@ -53,6 +47,7 @@ class Silverwolf extends Client {
     await this.loadCommands();
     await this.loadKeywords();
     await this.loadListeners();
+    await this.db.ready;
 
     this.birthdayScheduler.start();
     log('Birthday scheduler started.');
@@ -77,10 +72,10 @@ All wrongs reserved.
     const commandDir = path.join(__dirname, '../commands');
     const commandFiles = fs.readdirSync(commandDir).filter((file) => file.endsWith('.js'));
 
-    let commandCount = 0;
-    for (const file of commandFiles) {
+    const commandCount = await commandFiles.reduce(async (countPromise, file) => {
+      const count = await countPromise;
+      // eslint-disable-next-line import/no-dynamic-require, global-require
       const CommandClass = require(path.join(commandDir, file));
-      // log(CommandClass);
       const command = new CommandClass(this);
       if (command.isSubcommandOf === null) {
         this.commands.set(command.name, command);
@@ -89,22 +84,22 @@ All wrongs reserved.
         this.commands.set(`${command.isSubcommandOf}.${command.name}`, command);
         log(`Command ${command.isSubcommandOf}.${command.name} loaded. ${command.ephemeral ? 'ephemeral' : ''} ${command.skipDefer ? 'skipDefer' : ''} ${command.isSubcommand ? 'isSubcommand' : ''}`);
       }
-      commandCount++;
-    }
+      return count + 1;
+    }, 0);
     log(`${commandCount} commands loaded.`);
 
     log('--------------------\nLoading command groups...\n--------------------');
     const commandGroupDir = path.join(__dirname, '../commands/commandgroups');
     const commandGroupFiles = fs.readdirSync(commandGroupDir).filter((file) => file.endsWith('.js'));
 
-    let commandGroupCount = 0;
-    for (const file of commandGroupFiles) {
+    const commandGroupCount = commandGroupFiles.reduce((count, file) => {
+      // eslint-disable-next-line import/no-dynamic-require, global-require
       const CommandGroupClass = require(path.join(commandGroupDir, file));
       const commandGroup = new CommandGroupClass(this);
       this.commands.set(commandGroup.name, commandGroup);
       log(`Command group ${commandGroup.name} loaded.`);
-      commandGroupCount++;
-    }
+      return count + 1;
+    }, 0);
     log(`${commandGroupCount} command groups loaded.`);
   }
 
@@ -177,13 +172,14 @@ All wrongs reserved.
       await handler.summonPokemon(message); // Use the season-specific summonPokemon method
     }
 
-    if (message.author.id == '993614772354416673' && Math.random() < 0.1) {
+    if (message.author.id === '993614772354416673' && Math.random() < 0.1) {
       const arlecchino = this.commands.get('arlecchino');
       const interaction = {
         editReply: async (content) => {
           await message.reply(content);
         },
-        followUp: async (content) => {
+        // eslint-disable-next-line no-unused-vars
+        followUp: async (_content) => {
 
         },
       };
@@ -203,37 +199,24 @@ All wrongs reserved.
         const person = referencedMessage.author;
         const nickname = guildMember.nickname || person.username;
         const originalMessage = referencedMessage.content;
-        const pfp = guildMember.displayAvatarURL({ extension: 'png', size: 512 });
         const hasBlackAndWhitePfp = msg.includes('b');
         const hasWhiteBackground = msg.includes('w');
 
         const background = hasWhiteBackground ? 'white' : 'black';
         const profileColor = hasBlackAndWhitePfp ? 'bw' : 'normal';
-        const fakeQuoteCommand = this.commands.get('fakequote');
-        if (fakeQuoteCommand) {
-          const interaction = {
-            options: {
-              getUser: (name) => ({ username: person.username, displayAvatarURL: () => pfp }),
-              getString: (name) => {
-                if (name === 'message') return originalMessage;
-                if (name === 'nickname') return nickname;
-                if (name === 'background') return background;
-                if (name === 'profile_color') return profileColor;
-                return '';
-              },
-            },
-            editReply: async (content) => {
-              if (content && content.files && content.files[0]) {
-                // After generating the quote or image...
-                await sentMessage.edit({ content: null, files: [content.files[0]] });
-              } else {
-                logError('No file or content to send in the reply.');
-              }
-            },
-          };
-          // Run the fake quote generation
-          fakeQuoteCommand.run(interaction);
-        }
+        const avatarSource = 'server';
+
+        const result = await quote(
+          message.guild,
+          person,
+          nickname,
+          originalMessage,
+          background,
+          profileColor,
+          avatarSource,
+        );
+
+        await sentMessage.edit({ content: null, files: [result] });
       }).catch(console.error);
       return;
     }
@@ -311,19 +294,21 @@ All wrongs reserved.
     const rest = new REST({ version: '10' }).setToken(this.token);
 
     // Loop over each guild ID
-    for (const guildId of guildIds) {
+    await Promise.all(guildIds.map(async (guildId) => {
       try {
         // Retrieve blacklisted commands for the guild
-        const blacklistedCommandsData = await this.db.getBlacklistedCommands(guildId);
+        const blacklistedCommandsData = await this.db.commandConfig.getBlacklistedCommands(guildId);
         log(`Blacklisted commands for guild ${guildId}:`, blacklistedCommandsData);
 
         // Extract just the command names from the data
-        const blacklistedCommands = blacklistedCommandsData.map((item) => item.command_name);
+        const blacklistedCommands = blacklistedCommandsData.map((item) => item.commandName);
 
         // Create a copy of the commands array
-        const commandsArray = Array.from(this.commands.values()).filter((command) => command !== null && command.isSubcommandOf === null).map((command) => command.toJSON());
+        const commandValues = Array.from(this.commands.values());
+        const validCommands = commandValues.filter((command) => command !== null && command.isSubcommandOf === null);
+        const commandsArray = validCommands.map((command) => command.toJSON());
 
-        console.log(commandsArray);
+        console.log(JSON.stringify(commandsArray, null, 2));
 
         // If there are no blacklisted commands, register all commands
         if (blacklistedCommands.length === 0) {
@@ -358,7 +343,7 @@ All wrongs reserved.
       } catch (error) {
         logError(`Error registering commands for guild ${guildId}:`, error);
       }
-    }
+    }));
 
     log('All commands registered successfully.');
     log('Successfully finished startup.');
@@ -377,7 +362,7 @@ All wrongs reserved.
 
     // Log the game change and schedule the next one
     let randomInterval;
-    if (randomGame == 'on bed with Ei') {
+    if (randomGame === 'on bed with Ei') {
       randomInterval = (Math.floor(Math.random() * 3) + 1) * 60 * 1000; // Random interval between 1 and 3 minutes
     } else {
       randomInterval = (Math.floor(Math.random() * 3) + 1) * 60 * 60 * 1000; // Random interval between 1 and 3 hours
@@ -399,18 +384,6 @@ All wrongs reserved.
     }
   }
 
-  // async loadSilverwolfAI(){
-  //     const silverwolf = new CharacterAI()
-
-  //     await silverwolf.authenticateWithToken(process.env.CAI_TOKEN)
-
-  //     const characterId = "rIY3dqqU-WwbHbjzJlac1f4aXYO1j7aYdri_5k4uDNM"
-
-  //     this.chat = await silverwolf.createOrContinueChat(characterId)
-
-  //     log("Silverwolf AI loaded.")
-  // }
-
   async login() {
     await super.login(this.token);
     log(`Logged in as ${this.user.tag}`);
@@ -418,10 +391,14 @@ All wrongs reserved.
   }
 
   async getHandler() {
-    const currentSeason = await this.db.getGlobalConfig('season') || 'normal';
-    const handlerClass = handlers[seasonConfig.seasons[currentSeason].handler];
+    const currentSeason = await this.db.globalConfig.getGlobalConfig('season') || 'normal';
+    const HandlerClass = handlers[seasonConfig.seasons[currentSeason].handler];
     const settings = seasonConfig.seasons[currentSeason].settings || {};
-    return new handlerClass(settings);
+    return new HandlerClass(settings);
+  }
+
+  setCurrentPokemon(pokemon) {
+    this.currentPokemon = pokemon;
   }
 }
 

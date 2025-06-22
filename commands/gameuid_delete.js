@@ -1,8 +1,8 @@
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
-const { logError } = require('../utils/log.js');
+const { Command } = require('./classes/command');
+const { logError } = require('../utils/log');
 
-class DeleteGameUID extends Command {
+class GameUIDDelete extends Command {
   constructor(client) {
     super(client, 'delete', 'Delete a game UID for the user', [
       {
@@ -35,7 +35,7 @@ class DeleteGameUID extends Command {
 
     try {
       // Delete the game UID for the specified game and user
-      const resultMessage = await this.client.db.deleteGameUID(user.id, game);
+      const resultMessage = await this.client.db.gameUID.deleteGameUID(user.id, game);
 
       // Reply with the result of the deletion
       await interaction.editReply({
@@ -61,4 +61,4 @@ class DeleteGameUID extends Command {
   }
 }
 
-module.exports = DeleteGameUID;
+module.exports = GameUIDDelete;

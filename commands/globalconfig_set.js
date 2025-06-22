@@ -1,4 +1,4 @@
-const { DevCommand } = require('./classes/devcommand.js');
+const { DevCommand } = require('./classes/devcommand');
 
 class GlobalConfigSet extends DevCommand {
   constructor(client) {
@@ -21,7 +21,7 @@ class GlobalConfigSet extends DevCommand {
   async run(interaction) {
     const key = interaction.options.getString('key');
     const value = interaction.options.getString('value');
-    await this.client.db.setGlobalConfig(key, value);
+    await this.client.db.globalConfig.setGlobalConfig(key, value);
     await interaction.editReply(`${key} set to ${value}`);
   }
 }

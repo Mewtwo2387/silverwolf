@@ -1,10 +1,11 @@
+/* eslint-disable no-unreachable */
 const fs = require('fs');
 const {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
 } = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
-class GachaRollCommand extends Command {
+class Gacha extends Command {
   constructor(client) {
     super(client, 'gacha', 'TECHNICAL TEST, WORK IN PROGRESS', [
       {
@@ -51,44 +52,51 @@ class GachaRollCommand extends Command {
   }
 
   async run(interaction) {
+    await interaction.editReply({ content: 'gacha is not ready yet', ephemeral: true });
+    return;
+
     const amount = interaction.options.getInteger('amount');
     const userId = interaction.user.id;
-    let pityCount = await this.client.db.getUserAttr(userId, 'pity');
-    let dinonuggies = await this.client.db.getUserAttr(userId, 'dinonuggies');
+    let pityCount = await this.client.db.user.getUserAttr(userId, 'pity');
+    const dinonuggies = await this.client.db.user.getUserAttr(userId, 'dinonuggies');
 
     const costPerRoll = 160;
     const totalCost = costPerRoll * amount;
 
     if (dinonuggies < totalCost) {
-      return interaction.editReply({
+      await interaction.editReply({
         embeds: [new EmbedBuilder()
           .setTitle('Not enough dinonuggies!')
           .setDescription(`You need ${totalCost}, but you only have ${dinonuggies}.`)
           .setColor(0xFF0000)],
       });
+      return;
     }
 
-    dinonuggies -= totalCost;
-    await this.client.db.setUserAttr(userId, 'dinonuggies', dinonuggies);
+    await this.client.db.user.addUserAttr(userId, 'dinonuggies', -totalCost);
 
     const results = [];
     let gotFiveStar = false;
 
-    for (let i = 0; i < amount; i++) {
+    for (let i = 0; i < amount; i += 1) {
       let rollResult;
       const pityRate = this.calculatePityRate(pityCount);
       const roll = Math.random();
 
       if (roll < pityRate) {
-        rollResult = Math.random() < 0.5 ? this.getRandomItem(this.characterPool.filter((c) => c.Rarity === 5)) : this.getRandomItem(this.lightconePool.filter((lc) => lc.Rarity === 5));
+        rollResult = Math.random() < 0.5
+          ? this.getRandomItem(this.characterPool.filter((c) => c.Rarity === 5))
+          : this.getRandomItem(this.lightconePool.filter((lc) => lc.Rarity === 5));
         gotFiveStar = true;
         pityCount = 0;
       } else if (roll < 0.056) {
-        rollResult = Math.random() < 0.5 ? this.getRandomItem(this.characterPool.filter((c) => c.Rarity === 4)) : this.getRandomItem(this.lightconePool.filter((lc) => lc.Rarity === 4));
-        pityCount++;
+        rollResult = Math.random() < 0.5
+          ? this.getRandomItem(this.characterPool.filter((c) => c.Rarity === 4))
+          : this.getRandomItem(this.lightconePool.filter((lc) => lc.Rarity === 4));
+        pityCount += 1;
       } else {
         rollResult = this.getRandomItem(this.lightconePool.filter((lc) => lc.Rarity === 3));
-        pityCount++;
+        pityCount += 1;
       }
 
       const itemDetails = this.getItemDetails(rollResult);
@@ -97,10 +105,10 @@ class GachaRollCommand extends Command {
       // Determine if it's a character or lightcone
       const itemType = this.characterPool.some((c) => c.name === itemDetails.name) ? 'Character' : 'Lightcone';
       // Store roll in the database
-      await this.client.db.addGachaItem(userId, itemDetails.name, itemType, itemDetails.rarity);
+      this.client.db.gacha.addGachaItem(userId, itemDetails.name, itemType, itemDetails.rarity);
     }
 
-    await this.client.db.setUserAttr(userId, 'pity', pityCount);
+    await this.client.db.user.setUserAttr(userId, 'pity', pityCount);
 
     let currentIndex = 0;
 
@@ -116,12 +124,12 @@ class GachaRollCommand extends Command {
       const row = new ActionRowBuilder()
         .addComponents(
           new ButtonBuilder()
-            .setCustomId('next_roll')
+            .setCustomId('nextRoll')
             .setLabel('➡️ Next')
             .setStyle(ButtonStyle.Primary)
             .setDisabled(currentIndex === results.length - 1),
           new ButtonBuilder()
-            .setCustomId('skip_results')
+            .setCustomId('skipResults')
             .setLabel('Skip to Results')
             .setStyle(ButtonStyle.Danger),
         );
@@ -139,11 +147,11 @@ class GachaRollCommand extends Command {
     const initialRow = new ActionRowBuilder()
       .addComponents(
         new ButtonBuilder()
-          .setCustomId('next_roll')
+          .setCustomId('nextRoll')
           .setLabel('➡️ Next')
           .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
-          .setCustomId('skip_results')
+          .setCustomId('skipResults')
           .setLabel('Skip to Results')
           .setStyle(ButtonStyle.Danger),
       );
@@ -154,7 +162,7 @@ class GachaRollCommand extends Command {
 
     collector.on('collect', async (i) => {
       if (i.customId === 'next_roll') {
-        currentIndex++;
+        currentIndex += 1;
         if (currentIndex < results.length) {
           await updateMessage(i);
         }
@@ -174,4 +182,4 @@ class GachaRollCommand extends Command {
   }
 }
 
-module.exports = GachaRollCommand;
+module.exports = Gacha;

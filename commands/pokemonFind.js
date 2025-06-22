@@ -1,9 +1,9 @@
 const {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
 } = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
-class HasPokemon extends Command {
+class PokemonFind extends Command {
   constructor(client) {
     super(client, 'pokemonfind', 'Find users with Pokemon of a specific type', [
       {
@@ -19,13 +19,21 @@ class HasPokemon extends Command {
     const type = interaction.options.getString('type').toLowerCase().trim();
 
     try {
-      const rows = await this.client.db.getUsersWithPokemon(type);
-      if (rows.length === 0) return interaction.editReply({ content: `No users found with Pokémon of type "${type}".` });
+      const rows = await this.client.db.pokemon.getUsersWithPokemon(type);
+      if (rows.length === 0) {
+        interaction.editReply({
+          embeds: [new EmbedBuilder()
+            .setColor('#00AA00')
+            .setTitle(`No users found with ${type}`),
+          ],
+        });
+        return;
+      }
 
       const userList = rows.map((row) => {
-        const user = this.client.users.cache.get(row.user_id)?.username ?? `<@${row.user_id}>`;
+        const user = this.client.users.cache.get(row.userId)?.username ?? `<@${row.userId}>`;
 
-        return `${user}: ${row.pokemon_count}`;
+        return `${user}: ${row.pokemonCount}`;
       });
 
       const itemsPerPage = 10;
@@ -43,12 +51,12 @@ class HasPokemon extends Command {
       const row = new ActionRowBuilder()
         .addComponents(
           new ButtonBuilder()
-            .setCustomId('prev_page')
+            .setCustomId('prevPage')
             .setLabel('⬅️ Back')
             .setStyle(ButtonStyle.Primary)
             .setDisabled(true),
           new ButtonBuilder()
-            .setCustomId('next_page')
+            .setCustomId('nextPage')
             .setLabel('Next ➡️')
             .setStyle(ButtonStyle.Primary)
             .setDisabled(currentPage === totalPages),
@@ -62,10 +70,10 @@ class HasPokemon extends Command {
       const collector = message.createMessageComponentCollector({ time: 60000 }); // 1 minute timeout
 
       collector.on('collect', async (i) => {
-        if (i.customId === 'prev_page' && currentPage > 0) {
-          currentPage--;
-        } else if (i.customId === 'next_page' && currentPage < totalPages) {
-          currentPage++;
+        if (i.customId === 'prevPage' && currentPage > 0) {
+          currentPage -= 1;
+        } else if (i.customId === 'nextPage' && currentPage < totalPages) {
+          currentPage += 1;
         }
 
         const nextPage = getNextPage(currentPage);
@@ -85,9 +93,9 @@ class HasPokemon extends Command {
       });
     } catch (error) {
       console.error('Failed to retrieve hasPokemon list.', error);
-      return interaction.editReply({ content: 'Failed to retrieve list.', ephemeral: true });
+      interaction.editReply({ content: 'Failed to retrieve list.', ephemeral: true });
     }
   }
 }
 
-module.exports = HasPokemon;
+module.exports = PokemonFind;

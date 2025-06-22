@@ -1,6 +1,9 @@
-const { DevCommand } = require('./classes/devcommand.js');
+const { DevCommand } = require('./classes/devcommand');
 
-class TestSummon extends DevCommand {
+const HOUR_LENGTH = 60 * 60 * 1000;
+const MINUTE_LENGTH = 60 * 1000;
+
+class DevTestSummon extends DevCommand {
   constructor(client) {
     super(client, 'testsummon', 'summon a pokemon at random intervals', [], { ephemeral: true, isSubcommandOf: 'dev' });
   }
@@ -10,7 +13,7 @@ class TestSummon extends DevCommand {
   }
 
   async nextSummon(interaction) {
-    const randomInterval = Math.floor(Math.random() * 60 * 60 * 1000) + 20 * 60 * 1000;
+    const randomInterval = Math.floor(Math.random() * HOUR_LENGTH) + 20 * MINUTE_LENGTH;
     setTimeout(async () => {
       await this.client.summonPokemon(interaction);
       this.nextSummon(interaction);
@@ -18,4 +21,4 @@ class TestSummon extends DevCommand {
   }
 }
 
-module.exports = TestSummon;
+module.exports = DevTestSummon;

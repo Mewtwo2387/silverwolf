@@ -1,10 +1,10 @@
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const axios = require('axios');
 const sharp = require('sharp');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 const { logError } = require('../utils/log');
 
-class EmojiToFileCommand extends Command {
+class GrabEmoji extends Command {
   constructor(client) {
     super(client, 'grab-emoji', 'Converts an emoji to a selected file format', [
       {
@@ -35,7 +35,11 @@ class EmojiToFileCommand extends Command {
       const match = emojiInput.match(emojiRegex);
 
       if (!match) {
-        return interaction.editReply({ content: 'Please provide a valid **``custom``** emoji.', ephemeral: true });
+        interaction.editReply({
+          content: 'Please provide a valid **``custom``** emoji.',
+          ephemeral: true,
+        });
+        return;
       }
 
       const emojiId = match[1];
@@ -77,4 +81,4 @@ class EmojiToFileCommand extends Command {
   }
 }
 
-module.exports = EmojiToFileCommand;
+module.exports = GrabEmoji;

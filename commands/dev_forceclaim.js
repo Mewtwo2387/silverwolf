@@ -1,14 +1,14 @@
-const { DevCommand } = require('./classes/devcommand.js');
+const { DevCommand } = require('./classes/devcommand');
+const { handleSuccessfulClaim } = require('../utils/claim');
 
-class forceclaim extends DevCommand {
+class ForceClaim extends DevCommand {
   constructor(client) {
     super(client, 'forceclaim', 'claim dinonuggies ignoring cooldown', [], { isSubcommandOf: 'dev' });
   }
 
   async run(interaction) {
-    const claim = this.client.commands.get('claim');
-    await claim.handleSuccessfulClaim(interaction);
+    await handleSuccessfulClaim(this.client, interaction);
   }
 }
 
-module.exports = forceclaim;
+module.exports = ForceClaim;

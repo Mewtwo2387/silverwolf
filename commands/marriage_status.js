@@ -1,5 +1,5 @@
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 class MarriageStatus extends Command {
   constructor(client) {
@@ -17,7 +17,7 @@ class MarriageStatus extends Command {
     const targetUser = interaction.options.getUser('user') || interaction.user;
 
     // Check marriage status using the correct reference to 'this'
-    const marriageStatus = await this.client.db.checkMarriageStatus(targetUser.id);
+    const marriageStatus = await this.client.db.marriage.checkMarriageStatus(targetUser.id);
 
     if (marriageStatus.isMarried) {
       // Fetch the partner's username

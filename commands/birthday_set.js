@@ -1,8 +1,8 @@
 const { EmbedBuilder } = require('discord.js');
-const { Command } = require('./classes/command.js');
-const { log, logError } = require('../utils/log.js');
+const { Command } = require('./classes/command');
+const { log, logError } = require('../utils/log');
 
-class SetBirthdayCommand extends Command {
+class BirthdaySet extends Command {
   constructor(client) {
     super(client, 'set', 'Sets your birthday', [
       {
@@ -52,7 +52,7 @@ class SetBirthdayCommand extends Command {
       const birthday = new Date(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00${timezone}`);
       log(`Constructed birthday: ${birthday.toISOString()}`);
 
-      if (isNaN(birthday.getTime())) {
+      if (Number.isNaN(birthday.getTime())) {
         throw new Error('Invalid date constructed. Please check the inputs.');
       }
 
@@ -60,7 +60,7 @@ class SetBirthdayCommand extends Command {
       log(`Attempting to set birthday for user ${userId} to ${birthday.toISOString()}.`);
 
       // Use this.client.db to set the birthday
-      const result = await this.client.db.setUserAttr(userId, 'birthdays', birthday.toISOString());
+      const result = await this.client.db.user.setUserAttr(userId, 'birthdays', birthday.toISOString());
       log(`Successfully updated birthday for user ${userId}.`, result);
 
       // Send confirmation message
@@ -79,4 +79,4 @@ class SetBirthdayCommand extends Command {
   }
 }
 
-module.exports = SetBirthdayCommand;
+module.exports = BirthdaySet;
