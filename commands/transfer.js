@@ -35,7 +35,7 @@ class Transfer extends Command {
       return;
     }
 
-    const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
+    const credits = await this.client.db.user.getUserAttr(interaction.user.id, 'credits');
 
     if (amount < 0) {
       await interaction.editReply({
@@ -65,8 +65,8 @@ class Transfer extends Command {
         ],
       });
     } else {
-      await this.client.db.addUserAttr(interaction.user.id, 'credits', -give);
-      await this.client.db.addUserAttr(target.id, 'credits', receive);
+      await this.client.db.user.addUserAttr(interaction.user.id, 'credits', -give);
+      await this.client.db.user.addUserAttr(target.id, 'credits', receive);
       await interaction.followUp({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#00AA00')
