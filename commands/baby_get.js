@@ -64,7 +64,7 @@ class BabyGet extends Command {
         if (diffTime > PREGNANCY_DURATION) {
           result += 'Can give birth now! Use /baby birth!\n';
         } else {
-          result += `Can give birth in ${format(Math.ceil((PREGNANCY_DURATION - diffTime) / (1000 * 60 * 60 * 24)), true)} days!\n`;
+          result += `Can give birth in ${format((PREGNANCY_DURATION - diffTime) / (1000 * 60 * 60 * 24), true)} days!\n`;
         }
       } else {
         result += `Born: ${baby.born}\n`;

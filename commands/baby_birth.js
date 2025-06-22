@@ -78,7 +78,7 @@ class BabyBirth extends Command {
           new EmbedBuilder()
             .setColor('#FF0000')
             .setTitle('Your baby is not ready to be born yet!')
-            .setDescription(`Can give birth in ${format(Math.ceil((PREGNANCY_DURATION - diffTime) / (1000 * 60 * 60 * 24)), true)} days!`),
+            .setDescription(`Can give birth in ${format((PREGNANCY_DURATION - diffTime) / (1000 * 60 * 60 * 24), true)} days!`),
         ],
       });
       return;
