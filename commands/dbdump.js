@@ -105,6 +105,15 @@ class DBDump extends DevCommand {
       filesToDump.forEach((file) => {
         this.cleanupFile(file.attachment);
       });
+
+      const databasePath = path.join(__dirname, '../database.db');
+
+      if (fs.existsSync(databasePath)) {
+        interaction.followUp({
+          content: 'database:',
+          files: [{ attachment: databasePath, name: 'database.db' }],
+        });
+      }
     } catch (error) {
       logError(error);
       await interaction.followUp({ content: 'An error occurred while executing the command.', ephemeral: true });
