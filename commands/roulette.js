@@ -2,6 +2,7 @@ const Discord = require('discord.js');
 const { Command } = require('./classes/command');
 const { format } = require('../utils/math');
 const { checkValidBet } = require('../utils/betting');
+const { log } = require('../utils/log');
 
 class Roulette extends Command {
   constructor(client) {
@@ -38,6 +39,7 @@ class Roulette extends Command {
   async run(interaction) {
     const amountString = interaction.options.getString('amount');
     const amount = await checkValidBet(interaction, amountString);
+    log(amount);
     if (amount === null) {
       return;
     }
@@ -45,7 +47,7 @@ class Roulette extends Command {
     // Proceed with normal roulette logic for numerical input
     const betType = interaction.options.getString('bet_type');
     const betValue = interaction.options.getInteger('bet_value');
-    let streak = await this.client.db.user.getUserAttr(interaction.user.id, 'roulette_streak');
+    let streak = await this.client.db.user.getUserAttr(interaction.user.id, 'rouletteStreak');
     const maxStreak = await this.client.db.user.getUserAttr(interaction.user.id, 'rouletteMaxStreak');
 
     if (betType === 'number' && (Number.isNaN(betValue) || betValue < 0 || betValue > 36 || betValue === null)) {

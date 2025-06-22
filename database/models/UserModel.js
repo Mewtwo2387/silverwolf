@@ -27,6 +27,10 @@ class UserModel {
 
   async addUserAttr(userId, field, value) {
     const attribute = camelToSnake(field);
+    if (Number.isNaN(value)) {
+      log(`Skipping update for ${field} as value is NaN`);
+      return;
+    }
     if (value === null || value === undefined) {
       if (attribute !== 'dinonuggies_last_claimed') {
         log(`Skipping update for ${field} as value is null`);
@@ -41,6 +45,10 @@ class UserModel {
 
   async setUserAttr(userId, field, value) {
     const attribute = camelToSnake(field);
+    if (Number.isNaN(value)) {
+      log(`Skipping update for ${field} as value is NaN`);
+      return;
+    }
     if (value === null || value === undefined) {
       if (attribute !== 'dinonuggies_last_claimed') {
         log(`Skipping update for ${field} as value is null`);
