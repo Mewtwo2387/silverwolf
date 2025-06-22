@@ -9,7 +9,7 @@ class RnR extends Command {
     super(client, 'risk-n-reward', 'Risk & Reward: how much are you willing to?', [{
       name: 'amount',
       description: 'The amount of credits to bet.',
-      type: 4,
+      type: 3,
       required: true,
     }]);
   }
