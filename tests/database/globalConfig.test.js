@@ -31,8 +31,7 @@ describe('GlobalConfigModel', () => {
       const result = await globalConfigModel.getGlobalConfig(key);
 
       expect(result).toBeDefined();
-      expect(result.key).toBe(key);
-      expect(result.value).toBe(value);
+      expect(result).toBe(value);
     });
 
     it('should update existing config value', async () => {
@@ -44,7 +43,7 @@ describe('GlobalConfigModel', () => {
       await globalConfigModel.setGlobalConfig(key, updatedValue);
       const result = await globalConfigModel.getGlobalConfig(key);
 
-      expect(result.value).toBe(updatedValue);
+      expect(result).toBe(updatedValue);
     });
 
     it('should return null for non-existent config key', async () => {

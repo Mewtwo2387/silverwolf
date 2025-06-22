@@ -13,7 +13,7 @@ class GlobalConfigModel {
   async getGlobalConfig(key) {
     const query = globalConfigQueries.GET_GLOBAL_CONFIG;
     const result = await this.db.executeSelectQuery(query, [key]);
-    return result;
+    return result ? result.value : null;
   }
 
   async getAllGlobalConfig() {

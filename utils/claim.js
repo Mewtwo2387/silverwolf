@@ -51,7 +51,11 @@ async function getBaseAmount(client, uid, streak) {
 
 async function formatReward(client, skinKey, amount, multiplier, percentage) {
   const season = await client.db.globalConfig.getGlobalConfig('season') || 'normal';
-  const skin = await JSON.parse(fs.readFileSync(path.join(__dirname, '../data/config/skin/claim.json'), 'utf8'))[season][skinKey];
+  const json = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/config/skin/claim.json'), 'utf8'));
+  log(`season: ${season}`);
+  log(`skinKey: ${skinKey}`);
+  log(`json[season]: ${JSON.stringify(json[season])}`);
+  const skin = json[season][skinKey];
   const goldPercentage = format(percentage.gold * 100, true);
   const silverPercentage = format(percentage.silver * 100, true);
   const bronzePercentage = format(percentage.bronze * 100, true);
