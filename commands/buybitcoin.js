@@ -19,6 +19,16 @@ class BuyBitcoin extends Command {
     const bitcoin = new Bitcoin();
     const amount = interaction.options.getNumber('amount');
     const price = await bitcoin.getPrice();
+    if (price === null) {
+      await interaction.editReply({
+        embeds: [new Discord.EmbedBuilder()
+          .setColor('#AA0000')
+          .setTitle('Failed to get bitcoin price'),
+        ],
+      });
+      return;
+    }
+
     let credits = await this.client.db.user.getUserAttr(interaction.user.id, 'credits');
     let bitcoinAmount = await this.client.db.user.getUserAttr(interaction.user.id, 'bitcoin');
 

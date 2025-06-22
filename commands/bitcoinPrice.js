@@ -13,6 +13,12 @@ class BitcoinPrice extends Command {
       // Fetch Bitcoin price data
       const bitcoin = new Bitcoin();
       const data = await bitcoin.getData();
+
+      if (!data) {
+        await interaction.editReply({ content: 'Failed to retrieve Bitcoin price - Empty response from API', ephemeral: true });
+        return;
+      }
+
       const date = new Date(data.time.updatedISO);
 
       // Create the embed message
