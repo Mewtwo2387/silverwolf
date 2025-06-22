@@ -5,7 +5,7 @@
   },
   {
     "triggers": ["gamble", "gambling"],
-    "reply": "<@719752311429267566><@1045123549603582042>"
+    "reply": "<@719752311429267566>"
   },
   {
     "triggers": ["/https:\\/\\/(?:x\\.com|twitter\\.com|fxtwitter\\.com|vxtwitter\\.com|fixupx\\.com)\\/([^/]+)\\/status\\/(\\d+)(?:\\?[^\\s]*)?/g"],
@@ -33,7 +33,7 @@
   },
   {
     "triggers": ["gamble", "gambling"],
-    "reply": "<@719752311429267566><@1045123549603582042>"
+    "reply": "<@719752311429267566>"
   },
   {
     "triggers": ["activate spooky mode"],
@@ -42,10 +42,6 @@
   {
     "triggers": ["holiday cheer"],
     "reply": "https://tenor.com/view/holiday-holiday-cheer-gong-guinaifen-star-rail-gif-6738631033750077564"
-  },
-  {
-    "triggers": ["smh", "whistles"],
-    "reply": "+1 nickel"
   },
   {
     "triggers": ["water bondage", "hydro bondage"],
