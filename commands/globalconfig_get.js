@@ -17,6 +17,18 @@ class GlobalConfigGet extends DevCommand {
     const key = interaction.options.getString('key');
     if (key === 'ALL') {
       const all = await this.client.db.globalConfig.getAllGlobalConfig();
+      if (all.length === 0) {
+        await interaction.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle('No Global Config Values')
+              .setDescription('No global config values found')
+              .setColor('#00AA00'),
+          ],
+        });
+        return;
+      }
+
       await interaction.editReply({
         embeds: [
           new EmbedBuilder()
