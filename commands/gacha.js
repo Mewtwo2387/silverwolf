@@ -1,3 +1,4 @@
+/* eslint-disable no-unreachable */
 const fs = require('fs');
 const {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
@@ -51,6 +52,9 @@ class Gacha extends Command {
   }
 
   async run(interaction) {
+    await interaction.editReply({ content: 'gacha is not ready yet', ephemeral: true });
+    return;
+
     const amount = interaction.options.getInteger('amount');
     const userId = interaction.user.id;
     let pityCount = await this.client.db.user.getUserAttr(userId, 'pity');
