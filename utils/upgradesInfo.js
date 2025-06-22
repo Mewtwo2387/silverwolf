@@ -14,9 +14,9 @@ const INFO_LEVEL = {
   COST_TOTAL: 3,
 };
 
-function getMultiplierAmountInfo(level, infoLevel) {
+function getMultiplierAmountInfo(level, infoLevel, amount = 1) {
   const multiplierAmount = getMultiplierAmount(level);
-  const multiplierAmountNext = getMultiplierAmount(level + 1);
+  const multiplierAmountNext = getMultiplierAmount(level + amount);
   const cost = getNextUpgradeCost(level);
   const costTotal = getTotalUpgradeCost(level);
 
@@ -35,7 +35,7 @@ function getMultiplierAmountInfo(level, infoLevel) {
     || infoLevel === INFO_LEVEL.SHOP_INFO
     || infoLevel === INFO_LEVEL.COST_TOTAL) {
     multiplierAmountInfo += `
-    **Level:** ${level} -> ${(level + 1)}
+    **Level:** ${level} -> ${(level + amount)}
     **Gold Multiplier:** ${format(multiplierAmount.gold, true)}x -> ${format(multiplierAmountNext.gold, true)}x
     **Silver Multiplier:** ${format(multiplierAmount.silver, true)}x -> ${format(multiplierAmountNext.silver, true)}x
     **Bronze Multiplier:** ${format(multiplierAmount.bronze, true)}x -> ${format(multiplierAmountNext.bronze, true)}x
@@ -59,9 +59,9 @@ function getMultiplierAmountInfo(level, infoLevel) {
   return multiplierAmountInfo;
 }
 
-function getMultiplierChanceInfo(level, infoLevel) {
+function getMultiplierChanceInfo(level, infoLevel, amount = 1) {
   const multiplierChance = getMultiplierChance(level);
-  const multiplierChanceNext = getMultiplierChance(level + 1);
+  const multiplierChanceNext = getMultiplierChance(level + amount);
   const cost = getNextUpgradeCost(level);
   const costTotal = getTotalUpgradeCost(level);
 
@@ -80,7 +80,7 @@ function getMultiplierChanceInfo(level, infoLevel) {
     || infoLevel === INFO_LEVEL.SHOP_INFO
     || infoLevel === INFO_LEVEL.COST_TOTAL) {
     multiplierChanceInfo += `
-    **Level:** ${level} -> ${(level + 1)}
+    **Level:** ${level} -> ${(level + amount)}
     **Gold Chance:** ${format(multiplierChance.gold * 100, true)}% -> ${format(multiplierChanceNext.gold * 100, true)}%
     **Silver Chance:** ${format(multiplierChance.silver * 100, true)}% -> ${format(multiplierChanceNext.silver * 100, true)}%
     **Bronze Chance:** ${format(multiplierChance.bronze * 100, true)}% -> ${format(multiplierChanceNext.bronze * 100, true)}%
@@ -104,9 +104,9 @@ function getMultiplierChanceInfo(level, infoLevel) {
   return multiplierChanceInfo;
 }
 
-function getBekiCooldownInfo(level, infoLevel) {
+function getBekiCooldownInfo(level, infoLevel, amount = 1) {
   const bekiCooldown = getBekiCooldown(level);
-  const bekiCooldownNext = getBekiCooldown(level + 1);
+  const bekiCooldownNext = getBekiCooldown(level + amount);
   const cost = getNextUpgradeCost(level);
   const costTotal = getTotalUpgradeCost(level);
 
@@ -123,7 +123,7 @@ function getBekiCooldownInfo(level, infoLevel) {
     || infoLevel === INFO_LEVEL.SHOP_INFO
     || infoLevel === INFO_LEVEL.COST_TOTAL) {
     bekiCooldownInfo += `
-    **Level:** ${level} -> ${(level + 1)}
+    **Level:** ${level} -> ${(level + amount)}
     **Cooldown:** ${format(bekiCooldown, true)} hours -> ${format(bekiCooldownNext, true)} hours
     `;
   }

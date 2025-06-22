@@ -56,9 +56,9 @@ function getAscensionUpgradeInfo(
   return info;
 }
 
-function getNuggieFlatMultiplierInfo(level, infoLevel) {
+function getNuggieFlatMultiplierInfo(level, infoLevel, amount = 1) {
   const nuggieFlatMultiplier = getNuggieFlatMultiplier(level);
-  const nuggieFlatMultiplierNext = getNuggieFlatMultiplier(level + 1);
+  const nuggieFlatMultiplierNext = getNuggieFlatMultiplier(level + amount);
 
   return getAscensionUpgradeInfo(
     level,
@@ -68,7 +68,7 @@ function getNuggieFlatMultiplierInfo(level, infoLevel) {
     `**Level:** ${level}
     **Multiplier:** ${format(nuggieFlatMultiplier, true)}x
     `,
-    `**Level:** ${level} -> ${(level + 1)}
+    `**Level:** ${level} -> ${(level + amount)}
     **Multiplier:** ${format(nuggieFlatMultiplier, true)}x -> ${format(nuggieFlatMultiplierNext, true)}x
     `,
     1,
@@ -76,7 +76,7 @@ function getNuggieFlatMultiplierInfo(level, infoLevel) {
   );
 }
 
-function getNuggieStreakMultiplierInfo(level, infoLevel) {
+function getNuggieStreakMultiplierInfo(level, infoLevel, amount = 1) {
   const nuggieStreakMultiplier = getNuggieStreakMultiplier(level);
   const nuggieStreakMultiplierNext = getNuggieStreakMultiplier(level + 1);
 
@@ -88,7 +88,7 @@ function getNuggieStreakMultiplierInfo(level, infoLevel) {
     `**Level:** ${level}
     **Multiplier:** ${format(nuggieStreakMultiplier * 100, true)}%/day
     `,
-    `**Level:** ${level} -> ${(level + 1)}
+    `**Level:** ${level} -> ${(level + amount)}
     **Multiplier:** ${format(nuggieStreakMultiplier * 100, true)}%/day -> ${format(nuggieStreakMultiplierNext * 100, true)}%/day
     `,
     2,
@@ -96,7 +96,7 @@ function getNuggieStreakMultiplierInfo(level, infoLevel) {
   );
 }
 
-function getNuggieCreditsMultiplierInfo(level, infoLevel) {
+function getNuggieCreditsMultiplierInfo(level, infoLevel, amount = 1) {
   const nuggieCreditsMultiplier = getNuggieCreditsMultiplier(level);
   const nuggieCreditsMultiplierNext = getNuggieCreditsMultiplier(level + 1);
 
@@ -108,7 +108,7 @@ function getNuggieCreditsMultiplierInfo(level, infoLevel) {
     `**Level:** ${level}
     **Multiplier:** +${format(nuggieCreditsMultiplier * 100)}% * log2(credits)
     `,
-    `**Level:** ${level} -> ${(level + 1)}
+    `**Level:** ${level} -> ${(level + amount)}
     **Multiplier:** +${format(nuggieCreditsMultiplier * 100)}% * log2(credits) -> +${format(nuggieCreditsMultiplierNext * 100)}% * log2(credits)
     `,
     3,
@@ -116,7 +116,7 @@ function getNuggieCreditsMultiplierInfo(level, infoLevel) {
   );
 }
 
-function getNuggiePokeMultiplierInfo(level, infoLevel) {
+function getNuggiePokeMultiplierInfo(level, infoLevel, amount = 1) {
   const nuggiePokeMultiplier = getNuggiePokeMultiplier(level);
   const nuggiePokeMultiplierNext = getNuggiePokeMultiplier(level + 1);
 
@@ -128,7 +128,7 @@ function getNuggiePokeMultiplierInfo(level, infoLevel) {
     `**Level:** ${level}
     **Multiplier:** +${format(nuggiePokeMultiplier * 100)}%/pokemon
     `,
-    `**Level:** ${level} -> ${(level + 1)}
+    `**Level:** ${level} -> ${(level + amount)}
     **Multiplier:** +${format(nuggiePokeMultiplier * 100)}%/pokemon -> +${format(nuggiePokeMultiplierNext * 100)}%/pokemon
     `,
     4,
@@ -136,9 +136,9 @@ function getNuggiePokeMultiplierInfo(level, infoLevel) {
   );
 }
 
-function getNuggieNuggieMultiplierInfo(level, infoLevel) {
+function getNuggieNuggieMultiplierInfo(level, infoLevel, amount = 1) {
   const nuggieNuggieMultiplier = getNuggieNuggieMultiplier(level);
-  const nuggieNuggieMultiplierNext = getNuggieNuggieMultiplier(level + 1);
+  const nuggieNuggieMultiplierNext = getNuggieNuggieMultiplier(level + amount);
 
   return getAscensionUpgradeInfo(
     level,
@@ -148,7 +148,7 @@ function getNuggieNuggieMultiplierInfo(level, infoLevel) {
     `**Level:** ${level}
     **Multiplier:** +${format(nuggieNuggieMultiplier * 100)}% * log2(nuggies)
     `,
-    `**Level:** ${level} -> ${(level + 1)}
+    `**Level:** ${level} -> ${(level + amount)}
     **Multiplier:** +${format(nuggieNuggieMultiplier * 100)}% * log2(nuggies) -> +${format(nuggieNuggieMultiplierNext * 100)}% * log2(nuggies)
     `,
     5,

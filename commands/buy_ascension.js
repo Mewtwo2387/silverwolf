@@ -114,7 +114,7 @@ class BuyAscension extends Command {
           embeds: [new Discord.EmbedBuilder()
             .setColor('#00AA00')
             .setTitle('Nuggie Flat Multiplier Upgrade Bought')
-            .setDescription(`${getNuggieFlatMultiplierInfo(level, INFO_LEVEL.NEXT_LEVEL)}
+            .setDescription(`${getNuggieFlatMultiplierInfo(level, INFO_LEVEL.NEXT_LEVEL, amount)}
 Heavenly Nuggies: ${format(heavenlyNuggies)} -> ${format(heavenlyNuggies - cost)}`)
             .setFooter({ text: 'dinonuggie' }),
           ],
@@ -126,7 +126,7 @@ Heavenly Nuggies: ${format(heavenlyNuggies)} -> ${format(heavenlyNuggies - cost)
           embeds: [new Discord.EmbedBuilder()
             .setColor('#00AA00')
             .setTitle('Nuggie Streak Multiplier Upgrade Bought')
-            .setDescription(`${getNuggieStreakMultiplierInfo(level, INFO_LEVEL.NEXT_LEVEL)}
+            .setDescription(`${getNuggieStreakMultiplierInfo(level, INFO_LEVEL.NEXT_LEVEL, amount)}
 Heavenly Nuggies: ${format(heavenlyNuggies)} -> ${format(heavenlyNuggies - cost)}`)
             .setFooter({ text: 'dinonuggie' }),
           ],
@@ -138,7 +138,7 @@ Heavenly Nuggies: ${format(heavenlyNuggies)} -> ${format(heavenlyNuggies - cost)
           embeds: [new Discord.EmbedBuilder()
             .setColor('#00AA00')
             .setTitle('Nuggie Credits Multiplier Upgrade Bought')
-            .setDescription(`${getNuggieCreditsMultiplierInfo(level, INFO_LEVEL.NEXT_LEVEL)}
+            .setDescription(`${getNuggieCreditsMultiplierInfo(level, INFO_LEVEL.NEXT_LEVEL, amount)}
 Heavenly Nuggies: ${format(heavenlyNuggies)} -> ${format(heavenlyNuggies - cost)}`)
             .setFooter({ text: 'dinonuggie' }),
           ],
@@ -150,7 +150,7 @@ Heavenly Nuggies: ${format(heavenlyNuggies)} -> ${format(heavenlyNuggies - cost)
           embeds: [new Discord.EmbedBuilder()
             .setColor('#00AA00')
             .setTitle('Nuggie PokeMultiplier Upgrade Bought')
-            .setDescription(`${getNuggiePokeMultiplierInfo(level, INFO_LEVEL.NEXT_LEVEL)}
+            .setDescription(`${getNuggiePokeMultiplierInfo(level, INFO_LEVEL.NEXT_LEVEL, amount)}
 Heavenly Nuggies: ${format(heavenlyNuggies)} -> ${format(heavenlyNuggies - cost)}`)
             .setFooter({ text: 'dinonuggie' }),
           ],
@@ -162,7 +162,7 @@ Heavenly Nuggies: ${format(heavenlyNuggies)} -> ${format(heavenlyNuggies - cost)
           embeds: [new Discord.EmbedBuilder()
             .setColor('#00AA00')
             .setTitle('Nuggie Nuggie Multiplier Upgrade Bought')
-            .setDescription(`${getNuggieNuggieMultiplierInfo(level, INFO_LEVEL.NEXT_LEVEL)}
+            .setDescription(`${getNuggieNuggieMultiplierInfo(level, INFO_LEVEL.NEXT_LEVEL, amount)}
 Heavenly Nuggies: ${format(heavenlyNuggies)} -> ${format(heavenlyNuggies - cost)}`)
             .setFooter({ text: 'dinonuggie' }),
           ],
