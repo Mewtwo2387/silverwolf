@@ -4,7 +4,7 @@ const {
 const { Command } = require('./classes/command');
 const { checkValidBet } = require('../utils/betting');
 
-class RnR extends Command {
+class RiskNReward extends Command {
   constructor(client) {
     super(client, 'risk-n-reward', 'Risk & Reward: how much are you willing to?', [{
       name: 'amount',
@@ -100,4 +100,4 @@ class RnR extends Command {
   }
 }
 
-module.exports = RnR;
+module.exports = RiskNReward;
