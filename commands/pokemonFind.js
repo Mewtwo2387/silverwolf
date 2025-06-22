@@ -21,7 +21,12 @@ class PokemonFind extends Command {
     try {
       const rows = await this.client.db.pokemon.getUsersWithPokemon(type);
       if (rows.length === 0) {
-        interaction.editReply({ content: `No users found with Pokémon of type "${type}".` });
+        interaction.editReply({
+          embeds: [new EmbedBuilder()
+            .setColor('#00AA00')
+            .setTitle(`No users found with ${type}`),
+          ],
+        });
         return;
       }
 
