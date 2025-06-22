@@ -68,9 +68,10 @@ class UserModel {
   }
 
   async getEveryoneAttr(attribute, limit = null, offset = 0) {
+    const attr = camelToSnake(attribute);
     const query = (limit !== null)
-      ? userQueries.GET_EVERYONE_ATTR_LIMIT(attribute, limit, offset)
-      : userQueries.GET_EVERYONE_ATTR(attribute);
+      ? userQueries.GET_EVERYONE_ATTR_LIMIT(attr, limit, offset)
+      : userQueries.GET_EVERYONE_ATTR(attr);
     const rows = await this.db.executeSelectAllQuery(query);
     log(rows);
     return rows;
@@ -95,7 +96,8 @@ class UserModel {
   }
 
   async getEveryoneAttrCount(attribute) {
-    const query = userQueries.GET_EVERYONE_ATTR_COUNT(attribute);
+    const attr = camelToSnake(attribute);
+    const query = userQueries.GET_EVERYONE_ATTR_COUNT(attr);
     const rows = await this.db.executeSelectAllQuery(query);
     return rows[0].count;
   }
