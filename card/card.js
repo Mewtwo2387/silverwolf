@@ -5,11 +5,12 @@ const { Background, BackgroundType, TopBarType } = require('./background');
 const Rarity = require('./rarity');
 const Attack = require('./attack');
 const Ability = require('./ability');
+const TitleDesc = require('./titleDesc');
 
 class Card {
-  constructor(name, description, rarity, hp, type, image, background, attacks, abilities){
+  constructor(name, titleDesc, rarity, hp, type, image, background, attacks, abilities){
     this.name = name;
-    this.description = description;
+    this.titleDesc = titleDesc;
     this.rarity = rarity;
     this.hp = hp;
     this.type = type;
@@ -51,20 +52,16 @@ class Card {
     ctx.textAlign = 'left';
     ctx.fillText(this.name, 144, 96);
 
-    ctx.font = '48px "Bahnschrift"';
-    ctx.fillStyle = '#000000';
-    ctx.textAlign = 'center';
-    ctx.fillText(this.description, 256, 192);
-    
+    let currentY = await this.titleDesc.generateTitleDesc(ctx, 192);
 
     // Draw image and background
     ctx.fillStyle = '#000000';
-    ctx.fillRect(64, 256, 956, 512);
+    ctx.fillRect(64, currentY, 956, 512);
 
     const image = await Canvas.loadImage(this.image);
-    ctx.drawImage(image, 64, 256, 956, 512);
+    ctx.drawImage(image, 64, currentY, 956, 512);
 
-    let currentY = 896;
+    currentY += 512 + 96;
 
     for (const attack of this.attacks) {
       currentY = await attack.generateAttack(ctx, currentY);
@@ -83,19 +80,23 @@ class Card {
 async function testGenerateCard() {
   const card = new Card(
     'Kaitlin',
-    'Herrscher of Egg',
+    new TitleDesc(
+      'Herrscher of Egg',
+      'Starts in Doge form. Converts into Kaitlin form after casting skill.',
+      '#777777',
+    ),
     new Rarity(6),
     100,
     'Fairy',
     'https://static.wikia.nocookie.net/bocchi-the-rock/images/9/98/Hitori_Gotoh_Character_Design_2.png/revision/latest?cb=20220915114341',
     new Background(BackgroundType.GRADIENT, { color1: '#D5ABB2', color2: '#B76E79' }, '#68343B', TopBarType.FADE, { color: '#440000', opacity1: 0.6, opacity2: 0.3 }),
     [
-      new Attack('Unlimited Doge Works', 'Basic Attack when in Doge Form', 5, 0),
-      new Attack('Slay Queen', 'Basic Attack when in Kaitlin Form', 35, 0),
-      new Attack('Estrogen', 'Converts to Kaitlin Form', 0, 70),
+      new Attack('Unlimited Doge Works', 'Basic Attack when in Doge Form.', 5, 0),
+      new Attack('Slay Queen', 'Basic Attack when in Kaitlin Form.', 35, 0),
+      new Attack('Estrogen', 'Our girl finally goes through her transformation and becomes a girl. Converts into Kaitlin Form.', 0, 70),
     ],
     [
-      new Ability('Lover of the TGP Queen', 'Deals 40% more damage when Venfei is in the team')
+      new Ability('Lover of the TGP Queen', 'Deals 40% more damage when Venfei is in the team.')
     ]
   );
   const canvas = await card.generateCard();
