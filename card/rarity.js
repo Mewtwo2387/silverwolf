@@ -12,7 +12,7 @@ class Rarity {
     const starSize = 64;
     const starSpacing = 16;
     const star = await Canvas.loadImage('./assets/common/star.png');
-    let x = 1080 - starSize - starSpacing;
+    let x = 1080 - 128 - starSize - starSpacing;
     const y = 32;
     for (let i = 0; i < this.rarity; i += 1) {
       ctx.drawImage(star, x, y, starSize, starSize);

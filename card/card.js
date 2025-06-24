@@ -4,9 +4,10 @@ const fs = require('fs');
 const { Background, BackgroundType, TopBarType } = require('./background');
 const Rarity = require('./rarity');
 const Attack = require('./attack');
+const Ability = require('./ability');
 
 class Card {
-  constructor(name, description, rarity, hp, type, image, background, attacks){
+  constructor(name, description, rarity, hp, type, image, background, attacks, abilities){
     this.name = name;
     this.description = description;
     this.rarity = rarity;
@@ -15,6 +16,7 @@ class Card {
     this.image = image;
     this.background = background;
     this.attacks = attacks;
+    this.abilities = abilities;
   }
 
   async generateCard() {
@@ -24,22 +26,30 @@ class Card {
     // Set background
     await this.background.generateBackground(ctx);
 
+    try {
+      const typeImage = await Canvas.loadImage(`./assets/types/${this.type.toLowerCase()}.png`);
+      ctx.drawImage(typeImage, 0, 0, 128, 128);
+    } catch (error) {
+      console.warn(`Type image not found for: ${this.type}`);
+    }
+
+    // Draw HP on the rightmost side
+    ctx.font = '48px "Bahnschrift"';
+    ctx.fillStyle = '#000000';
+    ctx.textAlign = 'right';
+    ctx.fillText(`HP:`, 1048, 32);
+
+    ctx.font = '64px "Bahnschrift"';
+    ctx.fillStyle = '#000000';
+    ctx.textAlign = 'right';
+    ctx.fillText(`${this.hp}`, 1048, 96);
+
     await this.rarity.generateRarity(ctx);
 
     ctx.font = '96px "Bahnschrift"';
     ctx.fillStyle = '#000000';
     ctx.textAlign = 'left';
-    ctx.fillText(this.name, 128, 96);
-
-    ctx.font = '48px "Bahnschrift"';
-    ctx.fillStyle = '#000000';
-    ctx.textAlign = 'left';
-    ctx.fillText(`HP:`, 32, 32);
-
-    ctx.font = '64px "Bahnschrift"';
-    ctx.fillStyle = '#000000';
-    ctx.textAlign = 'center';
-    ctx.fillText(`${this.hp}`, 64, 96);
+    ctx.fillText(this.name, 144, 96);
 
     ctx.font = '48px "Bahnschrift"';
     ctx.fillStyle = '#000000';
@@ -58,6 +68,10 @@ class Card {
 
     for (const attack of this.attacks) {
       currentY = await attack.generateAttack(ctx, currentY);
+    }
+
+    for (const ability of this.abilities) {
+      currentY = await ability.generateAbility(ctx, currentY);
     }
 
     return canvas;
@@ -80,6 +94,9 @@ async function testGenerateCard() {
       new Attack('Slay Queen', 'Basic Attack when in Kaitlin Form', 35, 0),
       new Attack('Estrogen', 'Converts to Kaitlin Form', 0, 70),
     ],
+    [
+      new Ability('Lover of the TGP Queen', 'Deals 40% more damage when Venfei is in the team')
+    ]
   );
   const canvas = await card.generateCard();
   const buffer = canvas.toBuffer('image/png');
