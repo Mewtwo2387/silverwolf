@@ -28,7 +28,7 @@ class Card {
     await this.background.generateBackground(ctx);
 
     try {
-      const typeImage = await Canvas.loadImage(`./assets/types/${this.type.toLowerCase()}.png`);
+      const typeImage = await Canvas.loadImage(`./card/assets/types/${this.type.toLowerCase()}.png`);
       ctx.drawImage(typeImage, 0, 0, 128, 128);
     } catch (error) {
       console.warn(`Type image not found for: ${this.type}`);
@@ -101,9 +101,9 @@ async function testGenerateCard() {
   );
   const canvas = await card.generateCard();
   const buffer = canvas.toBuffer('image/png');
-  fs.writeFileSync('kaitlin.png', buffer);
+  fs.writeFileSync('card/kaitlin.png', buffer);
 }
 
 setTimeout(testGenerateCard, 1000);
 
-module.exports = { Card, Attack };
+module.exports = { Card };

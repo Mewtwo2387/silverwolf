@@ -11,7 +11,7 @@ class Rarity {
   async generateRarity(ctx) {
     const starSize = 64;
     const starSpacing = 16;
-    const star = await Canvas.loadImage('./assets/common/star.png');
+    const star = await Canvas.loadImage('./card/assets/common/star.png');
     let x = 1080 - 128 - starSize - starSpacing;
     const y = 32;
     for (let i = 0; i < this.rarity; i += 1) {
