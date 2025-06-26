@@ -1,7 +1,24 @@
 const { EffectType } = require('./effect');
+import { Card } from './card.ts';
+import { Battle } from './battle.ts';
+import { Effect } from './effect.ts';
 
-class CardInBattle {
-  constructor(card, battle, side) {
+export class CardInBattle {
+  card: Card;
+  currentHp: number;
+  effects: Effect[];
+  stats: {
+    damageDealt: number;
+    damageReceived: number;
+    attacksUsed: number;
+    abilitiesUsed: number;
+    turnsActive: number;
+  };
+  isKnockedOut: boolean;
+  battle: Battle;
+  side: string;
+
+  constructor(card: Card, battle: Battle, side: string) {
     this.card = card;
     this.currentHp = card.hp;
     this.effects = [];
@@ -17,7 +34,7 @@ class CardInBattle {
     this.side = side;
   }
 
-  takeDamage(amount) {
+  takeDamage(amount: number) {
     let damage = amount;
     this.effects.filter((effect) => effect.type === EffectType.INCOMING_DAMAGE).forEach((effect) => {
       damage *= effect.amount;
@@ -30,12 +47,12 @@ class CardInBattle {
     }
   }
 
-  heal(amount) {
+  heal(amount: number) {
     this.currentHp += amount;
     if (this.currentHp > this.card.hp) this.currentHp = this.card.hp;
   }
 
-  dealDamage(amount) {
+  dealDamage(amount: number) {
     let damage = amount;
     this.effects.filter((effect) => effect.type === EffectType.OUTGOING_DAMAGE).forEach((effect) => {
       damage *= effect.amount;
@@ -44,7 +61,7 @@ class CardInBattle {
     return damage;
   }
 
-  addEffect(effect) {
+  addEffect(effect: Effect) {
     this.effects.push(effect);
   }
 
@@ -60,10 +77,8 @@ class CardInBattle {
     this.stats.turnsActive += 1;
   }
 
-  useSkill(skillIndex) {
+  useSkill(skillIndex: number, target: CardInBattle) {
     const skill = this.card.skills[skillIndex];
-    skill.useSkill(this);
+    skill.useSkill(this, target);
   }
 }
-
-module.exports = CardInBattle;

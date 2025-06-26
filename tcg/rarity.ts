@@ -1,14 +1,16 @@
-const Canvas = require('canvas');
+import Canvas from 'canvas';
 
-class Rarity {
-  constructor(rarity) {
+export class Rarity {
+  rarity: number;
+
+  constructor(rarity: number) {
     if (rarity < 1 || rarity > 6) {
       throw new Error('Rarity must be between 1 and 6');
     }
     this.rarity = rarity;
   }
 
-  async generateRarity(ctx) {
+  async generateRarity(ctx: Canvas.CanvasRenderingContext2D) {
     const starSize = 64;
     const starSpacing = 16;
     const star = await Canvas.loadImage('./card/assets/common/star.png');
@@ -20,5 +22,3 @@ class Rarity {
     }
   }
 }
-
-module.exports = Rarity;

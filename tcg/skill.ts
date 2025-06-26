@@ -1,17 +1,27 @@
-const { wrapText, calculateWrappedTextHeight, drawWrappedText } = require('./utils/textWrapper');
-const { SkillEffectType } = require('./skillEffect');
+import Canvas from 'canvas';
+import { wrapText, calculateWrappedTextHeight, drawWrappedText } from './utils/textWrapper.ts';
+import { RangeEffect } from './rangeEffect.ts';
+import { RangeType } from './rangeType.ts';
+import { CardInBattle } from './cardInBattle.ts';
 
-class Skill {
-  constructor(name, description, damage, cost, damageType, skillEffects = []) {
+export class Skill {
+  name: string;
+  description: string;
+  damage: number;
+  cost: number;
+  damageRange: RangeType;
+  effects: RangeEffect[];
+
+  constructor(name: string, description: string, damage: number, cost: number, damageRange: RangeType, effects: RangeEffect[] = []) {
     this.name = name;
     this.description = description;
     this.damage = damage;
     this.cost = cost;
-    this.damageType = damageType;
-    this.skillEffects = skillEffects;
+    this.damageRange = damageRange;
+    this.effects = effects;
   }
 
-  async generateSkill(ctx, y) {
+  async generateSkill(ctx: Canvas.CanvasRenderingContext2D, y: number): Promise<number> {
     let currentY = y;
 
     // Set up text wrapping parameters
@@ -69,39 +79,49 @@ class Skill {
     return currentY;
   }
 
-  useSkill(card, target) {
-    this.skillEffects.forEach((skillEffect) => {
-      switch (skillEffect.type) {
-        case SkillEffectType.SELF:
-          card.addEffect(skillEffect.effect);
+  useSkill(card: CardInBattle, target: CardInBattle) {
+    this.effects.forEach((effect) => {
+      switch (effect.range) {
+        case RangeType.Self:
+          card.addEffect(effect.effect);
           break;
-        case SkillEffectType.SINGLE_ALLY:
-          target.addEffect(skillEffect.effect);
+        case RangeType.SingleAlly:
+          target.addEffect(effect.effect);
           break;
-        case SkillEffectType.ALL_ALLIES:
+        case RangeType.AllAllies:
           card.battle.ally(card.side).forEach((ally) => {
-            ally.addEffect(skillEffect.effect);
+            ally.addEffect(effect.effect);
           });
           break;
-        case SkillEffectType.SINGLE_OPPONENT:
-          target.addEffect(skillEffect.effect);
+        case RangeType.SingleOpponent:
+          target.addEffect(effect.effect);
           break;
-        case SkillEffectType.ALL_OPPONENTS:
+        case RangeType.AllOpponents:
           card.battle.opponent(card.side).forEach((opponent) => {
-            opponent.addEffect(skillEffect.effect);
+            opponent.addEffect(effect.effect);
+          });
+          break;
+        case RangeType.AllCards:
+          card.battle.allCards().forEach((card) => {
+            card.addEffect(effect.effect);
           });
           break;
         default:
-          throw new Error(`Invalid skill effect type: ${skillEffect.type}`);
+          throw new Error(`Invalid skill effect type: ${effect.range}`);
       }
     });
 
-    switch (this.damageType) {
-      case SkillEffectType.SINGLE_OPPONENT:
+    switch (this.damageRange) {
+      case RangeType.SingleOpponent:
         target.takeDamage(card.dealDamage(this.damage));
         break;
-      case SkillEffectType.ALL_OPPONENTS:
+      case RangeType.AllOpponents:
         card.battle.opponent(card.side).forEach((opponent) => {
+          opponent.takeDamage(card.dealDamage(this.damage));
+        });
+        break;
+      case RangeType.AllCards:
+        card.battle.allCards().forEach((opponent) => {
           opponent.takeDamage(card.dealDamage(this.damage));
         });
         break;
@@ -110,5 +130,3 @@ class Skill {
     }
   }
 }
-
-module.exports = Skill;

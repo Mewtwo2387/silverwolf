@@ -1,16 +1,16 @@
-const Canvas = require('canvas');
+import Canvas from 'canvas';
 
-const BackgroundType = {
-  SOLID: 0,
-  GRADIENT: 1,
-  IMAGE: 2,
-};
+export enum BackgroundType {
+  Solid,
+  Gradient,
+  Image,
+}
 
-const TopBarType = {
-  SOLID: 0,
-  TRANSLUCENT: 1,
-  FADE: 2,
-};
+export enum TopBarType {
+  Solid,
+  Translucent,
+  Fade,
+}
 
 /**
  * Background class
@@ -29,8 +29,24 @@ const TopBarType = {
  * @param {string} topBarOptions.opacity2 - The second opacity of the top bar if FADE
  * @returns {void}
  */
-class Background {
-  constructor(backgroundType, backgroundOptions, borderColor, topBarType, topBarOptions) {
+export class Background {
+  backgroundType: BackgroundType;
+  backgroundOptions: {
+    color?: string;
+    color1?: string;
+    color2?: string;
+    image?: string;
+  };
+  borderColor: string;
+  topBarType: TopBarType;
+  topBarOptions: {
+    color?: string;
+    opacity?: number;
+    opacity1?: number;
+    opacity2?: number;
+  };
+
+  constructor(backgroundType: BackgroundType, backgroundOptions: { color?: string; color1?: string; color2?: string; image?: string; }, borderColor: string, topBarType: TopBarType, topBarOptions: { color?: string; opacity?: number; opacity1?: number; opacity2?: number; }) {
     this.backgroundType = backgroundType;
     this.backgroundOptions = backgroundOptions;
     this.borderColor = borderColor;
@@ -38,23 +54,23 @@ class Background {
     this.topBarOptions = topBarOptions;
   }
 
-  async generateBackground(ctx) {
+  async generateBackground(ctx: Canvas.CanvasRenderingContext2D) {
     // Draw background
     switch (this.backgroundType) {
-      case BackgroundType.SOLID:
-        ctx.fillStyle = this.backgroundOptions.color;
+      case BackgroundType.Solid:
+        ctx.fillStyle = this.backgroundOptions.color || '#FFFFFF';
         ctx.fillRect(0, 0, 1080, 1920);
         break;
-      case BackgroundType.GRADIENT: {
+      case BackgroundType.Gradient: {
         const gradient = ctx.createLinearGradient(0, 0, 1080, 1920);
-        gradient.addColorStop(0, this.backgroundOptions.color1);
-        gradient.addColorStop(1, this.backgroundOptions.color2);
+        gradient.addColorStop(0, this.backgroundOptions.color1 || '#FFFFFF');
+        gradient.addColorStop(1, this.backgroundOptions.color2 || '#FFFFFF');
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, 1080, 1920);
         break;
       }
-      case BackgroundType.IMAGE: {
-        const image = await Canvas.loadImage(this.backgroundOptions.image);
+      case BackgroundType.Image: {
+        const image = await Canvas.loadImage(this.backgroundOptions.image || '');
         ctx.drawImage(image, 0, 0, 1080, 1920);
         break;
       }
@@ -71,29 +87,29 @@ class Background {
 
     // Draw top bar
     switch (this.topBarType) {
-      case TopBarType.SOLID:
-        ctx.fillStyle = this.topBarOptions.color;
+      case TopBarType.Solid:
+        ctx.fillStyle = this.topBarOptions.color || '#FFFFFF';
         ctx.fillRect(0, 0, 1080, 128);
         break;
-      case TopBarType.TRANSLUCENT:
-        ctx.fillStyle = this.topBarOptions.color;
-        ctx.globalAlpha = this.topBarOptions.opacity;
+      case TopBarType.Translucent:
+        ctx.fillStyle = this.topBarOptions.color || '#FFFFFF';
+        ctx.globalAlpha = this.topBarOptions.opacity || 1;
         ctx.fillRect(0, 0, 1080, 128);
         break;
-      case TopBarType.FADE: {
+      case TopBarType.Fade: {
         // Create a gradient from top to bottom with opacity1 to opacity2
         const fadeGradient = ctx.createLinearGradient(0, 0, 0, 128);
-        fadeGradient.addColorStop(0, this.topBarOptions.color);
-        fadeGradient.addColorStop(1, this.topBarOptions.color);
+        fadeGradient.addColorStop(0, this.topBarOptions.color || '#FFFFFF');
+        fadeGradient.addColorStop(1, this.topBarOptions.color || '#FFFFFF');
         ctx.fillStyle = fadeGradient;
 
         // Apply gradient opacity by drawing multiple rectangles with decreasing alpha
         const steps = 20; // Number of gradient steps
         const stepHeight = 128 / steps;
-        const opacityStep = (this.topBarOptions.opacity1 - this.topBarOptions.opacity2) / steps;
+        const opacityStep = ((this.topBarOptions.opacity1 || 1) - (this.topBarOptions.opacity2 || 0)) / steps;
 
         for (let i = 0; i < steps; i += 1) {
-          const currentOpacity = this.topBarOptions.opacity1 - (opacityStep * i);
+          const currentOpacity = (this.topBarOptions.opacity1 || 1) - (opacityStep * i);
           ctx.globalAlpha = currentOpacity;
           ctx.fillRect(0, i * stepHeight, 1080, stepHeight);
         }
@@ -106,5 +122,3 @@ class Background {
     }
   }
 }
-
-module.exports = { Background, BackgroundType, TopBarType };

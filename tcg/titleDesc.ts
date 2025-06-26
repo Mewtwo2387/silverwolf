@@ -1,13 +1,18 @@
-const { wrapText, calculateWrappedTextHeight, drawWrappedText } = require('./utils/textWrapper');
+import Canvas from 'canvas';
+import { wrapText, calculateWrappedTextHeight, drawWrappedText } from './utils/textWrapper.ts';
 
-class TitleDesc {
-  constructor(title, description, color) {
+export class TitleDesc {
+  title: string;
+  description: string;
+  color: string;
+
+  constructor(title: string, description: string, color: string) {
     this.title = title;
     this.description = description;
     this.color = color;
   }
 
-  async generateTitleDesc(ctx, y) {
+  async generateTitleDesc(ctx: Canvas.CanvasRenderingContext2D, y: number): Promise<number> {
     let currentY = y;
 
     // Set up text wrapping parameters
@@ -98,5 +103,3 @@ class TitleDesc {
     return currentY;
   }
 }
-
-module.exports = TitleDesc;

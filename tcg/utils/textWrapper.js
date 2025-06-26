@@ -1,6 +1,6 @@
 /**
  * Wraps text to fit within a specified width
- * @param {CanvasRenderingContext2D} ctx - Canvas context
+ * @param {Canvas.CanvasRenderingContext2D} ctx - Canvas context
  * @param {string} text - Text to wrap
  * @param {number} maxWidth - Maximum width in pixels
  * @returns {string[]} Array of wrapped lines
@@ -38,7 +38,7 @@ function calculateWrappedTextHeight(lines, lineHeight) {
 
 /**
  * Draws wrapped text on canvas
- * @param {CanvasRenderingContext2D} ctx - Canvas context
+ * @param {Canvas.CanvasRenderingContext2D} ctx - Canvas context
  * @param {string[]} lines - Array of text lines
  * @param {number} x - X position
  * @param {number} y - Starting Y position

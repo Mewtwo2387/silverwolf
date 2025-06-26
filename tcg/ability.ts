@@ -1,13 +1,19 @@
-const { wrapText, calculateWrappedTextHeight, drawWrappedText } = require('./utils/textWrapper');
+import Canvas from 'canvas';
+import { wrapText, calculateWrappedTextHeight, drawWrappedText } from './utils/textWrapper.ts';
+import { RangeEffect } from './rangeEffect.ts';
 
-class Ability {
-  constructor(name, description, skillEffects = []) {
+export class Ability {
+  name: string;
+  description: string;
+  effects: RangeEffect[];
+
+  constructor(name: string, description: string, effects: RangeEffect[] = []) {
     this.name = name;
     this.description = description;
-    this.skillEffects = skillEffects;
+    this.effects = effects;
   }
 
-  async generateAbility(ctx, y) {
+  async generateAbility(ctx: Canvas.CanvasRenderingContext2D, y: number): Promise<number> {
     let currentY = y;
 
     // Set up text wrapping parameters
@@ -79,5 +85,3 @@ class Ability {
     return currentY;
   }
 }
-
-module.exports = Ability;

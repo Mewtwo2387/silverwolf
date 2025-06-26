@@ -1,8 +1,23 @@
 /* eslint-disable */
-const Canvas = require('canvas');
+import Canvas from 'canvas';
+import { TitleDesc } from './titleDesc.ts';
+import { Rarity } from './rarity.ts';
+import { Background } from './background.ts';
+import { Skill } from './skill.ts';
+import { Ability } from './ability.ts';
 
-class Card {
-  constructor(name, titleDesc, rarity, hp, type, image, background, skills, abilities){
+export class Card {
+  name: string;
+  titleDesc: TitleDesc;
+  rarity: Rarity;
+  hp: number;
+  type: string;
+  image: string;
+  background: Background;
+  skills: Skill[];
+  abilities: Ability[];
+
+  constructor(name: string, titleDesc: TitleDesc, rarity: Rarity, hp: number, type: string, image: string, background: Background, skills: Skill[] = [], abilities: Ability[] = []) {
     this.name = name;
     this.titleDesc = titleDesc;
     this.rarity = rarity;
@@ -68,5 +83,3 @@ class Card {
     return canvas;
   }
 }
-
-module.exports = { Card };
