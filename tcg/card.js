@@ -2,7 +2,7 @@
 const Canvas = require('canvas');
 
 class Card {
-  constructor(name, titleDesc, rarity, hp, type, image, background, attacks, abilities){
+  constructor(name, titleDesc, rarity, hp, type, image, background, skills, abilities){
     this.name = name;
     this.titleDesc = titleDesc;
     this.rarity = rarity;
@@ -10,7 +10,7 @@ class Card {
     this.type = type;
     this.image = image;
     this.background = background;
-    this.attacks = attacks;
+    this.skills = skills;
     this.abilities = abilities;
   }
 
@@ -57,8 +57,8 @@ class Card {
 
     currentY += 512 + 96;
 
-    for (const attack of this.attacks) {
-      currentY = await attack.generateAttack(ctx, currentY);
+    for (const skill of this.skills) {
+      currentY = await skill.generateSkill(ctx, currentY);
     }
 
     for (const ability of this.abilities) {

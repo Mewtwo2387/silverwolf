@@ -1,15 +1,17 @@
 const { wrapText, calculateWrappedTextHeight, drawWrappedText } = require('./utils/textWrapper');
+const { SkillEffectType } = require('./skillEffect');
 
 class Skill {
-  constructor(name, description, damage, cost, skillEffects = []) {
+  constructor(name, description, damage, cost, damageType, skillEffects = []) {
     this.name = name;
     this.description = description;
     this.damage = damage;
     this.cost = cost;
+    this.damageType = damageType;
     this.skillEffects = skillEffects;
   }
 
-  async generateAttack(ctx, y) {
+  async generateSkill(ctx, y) {
     let currentY = y;
 
     // Set up text wrapping parameters
@@ -65,6 +67,47 @@ class Skill {
     currentY += descHeight + 32; // Add padding at bottom
 
     return currentY;
+  }
+
+  useSkill(card, target) {
+    this.skillEffects.forEach((skillEffect) => {
+      switch (skillEffect.type) {
+        case SkillEffectType.SELF:
+          card.addEffect(skillEffect.effect);
+          break;
+        case SkillEffectType.SINGLE_ALLY:
+          target.addEffect(skillEffect.effect);
+          break;
+        case SkillEffectType.ALL_ALLIES:
+          card.battle.ally(card.side).forEach((ally) => {
+            ally.addEffect(skillEffect.effect);
+          });
+          break;
+        case SkillEffectType.SINGLE_OPPONENT:
+          target.addEffect(skillEffect.effect);
+          break;
+        case SkillEffectType.ALL_OPPONENTS:
+          card.battle.opponent(card.side).forEach((opponent) => {
+            opponent.addEffect(skillEffect.effect);
+          });
+          break;
+        default:
+          throw new Error(`Invalid skill effect type: ${skillEffect.type}`);
+      }
+    });
+
+    switch (this.damageType) {
+      case SkillEffectType.SINGLE_OPPONENT:
+        target.takeDamage(card.dealDamage(this.damage));
+        break;
+      case SkillEffectType.ALL_OPPONENTS:
+        card.battle.opponent(card.side).forEach((opponent) => {
+          opponent.takeDamage(card.dealDamage(this.damage));
+        });
+        break;
+      default:
+        break;
+    }
   }
 }
 

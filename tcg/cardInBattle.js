@@ -1,7 +1,7 @@
 const { EffectType } = require('./effect');
 
 class CardInBattle {
-  constructor(card) {
+  constructor(card, battle, side) {
     this.card = card;
     this.currentHp = card.hp;
     this.effects = [];
@@ -13,6 +13,8 @@ class CardInBattle {
       turnsActive: 0,
     };
     this.isKnockedOut = false;
+    this.battle = battle;
+    this.side = side;
   }
 
   takeDamage(amount) {
@@ -56,6 +58,11 @@ class CardInBattle {
 
   nextTurn() {
     this.stats.turnsActive += 1;
+  }
+
+  useSkill(skillIndex) {
+    const skill = this.card.skills[skillIndex];
+    skill.useSkill(this);
   }
 }
 
