@@ -1,7 +1,7 @@
-const { EffectType } = require('./effect');
-import { Card } from './card.ts';
-import { Battle } from './battle.ts';
-import { Effect } from './effect.ts';
+import { EffectType } from './effectType';
+import { Card } from './card';
+import { Battle } from './battle';
+import { Effect } from './effect';
 
 export class CardInBattle {
   card: Card;
@@ -36,7 +36,7 @@ export class CardInBattle {
 
   takeDamage(amount: number) {
     let damage = amount;
-    this.effects.filter((effect) => effect.type === EffectType.INCOMING_DAMAGE).forEach((effect) => {
+    this.effects.filter((effect) => effect.type === EffectType.IncomingDamage).forEach((effect) => {
       damage *= effect.amount;
     });
     this.currentHp -= damage;
@@ -54,7 +54,7 @@ export class CardInBattle {
 
   dealDamage(amount: number) {
     let damage = amount;
-    this.effects.filter((effect) => effect.type === EffectType.OUTGOING_DAMAGE).forEach((effect) => {
+    this.effects.filter((effect) => effect.type === EffectType.OutgoingDamage).forEach((effect) => {
       damage *= effect.amount;
     });
     this.stats.damageDealt += damage;

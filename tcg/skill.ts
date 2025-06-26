@@ -1,8 +1,8 @@
 import Canvas from 'canvas';
-import { wrapText, calculateWrappedTextHeight, drawWrappedText } from './utils/textWrapper.ts';
-import { RangeEffect } from './rangeEffect.ts';
-import { RangeType } from './rangeType.ts';
-import { CardInBattle } from './cardInBattle.ts';
+import { wrapText, calculateWrappedTextHeight, drawWrappedText } from './utils/textWrapper';
+import { RangeEffect } from './rangeEffect';
+import { RangeType } from './rangeType';
+import { CardInBattle } from './cardInBattle';
 
 export class Skill {
   name: string;

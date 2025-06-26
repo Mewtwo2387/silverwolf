@@ -1,15 +1,15 @@
 import fs from 'fs';
 
-import { Card } from './card.ts';
-import { TitleDesc } from './titleDesc.ts';
-import { Rarity } from './rarity.ts';
-import { Background, BackgroundType, TopBarType } from './background.ts';
-import { Skill } from './skill.ts';
-import { Ability } from './ability.ts';
-import { RangeEffect } from './rangeEffect.ts';
-import { Effect } from './effect.ts';
-import { EffectType } from './effectType.ts';
-import { RangeType } from './rangeType.ts';
+import { Card } from './card';
+import { TitleDesc } from './titleDesc';
+import { Rarity } from './rarity';
+import { Background, BackgroundType, TopBarType } from './background';
+import { Skill } from './skill';
+import { Ability } from './ability';
+import { RangeEffect } from './rangeEffect';
+import { Effect } from './effect';
+import { EffectType } from './effectType';
+import { RangeType } from './rangeType';
 
 export const KAITLIN = new Card(
   'Kaitlin',
@@ -62,7 +62,7 @@ const CARDS = [KAITLIN, VENFEI];
 async function testGenerateCard() {
   const canvas = await KAITLIN.generateCard();
   const buffer = canvas.toBuffer('image/png');
-  fs.writeFileSync('card/kaitlin.png', buffer);
+  fs.writeFileSync('./tcg/kaitlin.png', buffer);
 }
 
 setTimeout(testGenerateCard, 1000);

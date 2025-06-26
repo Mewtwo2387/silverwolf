@@ -1,6 +1,6 @@
 import Canvas from 'canvas';
-import { wrapText, calculateWrappedTextHeight, drawWrappedText } from './utils/textWrapper.ts';
-import { RangeEffect } from './rangeEffect.ts';
+import { wrapText, calculateWrappedTextHeight, drawWrappedText } from './utils/textWrapper';
+import { RangeEffect } from './rangeEffect';
 
 export class Ability {
   name: string;

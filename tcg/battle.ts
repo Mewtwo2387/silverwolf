@@ -1,4 +1,4 @@
-import { CardInBattle } from './cardInBattle.ts';
+import { CardInBattle } from './cardInBattle';
 
 export class Battle {
   p1cards: CardInBattle[];

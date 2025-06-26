@@ -1,10 +1,10 @@
 /* eslint-disable */
 import Canvas from 'canvas';
-import { TitleDesc } from './titleDesc.ts';
-import { Rarity } from './rarity.ts';
-import { Background } from './background.ts';
-import { Skill } from './skill.ts';
-import { Ability } from './ability.ts';
+import { TitleDesc } from './titleDesc';
+import { Rarity } from './rarity';
+import { Background } from './background';
+import { Skill } from './skill';
+import { Ability } from './ability';
 
 export class Card {
   name: string;
@@ -37,7 +37,7 @@ export class Card {
     await this.background.generateBackground(ctx);
 
     try {
-      const typeImage = await Canvas.loadImage(`./card/assets/types/${this.type.toLowerCase()}.png`);
+      const typeImage = await Canvas.loadImage(`./tcg/assets/types/${this.type.toLowerCase()}.png`);
       ctx.drawImage(typeImage, 0, 0, 128, 128);
     } catch (error) {
       console.warn(`Type image not found for: ${this.type}`);

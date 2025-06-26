@@ -1,4 +1,4 @@
-import { EffectType } from './effectType.ts';
+import { EffectType } from './effectType';
 
 export class Effect {
   name: string;

@@ -1,5 +1,5 @@
 import Canvas from 'canvas';
-import { wrapText, calculateWrappedTextHeight, drawWrappedText } from './utils/textWrapper.ts';
+import { wrapText, calculateWrappedTextHeight, drawWrappedText } from './utils/textWrapper';
 
 export class TitleDesc {
   title: string;
