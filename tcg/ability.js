@@ -1,9 +1,10 @@
 const { wrapText, calculateWrappedTextHeight, drawWrappedText } = require('./utils/textWrapper');
 
 class Ability {
-  constructor(name, description) {
+  constructor(name, description, skillEffects = []) {
     this.name = name;
     this.description = description;
+    this.skillEffects = skillEffects;
   }
 
   async generateAbility(ctx, y) {

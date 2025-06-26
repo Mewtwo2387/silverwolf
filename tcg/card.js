@@ -1,11 +1,5 @@
 /* eslint-disable */
 const Canvas = require('canvas');
-const fs = require('fs');
-const { Background, BackgroundType, TopBarType } = require('./background');
-const Rarity = require('./rarity');
-const Attack = require('./attack');
-const Ability = require('./ability');
-const TitleDesc = require('./titleDesc');
 
 class Card {
   constructor(name, titleDesc, rarity, hp, type, image, background, attacks, abilities){
@@ -74,36 +68,5 @@ class Card {
     return canvas;
   }
 }
-
-
-
-async function testGenerateCard() {
-  const card = new Card(
-    'Kaitlin',
-    new TitleDesc(
-      'Herrscher of Egg',
-      'Starts in Doge form. Converts into Kaitlin form after casting skill.',
-      '#777777',
-    ),
-    new Rarity(6),
-    100,
-    'Fairy',
-    'https://static.wikia.nocookie.net/bocchi-the-rock/images/9/98/Hitori_Gotoh_Character_Design_2.png/revision/latest?cb=20220915114341',
-    new Background(BackgroundType.GRADIENT, { color1: '#D5ABB2', color2: '#B76E79' }, '#68343B', TopBarType.FADE, { color: '#440000', opacity1: 0.6, opacity2: 0.3 }),
-    [
-      new Attack('Unlimited Doge Works', 'Basic Attack when in Doge Form.', 5, 0),
-      new Attack('Slay Queen', 'Basic Attack when in Kaitlin Form.', 35, 0),
-      new Attack('Estrogen', 'Our girl finally goes through her transformation and becomes a girl. Converts into Kaitlin Form.', 0, 70),
-    ],
-    [
-      new Ability('Lover of the TGP Queen', 'Deals 40% more damage when Venfei is in the team.')
-    ]
-  );
-  const canvas = await card.generateCard();
-  const buffer = canvas.toBuffer('image/png');
-  fs.writeFileSync('card/kaitlin.png', buffer);
-}
-
-setTimeout(testGenerateCard, 1000);
 
 module.exports = { Card };

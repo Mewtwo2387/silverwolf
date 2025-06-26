@@ -1,11 +1,11 @@
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const { Command } = require('./classes/command');
-const { Card } = require('../card/card');
-const { Background, BackgroundType, TopBarType } = require('../card/background');
-const Rarity = require('../card/rarity');
-const Attack = require('../card/attack');
-const Ability = require('../card/ability');
-const TitleDesc = require('../card/titleDesc');
+const { Card } = require('../tcg/card');
+const { Background, BackgroundType, TopBarType } = require('../tcg/background');
+const Rarity = require('../tcg/rarity');
+const Skill = require('../tcg/skill');
+const Ability = require('../tcg/ability');
+const TitleDesc = require('../tcg/titleDesc');
 
 class C4rd extends Command {
   constructor(client) {
@@ -269,7 +269,7 @@ class C4rd extends Command {
             return;
           }
           const [attackName, attackDescription, attackDamage, attackCost] = params;
-          attacksArray.push(new Attack(attackName, attackDescription, attackDamage, attackCost));
+          attacksArray.push(new Skill(attackName, attackDescription, attackDamage, attackCost));
         });
       }
 

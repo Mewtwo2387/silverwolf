@@ -1,11 +1,12 @@
 const { wrapText, calculateWrappedTextHeight, drawWrappedText } = require('./utils/textWrapper');
 
-class Attack {
-  constructor(name, description, damage, cost) {
+class Skill {
+  constructor(name, description, damage, cost, skillEffects = []) {
     this.name = name;
     this.description = description;
     this.damage = damage;
     this.cost = cost;
+    this.skillEffects = skillEffects;
   }
 
   async generateAttack(ctx, y) {
@@ -67,4 +68,4 @@ class Attack {
   }
 }
 
-module.exports = Attack;
+module.exports = Skill;
