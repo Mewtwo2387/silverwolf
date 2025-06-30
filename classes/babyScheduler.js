@@ -35,17 +35,17 @@ class BabyScheduler {
     });
   }
 
-  hourlyAutomations() {
-    cron.schedule('0 * * * *', async () => {
+  tenMinuteAutomations() {
+    cron.schedule('*/10 * * * *', async () => {
       const babies = await this.client.db.baby.getAllBabies();
       babies.forEach(async (baby) => {
         if (baby.status === 'born') {
           switch (baby.job) {
             case 'gambler':
-              await this.hourlyGamble(baby);
+              await this.tenMinuteGamble(baby);
               break;
             default:
-              log(`${baby.name} (${baby.id}) have no hourly tasks`);
+              log(`${baby.name} (${baby.id}) have no ten minute tasks`);
           }
         } else {
           log(`${baby.name} (${baby.id}) is not born`);
@@ -76,7 +76,7 @@ class BabyScheduler {
     }
   }
 
-  async hourlyGamble(baby) {
+  async tenMinuteGamble(baby) {
     const parents = [baby.motherId, baby.fatherId];
     parents.forEach(async (parent) => {
       const credits = await this.client.db.user.getUserAttr(parent, 'credits');
