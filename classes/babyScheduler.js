@@ -10,7 +10,7 @@ class BabyScheduler {
 
   start() {
     this.dailyAutomations();
-    this.hourlyAutomations();
+    this.tenMinuteAutomations();
   }
 
   dailyAutomations() {
