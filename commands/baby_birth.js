@@ -84,7 +84,7 @@ class BabyBirth extends Command {
       return;
     }
 
-    await this.client.db.baby.bornBaby(userId, babyId);
+    await this.client.db.baby.bornBaby(babyId);
     await this.client.db.baby.levelUpBaby(babyId);
 
     await interaction.editReply({
