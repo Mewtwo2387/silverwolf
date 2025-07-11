@@ -1,7 +1,7 @@
 const cron = require('node-cron');
 const { log } = require('../utils/log');
 require('dotenv').config();
-const Claim = require('../commands/claim');
+const { getAmount } = require('../utils/claim');
 
 class BabyScheduler {
   constructor(client) {
@@ -9,59 +9,59 @@ class BabyScheduler {
   }
 
   start() {
-    this.dailyAutomations();
-    this.tenMinuteAutomations();
-  }
-
-  dailyAutomations() {
     cron.schedule('0 0 * * *', async () => {
-      const babies = await this.client.db.baby.getAllBabies();
-      babies.forEach(async (baby) => {
-        if (baby.status === 'born') {
-          switch (baby.job) {
-            case 'nuggieClaimer':
-              await this.dailyNuggieClaim(baby);
-              break;
-            case 'pinger':
-              await this.dailyPing(baby);
-              break;
-            default:
-              log(`${baby.name} (${baby.id}) have no daily tasks`);
-          }
-        } else {
-          log(`${baby.name} (${baby.id}) is not born`);
-        }
-      });
+      await this.dailyAutomations();
+    });
+    cron.schedule('*/10 * * * *', async () => {
+      await this.tenMinuteAutomations();
     });
   }
 
-  tenMinuteAutomations() {
-    cron.schedule('*/10 * * * *', async () => {
-      const babies = await this.client.db.baby.getAllBabies();
-      babies.forEach(async (baby) => {
-        if (baby.status === 'born') {
-          switch (baby.job) {
-            case 'gambler':
-              await this.tenMinuteGamble(baby);
-              break;
-            default:
-              log(`${baby.name} (${baby.id}) have no ten minute tasks`);
-          }
-        } else {
-          log(`${baby.name} (${baby.id}) is not born`);
+  async dailyAutomations() {
+    const babies = await this.client.db.baby.getAllBabies();
+    babies.forEach(async (baby) => {
+      if (baby.status === 'born') {
+        switch (baby.job) {
+          case 'nuggieClaimer':
+            await this.dailyNuggieClaim(baby);
+            break;
+          case 'pinger':
+            await this.dailyPing(baby);
+            break;
+          default:
+            log(`${baby.name} (${baby.id}) have no daily tasks`);
         }
-      });
+      } else {
+        log(`${baby.name} (${baby.id}) is not born`);
+      }
+    });
+  }
+
+  async tenMinuteAutomations() {
+    const babies = await this.client.db.baby.getAllBabies();
+    babies.forEach(async (baby) => {
+      if (baby.status === 'born') {
+        switch (baby.job) {
+          case 'gambler':
+            await this.tenMinuteGamble(baby);
+            break;
+          default:
+            log(`${baby.name} (${baby.id}) have no ten minute tasks`);
+        }
+      } else {
+        log(`${baby.name} (${baby.id}) is not born`);
+      }
     });
   }
 
   async dailyNuggieClaim(baby) {
     const parents = [baby.motherId, baby.fatherId];
     parents.forEach(async (parent) => {
-      const baseAmount = await new Claim(this.client).getBaseAmount(parent, 0);
-      await this.client.db.user.addUserAttr(parent, 'dinonuggies', baseAmount);
+      const { amount } = await getAmount(this.client, parent, 0);
+      await this.client.db.user.addUserAttr(parent, 'dinonuggies', amount);
       await this.client.db.baby.addBabyAttr(baby.id, 'nuggieClaimerClaims', 1);
-      await this.client.db.baby.addBabyAttr(baby.id, 'nuggieClaimerClaimed', baseAmount);
-      log(`${baby.name} (${baby.id}) claimed ${baseAmount} dinonuggies for ${parent}`);
+      await this.client.db.baby.addBabyAttr(baby.id, 'nuggieClaimerClaimed', amount);
+      log(`${baby.name} (${baby.id}) claimed ${amount} dinonuggies for ${parent}`);
     });
   }
 
