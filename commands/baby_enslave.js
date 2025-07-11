@@ -5,7 +5,7 @@ const jobs = [
   {
     name: 'Nuggie Claimer',
     value: 'nuggieClaimer',
-    description: 'Auto claim nuggies every 24 hours, for an amount equivalent to no streak and no bronze/silver/gold.',
+    description: 'Auto claim nuggies every 24 hours, without streak bonuses.',
   },
   {
     name: 'Gambler',
