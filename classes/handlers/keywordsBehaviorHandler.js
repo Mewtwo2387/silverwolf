@@ -1,5 +1,6 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 require('dotenv').config();
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_TOKEN);
 const systemInstruction = 'You are a helpful assistant named Grok. Respond clearly and concisely.';
@@ -23,12 +24,34 @@ module.exports = {
         });
       }
 
+      let content = girlcockxContent;
+      const components = [];
+      if (message.reference?.messageId) {
+        try {
+          const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
+          const repliedLink = `https://discord.com/channels/${message.guildId}/${message.channelId}/${repliedTo.id}`;
+
+          const buttonRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setLabel('Jump to Replied Message')
+              .setStyle(ButtonStyle.Link)
+              .setURL(repliedLink),
+          );
+
+          components.push(buttonRow);
+          content = `<@${repliedTo.author.id}> - ${girlcockxContent}`;
+        } catch (err) {
+          console.warn('Could not fetch replied-to message:', err);
+        }
+      }
+
       await webhook.send({
-        content: girlcockxContent,
+        content,
         username: message.member?.displayName || message.author.username,
-        avatarURL: message.member.displayAvatarURL(),
+        avatarURL: message.member?.displayAvatarURL() || message.author.displayAvatarURL(),
+        components,
         allowedMentions: {
-          parse: [],
+          parse: ['users'],
         },
       });
 
@@ -56,7 +79,7 @@ module.exports = {
 
     try {
       const model = genAI.getGenerativeModel({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-2.5-flash',
         systemInstruction,
       });
 
@@ -70,7 +93,7 @@ module.exports = {
       });
     } catch (err) {
       console.error('Grok script error:', err);
-      await message.reply('Something went wrong trying to ask Grok. Try again later.');
+      await message.reply('Either, our code is fucked, their API is fucked, or you are just fucked. Please try again later.');
     }
   },
   stealSticker: async (message) => {
