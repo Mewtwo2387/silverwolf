@@ -87,10 +87,36 @@ module.exports = {
       const response = await result.response;
       const text = await response.text();
 
-      await message.reply({
-        content: text,
-        allowedMentions: { parse: [] },
-      });
+      const MAX_LENGTH = 2000;
+      let remaining = text;
+      let firstReply = true;
+      let replyMsg = null;
+
+      while (remaining.length > 0) {
+        let chunk = remaining.slice(0, MAX_LENGTH);
+
+        const breakIndex = Math.max(chunk.lastIndexOf('\n'), chunk.lastIndexOf(' '));
+        if (breakIndex > 0 && remaining.length > MAX_LENGTH) {
+          chunk = remaining.slice(0, breakIndex);
+        }
+
+        remaining = remaining.slice(chunk.length).trimStart();
+
+        if (firstReply) {
+          // eslint-disable-next-line no-await-in-loop
+          replyMsg = await message.reply({
+            content: chunk,
+            allowedMentions: { parse: [] },
+          });
+          firstReply = false;
+        } else {
+          // eslint-disable-next-line no-await-in-loop
+          replyMsg = await replyMsg.reply({
+            content: chunk,
+            allowedMentions: { parse: [] },
+          });
+        }
+      }
     } catch (err) {
       console.error('Grok script error:', err);
       await message.reply('Either, our code is fucked, their API is fucked, or you are just fucked. Please try again later.');
