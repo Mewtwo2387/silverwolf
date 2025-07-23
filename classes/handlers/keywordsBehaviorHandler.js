@@ -60,14 +60,8 @@ module.exports = {
     }
   },
   grok: async (message) => {
-    const triggerRegex = /@g[or][ro]k\w*|jarvis/gi;
     const isJarvis = /jarvis/i.test(message.content);
-    const query = message.content.replace(triggerRegex, '').trim();
-
-    if (!query) {
-      await message.reply("Don't ping me if you're not gonna ask anything!");
-      return;
-    }
+    const query = message.content;
 
     const contextMsg = message.reference
       ? await message.channel.messages.fetch(message.reference.messageId).catch(() => null)
