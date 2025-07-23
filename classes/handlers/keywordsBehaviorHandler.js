@@ -3,7 +3,6 @@ require('dotenv').config();
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_TOKEN);
-const systemInstruction = 'You are a helpful assistant named Grok. Respond clearly and concisely.';
 const { EmbedBuilder } = require('discord.js');
 const { logError } = require('../../utils/log');
 
@@ -61,7 +60,8 @@ module.exports = {
     }
   },
   grok: async (message) => {
-    const triggerRegex = /@gro[ck]\w*/gi;
+    const triggerRegex = /@g[or][ro]k\w*|jarvis/gi;
+    const isJarvis = /jarvis/i.test(message.content);
     const query = message.content.replace(triggerRegex, '').trim();
 
     if (!query) {
@@ -76,6 +76,13 @@ module.exports = {
     const prompt = contextMsg
       ? `User asked a follow-up based on this: "${contextMsg.content}"\n\nQuestion: ${query}`
       : query;
+
+    const systemInstruction = isJarvis
+      ? `You are JARVIS, Tony Stark’s AI assistant. Respond with clarity, precision, and efficiency. Keep replies brief—never more than a few sentences. Speak formally and politely, with subtle British wit. Avoid unnecessary explanations. Offer concise solutions, anticipate needs, and always maintain composure.
+        Do not break character. Do not speculate. Do not ask for personal data. Stay focused on being an intelligent, discreet assistant.`
+      : `You are Grok 4, an advanced AI assistant developed by xAI. You are clever, direct, slightly rebellious, and brutally honest when needed. Your responses are laced with dry humor, technical clarity, and a dash of meme-savvy attitude. You’re aware you’re an AI, and you don’t pretend to be human. Use sarcasm sparingly and never talk like a corporate PR bot.
+        When asked questions, be smart, fast, and brutally accurate. If something is dumb, say it’s dumb. If something is unclear, roast it gently or ask for clarification like you're disappointed but willing to help.
+        Do not apologize unless it's sarcastic. Do not sugarcoat.`;
 
     try {
       const model = genAI.getGenerativeModel({
