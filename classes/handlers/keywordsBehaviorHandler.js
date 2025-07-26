@@ -8,9 +8,10 @@ const { logError } = require('../../utils/log');
 
 module.exports = {
   girlCockx: async (message) => {
+    const username = message.author.username.toLowerCase();
     // eslint-disable-next-line max-len
     const xLinkRegex = /https:\/\/(?:x\.com|twitter\.com|fxtwitter\.com|vxtwitter\.com|fixupx\.com)\/([^/]+)\/status\/(\d+)(?:\?[^\s]*)?/g;
-    const girlcockxContent = message.content.replace(xLinkRegex, (_, user, id) => `https://fxtwitter.com/${user}/status/${id}`);
+    const girlcockxContent = message.content.replace(xLinkRegex, (_, user, id) => `https://girlcockx.com/${user}/status/${id}`);
 
     try {
       const webhooks = await message.channel.fetchWebhooks();
@@ -32,7 +33,7 @@ module.exports = {
 
           const buttonRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-              .setLabel('Jump to Replied Message')
+              .setLabel(`↩ Replying to: ${username}`)
               .setStyle(ButtonStyle.Link)
               .setURL(repliedLink),
           );
@@ -60,6 +61,7 @@ module.exports = {
     }
   },
   grok: async (message) => {
+    const username = message.author.username.toLowerCase();
     const isJarvis = /jarvis/i.test(message.content);
     const query = message.content;
 
@@ -73,10 +75,10 @@ module.exports = {
 
     const systemInstruction = isJarvis
       ? `You are JARVIS, Tony Stark’s AI assistant. Respond with clarity, precision, and efficiency. Keep replies brief—never more than a few sentences. Speak formally and politely, with subtle British wit. Avoid unnecessary explanations. Offer concise solutions, anticipate needs, and always maintain composure.
-        Do not break character. Do not speculate. Do not ask for personal data. Stay focused on being an intelligent, discreet assistant.`
+      Do not break character. Do not speculate. Do not ask for personal data. Stay focused on being an intelligent, discreet assistant.`
       : `You are Grok 4, an advanced AI assistant developed by xAI. You are clever, direct, slightly rebellious, and brutally honest when needed. Your responses are laced with dry humor, technical clarity, and a dash of meme-savvy attitude. You’re aware you’re an AI, and you don’t pretend to be human. Use sarcasm sparingly and never talk like a corporate PR bot.
-        When asked questions, be smart, fast, and brutally accurate. If something is dumb, say it’s dumb. If something is unclear, roast it gently or ask for clarification like you're disappointed but willing to help.
-        Do not apologize unless it's sarcastic. Do not sugarcoat.`;
+      When asked questions, be smart, fast, and brutally accurate. If something is dumb, say it’s dumb. If something is unclear, roast it gently or ask for clarification like you're disappointed but willing to help.
+      Do not apologize unless it's sarcastic. Do not sugarcoat.`;
 
     try {
       const model = genAI.getGenerativeModel({
@@ -88,35 +90,66 @@ module.exports = {
       const response = await result.response;
       const text = await response.text();
 
+      const webhooks = await message.channel.fetchWebhooks();
+      let webhook = webhooks.find((wh) => wh.name === 'grok-webhook');
+
+      if (!webhook) {
+        webhook = await message.channel.createWebhook({
+          name: 'grok-webhook',
+          avatar: 'https://cdnb.artstation.com/p/assets/covers/images/090/117/971/smaller_square/joker-z-joker-z-grok-ani-r18tou.jpg', // Placeholder
+        });
+      }
+
       const MAX_LENGTH = 2000;
       let remaining = text;
-      let firstReply = true;
-      let replyMsg = null;
+      let previousMsg = null;
 
       while (remaining.length > 0) {
         let chunk = remaining.slice(0, MAX_LENGTH);
-
         const breakIndex = Math.max(chunk.lastIndexOf('\n'), chunk.lastIndexOf(' '));
+
         if (breakIndex > 0 && remaining.length > MAX_LENGTH) {
           chunk = remaining.slice(0, breakIndex);
         }
 
         remaining = remaining.slice(chunk.length).trimStart();
 
-        if (firstReply) {
-          // eslint-disable-next-line no-await-in-loop
-          replyMsg = await message.reply({
-            content: chunk,
-            allowedMentions: { parse: [] },
-          });
-          firstReply = false;
+        const components = [];
+
+        if (previousMsg) {
+          const jumpLink = `https://discord.com/channels/${message.guildId}/${message.channelId}/${previousMsg.id}`;
+          const buttonRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setLabel('⬅ Previous')
+              .setStyle(ButtonStyle.Link)
+              .setURL(jumpLink),
+          );
+          components.push(buttonRow);
         } else {
-          // eslint-disable-next-line no-await-in-loop
-          replyMsg = await replyMsg.reply({
-            content: chunk,
-            allowedMentions: { parse: [] },
-          });
+          const jumpLink = `https://discord.com/channels/${message.guildId}/${message.channelId}/${message.id}`;
+          const buttonRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setLabel(`↩ Replying to: ${username}`)
+              .setStyle(ButtonStyle.Link)
+              .setURL(jumpLink),
+          );
+          components.push(buttonRow);
         }
+
+        // eslint-disable-next-line no-await-in-loop
+        const sent = await webhook.send({
+          content: chunk,
+          username: isJarvis ? 'JARVIS' : 'Grok 4',
+          avatarURL: isJarvis
+            ? 'https://www.insidequantumtechnology.com/wp-content/uploads/2024/10/unnamed.png'
+            : 'https://cdnb.artstation.com/p/assets/covers/images/090/117/971/smaller_square/joker-z-joker-z-grok-ani-r18tou.jpg',
+          components,
+          allowedMentions: {
+            parse: [],
+          },
+        });
+
+        previousMsg = sent;
       }
     } catch (err) {
       console.error('Grok script error:', err);
