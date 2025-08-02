@@ -166,7 +166,7 @@ All wrongs reserved.
 
     log(`> Message received from ${message.author.username} (${message.author.id}) in ${message.channel.name} (${message.channel.id}) in ${message.guild.name} (${message.guild.id}): ${message.content}`);
 
-    if (Math.random() < 0.01 && message.channel.name !== 'super-serious-secret-vent-rant-chat') {
+    if (Math.random() < 0.01 && message.channel.id !== '1262239871758766221') {
       log('Summoning a pokemon...');
       const handler = await this.getHandler(); // Fetch the handler based on the current season
       await handler.summonPokemon(message); // Use the season-specific summonPokemon method
