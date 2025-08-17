@@ -1,9 +1,9 @@
 const axios = require('axios');
 const { EmbedBuilder } = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 const { logError } = require('../utils/log');
 
-class CatCommand extends Command {
+class Cat extends Command {
   constructor(client) {
     super(client, 'cat', 'Fetch a random cat fact, picture, or both', [
       {
@@ -72,4 +72,4 @@ class CatCommand extends Command {
   }
 }
 
-module.exports = CatCommand;
+module.exports = Cat;

@@ -1,4 +1,4 @@
-const { CommandGroup } = require('../classes/commandGroup.js');
+const { CommandGroup } = require('../classes/commandGroup');
 
 class GlobalConfig extends CommandGroup {
   constructor(client) {

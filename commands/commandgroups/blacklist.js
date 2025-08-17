@@ -1,4 +1,4 @@
-const { CommandGroup } = require('../classes/commandGroup.js');
+const { CommandGroup } = require('../classes/commandGroup');
 
 class Blacklist extends CommandGroup {
   constructor(client) {

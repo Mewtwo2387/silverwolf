@@ -19,19 +19,19 @@ class BirthdayScheduler {
       log(`Checking for birthdays on ${todayHour} (UTC)`);
 
       try {
-        const birthdays = await this.client.db.getUsersWithBirthday(todayHour);
+        const birthdays = await this.client.db.user.getUsersWithBirthday(todayHour);
         log('Users with birthdays this hour:', birthdays);
 
         if (birthdays.length > 0) {
           const channelIds = process.env.BIRTHDAY_CHANNELS.split(','); // Get all channel IDs from .env
-          for (const channelId of channelIds) {
+          channelIds.forEach(async (channelId) => {
             const channel = this.client.channels.cache.get(channelId.trim()); // Trim spaces and get the channel
             if (!channel) {
               logError(`Channel ID ${channelId} not found or invalid.`);
-              continue;
+              return;
             }
 
-            for (const user of birthdays) {
+            birthdays.forEach(async (user) => {
               const birthdayEmbed = new EmbedBuilder()
                 .setTitle('🎉 Birthday Alert! 🎉')
                 .setDescription(`Today is <@${user.id}>'s birthday! Let's all wish them a great day! 🥳`)
@@ -39,8 +39,8 @@ class BirthdayScheduler {
 
               log(`Sending birthday message for ${user.id} to channel ${channelId}`);
               await channel.send({ embeds: [birthdayEmbed] });
-            }
-          }
+            });
+          });
         } else {
           log('No birthdays this hour.');
         }

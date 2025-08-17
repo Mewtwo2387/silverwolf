@@ -1,9 +1,9 @@
 const {
   ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder,
 } = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
-class SinglePlayerRussianRouletteCommand extends Command {
+class RussianRouletteSingleplayer extends Command {
   constructor(client) {
     super(client, 'singleplayer', 'Play a single-player game of Russian Roulette', [], { isSubcommandOf: 'russianroulette' });
   }
@@ -29,7 +29,7 @@ class SinglePlayerRussianRouletteCommand extends Command {
     const collector = message.createMessageComponentCollector({ time: 120000 }); // 2-minute timeout
 
     collector.on('collect', async (i) => {
-      if (i.customId === 'shoot_self') {
+      if (i.customId === 'shootSelf') {
         if (currentChamber === loadedChamber) {
           // Player loses
           embed.setDescription('💥 You pulled the trigger and the chamber was loaded! You lose.');
@@ -39,8 +39,8 @@ class SinglePlayerRussianRouletteCommand extends Command {
           collector.stop();
         } else {
           // Survive this round
-          shotsFired++;
-          currentChamber++;
+          shotsFired += 1;
+          currentChamber += 1;
           thisChamberCooldown = false; // Reset cooldown for "This Chamber"
 
           embed.setDescription(`Click! You survived round ${shotsFired}. What will you do next?`)
@@ -59,7 +59,7 @@ class SinglePlayerRussianRouletteCommand extends Command {
             await i.update({ embeds: [embed], components: [this.createButtons(thisChamberCooldown)] });
           }
         }
-      } else if (i.customId === 'this_chamber') {
+      } else if (i.customId === 'thisChamber') {
         if (thisChamberCooldown) {
           // Prevent consecutive presses of "This Chamber"
           await i.reply({ content: 'You cannot press "This Chamber" consecutively!', ephemeral: true });
@@ -79,8 +79,8 @@ class SinglePlayerRussianRouletteCommand extends Command {
         } else {
           // Cooldown applied, survive this round
           thisChamberCooldown = true;
-          shotsFired++;
-          currentChamber++;
+          shotsFired += 1;
+          currentChamber += 1;
 
           embed.setDescription(
             `The chamber was empty. You have survived round ${shotsFired}. What will you do next?`,
@@ -115,11 +115,11 @@ class SinglePlayerRussianRouletteCommand extends Command {
     return new ActionRowBuilder()
       .addComponents(
         new ButtonBuilder()
-          .setCustomId('shoot_self')
+          .setCustomId('shootSelf')
           .setLabel('Shoot Self')
           .setStyle(ButtonStyle.Danger),
         new ButtonBuilder()
-          .setCustomId('this_chamber')
+          .setCustomId('thisChamber')
           .setLabel('This Chamber')
           .setStyle(ButtonStyle.Primary)
           .setDisabled(thisChamberCooldown),
@@ -127,4 +127,4 @@ class SinglePlayerRussianRouletteCommand extends Command {
   }
 }
 
-module.exports = SinglePlayerRussianRouletteCommand;
+module.exports = RussianRouletteSingleplayer;

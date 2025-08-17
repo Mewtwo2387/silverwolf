@@ -1,6 +1,6 @@
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
-const { format, antiFormat } = require('../utils/math.js');
+const { Command } = require('./classes/command');
+const { format, antiFormat } = require('../utils/math');
 
 class Transfer extends Command {
   constructor(client) {
@@ -24,7 +24,7 @@ class Transfer extends Command {
     const target = interaction.options.getUser('user');
     const amountString = interaction.options.getString('amount');
     const amount = antiFormat(amountString);
-    if (isNaN(amount)) {
+    if (Number.isNaN(amount)) {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')
@@ -35,7 +35,7 @@ class Transfer extends Command {
       return;
     }
 
-    const credits = await this.client.db.getUserAttr(interaction.user.id, 'credits');
+    const credits = await this.client.db.user.getUserAttr(interaction.user.id, 'credits');
 
     if (amount < 0) {
       await interaction.editReply({
@@ -65,8 +65,8 @@ class Transfer extends Command {
         ],
       });
     } else {
-      await this.client.db.addUserAttr(interaction.user.id, 'credits', -give);
-      await this.client.db.addUserAttr(target.id, 'credits', receive);
+      await this.client.db.user.addUserAttr(interaction.user.id, 'credits', -give);
+      await this.client.db.user.addUserAttr(target.id, 'credits', receive);
       await interaction.followUp({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#00AA00')
@@ -94,12 +94,12 @@ class Transfer extends Command {
       },
     ];
 
-    for (const tier of tiers) {
-      if (amount > tier.threshold) {
-        return {
-          give: amount * tier.giveFactor + tier.smallFee,
-          receive: amount * tier.receiveFactor,
-          description: `**You pay:**
+    const tier = tiers.find((t) => amount > t.threshold);
+
+    return {
+      give: amount * tier.giveFactor + tier.smallFee,
+      receive: amount * tier.receiveFactor,
+      description: `**You pay:**
 Amount: ${format(amount)}
 VAT: ${format(amount * 0.25)}
 Electricity fee: ${format(amount * 0.1)}
@@ -111,9 +111,7 @@ Amount: ${format(amount)}
 VAT: ${format(amount * -0.25)}
 Transfer tax: ${format(amount * -0.2)}${tier.taxLevel > 0 ? `\nBig transfer tax (>100k): ${format(amount * -0.2)}` : ''}${tier.taxLevel > 1 ? `\nHuge transfer tax (>1m): ${format(amount * -0.04)}` : ''}${tier.taxLevel > 2 ? `\nYourmom transfer tax (>10m): ${format(amount * -0.009)}` : ''}
 **Total: ${format(amount * tier.receiveFactor)}**`,
-        };
-      }
-    }
+    };
   }
 }
 

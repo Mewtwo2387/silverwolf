@@ -43,8 +43,8 @@
         { "emote": "<:1silverwolfsmug1:1212343617113559051>", "value": 1 }
       ],
       "color": "#AA0000",
-      "winMessage": "<:1silverwolfsmug1:1212343617113559051> <:1silverwolfsmug1:1212343617113559051> {amount} <:1silverwolfsmug1:1212343617113559051> <:1silverwolfsmug1:1212343617113559051> <:1silverwolfsmug1:1212343617113559051> {winnings} <:1silverwolfsmug1:1212343617113559051> <:1silverwolfsmug1:1212343617113559051>!",
-      "loseMessage": "<:1silverwolfsmug1:1212343617113559051> <:1silverwolfsmug1:1212343617113559051> {amount} <:1silverwolfsmug1:1212343617113559051> <:1silverwolfsmug1:1212343617113559051> <:1silverwolfsmug1:1212343617113559051> <:1silverwolfsmug1:1212343617113559051> <:1silverwolfsmug1:1212343617113559051> <:1silverwolfsmug1:1212343617113559051>!"
+      "winMessage": "<:1silverwolfsmug1:1212343617113559051> {amount} <:1silverwolfsmug1:1212343617113559051> {winnings} <:1silverwolfsmug1:1212343617113559051>!",
+      "loseMessage": "<:1silverwolfsmug1:1212343617113559051> {amount} <:1silverwolfsmug1:1212343617113559051>!"
     },
 
     "halloween": {

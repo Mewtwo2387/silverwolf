@@ -18,6 +18,15 @@ class Bitcoin {
 
   async getPrice() {
     const data = await this.getData();
+    if (!data) {
+      return null;
+    }
+    if (!data.bpi) {
+      return null;
+    }
+    if (!data.bpi.USD) {
+      return null;
+    }
     return data.bpi.USD.rate_float;
   }
 }

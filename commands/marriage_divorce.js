@@ -1,7 +1,7 @@
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
-const divorceSettlement = require('../utils/divorceSettlement.js');
-const { format } = require('../utils/math.js');
+const { Command } = require('./classes/command');
+const divorceSettlement = require('../utils/divorceSettlement');
+const { format } = require('../utils/math');
 
 class MarriageDivorce extends Command {
   constructor(client) {
@@ -12,7 +12,7 @@ class MarriageDivorce extends Command {
     const userId = interaction.user.id;
 
     // Check marriage status
-    const marriageStatus = await this.client.db.checkMarriageStatus(userId);
+    const marriageStatus = await this.client.db.marriage.checkMarriageStatus(userId);
 
     if (!marriageStatus.isMarried) {
       await interaction.editReply({
@@ -32,11 +32,11 @@ class MarriageDivorce extends Command {
     const row = new Discord.ActionRowBuilder()
       .addComponents(
         new Discord.ButtonBuilder()
-          .setCustomId('confirm_divorce')
+          .setCustomId('confirmDivorce')
           .setLabel('Confirm Divorce')
           .setStyle(Discord.ButtonStyle.Danger),
         new Discord.ButtonBuilder()
-          .setCustomId('cancel_divorce')
+          .setCustomId('cancelDivorce')
           .setLabel('Cancel Divorce')
           .setStyle(Discord.ButtonStyle.Secondary),
       );
@@ -50,7 +50,7 @@ class MarriageDivorce extends Command {
     });
 
     // Create a collector to handle button interactions
-    const filter = (i) => i.customId === 'confirm_divorce' || i.customId === 'cancel_divorce';
+    const filter = (i) => i.customId === 'confirmDivorce' || i.customId === 'cancelDivorce';
     const collector = interaction.channel.createMessageComponentCollector({ filter, time: 60000 });
 
     collector.on('collect', async (i) => {
@@ -84,11 +84,11 @@ class MarriageDivorce extends Command {
         });
         return; // Stop further processing
       }
-      if (i.customId === 'confirm_divorce') {
+      if (i.customId === 'confirmDivorce') {
         const settlement = await divorceSettlement(this.client, userId, partnerId);
 
         // Remove marriage from the database
-        await this.client.db.removeMarriage(userId, partnerId);
+        await this.client.db.marriage.removeMarriage(userId, partnerId);
 
         // Generate a list of fees for the embed
         const fixedFeesBreakdown = settlement.fixedFees
@@ -112,7 +112,7 @@ class MarriageDivorce extends Command {
             )],
           components: [],
         });
-      } else if (i.customId === 'cancel_divorce') {
+      } else if (i.customId === 'cancelDivorce') {
         await i.update({
           embeds: [new Discord.EmbedBuilder()
             .setColor('#00AA00')

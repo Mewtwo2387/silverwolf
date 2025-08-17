@@ -1,5 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 class Sacrifice extends Command {
   constructor(client) {
@@ -29,15 +29,15 @@ class Sacrifice extends Command {
     const pokemon3 = interaction.options.getString('pokemon3');
     const userId = interaction.user.id;
 
-    const pokemonCount1 = await this.client.db.getPokemonCount(userId, pokemon1);
-    const pokemonCount2 = await this.client.db.getPokemonCount(userId, pokemon2);
-    const pokemonCount3 = await this.client.db.getPokemonCount(userId, pokemon3);
+    const pokemonCount1 = await this.client.db.pokemon.getPokemonCount(userId, pokemon1);
+    const pokemonCount2 = await this.client.db.pokemon.getPokemonCount(userId, pokemon2);
+    const pokemonCount3 = await this.client.db.pokemon.getPokemonCount(userId, pokemon3);
 
     if (pokemonCount1 < 1 || pokemonCount2 < 1 || pokemonCount3 < 1
-            || (pokemon1 == pokemon2 && pokemonCount1 < 2)
-            || (pokemon2 == pokemon3 && pokemonCount2 < 2)
-            || (pokemon3 == pokemon1 && pokemonCount3 < 2)
-            || (pokemon1 == pokemon2 && pokemon2 == pokemon3 && pokemonCount1 < 3)) {
+            || (pokemon1 === pokemon2 && pokemonCount1 < 2)
+            || (pokemon2 === pokemon3 && pokemonCount2 < 2)
+            || (pokemon3 === pokemon1 && pokemonCount3 < 2)
+            || (pokemon1 === pokemon2 && pokemon2 === pokemon3 && pokemonCount1 < 3)) {
       await interaction.editReply({
         embeds: [
           new EmbedBuilder()
@@ -56,9 +56,9 @@ class Sacrifice extends Command {
       ],
     });
 
-    await this.client.db.sacrificePokemon(userId, pokemon1);
-    await this.client.db.sacrificePokemon(userId, pokemon2);
-    await this.client.db.sacrificePokemon(userId, pokemon3);
+    await this.client.db.pokemon.sacrificePokemon(userId, pokemon1);
+    await this.client.db.pokemon.sacrificePokemon(userId, pokemon2);
+    await this.client.db.pokemon.sacrificePokemon(userId, pokemon3);
 
     const handler = await this.client.getHandler(); // Get the current seasonal handler
     await handler.summonPokemon(interaction); // Use handler's summonPokemon with the specified mode

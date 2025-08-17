@@ -1,5 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
-const { DevCommand } = require('./classes/devcommand.js');
+const { DevCommand } = require('./classes/devcommand');
 
 class GlobalConfigGet extends DevCommand {
   constructor(client) {
@@ -16,7 +16,19 @@ class GlobalConfigGet extends DevCommand {
   async run(interaction) {
     const key = interaction.options.getString('key');
     if (key === 'ALL') {
-      const all = await this.client.db.getAllGlobalConfig();
+      const all = await this.client.db.globalConfig.getAllGlobalConfig();
+      if (all.length === 0) {
+        await interaction.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle('No Global Config Values')
+              .setDescription('No global config values found')
+              .setColor('#00AA00'),
+          ],
+        });
+        return;
+      }
+
       await interaction.editReply({
         embeds: [
           new EmbedBuilder()
@@ -26,7 +38,7 @@ class GlobalConfigGet extends DevCommand {
         ],
       });
     } else {
-      const value = await this.client.db.getGlobalConfig(key);
+      const value = await this.client.db.globalConfig.getGlobalConfig(key);
       await interaction.editReply({
         embeds: [
           new EmbedBuilder()

@@ -1,11 +1,11 @@
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 const jobs = [
   {
     name: 'Nuggie Claimer',
-    value: 'nuggie_claimer',
-    description: 'Auto claim nuggies every 24 hours, for an amount equivalent to no streak and no bronze/silver/gold.',
+    value: 'nuggieClaimer',
+    description: 'Auto claim nuggies every 24 hours, without streak bonuses.',
   },
   {
     name: 'Gambler',
@@ -48,7 +48,7 @@ class BabyEnslave extends Command {
     const babyId = interaction.options.get('id').value;
     const job = interaction.options.get('job').value;
 
-    const baby = await this.client.db.getBabyFromId(babyId);
+    const baby = await this.client.db.baby.getBabyById(babyId);
 
     if (!baby) {
       await interaction.editReply({
@@ -62,7 +62,7 @@ class BabyEnslave extends Command {
       return;
     }
 
-    if (baby.mother_id != interaction.user.id && baby.father_id != interaction.user.id) {
+    if (baby.motherId !== interaction.user.id && baby.fatherId !== interaction.user.id) {
       await interaction.editReply({
         embeds: [
           new Discord.EmbedBuilder()
@@ -74,7 +74,7 @@ class BabyEnslave extends Command {
       return;
     }
 
-    if (baby.status == 'unborn') {
+    if (baby.status === 'unborn') {
       await interaction.editReply({
         embeds: [
           new Discord.EmbedBuilder()
@@ -85,7 +85,7 @@ class BabyEnslave extends Command {
       return;
     }
 
-    if (baby.status == 'dead') {
+    if (baby.status === 'dead') {
       await interaction.editReply({
         embeds: [
           new Discord.EmbedBuilder()
@@ -96,7 +96,7 @@ class BabyEnslave extends Command {
       return;
     }
 
-    if (job == 'pinger') {
+    if (job === 'pinger') {
       const pingerTarget = interaction.options.get('pinger_target');
       if (!pingerTarget) {
         await interaction.editReply({
@@ -108,9 +108,9 @@ class BabyEnslave extends Command {
         });
         return;
       }
-      await this.client.db.updateBabyJob(babyId, job, pingerTarget.value, interaction.channel.id);
+      await this.client.db.baby.updateBabyJob(babyId, job, pingerTarget.value, interaction.channel.id);
     } else {
-      await this.client.db.updateBabyJob(babyId, job);
+      await this.client.db.baby.updateBabyJob(babyId, job);
     }
 
     await interaction.editReply({

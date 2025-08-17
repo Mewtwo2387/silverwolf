@@ -1,8 +1,8 @@
 const Discord = require('discord.js');
-const { DevCommand } = require('./classes/devcommand.js');
-const { logError } = require('../utils/log.js');
+const { DevCommand } = require('./classes/devcommand');
+const { logError } = require('../utils/log');
 
-class BlacklistCommand extends DevCommand {
+class BlacklistConfigure extends DevCommand {
   constructor(client) {
     super(client, 'configure', 'Add or remove a command from the blacklist for a specific server', [
       {
@@ -37,17 +37,15 @@ class BlacklistCommand extends DevCommand {
   }
 
   async run(interaction) {
-    const commandName = interaction.options.getString('command');
+    const commandName = interaction.options.getString('command').toLowerCase().replace(/\s+/g, '.');
     const serverId = interaction.options.getString('server');
     const action = interaction.options.getString('action');
     const reason = interaction.options.getString('reason') || 'No reason provided';
 
     try {
       if (action === 'add') {
-        // Add the command to the blacklist
-        await this.client.db.addOrUpdateCommandBlacklist(commandName, serverId, reason);
+        await this.client.db.commandConfig.addOrUpdateCommandBlacklist(commandName, serverId, reason);
 
-        // Send a success message
         await interaction.editReply({
           embeds: [
             new Discord.EmbedBuilder()
@@ -58,10 +56,8 @@ class BlacklistCommand extends DevCommand {
           ],
         });
       } else if (action === 'remove') {
-        // Remove the command from the blacklist
-        const resultMessage = await this.client.db.deleteCommandBlacklist(commandName, serverId);
+        const resultMessage = await this.client.db.commandConfig.deleteCommandBlacklist(commandName, serverId);
 
-        // Send a success or info message based on whether the entry was found
         await interaction.editReply({
           embeds: [
             new Discord.EmbedBuilder()
@@ -71,10 +67,11 @@ class BlacklistCommand extends DevCommand {
           ],
         });
       }
+
+      await this.client.registerCommands(this.client.user.id);
     } catch (err) {
       logError('Failed to update command blacklist:', err);
 
-      // Send an error message
       await interaction.editReply({
         embeds: [
           new Discord.EmbedBuilder()
@@ -87,4 +84,4 @@ class BlacklistCommand extends DevCommand {
   }
 }
 
-module.exports = BlacklistCommand;
+module.exports = BlacklistConfigure;

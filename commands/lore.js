@@ -1,5 +1,6 @@
+/* eslint-disable no-useless-escape */
 const Discord = require('discord.js');
-const { Command } = require('./classes/command.js');
+const { Command } = require('./classes/command');
 
 class Lore extends Command {
   constructor(client) {
@@ -17,7 +18,6 @@ class Lore extends Command {
   }
 
   async run(interaction) {
-    const embed = null;
     switch (interaction.options.getString('member').toLowerCase()) {
       case 'doge': case 'kaitlin':
         interaction.editReply({
@@ -143,6 +143,7 @@ class Lore extends Command {
         break;
       case 'mystic':
         interaction.editReply('mommy');
+        break;
       default:
         interaction.editReply('send me the lore');
     }

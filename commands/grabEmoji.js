@@ -1,10 +1,10 @@
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const axios = require('axios');
-const sharp = require('sharp');
-const { Command } = require('./classes/command.js');
+const Canvas = require('canvas');
+const { Command } = require('./classes/command');
 const { logError } = require('../utils/log');
 
-class EmojiToFileCommand extends Command {
+class GrabEmoji extends Command {
   constructor(client) {
     super(client, 'grab-emoji', 'Converts an emoji to a selected file format', [
       {
@@ -20,7 +20,7 @@ class EmojiToFileCommand extends Command {
         required: false,
         choices: [
           { name: 'PNG', value: 'png' },
-          { name: 'GIF', value: 'gif' },
+          { name: 'JPEG', value: 'jpeg' },
           { name: 'WEBP', value: 'webp' },
         ],
       },
@@ -35,36 +35,72 @@ class EmojiToFileCommand extends Command {
       const match = emojiInput.match(emojiRegex);
 
       if (!match) {
-        return interaction.editReply({ content: 'Please provide a valid **``custom``** emoji.', ephemeral: true });
+        interaction.editReply({
+          content: 'Please provide a valid **``custom``** emoji.',
+          ephemeral: true,
+        });
+        return;
       }
 
       const emojiId = match[1];
       const isAnimated = emojiInput.startsWith('<a:'); // Detect if the emoji is animated
 
-      // Set the emoji URL with the chosen format
+      // For animated emojis, we can only provide the original GIF
+      if (isAnimated && format !== 'gif') {
+        await interaction.editReply({
+          content: 'Animated emojis can only be downloaded as GIF format. Please use GIF format for animated emojis.',
+          ephemeral: true,
+        });
+        return;
+      }
+
+      // Set the emoji URL with the appropriate format
       const emojiUrl = `https://cdn.discordapp.com/emojis/${emojiId}.${isAnimated ? 'gif' : 'png'}`;
 
       // Fetch the emoji image
       const response = await axios.get(emojiUrl, { responseType: 'arraybuffer' });
       let emojiBuffer = Buffer.from(response.data, 'binary');
 
-      // If the format is GIF and the emoji is not animated, convert it to GIF
-      if (format === 'gif' && !isAnimated) {
-        emojiBuffer = await sharp(emojiBuffer) // Use sharp to handle conversion
-          .gif() // Convert the image to GIF format
-          .toBuffer();
+      // If format conversion is needed and it's not animated, use Canvas
+      if (!isAnimated && format !== 'png') {
+        try {
+          // Load the image using Canvas
+          const image = await Canvas.loadImage(emojiBuffer);
+
+          // Create a canvas with the image dimensions
+          const canvas = Canvas.createCanvas(image.width, image.height);
+          const ctx = canvas.getContext('2d');
+
+          // Draw the image onto the canvas
+          ctx.drawImage(image, 0, 0);
+
+          // Convert to the requested format
+          if (format === 'jpeg') {
+            emojiBuffer = canvas.toBuffer('image/jpeg', { quality: 0.9 });
+          } else if (format === 'webp') {
+            emojiBuffer = canvas.toBuffer('image/webp', { quality: 0.9 });
+          }
+        } catch (canvasError) {
+          logError(`Canvas conversion error: ${canvasError}`);
+          // Fallback to original format if conversion fails
+          await interaction.editReply({
+            content: `Could not convert to ${format.toUpperCase()}. Providing original PNG format instead.`,
+            ephemeral: true,
+          });
+          // Continue with original PNG format
+        }
       }
 
       // Create an attachment for the converted file
       const fileName = `emoji.${format}`;
-      const attachment = new AttachmentBuilder(emojiBuffer, { name: fileName }); // Use AttachmentBuilder for file
+      const attachment = new AttachmentBuilder(emojiBuffer, { name: fileName });
 
       // Create the embed
       const embed = new EmbedBuilder()
         .setTitle('Emoji Conversion')
         .setDescription(`Here is your emoji in the requested format: **${format.toUpperCase()}**`)
         .setColor(0x00FF00)
-        .setImage(`attachment://${fileName}`); // Attach the converted image to the embed
+        .setImage(`attachment://${fileName}`);
 
       await interaction.editReply({ embeds: [embed], files: [attachment] });
     } catch (error) {
@@ -77,4 +113,4 @@ class EmojiToFileCommand extends Command {
   }
 }
 
-module.exports = EmojiToFileCommand;
+module.exports = GrabEmoji;
