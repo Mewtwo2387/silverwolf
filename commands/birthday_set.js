@@ -56,17 +56,17 @@ class BirthdaySet extends Command {
         throw new Error('Invalid date constructed. Please check the inputs.');
       }
 
-      // Log before setting the user birthday in the database
       log(`Attempting to set birthday for user ${userId} to ${birthday.toISOString()}.`);
 
-      // Use this.client.db to set the birthday
       const result = await this.client.db.user.setUserAttr(userId, 'birthdays', birthday.toISOString());
       log(`Successfully updated birthday for user ${userId}.`, result);
+      const monthName = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+      const formattedDate = `${String(day).padStart(2, '0')}-${String(monthName[month-1]).padStart(2, '0')}-${year}`;
 
       // Send confirmation message
       const embed = new EmbedBuilder()
         .setTitle('Birthday Set!')
-        .setDescription(`Your birthday has been set to ${birthday.toDateString()} (timezone: ${timezone}).`)
+        .setDescription(`Your birthday has been set to ${formattedDate} (timezone: ${timezone}).`)
         .setColor(0x00FF00);
 
       await interaction.editReply({ embeds: [embed] });
