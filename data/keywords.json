@@ -1,7 +1,8 @@
 [
   {
     "triggers": ["nya"],
-    "reply": "https://www.mentalhealth.gov"
+    "reply": "https://www.mentalhealth.gov",
+    "excludeSerious": true
   },
   {
     "triggers": ["gamble", "gambling"],
@@ -16,10 +17,6 @@
     "reply": "holy hell"
   },
   {
-    "triggers": ["nya"],
-    "reply": "https://www.mentalhealth.gov"
-  },
-  {
     "triggers": ["venfei"],
     "reply": "aaaaaaaaaaaaaaaa"
   },
@@ -30,10 +27,6 @@
   {
     "triggers": ["turtle soup"],
     "reply": "how bout we turn charles' mom into a soup too"
-  },
-  {
-    "triggers": ["gamble", "gambling"],
-    "reply": "<@719752311429267566>"
   },
   {
     "triggers": ["activate spooky mode"],
