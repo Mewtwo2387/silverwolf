@@ -60,8 +60,8 @@ class BirthdaySet extends Command {
 
       const result = await this.client.db.user.setUserAttr(userId, 'birthdays', birthday.toISOString());
       log(`Successfully updated birthday for user ${userId}.`, result);
-      const monthName = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-      const formattedDate = `${String(day).padStart(2, '0')}-${String(monthName[month-1]).padStart(2, '0')}-${year}`;
+      const monthName = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const formattedDate = `${String(day).padStart(2, '0')}-${String(monthName[month - 1]).padStart(2, '0')}-${year}`;
 
       // Send confirmation message
       const embed = new EmbedBuilder()
