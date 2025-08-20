@@ -6,35 +6,58 @@ const { Command } = require('./classes/command');
 
 function extractStandings(html, type) {
   const dom = new JSDOM(html);
-  const rows = dom.window.document.querySelector('.f1-table-with-data tbody')?.querySelectorAll('tr') || [];
-  return Array.from(rows).map((row) => {
-    const columns = row.querySelectorAll('td');
-    if (type === 'drivers' && columns.length === 5) {
-      const driverEl = columns[1].querySelector('a');
-      const driverName = driverEl
-        ? `${driverEl.querySelector('.max-desktop\\:hidden')?.textContent.trim()} ${
-          driverEl.querySelector('.max-tablet\\:hidden')?.textContent.trim()}`
-        : columns[1].textContent.trim();
+  const rows =
+    dom.window.document
+      .querySelector('.f1-table-with-data tbody')
+      ?.querySelectorAll('tr') || [];
+  return Array.from(rows)
+    .map((row) => {
+      const columns = row.querySelectorAll('td');
+      if (type === 'drivers' && columns.length === 5) {
+        const driverLinkEl = columns[1].querySelector('a');
+        let driverName = '';
 
-      return {
-        position: parseInt(columns[0].textContent.trim(), 10),
-        driver: driverName,
-        nationality: columns[2].textContent.trim(),
-        car: columns[3].textContent.trim(),
-        points: parseInt(columns[4].textContent.trim(), 10),
-      };
-    }
+        if (driverLinkEl) {
+          const nameContainerSpan = driverLinkEl.querySelectorAll('span')[1];
 
-    if (type === 'teams' && columns.length === 3) {
-      return {
-        position: parseInt(columns[0].textContent.trim(), 10),
-        team: columns[1].textContent.trim(),
-        points: parseInt(columns[2].textContent.trim(), 10),
-      };
-    }
+          if (nameContainerSpan) {
+            const firstNameEl = nameContainerSpan.querySelector(
+              '.max-lg\\:hidden',
+            );
+            const lastNameEl = nameContainerSpan.querySelector(
+              '.max-md\\:hidden',
+            );
 
-    return null;
-  }).filter(Boolean);
+            const firstName = firstNameEl ? firstNameEl.textContent.trim() : '';
+            const lastName = lastNameEl ? lastNameEl.textContent.trim() : '';
+            driverName = `${firstName} ${lastName}`.trim();
+          } else {
+            driverName = driverLinkEl.textContent.trim().replace(/\s+/g, ' ');
+          }
+        } else {
+          driverName = columns[1].textContent.trim().replace(/\s+/g, ' ');
+        }
+
+        return {
+          position: parseInt(columns[0].textContent.trim(), 10),
+          driver: driverName,
+          nationality: columns[2].textContent.trim(),
+          car: columns[3].textContent.trim(),
+          points: parseInt(columns[4].textContent.trim(), 10),
+        };
+      }
+
+      if (type === 'teams' && columns.length === 3) {
+        return {
+          position: parseInt(columns[0].textContent.trim(), 10),
+          team: columns[1].textContent.trim(),
+          points: parseInt(columns[2].textContent.trim(), 10),
+        };
+      }
+
+      return null;
+    })
+    .filter(Boolean);
 }
 
 function buildEmbed(data, type, year) {
