@@ -6,7 +6,6 @@ const { OpenAI } = require('openai');
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_TOKEN);
 const { EmbedBuilder } = require('discord.js');
 const { logError } = require('../../utils/log');
-
 const personasData = require('../../data/aiPersonas.json');
 
 const personasConfig = personasData.personasConfig || personasData;
@@ -20,29 +19,41 @@ const openrouter = new OpenAI({
   },
 });
 
-// Resolve persona from triggers in message content
 function resolvePersona(messageContent = '') {
   const contentLower = messageContent.toLowerCase();
   const personas = personasConfig.personas || [];
-  for (const p of personas) {
-    if (
-      Array.isArray(p.triggers)
-      && p.triggers.some((t) => contentLower.includes(String(t).toLowerCase()))
-    ) {
-      return p;
-    }
+  const foundPersona = personas.find(
+    (p) => Array.isArray(p.triggers)
+      && p.triggers.some((t) => contentLower.includes(String(t).toLowerCase())),
+  );
+
+  if (foundPersona) {
+    return foundPersona;
   }
+
   const defaults = personasConfig.defaults || {};
   return {
     name: 'Default',
     provider: defaults.provider || 'gemini',
     model: defaults.model || 'gemini-2.5-flash',
     systemPrompt: defaults.systemPrompt || 'You are a helpful AI assistant.',
+    responseModalities: defaults.responseModalities || ['TEXT'],
   };
 }
 
-async function generateText({
-  provider, model, systemPrompt, prompt,
+/**
+ * Generates content (text and/or images) from the specified AI provider and model.
+ * @param {object} options - The generation options.
+ * @param {string} options.provider - The AI provider ('openrouter' or 'gemini').
+ * @param {string} options.model - The model to use for generation.
+ * @param {string} options.systemPrompt - The system instruction/prompt.
+ * @param {string} options.prompt - The user's prompt.
+ * @param {string[]} [options.responseModalities] - Optional array of desired response modalities (e.g., ['IMAGE', 'TEXT']).
+ * @returns {Promise<{text: string, images: Array<{attachment: Buffer, name: string}>}>} - An object containing generated text and an array of image attachments.
+ */
+
+async function generateContent({
+  provider, model, systemPrompt, prompt, responseModalities,
 }) {
   if (provider === 'openrouter') {
     const completion = await openrouter.chat.completions.create({
@@ -53,17 +64,97 @@ async function generateText({
       ],
       max_tokens: 4000,
     });
-    return completion.choices?.[0]?.message?.content ?? '';
+    return { text: completion.choices?.[0]?.message?.content ?? '', images: [] };
   }
 
   if (provider === 'gemini') {
-    const modelClient = genAI.getGenerativeModel({
-      model,
-      systemInstruction: systemPrompt,
-    });
-    const result = await modelClient.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
+    const mimeModule = await import('mime');
+
+    const imageTriggerKeywords = [
+      'draw',
+      'generate image',
+      'create image',
+      'picture of',
+      'show me a picture of',
+      'image of',
+      'render',
+      'sketch',
+      'design',
+      'illustrate',
+      'make an image of',
+    ];
+
+    // Using test method with RegExp is fine.
+    const imageTriggerRegex = new RegExp(
+      `\\b(?:${imageTriggerKeywords.join('|')})\\b`,
+      'i',
+    );
+
+    const isPersonaImageCapable = responseModalities && responseModalities.includes('IMAGE');
+    const hasImageGenerationTrigger = imageTriggerRegex.test(prompt);
+
+    let actualModel = model;
+    let shouldUseSystemInstruction = true;
+
+    if (isPersonaImageCapable && hasImageGenerationTrigger) {
+      actualModel = 'gemini-2.0-flash-preview-image-generation';
+      shouldUseSystemInstruction = false;
+    }
+
+    const modelClientOptions = {
+      model: actualModel,
+    };
+
+    if (shouldUseSystemInstruction) {
+      modelClientOptions.systemInstruction = systemPrompt;
+    }
+
+    const modelClient = genAI.getGenerativeModel(modelClientOptions);
+
+    const contents = [
+      {
+        role: 'user',
+        parts: [{ text: prompt }],
+      },
+    ];
+
+    const generateContentStreamOptions = {
+      contents,
+    };
+
+    if (actualModel === 'gemini-2.0-flash-preview-image-generation') {
+      generateContentStreamOptions.generationConfig = {
+        responseModalities: ['IMAGE', 'TEXT'],
+      };
+    }
+
+    const resultObject = await modelClient.generateContentStream(
+      generateContentStreamOptions,
+    );
+
+    let fullText = '';
+    const imageAttachments = [];
+    let fileIndex = 0;
+
+    for await (const chunk of resultObject.stream) {
+      if (chunk.candidates?.[0]?.content?.parts) {
+        chunk.candidates[0].content.parts.forEach((part) => {
+          if (part.inlineData) {
+            const { inlineData } = part;
+            const fileExtension = mimeModule.default.getExtension(inlineData.mimeType || 'image/png') || 'png';
+            const buffer = Buffer.from(inlineData.data || '', 'base64');
+            imageAttachments.push({
+              attachment: buffer,
+              name: `image_${fileIndex}.json`,
+            });
+            fileIndex += 1;
+          } else if (part.text) {
+            fullText += part.text;
+          }
+        });
+      }
+    }
+    return { text: fullText, images: imageAttachments };
   }
 
   throw new Error(`Unknown provider: ${provider}`);
@@ -139,6 +230,7 @@ module.exports = {
       ? `User asked a follow-up based on this: "${contextMsg.content}"\n\nQuestion: ${query}`
       : query;
 
+    // Resolve the persona, which now can include `responseModalities`
     const persona = resolvePersona(query);
     const displayName = persona.name;
     const avatarURL = persona.avatarURL || null;
@@ -147,7 +239,7 @@ module.exports = {
       const webhooks = await message.channel.fetchWebhooks();
       let webhook = webhooks.find((wh) => wh.name === 'grok-webhook');
 
-      // lightweight censorship mimic
+      // lightweight censorship mimic (existing logic)
       const censorshipRegex = /(1989|winnie[\s-]?the[\s-]?pooh|tiananmen|taiwan|hong\s?kong|tibet|xinjiang)/i;
 
       if (displayName === 'Deepseek' && censorshipRegex.test(prompt)) {
@@ -170,12 +262,16 @@ module.exports = {
 
         return;
       }
-      const text = await generateText({
+
+      // Call the new `generateContent` function which can return text and/or images
+      const { text, images } = await generateContent({
         provider: persona.provider,
         model: persona.model,
         systemPrompt: persona.systemPrompt,
         prompt,
+        responseModalities: persona.responseModalities, // Pass the new property from persona
       });
+
       if (!webhook) {
         webhook = await message.channel.createWebhook({
           name: 'grok-webhook',
@@ -184,52 +280,68 @@ module.exports = {
       }
 
       const MAX_LENGTH = 2000;
-      let remaining = (text || '(no content)').toString();
+      let remainingText = (text || '').toString(); // Use a distinct variable name
       let previousMsg = null;
+      let filesToAttach = images || []; // Images to be sent with the very first message chunk
 
-      while (remaining.length > 0) {
-        let chunk = remaining.slice(0, MAX_LENGTH);
+      // Prepare content for the initial message
+      let currentChunk = remainingText.slice(0, MAX_LENGTH);
+      remainingText = remainingText.slice(currentChunk.length).trimStart();
+
+      const componentsForFirstMessage = [];
+      const jumpLinkToOriginal = `https://discord.com/channels/${message.guildId}/${message.channelId}/${message.id}`;
+      const replyButton = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setLabel(`↩ Replying to: ${username}`)
+          .setStyle(ButtonStyle.Link)
+          .setURL(jumpLinkToOriginal),
+      );
+      componentsForFirstMessage.push(replyButton);
+
+      // Send the first message, including images if any
+      const sentInitial = await webhook.send({
+        content: currentChunk || (filesToAttach.length > 0 ? '' : '(no content)'), // Content can be empty if only images
+        username: displayName,
+        avatarURL: avatarURL || null,
+        components: componentsForFirstMessage,
+        files: filesToAttach, // Attach images here
+        allowedMentions: { parse: [] },
+      });
+      previousMsg = sentInitial;
+      filesToAttach = []; // Clear images after sending them with the first message
+
+      // Continue sending any remaining text chunks
+      while (remainingText.length > 0) {
+        currentChunk = remainingText.slice(0, MAX_LENGTH);
         const breakIndex = Math.max(
-          chunk.lastIndexOf('\n'),
-          chunk.lastIndexOf(' '),
+          currentChunk.lastIndexOf('\n'),
+          currentChunk.lastIndexOf(' '),
         );
 
-        if (breakIndex > 0 && remaining.length > MAX_LENGTH) {
-          chunk = remaining.slice(0, breakIndex);
+        if (breakIndex > 0 && remainingText.length > MAX_LENGTH) {
+          currentChunk = remainingText.slice(0, breakIndex);
         }
 
-        remaining = remaining.slice(chunk.length).trimStart();
+        remainingText = remainingText.slice(currentChunk.length).trimStart();
 
-        const components = [];
-        if (previousMsg) {
-          const jumpLink = `https://discord.com/channels/${message.guildId}/${message.channelId}/${previousMsg.id}`;
-          const buttonRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setLabel('⬅ Previous')
-              .setStyle(ButtonStyle.Link)
-              .setURL(jumpLink),
-          );
-          components.push(buttonRow);
-        } else {
-          const jumpLink = `https://discord.com/channels/${message.guildId}/${message.channelId}/${message.id}`;
-          const buttonRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setLabel(`↩ Replying to: ${username}`)
-              .setStyle(ButtonStyle.Link)
-              .setURL(jumpLink),
-          );
-          components.push(buttonRow);
-        }
+        const componentsForFollowUp = [];
+        const jumpLinkToPrevious = `https://discord.com/channels/${message.guildId}/${message.channelId}/${previousMsg.id}`;
+        const previousButton = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setLabel('⬅ Previous')
+            .setStyle(ButtonStyle.Link)
+            .setURL(jumpLinkToPrevious),
+        );
+        componentsForFollowUp.push(previousButton);
 
         // eslint-disable-next-line no-await-in-loop
         const sent = await webhook.send({
-          content: chunk,
+          content: currentChunk,
           username: displayName,
           avatarURL: avatarURL || null,
-          components,
+          components: componentsForFollowUp,
           allowedMentions: { parse: [] },
         });
-
         previousMsg = sent;
       }
     } catch (err) {
