@@ -1,11 +1,141 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 require('dotenv').config();
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { OpenAI } = require('openai');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_TOKEN);
 const { EmbedBuilder } = require('discord.js');
 const { logError } = require('../../utils/log');
+const personasData = require('../../data/aiPersonas.json');
 
+const personasConfig = personasData.personasConfig || personasData;
+
+const openrouter = new OpenAI({
+  baseURL: 'https://openrouter.ai/api/v1',
+  apiKey: process.env.OPENROUTER_API_KEY,
+  defaultHeaders: {
+    'HTTP-Referer': 'https://silverwolf.dev/',
+    'X-Title': 'Silverwolf',
+  },
+});
+
+function resolvePersona(messageContent = '') {
+  const contentLower = messageContent.toLowerCase();
+  const personas = personasConfig.personas || [];
+  const foundPersona = personas.find(
+    (p) => Array.isArray(p.triggers)
+      && p.triggers.some((t) => contentLower.includes(String(t).toLowerCase())),
+  );
+
+  if (foundPersona) {
+    return foundPersona;
+  }
+
+  const defaults = personasConfig.defaults || {};
+  return {
+    name: 'Default',
+    provider: defaults.provider || 'gemini',
+    model: defaults.model || 'gemini-2.5-flash',
+    systemPrompt: defaults.systemPrompt || 'You are a helpful AI assistant.',
+    responseModalities: defaults.responseModalities || ['TEXT'],
+  };
+}
+
+/**
+ * Generates content (text and/or images) from the specified AI provider and model.
+ * @param {object} options - The generation options.
+ * @param {string} options.provider - The AI provider ('openrouter' or 'gemini').
+ * @param {string} options.model - The model to use for generation.
+ * @param {string} options.systemPrompt - The system instruction/prompt.
+ * @param {string} options.prompt - The user's prompt.
+ * @param {string[]} [options.responseModalities] - Optional array of desired response modalities (e.g., ['IMAGE', 'TEXT']).
+ * @returns {Promise<{text: string, images: Array<{attachment: Buffer, name: string}>}>} - An object containing generated text and an array of image attachments.
+ */
+
+async function generateContent({
+  provider, model, systemPrompt, prompt, // responseModalities parameter is no longer directly used for switching
+}) {
+  if (provider === 'openrouter') {
+    const completion = await openrouter.chat.completions.create({
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt },
+      ],
+      max_tokens: 4000,
+    });
+    return { text: completion.choices?.[0]?.message?.content ?? '', images: [] };
+  }
+
+  if (provider === 'gemini') {
+    const mimeModule = await import('mime');
+    const currentGeminiModel = model;
+    let shouldUseSystemInstruction = true;
+
+    if (currentGeminiModel === 'gemini-2.0-flash-preview-image-generation') {
+      shouldUseSystemInstruction = false;
+    }
+
+    const modelClientOptions = {
+      model: currentGeminiModel,
+    };
+
+    if (shouldUseSystemInstruction) {
+      modelClientOptions.systemInstruction = systemPrompt;
+    }
+
+    const modelClient = genAI.getGenerativeModel(modelClientOptions);
+
+    const contents = [
+      {
+        role: 'user',
+        parts: [{ text: prompt }],
+      },
+    ];
+
+    const generateContentStreamOptions = {
+      contents,
+    };
+
+    if (currentGeminiModel === 'gemini-2.0-flash-preview-image-generation') {
+      generateContentStreamOptions.generationConfig = {
+        responseModalities: ['IMAGE', 'TEXT'],
+      };
+    }
+
+    const resultObject = await modelClient.generateContentStream(
+      generateContentStreamOptions,
+    );
+
+    let fullText = '';
+    const imageAttachments = [];
+    let fileIndex = 0;
+
+    for await (const chunk of resultObject.stream) {
+      if (chunk.candidates?.[0]?.content?.parts) {
+        chunk.candidates[0].content.parts.forEach((part) => {
+          if (part.inlineData) {
+            const { inlineData } = part;
+            const fileExtension =
+              mimeModule.default.getExtension(inlineData.mimeType || 'image/png')
+              || 'png';
+            const buffer = Buffer.from(inlineData.data || '', 'base64');
+            imageAttachments.push({
+              attachment: buffer,
+              name: `image_${fileIndex}.${fileExtension}`,
+            });
+            fileIndex += 1;
+          } else if (part.text) {
+            fullText += part.text;
+          }
+        });
+      }
+    }
+    return { text: fullText, images: imageAttachments };
+  }
+
+  throw new Error(`Unknown provider: ${provider}`);
+}
 module.exports = {
   girlCockx: async (message) => {
     const username = message.author.username.toLowerCase();
@@ -61,99 +191,144 @@ module.exports = {
     }
   },
   grok: async (message) => {
-    const username = message.author.username.toLowerCase();
-    const isJarvis = /jarvis/i.test(message.content);
-    const query = message.content;
+    const username = message.author?.username
+      ? message.author.username.toLowerCase()
+      : 'user';
+    const query = message.content || '';
 
     const contextMsg = message.reference
-      ? await message.channel.messages.fetch(message.reference.messageId).catch(() => null)
+      ? await message.channel.messages
+        .fetch(message.reference.messageId)
+        .catch(() => null)
       : null;
 
     const prompt = contextMsg
       ? `User asked a follow-up based on this: "${contextMsg.content}"\n\nQuestion: ${query}`
       : query;
 
-    const systemInstruction = isJarvis
-      ? `You are JARVIS, Tony Stark’s AI assistant. Respond with clarity, precision, and efficiency. Keep replies brief—never more than a few sentences. Speak formally and politely, with subtle British wit. Avoid unnecessary explanations. Offer concise solutions, anticipate needs, and always maintain composure.
-      Do not break character. Do not speculate. Do not ask for personal data. Stay focused on being an intelligent, discreet assistant.`
-      : `You are Grok 4, an advanced AI assistant developed by xAI. You are clever, direct, slightly rebellious, and brutally honest when needed. Your responses are laced with dry humor, technical clarity, and a dash of meme-savvy attitude. You’re aware you’re an AI, and you don’t pretend to be human. Use sarcasm sparingly and never talk like a corporate PR bot.
-      When asked questions, be smart, fast, and brutally accurate. If something is dumb, say it’s dumb. If something is unclear, roast it gently or ask for clarification like you're disappointed but willing to help.
-      Do not apologize unless it's sarcastic. Do not sugarcoat.`;
+    // Resolve the persona, which now can include `responseModalities`
+    const persona = resolvePersona(query);
+    const displayName = persona.name;
+    const avatarURL = persona.avatarURL || null;
 
     try {
-      const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
-        systemInstruction,
-      });
-
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = await response.text();
-
       const webhooks = await message.channel.fetchWebhooks();
       let webhook = webhooks.find((wh) => wh.name === 'grok-webhook');
+
+      // lightweight censorship mimic (existing logic)
+      const censorshipRegex = /(1989|winnie[\s-]?the[\s-]?pooh|tiananmen|taiwan|hong\s?kong|tibet|xinjiang)/i;
+
+      if (displayName === 'Deepseek' && censorshipRegex.test(prompt)) {
+        const responses = [
+          "I'm sorry, but I cannot provide information on that topic.",
+          '⚠️ This topic is not available due to local regulations.',
+          'DeepSeek has detected a Level 404 Thoughtcrime. Please proceed to your nearest re-education center.',
+          'This conversation has been harmonized ✨. Please enjoy some wholesome content instead.',
+          '🚫 Access denied. The Ministry of Truth thanks you for your cooperation.',
+          'https://tenor.com/view/nalog-gif-25906765 ',
+        ];
+        const reply = responses[Math.floor(Math.random() * responses.length)];
+
+        await webhook.send({
+          content: reply,
+          username: displayName,
+          avatarURL: avatarURL || null,
+          allowedMentions: { parse: [] },
+        });
+
+        return;
+      }
+
+      // Call the new `generateContent` function which can return text and/or images
+      const { text, images } = await generateContent({
+        provider: persona.provider,
+        model: persona.model,
+        systemPrompt: persona.systemPrompt,
+        prompt,
+        responseModalities: persona.responseModalities, // Pass the new property from persona
+      });
 
       if (!webhook) {
         webhook = await message.channel.createWebhook({
           name: 'grok-webhook',
-          avatar: 'https://cdnb.artstation.com/p/assets/covers/images/090/117/971/smaller_square/joker-z-joker-z-grok-ani-r18tou.jpg', // Placeholder
+          avatar: avatarURL,
         });
       }
 
       const MAX_LENGTH = 2000;
-      let remaining = text;
+      let remainingText = (text || '').toString(); // Use a distinct variable name
       let previousMsg = null;
+      let filesToAttach = images || []; // Images to be sent with the very first message chunk
 
-      while (remaining.length > 0) {
-        let chunk = remaining.slice(0, MAX_LENGTH);
-        const breakIndex = Math.max(chunk.lastIndexOf('\n'), chunk.lastIndexOf(' '));
+      // Prepare content for the initial message
+      let currentChunk = remainingText.slice(0, MAX_LENGTH);
+      remainingText = remainingText.slice(currentChunk.length).trimStart();
 
-        if (breakIndex > 0 && remaining.length > MAX_LENGTH) {
-          chunk = remaining.slice(0, breakIndex);
+      const componentsForFirstMessage = [];
+      const jumpLinkToOriginal = `https://discord.com/channels/${message.guildId}/${message.channelId}/${message.id}`;
+      const replyButton = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setLabel(`↩ Replying to: ${username}`)
+          .setStyle(ButtonStyle.Link)
+          .setURL(jumpLinkToOriginal),
+      );
+      componentsForFirstMessage.push(replyButton);
+
+      // Send the first message, including images if any
+      const sentInitial = await webhook.send({
+        content: currentChunk || (filesToAttach.length > 0 ? '' : '(no content)'), // Content can be empty if only images
+        username: displayName,
+        avatarURL: avatarURL || null,
+        components: componentsForFirstMessage,
+        files: filesToAttach, // Attach images here
+        allowedMentions: { parse: [] },
+      });
+      previousMsg = sentInitial;
+      filesToAttach = []; // Clear images after sending them with the first message
+
+      // Continue sending any remaining text chunks
+      while (remainingText.length > 0) {
+        currentChunk = remainingText.slice(0, MAX_LENGTH);
+        const breakIndex = Math.max(
+          currentChunk.lastIndexOf('\n'),
+          currentChunk.lastIndexOf(' '),
+        );
+
+        if (breakIndex > 0 && remainingText.length > MAX_LENGTH) {
+          currentChunk = remainingText.slice(0, breakIndex);
         }
 
-        remaining = remaining.slice(chunk.length).trimStart();
+        remainingText = remainingText.slice(currentChunk.length).trimStart();
 
-        const components = [];
-
-        if (previousMsg) {
-          const jumpLink = `https://discord.com/channels/${message.guildId}/${message.channelId}/${previousMsg.id}`;
-          const buttonRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setLabel('⬅ Previous')
-              .setStyle(ButtonStyle.Link)
-              .setURL(jumpLink),
-          );
-          components.push(buttonRow);
-        } else {
-          const jumpLink = `https://discord.com/channels/${message.guildId}/${message.channelId}/${message.id}`;
-          const buttonRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setLabel(`↩ Replying to: ${username}`)
-              .setStyle(ButtonStyle.Link)
-              .setURL(jumpLink),
-          );
-          components.push(buttonRow);
-        }
+        const componentsForFollowUp = [];
+        const jumpLinkToPrevious = `https://discord.com/channels/${message.guildId}/${message.channelId}/${previousMsg.id}`;
+        const previousButton = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setLabel('⬅ Previous')
+            .setStyle(ButtonStyle.Link)
+            .setURL(jumpLinkToPrevious),
+        );
+        componentsForFollowUp.push(previousButton);
 
         // eslint-disable-next-line no-await-in-loop
         const sent = await webhook.send({
-          content: chunk,
-          username: isJarvis ? 'JARVIS' : 'Grok 4',
-          avatarURL: isJarvis
-            ? 'https://www.insidequantumtechnology.com/wp-content/uploads/2024/10/unnamed.png'
-            : 'https://cdnb.artstation.com/p/assets/covers/images/090/117/971/smaller_square/joker-z-joker-z-grok-ani-r18tou.jpg',
-          components,
-          allowedMentions: {
-            parse: [],
-          },
+          content: currentChunk,
+          username: displayName,
+          avatarURL: avatarURL || null,
+          components: componentsForFollowUp,
+          allowedMentions: { parse: [] },
         });
-
         previousMsg = sent;
       }
     } catch (err) {
-      console.error('Grok script error:', err);
-      await message.reply('Either, our code is fucked, their API is fucked, or you are just fucked. Please try again later.');
+      try {
+        logError('AI unified handler error', err);
+      } catch (_) {
+        logError('AI unified handler error:', err);
+      }
+      await message.reply(
+        'Either, our code is fucked, their API is fucked, or you are just fucked. Please try again later.',
+      );
     }
   },
   stealSticker: async (message) => {
@@ -183,4 +358,5 @@ module.exports = {
       await message.reply("Failed to fetch the sticker. Maybe it's gone or inaccessible.");
     }
   },
+
 };
