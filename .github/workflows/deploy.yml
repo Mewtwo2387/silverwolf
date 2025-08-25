@@ -19,5 +19,5 @@ jobs:
           script: |
             cd /root/silverwolf
             git pull origin master
-            npm install
+            npm ci
             pm2 restart 0 
