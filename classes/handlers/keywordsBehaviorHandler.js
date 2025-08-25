@@ -53,7 +53,7 @@ function resolvePersona(messageContent = '') {
  */
 
 async function generateContent({
-  provider, model, systemPrompt, prompt, responseModalities,
+  provider, model, systemPrompt, prompt, // responseModalities parameter is no longer directly used for switching
 }) {
   if (provider === 'openrouter') {
     const completion = await openrouter.chat.completions.create({
@@ -69,40 +69,15 @@ async function generateContent({
 
   if (provider === 'gemini') {
     const mimeModule = await import('mime');
-
-    const imageTriggerKeywords = [
-      'draw',
-      'generate image',
-      'create image',
-      'picture of',
-      'show me a picture of',
-      'image of',
-      'render',
-      'sketch',
-      'design',
-      'illustrate',
-      'make an image of',
-    ];
-
-    // Using test method with RegExp is fine.
-    const imageTriggerRegex = new RegExp(
-      `\\b(?:${imageTriggerKeywords.join('|')})\\b`,
-      'i',
-    );
-
-    const isPersonaImageCapable = responseModalities && responseModalities.includes('IMAGE');
-    const hasImageGenerationTrigger = imageTriggerRegex.test(prompt);
-
-    let actualModel = model;
+    const currentGeminiModel = model;
     let shouldUseSystemInstruction = true;
 
-    if (isPersonaImageCapable && hasImageGenerationTrigger) {
-      actualModel = 'gemini-2.0-flash-preview-image-generation';
+    if (currentGeminiModel === 'gemini-2.0-flash-preview-image-generation') {
       shouldUseSystemInstruction = false;
     }
 
     const modelClientOptions = {
-      model: actualModel,
+      model: currentGeminiModel,
     };
 
     if (shouldUseSystemInstruction) {
@@ -122,7 +97,7 @@ async function generateContent({
       contents,
     };
 
-    if (actualModel === 'gemini-2.0-flash-preview-image-generation') {
+    if (currentGeminiModel === 'gemini-2.0-flash-preview-image-generation') {
       generateContentStreamOptions.generationConfig = {
         responseModalities: ['IMAGE', 'TEXT'],
       };
@@ -141,11 +116,13 @@ async function generateContent({
         chunk.candidates[0].content.parts.forEach((part) => {
           if (part.inlineData) {
             const { inlineData } = part;
-            const fileExtension = mimeModule.default.getExtension(inlineData.mimeType || 'image/png') || 'png';
+            const fileExtension =
+              mimeModule.default.getExtension(inlineData.mimeType || 'image/png')
+              || 'png';
             const buffer = Buffer.from(inlineData.data || '', 'base64');
             imageAttachments.push({
               attachment: buffer,
-              name: `image_${fileIndex}.json`,
+              name: `image_${fileIndex}.${fileExtension}`,
             });
             fileIndex += 1;
           } else if (part.text) {
@@ -159,7 +136,6 @@ async function generateContent({
 
   throw new Error(`Unknown provider: ${provider}`);
 }
-
 module.exports = {
   girlCockx: async (message) => {
     const username = message.author.username.toLowerCase();
