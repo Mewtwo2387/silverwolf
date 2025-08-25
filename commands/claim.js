@@ -32,15 +32,15 @@ class Claim extends Command {
         const responses = [
           {
             title: 'Beki is currently cooking the next batch of dinonuggies please wait',
-            gifUrl: 'https://media1.tenor.com/m/i6sOwD66MAEAAAAC/frieren-frieren-beyond-journey%27s-end.gif',
+            gifUrl: 'https://c.tenor.com/i6sOwD66MAEAAAAC/tenor.gif',
           },
           {
             title: 'Beki is having a little bit of an issue. Please hold',
-            gifUrl: 'https://media1.tenor.com/m/h6XlgMwYBnkAAAAd/frieren-sousou-no-frieren.gif',
+            gifUrl: 'https://c.tenor.com/h6XlgMwYBnkAAAAd/tenor.gif',
           },
           {
             title: 'Ah shit i forgottt, hang on a momentt-',
-            gifUrl: 'https://media1.tenor.com/m/TYW-RNzp6hEAAAAC/sousou-no-frieren-frieren-beyond-journey.gif',
+            gifUrl: 'https://c.tenor.com/TYW-RNzp6hEAAAAC/tenor.gif',
           },
           {
             title: 'uhhh what is beki doing ?',
@@ -48,7 +48,15 @@ class Claim extends Command {
           },
           {
             title: 'Beki fucking dies of exhaustion',
-            gifUrl: 'https://media1.tenor.com/m/kU_EwdsrkLkAAAAC/frieren-dies-cold.gif',
+            gifUrl: 'https://c.tenor.com/kU_EwdsrkLkAAAAC/tenor.gif',
+          },
+          {
+            title: 'Beki Spins',
+            gifUrl: 'https://media.tenor.com/WKPXrrxUvEgAAAAi/frieren-kuru-kuru.gif',
+          },
+          {
+            title: 'Beki is trying out new hobbies',
+            gifUrl: 'https://c.tenor.com/_33fqJ2mxQUAAAAd/tenor.gif',
           },
         ];
 
