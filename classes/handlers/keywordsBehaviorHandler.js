@@ -209,6 +209,12 @@ module.exports = {
     // Resolve the persona, which now can include `responseModalities`
     const persona = resolvePersona(query);
     const displayName = persona.name;
+
+    if (displayName === 'Imgen' && message.channel.id != '1307601349906665492') {
+      await message.reply('Imgen is only available in the ai slop channel.');
+      return;
+    }
+
     const avatarURL = persona.avatarURL || null;
 
     try {
