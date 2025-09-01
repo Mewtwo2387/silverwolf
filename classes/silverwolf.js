@@ -203,10 +203,13 @@ All wrongs reserved.
         const originalMessage = referencedMessage.content;
         const hasBlackAndWhitePfp = msg.includes('b');
         const hasWhiteBackground = msg.includes('w');
+        const textColor = hasWhiteBackground ? 'black' : 'white';
 
         const background = hasWhiteBackground ? 'white' : 'black';
         const profileColor = hasBlackAndWhitePfp ? 'bw' : 'normal';
         const avatarSource = 'server';
+
+        log('original messsage:', originalMessage);
 
         const result = await quote(
           message.guild,
@@ -214,6 +217,7 @@ All wrongs reserved.
           nickname,
           originalMessage,
           background,
+          textColor,
           profileColor,
           avatarSource,
         );
