@@ -4,6 +4,8 @@ const { log, logError } = require('../../utils/log');
 
 const { resolvePersona, generateContent } = require('../../utils/ai');
 
+const WEBHOOK_NAME = process.env.WEBHOOK_NAME || 'grok-webhook';
+
 module.exports = {
   girlCockx: async (message) => {
     const username = message.author.username.toLowerCase();
@@ -95,7 +97,7 @@ module.exports = {
 
     try {
       const webhooks = await message.channel.fetchWebhooks();
-      let webhook = webhooks.find((wh) => wh.name === 'grok-webhook');
+      let webhook = webhooks.find((wh) => wh.name === WEBHOOK_NAME);
 
       // lightweight censorship mimic (existing logic)
       const censorshipRegex = /(1989|winnie[\s-]?the[\s-]?pooh|tiananmen|taiwan|hong\s?kong|tibet|xinjiang)/i;
@@ -132,7 +134,7 @@ module.exports = {
 
       if (!webhook) {
         webhook = await message.channel.createWebhook({
-          name: 'grok-webhook',
+          name: WEBHOOK_NAME,
           avatar: avatarURL,
         });
       }
