@@ -1,6 +1,6 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { EmbedBuilder } = require('discord.js');
-const { logError } = require('../../utils/log');
+const { log, logError } = require('../../utils/log');
 
 const { resolvePersona, generateContent } = require('../../utils/ai');
 
@@ -69,13 +69,22 @@ module.exports = {
         .catch(() => null)
       : null;
 
-    const prompt = contextMsg
-      ? `User asked a follow-up based on this: "${contextMsg.content}"\n\nQuestion: ${query}`
-      : query;
-
     // Resolve the persona, which now can include `responseModalities`
     const persona = await resolvePersona(query);
     const displayName = persona.name;
+
+    let prompt = '';
+
+    if (contextMsg) {
+      const promptName = (contextMsg.author.username === displayName) ? 'You' : contextMsg.author.username;
+      prompt = `Previous message by ${promptName}: "${contextMsg.content}"
+      
+      User ${username} said: ${query}`;
+    } else {
+      prompt = `User ${username} said: ${query}`;
+    }
+
+    log(`Prompt: ${prompt}`);
 
     if (displayName === 'Imgen' && message.channel.id !== '1307601349906665492') {
       await message.reply('Imgen is only available in the ai slop channel.');
