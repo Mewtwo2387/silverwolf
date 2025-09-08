@@ -2,6 +2,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 require('dotenv').config();
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { OpenAI } = require('openai');
+const fs = require('fs');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_TOKEN);
 const { EmbedBuilder } = require('discord.js');
@@ -215,7 +216,20 @@ module.exports = {
       return;
     }
 
-    const avatarURL = persona.avatarURL || null;
+    const avatarURL = persona.avatarURL || message.client.user.displayAvatarURL();
+
+    let systemPrompt = '';
+    if (persona.systemPromptFile) {
+      const systemPromptFile = await new Promise((resolve, reject) => {
+        fs.readFile(persona.systemPromptFile, 'utf8', (err, data) => {
+          if (err) reject(err);
+          else resolve(data);
+        });
+      });
+      systemPrompt = systemPromptFile;
+    } else {
+      systemPrompt = persona.systemPrompt;
+    }
 
     try {
       const webhooks = await message.channel.fetchWebhooks();
@@ -238,7 +252,7 @@ module.exports = {
         await webhook.send({
           content: reply,
           username: displayName,
-          avatarURL: avatarURL || null,
+          avatarURL,
           allowedMentions: { parse: [] },
         });
 
@@ -249,7 +263,7 @@ module.exports = {
       const { text, images } = await generateContent({
         provider: persona.provider,
         model: persona.model,
-        systemPrompt: persona.systemPrompt,
+        systemPrompt,
         prompt,
         responseModalities: persona.responseModalities, // Pass the new property from persona
       });
@@ -284,7 +298,7 @@ module.exports = {
       const sentInitial = await webhook.send({
         content: currentChunk || (filesToAttach.length > 0 ? '' : '(no content)'), // Content can be empty if only images
         username: displayName,
-        avatarURL: avatarURL || null,
+        avatarURL,
         components: componentsForFirstMessage,
         files: filesToAttach, // Attach images here
         allowedMentions: { parse: [] },
@@ -320,7 +334,7 @@ module.exports = {
         const sent = await webhook.send({
           content: currentChunk,
           username: displayName,
-          avatarURL: avatarURL || null,
+          avatarURL,
           components: componentsForFollowUp,
           allowedMentions: { parse: [] },
         });
