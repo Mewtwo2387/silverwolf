@@ -196,6 +196,10 @@ module.exports = {
       : 'user';
     const query = message.content || '';
 
+    if (message.content.includes('@imgen')) {
+      message.content = message.content.replace(/@imgen/g, '').trim();
+    }
+
     const contextMsg = message.reference
       ? await message.channel.messages
         .fetch(message.reference.messageId)
