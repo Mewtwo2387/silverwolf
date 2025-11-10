@@ -194,10 +194,11 @@ module.exports = {
     const username = message.author?.username
       ? message.author.username.toLowerCase()
       : 'user';
-    const query = message.content || '';
+    let query = message.content || '';
 
     if (message.content.includes('@imgen')) {
       message.content = message.content.replace(/@imgen/g, '').trim();
+      query = message.content;
     }
 
     const contextMsg = message.reference
