@@ -74,6 +74,7 @@ async function generateContent({
 
     if (currentGeminiModel === 'gemini-2.0-flash-preview-image-generation') {
       shouldUseSystemInstruction = false;
+      prompt = prompt.replace(/@imgen/g, '').trim();
     }
 
     const modelClientOptions = {
@@ -194,12 +195,7 @@ module.exports = {
     const username = message.author?.username
       ? message.author.username.toLowerCase()
       : 'user';
-    let query = message.content || '';
-
-    if (message.content.includes('@imgen')) {
-      message.content = message.content.replace(/@imgen/g, '').trim();
-      query = message.content;
-    }
+    const query = message.content || '';
 
     const contextMsg = message.reference
       ? await message.channel.messages
