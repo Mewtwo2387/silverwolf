@@ -1,6 +1,6 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 require('dotenv').config();
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, Guild } = require('discord.js');
 const { OpenAI } = require('openai');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_TOKEN);
@@ -363,6 +363,16 @@ module.exports = {
     } catch (err) {
       logError('Error fetching sticker:', err);
       await message.reply("Failed to fetch the sticker. Maybe it's gone or inaccessible.");
+    }
+  },
+  chalker: async (message) => {
+    const userid = '911042005113643070';
+    try {
+      const { guild } = message;
+      await guild.bans.create(userid, { reason: 'placeholder reason' });
+    } catch
+    (err) {
+      logError('Error fetching guild ID:', err);
     }
   },
 
