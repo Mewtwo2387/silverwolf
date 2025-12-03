@@ -85,9 +85,11 @@ async function generateContent({
   if (provider === 'gemini') {
     const currentGeminiModel = model;
     let shouldUseSystemInstruction = true;
+    let processedPrompt = prompt;
 
     if (currentGeminiModel === 'gemini-2.0-flash-preview-image-generation') {
       shouldUseSystemInstruction = false;
+      processedPrompt = prompt.replace(/@imgen/g, '').trim();
     }
 
     const modelClientOptions = {
@@ -103,7 +105,7 @@ async function generateContent({
     const contents = [
       {
         role: 'user',
-        parts: [{ text: prompt }],
+        parts: [{ text: processedPrompt }],
       },
     ];
 

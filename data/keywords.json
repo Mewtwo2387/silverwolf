@@ -59,5 +59,9 @@
   {
     "triggers": ["golem"],
     "reply": "You hit 8 Elixir. And drop it. Golem. Not a card... a sentence. It doesn't walk, it approaches, slow like doom. Every step shakes the ground and your opponent's confidence. They throw everything. Mini Pekka. Inferno Tower. They panic, but Golem doesn't stop. He waits. Because the true horror isn't him alive. It's when he dies. That explosion? That's the sound of your hope shattering. From the smoke comes the Golemites. Small, furious, finishing what he started. Your tower? Gone. Your Elixir? Empty. Your will? Broken. Golem wasn't a push. It was a warning. And you didn't listen."
+  },
+  {
+    "triggers": ["chalker", "ch*lker"],
+    "script": "chalker"
   }
 ]
