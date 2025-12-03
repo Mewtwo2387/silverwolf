@@ -13,6 +13,12 @@ async function fetchMessages(channel, limit) {
     }
 
     const fetchedMessages = await channel.messages.fetch(options);
+
+    if (fetchedMessages.size === 0) {
+      log(`No more messages to fetch. Total messages: ${messages.length}`);
+      break;
+    }
+
     messages.push(...fetchedMessages);
     lastId = fetchedMessages.last().id;
 

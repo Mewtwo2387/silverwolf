@@ -27,13 +27,26 @@ class Summary extends Command {
     log(`Fetched ${messages.length} messages`);
     const content = messages.map((message) => `Message by ${message[1].author.username}: ${message[1].content}`).join('\n');
     const persona = await getPersonaByName('Summarizer');
-    const summary = await generateContent({
-      provider: persona.provider,
-      model: persona.model,
-      systemPrompt: persona.systemPrompt,
-      prompt: content,
-    });
-    log(`Generated summary: ${summary.text}`);
+    if (!persona) {
+      await interaction.editReply('Summarizer persona not configured.');
+      return;
+    }
+
+    let summary;
+    try {
+      summary = await generateContent({
+        provider: persona.provider,
+        model: persona.model,
+        systemPrompt: persona.systemPrompt,
+        prompt: content,
+      });
+      log(`Generated summary: ${summary.text}`);
+    } catch (error) {
+      log(`Failed to generate summary: ${error.message}`);
+      await interaction.editReply('Failed to generate summary. Please try again later.');
+      return;
+    }
+
     await interaction.editReply(
       {
         embeds: [
