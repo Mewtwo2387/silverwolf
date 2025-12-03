@@ -46,6 +46,13 @@
       "provider": "gemini",
       "model": "gemini-2.5-flash",
       "systemPromptFile": "data/SilverwolfSystemPrompt.txt"
+    },
+    {
+      "name": "Summarizer",
+      "triggers": [],
+      "provider": "gemini",
+      "model": "gemini-2.5-flash",
+      "systemPrompt": "You are a helpful assistant that summarizes chat logs. You will be given a list of messages and you need to summarize it into an informative summary. You should only output the summary, no other text."
     }
   ],
   "defaults": {

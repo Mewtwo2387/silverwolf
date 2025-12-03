@@ -57,6 +57,11 @@ async function resolvePersona(messageContent = '') {
   };
 }
 
+async function getPersonaByName(name) {
+  const personas = personasConfig.personas || [];
+  return personas.find((p) => p.name.toLowerCase() === name.toLowerCase());
+}
+
 /**
  * Generates content (text and/or images) from the specified AI provider and model.
  * @param {object} options - The generation options.
@@ -174,4 +179,5 @@ module.exports = {
   generateContent,
   getGeminiAI,
   getOpenRouterClient,
+  getPersonaByName,
 };
