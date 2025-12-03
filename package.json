@@ -25,7 +25,7 @@
     "gifencoder": "^2.0.1",
     "gifuct-js": "^2.1.2",
     "jsdom": "^13.2.0",
-    "mime": "^4.0.7",
+    "mime": "^2.5.2",
     "node_characterai": "^1.2.7",
     "node-cron": "^3.0.3",
     "node-fetch": "^2.7.0",
