@@ -29,7 +29,7 @@ async function fetchMessages(channel, limit) {
       break;
     }
   }
-  return messages;
+  return messages.reverse();
 }
 
 module.exports = {
