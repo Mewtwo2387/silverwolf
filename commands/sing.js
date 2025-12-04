@@ -5,6 +5,7 @@ const { Command } = require('./classes/command');
 const songChoices = Object.keys(songs).map((key) => {
   const name = key
     .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, (c) => c.toUpperCase())
     .trim();
   return {
     name,
@@ -30,8 +31,9 @@ class Sing extends Command {
 
   async run(interaction) {
     if (this.client.singing) {
-      await interaction.editReply({ embeds: [embed] });
-      return;
+      await interaction.editReply({
+        content: 'Lettme finish this one first. I only have one mouth.',
+      }); return;
     }
     this.client.singing = true;
     const song = interaction.options.getString('song');
