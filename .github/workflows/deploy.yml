@@ -18,6 +18,9 @@ jobs:
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
           script: |
             cd /root/silverwolf
-            git pull origin master
+            if ! git pull origin master; then
+              echo "Failed to pull"
+              exit 1
+            fi
             npm ci
             pm2 restart 0 
