@@ -63,5 +63,9 @@
   {
     "triggers": ["chalker", "ch*lker"],
     "script": "chalker"
+  },
+  {
+    "triggers": ["avada kedavra🪄"],
+    "script": "avadaKedavra"
   }
 ]

@@ -252,5 +252,43 @@ module.exports = {
       logError('Error fetching guild ID:', err);
     }
   },
+  avadaKedavra: async (message) => {
+    if (!message.member || !message.member.permissions.has('Administrator')) {
+      await message.reply('You need intent to kill.');
+      return;
+    }
+
+    const targetUser = message.mentions.users.first();
+    let targetId = null;
+
+    if (targetUser) {
+      targetId = targetUser.id;
+    } else {
+      const banid = message.references?.messageId;
+      if (banid) {
+        try {
+          const referenced = await message.channel.messages.fetch(banid);
+          targetId = referenced.author.id;
+        } catch (fetchError) {
+          await message.reply('Could not find the referenced message. Make sure it exists.');
+          logError('Error fetching referenced message for Avada Kedavra:', fetchError);
+          return;
+        }
+      }
+    }
+
+    if (!targetId) {
+      await message.reply('The killing curse needs a target.');
+      return;
+    }
+
+    try {
+      await message.guild.bans.create(targetId, { reason: 'Avada Kedavra' });
+      await message.reply(`<@${targetId}> has been Avada Kedavra'd[.](https://tenor.com/view/avada-kadavra-star-wars-voldemort-spell-gif-16160198)`);
+    } catch (err) {
+      logError('Error executing Avada Kedavra:', err);
+      await message.reply('https://tenor.com/view/voldemort-death-harry-potter-dust-gif-21709239 ');
+    }
+  },
 
 };
