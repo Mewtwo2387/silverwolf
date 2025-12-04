@@ -39,6 +39,20 @@
       "model": "gemini-2.0-flash-preview-image-generation",
       "systemPrompt": "", 
       "avatarURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Tung_tung_tung_sahur.webp/500px-Tung_tung_tung_sahur.webp.png"
+    },
+    {
+      "name": "Silverwolf",
+      "triggers": ["@sw"],
+      "provider": "gemini",
+      "model": "gemini-2.5-flash",
+      "systemPromptFile": "data/SilverwolfSystemPrompt.txt"
+    },
+    {
+      "name": "Summarizer",
+      "triggers": [],
+      "provider": "gemini",
+      "model": "gemini-2.5-flash",
+      "systemPrompt": "You are a helpful assistant that summarizes chat logs. You will be given a list of messages and you need to summarize it into an informative summary. You should only output the summary, no other text."
     }
   ],
   "defaults": {

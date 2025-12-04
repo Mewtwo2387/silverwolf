@@ -1,11 +1,9 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { EmbedBuilder } = require('discord.js');
 const { Command } = require('./classes/command');
-require('dotenv').config();
 const { log, logError } = require('../utils/log');
 const { unformatFile } = require('../utils/formatter');
+const { getGeminiAI } = require('../utils/ai');
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_TOKEN);
 const systemInstruction = unformatFile('./data/SilverwolfSystemPrompt.txt');
 class AskSilverwolfAI extends Command {
   constructor(client) {
@@ -33,6 +31,7 @@ class AskSilverwolfAI extends Command {
     prompt = `${username}: ${prompt}`;
 
     try {
+      const genAI = getGeminiAI();
       const model = genAI.getGenerativeModel({
         model: 'gemini-2.5-flash',
         systemInstruction,
