@@ -67,5 +67,9 @@
   {
     "triggers": ["avada kedavra🪄"],
     "script": "avadaKedavra"
+  },
+  {
+    "triggers": ["charlie kirk"],
+    "reply": "https://tenor.com/view/we-are-charlie-kirk-we-carry-the-flame-kirkification-song-gif-2727471398083163580"
   }
 ]
