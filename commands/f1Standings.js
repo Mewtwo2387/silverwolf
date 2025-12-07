@@ -6,8 +6,8 @@ const { Command } = require('./classes/command');
 
 function extractStandings(html, type) {
   const dom = new JSDOM(html);
-  const rows = dom.window.document
-    .querySelector('.f1-table-with-data tbody')
+  const rows = dom.window.document.getElementById('results-table')
+    .querySelector('tbody')
     ?.querySelectorAll('tr') || [];
   return Array.from(rows)
     .map((row) => {
