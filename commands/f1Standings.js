@@ -17,7 +17,17 @@ function extractStandings(html, type) {
         let driverName = '';
 
         if (driverLinkEl) {
-          const nameContainerSpan = driverLinkEl.querySelectorAll('span')[1];
+          const nameContainerSpanCandidates = [
+            driverLinkEl.querySelectorAll('span')[1],
+            driverLinkEl.querySelectorAll('span')[0],
+          ];
+
+          let nameContainerSpan = null;
+          nameContainerSpanCandidates.forEach((nameContainerSpanCandidate) => {
+            if (nameContainerSpanCandidate && nameContainerSpanCandidate.querySelector('.max-lg\\:hidden')) {
+              nameContainerSpan = nameContainerSpanCandidate;
+            }
+          });
 
           if (nameContainerSpan) {
             const firstNameEl = nameContainerSpan.querySelector(
