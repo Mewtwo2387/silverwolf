@@ -22,6 +22,8 @@ const handlers = {
   AprilFoolsHandler,
 };
 
+const SERIOUS_CHANNELS = ['1262239871758766221'];
+
 class Silverwolf extends Client {
   constructor(token, options) {
     super(options);
@@ -166,7 +168,7 @@ All wrongs reserved.
 
     log(`> Message received from ${message.author.username} (${message.author.id}) in ${message.channel.name} (${message.channel.id}) in ${message.guild.name} (${message.guild.id}): ${message.content}`);
 
-    if (Math.random() < 0.01 && message.channel.name !== 'super-serious-secret-vent-rant-chat') {
+    if (Math.random() < 0.01 && !SERIOUS_CHANNELS.includes(message.channel.id)) {
       log('Summoning a pokemon...');
       const handler = await this.getHandler(); // Fetch the handler based on the current season
       await handler.summonPokemon(message); // Use the season-specific summonPokemon method
@@ -201,10 +203,13 @@ All wrongs reserved.
         const originalMessage = referencedMessage.content;
         const hasBlackAndWhitePfp = msg.includes('b');
         const hasWhiteBackground = msg.includes('w');
+        const textColor = hasWhiteBackground ? 'black' : 'white';
 
         const background = hasWhiteBackground ? 'white' : 'black';
         const profileColor = hasBlackAndWhitePfp ? 'bw' : 'normal';
         const avatarSource = 'server';
+
+        log('original messsage:', originalMessage);
 
         const result = await quote(
           message.guild,
@@ -212,6 +217,7 @@ All wrongs reserved.
           nickname,
           originalMessage,
           background,
+          textColor,
           profileColor,
           avatarSource,
         );
@@ -221,7 +227,7 @@ All wrongs reserved.
       return;
     }
 
-    const matchedEntry = this.keywords.find((entry) => entry.triggers.some((trigger) => {
+    const matchedEntries = this.keywords.filter((entry) => entry.triggers.some((trigger) => {
       if (trigger.startsWith('/') && trigger.endsWith('/g')) {
         const regex = new RegExp(trigger.slice(1, -2), 'g');
         return regex.test(msg);
@@ -229,23 +235,31 @@ All wrongs reserved.
       return msg.includes(trigger);
     }));
 
-    if (matchedEntry) {
-      if (matchedEntry.reply) {
-        await message.reply(matchedEntry.reply);
-      }
-
-      if (matchedEntry.script) {
-        const handler = scriptHandlers[matchedEntry.script];
-        if (typeof handler === 'function') {
-          try {
-            await handler(message);
-          } catch (err) {
-            logError(`Error running script ${matchedEntry.script}:`, err);
-          }
-        } else {
-          logError(`Script "${matchedEntry.script}" not found.`);
+    if (matchedEntries.length > 0) {
+      const promises = matchedEntries.map(async (matchedEntry) => {
+        if (matchedEntry.excludeSerious && SERIOUS_CHANNELS.includes(message.channel.id)) {
+          return;
         }
-      }
+
+        if (matchedEntry.reply) {
+          await message.reply(matchedEntry.reply);
+        }
+
+        if (matchedEntry.script) {
+          const handler = scriptHandlers[matchedEntry.script];
+          if (typeof handler === 'function') {
+            try {
+              await handler(message);
+            } catch (err) {
+              logError(`Error running script ${matchedEntry.script}:`, err);
+            }
+          } else {
+            logError(`Script "${matchedEntry.script}" not found.`);
+          }
+        }
+      });
+
+      await Promise.all(promises);
     }
   }
 

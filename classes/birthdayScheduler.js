@@ -10,7 +10,7 @@ class BirthdayScheduler {
 
   // Start the scheduler to run every hour
   start() {
-    cron.schedule('0 * * * *', async () => { // This runs at the start of every hour
+    cron.schedule('0 * * * *', async () => { // * * * * * every minute for testing, change to '0 * * * *' for every hour
       const now = new Date();
       const utcMonth = (now.getUTCMonth() + 1).toString().padStart(2, '0');
       const utcDay = now.getUTCDate().toString().padStart(2, '0');
@@ -32,13 +32,20 @@ class BirthdayScheduler {
             }
 
             birthdays.forEach(async (user) => {
+              const discordUser = await this.client.users.fetch(user.id).catch(() => null);
+              const username = discordUser ? discordUser.username : `Unknown User (${user.id})`;
+
               const birthdayEmbed = new EmbedBuilder()
                 .setTitle('🎉 Birthday Alert! 🎉')
-                .setDescription(`Today is <@${user.id}>'s birthday! Let's all wish them a great day! 🥳`)
+                .setDescription(`Today is ${username}'s birthday! Let's all wish them a great day! 🥳`)
+                .setImage(discordUser.displayAvatarURL({ dynamic: true, format: 'png', size: 4096 }))
                 .setColor(0x00FF00);
 
               log(`Sending birthday message for ${user.id} to channel ${channelId}`);
-              await channel.send({ embeds: [birthdayEmbed] });
+              await channel.send({
+                content: `<@${user.id}>`,
+                embeds: [birthdayEmbed],
+              });
             });
           });
         } else {
