@@ -1,6 +1,6 @@
 import fs from 'fs';
 
-import { Card } from './card';
+import { Character } from './character';
 import { TitleDesc } from './titleDesc';
 import { Rarity } from './rarity';
 import { Background, BackgroundType, TopBarType } from './background';
@@ -11,7 +11,7 @@ import { Effect } from './effect';
 import { EffectType } from './effectType';
 import { RangeType } from './rangeType';
 
-export const KAITLIN = new Card(
+export const KAITLIN = new Character(
   'Kaitlin',
   new TitleDesc(
     'Herrscher of Egg',
@@ -37,7 +37,7 @@ export const KAITLIN = new Card(
   ],
 );
 
-export const VENFEI = new Card(
+export const VENFEI = new Character(
   'Venfei',
   new TitleDesc(
     'The TGP Queen',
@@ -57,7 +57,7 @@ export const VENFEI = new Card(
   ],
 );
 
-const CARDS = [KAITLIN, VENFEI];
+const CHARACTERS = [KAITLIN, VENFEI];
 
 async function testGenerateCard() {
   const canvas = await KAITLIN.generateCard();
@@ -67,4 +67,4 @@ async function testGenerateCard() {
 
 setTimeout(testGenerateCard, 1000);
 
-module.exports = { CARDS };
+module.exports = { CHARACTERS };

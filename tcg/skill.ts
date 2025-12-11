@@ -2,7 +2,7 @@ import Canvas from 'canvas';
 import { wrapText, calculateWrappedTextHeight, drawWrappedText } from './utils/textWrapper';
 import { RangeEffect } from './rangeEffect';
 import { RangeType } from './rangeType';
-import { CardInBattle } from './cardInBattle';
+import { CharacterInBattle } from './characterInBattle';
 
 export class Skill {
   name: string;
@@ -79,17 +79,17 @@ export class Skill {
     return currentY;
   }
 
-  useSkill(card: CardInBattle, target: CardInBattle) {
+  useSkill(character: CharacterInBattle, target: CharacterInBattle) {
     this.effects.forEach((effect) => {
       switch (effect.range) {
         case RangeType.Self:
-          card.addEffect(effect.effect);
+          character.addEffect(effect.effect);
           break;
         case RangeType.SingleAlly:
           target.addEffect(effect.effect);
           break;
         case RangeType.AllAllies:
-          card.battle.ally(card.side).forEach((ally) => {
+          character.battle.ally(character.side).forEach((ally) => {
             ally.addEffect(effect.effect);
           });
           break;
@@ -97,12 +97,12 @@ export class Skill {
           target.addEffect(effect.effect);
           break;
         case RangeType.AllOpponents:
-          card.battle.opponent(card.side).forEach((opponent) => {
+          character.battle.opponent(character.side).forEach((opponent) => {
             opponent.addEffect(effect.effect);
           });
           break;
         case RangeType.AllCards:
-          card.battle.allCards().forEach((card) => {
+          character.battle.allCards().forEach((card) => {
             card.addEffect(effect.effect);
           });
           break;
@@ -113,16 +113,16 @@ export class Skill {
 
     switch (this.damageRange) {
       case RangeType.SingleOpponent:
-        target.takeDamage(card.dealDamage(this.damage));
+        target.takeDamage(character.dealDamage(this.damage));
         break;
       case RangeType.AllOpponents:
-        card.battle.opponent(card.side).forEach((opponent) => {
-          opponent.takeDamage(card.dealDamage(this.damage));
+        character.battle.opponent(character.side).forEach((opponent) => {
+          opponent.takeDamage(character.dealDamage(this.damage));
         });
         break;
       case RangeType.AllCards:
-        card.battle.allCards().forEach((opponent) => {
-          opponent.takeDamage(card.dealDamage(this.damage));
+        character.battle.allCards().forEach((opponent) => {
+          opponent.takeDamage(character.dealDamage(this.damage));
         });
         break;
       default:

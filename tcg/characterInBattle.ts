@@ -1,10 +1,10 @@
 import { EffectType } from './effectType';
-import { Card } from './card';
+import { Character } from './character';
 import { Battle } from './battle';
 import { Effect } from './effect';
 
-export class CardInBattle {
-  card: Card;
+export class CharacterInBattle {
+  character: Character;
   currentHp: number;
   effects: Effect[];
   stats: {
@@ -18,9 +18,9 @@ export class CardInBattle {
   battle: Battle;
   side: string;
 
-  constructor(card: Card, battle: Battle, side: string) {
-    this.card = card;
-    this.currentHp = card.hp;
+  constructor(character: Character, battle: Battle, side: string) {
+    this.character = character;
+    this.currentHp = character.hp;
     this.effects = [];
     this.stats = {
       damageDealt: 0,
@@ -49,7 +49,7 @@ export class CardInBattle {
 
   heal(amount: number) {
     this.currentHp += amount;
-    if (this.currentHp > this.card.hp) this.currentHp = this.card.hp;
+    if (this.currentHp > this.character.hp) this.currentHp = this.character.hp;
   }
 
   dealDamage(amount: number) {
@@ -77,8 +77,8 @@ export class CardInBattle {
     this.stats.turnsActive += 1;
   }
 
-  useSkill(skillIndex: number, target: CardInBattle) {
-    const skill = this.card.skills[skillIndex];
+  useSkill(skillIndex: number, target: CharacterInBattle) {
+    const skill = this.character.skills[skillIndex];
     skill.useSkill(this, target);
   }
 }
