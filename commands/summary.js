@@ -2,7 +2,7 @@ const { EmbedBuilder } = require('discord.js');
 const { Command } = require('./classes/command');
 const { generateContent, getPersonaByName } = require('../utils/ai');
 const { log } = require('../utils/log');
-const { fetchMessages } = require('../utils/fetch');
+const { fetchMessagesByCount } = require('../utils/fetch');
 
 class Summary extends Command {
   constructor(client) {
@@ -23,7 +23,7 @@ class Summary extends Command {
       return;
     }
 
-    const messages = await fetchMessages(interaction.channel, count);
+    const messages = await fetchMessagesByCount(interaction.channel, count);
     log(`Fetched ${messages.length} messages`);
     const content = messages.map((message) => `Message by ${message[1].author.username}: ${message[1].content}`).join('\n');
     const persona = await getPersonaByName('Summarizer');
