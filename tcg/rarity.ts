@@ -1,6 +1,11 @@
 import Canvas from 'canvas';
 import { DrawableFixed } from './interfaces/drawable';
 
+/**
+ * The rarity of a card. Literally just an integer.
+ * Does not have effects in battle other than being a visual indicator.
+ * @param rarity - The rarity of the card (1-6 stars)
+ */
 export class Rarity implements DrawableFixed {
   rarity: number;
 

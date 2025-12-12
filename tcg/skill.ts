@@ -5,6 +5,15 @@ import { RangeType } from './rangeType';
 import { CharacterInBattle } from './characterInBattle';
 import { DrawableBlock } from './interfaces/drawable';
 
+/**
+ * A skill of a character
+ * @param name - The name of the skill
+ * @param description - The description of the skill
+ * @param damage - Base outgoing damage of the skill
+ * @param cost - Energy cost of the skill
+ * @param damageRange - The target range of the skill's damage
+ * @param effects - List of effects this skill applies
+ */
 export class Skill implements DrawableBlock {
   name: string;
   description: string;

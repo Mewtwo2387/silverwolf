@@ -3,6 +3,16 @@ import { Character } from './character';
 import { Battle } from './battle';
 import { Effect } from './effect';
 
+/**
+ * A single character and their status in a battle
+ * @param character - The character class, which includes its base stats and skills/abilities
+ * @param battle - The battle
+ * @param side - Ally side or opponent side
+ * @param currentHp - Current HP of the character
+ * @param effects - List of effects active on the character
+ * @param stats - Statistics such as damage dealt
+ * @param isKnockedOut - Whether the character is knocked out
+ */
 export class CharacterInBattle {
   character: Character;
   currentHp: number;

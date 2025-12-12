@@ -1,5 +1,5 @@
 export enum EffectType {
-  IncomingDamage,
-  OutgoingDamage,
-  FormChange,
+  IncomingDamage, // Increases or decreases damage received
+  OutgoingDamage, // Increases or decreases damage dealt
+  FormChange, // Changes the form, such as from Doge to Kaitlin
 }

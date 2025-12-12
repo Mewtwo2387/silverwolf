@@ -11,6 +11,10 @@ import { Effect } from './effect';
 import { EffectType } from './effectType';
 import { RangeType } from './rangeType';
 
+/**
+ * A list of all characters in the game
+ */
+
 export const KAITLIN = new Character(
   'Kaitlin',
   new TitleDesc(

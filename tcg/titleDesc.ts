@@ -2,6 +2,13 @@ import Canvas from 'canvas';
 import { wrapText, calculateWrappedTextHeight, drawWrappedText } from './utils/textWrapper';
 import { DrawableBlock } from './interfaces/drawable';
 
+/**
+ * The title and description of a character.
+ * Does not have effects in battle other than being a visual indicator.
+ * @param title - The title of the character
+ * @param description - The description of the character
+ * @param color - The color of the title and description
+ */
 export class TitleDesc implements DrawableBlock {
   title: string;
   description: string;
