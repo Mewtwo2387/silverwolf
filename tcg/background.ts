@@ -1,4 +1,5 @@
 import Canvas from 'canvas';
+import { DrawableFixed } from './interfaces/drawable';
 
 export enum BackgroundType {
   Solid,
@@ -13,7 +14,7 @@ export enum TopBarType {
 }
 
 /**
- * Background class
+ * Background of a card
  * @param {BackgroundType} backgroundType - The type of background to generate: SOLID, GRADIENT, IMAGE
  * @param {Object} backgroundOptions - The options for the background: color, color1, color2, image
  * @param {string} backgroundOptions.color - The color of the background if SOLID
@@ -29,7 +30,7 @@ export enum TopBarType {
  * @param {string} topBarOptions.opacity2 - The second opacity of the top bar if FADE
  * @returns {void}
  */
-export class Background {
+export class Background implements DrawableFixed {
   backgroundType: BackgroundType;
   backgroundOptions: {
     color?: string;
@@ -54,7 +55,7 @@ export class Background {
     this.topBarOptions = topBarOptions;
   }
 
-  async generateBackground(ctx: Canvas.CanvasRenderingContext2D) {
+  async draw(ctx: Canvas.CanvasRenderingContext2D): Promise<void> {
     // Draw background
     switch (this.backgroundType) {
       case BackgroundType.Solid:

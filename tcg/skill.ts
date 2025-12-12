@@ -3,8 +3,9 @@ import { wrapText, calculateWrappedTextHeight, drawWrappedText } from './utils/t
 import { RangeEffect } from './rangeEffect';
 import { RangeType } from './rangeType';
 import { CharacterInBattle } from './characterInBattle';
+import { DrawableBlock } from './interfaces/drawable';
 
-export class Skill {
+export class Skill implements DrawableBlock {
   name: string;
   description: string;
   damage: number;
@@ -21,7 +22,7 @@ export class Skill {
     this.effects = effects;
   }
 
-  async generateSkill(ctx: Canvas.CanvasRenderingContext2D, y: number): Promise<number> {
+  async draw(ctx: Canvas.CanvasRenderingContext2D, y: number): Promise<number> {
     let currentY = y;
 
     // Set up text wrapping parameters

@@ -1,7 +1,8 @@
 import Canvas from 'canvas';
 import { wrapText, calculateWrappedTextHeight, drawWrappedText } from './utils/textWrapper';
+import { DrawableBlock } from './interfaces/drawable';
 
-export class TitleDesc {
+export class TitleDesc implements DrawableBlock {
   title: string;
   description: string;
   color: string;
@@ -12,7 +13,7 @@ export class TitleDesc {
     this.color = color;
   }
 
-  async generateTitleDesc(ctx: Canvas.CanvasRenderingContext2D, y: number): Promise<number> {
+  async draw(ctx: Canvas.CanvasRenderingContext2D, y: number): Promise<number> {
     let currentY = y;
 
     // Set up text wrapping parameters

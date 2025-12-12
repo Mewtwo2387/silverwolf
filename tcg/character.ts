@@ -5,8 +5,20 @@ import { Rarity } from './rarity';
 import { Background } from './background';
 import { Skill } from './skill';
 import { Ability } from './ability';
-import { Card } from './card';
+import { Card } from './interfaces/card';
 
+/**
+ * A single character card and their stats
+ * @param name - The name of the character
+ * @param titleDesc - The title and description of the character
+ * @param rarity - The rarity of the character
+ * @param hp - Max HP of the character
+ * @param type - The type/element of the character
+ * @param image - Character image used for generating the card
+ * @param background - Background used for generating the card
+ * @param skills - A list of skills the character can use
+ * @param abilities - A list of passive abilities the character has
+ */
 export class Character implements Card {
   name: string;
   titleDesc: TitleDesc;
@@ -35,7 +47,7 @@ export class Character implements Card {
     const ctx = canvas.getContext('2d');
 
     // Set background
-    await this.background.generateBackground(ctx);
+    await this.background.draw(ctx);
 
     try {
       const typeImage = await Canvas.loadImage(`./tcg/assets/types/${this.type.toLowerCase()}.png`);
@@ -55,14 +67,14 @@ export class Character implements Card {
     ctx.textAlign = 'right';
     ctx.fillText(`${this.hp}`, 1048, 96);
 
-    await this.rarity.generateRarity(ctx);
+    await this.rarity.draw(ctx);
 
     ctx.font = '96px "Bahnschrift"';
     ctx.fillStyle = '#000000';
     ctx.textAlign = 'left';
     ctx.fillText(this.name, 144, 96);
 
-    let currentY = await this.titleDesc.generateTitleDesc(ctx, 192);
+    let currentY = await this.titleDesc.draw(ctx, 192);
 
     // Draw image and background
     ctx.fillStyle = '#000000';
@@ -74,11 +86,11 @@ export class Character implements Card {
     currentY += 512 + 96;
 
     for (const skill of this.skills) {
-      currentY = await skill.generateSkill(ctx, currentY);
+      currentY = await skill.draw(ctx, currentY);
     }
 
     for (const ability of this.abilities) {
-      currentY = await ability.generateAbility(ctx, currentY);
+      currentY = await ability.draw(ctx, currentY);
     }
 
     return canvas;

@@ -1,6 +1,7 @@
 import Canvas from 'canvas';
+import { DrawableFixed } from './interfaces/drawable';
 
-export class Rarity {
+export class Rarity implements DrawableFixed {
   rarity: number;
 
   constructor(rarity: number) {
@@ -10,7 +11,7 @@ export class Rarity {
     this.rarity = rarity;
   }
 
-  async generateRarity(ctx: Canvas.CanvasRenderingContext2D) {
+  async draw(ctx: Canvas.CanvasRenderingContext2D): Promise<void> {
     const starSize = 64;
     const starSpacing = 16;
     const star = await Canvas.loadImage('./tcg/assets/common/star.png');

@@ -1,8 +1,16 @@
 import Canvas from 'canvas';
 import { wrapText, calculateWrappedTextHeight, drawWrappedText } from './utils/textWrapper';
 import { RangeEffect } from './rangeEffect';
+import { DrawableBlock } from './interfaces/drawable';
 
-export class Ability {
+/**
+ * An ability of a character
+ * These are passive effects that can be triggered by certain conditions
+ * @param name - The name of the ability
+ * @param description - The description of the ability
+ * @param effects - A list of effects triggered by the ability and their target ranges
+ */
+export class Ability implements DrawableBlock {
   name: string;
   description: string;
   effects: RangeEffect[];
@@ -13,7 +21,7 @@ export class Ability {
     this.effects = effects;
   }
 
-  async generateAbility(ctx: Canvas.CanvasRenderingContext2D, y: number): Promise<number> {
+  async draw(ctx: Canvas.CanvasRenderingContext2D, y: number): Promise<number> {
     let currentY = y;
 
     // Set up text wrapping parameters
