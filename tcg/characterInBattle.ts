@@ -3,6 +3,7 @@ import { Character } from './character';
 import { Battle } from './battle';
 import { Effect } from './effect';
 import { Skill } from './skill';
+import { Element } from './element';
 
 /**
  * A single character and their status in a battle
@@ -110,13 +111,24 @@ export class CharacterInBattle {
     return this.energy >= skill.cost;
   }
 
-  takeDamage(amount: number) {
+  /**
+   * Take damage from an attacker
+   * @param amount - Base damage amount
+   * @param damageElement - Element type of the damage (defaults to character's element if not specified)
+   */
+  takeDamage(amount: number, damageElement?: Element) {
     if (this.isKnockedOut) return;
     
+    // Default to attacker's element if not specified (for backwards compatibility)
+    const element = damageElement || this.character.element;
+    
     let damage = amount;
-    this.effects.filter((effect) => effect.type === EffectType.IncomingDamage).forEach((effect) => {
-      damage *= effect.amount;
-    });
+    this.effects
+      .filter((effect) => effect.type === EffectType.IncomingDamage)
+      .filter((effect) => effect.appliesToDamageElement(element))
+      .forEach((effect) => {
+        damage *= effect.amount;
+      });
     this.currentHp -= Math.max(0, damage); // Ensure non-negative
     this.stats.damageReceived += Math.max(0, damage);
     if (this.currentHp <= 0) {
@@ -131,22 +143,53 @@ export class CharacterInBattle {
     if (this.currentHp > this.character.hp) this.currentHp = this.character.hp;
   }
 
-  dealDamage(amount: number) {
+  /**
+   * Calculate outgoing damage with modifiers applied (without tracking stats)
+   * Use this to calculate damage amount before dealing it
+   * @param amount - Base damage amount
+   * @param damageElement - Element type of the damage being dealt (defaults to character's element)
+   * @returns Modified damage amount
+   */
+  calculateDamage(amount: number, damageElement?: Element): number {
+    const element = damageElement || this.character.element;
+    
     let damage = amount;
-    this.effects.filter((effect) => effect.type === EffectType.OutgoingDamage).forEach((effect) => {
-      damage *= effect.amount;
-    });
-    this.stats.damageDealt += Math.max(0, damage);
+    this.effects
+      .filter((effect) => effect.type === EffectType.OutgoingDamage)
+      .filter((effect) => effect.appliesToDamageElement(element))
+      .forEach((effect) => {
+        damage *= effect.amount;
+      });
     return Math.max(0, damage);
   }
 
+  /**
+   * Calculate and track outgoing damage with modifiers applied
+   * @param amount - Base damage amount
+   * @param damageElement - Element type of the damage being dealt (defaults to character's element)
+   * @returns Modified damage amount
+   */
+  dealDamage(amount: number, damageElement?: Element): number {
+    const damage = this.calculateDamage(amount, damageElement);
+    this.stats.damageDealt += damage;
+    return damage;
+  }
+
   addEffect(effect: Effect) {
-    // Handle form changes specially
-    if (effect.type === EffectType.FormChange) {
-      // Remove any existing form change effects (only one form change at a time)
-      this.effects = this.effects.filter(e => e.type !== EffectType.FormChange);
+    // Check if an effect with the same name already exists
+    const existingEffect = this.effects.find(e => e.name === effect.name);
+    
+    if (existingEffect) {
+      // If the new effect has a longer duration, update the existing effect's duration
+      // Otherwise, keep the existing effect with its current duration
+      if (effect.duration > existingEffect.duration) {
+        existingEffect.duration = effect.duration;
+      }
+      // Don't add a duplicate - the existing effect is already in the list
+    } else {
+      // No existing effect with this name, add the new one
+      this.effects.push(effect);
     }
-    this.effects.push(effect);
   }
 
   /**
@@ -196,11 +239,19 @@ export class CharacterInBattle {
 
   /**
    * Process the start of a new turn
-   * @returns The amount of energy gained from the 2d6 roll
+   * @returns The amount of energy gained from the 2d6 roll (after modifiers)
    */
   nextTurn(): number {
     this.stats.turnsActive += 1;
-    const energyGained = this.roll2d6();
+    let energyGained = this.roll2d6();
+    
+    // Apply energy gain modifiers
+    this.effects
+      .filter((effect) => effect.type === EffectType.EnergyGain)
+      .forEach((effect) => {
+        energyGained = Math.max(0, Math.floor(energyGained * effect.amount));
+      });
+    
     this.gainEnergy(energyGained);
     this.hasUsedSkillThisTurn = false; // Reset skill usage for new turn
     return energyGained;
@@ -245,11 +296,31 @@ export class CharacterInBattle {
     // Track usage
     if (skill.damage > 0) {
       this.useAttack();
+      
+      // Trigger abilities after attacking an opponent
+      if (target && this.battle.opponent(this.side).includes(target)) {
+        this.triggerAttackAbilities(target);
+      }
     } else {
       this.useAbility();
     }
 
     return true;
+  }
+
+  /**
+   * Trigger abilities that activate after attacking an opponent
+   */
+  private triggerAttackAbilities(attackedTarget: CharacterInBattle) {
+    this.character.abilities.forEach(ability => {
+      const context = {
+        character: this,
+        getAllies: () => this.battle.ally(this.side),
+        getAllCards: () => this.battle.allCards(),
+        target: attackedTarget,
+      };
+      ability.applyEffects(context);
+    });
   }
 
   /**
@@ -276,8 +347,8 @@ export class CharacterInBattle {
     
     // Add effects if any
     if (this.effects.length > 0) {
-      const effectsStr = this.effects.map(e => e.toString()).join(', ');
-      lines.push(`  Effects: ${effectsStr}`);
+      const effectsStr = this.effects.map(e => e.toString()).join('\n  ');
+      lines.push(`  Effects: \n  ${effectsStr}`);
     }
     
     // Add active skills
@@ -286,8 +357,8 @@ export class CharacterInBattle {
       const skillsStr = activeSkills.map((s, i) => {
         const idx = this.character.skills.indexOf(s);
         return `${idx}: ${s.toString()}`;
-      }).join('; ');
-      lines.push(`  Active skills: ${skillsStr}`);
+      }).join('\n  ');
+      lines.push(`  Active skills:\n  ${skillsStr}`);
     }
     
     return lines.join('\n');

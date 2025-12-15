@@ -6,6 +6,7 @@ import { CharacterInBattle } from './characterInBattle';
 import { DrawableBlock } from './interfaces/drawable';
 import { Effect } from './effect';
 import { EffectType } from './effectType';
+import { Element } from './element';
 
 /**
  * A skill of a character
@@ -118,9 +119,9 @@ export class Skill implements DrawableBlock {
           break;
         case RangeType.SingleAlly:
           if (target) {
-            // Verify target is an ally
+            // Verify target is an ally (can be self) and is not knocked out
             const allies = character.battle.ally(character.side);
-            if (allies.includes(target)) {
+            if (allies.includes(target) && !target.isKnockedOut) {
               target.addEffect(effectToApply);
             }
           }
@@ -161,24 +162,30 @@ export class Skill implements DrawableBlock {
     });
 
     // Apply damage
+    // Skills deal damage of the character's element
+    const damageElement = character.character.element;
+    
     if (this.damage > 0) {
       switch (this.damageRange) {
         case RangeType.Self:
           // Self damage (rare, but possible)
-          character.takeDamage(character.dealDamage(this.damage));
+          const selfDamage = character.dealDamage(this.damage, damageElement);
+          character.takeDamage(selfDamage, damageElement);
           break;
         case RangeType.SingleOpponent:
           if (target) {
             const opponents = character.battle.opponent(character.side);
             if (opponents.includes(target) && !target.isKnockedOut) {
-              target.takeDamage(character.dealDamage(this.damage));
+              const dealtDamage = character.dealDamage(this.damage, damageElement);
+              target.takeDamage(dealtDamage, damageElement);
             }
           }
           break;
         case RangeType.AllOpponents:
           character.battle.opponent(character.side).forEach((opponent) => {
             if (!opponent.isKnockedOut) {
-              opponent.takeDamage(character.dealDamage(this.damage));
+              const dealtDamage = character.dealDamage(this.damage, damageElement);
+              opponent.takeDamage(dealtDamage, damageElement);
             }
           });
           break;
@@ -186,21 +193,24 @@ export class Skill implements DrawableBlock {
           if (target) {
             const allies = character.battle.ally(character.side);
             if (allies.includes(target) && !target.isKnockedOut) {
-              target.takeDamage(character.dealDamage(this.damage));
+              const dealtDamage = character.dealDamage(this.damage, damageElement);
+              target.takeDamage(dealtDamage, damageElement);
             }
           }
           break;
         case RangeType.AllAllies:
           character.battle.ally(character.side).forEach((ally) => {
             if (!ally.isKnockedOut) {
-              ally.takeDamage(character.dealDamage(this.damage));
+              const dealtDamage = character.dealDamage(this.damage, damageElement);
+              ally.takeDamage(dealtDamage, damageElement);
             }
           });
           break;
         case RangeType.AllCards:
           character.battle.allCards().forEach((card) => {
             if (!card.isKnockedOut) {
-              card.takeDamage(character.dealDamage(this.damage));
+              const dealtDamage = character.dealDamage(this.damage, damageElement);
+              card.takeDamage(dealtDamage, damageElement);
             }
           });
           break;

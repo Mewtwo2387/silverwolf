@@ -12,6 +12,7 @@ export interface AbilityActivationContext {
   character: CharacterInBattle;
   getAllies: () => CharacterInBattle[];
   getAllCards: () => CharacterInBattle[];
+  target?: CharacterInBattle | null; // Optional target (e.g., for abilities triggered after attacking)
 }
 
 /**
@@ -65,6 +66,22 @@ export class Ability implements DrawableBlock {
       switch (rangeEffect.range) {
         case RangeType.Self:
           context.character.addEffect(rangeEffect.effect);
+          break;
+        case RangeType.SingleOpponent:
+          // If a target is provided, apply to that target; otherwise skip
+          if (context.target) {
+            const opponents = context.character.battle.opponent(context.character.side);
+            if (opponents.includes(context.target) && !context.target.isKnockedOut) {
+              context.target.addEffect(rangeEffect.effect);
+            }
+          }
+          break;
+        case RangeType.AllOpponents:
+          context.character.battle.opponent(context.character.side).forEach(opponent => {
+            if (!opponent.isKnockedOut) {
+              opponent.addEffect(rangeEffect.effect);
+            }
+          });
           break;
         case RangeType.AllAllies:
           context.getAllies().forEach(ally => {

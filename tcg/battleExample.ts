@@ -1,14 +1,15 @@
 import * as readline from 'readline';
 import { Battle, BattleStatus } from './battle';
-import { KAITLIN, VENFEI } from './characters';
+import { KAITLIN, VENFEI, EI, SILVERWOLF, SPARKLE } from './characters';
 import { CharacterInBattle } from './characterInBattle';
+import { RangeType } from './rangeType';
 
 /**
  * Interactive battle example
  */
 export function runBattleExample() {
   // Create a battle between Kaitlin (P1) and Venfei (P2)
-  const battle = new Battle([KAITLIN, VENFEI, VENFEI], [VENFEI, KAITLIN, KAITLIN]);
+  const battle = new Battle([KAITLIN, KAITLIN, VENFEI], [EI, SILVERWOLF, SPARKLE]);
 
   const rl = readline.createInterface({
     input: process.stdin,
@@ -58,11 +59,11 @@ export function runBattleExample() {
     console.log(`\n=== Turn ${battle.currentTurn} - ${currentSide.toUpperCase()}'s Turn ===`);
     console.log(`Your characters:`);
     currentAlly.forEach((char, idx) => {
-      console.log(`  [${idx}] ${char.toString()}`);
+      console.log(`  [${idx}] ${char.toString()}\n`);
     });
     console.log(`\nOpponent characters:`);
     currentOpponent.forEach((char, idx) => {
-      console.log(`  [${idx}] ${char.toString()}`);
+      console.log(`  [${idx}] ${char.toString()}\n`);
     });
     console.log(`\n(Each character can use 1 skill per turn. Type "end" when done with your turn.)`);
 
@@ -222,23 +223,37 @@ function handleUseSkill(parts: string[], battle: Battle) {
     return;
   }
 
-  // Get target
+  // Get target based on skill's range type
+  const skill = character.character.skills[skillIndex];
   let target: CharacterInBattle | null = null;
   if (targetStr === 'self' || targetStr === '-1' || targetStr === 'null') {
     target = null; // Self-targeting
-  } else {
+  } else if (skill) {
     const targetIndex = parseInt(targetStr || '0');
-    const opponents = battle.getAliveOpponent(side);
-    if (targetIndex >= 0 && targetIndex < opponents.length) {
-      target = opponents[targetIndex];
-    } else {
-      // Also allow targeting allies
+    // For SingleAlly range skills, prioritize allies
+    if (skill.damageRange === RangeType.SingleAlly || 
+        (skill.effects.length > 0 && skill.effects.some(e => e.range === RangeType.SingleAlly))) {
       const allAllies = battle.getAliveAlly(side);
       if (targetIndex >= 0 && targetIndex < allAllies.length) {
         target = allAllies[targetIndex];
       } else {
-        console.log(`Invalid target index: ${targetIndex}`);
+        console.log(`Invalid ally target index: ${targetIndex}`);
         return;
+      }
+    } else {
+      // For other skills (SingleOpponent, etc.), check opponents first
+      const opponents = battle.getAliveOpponent(side);
+      if (targetIndex >= 0 && targetIndex < opponents.length) {
+        target = opponents[targetIndex];
+      } else {
+        // Also allow targeting allies as fallback
+        const allAllies = battle.getAliveAlly(side);
+        if (targetIndex >= 0 && targetIndex < allAllies.length) {
+          target = allAllies[targetIndex];
+        } else {
+          console.log(`Invalid target index: ${targetIndex}`);
+          return;
+        }
       }
     }
   }

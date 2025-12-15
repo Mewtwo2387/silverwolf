@@ -103,14 +103,23 @@ export function createEffect(params: {
   amount: number;
   duration?: number; // defaults to permanent (9999)
   activeSkillIndices?: number[]; // for FormChange effects
+  appliesToElement?: Element; // for damage effects: if specified, only applies to damage of this element type
 }): Effect {
+  const metadata: { activeSkillIndices?: number[]; appliesToElement?: Element } = {};
+  if (params.activeSkillIndices) {
+    metadata.activeSkillIndices = params.activeSkillIndices;
+  }
+  if (params.appliesToElement !== undefined) {
+    metadata.appliesToElement = params.appliesToElement;
+  }
+  
   return new Effect(
     params.name,
     params.description,
     params.type,
     params.amount,
     params.duration !== undefined ? params.duration : 9999,
-    params.activeSkillIndices ? { activeSkillIndices: params.activeSkillIndices } : undefined
+    Object.keys(metadata).length > 0 ? metadata : undefined
   );
 }
 
