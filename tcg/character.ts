@@ -6,6 +6,7 @@ import { Background } from './background';
 import { Skill } from './skill';
 import { Ability } from './ability';
 import { Card } from './interfaces/card';
+import { Element } from './element';
 
 /**
  * A single character card and their stats
@@ -13,33 +14,36 @@ import { Card } from './interfaces/card';
  * @param titleDesc - The title and description of the character
  * @param rarity - The rarity of the character
  * @param hp - Max HP of the character
- * @param type - The type/element of the character
+ * @param element - The type/element of the character
  * @param image - Character image used for generating the card
  * @param background - Background used for generating the card
  * @param skills - A list of skills the character can use
  * @param abilities - A list of passive abilities the character has
+ * @param defaultActiveSkillIndices - Optional: which skill indices are available in the default/base form. If not specified, all skills are available.
  */
 export class Character implements Card {
   name: string;
   titleDesc: TitleDesc;
   rarity: Rarity;
   hp: number;
-  type: string;
+  element: Element;
   image: string;
   background: Background;
   skills: Skill[];
   abilities: Ability[];
+  defaultActiveSkillIndices?: number[];
 
-  constructor(name: string, titleDesc: TitleDesc, rarity: Rarity, hp: number, type: string, image: string, background: Background, skills: Skill[] = [], abilities: Ability[] = []) {
+  constructor(name: string, titleDesc: TitleDesc, rarity: Rarity, hp: number, element: Element, image: string, background: Background, skills: Skill[] = [], abilities: Ability[] = [], defaultActiveSkillIndices?: number[]) {
     this.name = name;
     this.titleDesc = titleDesc;
     this.rarity = rarity;
     this.hp = hp;
-    this.type = type;
+    this.element = element;
     this.image = image;
     this.background = background;
     this.skills = skills;
     this.abilities = abilities;
+    this.defaultActiveSkillIndices = defaultActiveSkillIndices;
   }
 
   async generateCard() {
@@ -50,10 +54,10 @@ export class Character implements Card {
     await this.background.draw(ctx);
 
     try {
-      const typeImage = await Canvas.loadImage(`./tcg/assets/types/${this.type.toLowerCase()}.png`);
-      ctx.drawImage(typeImage, 0, 0, 128, 128);
+      const elementImage = await Canvas.loadImage(`./tcg/assets/elements/${this.element}.png`);
+      ctx.drawImage(elementImage, 0, 0, 128, 128);
     } catch (error) {
-      console.warn(`Type image not found for: ${this.type}`);
+      console.warn(`Element image not found for: ${this.element}`);
     }
 
     // Draw HP on the rightmost side

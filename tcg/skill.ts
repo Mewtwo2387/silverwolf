@@ -4,6 +4,8 @@ import { RangeEffect } from './rangeEffect';
 import { RangeType } from './rangeType';
 import { CharacterInBattle } from './characterInBattle';
 import { DrawableBlock } from './interfaces/drawable';
+import { Effect } from './effect';
+import { EffectType } from './effectType';
 
 /**
  * A skill of a character
@@ -13,6 +15,7 @@ import { DrawableBlock } from './interfaces/drawable';
  * @param cost - Energy cost of the skill
  * @param damageRange - The target range of the skill's damage
  * @param effects - List of effects this skill applies
+ * @param formActiveSkillIndices - For transformation skills: which skill indices become active when this skill's form change is applied (optional)
  */
 export class Skill implements DrawableBlock {
   name: string;
@@ -21,14 +24,16 @@ export class Skill implements DrawableBlock {
   cost: number;
   damageRange: RangeType;
   effects: RangeEffect[];
+  formActiveSkillIndices?: number[]; // For transformation skills: skill indices that become active in the new form
 
-  constructor(name: string, description: string, damage: number, cost: number, damageRange: RangeType, effects: RangeEffect[] = []) {
+  constructor(name: string, description: string, damage: number, cost: number, damageRange: RangeType, effects: RangeEffect[] = [], formActiveSkillIndices?: number[]) {
     this.name = name;
     this.description = description;
     this.damage = damage;
     this.cost = cost;
     this.damageRange = damageRange;
     this.effects = effects;
+    this.formActiveSkillIndices = formActiveSkillIndices;
   }
 
   async draw(ctx: Canvas.CanvasRenderingContext2D, y: number): Promise<number> {
@@ -89,54 +94,129 @@ export class Skill implements DrawableBlock {
     return currentY;
   }
 
-  useSkill(character: CharacterInBattle, target: CharacterInBattle) {
-    this.effects.forEach((effect) => {
-      switch (effect.range) {
+  useSkill(character: CharacterInBattle, target: CharacterInBattle | null) {
+    // Apply effects first
+    this.effects.forEach((rangeEffect) => {
+      // For form change effects, add metadata about which skills should be active
+      let effectToApply = rangeEffect.effect;
+      if (rangeEffect.effect.type === EffectType.FormChange && this.formActiveSkillIndices) {
+        // Clone the effect and add metadata
+        effectToApply = new Effect(
+          rangeEffect.effect.name,
+          rangeEffect.effect.description,
+          rangeEffect.effect.type,
+          rangeEffect.effect.amount,
+          rangeEffect.effect.duration,
+          { activeSkillIndices: this.formActiveSkillIndices }
+        );
+      }
+      
+      // Apply the effect based on range
+      switch (rangeEffect.range) {
         case RangeType.Self:
-          character.addEffect(effect.effect);
+          character.addEffect(effectToApply);
           break;
         case RangeType.SingleAlly:
-          target.addEffect(effect.effect);
+          if (target) {
+            // Verify target is an ally
+            const allies = character.battle.ally(character.side);
+            if (allies.includes(target)) {
+              target.addEffect(effectToApply);
+            }
+          }
           break;
         case RangeType.AllAllies:
           character.battle.ally(character.side).forEach((ally) => {
-            ally.addEffect(effect.effect);
+            if (!ally.isKnockedOut) {
+              ally.addEffect(effectToApply);
+            }
           });
           break;
         case RangeType.SingleOpponent:
-          target.addEffect(effect.effect);
+          if (target) {
+            // Verify target is an opponent
+            const opponents = character.battle.opponent(character.side);
+            if (opponents.includes(target)) {
+              target.addEffect(effectToApply);
+            }
+          }
           break;
         case RangeType.AllOpponents:
           character.battle.opponent(character.side).forEach((opponent) => {
-            opponent.addEffect(effect.effect);
+            if (!opponent.isKnockedOut) {
+              opponent.addEffect(effectToApply);
+            }
           });
           break;
         case RangeType.AllCards:
           character.battle.allCards().forEach((card) => {
-            card.addEffect(effect.effect);
+            if (!card.isKnockedOut) {
+              card.addEffect(effectToApply);
+            }
           });
           break;
         default:
-          throw new Error(`Invalid skill effect type: ${effect.range}`);
+          throw new Error(`Invalid skill effect type: ${rangeEffect.range}`);
       }
     });
 
-    switch (this.damageRange) {
-      case RangeType.SingleOpponent:
-        target.takeDamage(character.dealDamage(this.damage));
-        break;
-      case RangeType.AllOpponents:
-        character.battle.opponent(character.side).forEach((opponent) => {
-          opponent.takeDamage(character.dealDamage(this.damage));
-        });
-        break;
-      case RangeType.AllCards:
-        character.battle.allCards().forEach((opponent) => {
-          opponent.takeDamage(character.dealDamage(this.damage));
-        });
-        break;
-      default:
-        break;
+    // Apply damage
+    if (this.damage > 0) {
+      switch (this.damageRange) {
+        case RangeType.Self:
+          // Self damage (rare, but possible)
+          character.takeDamage(character.dealDamage(this.damage));
+          break;
+        case RangeType.SingleOpponent:
+          if (target) {
+            const opponents = character.battle.opponent(character.side);
+            if (opponents.includes(target) && !target.isKnockedOut) {
+              target.takeDamage(character.dealDamage(this.damage));
+            }
+          }
+          break;
+        case RangeType.AllOpponents:
+          character.battle.opponent(character.side).forEach((opponent) => {
+            if (!opponent.isKnockedOut) {
+              opponent.takeDamage(character.dealDamage(this.damage));
+            }
+          });
+          break;
+        case RangeType.SingleAlly:
+          if (target) {
+            const allies = character.battle.ally(character.side);
+            if (allies.includes(target) && !target.isKnockedOut) {
+              target.takeDamage(character.dealDamage(this.damage));
+            }
+          }
+          break;
+        case RangeType.AllAllies:
+          character.battle.ally(character.side).forEach((ally) => {
+            if (!ally.isKnockedOut) {
+              ally.takeDamage(character.dealDamage(this.damage));
+            }
+          });
+          break;
+        case RangeType.AllCards:
+          character.battle.allCards().forEach((card) => {
+            if (!card.isKnockedOut) {
+              card.takeDamage(character.dealDamage(this.damage));
+            }
+          });
+          break;
+        default:
+          break;
+      }
     }
+  }
+
+  /**
+   * Get a string representation of this skill's basic info
+   */
+  toString(): string {
+    const damageStr = this.damage > 0 ? `Damage: ${this.damage}` : '';
+    const costStr = this.cost > 0 ? `Cost: ${this.cost}` : '';
+    const parts = [this.name, damageStr, costStr].filter(p => p);
+    return parts.join(', ');
   }
 }

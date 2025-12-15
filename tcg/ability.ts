@@ -2,23 +2,93 @@ import Canvas from 'canvas';
 import { wrapText, calculateWrappedTextHeight, drawWrappedText } from './utils/textWrapper';
 import { RangeEffect } from './rangeEffect';
 import { DrawableBlock } from './interfaces/drawable';
+import { CharacterInBattle } from './characterInBattle';
+import { RangeType } from './rangeType';
+
+/**
+ * Context for ability activation check
+ */
+export interface AbilityActivationContext {
+  character: CharacterInBattle;
+  getAllies: () => CharacterInBattle[];
+  getAllCards: () => CharacterInBattle[];
+}
+
+/**
+ * A pair of RangeEffect and its activation condition
+ */
+export interface AbilityEffectPair {
+  effect: RangeEffect;
+  activationCondition?: (context: AbilityActivationContext) => boolean;
+}
 
 /**
  * An ability of a character
  * These are passive effects that can be triggered by certain conditions
  * @param name - The name of the ability
  * @param description - The description of the ability
- * @param effects - A list of effects triggered by the ability and their target ranges
+ * @param effectPairs - A list of (RangeEffect, activation condition) pairs. Each effect has its own activation condition.
  */
 export class Ability implements DrawableBlock {
   name: string;
   description: string;
-  effects: RangeEffect[];
+  effectPairs: AbilityEffectPair[];
 
-  constructor(name: string, description: string, effects: RangeEffect[] = []) {
+  constructor(name: string, description: string, effectPairs: AbilityEffectPair[] = []) {
     this.name = name;
     this.description = description;
-    this.effects = effects;
+    this.effectPairs = effectPairs;
+  }
+
+  toString(): string {
+    return `${this.name}: ${this.description}`;
+  }
+
+  /**
+   * Apply this ability's effects to the appropriate targets
+   * Each effect is only applied if its activation condition is met (or if no condition is specified)
+   */
+  applyEffects(context: AbilityActivationContext) {
+    this.effectPairs.forEach(pair => {
+      // Check if this effect should be activated
+      let shouldActivate = true;
+      if (pair.activationCondition) {
+        shouldActivate = pair.activationCondition(context);
+      }
+
+      if (!shouldActivate) {
+        return; // Skip this effect
+      }
+
+      // Apply the effect based on its range
+      const rangeEffect = pair.effect;
+      switch (rangeEffect.range) {
+        case RangeType.Self:
+          context.character.addEffect(rangeEffect.effect);
+          break;
+        case RangeType.AllAllies:
+          context.getAllies().forEach(ally => {
+            if (!ally.isKnockedOut) {
+              ally.addEffect(rangeEffect.effect);
+            }
+          });
+          break;
+        case RangeType.AllCards:
+          context.getAllCards().forEach(card => {
+            if (!card.isKnockedOut) {
+              card.addEffect(rangeEffect.effect);
+            }
+          });
+          break;
+        case RangeType.SingleAlly:
+          // For passive abilities, single ally typically means self
+          context.character.addEffect(rangeEffect.effect);
+          break;
+        default:
+          context.character.addEffect(rangeEffect.effect);
+          break;
+      }
+    });
   }
 
   async draw(ctx: Canvas.CanvasRenderingContext2D, y: number): Promise<number> {
