@@ -33,7 +33,7 @@ class Silverwolf extends Client {
     this.deletedMessages = [];
     this.editedMessages = [];
     this.singing = false;
-    this.db = new Database('./database.db');
+    this.db = new Database('./persistence/database.db');
     this.currentPokemon = null;
     this.birthdayScheduler = new BirthdayScheduler(this);
     this.babyScheduler = new BabyScheduler(this);
