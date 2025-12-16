@@ -17,7 +17,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
           script: |
-            cd /ubuntu/silverwolf
+            cd /home/ubuntu/silverwolf
             git pull origin master || exit 1
             npm ci
             pm2 restart 0 
