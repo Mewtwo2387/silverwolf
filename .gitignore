@@ -5,7 +5,8 @@ node_modules/*
 *.zip
 *.csv
 *.txt
-
+*.log
+_*.js
 
 
 # whitelist
