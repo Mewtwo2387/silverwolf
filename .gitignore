@@ -12,3 +12,4 @@ persistence/
 
 # whitelist
 !data/SilverwolfSystemPrompt.txt
+.DS_Store
