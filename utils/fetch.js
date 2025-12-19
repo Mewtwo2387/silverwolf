@@ -34,12 +34,12 @@ async function fetchMessagesByCount(channel, countLimit) {
   return messages.reverse();
 }
 
-async function fetchMessagesByTime(channel, timeLimit) {
+async function fetchMessagesByTime(channel, timeLimit, maxMessages = 1000) {
   const messages = [];
   let lastId;
 
-  while (true) {
-    const options = { limit: MAX_FETCH_COUNT };
+  while (messages.length < maxMessages) {
+    const options = { limit: Math.min(maxMessages - messages.length, MAX_FETCH_COUNT) };
     if (lastId) {
       options.before = lastId;
     }
@@ -50,12 +50,12 @@ async function fetchMessagesByTime(channel, timeLimit) {
       break;
     }
 
-    if (fetchedMessages.last()[1].createdAt >= timeLimit) {
+    if (fetchedMessages.last().createdTimestamp >= timeLimit) {
       messages.push(...fetchedMessages);
       lastId = fetchedMessages.last().id;
       log(`Fetched ${fetchedMessages.size} messages with more to go. Total messages: ${messages.length}`);
     } else {
-      fetchedMessages = fetchedMessages.filter((message) => message[1].createdAt >= timeLimit);
+      fetchedMessages = fetchedMessages.filter((message) => message.createdTimestamp >= timeLimit);
       messages.push(...fetchedMessages);
       log(`Fetched ${fetchedMessages.size} messages, reached required time limit. Total messages: ${messages.length}`);
       break;

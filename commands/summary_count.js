@@ -6,14 +6,14 @@ const { fetchMessagesByCount } = require('../utils/fetch');
 
 class Summary extends Command {
   constructor(client) {
-    super(client, 'summary', 'Summarize a message', [
+    super(client, 'count', 'Summarize the last n messages', [
       {
-        name: 'count',
+        name: 'n',
         description: 'The number of past messages to summarize',
         type: 4,
         required: true,
       },
-    ]);
+    ], { isSubcommandOf: 'summary' });
   }
 
   async run(interaction) {
