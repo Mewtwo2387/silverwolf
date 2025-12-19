@@ -17,7 +17,7 @@ class Summary extends Command {
   }
 
   async run(interaction) {
-    const count = interaction.options.getInteger('count');
+    const count = interaction.options.getInteger('n');
     if (count < 1 || count > 1000) {
       await interaction.editReply('Invalid count. Please enter a number between 1 and 1000.');
       return;
