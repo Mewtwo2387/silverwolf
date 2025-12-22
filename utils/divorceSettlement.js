@@ -71,8 +71,8 @@ async function divorceSettlement(client, initiatorId, targetId) {
   await client.db.user.addUserAttr(targetId, 'dinonuggies', targetDinonuggiesShare - targetDinonuggies);
   await client.db.user.addUserAttr(initiatorId, 'dinonuggies', initiatorDinonuggiesShare - initiatorDinonuggies);
 
-  await client.user.addUserAttr(targetId, 'credits', targetCreditsShare - targetCredits);
-  await client.user.addUserAttr(initiatorId, 'credits', initiatorCreditsShare - initiatorCredits);
+  await client.db.user.addUserAttr(targetId, 'credits', targetCreditsShare - targetCredits);
+  await client.db.user.addUserAttr(initiatorId, 'credits', initiatorCreditsShare - initiatorCredits);
 
   log('Divorce settlement with fixed and dynamic fees completed successfully.');
 
