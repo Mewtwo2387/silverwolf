@@ -6,10 +6,10 @@ async function divorceSettlement(client, initiatorId, targetId) {
   log('Fetching assets for users:', initiatorId, targetId);
 
   // Fetch current dinonuggies and credits for both users
-  const initiatorDinonuggies = await client.db.getUserAttr(initiatorId, 'dinonuggies');
-  const initiatorCredits = await client.db.getUserAttr(initiatorId, 'credits');
-  const targetDinonuggies = await client.db.getUserAttr(targetId, 'dinonuggies');
-  const targetCredits = await client.db.getUserAttr(targetId, 'credits');
+  const initiatorDinonuggies = await client.db.user.getUserAttr(initiatorId, 'dinonuggies');
+  const initiatorCredits = await client.db.user.getUserAttr(initiatorId, 'credits');
+  const targetDinonuggies = await client.db.user.getUserAttr(targetId, 'dinonuggies');
+  const targetCredits = await client.db.user.getUserAttr(targetId, 'credits');
 
   // Total combined assets
   const totalDinonuggies = initiatorDinonuggies + targetDinonuggies;
