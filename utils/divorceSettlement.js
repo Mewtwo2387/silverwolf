@@ -68,8 +68,8 @@ async function divorceSettlement(client, initiatorId, targetId) {
 
   // Update the database
   log('Updating database with adjusted split...');
-  await client.user.addUserAttr(targetId, 'dinonuggies', targetDinonuggiesShare - targetDinonuggies);
-  await client.user.addUserAttr(initiatorId, 'dinonuggies', initiatorDinonuggiesShare - initiatorDinonuggies);
+  await client.db.user.addUserAttr(targetId, 'dinonuggies', targetDinonuggiesShare - targetDinonuggies);
+  await client.db.user.addUserAttr(initiatorId, 'dinonuggies', initiatorDinonuggiesShare - initiatorDinonuggies);
 
   await client.user.addUserAttr(targetId, 'credits', targetCreditsShare - targetCredits);
   await client.user.addUserAttr(initiatorId, 'credits', initiatorCreditsShare - initiatorCredits);
