@@ -27,6 +27,11 @@ class LogDump extends DevCommand {
 
   async run(interaction) {
     const lines = interaction.options.getInteger('lines');
+
+    if (lines < 1) {
+      await interaction.editReply({ content: 'Invalid number of lines' });
+      return;
+    }
     const type = interaction.options.getString('type');
     const path = type === 'error' ? logErrorFilePath : logFilePath;
     try {
