@@ -1,4 +1,4 @@
-const fs = require('fs');
+const fs = require('fs').promises;
 const { DevCommand } = require('./classes/devcommand');
 const { logError } = require('../utils/log');
 const { logErrorFilePath, logFilePath } = require('../utils/log');
@@ -30,7 +30,7 @@ class LogDump extends DevCommand {
     const type = interaction.options.getString('type');
     const path = type === 'error' ? logErrorFilePath : logFilePath;
     try {
-      const log = fs.readFileSync(path, 'utf8');
+      const log = await fs.readFile(path, 'utf8');
       const logLines = log.split('\n').slice(-lines);
       await interaction.editReply({ content: `\`\`\`${logLines.join('\n')}\`\`\`` });
     } catch (error) {
