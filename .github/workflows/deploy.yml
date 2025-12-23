@@ -12,12 +12,12 @@ jobs:
       - name: Deploy to VM
         uses: appleboy/ssh-action@master
         with:
-          host: 165.232.171.127
-          username: root
+          host: 51.75.21.146
+          username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
           script: |
-            cd /root/silverwolf
+            cd /home/ubuntu/silverwolf
             git pull origin master || exit 1
             npm ci
             pm2 restart 0 

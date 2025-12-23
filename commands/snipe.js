@@ -97,7 +97,7 @@ class Snipe extends Command {
         const replyLink = `https://discord.com/channels/${message.guild.id}/${message.channel.id}/${message.reference.messageId}`;
         embed.addFields({
           name: 'Replying To',
-          value: `**${repliedMessageAuthor.username}**: [${repliedMessageContent}](${replyLink})`,
+          value: `**[${repliedMessageAuthor.username}](${replyLink})**: ${repliedMessageContent}`,
           inline: false,
         });
       }

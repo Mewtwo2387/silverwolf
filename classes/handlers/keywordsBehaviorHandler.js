@@ -8,7 +8,7 @@ const WEBHOOK_NAME = process.env.WEBHOOK_NAME || 'grok-webhook';
 
 module.exports = {
   girlCockx: async (message) => {
-    const username = message.author.username.toLowerCase();
+    // const username = message.author.username.toLowerCase();
     const xLinkRegex = /https:\/\/(?:x\.com|twitter\.com)\/([^/]+)\/status\/(\d+)(?:\?[^\s]*)?/g;
     const girlcockxContent = message.content.replace(xLinkRegex, (_, user, id) => `https://fxtwitter.com/${user}/status/${id}`);
 
@@ -32,7 +32,7 @@ module.exports = {
 
           const buttonRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-              .setLabel(`↩ Replying to: ${username}`)
+              .setLabel(`↩ Replying to: ${repliedTo.author.username}`)
               .setStyle(ButtonStyle.Link)
               .setURL(repliedLink),
           );
