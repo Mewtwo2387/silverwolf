@@ -2,6 +2,7 @@ const {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
 } = require('discord.js');
 const { Command } = require('./classes/command');
+const { logError } = require('../utils/log');
 
 class PokemonFind extends Command {
   constructor(client) {
@@ -92,7 +93,7 @@ class PokemonFind extends Command {
         await message.edit({ components: [row] });
       });
     } catch (error) {
-      console.error('Failed to retrieve hasPokemon list.', error);
+      logError('Failed to retrieve hasPokemon list.', error);
       interaction.editReply({ content: 'Failed to retrieve list.', ephemeral: true });
     }
   }

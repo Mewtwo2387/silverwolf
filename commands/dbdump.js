@@ -115,7 +115,7 @@ class DBDump extends DevCommand {
         });
       }
     } catch (error) {
-      logError(error);
+      logError('Error dumping database:', error);
       await interaction.followUp({ content: 'An error occurred while executing the command.', ephemeral: true });
     }
   }

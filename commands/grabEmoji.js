@@ -80,8 +80,8 @@ class GrabEmoji extends Command {
           } else if (format === 'webp') {
             emojiBuffer = canvas.toBuffer('image/webp', { quality: 0.9 });
           }
-        } catch (canvasError) {
-          logError(`Canvas conversion error: ${canvasError}`);
+        } catch (error) {
+          logError('Canvas conversion error:', error);
           // Fallback to original format if conversion fails
           await interaction.editReply({
             content: `Could not convert to ${format.toUpperCase()}. Providing original PNG format instead.`,
@@ -104,7 +104,7 @@ class GrabEmoji extends Command {
 
       await interaction.editReply({ embeds: [embed], files: [attachment] });
     } catch (error) {
-      logError(`Error processing emoji: ${error}`);
+      logError('Error processing emoji:', error);
       await interaction.editReply({
         content: 'There was an error processing the emoji. Please check if the emoji exists and the format is valid.',
         ephemeral: true,

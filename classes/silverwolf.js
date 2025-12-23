@@ -150,7 +150,7 @@ All wrongs reserved.
       try {
         command.execute(interaction);
       } catch (error) {
-        logError(error);
+        logError('Error processing interaction:', error);
       }
     }
   }

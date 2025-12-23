@@ -42,7 +42,7 @@ class Database {
         });
       });
     } catch (err) {
-      logError(`Error creating table ${tableJSON.name}:`, err.message);
+      logError(`Error creating table ${tableJSON.name}:`, err);
     }
   }
 
@@ -66,7 +66,7 @@ class Database {
           });
         }
       } catch (err) {
-        logError(`Failed to check or add column ${column.name}:`, err.message);
+        logError(`Failed to check or add column ${column.name}:`, err);
       }
     }));
   }
@@ -112,7 +112,7 @@ class Database {
       });
       return result;
     } catch (error) {
-      logError(`Error executing query "${query}": ${error.message}`);
+      logError(`Error executing query "${query}":`, error);
       return { changes: 0, lastID: null };
     }
   }
@@ -130,7 +130,7 @@ class Database {
       });
       return result;
     } catch (error) {
-      logError(`Error executing select query "${query}": ${error.message}`);
+      logError(`Error executing select query "${query}":`, error);
       return null;
     }
   }
@@ -148,7 +148,7 @@ class Database {
       });
       return result;
     } catch (error) {
-      logError(`Error executing select all query "${query}": ${error.message}`);
+      logError(`Error executing select all query "${query}":`, error);
       return [];
     }
   }

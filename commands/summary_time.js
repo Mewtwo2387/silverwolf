@@ -1,7 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const { Command } = require('./classes/command');
 const { generateContent, getPersonaByName } = require('../utils/ai');
-const { log } = require('../utils/log');
+const { log, logError } = require('../utils/log');
 const { fetchMessagesByTime } = require('../utils/fetch');
 
 class Summary extends Command {
@@ -58,7 +58,7 @@ class Summary extends Command {
       });
       log(`Generated summary: ${summary.text}`);
     } catch (error) {
-      log(`Failed to generate summary: ${error.message}`);
+      logError('Failed to generate summary:', error);
       await interaction.editReply('Failed to generate summary. Please try again later.');
       return;
     }
