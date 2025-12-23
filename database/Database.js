@@ -9,7 +9,7 @@ class Database {
     this.ready = new Promise((resolve, reject) => {
       this.db = new sqlite3.Database(databasePath, async (err) => {
         if (err) {
-          logError('Failed to connect to the database:', err.message);
+          logError('Failed to connect to the database:', err);
           reject(err);
         } else {
           log('Connected to the database.db SQLite database.');
@@ -33,7 +33,7 @@ class Database {
       await new Promise((resolve, reject) => {
         this.db.run(`CREATE TABLE IF NOT EXISTS ${tableJSON.name} (${rows})`, (err) => {
           if (err) {
-            logError(`Failed to create ${tableJSON.name} table:`, err.message);
+            logError(`Failed to create ${tableJSON.name} table:`, err);
             reject(err);
           } else {
             log(`Created the ${tableJSON.name} table.`);
