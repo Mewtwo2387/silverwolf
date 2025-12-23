@@ -11,7 +11,7 @@ class MarriagePropose extends Command {
         type: 6, // user
         required: true,
       },
-    ], { isSubcommandOf: 'marriage' });
+    ], { isSubcommandOf: 'marriage', blame: 'xei' });
   }
 
   async run(interaction) {

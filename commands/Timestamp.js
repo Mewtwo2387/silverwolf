@@ -56,7 +56,7 @@ class Timestamp extends Command {
         type: 4,
         required: false,
       },
-    ]);
+    ], { blame: 'xei' });
   }
 
   async run(interaction) {

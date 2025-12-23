@@ -3,7 +3,7 @@ const { Command } = require('./classes/command');
 
 class Flip extends Command {
   constructor(client) {
-    super(client, 'flip', '50/50 for silverwolf to give you head', []);
+    super(client, 'flip', '50/50 for silverwolf to give you head', [], { blame: 'ei' });
   }
 
   async run(interaction) {

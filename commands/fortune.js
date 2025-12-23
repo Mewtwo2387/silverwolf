@@ -4,7 +4,7 @@ const { Command } = require('./classes/command');
 
 class Fortune extends Command {
   constructor(client) {
-    super(client, 'fortune', 'how desperate are you to munch virtual fortune cookies ?');
+    super(client, 'fortune', 'how desperate are you to munch virtual fortune cookies ?', [], { blame: 'xei' });
   }
 
   async run(interaction) {

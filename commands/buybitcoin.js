@@ -12,7 +12,7 @@ class BuyBitcoin extends Command {
         type: 10,
         required: true,
       },
-    ]);
+    ], { blame: 'ei' });
   }
 
   async run(interaction) {

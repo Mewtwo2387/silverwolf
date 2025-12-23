@@ -3,7 +3,7 @@ const { Command } = require('./classes/command');
 
 class ShopDonation extends Command {
   constructor(client) {
-    super(client, 'donation', 'buy stuff with stellar nuggies', [], { isSubcommandOf: 'shop' });
+    super(client, 'donation', 'buy stuff with stellar nuggies', [], { isSubcommandOf: 'shop', blame: 'ei' });
   }
 
   async run(interaction) {

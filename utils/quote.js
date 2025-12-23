@@ -74,7 +74,7 @@ async function quote(
         throw new Error('Server avatar not found, falling back to global avatar.');
       }
     } catch (error) {
-      logError(`Failed to fetch server avatar: ${error.message}`);
+      logError('Failed to fetch server avatar:', error);
       pfp = _person.displayAvatarURL({ extension: 'png', size: 512 }); // Fallback to global avatar
     }
   } else {

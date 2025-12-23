@@ -29,7 +29,7 @@ class BirthdaySet extends Command {
         type: 3,
         required: false,
       },
-    ], { isSubcommandOf: 'birthday' });
+    ], { isSubcommandOf: 'birthday', blame: 'xei' });
   }
 
   async run(interaction) {

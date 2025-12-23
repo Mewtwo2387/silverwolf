@@ -5,7 +5,7 @@ const { logError } = require('../utils/log');
 
 class Hilichurl extends Command {
   constructor(client) {
-    super(client, 'hilichurl', 'our 69th command', []);
+    super(client, 'hilichurl', 'our 69th command', [], { blame: 'xei' });
   }
 
   async run(interaction) {

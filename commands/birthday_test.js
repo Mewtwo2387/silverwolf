@@ -6,7 +6,7 @@ const { logError } = require('../utils/log');
 
 class BirthdayTest extends DevCommand {
   constructor(client) {
-    super(client, 'test', 'Tests the birthday scheduler to ensure channels are accessible', [], { isSubcommandOf: 'birthday' });
+    super(client, 'test', 'Tests the birthday scheduler to ensure channels are accessible', [], { isSubcommandOf: 'birthday', blame: 'xei' });
   }
 
   async execute(interaction) {

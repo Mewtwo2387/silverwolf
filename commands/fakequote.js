@@ -56,7 +56,7 @@ class FakeQuote extends Command {
           { name: 'Global Avatar', value: 'global' },
         ],
       },
-    ]);
+    ], { blame: 'both' });
   }
 
   async run(interaction) {
@@ -81,7 +81,7 @@ class FakeQuote extends Command {
       // Edit the message and send the image
       await interaction.editReply({ content: null, files: [result] });
     } catch (error) {
-      logError(error);
+      logError('Error generating quote:', error);
       await interaction.editReply(`Error: ${error.message}`);
     }
   }

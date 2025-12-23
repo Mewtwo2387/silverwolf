@@ -18,7 +18,7 @@ class GamblerBoard extends Command {
           { name: 'ALL', value: 'all' },
         ],
       },
-    ]);
+    ], { blame: 'both' });
     this.itemsPerPage = 10; // Show 10 items per page
   }
 
