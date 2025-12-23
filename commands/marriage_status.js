@@ -10,7 +10,7 @@ class MarriageStatus extends Command {
         type: 6, // user
         required: false,
       },
-    ], { isSubcommandOf: 'marriage' });
+    ], { isSubcommandOf: 'marriage', blame: 'xei' });
   }
 
   async run(interaction) {

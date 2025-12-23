@@ -24,7 +24,7 @@ class Add extends DevCommand {
         type: 3,
         required: true,
       },
-    ], { isSubcommandOf: 'dev' });
+    ], { isSubcommandOf: 'dev', blame: 'ei' });
   }
 
   async run(interaction) {

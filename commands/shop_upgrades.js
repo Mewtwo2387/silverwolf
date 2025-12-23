@@ -11,7 +11,7 @@ const { format } = require('../utils/math');
 
 class ShopUpgrades extends Command {
   constructor(client) {
-    super(client, 'upgrades', 'upgrade your dinonuggie multipliers', [], { isSubcommandOf: 'shop' });
+    super(client, 'upgrades', 'upgrade your dinonuggie multipliers', [], { isSubcommandOf: 'shop', blame: 'ei' });
   }
 
   async run(interaction) {

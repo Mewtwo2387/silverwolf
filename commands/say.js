@@ -23,7 +23,7 @@ class Say extends AdminCommand {
         type: 11, // ATTACHMENT type
         required: false,
       },
-    ], { ephemeral: true });
+    ], { ephemeral: true, blame: 'xei' });
   }
 
   async run(interaction) {

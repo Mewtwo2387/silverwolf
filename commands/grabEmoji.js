@@ -24,7 +24,7 @@ class GrabEmoji extends Command {
           { name: 'WEBP', value: 'webp' },
         ],
       },
-    ]);
+    ], { blame: 'xei' });
   }
 
   async run(interaction) {

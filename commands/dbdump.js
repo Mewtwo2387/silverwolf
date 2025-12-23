@@ -25,7 +25,7 @@ class DBDump extends DevCommand {
           { name: 'All Data', value: 'all' },
         ],
       },
-    ]);
+    ], { blame: 'both' });
   }
 
   async run(interaction) {

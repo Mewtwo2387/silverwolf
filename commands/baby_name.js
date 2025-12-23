@@ -16,7 +16,7 @@ class BabyName extends Command {
         type: 3,
         required: true,
       },
-    ], { isSubcommandOf: 'baby' });
+    ], { isSubcommandOf: 'baby', blame: 'ei' });
   }
 
   async run(interaction) {

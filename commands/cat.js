@@ -17,7 +17,7 @@ class Cat extends Command {
           { name: 'both', value: 'both' },
         ],
       },
-    ]);
+    ], { blame: 'xei' });
   }
 
   async run(interaction) {

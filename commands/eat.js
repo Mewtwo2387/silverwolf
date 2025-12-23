@@ -11,7 +11,7 @@ class Eat extends Command {
         type: 4, // INTEGER type
         required: false,
       },
-    ]);
+    ], { blame: 'ei' });
   }
 
   async run(interaction) {

@@ -20,7 +20,7 @@ class Sacrifice extends Command {
       description: 'the third pokemon to sacrifice',
       type: 3,
       required: true,
-    }]);
+    }], { blame: 'ei' });
   }
 
   async run(interaction) {

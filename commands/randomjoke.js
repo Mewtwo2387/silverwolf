@@ -4,7 +4,7 @@ const { logError } = require('../utils/log');
 
 class Joke extends Command {
   constructor(client) {
-    super(client, 'randomjoke', 'A random joke just like your existence that nobody asked for');
+    super(client, 'randomjoke', 'A random joke just like your existence that nobody asked for', [], { blame: 'xei' });
   }
 
   async run(interaction) {

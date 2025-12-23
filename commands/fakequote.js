@@ -56,7 +56,7 @@ class FakeQuote extends Command {
           { name: 'Global Avatar', value: 'global' },
         ],
       },
-    ]);
+    ], { blame: 'both' });
   }
 
   async run(interaction) {

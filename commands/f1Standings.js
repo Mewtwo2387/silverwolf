@@ -106,7 +106,7 @@ class F1Standings extends Command {
         type: 4,
         required: false,
       },
-    ]);
+    ], { blame: 'xei' });
   }
 
   async run(interaction) {

@@ -13,7 +13,7 @@ class PokemonFind extends Command {
         type: 3,
         required: true,
       },
-    ]);
+    ], { blame: 'xei' });
   }
 
   async run(interaction) {

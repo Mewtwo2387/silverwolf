@@ -14,7 +14,7 @@ class BabyGet extends Command {
         type: 6,
         required: false,
       },
-    ], { isSubcommandOf: 'baby' });
+    ], { isSubcommandOf: 'baby', blame: 'ei' });
   }
 
   async run(interaction) {

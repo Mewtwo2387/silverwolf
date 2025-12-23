@@ -42,7 +42,7 @@ class RussianRouletteRegular extends Command {
         description: 'The sixth participant',
         required: false,
       },
-    ], { isSubcommandOf: 'russianroulette' });
+    ], { isSubcommandOf: 'russianroulette', blame: 'xei' });
   }
 
   async run(interaction) {

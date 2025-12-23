@@ -5,7 +5,7 @@ const { logError } = require('../utils/log');
 
 class Arlecchino extends Command {
   constructor(client) {
-    super(client, 'arlecchino', 'scare leon away', []);
+    super(client, 'arlecchino', 'scare leon away', [], { blame: 'xei' });
   }
 
   async run(interaction) {

@@ -4,7 +4,7 @@ const { logError } = require('../utils/log');
 
 class Guide extends Command {
   constructor(client) {
-    super(client, 'guide', 'Sends a guide on how to play Dinonuggies', []);
+    super(client, 'guide', 'Sends a guide on how to play Dinonuggies', [], { blame: 'xei' });
   }
 
   async run(interaction) {

@@ -14,6 +14,7 @@ class Lore extends Command {
         type: 3,
         required: true,
       }],
+      { blame: 'ei' },
     );
   }
 

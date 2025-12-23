@@ -13,7 +13,7 @@ class Summary extends Command {
         type: 4,
         required: true,
       },
-    ], { isSubcommandOf: 'summary' });
+    ], { isSubcommandOf: 'summary', blame: 'ei' });
   }
 
   async run(interaction) {
