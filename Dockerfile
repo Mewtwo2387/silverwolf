@@ -18,22 +18,25 @@ COPY package*.json ./
 # 2. Tell npm to use the tools we just installed
 RUN npm ci --omit=dev
 
-# --- STAGE 2: Run (The Prison) ---
+# --- STAGE 2: Run ---
 FROM node:20-alpine
 WORKDIR /app
 
-# 3. IMPORTANT: Canvas needs these libraries to actually RUN 
-# (These are much smaller than the build tools)
 RUN apk add --no-cache \
     cairo \
     jpeg \
     pango \
-    giflib
+    giflib \
+    fontconfig \
+    ttf-dejavu 
 
 RUN mkdir -p /app/persistence && chown -R node:node /app/persistence
 USER node
 
 COPY --from=builder --chown=node:node /app/node_modules ./node_modules
 COPY --chown=node:node . .
+
+# Optional: Refresh font cache to be safe
+RUN fc-cache -f
 
 CMD ["node", "index.js"]
