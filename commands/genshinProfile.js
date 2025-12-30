@@ -17,7 +17,7 @@ class GenshinProfile extends Command {
         type: 3, // STRING type for the UID input
         required: true,
       },
-    ]);
+    ], { blame: 'xei' });
   }
 
   async run(interaction) {

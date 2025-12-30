@@ -14,7 +14,7 @@ class Slots extends Command {
         type: 3,
         required: true,
       },
-    ]);
+    ], { blame: 'ei' });
   }
 
   async run(interaction) {

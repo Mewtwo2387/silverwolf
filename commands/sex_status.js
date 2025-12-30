@@ -10,7 +10,7 @@ class SexStatus extends Command {
         type: 6, // user
         required: false,
       },
-    ], { isSubcommandOf: 'sex' });
+    ], { isSubcommandOf: 'sex', blame: 'ei' });
   }
 
   async run(interaction) {

@@ -18,7 +18,7 @@ class Gacha extends Command {
           { name: '10', value: 10 },
         ],
       },
-    ]);
+    ], { blame: 'xei' });
 
     const charactersRaw = JSON.parse(fs.readFileSync('./data/hsrCharacters.json', 'utf-8'));
     const lightconesRaw = JSON.parse(fs.readFileSync('./data/hsrLC.json', 'utf-8'));

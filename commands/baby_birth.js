@@ -13,7 +13,7 @@ class BabyBirth extends Command {
         type: 4,
         required: true,
       },
-    ], { isSubcommandOf: 'baby' });
+    ], { isSubcommandOf: 'baby', blame: 'ei' });
   }
 
   async run(interaction) {

@@ -1,4 +1,5 @@
 const { DevCommand } = require('./classes/devcommand');
+const { logError } = require('../utils/log');
 
 class ForceSummon extends DevCommand {
   constructor(client) {
@@ -14,7 +15,7 @@ class ForceSummon extends DevCommand {
           { name: 'mystery', value: 'mystery' },
         ],
       },
-    ], { ephemeral: true, isSubcommandOf: 'dev' });
+    ], { ephemeral: true, isSubcommandOf: 'dev', blame: 'ei' });
   }
 
   async run(interaction) {
@@ -23,7 +24,7 @@ class ForceSummon extends DevCommand {
       const handler = await this.client.getHandler(); // Get the current seasonal handler
       await handler.summonPokemon(interaction, mode); // Use handler's summonPokemon with the specified mode
     } catch (error) {
-      console.error('Error executing command forcesummon:', error);
+      logError('Error executing command forcesummon:', error);
       interaction.editReply('There was an error summoning the Pokémon.');
     }
   }

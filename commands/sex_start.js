@@ -12,7 +12,7 @@ class SexStart extends Command {
         type: 6, // user
         required: true,
       },
-    ], { isSubcommandOf: 'sex' });
+    ], { isSubcommandOf: 'sex', blame: 'ei' });
   }
 
   async run(interaction) {

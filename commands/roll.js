@@ -13,6 +13,7 @@ class Roll extends Command {
         type: 3,
         required: false,
       }],
+      { blame: 'ei' },
     );
   }
 

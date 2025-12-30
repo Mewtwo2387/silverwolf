@@ -2,10 +2,11 @@ const {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
 } = require('discord.js');
 const { Command } = require('./classes/command');
+const { logError } = require('../utils/log');
 
 class Pokemon extends Command {
   constructor(client) {
-    super(client, 'pokemon', 'list your pokemons?', []);
+    super(client, 'pokemon', 'list your pokemons?', [], { blame: 'ei' });
     this.itemsPerPage = 20; // Show 20 Pokémon per page
   }
 
@@ -107,7 +108,7 @@ class Pokemon extends Command {
         await message.edit({ components: [disabledRow] });
       });
     } catch (error) {
-      console.error('Failed to retrieve Pokémon list:', error);
+      logError('Failed to retrieve Pokémon list:', error);
       await interaction.editReply({ content: 'Failed to retrieve Pokémon list', ephemeral: true });
     }
   }

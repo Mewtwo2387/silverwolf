@@ -10,9 +10,9 @@ const {
 const { INFO_LEVEL } = require('../utils/upgradesInfo');
 const { format } = require('../utils/math');
 
-class AscensionUpgrade extends Command {
+class ShopAscension extends Command {
   constructor(client) {
-    super(client, 'ascension', 'buy strong upgrades with your heavenly nuggies', [], { isSubcommandOf: 'shop' });
+    super(client, 'ascension', 'buy strong upgrades with your heavenly nuggies', [], { isSubcommandOf: 'shop', blame: 'ei' });
   }
 
   async run(interaction) {
@@ -61,4 +61,4 @@ TBA
   }
 }
 
-module.exports = AscensionUpgrade;
+module.exports = ShopAscension;

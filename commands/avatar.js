@@ -23,7 +23,7 @@ class Avatar extends Command {
           { name: 'Server Avatar', value: 'server' },
         ],
       },
-    ]);
+    ], { blame: 'xei' });
   }
 
   async run(interaction) {

@@ -1,4 +1,5 @@
 const { DevCommand } = require('./classes/devcommand');
+const { logError } = require('../utils/log');
 
 class Eval extends DevCommand {
   constructor(client) {
@@ -7,7 +8,7 @@ class Eval extends DevCommand {
       description: 'js code',
       type: 3,
       required: true,
-    }]);
+    }], { blame: 'ei' });
   }
 
   async run(interaction) {
@@ -16,6 +17,7 @@ class Eval extends DevCommand {
       // eslint-disable-next-line no-eval
       interaction.editReply(`${eval(input)}`);
     } catch (error) {
+      logError('Error evaluating code:', error);
       interaction.editReply(`Error: ${error.message}`);
     }
   }

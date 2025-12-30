@@ -11,7 +11,7 @@ const HOUR_LENGTH = 60 * 60 * 1000;
 
 class Claim extends Command {
   constructor(client) {
-    super(client, 'claim', 'Claim your daily dinonuggies', []);
+    super(client, 'claim', 'Claim your daily dinonuggies', [], { blame: 'both' });
   }
 
   async run(interaction) {

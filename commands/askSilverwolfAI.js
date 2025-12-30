@@ -20,7 +20,7 @@ class AskSilverwolfAI extends Command {
         type: 5,
         required: false,
       },
-    ]);
+    ], { blame: 'both' });
   }
 
   async run(interaction) {

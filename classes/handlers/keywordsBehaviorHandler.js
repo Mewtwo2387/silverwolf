@@ -40,7 +40,7 @@ module.exports = {
           components.push(buttonRow);
           content = `<@${repliedTo.author.id}> - ${girlcockxContent}`;
         } catch (err) {
-          console.warn('Could not fetch replied-to message:', err);
+          logError('Could not fetch replied-to message:', err);
         }
       }
 
@@ -56,7 +56,7 @@ module.exports = {
 
       await message.delete();
     } catch (err) {
-      console.error('Error sending girlcockx webhook:', err);
+      logError('Error sending girlcockx webhook:', err);
     }
   },
   grok: async (message) => {

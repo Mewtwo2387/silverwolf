@@ -13,7 +13,7 @@ class ForceAutomation extends DevCommand {
           { name: 'ten_minutes', value: 'ten_minutes' },
         ],
       },
-    ], { ephemeral: true, isSubcommandOf: 'dev' });
+    ], { ephemeral: true, isSubcommandOf: 'dev', blame: 'ei' });
   }
 
   async run(interaction) {
