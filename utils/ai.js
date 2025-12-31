@@ -51,7 +51,7 @@ async function resolvePersona(messageContent = '') {
   return {
     name: 'Default',
     provider: defaults.provider || 'gemini',
-    model: defaults.model || 'gemini-2.5-flash',
+    model: defaults.model || 'gemini-3-flash-preview',
     systemPrompt: defaults.systemPrompt || 'You are a helpful AI assistant.',
     responseModalities: defaults.responseModalities || ['TEXT'],
   };
