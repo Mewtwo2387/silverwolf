@@ -1,4 +1,4 @@
-require('dotenv').config({ path: '../.env' });
+// Note: Bun automatically reads .env files from project root
 
 async function fetchChatCompletion() {
   const response = await fetch('https://api.aimlapi.com/v1/chat/completions', {

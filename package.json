@@ -4,11 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "jest --detectOpenHandles",
-    "test:watch": "jest --watch",
+    "start": "bun index.js",
+    "start:node": "node index.js",
+    "dev": "bun --watch index.js",
+    "dev:node": "node --watch index.js",
+    "test": "bun test",
+    "test:jest": "jest --detectOpenHandles",
+    "test:watch": "bun test --watch",
     "test:coverage": "jest --coverage",
-    "start": "node index.js",
-    "dev": "nodemon index.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
@@ -17,20 +20,16 @@
   "license": "ISC",
   "dependencies": {
     "@google/generative-ai": "^0.16.0",
-    "axios": "^1.7.3",
-    "canvas": "^2.11.2",
+    "canvas": "^3.0.0-rc3",
     "discord.js": "^14.15.2",
-    "dotenv": "^16.4.5",
     "gif-frames": "^1.0.1",
     "gifencoder": "^2.0.1",
     "gifuct-js": "^2.1.2",
     "jsdom": "^13.2.0",
     "mime": "^2.5.2",
-    "node_characterai": "^1.2.7",
     "node-cron": "^3.0.3",
-    "node-fetch": "^2.7.0",
+    "node_characterai": "^1.2.7",
     "openai": "^5.12.2",
-    "sqlite3": "^5.1.7",
     "xml2js": "^0.6.2"
   },
   "devDependencies": {
@@ -54,5 +53,9 @@
       "!src/config/**",
       "!src/**/*.test.js"
     ]
-  }
+  },
+  "trustedDependencies": [
+    "canvas",
+    "skia-canvas"
+  ]
 }

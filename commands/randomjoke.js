@@ -1,4 +1,3 @@
-const axios = require('axios');
 const { Command } = require('./classes/command');
 const { logError } = require('../utils/log');
 
@@ -11,8 +10,9 @@ class Joke extends Command {
     const jokeUrl = 'https://official-joke-api.appspot.com/random_joke';
 
     try {
-      const response = await axios.get(jokeUrl);
-      const { data } = response;
+      const response = await fetch(jokeUrl);
+      if (!response.ok) throw new Error('Failed to fetch joke');
+      const data = await response.json();
 
       // Send the setup message
       await interaction.editReply({ content: data.setup });

@@ -7,7 +7,7 @@ const Database = require('../database/Database');
 const BirthdayScheduler = require('./birthdayScheduler');
 const BabyScheduler = require('./babyScheduler');
 const { log, logError } = require('../utils/log');
-require('dotenv').config();
+// Note: Bun automatically reads .env files
 const seasonConfig = require('../data/config/skin/pokemon.json');
 const {
   ChristmasHandler, NormalHandler, HalloweenHandler, AprilFoolsHandler,
