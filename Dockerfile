@@ -1,42 +1,55 @@
 # --- STAGE 1: Build ---
-FROM node:20-alpine AS builder
+FROM oven/bun:1 AS builder
 WORKDIR /app
 
-# 1. Install the tools needed to compile native 'canvas'
-# These are only in the builder stage, so they won't bloat your final image
-RUN apk add --no-cache \
-    build-base \
-    g++ \
-    cairo-dev \
-    jpeg-dev \
-    pango-dev \
-    giflib-dev \
-    python3
+# 1. Install system-level build tools
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    python3 \
+    libcairo2-dev \
+    libpango1.0-dev \
+    libjpeg-dev \
+    libgif-dev \
+    librsvg2-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY package*.json ./
+# 2. [NEW] Install node-gyp globally so 'canvas' can use it to compile
+RUN bun add -g node-gyp
 
-# 2. Tell npm to use the tools we just installed
-RUN npm ci --omit=dev
+COPY package.json bun.lockb* bun.lock ./
+
+# 3. Install project dependencies
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    bun install --frozen-lockfile --production
 
 # --- STAGE 2: Run ---
-FROM node:20-alpine
+# Use 'slim' (Debian) for a smaller final image that is still compatible with Stage 1
+FROM oven/bun:1-slim
 WORKDIR /app
 
-RUN apk add --no-cache \
-    cairo \
-    jpeg \
-    pango \
-    giflib \
+# Install runtime libraries only
+RUN apt-get update && apt-get install -y \
+    libcairo2 \
+    libjpeg62-turbo \
+    libpango-1.0-0 \
+    libgif7 \
+    librsvg2-2 \
+    fonts-dejavu \
     fontconfig \
-    ttf-dejavu 
+    && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /app/persistence && chown -R node:node /app/persistence
-USER node
+# Create persistence directory and set permissions
+RUN mkdir -p /app/persistence && chown -R bun:bun /app/persistence
 
-COPY --from=builder --chown=node:node /app/node_modules ./node_modules
-COPY --chown=node:node . .
+# Switch to non-root user
+USER bun
 
-# Optional: Refresh font cache to be safe
+# Copy node_modules and code from builder
+COPY --from=builder --chown=bun:bun /app/node_modules ./node_modules
+COPY --chown=bun:bun . .
+
+# Refresh font cache
 RUN fc-cache -f
 
-CMD ["node", "index.js"]
+CMD ["bun", "index.js"]
