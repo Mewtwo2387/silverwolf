@@ -4,5 +4,6 @@ node_modules
 npm-debug.log
 logs.txt
 database.db
-persistence
+persistence/
 .DS_Store
+local_db_folder/
