@@ -1,4 +1,4 @@
-const sqlite3 = require('sqlite3').verbose();
+const { Database: BunDatabase } = require('bun:sqlite');
 const { log, logError } = require('../utils/log');
 const { snakeToCamelJSON } = require('../utils/caseConvert');
 const tables = require('./tables');
@@ -6,19 +6,23 @@ const models = require('./models');
 
 class Database {
   constructor(databasePath) {
-    this.ready = new Promise((resolve, reject) => {
-      this.db = new sqlite3.Database(databasePath, async (err) => {
-        if (err) {
-          logError('Failed to connect to the database:', err);
-          reject(err);
-        } else {
-          log('Connected to the database.db SQLite database.');
-          await this.init();
-          resolve();
-        }
-      });
-    });
     this.models = {};
+
+    // bun:sqlite is synchronous but we keep the async ready pattern for compatibility
+    this.ready = (async () => {
+      try {
+        this.db = new BunDatabase(databasePath, { create: true });
+
+        // Enable WAL mode for better concurrency performance
+        this.db.run('PRAGMA journal_mode = WAL');
+
+        log('Connected to the database.db SQLite database.');
+        await this.init();
+      } catch (err) {
+        logError('Failed to connect to the database:', err);
+        throw err;
+      }
+    })();
   }
 
   async createTable(tableJSON) {
@@ -30,17 +34,8 @@ class Database {
       rows += `, ${tableJSON.constraints.join(', ')}`;
     }
     try {
-      await new Promise((resolve, reject) => {
-        this.db.run(`CREATE TABLE IF NOT EXISTS ${tableJSON.name} (${rows})`, (err) => {
-          if (err) {
-            logError(`Failed to create ${tableJSON.name} table:`, err);
-            reject(err);
-          } else {
-            log(`Created the ${tableJSON.name} table.`);
-            resolve();
-          }
-        });
-      });
+      this.db.run(`CREATE TABLE IF NOT EXISTS ${tableJSON.name} (${rows})`);
+      log(`Created the ${tableJSON.name} table.`);
     } catch (err) {
       logError(`Error creating table ${tableJSON.name}:`, err);
     }
@@ -48,69 +43,61 @@ class Database {
 
   async updateTable(tableJSON) {
     const columnsToAdd = tableJSON.columns.filter((col) => !tableJSON.primaryKey.includes(col.name));
-    await Promise.all(columnsToAdd.map(async (column) => {
+    for (const column of columnsToAdd) {
       try {
-        const columnExists = await this.checkIfColumnExists(tableJSON.name, column.name);
+        const columnExists = this.checkIfColumnExists(tableJSON.name, column.name);
         if (!columnExists) {
-          await new Promise((resolve, reject) => {
-            const addColumnQuery = `ALTER TABLE ${tableJSON.name} ADD COLUMN ${column.name} ${column.type}`;
-            this.db.run(addColumnQuery, (err) => {
-              if (err) {
-                logError(`Failed to add column ${column.name}:`, err.message);
-                reject(err);
-              } else {
-                log(`Column ${column.name} added successfully.`);
-                resolve();
-              }
-            });
-          });
+          const addColumnQuery = `ALTER TABLE ${tableJSON.name} ADD COLUMN ${column.name} ${column.type}`;
+          this.db.run(addColumnQuery);
+          log(`Column ${column.name} added successfully.`);
         }
       } catch (err) {
         logError(`Failed to check or add column ${column.name}:`, err);
       }
-    }));
+    }
   }
 
   async init() {
     log('--------------------\nInitializing database...\n--------------------');
-    log('Database 2.0 - Electric Boogaloo');
-    // Create all tables
-    await Promise.all(Object.values(tables).map((table) => this.createTable(table)));
+    log('Database 3.0 - Bun Edition');
+
+    // Create all tables (sequential for safety during init)
+    for (const table of Object.values(tables)) {
+      await this.createTable(table);
+    }
+
     // Update all tables
-    await Promise.all(Object.values(tables).map((table) => this.updateTable(table)));
+    for (const table of Object.values(tables)) {
+      await this.updateTable(table);
+    }
+
     // Initialize models
     Object.entries(models).forEach(([modelName, ModelClass]) => {
       this.models[modelName] = new ModelClass(this);
     });
 
-    await this.db.run('PRAGMA foreign_keys = ON');
+    // Enable foreign keys
+    this.db.run('PRAGMA foreign_keys = ON');
   }
 
   checkIfColumnExists(tableName, columnName) {
-    return new Promise((resolve, reject) => {
-      const query = `PRAGMA table_info(${tableName})`;
-      this.db.all(query, [], (err, rows) => {
-        if (err) {
-          return reject(err);
-        }
-        const columnExists = rows.some((row) => row.name === columnName);
-        return resolve(columnExists);
-      });
-    });
+    // bun:sqlite is synchronous, no need for Promise wrapper
+    const query = `PRAGMA table_info(${tableName})`;
+    const rows = this.db.query(query).all();
+    return rows.some((row) => row.name === columnName);
   }
 
   async executeQuery(query, params = []) {
     try {
-      const result = await new Promise((resolve, reject) => {
-        this.db.run(query, params, function x(err) {
-          if (err) {
-            reject(err);
-            return;
-          }
-          resolve({ changes: this.changes, lastID: this.lastID });
-        });
-      });
-      return result;
+      // bun:sqlite uses .run() for INSERT/UPDATE/DELETE
+      const stmt = this.db.query(query);
+      stmt.run(...params);
+
+      // Get changes and lastInsertRowid from the database instance
+      return {
+        changes: this.db.query('SELECT changes() as changes').get().changes,
+        lastID: this.db.query('SELECT last_insert_rowid() as id').get().id
+      };
     } catch (error) {
       logError(`Error executing query "${query}":`, error);
       return { changes: 0, lastID: null };
@@ -119,16 +106,10 @@ class Database {
 
   async executeSelectQuery(query, params = []) {
     try {
-      const result = await new Promise((resolve, reject) => {
-        this.db.get(query, params, (err, row) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-          resolve(row ? snakeToCamelJSON(row) : null);
-        });
-      });
-      return result;
+      // bun:sqlite .get() returns a single row
+      const stmt = this.db.query(query);
+      const row = stmt.get(...params);
+      return row ? snakeToCamelJSON(row) : null;
     } catch (error) {
       logError(`Error executing select query "${query}":`, error);
       return null;
@@ -137,16 +118,10 @@ class Database {
 
   async executeSelectAllQuery(query, params = []) {
     try {
-      const result = await new Promise((resolve, reject) => {
-        this.db.all(query, params, (err, rows) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-          resolve(rows.map((row) => snakeToCamelJSON(row)));
-        });
-      });
-      return result;
+      // bun:sqlite .all() returns all rows
+      const stmt = this.db.query(query);
+      const rows = stmt.all(...params);
+      return rows.map((row) => snakeToCamelJSON(row));
     } catch (error) {
       logError(`Error executing select all query "${query}":`, error);
       return [];

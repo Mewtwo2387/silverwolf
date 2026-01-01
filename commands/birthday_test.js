@@ -1,5 +1,4 @@
-// probably not needed
-require('dotenv').config();
+// Note: Bun automatically reads .env files
 const { EmbedBuilder } = require('discord.js');
 const { DevCommand } = require('./classes/devcommand');
 const { logError } = require('../utils/log');

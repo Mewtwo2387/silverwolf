@@ -9,6 +9,8 @@ node_modules/*
 _*.js
 persistence/
 
+*.db-wal
+*.db-shm
 
 # whitelist
 !data/SilverwolfSystemPrompt.txt

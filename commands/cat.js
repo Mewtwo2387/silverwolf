@@ -1,4 +1,3 @@
-const axios = require('axios');
 const { EmbedBuilder } = require('discord.js');
 const { Command } = require('./classes/command');
 const { logError } = require('../utils/log');
@@ -33,17 +32,21 @@ class Cat extends Command {
 
       // Fetch a cat fact if requested
       if (option === 'fact' || option === 'both') {
-        const factResponse = await axios.get(catFactUrl);
-        catFact = factResponse.data.fact;
+        const factResponse = await fetch(catFactUrl);
+        if (!factResponse.ok) throw new Error('Failed to fetch cat fact');
+        const factData = await factResponse.json();
+        catFact = factData.fact;
       }
 
       // Fetch a cat picture if requested
       if (option === 'img' || option === 'both') {
-        const picResponse = await axios.get(catPicUrl);
-        if (!picResponse.data || picResponse.data.length === 0) {
+        const picResponse = await fetch(catPicUrl);
+        if (!picResponse.ok) throw new Error('Failed to fetch cat picture');
+        const picData = await picResponse.json();
+        if (!picData || picData.length === 0) {
           throw new Error('No cat picture found.');
         }
-        const cat = picResponse.data[0];
+        const cat = picData[0];
         catImageUrl = cat.url;
         catId = cat.id;
       }

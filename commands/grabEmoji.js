@@ -1,5 +1,4 @@
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
-const axios = require('axios');
 const Canvas = require('canvas');
 const { Command } = require('./classes/command');
 const { logError } = require('../utils/log');
@@ -58,8 +57,10 @@ class GrabEmoji extends Command {
       const emojiUrl = `https://cdn.discordapp.com/emojis/${emojiId}.${isAnimated ? 'gif' : 'png'}`;
 
       // Fetch the emoji image
-      const response = await axios.get(emojiUrl, { responseType: 'arraybuffer' });
-      let emojiBuffer = Buffer.from(response.data, 'binary');
+      const response = await fetch(emojiUrl);
+      if (!response.ok) throw new Error('Failed to fetch emoji');
+      const arrayBuffer = await response.arrayBuffer();
+      let emojiBuffer = Buffer.from(arrayBuffer);
 
       // If format conversion is needed and it's not animated, use Canvas
       if (!isAnimated && format !== 'png') {
