@@ -40,6 +40,6 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/ubuntu/silverwolf
+            cd /opt/silverwolf
             docker compose pull
             docker compose up -d
