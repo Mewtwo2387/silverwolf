@@ -82,7 +82,7 @@ async function generateContent({
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt },
       ],
-      max_tokens: 4000,
+      max_tokens: 8192,
     });
     return { text: completion.choices?.[0]?.message?.content ?? '', images: [] };
   }
