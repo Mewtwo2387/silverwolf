@@ -106,7 +106,7 @@ class DBDump extends DevCommand {
         this.cleanupFile(file.attachment);
       });
 
-      const databasePath = path.join(__dirname, '../database.db');
+      const databasePath = path.join(__dirname, '../persistence/database.db');
 
       if (fs.existsSync(databasePath)) {
         interaction.followUp({

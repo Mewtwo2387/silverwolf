@@ -1,0 +1,12 @@
+services:
+  bot:
+    image: mewtwo2387/silverwolf-bot:latest
+    container_name: silverwolf-bot
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./persistence:/app/persistence
+    deploy:
+      resources:
+        limits:
+          memory: 512M

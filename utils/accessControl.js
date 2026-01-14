@@ -1,5 +1,5 @@
 const Discord = require('discord.js');
-require('dotenv').config();
+// Note: Bun automatically reads .env files
 
 const ALLOWED_USERS = process.env.ALLOWED_USERS.split(',');
 const BASEMENT_ID = '969953667597893672';

@@ -1,6 +1,6 @@
 const cron = require('node-cron');
 const { log } = require('../utils/log');
-require('dotenv').config();
+// Note: Bun automatically reads .env files
 const { getAmount } = require('../utils/claim');
 
 class BabyScheduler {

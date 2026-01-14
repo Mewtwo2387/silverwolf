@@ -1,5 +1,4 @@
 const Discord = require('discord.js');
-const axios = require('axios');
 const { JSDOM } = require('jsdom');
 const { logError } = require('../utils/log');
 const { Command } = require('./classes/command');
@@ -128,8 +127,10 @@ class F1Standings extends Command {
     const apiUrl = `https://www.formula1.com/en/results/${year}/${endpoint}`;
 
     try {
-      const response = await axios.get(apiUrl);
-      const standings = extractStandings(response.data, type);
+      const response = await fetch(apiUrl);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const html = await response.text();
+      const standings = extractStandings(html, type);
       const embed = buildEmbed(standings, type, year);
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {

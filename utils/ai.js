@@ -2,7 +2,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { OpenAI } = require('openai');
 const mime = require('mime');
 const fs = require('fs');
-require('dotenv').config();
+// Note: Bun automatically reads .env files
 
 // Initialize AI providers
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_TOKEN);

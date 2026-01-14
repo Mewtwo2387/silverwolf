@@ -6,18 +6,40 @@ on:
       - master
 
 jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64  
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/silverwolf-bot:latest
+
   deploy:
+    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to VM
         uses: appleboy/ssh-action@master
         with:
           host: 51.75.21.146
-          username: ubuntu
+          username: deploy
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          passphrase: ${{ secrets.SSH_PASSPHRASE }}
           script: |
-            cd /home/ubuntu/silverwolf
-            git pull origin master || exit 1
-            npm ci
-            pm2 restart 0 
+            cd /opt/silverwolf
+            docker compose pull
+            docker compose up -d

@@ -1,8 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const logFilePath = path.join(__dirname, '../logs.txt');
-const logErrorFilePath = path.join(__dirname, '../logs_error.txt');
+const logFilePath = path.join(__dirname, '../persistence/logs.txt');
+const logErrorFilePath = path.join(__dirname, '../persistence/logs_error.txt');
 
 function log(message) {
   console.log(message); // Log to console

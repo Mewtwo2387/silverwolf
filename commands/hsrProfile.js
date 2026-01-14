@@ -1,4 +1,4 @@
-const axios = require('axios');
+
 const path = require('path');
 const fs = require('fs');
 const { Command } = require('./classes/command');
@@ -35,12 +35,13 @@ class HsrProfile extends Command {
     const lightconeData = JSON.parse(fs.readFileSync(hsrLC, 'utf8')); // Load Lightcone data
 
     try {
-      const { status, statusText, data } = await axios.get(url, { headers });
-      if (status !== 200) {
-        logError(`HTTP Error Response: Status ${status} ${statusText}`);
-        await interaction.editReply({ content: `Failed to fetch data: HTTP status ${status}. Please contact mystichunterz for assistance.`, ephemeral: true });
+      const response = await fetch(url, { headers });
+      if (!response.ok) {
+        logError(`HTTP Error Response: Status ${response.status} ${response.statusText}`);
+        await interaction.editReply({ content: `Failed to fetch data: HTTP status ${response.status}. Please contact mystichunterz for assistance.`, ephemeral: true });
         return;
       }
+      const data = await response.json();
 
       if (!data.detailInfo) {
         await interaction.editReply({ content: 'No data found for the given UID. Please check the UID and try again.', ephemeral: true });
@@ -96,16 +97,16 @@ class HsrProfile extends Command {
         color: 0x00AA00,
         title: `${detailInfo.nickname ?? 'Unknown'}'s Honkai Star Rail Profile`,
         description: `**Level:** ${detailInfo.level ?? 'Unknown'}\n`
-                    + `**World Level:** ${detailInfo.worldLevel ?? 'Unknown'}\n`
-                    + `**Signature:** ${detailInfo.signature ?? 'No signature provided'}\n`
-                    + `**Achievements:** ${detailInfo.recordInfo?.achievementCount ?? '0'}\n`
-                    + `**Avatar Count:** ${detailInfo.recordInfo?.avatarCount ?? '0'}\n`
-                    + `**Equipment Count:** ${detailInfo.recordInfo?.equipmentCount ?? '0'}\n`
-                    + `**Max Rogue Challenge Score:** ${detailInfo.recordInfo?.maxRogueChallengeScore ?? 'N/A'}\n`
-                    + `**Friend Count:** ${detailInfo.friendCount ?? '0'}\n`
-                    + `**Books Owned:** ${detailInfo.recordInfo?.bookCount ?? '0'}\n`
-                    + `**Relics Owned:** ${detailInfo.recordInfo?.relicCount ?? '0'}\n`
-                    + `**Music Count:** ${detailInfo.recordInfo?.musicCount ?? '0'}`,
+          + `**World Level:** ${detailInfo.worldLevel ?? 'Unknown'}\n`
+          + `**Signature:** ${detailInfo.signature ?? 'No signature provided'}\n`
+          + `**Achievements:** ${detailInfo.recordInfo?.achievementCount ?? '0'}\n`
+          + `**Avatar Count:** ${detailInfo.recordInfo?.avatarCount ?? '0'}\n`
+          + `**Equipment Count:** ${detailInfo.recordInfo?.equipmentCount ?? '0'}\n`
+          + `**Max Rogue Challenge Score:** ${detailInfo.recordInfo?.maxRogueChallengeScore ?? 'N/A'}\n`
+          + `**Friend Count:** ${detailInfo.friendCount ?? '0'}\n`
+          + `**Books Owned:** ${detailInfo.recordInfo?.bookCount ?? '0'}\n`
+          + `**Relics Owned:** ${detailInfo.recordInfo?.relicCount ?? '0'}\n`
+          + `**Music Count:** ${detailInfo.recordInfo?.musicCount ?? '0'}`,
         thumbnail: avatarUrl ? { url: avatarUrl } : undefined,
         fields: [
           {

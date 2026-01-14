@@ -7,7 +7,11 @@ node_modules/*
 *.txt
 *.log
 _*.js
+persistence/
 
+*.db-wal
+*.db-shm
 
 # whitelist
 !data/SilverwolfSystemPrompt.txt
+.DS_Store
