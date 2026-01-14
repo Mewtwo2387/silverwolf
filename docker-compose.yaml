@@ -1,6 +1,6 @@
 services:
   bot:
-    image: DOCKERHUB_USERNAME_PLACEHOLDER/silverwolf-bot:latest
+    image: mewtwo2387/silverwolf-bot:latest
     container_name: silverwolf-bot
     restart: unless-stopped
     env_file: .env
