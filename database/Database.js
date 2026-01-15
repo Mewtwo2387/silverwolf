@@ -96,7 +96,7 @@ class Database {
       // Get changes and lastInsertRowid from the database instance
       return {
         changes: this.db.query('SELECT changes() as changes').get().changes,
-        lastID: this.db.query('SELECT last_insert_rowid() as id').get().id
+        lastID: this.db.query('SELECT last_insert_rowid() as id').get().id,
       };
     } catch (error) {
       logError(`Error executing query "${query}":`, error);

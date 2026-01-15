@@ -75,6 +75,10 @@ async function getPersonaByName(name) {
 async function generateContent({
   provider, model, systemPrompt, prompt, // responseModalities parameter is no longer directly used for switching
 }) {
+  const nowUTC = `${new Date().toISOString().replace('T', ' ').substring(0, 19)} UTC`;
+  // eslint-disable-next-line no-param-reassign
+  systemPrompt = `[Current Time: ${nowUTC}] ${systemPrompt || ''}`;
+
   if (provider === 'openrouter') {
     const completion = await openrouter.chat.completions.create({
       model,
