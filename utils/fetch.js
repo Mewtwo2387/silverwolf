@@ -2,10 +2,10 @@ const { log } = require('./log');
 
 const MAX_FETCH_COUNT = 100;
 
-async function fetchMessagesByCount(channel, countLimit) {
+async function fetchMessagesByCount(channel, countLimit, excludeNewest = true) {
   const messages = [];
   let lastId;
-  let remaining = countLimit;
+  let remaining = countLimit + (excludeNewest ? 1 : 0);
 
   while (remaining > 0) {
     const fetchLimit = Math.min(remaining, MAX_FETCH_COUNT);
@@ -31,10 +31,10 @@ async function fetchMessagesByCount(channel, countLimit) {
       break;
     }
   }
-  return messages.reverse();
+  return messages.reverse().slice(excludeNewest ? 1 : 0);
 }
 
-async function fetchMessagesByTime(channel, timeLimit, maxMessages = 1000) {
+async function fetchMessagesByTime(channel, timeLimit, maxMessages = 1000, excludeNewest = true) {
   const messages = [];
   let lastId;
 
@@ -61,7 +61,7 @@ async function fetchMessagesByTime(channel, timeLimit, maxMessages = 1000) {
       break;
     }
   }
-  return messages.reverse();
+  return messages.reverse().slice(excludeNewest ? 1 : 0);
 }
 
 module.exports = {

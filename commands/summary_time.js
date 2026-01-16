@@ -1,4 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
+const fs = require('fs');
 const { Command } = require('./classes/command');
 const { generateContent, getPersonaByName } = require('../utils/ai');
 const { log, logError } = require('../utils/log');
@@ -46,6 +47,15 @@ class Summary extends Command {
     if (!persona) {
       await interaction.editReply('Summarizer persona not configured.');
       return;
+    }
+    if (persona.systemPromptFile) {
+      const systemPromptFile = await new Promise((resolve, reject) => {
+        fs.readFile(persona.systemPromptFile, 'utf8', (err, data) => {
+          if (err) reject(err);
+          else resolve(data);
+        });
+      });
+      persona.systemPrompt = systemPromptFile;
     }
 
     let summary;
