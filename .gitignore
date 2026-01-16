@@ -13,5 +13,5 @@ persistence/
 *.db-shm
 
 # whitelist
-!data/SilverwolfSystemPrompt.txt
+!data/*.txt
 .DS_Store
