@@ -112,7 +112,7 @@ async function getAmount(client, uid, streak) {
 async function handleSuccessfulClaim(client, interaction, newMessage = false) {
   const streak = await client.db.user.getUserAttr(interaction.user.id, 'dinonuggiesClaimStreak');
   const dinonuggies = await client.db.user.getUserAttr(interaction.user.id, 'dinonuggies');
-  const now = new Date();
+  const now = Date.now();
   const {
     amount, title, imageUrl, colour, footer, thumbnail,
   } = await getAmount(client, interaction.user.id, streak);

@@ -121,7 +121,7 @@ describe('UserModel', () => {
     it('should still update dinonuggies_last_claimed if value is null', async () => {
       const userId = '123456789';
       await userModel.createUser(userId);
-      await userModel.setUserAttr(userId, 'dinonuggiesLastClaimed', '2024-01-01T12:00:00.000Z');
+      await userModel.setUserAttr(userId, 'dinonuggiesLastClaimed', 1704110400000);
       await userModel.setUserAttr(userId, 'dinonuggiesLastClaimed', null);
       const user = await userModel.getUser(userId);
       expect(user.dinonuggiesLastClaimed).toBe(null);

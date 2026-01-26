@@ -16,10 +16,10 @@ class Claim extends Command {
 
   async run(interaction) {
     try {
-      const now = new Date();
+      const now = Date.now();
       const lastClaimedInt = await this.client.db.user.getUserAttr(interaction.user.id, 'dinonuggiesLastClaimed');
 
-      const lastClaimed = lastClaimedInt ? new Date(lastClaimedInt) : null;
+      const lastClaimed = lastClaimedInt || null;
       const diff = lastClaimed ? now - lastClaimed : DAY_LENGTH;
 
       const streak = await this.client.db.user.getUserAttr(interaction.user.id, 'dinonuggiesClaimStreak');
