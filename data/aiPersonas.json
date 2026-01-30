@@ -20,7 +20,7 @@
       "name": "GPT",
       "triggers": ["@gpt", "gpt"],
       "provider": "openrouter",
-      "model": "openai/gpt-oss-120b:free",
+      "model": "openai/gpt-oss-120b:nitro",
       "systemPrompt": "You are GPT, a helpful AI assistant. Respond clearly, concisely, and politely. Keep answers under a few sentences unless more detail is explicitly requested.",
       "avatarURL": "https://freelogopng.com/images/all_img/1681142503openai-icon-png.png"
     },
@@ -58,7 +58,7 @@
       "name": "Xiaomi",
       "triggers": ["@xiaomi"],
       "provider": "openrouter",
-      "model": "xiaomi/mimo-v2-flash:free",
+      "model": "xiaomi/mimo-v2-flash:nitro",
       "systemPrompt": "You are Mimo V2 by Xiaomi, a helpful AI assistant. Respond clearly, concisely, and politely. Keep answers under a few sentences unless more detail is explicitly requested.",
       "avatarURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Xiaomi_logo_%282021-%29.svg/1280px-Xiaomi_logo_%282021-%29.svg.png?20221112002517"
     },
