@@ -193,6 +193,10 @@ class Database {
     return this.dumpTable('GameUID', ['user_id']);
   }
 
+  get aiChat() {
+    return this.models.AiChatModel;
+  }
+
   get baby() {
     return this.models.BabyModel;
   }

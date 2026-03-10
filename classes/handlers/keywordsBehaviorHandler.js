@@ -81,9 +81,13 @@ module.exports = {
         .catch(() => null)
       : null;
 
-    // Resolve the persona, which now can include `responseModalities`
+    // Resolve the persona
     const persona = await resolvePersona(query);
     const displayName = persona.name;
+
+    // Personas excluded from persistent memory
+    const NO_MEMORY_PERSONAS = ['Summarizer'];
+    const hasMemory = !NO_MEMORY_PERSONAS.includes(displayName);
 
     let prompt = '';
 
@@ -98,18 +102,28 @@ module.exports = {
 
     log(`Prompt: ${prompt}`);
 
-    if (displayName === 'Imgen' && message.channel.id !== '1307601349906665492') {
-      await message.reply('Imgen is only available in the ai slop channel.');
-      return;
-    }
-
     const avatarURL = persona.avatarURL || message.client.user.displayAvatarURL();
+
+    // Load persistent history for this user+persona (skip for excluded personas)
+    let aiSession = null;
+    let history = [];
+    if (hasMemory) {
+      try {
+        aiSession = await message.client.db.aiChat.getOrCreateSession(
+          message.author.id,
+          displayName,
+        );
+        history = await message.client.db.aiChat.getHistory(aiSession.sessionId, 30);
+      } catch (histErr) {
+        logError('AiChat: Failed to load history, proceeding without it:', histErr);
+      }
+    }
 
     try {
       const webhooks = await message.channel.fetchWebhooks();
       let webhook = webhooks.find((wh) => wh.name === WEBHOOK_NAME && wh.token);
 
-      // lightweight censorship mimic (existing logic)
+      // Lightweight censorship mimic (existing logic)
       const censorshipRegex = /(1989|winnie[\s-]?the[\s-]?pooh|tiananmen|taiwan|hong\s?kong|tibet|xinjiang)/i;
 
       if (displayName === 'Deepseek' && censorshipRegex.test(prompt)) {
@@ -123,6 +137,13 @@ module.exports = {
         ];
         const reply = responses[Math.floor(Math.random() * responses.length)];
 
+        if (!webhook) {
+          webhook = await message.channel.createWebhook({
+            name: WEBHOOK_NAME,
+            avatar: avatarURL,
+          });
+        }
+
         await webhook.send({
           content: reply,
           username: displayName,
@@ -133,13 +154,13 @@ module.exports = {
         return;
       }
 
-      // Call the new `generateContent` function which can return text and/or images
+      // Call generateContent with history context
       const { text, images } = await generateContent({
         provider: persona.provider,
         model: persona.model,
         systemPrompt: persona.systemPrompt,
         prompt,
-        responseModalities: persona.responseModalities, // Pass the new property from persona
+        history,
       });
 
       if (!webhook) {
@@ -150,11 +171,10 @@ module.exports = {
       }
 
       const MAX_LENGTH = 2000;
-      let remainingText = (text || '').toString(); // Use a distinct variable name
+      let remainingText = (text || '').toString();
       let previousMsg = null;
-      let filesToAttach = images || []; // Images to be sent with the very first message chunk
+      let filesToAttach = images || [];
 
-      // Prepare content for the initial message
       let currentChunk = remainingText.slice(0, MAX_LENGTH);
       remainingText = remainingText.slice(currentChunk.length).trimStart();
 
@@ -168,19 +188,17 @@ module.exports = {
       );
       componentsForFirstMessage.push(replyButton);
 
-      // Send the first message, including images if any
       const sentInitial = await webhook.send({
-        content: currentChunk || (filesToAttach.length > 0 ? '' : '(no content)'), // Content can be empty if only images
+        content: currentChunk || (filesToAttach.length > 0 ? '' : '(no content)'),
         username: displayName,
         avatarURL,
         components: componentsForFirstMessage,
-        files: filesToAttach, // Attach images here
+        files: filesToAttach,
         allowedMentions: { parse: [] },
       });
       previousMsg = sentInitial;
-      filesToAttach = []; // Clear images after sending them with the first message
+      filesToAttach = [];
 
-      // Continue sending any remaining text chunks
       while (remainingText.length > 0) {
         currentChunk = remainingText.slice(0, MAX_LENGTH);
         const breakIndex = Math.max(
@@ -213,6 +231,17 @@ module.exports = {
           allowedMentions: { parse: [] },
         });
         previousMsg = sent;
+      }
+
+      // Persist history only after a successful response (no ghost messages on error)
+      if (hasMemory && aiSession && text) {
+        const aiRole = persona.provider === 'openrouter' ? 'assistant' : 'model';
+        try {
+          await message.client.db.aiChat.addHistory(aiSession.sessionId, 'user', prompt);
+          await message.client.db.aiChat.addHistory(aiSession.sessionId, aiRole, text);
+        } catch (saveErr) {
+          logError('AiChat: Failed to save history:', saveErr);
+        }
       }
     } catch (err) {
       try {
