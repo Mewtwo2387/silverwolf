@@ -1,0 +1,18 @@
+const aiChatQueries = {
+    // Session management
+    START_SESSION: 'INSERT INTO AiChatSession (user_id, persona_name) VALUES (?, ?)',
+    GET_ACTIVE_SESSION: 'SELECT * FROM AiChatSession WHERE user_id = ? AND persona_name = ? AND active = 1 ORDER BY session_id DESC LIMIT 1',
+    GET_SESSION_BY_ID: 'SELECT * FROM AiChatSession WHERE session_id = ?',
+    GET_ALL_USER_SESSIONS: 'SELECT * FROM AiChatSession WHERE user_id = ? ORDER BY session_id DESC',
+    END_SESSION: 'UPDATE AiChatSession SET active = 0 WHERE session_id = ?',
+    ACTIVATE_SESSION: 'UPDATE AiChatSession SET active = 1 WHERE session_id = ?',
+    END_ALL_USER_PERSONA_SESSIONS: 'UPDATE AiChatSession SET active = 0 WHERE user_id = ? AND persona_name = ?',
+
+    // History management
+    ADD_HISTORY: 'INSERT INTO AiChatHistory (session_id, role, message) VALUES (?, ?, ?)',
+    GET_HISTORY: 'SELECT * FROM AiChatHistory WHERE session_id = ? ORDER BY id DESC LIMIT ?',
+    DELETE_HISTORY_BY_SESSION: 'DELETE FROM AiChatHistory WHERE session_id = ?',
+    DELETE_SESSION: 'DELETE FROM AiChatSession WHERE session_id = ?',
+};
+
+module.exports = aiChatQueries;

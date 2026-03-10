@@ -1,3 +1,4 @@
+const AiChatModel = require('./AiChatModel');
 const BabyModel = require('./BabyModel');
 const ChatModel = require('./ChatModel');
 const CommandConfigModel = require('./CommandConfigModel');
@@ -9,6 +10,7 @@ const ServerRolesModel = require('./ServerRolesModel');
 const UserModel = require('./UserModel');
 
 module.exports = {
+  AiChatModel,
   BabyModel,
   ChatModel,
   CommandConfigModel,
