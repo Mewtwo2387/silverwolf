@@ -138,7 +138,7 @@ All wrongs reserved.
     log('Listeners loaded.');
   }
 
-  processInteraction(interaction) {
+  async processInteraction(interaction) {
     if (interaction.isCommand()) {
       if (!interaction.guild) {
         interaction.reply('commands can only be used in servers.');
@@ -151,6 +151,20 @@ All wrongs reserved.
         command.execute(interaction);
       } catch (error) {
         logError('Error processing interaction:', error);
+      }
+    } else if (interaction.isButton()) {
+      if (interaction.customId.startsWith('del_girlcockx_')) {
+        const targetUserId = interaction.customId.replace('del_girlcockx_', '');
+        if (interaction.user.id !== targetUserId) {
+          await interaction.reply({ content: 'You can only delete your own messages.', ephemeral: true });
+          return;
+        }
+        try {
+          await interaction.message.delete();
+        } catch (err) {
+          logError('Error deleting girlcockx webhook message:', err);
+          await interaction.reply({ content: 'Failed to delete message.', ephemeral: true });
+        }
       }
     }
   }

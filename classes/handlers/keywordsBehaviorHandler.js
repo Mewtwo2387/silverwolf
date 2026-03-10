@@ -14,7 +14,7 @@ module.exports = {
 
     try {
       const webhooks = await message.channel.fetchWebhooks();
-      let webhook = webhooks.find((wh) => wh.name === 'girlcockx');
+      let webhook = webhooks.find((wh) => wh.name === 'girlcockx' && wh.token);
 
       if (!webhook) {
         webhook = await message.channel.createWebhook({
@@ -25,6 +25,12 @@ module.exports = {
 
       let content = girlcockxContent;
       const components = [];
+
+      const deleteButton = new ButtonBuilder()
+        .setCustomId(`del_girlcockx_${message.author.id}`)
+        .setEmoji('🗑️')
+        .setStyle(ButtonStyle.Danger);
+
       if (message.reference?.messageId) {
         try {
           const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
@@ -35,13 +41,17 @@ module.exports = {
               .setLabel(`↩ Replying to: ${repliedTo.author.username}`)
               .setStyle(ButtonStyle.Link)
               .setURL(repliedLink),
+            deleteButton
           );
 
           components.push(buttonRow);
           content = `<@${repliedTo.author.id}> - ${girlcockxContent}`;
         } catch (err) {
           logError('Could not fetch replied-to message:', err);
+          components.push(new ActionRowBuilder().addComponents(deleteButton));
         }
+      } else {
+        components.push(new ActionRowBuilder().addComponents(deleteButton));
       }
 
       await webhook.send({
@@ -97,7 +107,7 @@ module.exports = {
 
     try {
       const webhooks = await message.channel.fetchWebhooks();
-      let webhook = webhooks.find((wh) => wh.name === WEBHOOK_NAME);
+      let webhook = webhooks.find((wh) => wh.name === WEBHOOK_NAME && wh.token);
 
       // lightweight censorship mimic (existing logic)
       const censorshipRegex = /(1989|winnie[\s-]?the[\s-]?pooh|tiananmen|taiwan|hong\s?kong|tibet|xinjiang)/i;
