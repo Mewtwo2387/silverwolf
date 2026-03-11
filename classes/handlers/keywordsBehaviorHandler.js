@@ -123,36 +123,36 @@ module.exports = {
       const webhooks = await message.channel.fetchWebhooks();
       let webhook = webhooks.find((wh) => wh.name === WEBHOOK_NAME && wh.token);
 
-      // Lightweight censorship mimic (existing logic)
-      const censorshipRegex = /(1989|winnie[\s-]?the[\s-]?pooh|tiananmen|taiwan|hong\s?kong|tibet|xinjiang)/i;
+      // No Free Deepseek in Openrouter
+      // const censorshipRegex = /(1989|winnie[\s-]?the[\s-]?pooh|tiananmen|taiwan|hong\s?kong|tibet|xinjiang)/i;
 
-      if (displayName === 'Deepseek' && censorshipRegex.test(prompt)) {
-        const responses = [
-          "I'm sorry, but I cannot provide information on that topic.",
-          '⚠️ This topic is not available due to local regulations.',
-          'DeepSeek has detected a Level 404 Thoughtcrime. Please proceed to your nearest re-education center.',
-          'This conversation has been harmonized ✨. Please enjoy some wholesome content instead.',
-          '🚫 Access denied. The Ministry of Truth thanks you for your cooperation.',
-          'https://tenor.com/view/nalog-gif-25906765 ',
-        ];
-        const reply = responses[Math.floor(Math.random() * responses.length)];
+      // if (displayName === 'Deepseek' && censorshipRegex.test(prompt)) {
+      //   const responses = [
+      //     "I'm sorry, but I cannot provide information on that topic.",
+      //     '⚠️ This topic is not available due to local regulations.',
+      //     'DeepSeek has detected a Level 404 Thoughtcrime. Please proceed to your nearest re-education center.',
+      //     'This conversation has been harmonized ✨. Please enjoy some wholesome content instead.',
+      //     '🚫 Access denied. The Ministry of Truth thanks you for your cooperation.',
+      //     'https://tenor.com/view/nalog-gif-25906765 ',
+      //   ];
+      //   const reply = responses[Math.floor(Math.random() * responses.length)];
 
-        if (!webhook) {
-          webhook = await message.channel.createWebhook({
-            name: WEBHOOK_NAME,
-            avatar: avatarURL,
-          });
-        }
+      //   if (!webhook) {
+      //     webhook = await message.channel.createWebhook({
+      //       name: WEBHOOK_NAME,
+      //       avatar: avatarURL,
+      //     });
+      //   }
 
-        await webhook.send({
-          content: reply,
-          username: displayName,
-          avatarURL,
-          allowedMentions: { parse: [] },
-        });
+      //   await webhook.send({
+      //     content: reply,
+      //     username: displayName,
+      //     avatarURL,
+      //     allowedMentions: { parse: [] },
+      //   });
 
-        return;
-      }
+      //   return;
+      // }
 
       // Call generateContent with history context
       const { text, images } = await generateContent({
