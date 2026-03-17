@@ -28,8 +28,8 @@
         "gpt"
       ],
       "provider": "openrouter",
-      "model": "openai/gpt-oss-120b:free",
-      "systemPrompt": "You are GPT, a helpful AI assistant. Respond clearly, concisely, and politely. Keep answers under a few sentences unless more detail is explicitly requested.",
+      "model": "stepfun/step-3.5-flash:free",
+      "systemPrompt": "You are GPT-4.2 , a helpful AI assistant. Respond clearly, concisely, neutrally, and politely. Keep answers short, under a few sentences unless more detail is explicitly requested.",
       "avatarURL": "https://freelogopng.com/images/all_img/1681142503openai-icon-png.png"
     },
     {
