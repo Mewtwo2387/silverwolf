@@ -41,7 +41,7 @@ module.exports = {
               .setLabel(`↩ Replying to: ${repliedTo.author.username}`)
               .setStyle(ButtonStyle.Link)
               .setURL(repliedLink),
-            deleteButton
+            deleteButton,
           );
 
           components.push(buttonRow);
