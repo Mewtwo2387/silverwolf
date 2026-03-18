@@ -13,19 +13,19 @@ class FakeQuote extends Command {
       },
       {
         name: 'message',
-        description: 'message',
+        description: 'message to put in the quote',
         type: 3,
         required: true,
       },
       {
         name: 'nickname',
-        description: 'nickname of the person',
+        description: 'override the display name shown below the quote',
         type: 3,
         required: false,
       },
       {
         name: 'background',
-        description: 'background color (black or white)',
+        description: 'background colour (default: black)',
         type: 3,
         required: false,
         choices: [
@@ -34,21 +34,41 @@ class FakeQuote extends Command {
         ],
       },
       {
+        name: 'font_style',
+        description: 'font style for the quote text (default: sans-serif)',
+        type: 3,
+        required: false,
+        choices: [
+          { name: 'Default (Sans-serif)', value: 'sans-serif' },
+          { name: 'Playfair Display (Elegant Serif)', value: 'playfair' },
+          { name: 'Caveat (Handwritten)', value: 'caveat' },
+          { name: 'Cinzel (Dramatic Classic)', value: 'cinzel' },
+          { name: 'Righteous (Bold Display)', value: 'righteous' },
+          { name: 'Special Elite (Typewriter)', value: 'special-elite' },
+        ],
+      },
+      {
+        name: 'text_color',
+        description: 'hex colour for quote text, e.g. #FF00AA (default: white on black, black on white)',
+        type: 3,
+        required: false,
+      },
+      {
         name: 'profile_color',
-        description: 'profile picture color options',
+        description: 'profile picture colour filter',
         type: 3,
         required: false,
         choices: [
           { name: 'Normal', value: 'normal' },
           { name: 'Black and White', value: 'bw' },
-          { name: 'inverted', value: 'inverted' },
-          { name: 'sepia', value: 'sepia' },
-          { name: 'nightmare fuel', value: 'nightmare' },
+          { name: 'Inverted', value: 'inverted' },
+          { name: 'Sepia', value: 'sepia' },
+          { name: 'Nightmare Fuel', value: 'nightmare' },
         ],
       },
       {
         name: 'avatar_source',
-        description: 'Choose between the server avatar or global avatar',
+        description: 'choose between the server avatar or global avatar',
         type: 3,
         required: false,
         choices: [
@@ -61,7 +81,6 @@ class FakeQuote extends Command {
 
   async run(interaction) {
     try {
-      // Send initial loading message
       await interaction.editReply({
         content: '<a:quoteLoading:1290494754202583110> Generating...',
         fetchReply: true,
@@ -76,9 +95,9 @@ class FakeQuote extends Command {
         interaction.options.getString('text_color'),
         interaction.options.getString('profile_color'),
         interaction.options.getString('avatar_source'),
+        interaction.options.getString('font_style'),
       );
 
-      // Edit the message and send the image
       await interaction.editReply({ content: null, files: [result] });
     } catch (error) {
       logError('Error generating quote:', error);
