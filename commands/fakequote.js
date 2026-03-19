@@ -45,6 +45,13 @@ class FakeQuote extends Command {
           { name: 'Cinzel (Dramatic Classic)', value: 'cinzel' },
           { name: 'Righteous (Bold Display)', value: 'righteous' },
           { name: 'Special Elite (Typewriter)', value: 'special-elite' },
+          { name: 'Minecraft (Pixel)', value: 'minecraft' },
+          { name: 'Harry Potter (Wizarding)', value: 'harrypotter' },
+          { name: 'Genshin Impact', value: 'genshin' },
+          { name: 'Comic Sans (Comic Neue)', value: 'comic-sans' },
+          { name: 'Roboto Mono (Monospace)', value: 'roboto-mono' },
+          { name: 'Dancing Script (Cursive)', value: 'dancing-script' },
+          { name: 'Bebas Neue (Condensed)', value: 'bebas-neue' },
         ],
       },
       {

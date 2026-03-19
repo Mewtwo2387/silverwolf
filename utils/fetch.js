@@ -14,6 +14,7 @@ async function fetchMessagesByCount(channel, countLimit, excludeNewest = true) {
       options.before = lastId;
     }
 
+    // eslint-disable-next-line no-await-in-loop
     const fetchedMessages = await channel.messages.fetch(options);
 
     if (fetchedMessages.size === 0) {
@@ -44,6 +45,7 @@ async function fetchMessagesByTime(channel, timeLimit, maxMessages = 1000, exclu
       options.before = lastId;
     }
 
+    // eslint-disable-next-line no-await-in-loop
     let fetchedMessages = await channel.messages.fetch(options);
     if (fetchedMessages.size === 0) {
       log(`No more messages to fetch. Total messages: ${messages.length}`);

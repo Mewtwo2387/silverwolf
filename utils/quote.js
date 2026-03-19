@@ -19,19 +19,70 @@ const FONT_MAP = {
   cinzel: { family: 'Cinzel' },
   righteous: { family: 'Righteous' },
   'special-elite': { family: 'Special Elite' },
+  minecraft: { family: 'Minecraft' },
+  harrypotter: { family: 'Harry P' },
+  genshin: { family: 'Genshin Impact' },
+  'comic-sans': { family: 'Comic Neue' },
+  'roboto-mono': { family: 'Roboto Mono' },
+  'dancing-script': { family: 'Dancing Script' },
+  'bebas-neue': { family: 'Bebas Neue' },
 };
 
-try {
-  Canvas.registerFont(path.join(FONTS_DIR, 'PlayfairDisplay-Italic.ttf'), { family: 'Playfair Display', style: 'italic', weight: '400' });
-  Canvas.registerFont(path.join(FONTS_DIR, 'PlayfairDisplay-Italic.ttf'), { family: 'Playfair Display', style: 'normal', weight: '400' });
-  Canvas.registerFont(path.join(FONTS_DIR, 'Caveat-Regular.ttf'), { family: 'Caveat', style: 'normal', weight: '400' });
-  Canvas.registerFont(path.join(FONTS_DIR, 'Cinzel-Regular.ttf'), { family: 'Cinzel', style: 'normal', weight: '400' });
-  Canvas.registerFont(path.join(FONTS_DIR, 'Righteous-Regular.ttf'), { family: 'Righteous', style: 'normal', weight: '400' });
-  Canvas.registerFont(path.join(FONTS_DIR, 'SpecialElite-Regular.ttf'), { family: 'Special Elite', style: 'normal', weight: '400' });
-  log('Custom fonts registered');
-} catch (e) {
-  logError('Failed to register custom fonts:', e);
-}
+// Numeric index for mention-based quote parameter parsing (font:1, font:2, etc.)
+const FONT_INDEX = Object.keys(FONT_MAP);
+
+const FONT_REGISTRATIONS = [
+  {
+    file: 'PlayfairDisplay-Italic.ttf', family: 'Playfair Display', style: 'italic', weight: '400',
+  },
+  {
+    file: 'PlayfairDisplay-Italic.ttf', family: 'Playfair Display', style: 'normal', weight: '400',
+  },
+  {
+    file: 'Caveat-Regular.ttf', family: 'Caveat', style: 'normal', weight: '400',
+  },
+  {
+    file: 'Cinzel-Regular.ttf', family: 'Cinzel', style: 'normal', weight: '400',
+  },
+  {
+    file: 'Righteous-Regular.ttf', family: 'Righteous', style: 'normal', weight: '400',
+  },
+  {
+    file: 'SpecialElite-Regular.ttf', family: 'Special Elite', style: 'normal', weight: '400',
+  },
+  {
+    file: 'Minecraft-Regular.ttf', family: 'Minecraft', style: 'normal', weight: '400',
+  },
+  {
+    file: 'HarryP-Regular.ttf', family: 'Harry P', style: 'normal', weight: '400',
+  },
+  {
+    file: 'GenshinImpact-Regular.ttf', family: 'Genshin Impact', style: 'normal', weight: '400',
+  },
+  {
+    file: 'ComicNeue-Regular.ttf', family: 'Comic Neue', style: 'normal', weight: '400',
+  },
+  {
+    file: 'RobotoMono-Regular.ttf', family: 'Roboto Mono', style: 'normal', weight: '400',
+  },
+  {
+    file: 'DancingScript-Regular.ttf', family: 'Dancing Script', style: 'normal', weight: '400',
+  },
+  {
+    file: 'BebasNeue-Regular.ttf', family: 'Bebas Neue', style: 'normal', weight: '400',
+  },
+];
+
+FONT_REGISTRATIONS.forEach(({
+  file, family, style, weight,
+}) => {
+  try {
+    Canvas.registerFont(path.join(FONTS_DIR, file), { family, style, weight });
+    log(`Registered font: ${family} (${style})`);
+  } catch (e) {
+    logError(`Failed to register font ${family} from ${file}:`, e);
+  }
+});
 
 // ─── Hex Colour Validation ────────────────────────────────────────────────────
 const HEX_RE = /^#?([0-9A-Fa-f]{6})$/;
@@ -87,7 +138,12 @@ function getDiscordEmojiUrl(id, animated) {
 const DISCORD_EMOJI_RE = /<(a?):([^:>]+):(\d+)>/g;
 
 // Matches Unicode emoji sequences (presentations, ZWJ, skin tones, flags, keycaps, etc.)
-const UNICODE_EMOJI_RE = /(\p{Emoji_Presentation}|\p{Extended_Pictographic})(?:\uFE0F)?(?:\u200D(?:\p{Emoji_Presentation}|\p{Extended_Pictographic})(?:\uFE0F)?)*/gu;
+const UNICODE_EMOJI_RE = new RegExp(
+  '(\\p{Emoji_Presentation}|\\p{Extended_Pictographic})'
+  + '(?:\\uFE0F)?'
+  + '(?:\\u200D(?:\\p{Emoji_Presentation}|\\p{Extended_Pictographic})(?:\\uFE0F)?)*',
+  'gu',
+);
 
 /**
  * Parses a message string into an ordered list of segments:
@@ -121,26 +177,26 @@ function parseSegments(text) {
   }
 
   // Phase 2: within text parts, detect Unicode emojis
-  for (const part of parts) {
+  parts.forEach((part) => {
     if (part.type !== 'text') {
       segments.push(part);
-    } else {
-      let tLastIndex = 0;
-      UNICODE_EMOJI_RE.lastIndex = 0;
-      let em;
-      // eslint-disable-next-line no-cond-assign
-      while ((em = UNICODE_EMOJI_RE.exec(part.value)) !== null) {
-        if (em.index > tLastIndex) {
-          segments.push({ type: 'text', value: part.value.slice(tLastIndex, em.index) });
-        }
-        segments.push({ type: 'twemoji', emoji: em[0], url: getTwemojiUrl(em[0]) });
-        tLastIndex = em.index + em[0].length;
-      }
-      if (tLastIndex < part.value.length) {
-        segments.push({ type: 'text', value: part.value.slice(tLastIndex) });
-      }
+      return;
     }
-  }
+    let tLastIndex = 0;
+    UNICODE_EMOJI_RE.lastIndex = 0;
+    let em;
+    // eslint-disable-next-line no-cond-assign
+    while ((em = UNICODE_EMOJI_RE.exec(part.value)) !== null) {
+      if (em.index > tLastIndex) {
+        segments.push({ type: 'text', value: part.value.slice(tLastIndex, em.index) });
+      }
+      segments.push({ type: 'twemoji', emoji: em[0], url: getTwemojiUrl(em[0]) });
+      tLastIndex = em.index + em[0].length;
+    }
+    if (tLastIndex < part.value.length) {
+      segments.push({ type: 'text', value: part.value.slice(tLastIndex) });
+    }
+  });
 
   return segments.filter((s) => s.type !== 'text' || s.value.length > 0);
 }
@@ -183,41 +239,72 @@ function wrapSegments(ctx, segments, maxWidth, fontSize) {
     }
   };
 
-  for (const seg of segments) {
+  segments.forEach((seg, segIdx) => {
     if (seg.type !== 'text') {
       // Emoji: place on current line if it fits, else new line
       const current = lines[lines.length - 1];
-      const w = measureSegmentsWidth(ctx, current, fontSize);
-      if (w + fontSize > maxWidth && !lineIsEmpty()) {
+
+      // Add a space before the emoji if the previous segment was also non-text
+      // and this isn't the first segment, to preserve user-typed spacing
+      const prevSeg = segIdx > 0 ? segments[segIdx - 1] : null;
+      if (prevSeg && prevSeg.type !== 'text' && !lineIsEmpty()) {
+        appendText(current, ' ');
+      }
+
+      const wAfterSpace = measureSegmentsWidth(ctx, current, fontSize);
+      if (wAfterSpace + fontSize > maxWidth && !lineIsEmpty()) {
         lines.push([{ ...seg }]);
       } else {
         current.push({ ...seg });
       }
-      continue;
+      return;
     }
 
-    // Text: split into words (filter out empties from double-spaces etc.)
-    const words = seg.value.split(' ').filter((w) => w.length > 0);
-    for (const word of words) {
+    // Text: split into tokens preserving spacing information.
+    // We split on space boundaries but keep track of leading/trailing spaces
+    // so that whitespace-only segments (e.g. between two emojis) still contribute spacing.
+    const raw = seg.value;
+
+    // If the text is purely whitespace (common between consecutive emojis), preserve it as a space
+    if (raw.trim().length === 0) {
+      if (!lineIsEmpty()) {
+        appendText(lines[lines.length - 1], ' ');
+      }
+      return;
+    }
+
+    // Check if there's a leading space (should add space before first word)
+    const hasLeadingSpace = raw.startsWith(' ');
+    const words = raw.split(' ').filter((word) => word.length > 0);
+
+    words.forEach((word, wordIdx) => {
       const current = lines[lines.length - 1];
-      const w = measureSegmentsWidth(ctx, current, fontSize);
-      const prefix = lineIsEmpty() ? '' : ' ';
+      const currentWidth = measureSegmentsWidth(ctx, current, fontSize);
+      // Add a space prefix if: line already has content AND (not the first word, OR the raw text had leading space)
+      let prefix = '';
+      if (!lineIsEmpty()) {
+        if (wordIdx > 0 || hasLeadingSpace) prefix = ' ';
+      }
       const wordWidth = ctx.measureText(`${prefix}${word}`).width;
 
-      if (w + wordWidth <= maxWidth || lineIsEmpty()) {
+      if (currentWidth + wordWidth <= maxWidth || lineIsEmpty()) {
         appendText(current, `${prefix}${word}`);
       } else {
         // Word doesn't fit — start a new line
         lines.push([]);
         appendText(lines[lines.length - 1], word);
       }
-    }
-  }
+    });
+  });
 
   return lines;
 }
 
 // ─── Font Size Shrinking ──────────────────────────────────────────────────────
+
+function anyLineExceedsWidth(ctx, lines, fontSize, maxWidth) {
+  return lines.some((line) => measureSegmentsWidth(ctx, line, fontSize) > maxWidth);
+}
 
 /**
  * Reduces fontSize until all lines fit within maxWidth and maxHeight.
@@ -235,7 +322,7 @@ function adjustFontSize(ctx, lines, maxWidth, _fontSize, fontFamily, maxHeight) 
     fontSize > 10
     && (
       totalHeight > height
-      || lines.some((line) => measureSegmentsWidth(ctx, line, fontSize) > maxWidth)
+      || anyLineExceedsWidth(ctx, lines, fontSize, maxWidth)
     )
   ) {
     fontSize -= 1;
@@ -295,7 +382,7 @@ function drawSegmentedLine(ctx, lineSegs, centerX, y, fontSize, emojiCache, text
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
 
-  for (const seg of lineSegs) {
+  lineSegs.forEach((seg) => {
     if (seg.type === 'text') {
       ctx.fillText(seg.value, drawX, y);
       drawX += ctx.measureText(seg.value).width;
@@ -307,7 +394,7 @@ function drawSegmentedLine(ctx, lineSegs, centerX, y, fontSize, emojiCache, text
       }
       drawX += fontSize;
     }
-  }
+  });
 
   // Restore context alignment settings for subsequent drawing
   ctx.textAlign = 'center';
@@ -570,3 +657,5 @@ async function quote(
 }
 
 module.exports = quote;
+module.exports.FONT_MAP = FONT_MAP;
+module.exports.FONT_INDEX = FONT_INDEX;

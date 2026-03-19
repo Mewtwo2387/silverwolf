@@ -43,7 +43,7 @@ class Database {
 
   async updateTable(tableJSON) {
     const columnsToAdd = tableJSON.columns.filter((col) => !tableJSON.primaryKey.includes(col.name));
-    for (const column of columnsToAdd) {
+    columnsToAdd.forEach((column) => {
       try {
         const columnExists = this.checkIfColumnExists(tableJSON.name, column.name);
         if (!columnExists) {
@@ -54,22 +54,18 @@ class Database {
       } catch (err) {
         logError(`Failed to check or add column ${column.name}:`, err);
       }
-    }
+    });
   }
 
   async init() {
     log('--------------------\nInitializing database...\n--------------------');
     log('Database 3.0 - Bun Edition');
 
-    // Create all tables (sequential for safety during init)
-    for (const table of Object.values(tables)) {
-      await this.createTable(table);
-    }
+    // Create all tables
+    await Promise.all(Object.values(tables).map((table) => this.createTable(table)));
 
     // Update all tables
-    for (const table of Object.values(tables)) {
-      await this.updateTable(table);
-    }
+    await Promise.all(Object.values(tables).map((table) => this.updateTable(table)));
 
     // Initialize models
     Object.entries(models).forEach(([modelName, ModelClass]) => {
