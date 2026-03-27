@@ -39,9 +39,9 @@ function normalizeHexColor(value) {
   return `#${normalized.toUpperCase()}`;
 }
 
-class C4rd extends Command {
+class CardCustom extends Command {
   constructor(client) {
-    super(client, 'c4rd', 'Generate a custom card', [
+    super(client, 'custom', 'Generate a custom card', [
       {
         name: 'name',
         type: 3,
@@ -183,7 +183,7 @@ class C4rd extends Command {
         description: 'semicolon-separated list of abilities,description',
         required: false,
       },
-    ]);
+    ], { isSubcommandOf: 'card', blame: 'ei' });
   }
 
   async run(interaction) {
@@ -414,4 +414,4 @@ class C4rd extends Command {
   }
 }
 
-module.exports = C4rd;
+module.exports = CardCustom;
