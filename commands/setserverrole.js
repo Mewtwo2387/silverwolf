@@ -16,7 +16,7 @@ class SetServerRole extends DevCommand {
         type: 8,
         required: true,
       },
-    ]);
+    ], { blame: 'ei' });
   }
 
   async run(interaction) {

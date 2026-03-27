@@ -11,7 +11,7 @@ class RiskNReward extends Command {
       description: 'The amount of credits to bet.',
       type: 3,
       required: true,
-    }]);
+    }], { blame: 'xei' });
   }
 
   async run(interaction) {

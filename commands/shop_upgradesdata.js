@@ -19,7 +19,7 @@ class ShopUpgradesData extends Command {
         type: 4,
         required: true,
       }],
-      { isSubcommandOf: 'shop' },
+      { isSubcommandOf: 'shop', blame: 'ei' },
     );
   }
 

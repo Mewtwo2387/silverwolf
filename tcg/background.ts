@@ -96,6 +96,7 @@ export class Background implements DrawableFixed {
         ctx.fillStyle = this.topBarOptions.color || '#FFFFFF';
         ctx.globalAlpha = this.topBarOptions.opacity || 1;
         ctx.fillRect(0, 0, 1080, 128);
+        ctx.globalAlpha = 1; // Reset alpha for later drawing
         break;
       case TopBarType.Fade: {
         // Create a gradient from top to bottom with opacity1 to opacity2

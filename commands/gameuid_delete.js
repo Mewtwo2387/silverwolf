@@ -26,7 +26,7 @@ class GameUIDDelete extends Command {
           { name: 'Blue Archive', value: 'Blue Archive' },
         ],
       },
-    ], { isSubcommandOf: 'gameuid' });
+    ], { isSubcommandOf: 'gameuid', blame: 'xei' });
   }
 
   async run(interaction) {

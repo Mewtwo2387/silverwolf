@@ -7,13 +7,14 @@ const Database = require('../database/Database');
 const BirthdayScheduler = require('./birthdayScheduler');
 const BabyScheduler = require('./babyScheduler');
 const { log, logError } = require('../utils/log');
-require('dotenv').config();
+// Note: Bun automatically reads .env files
 const seasonConfig = require('../data/config/skin/pokemon.json');
 const {
   ChristmasHandler, NormalHandler, HalloweenHandler, AprilFoolsHandler,
 } = require('./handlers/index');
 const scriptHandlers = require('./handlers/keywordsBehaviorHandler');
 const quote = require('../utils/quote');
+const { FONT_INDEX } = require('../utils/quote');
 
 const handlers = {
   ChristmasHandler,
@@ -33,7 +34,7 @@ class Silverwolf extends Client {
     this.deletedMessages = [];
     this.editedMessages = [];
     this.singing = false;
-    this.db = new Database('./database.db');
+    this.db = new Database('./persistence/database.db');
     this.currentPokemon = null;
     this.birthdayScheduler = new BirthdayScheduler(this);
     this.babyScheduler = new BabyScheduler(this);
@@ -138,7 +139,7 @@ All wrongs reserved.
     log('Listeners loaded.');
   }
 
-  processInteraction(interaction) {
+  async processInteraction(interaction) {
     if (interaction.isCommand()) {
       if (!interaction.guild) {
         interaction.reply('commands can only be used in servers.');
@@ -150,7 +151,21 @@ All wrongs reserved.
       try {
         command.execute(interaction);
       } catch (error) {
-        logError(error);
+        logError('Error processing interaction:', error);
+      }
+    } else if (interaction.isButton()) {
+      if (interaction.customId.startsWith('del_girlcockx_')) {
+        const targetUserId = interaction.customId.replace('del_girlcockx_', '');
+        if (interaction.user.id !== targetUserId) {
+          await interaction.reply({ content: 'You can only delete your own messages.', ephemeral: true });
+          return;
+        }
+        try {
+          await interaction.message.delete();
+        } catch (err) {
+          logError('Error deleting girlcockx webhook message:', err);
+          await interaction.reply({ content: 'Failed to delete message.', ephemeral: true });
+        }
       }
     }
   }
@@ -197,19 +212,62 @@ All wrongs reserved.
         const sentMessage = await message.reply({
           content: '<a:quoteLoading:1290494754202583110> Generating...',
         });
+
+        // ── Parse parameters from message content ──────────────────────────
+        // Strip the bot mention to get raw parameter text
+        const paramText = message.content.replace(/<@!?\d+>/g, '').trim();
+
+        // Parse key:value pairs (no brackets needed)
+        const getParam = (key) => {
+          const re = new RegExp(`(?:^|\\s)${key}:(\\S+)`, 'i');
+          const match = re.exec(paramText);
+          return match ? match[1].trim() : null;
+        };
+
+        // bg:b or bg:w → background colour
+        const bgParam = getParam('bg');
+        let background = 'black';
+        if (bgParam === 'w') background = 'white';
+        // 'b' or anything else stays black (default)
+
+        // pfp:server or pfp:global → avatar source
+        const pfpParam = getParam('pfp');
+        let avatarSource = 'server';
+        if (pfpParam === 'global') avatarSource = 'global';
+
+        // pfpc:normal/bw/inverted/sepia/nightmare → profile colour filter
+        const pfpcParam = getParam('pfpc');
+        const validPfpc = ['normal', 'bw', 'inverted', 'sepia', 'nightmare'];
+        const profileColor = (pfpcParam && validPfpc.includes(pfpcParam)) ? pfpcParam : 'normal';
+
+        // font:1-13 → font style (mapped via FONT_INDEX)
+        const fontParam = getParam('font');
+        let fontStyle = 'sans-serif';
+        if (fontParam) {
+          const fontNum = parseInt(fontParam, 10);
+          if (!Number.isNaN(fontNum) && fontNum >= 1 && fontNum <= FONT_INDEX.length) {
+            fontStyle = FONT_INDEX[fontNum - 1]; // 1-indexed for users
+          }
+        }
+
+        // txt:#hex → text colour
+        const txtParam = getParam('txt');
+        let textColor = null;
+        if (txtParam) {
+          // Accept with or without '#' prefix
+          const hexTest = /^#?([0-9A-Fa-f]{6})$/.exec(txtParam);
+          if (hexTest) textColor = `#${hexTest[1]}`;
+        }
+
         const guildMember = await message.guild.members.fetch(referencedMessage.author.id);
         const person = referencedMessage.author;
         const nickname = guildMember.nickname || person.username;
         const originalMessage = referencedMessage.content;
-        const hasBlackAndWhitePfp = msg.includes('b');
-        const hasWhiteBackground = msg.includes('w');
-        const textColor = hasWhiteBackground ? 'black' : 'white';
 
-        const background = hasWhiteBackground ? 'white' : 'black';
-        const profileColor = hasBlackAndWhitePfp ? 'bw' : 'normal';
-        const avatarSource = 'server';
-
-        log('original messsage:', originalMessage);
+        log('original message:', originalMessage);
+        log('quote params:', {
+          background, avatarSource, profileColor, fontStyle, textColor,
+        });
 
         const result = await quote(
           message.guild,
@@ -220,6 +278,7 @@ All wrongs reserved.
           textColor,
           profileColor,
           avatarSource,
+          fontStyle,
         );
 
         await sentMessage.edit({ content: null, files: [result] });

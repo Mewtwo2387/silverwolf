@@ -4,7 +4,7 @@ const { logError } = require('../utils/log');
 
 class SpotifyPlaylist extends Command {
   constructor(client) {
-    super(client, 'spotifyplaylist', 'Get a random song', []);
+    super(client, 'spotifyplaylist', 'Get a random song', [], { blame: 'xei' });
   }
 
   async run(interaction) {

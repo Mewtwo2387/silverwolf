@@ -6,10 +6,10 @@ async function divorceSettlement(client, initiatorId, targetId) {
   log('Fetching assets for users:', initiatorId, targetId);
 
   // Fetch current dinonuggies and credits for both users
-  const initiatorDinonuggies = await client.db.getUserAttr(initiatorId, 'dinonuggies');
-  const initiatorCredits = await client.db.getUserAttr(initiatorId, 'credits');
-  const targetDinonuggies = await client.db.getUserAttr(targetId, 'dinonuggies');
-  const targetCredits = await client.db.getUserAttr(targetId, 'credits');
+  const initiatorDinonuggies = await client.db.user.getUserAttr(initiatorId, 'dinonuggies');
+  const initiatorCredits = await client.db.user.getUserAttr(initiatorId, 'credits');
+  const targetDinonuggies = await client.db.user.getUserAttr(targetId, 'dinonuggies');
+  const targetCredits = await client.db.user.getUserAttr(targetId, 'credits');
 
   // Total combined assets
   const totalDinonuggies = initiatorDinonuggies + targetDinonuggies;
@@ -68,11 +68,11 @@ async function divorceSettlement(client, initiatorId, targetId) {
 
   // Update the database
   log('Updating database with adjusted split...');
-  await client.db.addUserAttr(targetId, 'dinonuggies', targetDinonuggiesShare - targetDinonuggies);
-  await client.db.addUserAttr(initiatorId, 'dinonuggies', initiatorDinonuggiesShare - initiatorDinonuggies);
+  await client.db.user.addUserAttr(targetId, 'dinonuggies', targetDinonuggiesShare - targetDinonuggies);
+  await client.db.user.addUserAttr(initiatorId, 'dinonuggies', initiatorDinonuggiesShare - initiatorDinonuggies);
 
-  await client.db.addUserAttr(targetId, 'credits', targetCreditsShare - targetCredits);
-  await client.db.addUserAttr(initiatorId, 'credits', initiatorCreditsShare - initiatorCredits);
+  await client.db.user.addUserAttr(targetId, 'credits', targetCreditsShare - targetCredits);
+  await client.db.user.addUserAttr(initiatorId, 'credits', initiatorCreditsShare - initiatorCredits);
 
   log('Divorce settlement with fixed and dynamic fees completed successfully.');
 

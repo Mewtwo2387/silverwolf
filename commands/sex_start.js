@@ -1,4 +1,4 @@
-require('dotenv').config();
+// Note: Bun automatically reads .env files
 const Discord = require('discord.js');
 const { Command } = require('./classes/command');
 const SexSession = require('../classes/sexSession');
@@ -12,7 +12,7 @@ class SexStart extends Command {
         type: 6, // user
         required: true,
       },
-    ], { isSubcommandOf: 'sex' });
+    ], { isSubcommandOf: 'sex', blame: 'ei' });
   }
 
   async run(interaction) {

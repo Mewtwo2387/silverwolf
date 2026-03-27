@@ -5,7 +5,7 @@ const { log, logError } = require('../utils/log');
 
 class BitcoinPrice extends Command {
   constructor(client) {
-    super(client, 'bitcoinprice', 'Fetches the current Bitcoin price', []);
+    super(client, 'bitcoinprice', 'Fetches the current Bitcoin price', [], { blame: 'xei' });
   }
 
   async run(interaction) {

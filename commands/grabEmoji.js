@@ -1,5 +1,4 @@
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
-const axios = require('axios');
 const Canvas = require('canvas');
 const { Command } = require('./classes/command');
 const { logError } = require('../utils/log');
@@ -24,7 +23,7 @@ class GrabEmoji extends Command {
           { name: 'WEBP', value: 'webp' },
         ],
       },
-    ]);
+    ], { blame: 'xei' });
   }
 
   async run(interaction) {
@@ -58,8 +57,10 @@ class GrabEmoji extends Command {
       const emojiUrl = `https://cdn.discordapp.com/emojis/${emojiId}.${isAnimated ? 'gif' : 'png'}`;
 
       // Fetch the emoji image
-      const response = await axios.get(emojiUrl, { responseType: 'arraybuffer' });
-      let emojiBuffer = Buffer.from(response.data, 'binary');
+      const response = await fetch(emojiUrl);
+      if (!response.ok) throw new Error('Failed to fetch emoji');
+      const arrayBuffer = await response.arrayBuffer();
+      let emojiBuffer = Buffer.from(arrayBuffer);
 
       // If format conversion is needed and it's not animated, use Canvas
       if (!isAnimated && format !== 'png') {
@@ -80,8 +81,8 @@ class GrabEmoji extends Command {
           } else if (format === 'webp') {
             emojiBuffer = canvas.toBuffer('image/webp', { quality: 0.9 });
           }
-        } catch (canvasError) {
-          logError(`Canvas conversion error: ${canvasError}`);
+        } catch (error) {
+          logError('Canvas conversion error:', error);
           // Fallback to original format if conversion fails
           await interaction.editReply({
             content: `Could not convert to ${format.toUpperCase()}. Providing original PNG format instead.`,
@@ -104,7 +105,7 @@ class GrabEmoji extends Command {
 
       await interaction.editReply({ embeds: [embed], files: [attachment] });
     } catch (error) {
-      logError(`Error processing emoji: ${error}`);
+      logError('Error processing emoji:', error);
       await interaction.editReply({
         content: 'There was an error processing the emoji. Please check if the emoji exists and the format is valid.',
         ephemeral: true,

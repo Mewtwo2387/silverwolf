@@ -20,7 +20,7 @@ class AskSilverwolfAI extends Command {
         type: 5,
         required: false,
       },
-    ]);
+    ], { blame: 'both' });
   }
 
   async run(interaction) {
@@ -33,7 +33,7 @@ class AskSilverwolfAI extends Command {
     try {
       const genAI = getGeminiAI();
       const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3-flash-preview',
         systemInstruction,
       });
 

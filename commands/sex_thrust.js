@@ -4,7 +4,7 @@ const { log } = require('../utils/log');
 
 class SexThrust extends Command {
   constructor(client) {
-    super(client, 'thrust', 'In... and out', [], { isSubcommandOf: 'sex' });
+    super(client, 'thrust', 'In... and out', [], { isSubcommandOf: 'sex', blame: 'ei' });
   }
 
   async run(interaction) {

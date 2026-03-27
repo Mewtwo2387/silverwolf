@@ -25,7 +25,7 @@ class DBDump extends DevCommand {
           { name: 'All Data', value: 'all' },
         ],
       },
-    ]);
+    ], { blame: 'both' });
   }
 
   async run(interaction) {
@@ -106,7 +106,7 @@ class DBDump extends DevCommand {
         this.cleanupFile(file.attachment);
       });
 
-      const databasePath = path.join(__dirname, '../database.db');
+      const databasePath = path.join(__dirname, '../persistence/database.db');
 
       if (fs.existsSync(databasePath)) {
         interaction.followUp({
@@ -115,7 +115,7 @@ class DBDump extends DevCommand {
         });
       }
     } catch (error) {
-      logError(error);
+      logError('Error dumping database:', error);
       await interaction.followUp({ content: 'An error occurred while executing the command.', ephemeral: true });
     }
   }

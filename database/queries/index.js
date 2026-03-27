@@ -1,3 +1,4 @@
+const aiChatQueries = require('./aiChatQueries');
 const babyQueries = require('./babyQueries');
 const chatQueries = require('./chatQueries');
 const commandConfigQueries = require('./commandConfigQueries');
@@ -9,6 +10,7 @@ const serverRolesQueries = require('./serverRolesQueries');
 const userQueries = require('./userQueries');
 
 module.exports = {
+  aiChatQueries,
   babyQueries,
   chatQueries,
   commandConfigQueries,

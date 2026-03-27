@@ -11,7 +11,7 @@ class GameUIDGet extends Command {
         type: 6, // User type
         required: true,
       },
-    ], { isSubcommandOf: 'gameuid' });
+    ], { isSubcommandOf: 'gameuid', blame: 'xei' });
   }
 
   async run(interaction) {

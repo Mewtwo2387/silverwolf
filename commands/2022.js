@@ -4,7 +4,7 @@ const { Command } = require('./classes/command');
 
 class TwentyTwentyTwo extends Command {
   constructor(client) {
-    super(client, '2022', '2022 flashbacks', []);
+    super(client, '2022', '2022 flashbacks', [], { blame: 'ei' });
   }
 
   async run(interaction) {

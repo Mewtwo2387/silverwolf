@@ -1,7 +1,7 @@
 const cron = require('node-cron');
 const { EmbedBuilder } = require('discord.js');
 const { log, logError } = require('../utils/log');
-require('dotenv').config(); // Load the environment variables
+// Note: Bun automatically reads .env files
 
 class BirthdayScheduler {
   constructor(client) {

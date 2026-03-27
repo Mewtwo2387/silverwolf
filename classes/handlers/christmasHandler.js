@@ -4,7 +4,7 @@ const {
 const path = require('path');
 const Canvas = require('canvas');
 const { log } = require('../../utils/log');
-require('dotenv').config();
+// Note: Bun automatically reads .env files
 const Handler = require('./handler');
 
 class ChristmasHandler extends Handler {

@@ -5,7 +5,7 @@ const { format } = require('../utils/math');
 
 class Ascend extends Command {
   constructor(client) {
-    super(client, 'ascend', 'Ascend to reset stuff but get more stuff');
+    super(client, 'ascend', 'Ascend to reset stuff but get more stuff', [], { blame: 'ei' });
   }
 
   async run(interaction) {

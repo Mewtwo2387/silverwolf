@@ -1,6 +1,7 @@
 const Discord = require('discord.js');
 const { DevCommand } = require('./classes/devcommand');
 const { format, antiFormat } = require('../utils/math');
+const { logError } = require('../utils/log');
 
 class DevSet extends DevCommand {
   constructor(client) {
@@ -23,7 +24,7 @@ class DevSet extends DevCommand {
         type: 3,
         required: true,
       },
-    ], { isSubcommandOf: 'dev' });
+    ], { isSubcommandOf: 'dev', blame: 'ei' });
   }
 
   async run(interaction) {
@@ -44,7 +45,8 @@ class DevSet extends DevCommand {
     }
     try {
       await this.client.db.user.setUserAttr(user.id, attr, amount);
-    } catch (e) {
+    } catch (error) {
+      logError('Failed to set user attribute:', error);
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')

@@ -33,7 +33,7 @@ class Roulette extends Command {
         type: 4,
         required: false,
       },
-    ]);
+    ], { blame: 'ei' });
   }
 
   async run(interaction) {

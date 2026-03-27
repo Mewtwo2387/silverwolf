@@ -7,7 +7,7 @@ const DAY_LENGTH = 24 * 60 * 60 * 1000;
 
 class Fart extends Command {
   constructor(client) {
-    super(client, 'fart', 'Let out a big... one?');
+    super(client, 'fart', 'Let out a big... one?', [], { blame: 'xei' });
   }
 
   async run(interaction) {

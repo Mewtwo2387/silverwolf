@@ -1,9 +1,8 @@
 const { GatewayIntentBits } = require('discord.js');
-const { config } = require('dotenv');
 const { log, logError } = require('./utils/log');
 const { Silverwolf } = require('./classes/silverwolf');
 
-config();
+// Note: Bun automatically reads .env files, no dotenv needed
 
 if (!process.env.TOKEN) {
   logError('No token provided');

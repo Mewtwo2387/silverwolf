@@ -33,7 +33,7 @@ class BuyUpgrades extends Command {
         type: 4,
         required: false,
       },
-    ], { isSubcommandOf: 'buy' });
+    ], { isSubcommandOf: 'buy', blame: 'ei' });
   }
 
   async run(interaction) {

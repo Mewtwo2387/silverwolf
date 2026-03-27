@@ -1,7 +1,7 @@
 const {
   EmbedBuilder,
 } = require('discord.js');
-require('dotenv').config();
+// Note: Bun automatically reads .env files
 const Handler = require('./handler');
 
 class AprilFoolsHandler extends Handler {
