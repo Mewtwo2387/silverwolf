@@ -219,7 +219,7 @@
 
 // class Database {
 //   constructor() {
-//     this.db = new sqlite3.Database('./database.db', (err) => {
+//     this.db = new sqlite3.Database('./persistence/database.db', (err) => {
 //       if (err) {
 //         logError('Failed to connect to the database:', err.message);
 //       } else {

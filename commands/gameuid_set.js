@@ -38,7 +38,7 @@ class GameUIDSet extends Command {
         type: 3, // String type
         required: true,
       },
-    ], { isSubcommandOf: 'gameuid' });
+    ], { isSubcommandOf: 'gameuid', blame: 'xei' });
   }
 
   async run(interaction) {

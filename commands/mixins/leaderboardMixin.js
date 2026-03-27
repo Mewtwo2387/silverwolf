@@ -5,7 +5,7 @@ const { logError } = require('../../utils/log');
 function LeaderboardMixin(BaseClass) {
   return class extends BaseClass {
     constructor(client, name, description, title, attribute, counter, noneSentence) {
-      super(client, name, description, []);
+      super(client, name, description, [], { blame: 'ei' });
       this.title = title; // e.g. "Dinonuggie Leaderboard"
       this.attribute = attribute; // e.g. "dinonuggies"
       this.counter = counter; // e.g. "Nuggies"

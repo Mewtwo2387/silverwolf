@@ -11,7 +11,7 @@ class BirthdayGet extends Command {
         type: 6, // User type
         required: true,
       },
-    ], { isSubcommandOf: 'birthday' });
+    ], { isSubcommandOf: 'birthday', blame: 'xei' });
   }
 
   async run(interaction) {

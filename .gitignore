@@ -7,8 +7,13 @@ backups/*
 *.zip
 *.csv
 *.txt
+*.log
+_*.js
+persistence/
 dist-tcg/*
-
+*.db-wal
+*.db-shm
 
 # whitelist
-!data/SilverwolfSystemPrompt.txt
+!data/*.txt
+.DS_Store

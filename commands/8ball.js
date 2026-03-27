@@ -11,7 +11,7 @@ class EightBall extends Command {
         type: 3, // String type
         required: true,
       },
-    ]);
+    ], { blame: 'xei' });
   }
 
   async run(interaction) {

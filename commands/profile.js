@@ -35,7 +35,7 @@ class Profile extends Command {
         type: 6,
         required: false,
       },
-    ]);
+    ], { blame: 'ei' });
   }
 
   async run(interaction) {

@@ -20,7 +20,7 @@ class Snipe extends Command {
         type: 4,
         required: false,
       },
-    ]);
+    ], { blame: 'both' });
   }
 
   async run(interaction) {

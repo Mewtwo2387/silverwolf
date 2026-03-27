@@ -15,7 +15,7 @@ class GlobalConfigSet extends DevCommand {
         type: 3, // String type
         required: true,
       },
-    ], { isSubcommandOf: 'globalconfig' });
+    ], { isSubcommandOf: 'globalconfig', blame: 'ei' });
   }
 
   async run(interaction) {

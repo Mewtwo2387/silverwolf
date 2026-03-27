@@ -1,4 +1,4 @@
-require('dotenv').config();
+// Note: Bun automatically reads .env files
 const Discord = require('discord.js');
 const { Command } = require('./classes/command');
 
@@ -11,7 +11,7 @@ class MarriagePropose extends Command {
         type: 6, // user
         required: true,
       },
-    ], { isSubcommandOf: 'marriage' });
+    ], { isSubcommandOf: 'marriage', blame: 'xei' });
   }
 
   async run(interaction) {

@@ -1,4 +1,3 @@
-const axios = require('axios');
 const { logError } = require('../utils/log');
 
 class Bitcoin {
@@ -8,8 +7,11 @@ class Bitcoin {
 
   async getData() {
     try {
-      const response = await axios.get(this.bitcoinPriceUrl);
-      return response.data;
+      const response = await fetch(this.bitcoinPriceUrl);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
     } catch (err) {
       logError('Error fetching Bitcoin price:', err);
       return null;

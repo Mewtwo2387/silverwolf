@@ -10,7 +10,7 @@ class Blame extends Command {
         type: 3,
         required: true,
       },
-    ]);
+    ], { blame: 'ei' });
   }
 
   async run(interaction) {
@@ -26,10 +26,17 @@ class Blame extends Command {
 
     switch (command.blame) {
       case 'ei':
-        await this.spamPing(interaction, '595491647132008469', commandName);
+        await this.sendEmbed(interaction, 'ei', commandName);
+        await this.spamPing(interaction, '595491647132008469');
         break;
       case 'xei':
-        await this.spamPing(interaction, '964521557823197184', commandName);
+        await this.sendEmbed(interaction, 'xei', commandName);
+        await this.spamPing(interaction, '964521557823197184');
+        break;
+      case 'both':
+        await this.sendEmbed(interaction, 'both', commandName);
+        await this.spamPing(interaction, '595491647132008469');
+        await this.spamPing(interaction, '964521557823197184');
         break;
       default:
         await interaction.editReply({ content: 'command dev not found' });
@@ -37,18 +44,21 @@ class Blame extends Command {
     }
   }
 
-  async spamPing(interaction, uid, commandName) {
-    await interaction.editReply({
-      embeds: [new EmbedBuilder()
-        .setColor('#00AA00')
-        .setTitle(`blame <@${uid}> for ${commandName}`),
-      ],
-    });
+  async spamPing(interaction, uid) {
     for (let i = 1; i <= 5; i += 1) {
       setTimeout(() => {
         interaction.followUp({ content: `<@${uid}>` });
       }, i * 1000);
     }
+  }
+
+  async sendEmbed(interaction, name, commandName) {
+    await interaction.editReply({
+      embeds: [new EmbedBuilder()
+        .setColor('#00AA00')
+        .setTitle(`blame ${name} for ${commandName}`),
+      ],
+    });
   }
 }
 

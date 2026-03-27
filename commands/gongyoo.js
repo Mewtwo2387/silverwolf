@@ -7,7 +7,7 @@ const HOUR_LENGTH = 60 * 60 * 1000;
 
 class Gongyoo extends Command {
   constructor(client) {
-    super(client, 'recruiter-game-오징어게임', 'is this a squid game reference?', []);
+    super(client, 'recruiter-game-오징어게임', 'is this a squid game reference?', [], { blame: 'xei' });
   }
 
   async run(interaction) {

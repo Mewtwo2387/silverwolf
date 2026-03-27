@@ -1,4 +1,5 @@
 const fs = require('fs');
+const { logError } = require('./log');
 
 function formatFile(inputPath) {
   try {
@@ -12,7 +13,8 @@ function formatFile(inputPath) {
 
     return convertedText;
   } catch (error) {
-    throw new Error(`Error processing file: ${error.message}`);
+    logError('Error processing file:', error);
+    throw error;
   }
 }
 
@@ -28,7 +30,8 @@ function unformatFile(inputPath) {
 
     return convertedText;
   } catch (error) {
-    throw new Error(`Error processing file: ${error.message}`);
+    logError('Error processing file:', error);
+    throw error;
   }
 }
 

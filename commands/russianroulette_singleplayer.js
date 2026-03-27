@@ -5,7 +5,7 @@ const { Command } = require('./classes/command');
 
 class RussianRouletteSingleplayer extends Command {
   constructor(client) {
-    super(client, 'singleplayer', 'Play a single-player game of Russian Roulette', [], { isSubcommandOf: 'russianroulette' });
+    super(client, 'singleplayer', 'Play a single-player game of Russian Roulette', [], { isSubcommandOf: 'russianroulette', blame: 'xei' });
   }
 
   async run(interaction) {

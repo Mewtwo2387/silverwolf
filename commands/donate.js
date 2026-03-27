@@ -5,7 +5,7 @@ const BASEMENT_ID = '969953667597893672';
 
 class Donate extends Command {
   constructor(client) {
-    super(client, 'donate', "our server's donation links and rewards (real)", []);
+    super(client, 'donate', "our server's donation links and rewards (real)", [], { blame: 'ei' });
   }
 
   async run(interaction) {

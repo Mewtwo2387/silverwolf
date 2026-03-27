@@ -3,7 +3,7 @@ const { handleSuccessfulClaim } = require('../utils/claim');
 
 class ForceClaim extends DevCommand {
   constructor(client) {
-    super(client, 'forceclaim', 'claim dinonuggies ignoring cooldown', [], { isSubcommandOf: 'dev' });
+    super(client, 'forceclaim', 'claim dinonuggies ignoring cooldown', [], { isSubcommandOf: 'dev', blame: 'ei' });
   }
 
   async run(interaction) {

@@ -2,7 +2,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { OpenAI } = require('openai');
 const mime = require('mime');
 const fs = require('fs');
-require('dotenv').config();
+// Note: Bun automatically reads .env files
 
 // Initialize AI providers
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_TOKEN);
@@ -51,7 +51,7 @@ async function resolvePersona(messageContent = '') {
   return {
     name: 'Default',
     provider: defaults.provider || 'gemini',
-    model: defaults.model || 'gemini-2.5-flash',
+    model: defaults.model || 'gemini-3-flash-preview',
     systemPrompt: defaults.systemPrompt || 'You are a helpful AI assistant.',
     responseModalities: defaults.responseModalities || ['TEXT'],
   };
@@ -70,19 +70,31 @@ async function getPersonaByName(name) {
  * @param {string} options.systemPrompt - The system instruction/prompt.
  * @param {string} options.prompt - The user's prompt.
  * @param {string[]} [options.responseModalities] - Optional array of desired response modalities (e.g., ['IMAGE', 'TEXT']).
+ * @param {Array<{role: string, message: string}>} [options.history] - Optional prior messages from DB (provider-agnostic format).
  * @returns {Promise<{text: string, images: Array<{attachment: Buffer, name: string}>}>} - An object containing generated text and an array of image attachments.
  */
 async function generateContent({
-  provider, model, systemPrompt, prompt, // responseModalities parameter is no longer directly used for switching
+  provider, model, systemPrompt, prompt, history = [],
 }) {
+  const nowUTC = `${new Date().toISOString().replace('T', ' ').substring(0, 19)} UTC`;
+  // eslint-disable-next-line no-param-reassign
+  systemPrompt = `[Current Time: ${nowUTC}] ${systemPrompt || ''}`;
+
   if (provider === 'openrouter') {
+    // Map DB history rows → OpenAI message format (role: 'user' | 'assistant')
+    const historyMessages = history.map((h) => ({
+      role: h.role === 'model' ? 'assistant' : h.role,
+      content: h.message,
+    }));
+
     const completion = await openrouter.chat.completions.create({
       model,
       messages: [
         { role: 'system', content: systemPrompt },
+        ...historyMessages,
         { role: 'user', content: prompt },
       ],
-      max_tokens: 4000,
+      max_tokens: 8192,
     });
     return { text: completion.choices?.[0]?.message?.content ?? '', images: [] };
   }
@@ -107,6 +119,31 @@ async function generateContent({
 
     const modelClient = genAI.getGenerativeModel(modelClientOptions);
 
+    // Map DB history rows → Gemini SDK format ({ role: 'user'|'model', parts: [{text}] })
+    const geminiHistory = history
+      .filter((h) => h.role === 'user' || h.role === 'model')
+      .map((h) => ({
+        role: h.role,
+        parts: [{ text: h.message }],
+      }));
+
+    // Gemini requires history to not start with a 'model' turn
+    if (geminiHistory.length > 0 && geminiHistory[0].role === 'model') {
+      geminiHistory.shift();
+    }
+
+    // For non-image models: use startChat with history, then sendMessage
+    if (currentGeminiModel !== 'gemini-2.0-flash-preview-image-generation') {
+      const chatSession = modelClient.startChat({
+        history: geminiHistory,
+      });
+      const result = await chatSession.sendMessage(processedPrompt);
+      const response = await result.response;
+      const fullText = response.text();
+      return { text: fullText, images: [] };
+    }
+
+    // Image-generation model: stateless generateContentStream (no history)
     const contents = [
       {
         role: 'user',

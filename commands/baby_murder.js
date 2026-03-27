@@ -17,9 +17,7 @@ class BabyMurder extends Command {
           type: 4,
         },
       ],
-      {
-        isSubcommandOf: 'baby',
-      },
+      { isSubcommandOf: 'baby', blame: 'ei' },
     );
   }
 

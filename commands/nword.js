@@ -3,7 +3,7 @@ const wordlist = require('../data/words_dictionary.json');
 
 class NWord extends Command {
   constructor(client) {
-    super(client, 'nword', 'say an n-word', []);
+    super(client, 'nword', 'say an n-word', [], { blame: 'ei' });
   }
 
   async run(interaction) {

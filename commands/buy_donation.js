@@ -10,7 +10,7 @@ class BuyDonation extends Command {
         type: 4,
         required: true,
       },
-    ], { isSubcommandOf: 'buy' });
+    ], { isSubcommandOf: 'buy', blame: 'ei' });
   }
 
   async run(interaction) {

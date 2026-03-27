@@ -3,7 +3,7 @@ const { NsfwCommand } = require('./classes/nsfwcommand');
 
 class Gamebang extends NsfwCommand {
   constructor(client) {
-    super(client, 'gamebang', 'send an embed of peak', []);
+    super(client, 'gamebang', 'send an embed of peak', [], { blame: 'ei' });
   }
 
   async run(interaction) {

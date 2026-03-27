@@ -11,15 +11,15 @@ const HOUR_LENGTH = 60 * 60 * 1000;
 
 class Claim extends Command {
   constructor(client) {
-    super(client, 'claim', 'Claim your daily dinonuggies', []);
+    super(client, 'claim', 'Claim your daily dinonuggies', [], { blame: 'both' });
   }
 
   async run(interaction) {
     try {
-      const now = new Date();
+      const now = Date.now();
       const lastClaimedInt = await this.client.db.user.getUserAttr(interaction.user.id, 'dinonuggiesLastClaimed');
 
-      const lastClaimed = lastClaimedInt ? new Date(lastClaimedInt) : null;
+      const lastClaimed = lastClaimedInt || null;
       const diff = lastClaimed ? now - lastClaimed : DAY_LENGTH;
 
       const streak = await this.client.db.user.getUserAttr(interaction.user.id, 'dinonuggiesClaimStreak');

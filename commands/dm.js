@@ -16,7 +16,7 @@ class DM extends AdminCommand {
         description: 'The message you want to send',
         required: true,
       },
-    ], { ephemeral: true });
+    ], { ephemeral: true, blame: 'xei' });
   }
 
   async run(interaction) {

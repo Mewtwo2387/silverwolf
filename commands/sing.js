@@ -1,4 +1,3 @@
-const Discord = require('discord.js');
 const songs = require('../data/songs.json');
 const { Command } = require('./classes/command');
 
@@ -26,6 +25,7 @@ class Sing extends Command {
         required: true,
         choices: songChoices,
       }],
+      { blame: 'both' },
     );
   }
 
