@@ -9,6 +9,36 @@ const { TitleDesc } = require('../tcg/titleDesc.ts');
 const { Element } = require('../tcg/element.ts');
 const { RangeType } = require('../tcg/rangeType.ts');
 
+function normalizeHexColor(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  // Support values like "FFFFFF", "#FFFFFF", "0xFFFFFF", "fff".
+  let normalized = trimmed.replace(/^0x/i, '');
+  if (normalized.startsWith('#')) {
+    normalized = normalized.slice(1);
+  }
+
+  if (/^[\da-fA-F]{3}$/.test(normalized)) {
+    normalized = normalized
+      .split('')
+      .map((char) => `${char}${char}`)
+      .join('');
+  }
+
+  if (!/^[\da-fA-F]{6}$/.test(normalized)) {
+    return null;
+  }
+
+  return `#${normalized.toUpperCase()}`;
+}
+
 class C4rd extends Command {
   constructor(client) {
     super(client, 'c4rd', 'Generate a custom card', [
@@ -172,7 +202,12 @@ class C4rd extends Command {
         return;
       }
       const image = interaction.options.getString('image');
-      const borderColor = interaction.options.getString('border_color');
+      const borderColorInput = interaction.options.getString('border_color');
+      const borderColor = normalizeHexColor(borderColorInput);
+      if (!borderColor) {
+        await interaction.editReply('Invalid border color. Use hex like #FF00AA or FF00AA.');
+        return;
+      }
       const backgroundType = interaction.options.getString('background_type');
       const topBarType = interaction.options.getString('top_bar_type');
       let backgroundTypeInternal;
@@ -181,9 +216,10 @@ class C4rd extends Command {
       let topBarOptions;
       switch (backgroundType) {
         case 'solid': {
-          const backgroundColor = interaction.options.getString('background_color');
+          const backgroundColorInput = interaction.options.getString('background_color');
+          const backgroundColor = normalizeHexColor(backgroundColorInput);
           if (!backgroundColor) {
-            await interaction.editReply('Background color is required when using solid background type.');
+            await interaction.editReply('Background color must be a valid hex value when using solid background type.');
             return;
           }
           backgroundOptions = {
@@ -193,10 +229,12 @@ class C4rd extends Command {
           break;
         }
         case 'gradient': {
-          const backgroundColor = interaction.options.getString('background_color');
-          const backgroundColor2 = interaction.options.getString('background_color2');
+          const backgroundColorInput = interaction.options.getString('background_color');
+          const backgroundColor2Input = interaction.options.getString('background_color2');
+          const backgroundColor = normalizeHexColor(backgroundColorInput);
+          const backgroundColor2 = normalizeHexColor(backgroundColor2Input);
           if (!backgroundColor || !backgroundColor2) {
-            await interaction.editReply('Both background colors are required when using gradient background type.');
+            await interaction.editReply('Both background colors must be valid hex values when using gradient background type.');
             return;
           }
           backgroundOptions = {
@@ -225,9 +263,10 @@ class C4rd extends Command {
       }
       switch (topBarType) {
         case 'solid': {
-          const topBarColor = interaction.options.getString('top_bar_color');
+          const topBarColorInput = interaction.options.getString('top_bar_color');
+          const topBarColor = normalizeHexColor(topBarColorInput);
           if (!topBarColor) {
-            await interaction.editReply('Top bar color is required when using solid top bar type.');
+            await interaction.editReply('Top bar color must be a valid hex value when using solid top bar type.');
             return;
           }
           topBarOptions = {
@@ -237,10 +276,11 @@ class C4rd extends Command {
           break;
         }
         case 'translucent': {
-          const topBarColor = interaction.options.getString('top_bar_color');
+          const topBarColorInput = interaction.options.getString('top_bar_color');
+          const topBarColor = normalizeHexColor(topBarColorInput);
           const topBarOpacity = interaction.options.getNumber('top_bar_opacity');
           if (!topBarColor || topBarOpacity == null) {
-            await interaction.editReply('Top bar color and opacity are required when using translucent top bar type.');
+            await interaction.editReply('Top bar color (hex) and opacity are required when using translucent top bar type.');
             return;
           }
           topBarOptions = {
@@ -251,11 +291,12 @@ class C4rd extends Command {
           break;
         }
         case 'fade': {
-          const topBarColor = interaction.options.getString('top_bar_color');
+          const topBarColorInput = interaction.options.getString('top_bar_color');
+          const topBarColor = normalizeHexColor(topBarColorInput);
           const topBarOpacity = interaction.options.getNumber('top_bar_opacity');
           const topBarOpacity2 = interaction.options.getNumber('top_bar_opacity2');
           if (!topBarColor || topBarOpacity == null || topBarOpacity2 == null) {
-            await interaction.editReply('Top bar color, opacity, and opacity2 are required when using fade top bar type.');
+            await interaction.editReply('Top bar color (hex), opacity, and opacity2 are required when using fade top bar type.');
             return;
           }
           topBarOptions = {
@@ -272,7 +313,12 @@ class C4rd extends Command {
         }
       }
 
-      const titleColor = interaction.options.getString('title_color') || '#777777';
+      const titleColorInput = interaction.options.getString('title_color');
+      const titleColor = titleColorInput ? normalizeHexColor(titleColorInput) : '#777777';
+      if (!titleColor) {
+        await interaction.editReply('Invalid title color. Use hex like #777777 or 777777.');
+        return;
+      }
       const attacks = interaction.options.getString('attacks');
       const abilities = interaction.options.getString('abilities');
 
