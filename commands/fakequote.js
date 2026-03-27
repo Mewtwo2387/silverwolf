@@ -49,8 +49,6 @@ class FakeQuote extends Command {
           { name: 'Harry Potter (Wizarding)', value: 'harrypotter' },
           { name: 'Genshin Impact', value: 'genshin' },
           { name: 'Comic Sans (Comic Neue)', value: 'comic-sans' },
-          { name: 'Roboto Mono (Monospace)', value: 'roboto-mono' },
-          { name: 'Dancing Script (Cursive)', value: 'dancing-script' },
           { name: 'Bebas Neue (Condensed)', value: 'bebas-neue' },
         ],
       },

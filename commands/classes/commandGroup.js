@@ -30,7 +30,7 @@ class CommandGroup {
           type: 1,
           options: commandClass.options,
         };
-      }),
+      }).filter(Boolean),
     };
   }
 }

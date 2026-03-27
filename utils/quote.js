@@ -23,8 +23,6 @@ const FONT_MAP = {
   harrypotter: { family: 'Harry P' },
   genshin: { family: 'Genshin Impact' },
   'comic-sans': { family: 'Comic Neue' },
-  'roboto-mono': { family: 'Roboto Mono' },
-  'dancing-script': { family: 'Dancing Script' },
   'bebas-neue': { family: 'Bebas Neue' },
 };
 
@@ -61,12 +59,6 @@ const FONT_REGISTRATIONS = [
   },
   {
     file: 'ComicNeue-Regular.ttf', family: 'Comic Neue', style: 'normal', weight: '400',
-  },
-  {
-    file: 'RobotoMono-Regular.ttf', family: 'Roboto Mono', style: 'normal', weight: '400',
-  },
-  {
-    file: 'DancingScript-Regular.ttf', family: 'Dancing Script', style: 'normal', weight: '400',
   },
   {
     file: 'BebasNeue-Regular.ttf', family: 'Bebas Neue', style: 'normal', weight: '400',
