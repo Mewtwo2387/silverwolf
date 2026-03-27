@@ -55,6 +55,31 @@ export class Background implements DrawableFixed {
     this.topBarOptions = topBarOptions;
   }
 
+  private buildRoundedRectPath(
+    ctx: Canvas.CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    radius: number,
+  ): void {
+    const boundedRadius = Math.min(radius, width / 2, height / 2);
+    const right = x + width;
+    const bottom = y + height;
+
+    ctx.beginPath();
+    ctx.moveTo(x + boundedRadius, y);
+    ctx.lineTo(right - boundedRadius, y);
+    ctx.quadraticCurveTo(right, y, right, y + boundedRadius);
+    ctx.lineTo(right, bottom - boundedRadius);
+    ctx.quadraticCurveTo(right, bottom, right - boundedRadius, bottom);
+    ctx.lineTo(x + boundedRadius, bottom);
+    ctx.quadraticCurveTo(x, bottom, x, bottom - boundedRadius);
+    ctx.lineTo(x, y + boundedRadius);
+    ctx.quadraticCurveTo(x, y, x + boundedRadius, y);
+    ctx.closePath();
+  }
+
   async draw(ctx: Canvas.CanvasRenderingContext2D): Promise<void> {
     // Draw background
     switch (this.backgroundType) {
@@ -81,9 +106,22 @@ export class Background implements DrawableFixed {
 
     // Draw border
     if (this.borderColor) {
+      const outerInset = 26;
+      const outerRadius = 38;
+      const innerInset = 42;
+      const innerRadius = 30;
+
       ctx.strokeStyle = this.borderColor;
-      ctx.lineWidth = 8;
-      ctx.strokeRect(32, 32, 1016, 1856);
+      ctx.lineWidth = 10;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      this.buildRoundedRectPath(ctx, outerInset, outerInset, 1080 - (outerInset * 2), 1920 - (outerInset * 2), outerRadius);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.lineWidth = 3;
+      this.buildRoundedRectPath(ctx, innerInset, innerInset, 1080 - (innerInset * 2), 1920 - (innerInset * 2), innerRadius);
+      ctx.stroke();
     }
 
     // Draw top bar

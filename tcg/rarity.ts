@@ -24,7 +24,7 @@ export class Rarity implements DrawableFixed {
     let x = 1080 - 128 - starSize - starSpacing;
     const y = (topBarHeight - starSize) / 2;
 
-    // Add a soft golden glow around stars for a more premium TCG look.
+    // Add a soft golden glow around stars
     ctx.save();
     ctx.shadowColor = 'rgba(255, 215, 120, 0.9)';
     ctx.shadowBlur = 12;

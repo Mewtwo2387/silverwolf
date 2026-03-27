@@ -143,8 +143,9 @@ export function createAbility(params: {
   name: string;
   description: string;
   effects: AbilityEffectPair[];
+  panelColor?: string;
 }): Ability {
-  return new Ability(params.name, params.description, params.effects);
+  return new Ability(params.name, params.description, params.effects, params.panelColor);
 }
 
 /**

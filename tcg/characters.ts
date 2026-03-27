@@ -112,6 +112,7 @@ export const KAITLIN = createCharacter({
     createAbility({
       name: 'Coincidence? I Think Not.',
       description: 'Deals 15/40% more damage when there are 1/2 allies with name starting in "V".',
+      panelColor: '#D5ABB2',
       effects: [
         createAbilityEffect({
           range: RangeType.Self,
@@ -343,6 +344,7 @@ export const SILVERWOLF = createCharacter({
       return createAbility({
         name: 'Awaiting System Response...',
         description: "After attacking an opponent, implants one of the following three effects on them for 3 turns: increases incoming damage by 10%, decreases outgoing damage by 10%, or decreases energy gain by 10%.",
+        panelColor: '#5539CC',
         effects: [
           createAbilityEffect({
             range: RangeType.SingleOpponent,
