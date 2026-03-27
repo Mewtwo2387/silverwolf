@@ -14,8 +14,8 @@
     "test:coverage": "jest --coverage",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "card:battle": "ts-node tcg/tests/battleExample.ts",
-    "card:generate": "ts-node tcg/tests/testGenerateCard.ts"
+    "card:battle": "bun tcg/tests/battleExample.ts",
+    "card:generate": "bun tcg/tests/testGenerateCard.ts"
   },
   "keywords": [],
   "author": "",
