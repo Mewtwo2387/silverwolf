@@ -7,6 +7,8 @@ import { Skill } from './skill';
 import { Ability } from './ability';
 import { Card } from './interfaces/card';
 import { Element } from './element';
+import { drawTcgText } from './utils/tcgTextStyle';
+import { CharacterTextColors, resolveCharacterTextColors } from './textTheme';
 
 /**
  * A single character card and their stats
@@ -32,8 +34,9 @@ export class Character implements Card {
   skills: Skill[];
   abilities: Ability[];
   defaultActiveSkillIndices?: number[];
+  textColors: CharacterTextColors;
 
-  constructor(name: string, titleDesc: TitleDesc, rarity: Rarity, hp: number, element: Element, image: string, background: Background, skills: Skill[] = [], abilities: Ability[] = [], defaultActiveSkillIndices?: number[]) {
+  constructor(name: string, titleDesc: TitleDesc, rarity: Rarity, hp: number, element: Element, image: string, background: Background, skills: Skill[] = [], abilities: Ability[] = [], defaultActiveSkillIndices?: number[], textColors?: Partial<CharacterTextColors>) {
     this.name = name;
     this.titleDesc = titleDesc;
     this.rarity = rarity;
@@ -44,6 +47,7 @@ export class Character implements Card {
     this.skills = skills;
     this.abilities = abilities;
     this.defaultActiveSkillIndices = defaultActiveSkillIndices;
+    this.textColors = resolveCharacterTextColors(textColors);
   }
 
   async generateCard() {
@@ -63,24 +67,39 @@ export class Character implements Card {
     }
 
     // Draw HP on the rightmost side
-    ctx.font = '48px "Bahnschrift"';
-    ctx.fillStyle = '#000000';
-    ctx.textAlign = 'right';
-    ctx.fillText(`HP:`, 1048, 32);
+    drawTcgText(ctx, 'HP', 1048, 46, {
+      font: '700 44px "Bahnschrift"',
+      fillStyle: this.textColors.hpLabelFill,
+      strokeStyle: this.textColors.hpLabelStroke,
+      lineWidth: 5,
+      textAlign: 'right',
+      shadowBlur: 8,
+      shadowOffsetY: 3,
+    });
 
-    ctx.font = '64px "Bahnschrift"';
-    ctx.fillStyle = '#000000';
-    ctx.textAlign = 'right';
-    ctx.fillText(`${this.hp}`, 1048, 96);
+    drawTcgText(ctx, `${this.hp}`, 1048, 104, {
+      font: '700 64px "Bahnschrift"',
+      fillStyle: this.textColors.hpValueFill,
+      strokeStyle: this.textColors.hpValueStroke,
+      lineWidth: 6,
+      textAlign: 'right',
+      shadowBlur: 10,
+      shadowOffsetY: 3,
+    });
 
     await this.rarity.draw(ctx);
 
-    ctx.font = '96px "Bahnschrift"';
-    ctx.fillStyle = '#000000';
-    ctx.textAlign = 'left';
-    ctx.fillText(this.name, 144, 96);
+    drawTcgText(ctx, this.name.toUpperCase(), 144, 96, {
+      font: '700 90px "Bahnschrift"',
+      fillStyle: this.textColors.nameFill,
+      strokeStyle: this.textColors.nameStroke,
+      lineWidth: 7,
+      textAlign: 'left',
+      shadowBlur: 12,
+      shadowOffsetY: 4,
+    });
 
-    let currentY = await this.titleDesc.draw(ctx, 192);
+    let currentY = await this.titleDesc.draw(ctx, 192, this.textColors);
 
     // Draw image and background
     ctx.fillStyle = '#000000';
@@ -92,11 +111,11 @@ export class Character implements Card {
     currentY += 512 + 96;
 
     for (const skill of this.skills) {
-      currentY = await skill.draw(ctx, currentY);
+      currentY = await skill.draw(ctx, currentY, this.textColors);
     }
 
     for (const ability of this.abilities) {
-      currentY = await ability.draw(ctx, currentY);
+      currentY = await ability.draw(ctx, currentY, this.textColors);
     }
 
     return canvas;

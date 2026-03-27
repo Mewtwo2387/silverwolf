@@ -16,6 +16,56 @@ import {
  * A list of all characters in the game
  */
 
+const FAIRY_TEXT_COLORS = {
+  nameFill: '#FFF6F9',
+  nameStroke: '#3A1323',
+  hpLabelFill: '#FFD8EC',
+  hpLabelStroke: '#3A1323',
+  hpValueFill: '#FFFFFF',
+  hpValueStroke: '#2B1020',
+  titleFill: '#FFE5F2',
+  titleStroke: '#2E1320',
+  titleDescFill: '#FFF9FD',
+  titleDescStroke: '#23111A',
+  skillNameFill: '#FFE0F0',
+  skillNameStroke: '#2E1320',
+  skillDamageFill: '#FFFFFF',
+  skillDamageStroke: '#2B1020',
+  skillCostFill: '#FFEFFF',
+  skillCostStroke: '#2B1636',
+  skillDescFill: '#FFFFFF',
+  skillDescStroke: '#221824',
+  abilityNameFill: '#FFE0F0',
+  abilityNameStroke: '#2E1320',
+  abilityDescFill: '#FFFFFF',
+  abilityDescStroke: '#221824',
+};
+
+const QUANTUM_TEXT_COLORS = {
+  nameFill: '#EDE2FF',
+  nameStroke: '#1A123A',
+  hpLabelFill: '#D7CCFF',
+  hpLabelStroke: '#1A123A',
+  hpValueFill: '#F8F3FF',
+  hpValueStroke: '#16122D',
+  titleFill: '#E5D8FF',
+  titleStroke: '#1B1433',
+  titleDescFill: '#F8F3FF',
+  titleDescStroke: '#1A1730',
+  skillNameFill: '#E3D5FF',
+  skillNameStroke: '#1B1433',
+  skillDamageFill: '#FDFBFF',
+  skillDamageStroke: '#16122D',
+  skillCostFill: '#CDE8FF',
+  skillCostStroke: '#18223D',
+  skillDescFill: '#F9F5FF',
+  skillDescStroke: '#1A1730',
+  abilityNameFill: '#E3D5FF',
+  abilityNameStroke: '#1B1433',
+  abilityDescFill: '#F9F5FF',
+  abilityDescStroke: '#1A1730',
+};
+
 export const KAITLIN = createCharacter({
   name: 'Kaitlin',
   title: 'Herrscher of Egg',
@@ -25,6 +75,7 @@ export const KAITLIN = createCharacter({
   element: Element.Fairy,
   image: './tcg/assets/characters/kaitlin.png',
   background: createSimpleBackground('#D5ABB2', '#B76E79'),
+  textColors: FAIRY_TEXT_COLORS,
   skills: [
     createSkill({
       name: 'Unlimited Doge Works',
@@ -101,6 +152,7 @@ export const VENFEI = createCharacter({
   element: Element.Fairy,
   image: '',
   background: createSimpleBackground('#D5ABB2', '#B76E79'),
+  textColors: FAIRY_TEXT_COLORS,
   skills: [
     createSkill({
       name: 'h',
@@ -138,6 +190,7 @@ export const EI = createCharacter({
   element: Element.Quantum,
   image: '',
   background: createSimpleBackground('#5539CC', '#332266'),
+  textColors: QUANTUM_TEXT_COLORS,
   skills: [
     createSkill({
       name: 'Plap',
@@ -206,8 +259,9 @@ export const SILVERWOLF = createCharacter({
   rarity: 6,
   hp: 80,
   element: Element.Quantum,
-  image: '',
+  image: './tcg/assets/characters/silverwolf.jpg',
   background: createSimpleBackground('#5539CC', '#332266'),
+  textColors: QUANTUM_TEXT_COLORS,
   skills: [
     createSkill({
       name: 'System Warning',
@@ -341,6 +395,7 @@ export const SPARKLE = createCharacter({
   element: Element.Quantum,
   image: '',
   background: createSimpleBackground('#5539CC', '#332266'),
+  textColors: QUANTUM_TEXT_COLORS,
   skills: [
     createSkill({
       name: 'Monodrama',

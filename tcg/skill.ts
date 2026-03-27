@@ -1,5 +1,5 @@
 import Canvas from 'canvas';
-import { wrapText, calculateWrappedTextHeight, drawWrappedText } from './utils/textWrapper';
+import { wrapText, calculateWrappedTextHeight } from './utils/textWrapper';
 import { RangeEffect } from './rangeEffect';
 import { RangeType } from './rangeType';
 import { CharacterInBattle } from './characterInBattle';
@@ -7,6 +7,8 @@ import { DrawableBlock } from './interfaces/drawable';
 import { Effect } from './effect';
 import { EffectType } from './effectType';
 import { Element } from './element';
+import { drawTcgText, drawWrappedTcgText } from './utils/tcgTextStyle';
+import { CharacterTextColors, DEFAULT_CHARACTER_TEXT_COLORS } from './textTheme';
 
 /**
  * A skill of a character
@@ -37,7 +39,7 @@ export class Skill implements DrawableBlock {
     this.formActiveSkillIndices = formActiveSkillIndices;
   }
 
-  async draw(ctx: Canvas.CanvasRenderingContext2D, y: number): Promise<number> {
+  async draw(ctx: Canvas.CanvasRenderingContext2D, y: number, textColors: CharacterTextColors = DEFAULT_CHARACTER_TEXT_COLORS): Promise<number> {
     let currentY = y;
 
     // Set up text wrapping parameters
@@ -61,34 +63,54 @@ export class Skill implements DrawableBlock {
     const descHeight = calculateWrappedTextHeight(descLines, descLineHeight);
 
     // Draw attack name (single line)
-    ctx.font = '64px "Bahnschrift"';
-    ctx.fillStyle = '#000000';
-    ctx.textAlign = 'left';
-    ctx.fillText(this.name, 64, currentY);
+    drawTcgText(ctx, this.name.toUpperCase(), 64, currentY, {
+      font: '700 60px "Bahnschrift"',
+      fillStyle: textColors.skillNameFill,
+      strokeStyle: textColors.skillNameStroke,
+      lineWidth: 5,
+      textAlign: 'left',
+      shadowBlur: 8,
+      shadowOffsetY: 2,
+    });
 
     // Draw damage on the right side
     const damageText = this.damage > 0 ? `${this.damage}` : '--';
-    ctx.font = '64px "Bahnschrift"';
-    ctx.fillStyle = '#000000';
-    ctx.textAlign = 'right';
-    ctx.fillText(damageText, 956, currentY);
+    drawTcgText(ctx, damageText, 956, currentY, {
+      font: '700 64px "Bahnschrift"',
+      fillStyle: textColors.skillDamageFill,
+      strokeStyle: textColors.skillDamageStroke,
+      lineWidth: 6,
+      textAlign: 'right',
+      shadowBlur: 10,
+      shadowOffsetY: 3,
+    });
 
     currentY += nameHeight + 16; // Add spacing after name
 
     // Draw cost if present
     if (this.cost > 0) {
-      ctx.font = '48px "Bahnschrift"';
-      ctx.fillStyle = '#000000';
-      ctx.textAlign = 'left';
-      ctx.fillText(`Cost: ${this.cost}`, 64, currentY);
+      drawTcgText(ctx, `ENERGY ${this.cost}`, 64, currentY, {
+        font: '700 44px "Bahnschrift"',
+        fillStyle: textColors.skillCostFill,
+        strokeStyle: textColors.skillCostStroke,
+        lineWidth: 4,
+        textAlign: 'left',
+        shadowBlur: 6,
+        shadowOffsetY: 2,
+      });
       currentY += costHeight + 16; // Add spacing after cost
     }
 
     // Draw attack description (wrapped)
-    ctx.font = '48px "Bahnschrift"';
-    ctx.fillStyle = '#000000';
-    ctx.textAlign = 'left';
-    drawWrappedText(ctx, descLines, 64, currentY, descLineHeight);
+    drawWrappedTcgText(ctx, descLines, 64, currentY, descLineHeight, {
+      font: '600 46px "Bahnschrift"',
+      fillStyle: textColors.skillDescFill,
+      strokeStyle: textColors.skillDescStroke,
+      lineWidth: 4,
+      textAlign: 'left',
+      shadowBlur: 5,
+      shadowOffsetY: 1,
+    });
 
     currentY += descHeight + 32; // Add padding at bottom
 

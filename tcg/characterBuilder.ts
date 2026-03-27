@@ -13,6 +13,7 @@ import { Effect } from './effect';
 import { EffectType } from './effectType';
 import { RangeType } from './rangeType';
 import { Element } from './element';
+import { CharacterTextColors } from './textTheme';
 
 /**
  * Helper to create a character with named parameters for better readability
@@ -30,6 +31,7 @@ export function createCharacter(params: {
   skills?: Skill[];
   abilities?: Ability[];
   defaultForm?: number[]; // skill indices available in default form
+  textColors?: Partial<CharacterTextColors>;
 }): Character {
   const titleDesc = new TitleDesc(
     params.title,
@@ -49,7 +51,8 @@ export function createCharacter(params: {
     background,
     params.skills || [],
     params.abilities || [],
-    params.defaultForm
+    params.defaultForm,
+    params.textColors
   );
 }
 

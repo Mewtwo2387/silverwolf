@@ -1,9 +1,11 @@
 import Canvas from 'canvas';
-import { wrapText, calculateWrappedTextHeight, drawWrappedText } from './utils/textWrapper';
+import { wrapText, calculateWrappedTextHeight } from './utils/textWrapper';
 import { RangeEffect } from './rangeEffect';
 import { DrawableBlock } from './interfaces/drawable';
 import { CharacterInBattle } from './characterInBattle';
 import { RangeType } from './rangeType';
+import { drawWrappedTcgText } from './utils/tcgTextStyle';
+import { CharacterTextColors, DEFAULT_CHARACTER_TEXT_COLORS } from './textTheme';
 
 /**
  * Context for ability activation check
@@ -108,7 +110,7 @@ export class Ability implements DrawableBlock {
     });
   }
 
-  async draw(ctx: Canvas.CanvasRenderingContext2D, y: number): Promise<number> {
+  async draw(ctx: Canvas.CanvasRenderingContext2D, y: number, textColors: CharacterTextColors = DEFAULT_CHARACTER_TEXT_COLORS): Promise<number> {
     let currentY = y;
 
     // Set up text wrapping parameters
@@ -162,18 +164,28 @@ export class Ability implements DrawableBlock {
     ctx.stroke();
 
     // Draw ability name on top of trapezium
-    ctx.font = '48px "Bahnschrift"';
-    ctx.fillStyle = '#000000';
-    ctx.textAlign = 'left';
-    drawWrappedText(ctx, nameLines, 64, currentY, nameLineHeight);
+    drawWrappedTcgText(ctx, nameLines, 64, currentY, nameLineHeight, {
+      font: '700 46px "Bahnschrift"',
+      fillStyle: textColors.abilityNameFill,
+      strokeStyle: textColors.abilityNameStroke,
+      lineWidth: 4,
+      textAlign: 'left',
+      shadowBlur: 8,
+      shadowOffsetY: 2,
+    });
 
     currentY += nameHeight + 16; // Add spacing between name and description
 
     // Draw ability description on top of trapezium
-    ctx.font = '32px "Bahnschrift"';
-    ctx.fillStyle = '#000000';
-    ctx.textAlign = 'left';
-    drawWrappedText(ctx, descLines, 64, currentY, descLineHeight);
+    drawWrappedTcgText(ctx, descLines, 64, currentY, descLineHeight, {
+      font: '600 32px "Bahnschrift"',
+      fillStyle: textColors.abilityDescFill,
+      strokeStyle: textColors.abilityDescStroke,
+      lineWidth: 3,
+      textAlign: 'left',
+      shadowBlur: 4,
+      shadowOffsetY: 1,
+    });
 
     currentY += descHeight + 32; // Add padding at bottom
 

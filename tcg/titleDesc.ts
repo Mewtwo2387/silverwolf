@@ -1,6 +1,8 @@
 import Canvas from 'canvas';
-import { wrapText, calculateWrappedTextHeight, drawWrappedText } from './utils/textWrapper';
+import { wrapText, calculateWrappedTextHeight } from './utils/textWrapper';
 import { DrawableBlock } from './interfaces/drawable';
+import { drawWrappedTcgText } from './utils/tcgTextStyle';
+import { CharacterTextColors, DEFAULT_CHARACTER_TEXT_COLORS } from './textTheme';
 
 /**
  * The title and description of a character.
@@ -20,7 +22,7 @@ export class TitleDesc implements DrawableBlock {
     this.color = color;
   }
 
-  async draw(ctx: Canvas.CanvasRenderingContext2D, y: number): Promise<number> {
+  async draw(ctx: Canvas.CanvasRenderingContext2D, y: number, textColors: CharacterTextColors = DEFAULT_CHARACTER_TEXT_COLORS): Promise<number> {
     let currentY = y;
 
     // Set up text wrapping parameters
@@ -93,18 +95,28 @@ export class TitleDesc implements DrawableBlock {
     ctx.stroke();
 
     // Draw title on top of trapezium
-    ctx.font = '48px "Bahnschrift"';
-    ctx.fillStyle = '#000000';
-    ctx.textAlign = 'left';
-    drawWrappedText(ctx, titleLines, 64, currentY, titleLineHeight);
+    drawWrappedTcgText(ctx, titleLines, 64, currentY, titleLineHeight, {
+      font: '700 48px "Bahnschrift"',
+      fillStyle: textColors.titleFill,
+      strokeStyle: textColors.titleStroke,
+      lineWidth: 4,
+      textAlign: 'left',
+      shadowBlur: 8,
+      shadowOffsetY: 2,
+    });
 
     currentY += titleHeight + 16; // Add spacing between title and description
 
     // Draw description on top of trapezium
-    ctx.font = '32px "Bahnschrift"';
-    ctx.fillStyle = '#000000';
-    ctx.textAlign = 'left';
-    drawWrappedText(ctx, descLines, 64, currentY, descLineHeight);
+    drawWrappedTcgText(ctx, descLines, 64, currentY, descLineHeight, {
+      font: '600 32px "Bahnschrift"',
+      fillStyle: textColors.titleDescFill,
+      strokeStyle: textColors.titleDescStroke,
+      lineWidth: 3,
+      textAlign: 'left',
+      shadowBlur: 4,
+      shadowOffsetY: 1,
+    });
 
     currentY += descHeight + 32; // Add padding at bottom
 
