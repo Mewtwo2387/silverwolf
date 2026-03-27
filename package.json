@@ -11,7 +11,8 @@
     "dev": "nodemon index.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "card": "ts-node tcg/cards.ts"
+    "card:battle": "ts-node tcg/tests/battleExample.ts",
+    "card:generate": "ts-node tcg/tests/testGenerateCard.ts"
   },
   "keywords": [],
   "author": "",

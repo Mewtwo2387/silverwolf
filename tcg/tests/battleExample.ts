@@ -1,8 +1,8 @@
 import * as readline from 'readline';
-import { Battle, BattleStatus } from './battle';
-import { KAITLIN, VENFEI, EI, SILVERWOLF, SPARKLE } from './characters';
-import { CharacterInBattle } from './characterInBattle';
-import { RangeType } from './rangeType';
+import { Battle, BattleStatus } from '../battle';
+import { KAITLIN, VENFEI, EI, SILVERWOLF, SPARKLE } from '../characters';
+import { CharacterInBattle } from '../characterInBattle';
+import { RangeType } from '../rangeType';
 
 /**
  * Interactive battle example
@@ -22,13 +22,13 @@ export function runBattleExample() {
   console.log('  skills [p1|p2] [index] - Show skills for a character');
   console.log('  use [p1|p2] [charIndex] [skillIndex] [targetIndex] - Use a skill');
   console.log('    (use "self" or -1 for targetIndex if self-targeting)');
-  console.log('  debug - Give everyone 9999 energy')
+  console.log('  debug - Give everyone 9999 energy');
   console.log('  end - End current turn');
   console.log('  help - Show this help');
   console.log('  quit - Exit\n');
 
   let lastPlayer: string | null = null;
-  
+
   const prompt = () => {
     if (battle.status !== BattleStatus.Ongoing) {
       console.log(`\n=== Battle Ended: ${battle.status} ===\n`);
@@ -42,10 +42,10 @@ export function runBattleExample() {
 
     // Show a clear message when turn switches
     if (lastPlayer !== null && lastPlayer !== currentSide) {
-      console.log(`\n╔════════════════════════════════════════╗`);
+      console.log('\n╔════════════════════════════════════════╗');
       console.log(`║  TURN SWITCHED TO ${currentSide.toUpperCase().padEnd(20)} ║`);
-      console.log(`╚════════════════════════════════════════╝`);
-      
+      console.log('╚════════════════════════════════════════╝');
+
       // Show energy gains from 2d6 roll
       const energyGainEntries = battle.turnHistory.filter(h => h.includes('Energy gained (2d6)'));
       if (energyGainEntries.length > 0) {
@@ -57,15 +57,15 @@ export function runBattleExample() {
     lastPlayer = currentSide;
 
     console.log(`\n=== Turn ${battle.currentTurn} - ${currentSide.toUpperCase()}'s Turn ===`);
-    console.log(`Your characters:`);
+    console.log('Your characters:');
     currentAlly.forEach((char, idx) => {
       console.log(`  [${idx}] ${char.toString()}\n`);
     });
-    console.log(`\nOpponent characters:`);
+    console.log('\nOpponent characters:');
     currentOpponent.forEach((char, idx) => {
       console.log(`  [${idx}] ${char.toString()}\n`);
     });
-    console.log(`\n(Each character can use 1 skill per turn. Type "end" when done with your turn.)`);
+    console.log('\n(Each character can use 1 skill per turn. Type "end" when done with your turn.)');
 
     rl.question('\n> ', (input) => {
       handleCommand(input.trim(), battle, rl, prompt);
@@ -93,7 +93,7 @@ function handleCommand(input: string, battle: Battle, rl: readline.Interface, pr
         break;
       }
       const side = parts[1];
-      const charIdx = parts[2] ? parseInt(parts[2]) : 0;
+      const charIdx = parts[2] ? parseInt(parts[2], 10) : 0;
       printSkills(battle, side, charIdx);
       // Don't re-prompt for skills, just show it
       console.log('\n(Still your turn - use commands or type "end" to end turn)');
@@ -132,7 +132,7 @@ function handleCommand(input: string, battle: Battle, rl: readline.Interface, pr
       console.log('\nNote: You can use multiple skills per turn. Type "end" when done.');
       // Don't re-prompt for help
       break;
-    
+
     case 'debug':
       battle.p1cards.forEach(char => {
         char.gainEnergy(9999);
@@ -197,8 +197,8 @@ function printSkills(battle: Battle, side: string, charIndex: number) {
 
 function handleUseSkill(parts: string[], battle: Battle) {
   const side = parts[1];
-  const charIndex = parseInt(parts[2]);
-  const skillIndex = parseInt(parts[3]);
+  const charIndex = parseInt(parts[2], 10);
+  const skillIndex = parseInt(parts[3], 10);
   const targetStr = parts[4]?.toLowerCase();
 
   if (side !== 'p1' && side !== 'p2') {
@@ -229,10 +229,12 @@ function handleUseSkill(parts: string[], battle: Battle) {
   if (targetStr === 'self' || targetStr === '-1' || targetStr === 'null') {
     target = null; // Self-targeting
   } else if (skill) {
-    const targetIndex = parseInt(targetStr || '0');
+    const targetIndex = parseInt(targetStr || '0', 10);
     // For SingleAlly range skills, prioritize allies
-    if (skill.damageRange === RangeType.SingleAlly || 
-        (skill.effects.length > 0 && skill.effects.some(e => e.range === RangeType.SingleAlly))) {
+    if (
+      skill.damageRange === RangeType.SingleAlly
+      || (skill.effects.length > 0 && skill.effects.some(e => e.range === RangeType.SingleAlly))
+    ) {
       const allAllies = battle.getAliveAlly(side);
       if (targetIndex >= 0 && targetIndex < allAllies.length) {
         target = allAllies[targetIndex];
@@ -263,23 +265,23 @@ function handleUseSkill(parts: string[], battle: Battle) {
     const targetName = target ? target.character.name : character.character.name;
     console.log(`${character.character.name} used ${character.character.skills[skillIndex]?.name || `skill ${skillIndex}`} on ${targetName}!`);
   } else {
-    console.log(`Failed to use skill. Possible reasons:`);
+    console.log('Failed to use skill. Possible reasons:');
     if (character.hasUsedSkillThisTurn) {
-      console.log(`  - Character has already used a skill this turn (1 skill per character per turn)`);
+      console.log('  - Character has already used a skill this turn (1 skill per character per turn)');
     }
     const activeSkills = character.getActiveSkills();
-    const skill = character.character.skills[skillIndex];
-    if (skill && !activeSkills.includes(skill)) {
-      console.log(`  - Skill not available in current form`);
+    const currentSkill = character.character.skills[skillIndex];
+    if (currentSkill && !activeSkills.includes(currentSkill)) {
+      console.log('  - Skill not available in current form');
     }
-    if (skill && character.energy < skill.cost) {
-      console.log(`  - Not enough energy (need ${skill.cost}, have ${character.energy})`);
+    if (currentSkill && character.energy < currentSkill.cost) {
+      console.log(`  - Not enough energy (need ${currentSkill.cost}, have ${character.energy})`);
     }
-    if (!skill) {
-      console.log(`  - Invalid skill index`);
+    if (!currentSkill) {
+      console.log('  - Invalid skill index');
     }
     if (character.isKnockedOut) {
-      console.log(`  - Character is knocked out`);
+      console.log('  - Character is knocked out');
     }
   }
 

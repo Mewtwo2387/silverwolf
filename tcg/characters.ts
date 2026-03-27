@@ -1,4 +1,3 @@
-import fs from 'fs';
 import { Element } from './element';
 import { EffectType } from './effectType';
 import { RangeType } from './rangeType';
@@ -24,7 +23,7 @@ export const KAITLIN = createCharacter({
   rarity: 6,
   hp: 100,
   element: Element.Fairy,
-  image: 'https://static.wikia.nocookie.net/bocchi-the-rock/images/9/98/Hitori_Gotoh_Character_Design_2.png/revision/latest?cb=20220915114341',
+  image: './tcg/assets/characters/kaitlin.png',
   background: createSimpleBackground('#D5ABB2', '#B76E79'),
   skills: [
     createSkill({
@@ -407,11 +406,3 @@ export const SPARKLE = createCharacter({
 });
 
 export const CHARACTERS = [KAITLIN, VENFEI, EI, SILVERWOLF, SPARKLE];
-
-async function testGenerateCard() {
-  const canvas = await KAITLIN.generateCard();
-  const buffer = canvas.toBuffer('image/png') as Buffer;
-  fs.writeFileSync('./tcg/kaitlin.png', buffer);
-}
-
-// setTimeout(testGenerateCard, 1000);

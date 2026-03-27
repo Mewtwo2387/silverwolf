@@ -54,7 +54,9 @@ export class Character implements Card {
     await this.background.draw(ctx);
 
     try {
-      const elementImage = await Canvas.loadImage(`./tcg/assets/elements/${this.element}.png`);
+      const elementName = Element[this.element]?.toLowerCase();
+      const elementImagePath = `./tcg/assets/types/${elementName}.png`;
+      const elementImage = await Canvas.loadImage(elementImagePath);
       ctx.drawImage(elementImage, 0, 0, 128, 128);
     } catch (error) {
       console.warn(`Element image not found for: ${this.element}`);
