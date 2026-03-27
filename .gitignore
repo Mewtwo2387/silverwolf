@@ -7,7 +7,7 @@ backups/*
 *.zip
 *.csv
 *.txt
-
+dist-tcg/*
 
 
 # whitelist

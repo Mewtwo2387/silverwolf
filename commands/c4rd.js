@@ -1,11 +1,13 @@
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const { Command } = require('./classes/command');
-const { Card } = require('../tcg/card');
-const { Background, BackgroundType, TopBarType } = require('../tcg/background');
-const Rarity = require('../tcg/rarity');
-const Skill = require('../tcg/skill');
-const Ability = require('../tcg/ability');
-const TitleDesc = require('../tcg/titleDesc');
+const { Character } = require('../dist-tcg/character');
+const { Background, BackgroundType, TopBarType } = require('../dist-tcg/background');
+const { Rarity } = require('../dist-tcg/rarity');
+const { Skill } = require('../dist-tcg/skill');
+const { Ability } = require('../dist-tcg/ability');
+const { TitleDesc } = require('../dist-tcg/titleDesc');
+const { Element } = require('../dist-tcg/element');
+const { RangeType } = require('../dist-tcg/rangeType');
 
 class C4rd extends Command {
   constructor(client) {
@@ -51,6 +53,16 @@ class C4rd extends Command {
         required: true,
         choices: [
           { name: 'Fairy', value: 'fairy' },
+          { name: 'Quantum', value: 'quantum' },
+          { name: 'Imaginary', value: 'imaginary' },
+          { name: 'Physical', value: 'physical' },
+          { name: 'Anemo', value: 'anemo' },
+          { name: 'Electro', value: 'electro' },
+          { name: 'Cryo', value: 'cryo' },
+          { name: 'Pyro', value: 'pyro' },
+          { name: 'Geo', value: 'geo' },
+          { name: 'Dendro', value: 'dendro' },
+          { name: 'Hydro', value: 'hydro' },
         ],
       },
       {
@@ -153,6 +165,12 @@ class C4rd extends Command {
       const rarity = interaction.options.getInteger('rarity');
       const hp = interaction.options.getInteger('hp');
       const type = interaction.options.getString('type');
+      const elementKey = type ? type.charAt(0).toUpperCase() + type.slice(1).toLowerCase() : '';
+      const element = Element[elementKey];
+      if (element === undefined) {
+        await interaction.editReply('Invalid element type.');
+        return;
+      }
       const image = interaction.options.getString('image');
       const borderColor = interaction.options.getString('border_color');
       const backgroundType = interaction.options.getString('background_type');
@@ -171,7 +189,7 @@ class C4rd extends Command {
           backgroundOptions = {
             color: backgroundColor,
           };
-          backgroundTypeInternal = BackgroundType.SOLID;
+          backgroundTypeInternal = BackgroundType.Solid;
           break;
         }
         case 'gradient': {
@@ -185,7 +203,7 @@ class C4rd extends Command {
             color1: backgroundColor,
             color2: backgroundColor2,
           };
-          backgroundTypeInternal = BackgroundType.GRADIENT;
+          backgroundTypeInternal = BackgroundType.Gradient;
           break;
         }
         case 'image': {
@@ -197,7 +215,7 @@ class C4rd extends Command {
           backgroundOptions = {
             image: backgroundImage,
           };
-          backgroundTypeInternal = BackgroundType.IMAGE;
+          backgroundTypeInternal = BackgroundType.Image;
           break;
         }
         default: {
@@ -215,13 +233,13 @@ class C4rd extends Command {
           topBarOptions = {
             color: topBarColor,
           };
-          topBarTypeInternal = TopBarType.SOLID;
+          topBarTypeInternal = TopBarType.Solid;
           break;
         }
         case 'translucent': {
           const topBarColor = interaction.options.getString('top_bar_color');
           const topBarOpacity = interaction.options.getNumber('top_bar_opacity');
-          if (!topBarColor || !topBarOpacity) {
+          if (!topBarColor || topBarOpacity == null) {
             await interaction.editReply('Top bar color and opacity are required when using translucent top bar type.');
             return;
           }
@@ -229,14 +247,14 @@ class C4rd extends Command {
             color: topBarColor,
             opacity: topBarOpacity,
           };
-          topBarTypeInternal = TopBarType.TRANSLUCENT;
+          topBarTypeInternal = TopBarType.Translucent;
           break;
         }
         case 'fade': {
           const topBarColor = interaction.options.getString('top_bar_color');
           const topBarOpacity = interaction.options.getNumber('top_bar_opacity');
           const topBarOpacity2 = interaction.options.getNumber('top_bar_opacity2');
-          if (!topBarColor || !topBarOpacity || !topBarOpacity2) {
+          if (!topBarColor || topBarOpacity == null || topBarOpacity2 == null) {
             await interaction.editReply('Top bar color, opacity, and opacity2 are required when using fade top bar type.');
             return;
           }
@@ -245,7 +263,7 @@ class C4rd extends Command {
             opacity1: topBarOpacity,
             opacity2: topBarOpacity2,
           };
-          topBarTypeInternal = TopBarType.FADE;
+          topBarTypeInternal = TopBarType.Fade;
           break;
         }
         default: {
@@ -262,36 +280,66 @@ class C4rd extends Command {
       const abilitiesArray = [];
 
       if (attacks) {
-        attacks.split(';').forEach((attack) => {
-          const params = attack.split(',');
-          if (params.length !== 4) {
-            interaction.editReply('Invalid attack format. Expected: name,description,damage,cost');
-            return;
-          }
-          const [attackName, attackDescription, attackDamage, attackCost] = params;
-          attacksArray.push(new Skill(attackName, attackDescription, attackDamage, attackCost));
+        const attackEntries = attacks.split(';').map((attack) => attack.trim()).filter(Boolean);
+        const parsedAttacks = attackEntries.map((attack) => attack.split(',').map((part) => part.trim()));
+
+        if (parsedAttacks.some((params) => params.length !== 4)) {
+          await interaction.editReply('Invalid attack format. Expected: name,description,damage,cost');
+          return;
+        }
+
+        const attackObjects = parsedAttacks.map(([attackName, attackDescription, attackDamageRaw, attackCostRaw]) => {
+          const attackDamage = Number(attackDamageRaw);
+          const attackCost = Number(attackCostRaw);
+          return {
+            attackName,
+            attackDescription,
+            attackDamage,
+            attackCost,
+            hasInvalidNumbers: Number.isNaN(attackDamage) || Number.isNaN(attackCost),
+          };
+        });
+
+        if (attackObjects.some((attack) => attack.hasInvalidNumbers)) {
+          await interaction.editReply('Invalid attack format. Damage and cost must be numbers.');
+          return;
+        }
+
+        attackObjects.forEach((attack) => {
+          attacksArray.push(
+            new Skill(
+              attack.attackName,
+              attack.attackDescription,
+              attack.attackDamage,
+              attack.attackCost,
+              RangeType.SingleOpponent,
+              [],
+            ),
+          );
         });
       }
 
       if (abilities) {
-        abilities.split(';').forEach((ability) => {
-          const params = ability.split(',');
-          if (params.length !== 2) {
-            interaction.editReply('Invalid ability format. Expected: name,description');
-            return;
-          }
-          const [abilityName, abilityDescription] = params;
-          abilitiesArray.push(new Ability(abilityName, abilityDescription));
+        const abilityEntries = abilities.split(';').map((ability) => ability.trim()).filter(Boolean);
+        const parsedAbilities = abilityEntries.map((ability) => ability.split(',').map((part) => part.trim()));
+
+        if (parsedAbilities.some((params) => params.length !== 2)) {
+          await interaction.editReply('Invalid ability format. Expected: name,description');
+          return;
+        }
+
+        parsedAbilities.forEach(([abilityName, abilityDescription]) => {
+          abilitiesArray.push(new Ability(abilityName, abilityDescription, []));
         });
       }
 
       // Create the card
-      const card = new Card(
+      const card = new Character(
         name,
         new TitleDesc(title, description, titleColor),
         new Rarity(rarity),
         hp,
-        type,
+        element,
         image,
         new Background(backgroundTypeInternal, backgroundOptions, borderColor, topBarTypeInternal, topBarOptions),
         attacksArray,
