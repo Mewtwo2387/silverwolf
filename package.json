@@ -4,10 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "prestart": "npm run build:tcg",
     "start": "bun index.js",
     "start:node": "node index.js",
-    "predev": "npm run build:tcg",
     "dev": "bun --watch index.js",
     "dev:node": "node --watch index.js",
     "test": "bun test",
@@ -16,7 +14,6 @@
     "test:coverage": "jest --coverage",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "build:tcg": "tsc -p tsconfig.tcg.json",
     "card:battle": "ts-node tcg/tests/battleExample.ts",
     "card:generate": "ts-node tcg/tests/testGenerateCard.ts"
   },
@@ -24,31 +21,31 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@google/generative-ai": "^0.16.0",
-    "canvas": "^3.0.0-rc3",
-    "discord.js": "^14.15.2",
+    "@google/generative-ai": "^0.24.1",
+    "canvas": "^3.2.2",
+    "discord.js": "^14.25.1",
     "gif-frames": "^1.0.1",
     "gifencoder": "^2.0.1",
     "gifuct-js": "^2.1.2",
-    "jsdom": "^13.2.0",
-    "mime": "^2.5.2",
-    "node-cron": "^3.0.3",
-    "node_characterai": "^1.2.7",
-    "openai": "^5.12.2",
+    "jsdom": "^29.0.1",
+    "mime": "^4.1.0",
+    "node-cron": "^4.2.1",
+    "node_characterai": "^1.2.8",
+    "openai": "^6.33.0",
     "xml2js": "^0.6.2"
   },
   "devDependencies": {
-    "@jest/globals": "^29.7.0",
-    "@types/node": "^24.0.4",
-    "eslint": "^8.56.0",
+    "@jest/globals": "^30.3.0",
+    "@types/node": "^25.5.0",
+    "eslint": "^8.57.1",
     "eslint-config-airbnb-base": "^15.0.0",
-    "eslint-plugin-import": "^2.29.1",
-    "eslint-plugin-jest": "^27.9.0",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-jest": "^29.15.1",
     "eslint-plugin-node": "^11.1.0",
-    "eslint-plugin-promise": "^6.1.1",
-    "jest": "^29.7.0",
+    "eslint-plugin-promise": "^7.2.1",
+    "jest": "^30.3.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.3"
+    "typescript": "^6.0.2"
   },
   "jest": {
     "testEnvironment": "node",
@@ -67,6 +64,6 @@
     "skia-canvas"
   ],
   "overrides": {
-    "canvas": "^3.0.0-rc3"
+    "canvas": "^3.2.2"
   }
 }

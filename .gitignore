@@ -10,7 +10,6 @@ backups/*
 *.log
 _*.js
 persistence/
-dist-tcg/*
 *.db-wal
 *.db-shm
 

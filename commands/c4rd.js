@@ -1,13 +1,13 @@
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const { Command } = require('./classes/command');
-const { Character } = require('../dist-tcg/character');
-const { Background, BackgroundType, TopBarType } = require('../dist-tcg/background');
-const { Rarity } = require('../dist-tcg/rarity');
-const { Skill } = require('../dist-tcg/skill');
-const { Ability } = require('../dist-tcg/ability');
-const { TitleDesc } = require('../dist-tcg/titleDesc');
-const { Element } = require('../dist-tcg/element');
-const { RangeType } = require('../dist-tcg/rangeType');
+const { Character } = require('../tcg/character.ts');
+const { Background, BackgroundType, TopBarType } = require('../tcg/background.ts');
+const { Rarity } = require('../tcg/rarity.ts');
+const { Skill } = require('../tcg/skill.ts');
+const { Ability } = require('../tcg/ability.ts');
+const { TitleDesc } = require('../tcg/titleDesc.ts');
+const { Element } = require('../tcg/element.ts');
+const { RangeType } = require('../tcg/rangeType.ts');
 
 class C4rd extends Command {
   constructor(client) {
