@@ -14,6 +14,11 @@ import { EffectType } from './effectType';
 import { RangeType } from './rangeType';
 import { Element } from './element';
 import { CharacterTextColors } from './textTheme';
+import { ImagePanel, ImagePanelOptions } from './imagePanel';
+
+export interface CharacterImagePanelConfig extends ImagePanelOptions {
+  imagePath?: string;
+}
 
 /**
  * Helper to create a character with named parameters for better readability
@@ -26,7 +31,7 @@ export function createCharacter(params: {
   rarity: number;
   hp: number;
   element: Element;
-  image: string;
+  imagePanel: CharacterImagePanelConfig;
   background?: Background;
   skills?: Skill[];
   abilities?: Ability[];
@@ -47,7 +52,7 @@ export function createCharacter(params: {
     new Rarity(params.rarity),
     params.hp,
     params.element,
-    params.image,
+    new ImagePanel(params.imagePanel.imagePath, params.imagePanel),
     background,
     params.skills || [],
     params.abilities || [],

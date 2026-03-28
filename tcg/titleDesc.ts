@@ -44,7 +44,7 @@ export class TitleDesc implements DrawableBlock {
     const descHeight = calculateWrappedTextHeight(descLines, descLineHeight);
     const totalTextHeight = topTextPadding + titleHeight + titleToDescSpacing + descHeight;
 
-    // Trapezium dimensions (tuned for a softer, more polished panel shape)
+    // Trapezium dimensions
     const trapeziumHeight = Math.max(104, totalTextHeight + 44);
     const trapeziumTopWidth = maxTextWidth + 120;
     const trapeziumBottomWidth = trapeziumTopWidth + 56;

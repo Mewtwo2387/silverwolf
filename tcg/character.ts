@@ -9,6 +9,7 @@ import { Card } from './interfaces/card';
 import { Element } from './element';
 import { drawTcgText } from './utils/tcgTextStyle';
 import { CharacterTextColors, resolveCharacterTextColors } from './textTheme';
+import { ImagePanel } from './imagePanel';
 
 /**
  * A single character card and their stats
@@ -17,7 +18,7 @@ import { CharacterTextColors, resolveCharacterTextColors } from './textTheme';
  * @param rarity - The rarity of the character
  * @param hp - Max HP of the character
  * @param element - The type/element of the character
- * @param image - Character image used for generating the card
+ * @param imagePanel - Character image panel used for generating the card
  * @param background - Background used for generating the card
  * @param skills - A list of skills the character can use
  * @param abilities - A list of passive abilities the character has
@@ -29,20 +30,20 @@ export class Character implements Card {
   rarity: Rarity;
   hp: number;
   element: Element;
-  image: string;
+  imagePanel: ImagePanel;
   background: Background;
   skills: Skill[];
   abilities: Ability[];
   defaultActiveSkillIndices?: number[];
   textColors: CharacterTextColors;
 
-  constructor(name: string, titleDesc: TitleDesc, rarity: Rarity, hp: number, element: Element, image: string, background: Background, skills: Skill[] = [], abilities: Ability[] = [], defaultActiveSkillIndices?: number[], textColors?: Partial<CharacterTextColors>) {
+  constructor(name: string, titleDesc: TitleDesc, rarity: Rarity, hp: number, element: Element, imagePanel: ImagePanel, background: Background, skills: Skill[] = [], abilities: Ability[] = [], defaultActiveSkillIndices?: number[], textColors?: Partial<CharacterTextColors>) {
     this.name = name;
     this.titleDesc = titleDesc;
     this.rarity = rarity;
     this.hp = hp;
     this.element = element;
-    this.image = image;
+    this.imagePanel = imagePanel;
     this.background = background;
     this.skills = skills;
     this.abilities = abilities;
@@ -101,14 +102,7 @@ export class Character implements Card {
 
     let currentY = await this.titleDesc.draw(ctx, 192, this.textColors);
 
-    // Draw image and background
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(64, currentY, 956, 512);
-
-    const image = await Canvas.loadImage(this.image);
-    ctx.drawImage(image, 64, currentY, 956, 512);
-
-    currentY += 512 + 96;
+    currentY = await this.imagePanel.draw(ctx, currentY);
 
     for (const skill of this.skills) {
       currentY = await skill.draw(ctx, currentY, this.textColors);
