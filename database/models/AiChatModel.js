@@ -38,6 +38,32 @@ class AiChatModel {
   }
 
   /**
+     * Creates a brand-new active session for a user+persona pair.
+     * Deactivates any existing active sessions for that persona first.
+     * @param {string} userId - Discord user ID
+     * @param {string} personaName - Persona name (e.g. 'Grok', 'GPT')
+     * @returns {Promise<object>} Newly created active session row (camelCase keys)
+     */
+  async startNewSession(userId, personaName) {
+    // Ensure the user exists in the User table
+    await this.db.user.getUser(userId);
+
+    await this.db.executeQuery(
+      aiChatQueries.END_ALL_USER_PERSONA_SESSIONS,
+      [userId, personaName],
+    );
+
+    const result = await this.db.executeQuery(
+      aiChatQueries.START_SESSION,
+      [userId, personaName],
+    );
+
+    const session = await this.getSessionById(result.lastID);
+    log(`AiChat: Started new session ${session.sessionId} for user ${userId} with persona ${personaName}`);
+    return session;
+  }
+
+  /**
      * Returns a session row by its ID.
      * @param {number} sessionId
      * @returns {Promise<object|null>}

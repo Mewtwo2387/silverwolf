@@ -50,7 +50,7 @@ class AiView extends Command {
             .setColor('#5865F2')
             .setTitle('🤖 Your AI Chat Sessions')
             .setDescription(description)
-            .setFooter({ text: 'Use /ai chatswitch or /ai chatdelete with the session ID shown.' }),
+            .setFooter({ text: 'Use /ai chatnew, /ai chatswitch, or /ai chatdelete.' }),
         ],
       });
     } catch (err) {
