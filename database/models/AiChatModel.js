@@ -74,6 +74,7 @@ class AiChatModel {
 
   /**
      * Returns all sessions for a user (active and inactive), newest first.
+     * Includes `messageCount` for each session.
      * @param {string} userId
      * @returns {Promise<object[]>}
      */
