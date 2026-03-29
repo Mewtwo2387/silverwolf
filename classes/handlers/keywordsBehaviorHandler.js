@@ -74,7 +74,7 @@ module.exports = {
       ? message.author.username.toLowerCase()
       : 'user';
     const query = message.content || '';
-    const shouldStartNewSession = /\kys\b/i.test(query);
+    const shouldStartNewSession = /\bkys\b/i.test(query);
 
     const contextMsg = message.reference
       ? await message.channel.messages
