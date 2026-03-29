@@ -30,8 +30,21 @@ class AiChatModel {
         aiChatQueries.START_SESSION,
         [userId, personaName],
       );
-      session = await this.getSessionById(result.lastID);
-      log(`AiChat: Created session ${session.sessionId} for user ${userId} with persona ${personaName}`);
+      if (result.lastID) {
+        session = await this.getSessionById(result.lastID);
+      }
+
+      // If an insert raced and hit uniqueness constraints, recover by re-reading active session.
+      if (!session) {
+        session = await this.db.executeSelectQuery(
+          aiChatQueries.GET_ACTIVE_SESSION,
+          [userId, personaName],
+        );
+      }
+
+      if (session) {
+        log(`AiChat: Created session ${session.sessionId} for user ${userId} with persona ${personaName}`);
+      }
     }
 
     return session;
@@ -48,17 +61,13 @@ class AiChatModel {
     // Ensure the user exists in the User table
     await this.db.user.getUser(userId);
 
-    await this.db.executeQuery(
-      aiChatQueries.END_ALL_USER_PERSONA_SESSIONS,
-      [userId, personaName],
-    );
+    const newSessionId = await this.db.executeTransaction(async (rawDb) => {
+      rawDb.query(aiChatQueries.END_ALL_USER_PERSONA_SESSIONS).run(userId, personaName);
+      rawDb.query(aiChatQueries.START_SESSION).run(userId, personaName);
+      return rawDb.query('SELECT last_insert_rowid() as id').get().id;
+    });
 
-    const result = await this.db.executeQuery(
-      aiChatQueries.START_SESSION,
-      [userId, personaName],
-    );
-
-    const session = await this.getSessionById(result.lastID);
+    const session = await this.getSessionById(newSessionId);
     log(`AiChat: Started new session ${session.sessionId} for user ${userId} with persona ${personaName}`);
     return session;
   }
