@@ -5,7 +5,6 @@ const { logError } = require('../utils/log');
 class AiView extends Command {
   constructor(client) {
     super(client, 'view', 'View all your AI chat sessions', [], {
-      ephemeral: true,
       isSubcommandOf: 'ai',
       blame: 'xei',
     });

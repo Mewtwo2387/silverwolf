@@ -24,7 +24,6 @@ class AiChatnew extends Command {
         choices: personaChoices,
       },
     ], {
-      ephemeral: true,
       isSubcommandOf: 'ai',
       blame: 'ei',
     });
