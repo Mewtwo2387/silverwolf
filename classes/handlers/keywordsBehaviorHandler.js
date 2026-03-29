@@ -74,6 +74,7 @@ module.exports = {
       ? message.author.username.toLowerCase()
       : 'user';
     const query = message.content || '';
+    const shouldStartNewSession = /\kys\b/i.test(query);
 
     const contextMsg = message.reference
       ? await message.channel.messages
@@ -88,6 +89,29 @@ module.exports = {
     // Personas excluded from persistent memory
     const NO_MEMORY_PERSONAS = ['Summarizer'];
     const hasMemory = !NO_MEMORY_PERSONAS.includes(displayName);
+
+    if (shouldStartNewSession && hasMemory) {
+      try {
+        const newSession = await message.client.db.aiChat.startNewSession(
+          message.author.id,
+          displayName,
+        );
+
+        const startedEmbed = new EmbedBuilder()
+          .setColor('#57F287')
+          .setTitle('New Session Started')
+          .setDescription(
+            `Started a new **${displayName}** chat session: **#${newSession.sessionId}**.\n`
+            + 'Send your next message to begin the new conversation.',
+          );
+
+        await message.reply({ embeds: [startedEmbed] });
+      } catch (sessionErr) {
+        logError('AiChat: Failed to start new session from mention handler:', sessionErr);
+        await message.reply('Failed to start a new conversation. Please try again.');
+      }
+      return;
+    }
 
     let prompt = '';
 

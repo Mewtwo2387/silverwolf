@@ -41,7 +41,7 @@ class AiChatnew extends Command {
         embeds: [
           new EmbedBuilder()
             .setColor('#57F287')
-            .setTitle('🆕 New Session Started')
+            .setTitle('New Session Started')
             .setDescription(
               `Started a new **${personaName}** chat session: **#${session.sessionId}**.\n`
               + `Mentioning \`@${personaName.toLowerCase()}\` will now continue this new conversation.`,
