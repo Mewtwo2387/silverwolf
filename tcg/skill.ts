@@ -43,16 +43,27 @@ export class Skill implements DrawableBlock {
     let currentY = y;
 
     // Set up text wrapping parameters
-    const maxTextWidth = 800; // Maximum width for text wrapping (leaving space for damage)
+    const maxTextWidth = 800; // Maximum width for description text wrapping
+    const nameLeft = 64;
+    const damageRight = 956;
+    const nameLineHeight = 56;
     const costLineHeight = 48;
     const descLineHeight = 48;
 
-    // Wrap only the description text
+    // Reserve right-side area for damage, then wrap the skill name to avoid overlap.
+    const damageText = this.damage > 0 ? `${this.damage}` : '--';
+    ctx.font = '700 64px "Bahnschrift"';
+    const damageTextWidth = ctx.measureText(damageText).width;
+    const damageSlotWidth = Math.max(180, damageTextWidth + 56);
+    const nameMaxWidth = Math.max(360, (damageRight - damageSlotWidth) - nameLeft);
+
+    ctx.font = '700 60px "Bahnschrift"';
+    const nameLines = wrapText(ctx, this.name.toUpperCase(), nameMaxWidth);
+    const nameHeight = calculateWrappedTextHeight(nameLines, nameLineHeight);
+
+    // Wrap description text
     ctx.font = '48px "Bahnschrift"';
     const descLines = wrapText(ctx, this.description, maxTextWidth);
-
-    // Calculate total height needed
-    const nameHeight = 64; // Fixed height for single-line name
 
     // Add cost height if present
     let costHeight = 0;
@@ -62,9 +73,9 @@ export class Skill implements DrawableBlock {
 
     const descHeight = calculateWrappedTextHeight(descLines, descLineHeight);
 
-    // Draw attack name (single line)
-    drawTcgText(ctx, this.name.toUpperCase(), 64, currentY, {
-      font: '700 60px "Bahnschrift"',
+    // Draw attack name (wrapped when needed)
+    drawWrappedTcgText(ctx, nameLines, nameLeft, currentY, nameLineHeight, {
+      font: '700 58px "Bahnschrift"',
       fillStyle: textColors.skillNameFill,
       strokeStyle: textColors.skillNameStroke,
       lineWidth: 5,
@@ -74,8 +85,8 @@ export class Skill implements DrawableBlock {
     });
 
     // Draw damage on the right side
-    const damageText = this.damage > 0 ? `${this.damage}` : '--';
-    drawTcgText(ctx, damageText, 956, currentY, {
+    const damageY = currentY + Math.max(0, (nameHeight - 64) / 2);
+    drawTcgText(ctx, damageText, damageRight, damageY, {
       font: '700 64px "Bahnschrift"',
       fillStyle: textColors.skillDamageFill,
       strokeStyle: textColors.skillDamageStroke,

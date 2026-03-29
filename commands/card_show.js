@@ -29,11 +29,6 @@ class CardShow extends Command {
       return;
     }
 
-    if (!character.image || !character.image.trim()) {
-      await interaction.editReply(`${character.name} does not have an image configured yet.`);
-      return;
-    }
-
     try {
       const canvas = await character.generateCard();
       const buffer = canvas.toBuffer('image/png');
