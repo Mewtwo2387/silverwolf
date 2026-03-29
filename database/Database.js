@@ -67,6 +67,26 @@ class Database {
     // Update all tables
     await Promise.all(Object.values(tables).map((table) => this.updateTable(table)));
 
+    // Normalize legacy duplicate-active AI sessions before adding uniqueness enforcement
+    this.db.run(`
+      UPDATE AiChatSession
+      SET active = 0
+      WHERE active = 1
+        AND session_id NOT IN (
+          SELECT MAX(session_id)
+          FROM AiChatSession
+          WHERE active = 1
+          GROUP BY user_id, persona_name
+        )
+    `);
+
+    // Enforce at most one active AI session per user+persona
+    this.db.run(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_aichatsession_user_persona_active
+      ON AiChatSession (user_id, persona_name)
+      WHERE active = 1
+    `);
+
     // Initialize models
     Object.entries(models).forEach(([modelName, ModelClass]) => {
       this.models[modelName] = new ModelClass(this);
@@ -97,6 +117,23 @@ class Database {
     } catch (error) {
       logError(`Error executing query "${query}":`, error);
       return { changes: 0, lastID: null };
+    }
+  }
+
+  async executeTransaction(transactionFn) {
+    try {
+      this.db.run('BEGIN IMMEDIATE TRANSACTION');
+      const result = await transactionFn(this.db);
+      this.db.run('COMMIT');
+      return result;
+    } catch (error) {
+      try {
+        this.db.run('ROLLBACK');
+      } catch (rollbackError) {
+        logError('Error during transaction rollback:', rollbackError);
+      }
+      logError('Error executing transaction:', error);
+      throw error;
     }
   }
 

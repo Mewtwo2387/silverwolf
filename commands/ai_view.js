@@ -5,7 +5,6 @@ const { logError } = require('../utils/log');
 class AiView extends Command {
   constructor(client) {
     super(client, 'view', 'View all your AI chat sessions', [], {
-      ephemeral: true,
       isSubcommandOf: 'ai',
       blame: 'xei',
     });
@@ -35,10 +34,12 @@ class AiView extends Command {
 
       const rows = displaySessions.map((s) => {
         const status = s.active === 1 ? '🟢 Active' : '⚫ Inactive';
+        const messageCount = Number.isFinite(Number(s.messageCount)) ? Number(s.messageCount) : 0;
+        const messageLabel = messageCount === 1 ? 'message' : 'messages';
         const date = new Date(s.createdAt).toLocaleDateString('en-GB', {
           year: 'numeric', month: 'short', day: 'numeric',
         });
-        return `**[${s.sessionId}]** ${s.personaName} · ${status} · Created ${date}`;
+        return `**[${s.sessionId}]** ${s.personaName} · ${status} · ${messageCount} ${messageLabel} · Created ${date}`;
       });
 
       const description = rows.join('\n')
@@ -50,7 +51,7 @@ class AiView extends Command {
             .setColor('#5865F2')
             .setTitle('🤖 Your AI Chat Sessions')
             .setDescription(description)
-            .setFooter({ text: 'Use /ai chatswitch or /ai chatdelete with the session ID shown.' }),
+            .setFooter({ text: 'Use /ai chatnew, /ai chatswitch, or /ai chatdelete.' }),
         ],
       });
     } catch (err) {

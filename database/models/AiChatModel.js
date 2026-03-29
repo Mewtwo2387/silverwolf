@@ -30,10 +30,45 @@ class AiChatModel {
         aiChatQueries.START_SESSION,
         [userId, personaName],
       );
-      session = await this.getSessionById(result.lastID);
-      log(`AiChat: Created session ${session.sessionId} for user ${userId} with persona ${personaName}`);
+      if (result.lastID) {
+        session = await this.getSessionById(result.lastID);
+      }
+
+      // If an insert raced and hit uniqueness constraints, recover by re-reading active session.
+      if (!session) {
+        session = await this.db.executeSelectQuery(
+          aiChatQueries.GET_ACTIVE_SESSION,
+          [userId, personaName],
+        );
+      }
+
+      if (session) {
+        log(`AiChat: Created session ${session.sessionId} for user ${userId} with persona ${personaName}`);
+      }
     }
 
+    return session;
+  }
+
+  /**
+     * Creates a brand-new active session for a user+persona pair.
+     * Deactivates any existing active sessions for that persona first.
+     * @param {string} userId - Discord user ID
+     * @param {string} personaName - Persona name (e.g. 'Grok', 'GPT')
+     * @returns {Promise<object>} Newly created active session row (camelCase keys)
+     */
+  async startNewSession(userId, personaName) {
+    // Ensure the user exists in the User table
+    await this.db.user.getUser(userId);
+
+    const newSessionId = await this.db.executeTransaction(async (rawDb) => {
+      rawDb.query(aiChatQueries.END_ALL_USER_PERSONA_SESSIONS).run(userId, personaName);
+      rawDb.query(aiChatQueries.START_SESSION).run(userId, personaName);
+      return rawDb.query('SELECT last_insert_rowid() as id').get().id;
+    });
+
+    const session = await this.getSessionById(newSessionId);
+    log(`AiChat: Started new session ${session.sessionId} for user ${userId} with persona ${personaName}`);
     return session;
   }
 
@@ -48,6 +83,7 @@ class AiChatModel {
 
   /**
      * Returns all sessions for a user (active and inactive), newest first.
+     * Includes `messageCount` for each session.
      * @param {string} userId
      * @returns {Promise<object[]>}
      */
