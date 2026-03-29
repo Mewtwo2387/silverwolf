@@ -43,8 +43,8 @@ class Convert extends Command {
         },
         {
           name: 'input',
-          type: 4,
-          description: 'The value to convert',
+          type: 3,
+          description: 'The value to convert (e.g. 100, 3.14, 1/2)',
           required: true,
         },
       ],
@@ -56,7 +56,22 @@ class Convert extends Command {
     const { options } = interaction;
     const fromUnit = options.getString('from').toLowerCase();
     const toUnit = options.getString('to').toLowerCase();
-    const value = options.getInteger('input');
+    const inputRaw = options.getString('input').trim();
+    let value;
+    if (/^-?\d+(\.\d+)?\/\d+(\.\d+)?$/.test(inputRaw)) {
+      const [num, den] = inputRaw.split('/').map(Number);
+      if (den === 0) {
+        await interaction.editReply({ content: 'Cannot divide by zero.' });
+        return;
+      }
+      value = num / den;
+    } else {
+      value = parseFloat(inputRaw);
+    }
+    if (Number.isNaN(value)) {
+      await interaction.editReply({ content: `\`${inputRaw}\` is not a valid number or fraction.` });
+      return;
+    }
 
     const conversionFactors = {
       temperature: {
