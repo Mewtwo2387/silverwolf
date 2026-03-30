@@ -56,6 +56,64 @@ class BirthdayScheduler {
         logError('Error during birthday check:', error);
       }
     });
+
+    // Daily reminder check at midnight UTC
+    cron.schedule('0 0 * * *', async () => {
+      const now = new Date();
+      const currentYear = now.getUTCFullYear();
+      log(`Running daily birthday reminder check for year ${currentYear}`);
+
+      try {
+        const pending = await this.client.db.birthdayReminder.getPendingReminders(currentYear);
+        log(`Found ${pending.length} pending reminder(s) to evaluate`);
+
+        for (const entry of pending) {
+          const birthday = new Date(entry.birthdays);
+
+          // Calculate next occurrence of this birthday
+          const thisYear = new Date(Date.UTC(currentYear, birthday.getUTCMonth(), birthday.getUTCDate()));
+          const nextBirthday = thisYear < now
+            ? new Date(Date.UTC(currentYear + 1, birthday.getUTCMonth(), birthday.getUTCDate()))
+            : thisYear;
+
+          const daysUntil = Math.ceil((nextBirthday - now) / (1000 * 60 * 60 * 24));
+
+          if (daysUntil !== entry.daysBefore) continue;
+
+          // Fetch users
+          const trackedUser = await this.client.users.fetch(entry.trackedUserId).catch(() => null);
+          const notifier = await this.client.users.fetch(entry.notifierId).catch(() => null);
+
+          if (!notifier) {
+            logError(`Could not fetch notifier ${entry.notifierId} for reminder`);
+            continue;
+          }
+
+          const trackedName = trackedUser ? trackedUser.username : `Unknown User (${entry.trackedUserId})`;
+
+          const reminderEmbed = new EmbedBuilder()
+            .setTitle('🎂 Birthday Reminder!')
+            .setDescription(
+              `**${trackedName}**'s birthday is in **${entry.daysBefore} day${entry.daysBefore === 1 ? '' : 's'}**!\n`
+              + 'Be sure to ready a gift or a wish! 🎁',
+            )
+            .setColor(0xFFAA00);
+
+          try {
+            await notifier.send({ embeds: [reminderEmbed] });
+            log(`Sent birthday reminder to ${entry.notifierId} about ${entry.trackedUserId}`);
+          } catch (dmError) {
+            logError(`Could not DM notifier ${entry.notifierId} (DMs may be disabled):`, dmError);
+          }
+
+          await this.client.db.birthdayReminder.markReminderSent(entry.notifierId, entry.trackedUserId, currentYear);
+        }
+
+        log('Daily birthday reminder check complete.');
+      } catch (error) {
+        logError('Error during daily reminder check:', error);
+      }
+    });
   }
 }
 

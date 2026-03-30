@@ -193,6 +193,10 @@ class Database {
     return this.models.AiChatModel;
   }
 
+  get birthdayReminder() {
+    return this.models.BirthdayReminderModel;
+  }
+
   get baby() {
     return this.models.BabyModel;
   }
