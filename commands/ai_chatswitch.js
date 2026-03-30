@@ -12,7 +12,6 @@ class AiChatswitch extends Command {
         required: true,
       },
     ], {
-      ephemeral: true,
       isSubcommandOf: 'ai',
       blame: 'xei',
     });

@@ -121,7 +121,7 @@ All wrongs reserved.
 
   async loadListeners() {
     log('--------------------\nLoading listeners...\n--------------------');
-    this.on('ready', () => {
+    this.on('clientReady', () => {
       log('Client ready.');
     });
     this.on('messageCreate', (message) => {
@@ -366,6 +366,10 @@ All wrongs reserved.
     const guildIds = process.env.GUILD_ID.split(','); // Split the GUILD_IDs into an array
     const rest = new REST({ version: '10' }).setToken(this.token);
 
+    // Clear any globally registered commands (they persist across restarts and cause duplicates)
+    await rest.put(Routes.applicationCommands(clientId), { body: [] });
+    log('Global commands cleared.');
+
     // Loop over each guild ID
     await Promise.all(guildIds.map(async (guildId) => {
       try {
@@ -381,17 +385,15 @@ All wrongs reserved.
         const validCommands = commandValues.filter((command) => command !== null && command.isSubcommandOf === null);
         const commandsArray = validCommands.map((command) => command.toJSON());
 
-        console.log(JSON.stringify(commandsArray, null, 2));
-
         // If there are no blacklisted commands, register all commands
         if (blacklistedCommands.length === 0) {
           log(`No blacklisted commands for guild ${guildId}. Registering all commands.`);
-          const response = await rest.put(
+          await rest.put(
             Routes.applicationGuildCommands(clientId, guildId),
             { body: commandsArray },
           );
 
-          log(`Successfully registered commands for guild ${guildId}:`, response);
+          log(`Successfully registered ${commandsArray.length} commands for guild ${guildId}.`);
         } else {
           // Remove blacklisted commands from the array
           const filteredCommandsArray = commandsArray.filter((command) => {
@@ -406,12 +408,12 @@ All wrongs reserved.
 
           // Register the filtered commands for this guild
           log(`Registering commands for guild: ${guildId}`);
-          const response = await rest.put(
+          await rest.put(
             Routes.applicationGuildCommands(clientId, guildId),
             { body: filteredCommandsArray },
           );
 
-          log(`Successfully registered commands for guild ${guildId}:`, response);
+          log(`Successfully registered ${filteredCommandsArray.length} commands for guild ${guildId}.`);
         }
       } catch (error) {
         logError(`Error registering commands for guild ${guildId}:`, error);

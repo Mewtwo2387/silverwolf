@@ -12,7 +12,6 @@ class AiChatdelete extends Command {
         required: true,
       },
     ], {
-      ephemeral: true,
       isSubcommandOf: 'ai',
       blame: 'xei',
     });
