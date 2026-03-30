@@ -1,6 +1,7 @@
 const aiChatHistoryTable = require('./aiChatHistoryTable');
 const aiChatSessionTable = require('./aiChatSessionTable');
 const babyTable = require('./babyTable');
+const birthdayReminderTable = require('./birthdayReminderTable');
 const chatHistoryTable = require('./chatHistoryTable');
 const chatSessionTable = require('./chatSessionTable');
 const commandConfigTable = require('./commandConfigTable');
@@ -15,6 +16,7 @@ module.exports = {
   aiChatHistoryTable,
   aiChatSessionTable,
   babyTable,
+  birthdayReminderTable,
   chatHistoryTable,
   chatSessionTable,
   commandConfigTable,

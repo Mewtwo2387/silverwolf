@@ -50,7 +50,7 @@ class UserModel {
       return;
     }
     if (value === null || value === undefined) {
-      if (attribute !== 'dinonuggies_last_claimed') {
+      if (attribute !== 'dinonuggies_last_claimed' && attribute !== 'birthdays') {
         log(`Skipping update for ${field} as value is null`);
         return;
       }
