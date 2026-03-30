@@ -104,7 +104,7 @@ class BirthdaySet extends Command {
         return;
       }
 
-      log(`Received inputs: day=${day}, month=${month}, year=${year}, timezone=${timezone}`);
+      log(`Received birthday inputs for user ${userId}.`);
 
       const birthday = new Date(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00${timezone}`);
       if (Number.isNaN(birthday.getTime())) {
@@ -112,7 +112,6 @@ class BirthdaySet extends Command {
         return;
       }
 
-      log(`Constructed birthday: ${birthday.toISOString()}`);
       await this.client.db.user.setUserAttr(userId, 'birthdays', birthday.toISOString());
       log(`Successfully updated birthday for user ${userId}.`);
 
@@ -128,7 +127,7 @@ class BirthdaySet extends Command {
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       logError(`Error setting birthday for user ${interaction.user.id}:`, error);
-      await interaction.editReply(`Error setting birthday: ${error.message}`);
+      await interaction.editReply('An unexpected error occurred while setting your birthday. Please try again later.');
     }
   }
 }

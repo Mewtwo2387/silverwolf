@@ -8,6 +8,9 @@ class BirthdayTestReminder extends DevCommand {
   }
 
   async execute(interaction) {
+    await super.execute(interaction);
+    if (interaction.replied) return;
+
     await interaction.deferReply({ ephemeral: true });
 
     const notifierId = interaction.user.id;

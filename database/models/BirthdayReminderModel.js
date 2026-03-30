@@ -8,13 +8,19 @@ class BirthdayReminderModel {
 
   async upsertReminder(notifierId, trackedUserId, daysBefore) {
     const query = birthdayReminderQueries.UPSERT_REMINDER;
-    await this.db.executeQuery(query, [notifierId, trackedUserId, daysBefore]);
+    const result = await this.db.executeQuery(query, [notifierId, trackedUserId, daysBefore]);
+    if (!result.changes) {
+      throw new Error(`Failed to upsert birthday reminder: notifier=${notifierId}, tracked=${trackedUserId}`);
+    }
     log(`Upserted birthday reminder: notifier=${notifierId}, tracked=${trackedUserId}, days=${daysBefore}`);
   }
 
   async deleteReminder(notifierId, trackedUserId) {
     const query = birthdayReminderQueries.DELETE_REMINDER;
     const result = await this.db.executeQuery(query, [notifierId, trackedUserId]);
+    if (!result.changes) {
+      throw new Error(`Failed to delete birthday reminder: notifier=${notifierId}, tracked=${trackedUserId}`);
+    }
     log(`Deleted birthday reminder: notifier=${notifierId}, tracked=${trackedUserId}`);
     return result;
   }
@@ -31,7 +37,10 @@ class BirthdayReminderModel {
 
   async markReminderSent(notifierId, trackedUserId, year) {
     const query = birthdayReminderQueries.UPDATE_REMINDED_YEAR;
-    await this.db.executeQuery(query, [year, notifierId, trackedUserId]);
+    const result = await this.db.executeQuery(query, [year, notifierId, trackedUserId]);
+    if (!result.changes) {
+      throw new Error(`Failed to mark reminder sent for year ${year}: notifier=${notifierId}, tracked=${trackedUserId}`);
+    }
     log(`Marked reminder sent for year ${year}: notifier=${notifierId}, tracked=${trackedUserId}`);
   }
 }

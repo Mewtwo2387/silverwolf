@@ -70,10 +70,11 @@ class BirthdayScheduler {
         for (const entry of pending) {
           const birthday = new Date(entry.birthdays);
 
-          // Calculate next occurrence of this birthday
-          const thisYear = new Date(Date.UTC(currentYear, birthday.getUTCMonth(), birthday.getUTCDate()));
+          // Calculate next occurrence of this birthday, preserving stored UTC time
+          const thisYear = new Date(birthday);
+          thisYear.setUTCFullYear(currentYear);
           const nextBirthday = thisYear < now
-            ? new Date(Date.UTC(currentYear + 1, birthday.getUTCMonth(), birthday.getUTCDate()))
+            ? new Date(new Date(birthday).setUTCFullYear(currentYear + 1))
             : thisYear;
 
           const daysUntil = Math.ceil((nextBirthday - now) / (1000 * 60 * 60 * 24));
@@ -102,18 +103,17 @@ class BirthdayScheduler {
           try {
             await notifier.send({ embeds: [reminderEmbed] });
             log(`Sent birthday reminder to ${entry.notifierId} about ${entry.trackedUserId}`);
+            await this.client.db.birthdayReminder.markReminderSent(entry.notifierId, entry.trackedUserId, currentYear);
           } catch (dmError) {
             logError(`Could not DM notifier ${entry.notifierId} (DMs may be disabled):`, dmError);
           }
-
-          await this.client.db.birthdayReminder.markReminderSent(entry.notifierId, entry.trackedUserId, currentYear);
         }
 
         log('Daily birthday reminder check complete.');
       } catch (error) {
         logError('Error during daily reminder check:', error);
       }
-    });
+    }, { timezone: 'UTC' });
   }
 }
 
