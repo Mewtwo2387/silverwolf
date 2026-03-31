@@ -7,6 +7,7 @@ const GameUIDModel = require('./GameUIDModel');
 const GlobalConfigModel = require('./GlobalConfigModel');
 const MarriageModel = require('./MarriageModel');
 const PokemonModel = require('./PokemonModel');
+const PoopModel = require('./PoopModel');
 const ServerRolesModel = require('./ServerRolesModel');
 const UserModel = require('./UserModel');
 
@@ -20,6 +21,7 @@ module.exports = {
   GlobalConfigModel,
   MarriageModel,
   PokemonModel,
+  PoopModel,
   ServerRolesModel,
   UserModel,
 };

@@ -9,6 +9,8 @@ const gameUIDTable = require('./gameUIDTable');
 const globalConfigTable = require('./globalConfigTable');
 const marriageTable = require('./marriageTable');
 const pokemonTable = require('./pokemonTable');
+const poopEntryTable = require('./poopEntryTable');
+const poopProfileTable = require('./poopProfileTable');
 const serverRolesTable = require('./serverRolesTable');
 const userTable = require('./userTable');
 
@@ -24,6 +26,8 @@ module.exports = {
   globalConfigTable,
   marriageTable,
   pokemonTable,
+  poopEntryTable,
+  poopProfileTable,
   serverRolesTable,
   userTable,
 };
