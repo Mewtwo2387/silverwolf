@@ -262,6 +262,10 @@ class Database {
     return this.models.PokemonModel;
   }
 
+  get poop() {
+    return this.models.PoopModel;
+  }
+
   get serverRoles() {
     return this.models.ServerRolesModel;
   }
