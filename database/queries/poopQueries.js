@@ -25,12 +25,12 @@ const poopQueries = {
       AVG(CASE WHEN duration IS NOT NULL THEN duration END) as avg_duration,
       (
         SELECT type FROM PoopEntry
-        WHERE user_id = ? AND type IS NOT NULL
+        WHERE user_id = $userId AND type IS NOT NULL
         GROUP BY type ORDER BY COUNT(*) DESC LIMIT 1
       ) as common_type,
       (
         SELECT colour FROM PoopEntry
-        WHERE user_id = ? AND colour IS NOT NULL
+        WHERE user_id = $userId AND colour IS NOT NULL
         GROUP BY colour ORDER BY COUNT(*) DESC LIMIT 1
       ) as common_colour,
       CAST(
@@ -40,10 +40,10 @@ const poopQueries = {
         0
       ) as avg_daily
     FROM PoopEntry
-    WHERE user_id = ?
+    WHERE user_id = $userId
   `,
 
-  GET_LEADERBOARD: (period, limit, offset) => {
+  GET_LEADERBOARD: (period) => {
     const periodFilter = period === 'weekly'
       ? `AND logged_at >= strftime('%s', 'now', '-7 days')`
       : period === 'monthly'
@@ -55,7 +55,7 @@ const poopQueries = {
       WHERE 1=1 ${periodFilter}
       GROUP BY user_id
       ORDER BY poop_count DESC
-      LIMIT ${limit} OFFSET ${offset}
+      LIMIT ? OFFSET ?
     `;
   },
 

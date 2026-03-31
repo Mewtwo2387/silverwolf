@@ -68,7 +68,7 @@ class PoopStats extends Command {
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       logError('Failed to fetch poop stats:', error);
-      await interaction.editReply({ content: 'Failed to retrieve poop stats. Please try again.', ephemeral: true });
+      await interaction.editReply({ content: 'Failed to retrieve poop stats. Please try again.' });
     }
   }
 }

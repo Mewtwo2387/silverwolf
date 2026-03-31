@@ -38,7 +38,7 @@ class PoopProfileCreate extends Command {
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       logError('Failed to create poop profile:', error);
-      await interaction.editReply({ content: 'Failed to save your timezone. Please try again.', ephemeral: true });
+      await interaction.followUp({ content: 'Failed to save your timezone. Please try again.', ephemeral: true });
     }
   }
 }

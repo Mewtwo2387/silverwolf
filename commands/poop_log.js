@@ -72,7 +72,7 @@ class PoopLog extends Command {
       await interaction.editReply(`Entry success! This is poop number **${count}**, keep poopin'! 💩`);
     } catch (error) {
       logError('Failed to log poop:', error);
-      await interaction.editReply({ content: 'Failed to record your poop. Please try again.', ephemeral: true });
+      await interaction.editReply('Failed to record your poop. Please try again.');
     }
   }
 }

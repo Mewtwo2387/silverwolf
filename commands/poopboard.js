@@ -62,6 +62,11 @@ class PoopBoard extends LeaderboardMixin(Command) {
       const collector = message.createMessageComponentCollector({ time: 60000 });
 
       collector.on('collect', async (i) => {
+        if (i.user.id !== interaction.user.id) {
+          await i.reply({ content: 'You cannot control this pagination.', ephemeral: true });
+          return;
+        }
+
         if (i.customId === 'prev_page' && currentPage > 0) {
           currentPage -= 1;
         } else if (i.customId === 'next_page' && currentPage < maxPage) {

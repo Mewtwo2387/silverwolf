@@ -9,7 +9,10 @@ class PoopModel {
   async createOrUpdateProfile(userId, timezone) {
     await this.db.user.getUser(userId);
     const query = poopQueries.CREATE_OR_UPDATE_PROFILE;
-    await this.db.executeQuery(query, [userId, timezone]);
+    const result = await this.db.executeQuery(query, [userId, timezone]);
+    if (!result.changes) {
+      throw new Error(`Failed to upsert poop profile for user ${userId} with timezone ${timezone}`);
+    }
     log(`Poop profile upserted for user ${userId} with timezone ${timezone}`);
   }
 
@@ -45,12 +48,12 @@ class PoopModel {
 
   async getUserStats(userId) {
     const query = poopQueries.GET_USER_STATS;
-    return this.db.executeSelectQuery(query, [userId, userId, userId]);
+    return this.db.executeSelectQuery(query, [{ $userId: userId }]);
   }
 
   async getLeaderboard(period, limit, offset) {
-    const query = poopQueries.GET_LEADERBOARD(period, limit, offset);
-    return this.db.executeSelectAllQuery(query);
+    const query = poopQueries.GET_LEADERBOARD(period);
+    return this.db.executeSelectAllQuery(query, [limit, offset]);
   }
 
   async getLeaderboardCount(period) {
