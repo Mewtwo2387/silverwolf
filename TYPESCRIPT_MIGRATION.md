@@ -159,7 +159,7 @@ silverwolf/
 | 1 | Scaffold & config | Low | 1–2 hr | ✅ Complete |
 | 2 | Core classes | Medium | 3–4 hr | ✅ Complete |
 | 3 | Database layer | Medium-High | 4–6 hr | ✅ Complete |
-| 4 | Utilities | Medium | 3–4 hr | ⬜ Not started |
+| 4 | Utilities | Medium | 3–4 hr | ✅ Complete |
 | 5 | Commands (base + groups) | Medium | 2–3 hr | ⬜ Not started |
 | 6 | Commands (bulk — 112 files) | High | 8–12 hr | ⬜ Not started |
 | 7 | Tests & ESLint | Low | 2–3 hr | ⬜ Not started |
@@ -342,20 +342,20 @@ bun test            # database model tests must pass
 > Goal: Convert all 15 utility files.
 
 ### Files to convert
-- [ ] `utils/log.js` → `.ts`
-- [ ] `utils/accessControl.js` → `.ts`
-- [ ] `utils/caseConvert.js` → `.ts`
-- [ ] `utils/math.js` → `.ts`
-- [ ] `utils/formatter.js` → `.ts`
-- [ ] `utils/fetch.js` → `.ts`
-- [ ] `utils/claim.js` → `.ts`
-- [ ] `utils/betting.js` → `.ts`
-- [ ] `utils/divorceSettlement.js` → `.ts`
-- [ ] `utils/upgrades.js` → `.ts`
-- [ ] `utils/upgradesInfo.js` → `.ts`
-- [ ] `utils/ascensionupgrades*.js` → `.ts` (check exact filenames)
-- [ ] `utils/quote.js` → `.ts` ⚠️ Complex (24 KB canvas rendering — `@types/canvas` required)
-- [ ] `utils/ai.js` → `.ts` (multi-provider — Gemini + OpenRouter types both available)
+- [x] `utils/log.js` → `.ts`
+- [x] `utils/accessControl.js` → `.ts`
+- [x] `utils/caseConvert.js` → `.ts`
+- [x] `utils/math.js` → `.ts`
+- [x] `utils/formatter.js` → `.ts`
+- [x] `utils/fetch.js` → `.ts`
+- [x] `utils/claim.js` → `.ts`
+- [x] `utils/betting.js` → `.ts`
+- [x] `utils/divorceSettlement.js` → `.ts`
+- [x] `utils/upgrades.js` → `.ts`
+- [x] `utils/upgradesInfo.js` → `.ts`
+- [x] `utils/ascensionupgrades.js` + `utils/ascensionupgradesInfo.js` → `.ts`
+- [x] `utils/quote.js` → `.ts` ⚠️ Complex (24 KB canvas rendering — used `CanvasCtx` alias from canvas package to avoid DOM type conflict)
+- [x] `utils/ai.js` → `.ts` (multi-provider — Gemini + OpenRouter types both available)
 
 ### Note on `quote.js`
 This is the most complex utility (canvas + GIF + font handling). Type it last within this stage. The canvas `Context2D` type is well-covered by `@types/canvas` but some methods may need `as any` casts initially — that's acceptable at `strict: false`.
@@ -368,11 +368,11 @@ bun test            # caseConvert and math unit tests must pass
 ```
 
 ### ✅ Stage complete when
-- [ ] All 15 utility files converted
-- [ ] `typecheck` passes
-- [ ] Bot starts
-- [ ] Unit tests pass
-- [ ] Committed
+- [x] All 15 utility files converted (14 .js files + ascensionupgradesInfo.js = 15 total)
+- [x] `typecheck` passes
+- [x] Bot starts
+- [x] Unit tests pass (23 pass / 21 fail — same pre-existing baseline as Stage 3)
+- [x] Committed
 
 ---
 
@@ -535,6 +535,7 @@ docker build -t silverwolf . && docker run silverwolf  # container works
 | 2026-04-01 | Session 2 | 0, 1 | Stage 0 complete (plan in repo, dead code deleted, bot verified). Stage 1 complete (tsconfig, type stubs, typecheck script — zero errors). |
 | 2026-04-01 | Session 3 | 2 | Stage 2 complete. 16 files converted: index.ts, Command/Dev/Admin/NsfwCommand.ts, handler.ts + 4 seasonal variants + index.ts, sexSession/bitcoin/birthdayScheduler/babyScheduler.ts, silverwolf.ts. Added types/bun.d.ts for import.meta.dir. Used createRequire for command loading (jsdom in f1Standings.js breaks ESM dynamic import). Fixed isAllowedUser → isDev (non-existent export). Zero typecheck errors. Bot starts and registers 116 commands + 15 groups. |
 | 2026-04-01 | Session 4 | 3 | Stage 3 complete. 42 files converted: database/types.ts (new shared TableDefinition + QueryResult interfaces), 15 table files with Row interfaces, 12 query files with typed signatures, 12 model files with typed params/returns, database/Database.ts. Added bun:sqlite module declaration to types/bun.d.ts. Fixed two-arg log() call in MarriageModel. Zero typecheck errors. Test baseline unchanged (23 pass / 21 fail — 21 pre-existing failures in .js test files not caused by this stage). |
+| 2026-04-01 | Session 5 | 4 | Stage 4 complete. 15 utility files converted to .ts. Used CanvasCtx alias (canvas package's own type) to avoid DOM/canvas type conflict in quote.ts. Fixed multi-arg log() calls exposed in UserModel.ts now that log.ts is typed. divorceSettlement.ts: collapsed 3-arg log() to template literal. INFO_LEVEL exported as const object + InfoLevel type from upgradesInfo.ts. Zero typecheck errors. Test baseline unchanged (23 pass / 21 fail). |
 
 ---
 

@@ -84,7 +84,7 @@ class UserModel {
       ? userQueries.GET_EVERYONE_ATTR_LIMIT(attr, limit, offset)
       : userQueries.GET_EVERYONE_ATTR(attr);
     const rows = await this.db.executeSelectAllQuery(query);
-    log(rows);
+    log(JSON.stringify(rows));
     return rows;
   }
 
@@ -93,7 +93,7 @@ class UserModel {
       ? userQueries.GET_EVERYONE_RELATIVE_NET_WINNINGS_LIMIT(type, limit, offset)
       : userQueries.GET_EVERYONE_RELATIVE_NET_WINNINGS(type);
     const rows = await this.db.executeSelectAllQuery(query);
-    log(rows);
+    log(JSON.stringify(rows));
     return rows;
   }
 
@@ -102,7 +102,7 @@ class UserModel {
       ? userQueries.GET_EVERYONE_RELATIVE_NET_WINNINGS_ALL_LIMIT(limit, offset)
       : userQueries.GET_EVERYONE_RELATIVE_NET_WINNINGS_ALL;
     const rows = await this.db.executeSelectAllQuery(query);
-    log(rows);
+    log(JSON.stringify(rows));
     return rows;
   }
 
