@@ -432,7 +432,7 @@ bun index.ts        # bot starts AND slash commands register correctly
 - [x] dev_add, dev_set, dev_forceclaim, dev_forceautomation, dev_forcesummon, dev_ramstats, dev_testsummon, blacklist_configure, blacklist_view, globalconfig_get, globalconfig_set, gameuid_get, gameuid_set, gameuid_delete, ping_dev, ping_regular, setserverrole, dbdump, logdump
 
 **Batch E — Fun & Utility (~25 files)**
-- [ ] 8ball, fart, fortune, lore, misfortune, sing, convert, quote, timestamp, summary, etc.
+- [x] 8ball, fart, fortune, lore, misfortune, sing, Timestamp, summary_count, summary_time, randomjoke, hello, nothing, awdangit, blame, donate, say, dm, snipe, trade, birthday_get, birthday_test, bitcoinPrice, 2022
 
 **Batch F — Remaining (~22 files)**
 - [ ] Any uncovered commands
