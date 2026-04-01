@@ -420,16 +420,16 @@ bun index.ts        # bot starts AND slash commands register correctly
 - Batch by category to keep context manageable:
 
 **Batch A — Economy & Gambling (~20 files)**
-- [ ] blackjack, slots, roulette, bet, russianroulette variants, gacha, pokemon, balance, transfer, claim
+- [x] blackjack, slots, roulette, russianroulette variants, gacha, pokemon, balance, transfer, claim, flip, roll, gamblerboard, riskNReward, buybitcoin, buy_ascension, buy_donation, buy_upgrades, ascend, pokemonFind
 
 **Batch B — Social & Relationships (~20 files)**
-- [ ] marriage, divorce, baby commands, profile, avatar
+- [x] marriage_propose, marriage_divorce, marriage_status, baby_birth, baby_enslave, baby_get, baby_murder, baby_name, profile, avatar
 
 **Batch C — AI Commands (~10 files)**
-- [ ] askSilverwolfAI, ai_chatswitch, ai_chatnew, ai_* variants
+- [x] askSilverwolfAI, ai_chatswitch, ai_chatnew, ai_chatdelete, ai_view
 
 **Batch D — Admin & Dev Commands (~15 files)**
-- [ ] dev_add, dev_set, dev_forceclaim, blacklist, globalconfig, gameuid
+- [x] dev_add, dev_set, dev_forceclaim, dev_forceautomation, dev_forcesummon, dev_ramstats, dev_testsummon, blacklist_configure, blacklist_view, globalconfig_get, globalconfig_set, gameuid_get, gameuid_set, gameuid_delete, ping_dev, ping_regular, setserverrole, dbdump, logdump
 
 **Batch E — Fun & Utility (~25 files)**
 - [ ] 8ball, fart, fortune, lore, misfortune, sing, convert, quote, timestamp, summary, etc.
@@ -546,6 +546,8 @@ docker build -t silverwolf . && docker run silverwolf  # container works
 | 2026-04-01 | Session 4 | 3 | Stage 3 complete. 42 files converted: database/types.ts (new shared TableDefinition + QueryResult interfaces), 15 table files with Row interfaces, 12 query files with typed signatures, 12 model files with typed params/returns, database/Database.ts. Added bun:sqlite module declaration to types/bun.d.ts. Fixed two-arg log() call in MarriageModel. Zero typecheck errors. Test baseline unchanged (23 pass / 21 fail — 21 pre-existing failures in .js test files not caused by this stage). |
 | 2026-04-01 | Session 5 | 4 | Stage 4 complete. 15 utility files converted to .ts. Used CanvasCtx alias (canvas package's own type) to avoid DOM/canvas type conflict in quote.ts. Fixed multi-arg log() calls exposed in UserModel.ts now that log.ts is typed. divorceSettlement.ts: collapsed 3-arg log() to template literal. INFO_LEVEL exported as const object + InfoLevel type from upgradesInfo.ts. Zero typecheck errors. Test baseline unchanged (23 pass / 21 fail). |
 | 2026-04-01 | Session 6 | 5 | Stage 5 complete. 16 files converted: commandGroup.ts (base class, typed commands: string[], isSubcommandOf: string\|null) + 15 group files using export default. Updated silverwolf.ts commandgroups filter from .js → .ts; added mod.default ?? mod unwrap since ESM default exports land on .default when loaded via createRequire. Bot starts, 15 command groups register. Zero typecheck errors. |
+| 2026-04-01 | Session 7 | 6 (A+B) | Stage 6 Batch A complete (21 files: blackjack, slots, roulette, russianroulette variants, gacha, pokemon, balance, transfer, claim, flip, roll, gamblerboard, riskNReward, buybitcoin, buy_ascension, buy_donation, buy_upgrades, ascend, pokemonFind). Batch B complete (10 files: marriage_propose, marriage_divorce, marriage_status, baby_birth, baby_enslave, baby_get, baby_murder, baby_name, profile, avatar). New Batch B files have zero typecheck errors; 4 pre-existing errors in pokemonFind/riskNReward/roulette carry over from Batch A. |
+| 2026-04-02 | Session 8 | 6 (C+D) | Batch C already complete per plan. Batch D complete (19 files: dev_add, dev_set, dev_forceclaim, dev_forceautomation, dev_forcesummon, dev_ramstats, dev_testsummon, blacklist_configure, blacklist_view, globalconfig_get, globalconfig_set, gameuid_get, gameuid_set, gameuid_delete, ping_dev, ping_regular, setserverrole, dbdump, logdump). Fixed DevCommand.ts args type: was inferring from default object (no blame field), now typed as CommandArgs. Exported CommandArgs from Command.ts. 4 pre-existing typecheck errors (Batch A) unchanged. Test baseline unchanged (23 pass / 21 fail). |
 
 ---
 

@@ -2,7 +2,7 @@ import { EmbedBuilder } from 'discord.js';
 import { logError, log } from '../../utils/log';
 import { isDev } from '../../utils/accessControl';
 
-interface CommandArgs {
+export interface CommandArgs {
   ephemeral?: boolean;
   skipDefer?: boolean;
   isSubcommandOf?: string | null;
