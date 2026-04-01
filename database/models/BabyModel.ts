@@ -79,6 +79,7 @@ class BabyModel {
     return true;
   }
 
+  // eslint-disable-next-line max-len
   async updateBabyJob(id: number, job: string, pingerTarget: string | null = null, pingerChannel: string | null = null): Promise<boolean> {
     await this.updateBabyAttr(id, 'job', job);
     if (pingerTarget) {
@@ -102,6 +103,7 @@ class BabyModel {
     return true;
   }
 
+  // eslint-disable-next-line max-len
   async incrementGamblerStats(id: number, games: number, wins: number, losses: number, creditsGambled: number, creditsWon: number): Promise<void> {
     await this.addBabyAttr(id, 'gamblerGames', games);
     await this.addBabyAttr(id, 'gamblerWins', wins);

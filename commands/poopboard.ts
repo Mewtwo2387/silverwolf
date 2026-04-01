@@ -6,7 +6,6 @@ import { logError } from '../utils/log';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 class PoopBoard extends (LeaderboardMixin(Command) as any) {
   constructor(client: any) {
-    // @ts-ignore — TypeScript can't verify variadic mixin super call
     super(
       client,
       'poopboard',
@@ -75,6 +74,7 @@ class PoopBoard extends (LeaderboardMixin(Command) as any) {
           currentPage += 1;
         }
 
+        // eslint-disable-next-line max-len
         const newAttrs = await this.client.db.poop.getLeaderboard(period, this.itemsPerPage, currentPage * this.itemsPerPage);
         const newLeaderboard = await this.generateLeaderboard(newAttrs, currentPage);
         newLeaderboard.setTitle(`Poop Leaderboard 💩 — ${periodLabel[period]}`);

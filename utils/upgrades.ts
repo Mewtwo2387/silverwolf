@@ -43,7 +43,7 @@ function getTotalUpgradeCost(level: number): number {
   return totalCost;
 }
 
-// eslint-disable-next-line no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function dump(): void {
   for (let i = 1; i < MAX_LEVEL; i += 1) {
     log(`Level ${String(i).padStart(2, '0')} -> ${String(i + 1).padStart(2, '0')} cost: ${String(getNextUpgradeCost(i)).padStart(15, ' ')} Total cost: ${String(getTotalUpgradeCost(i + 1)).padStart(7, ' ')}`);

@@ -114,7 +114,7 @@ class Timestamp extends Command {
         ]);
 
       await interaction.editReply({ embeds: [embed] });
-    } catch (error) {
+    } catch (_error) {
       await interaction.editReply('error. you probably fucked up some inputs.');
     }
   }

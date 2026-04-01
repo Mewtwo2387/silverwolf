@@ -44,11 +44,9 @@ const poopQueries = {
   `,
 
   GET_LEADERBOARD: (period: string): string => {
-    const periodFilter = period === 'weekly'
-      ? `AND logged_at >= strftime('%s', 'now', '-7 days')`
-      : period === 'monthly'
-        ? `AND logged_at >= strftime('%s', 'now', '-30 days')`
-        : '';
+    let periodFilter = '';
+    if (period === 'weekly') periodFilter = "AND logged_at >= strftime('%s', 'now', '-7 days')";
+    else if (period === 'monthly') periodFilter = "AND logged_at >= strftime('%s', 'now', '-30 days')";
     return `
       SELECT user_id as id, COUNT(*) as poop_count
       FROM PoopEntry
@@ -60,11 +58,9 @@ const poopQueries = {
   },
 
   GET_LEADERBOARD_COUNT: (period: string): string => {
-    const periodFilter = period === 'weekly'
-      ? `AND logged_at >= strftime('%s', 'now', '-7 days')`
-      : period === 'monthly'
-        ? `AND logged_at >= strftime('%s', 'now', '-30 days')`
-        : '';
+    let periodFilter = '';
+    if (period === 'weekly') periodFilter = "AND logged_at >= strftime('%s', 'now', '-7 days')";
+    else if (period === 'monthly') periodFilter = "AND logged_at >= strftime('%s', 'now', '-30 days')";
     return `
       SELECT COUNT(DISTINCT user_id) as total
       FROM PoopEntry

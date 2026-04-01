@@ -24,6 +24,7 @@ class PoopModel {
     return this.db.executeSelectQuery(query, [userId]);
   }
 
+  // eslint-disable-next-line max-len
   async logPoop(userId: string, colour: string | null, size: string | null, type: string | null, duration: number | null): Promise<number> {
     // Auto-create user and profile at UTC+0 if none exists
     await this.db.user.getUser(userId);

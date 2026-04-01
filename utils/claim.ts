@@ -136,6 +136,7 @@ async function getAmount(client: any, uid: string, streak: number): Promise<Rewa
   return formatReward(client, 'regular', amount, multiplier, percentage);
 }
 
+// eslint-disable-next-line max-len
 async function handleSuccessfulClaim(client: any, interaction: ChatInputCommandInteraction, newMessage = false): Promise<void> {
   const streak = await client.db.user.getUserAttr(interaction.user.id, 'dinonuggiesClaimStreak');
   const dinonuggies = await client.db.user.getUserAttr(interaction.user.id, 'dinonuggies');

@@ -3,7 +3,7 @@ import { logError } from '../utils/log';
 import { Command } from './classes/Command';
 
 function extractStandings(html: string, type: string): any[] {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
   const { JSDOM } = require('jsdom') as { JSDOM: any };
   const dom = new JSDOM(html);
   const rows: any[] = dom.window.document.getElementById('results-table')

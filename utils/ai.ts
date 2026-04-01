@@ -17,6 +17,7 @@ const openrouter = new OpenAI({
 });
 
 // Load personas configuration
+// eslint-disable-next-line import/first
 import personasData from '../data/aiPersonas.json';
 
 const personasConfig: any = (personasData as any).personasConfig || personasData;

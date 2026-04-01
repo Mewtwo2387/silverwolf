@@ -1,9 +1,9 @@
-import { Command } from './Command';
+import { Command, CommandArgs } from './Command';
 import { log } from '../../utils/log';
 import { isBasement } from '../../utils/accessControl';
 
 class NsfwCommand extends Command {
-  constructor(client: any, name: string, description: string, options: any[], args = { ephemeral: false, skipDefer: false, isSubcommandOf: null as string | null }) {
+  constructor(client: any, name: string, description: string, options: any[], args: CommandArgs = {}) {
     super(client, name, description, options, args);
   }
 

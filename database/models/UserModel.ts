@@ -78,6 +78,7 @@ class UserModel {
     return user[attribute];
   }
 
+  // eslint-disable-next-line max-len
   async getEveryoneAttr(attribute: string, limit: number | null = null, offset: number = 0): Promise<Record<string, any>[]> {
     const attr = camelToSnake(attribute);
     const query = (limit !== null)
@@ -88,6 +89,7 @@ class UserModel {
     return rows;
   }
 
+  // eslint-disable-next-line max-len
   async getRelativeNetWinnings(type: string, limit: number | null = null, offset: number = 0): Promise<Record<string, any>[]> {
     const query = (limit !== null)
       ? userQueries.GET_EVERYONE_RELATIVE_NET_WINNINGS_LIMIT(type, limit, offset)

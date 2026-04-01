@@ -50,6 +50,7 @@ async function fetchMessagesByTime(
   let lastId: string | undefined;
 
   while (messages.length < maxMessages) {
+    // eslint-disable-next-line max-len
     const options: { limit: number; before?: string } = { limit: Math.min(maxMessages - messages.length, MAX_FETCH_COUNT) };
     if (lastId) {
       options.before = lastId;

@@ -408,6 +408,7 @@ All wrongs reserved.
 
         // Create a copy of the commands array
         const commandValues = Array.from(this.commands.values());
+        // eslint-disable-next-line max-len
         const validCommands = commandValues.filter((command: any) => command !== null && command.isSubcommandOf === null);
         const commandsArray = validCommands.map((command: any) => command.toJSON());
 
