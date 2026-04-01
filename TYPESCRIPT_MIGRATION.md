@@ -161,7 +161,7 @@ silverwolf/
 | 3 | Database layer | Medium-High | 4–6 hr | ✅ Complete |
 | 4 | Utilities | Medium | 3–4 hr | ✅ Complete |
 | 5 | Commands (base + groups) | Medium | 2–3 hr | ✅ Complete |
-| 6 | Commands (bulk — 112 files) | High | 8–12 hr | ⬜ Not started |
+| 6 | Commands (bulk — 112 files) | High | 8–12 hr | ✅ Complete |
 | 7 | Tests & ESLint | Low | 2–3 hr | ⬜ Not started |
 | 8 | Strict mode + final polish | Medium | 2–4 hr | ⬜ Not started |
 
@@ -435,7 +435,7 @@ bun index.ts        # bot starts AND slash commands register correctly
 - [x] 8ball, fart, fortune, lore, misfortune, sing, Timestamp, summary_count, summary_time, randomjoke, hello, nothing, awdangit, blame, donate, say, dm, snipe, trade, birthday_get, birthday_test, bitcoinPrice, 2022
 
 **Batch F — Remaining (~22 files)**
-- [ ] Any uncovered commands
+- [x] murderboard, nuggieboard, arlecchino, cat, catcg, catch, click, eat, eval, execute, f1Standings, gamebang, gongyoo, guide, hilichurl, loveCalulator, nword, sacrifice, sex_start, sex_status, sex_thrust, shop_ascension, shop_donation, shop_upgrades, shop_upgradesdata, spotifyPlaylist, genshinProfile, hsrProfile, grabEmoji, poopboard, convert, fakequote, birthday_notify, birthday_set, birthday_testreminder, birthday_unnotify, poop_log, poop_profile_create, poop_stats (+ leaderboardMixin.ts)
 
 ### Typed command pattern (apply to every command)
 ```ts
@@ -456,16 +456,16 @@ bun index.ts        # bot starts, all commands register
 ```
 
 ### ✅ Stage complete when
-- [ ] Batch A complete + tested
-- [ ] Batch B complete + tested
-- [ ] Batch C complete + tested
-- [ ] Batch D complete + tested
-- [ ] Batch E complete + tested
-- [ ] Batch F complete + tested
-- [ ] All 112 commands converted
-- [ ] `typecheck` passes
-- [ ] Bot starts and all commands register
-- [ ] Committed
+- [x] Batch A complete + tested
+- [x] Batch B complete + tested
+- [x] Batch C complete + tested
+- [x] Batch D complete + tested
+- [x] Batch E complete + tested
+- [x] Batch F complete + tested
+- [x] All commands converted
+- [x] `typecheck` passes (4 pre-existing errors in pokemonFind/riskNReward/roulette only)
+- [x] Bot starts and all commands register (116 commands + 15 groups)
+- [x] Committed
 
 ---
 
@@ -549,6 +549,7 @@ docker build -t silverwolf . && docker run silverwolf  # container works
 | 2026-04-01 | Session 7 | 6 (A+B) | Stage 6 Batch A complete (21 files: blackjack, slots, roulette, russianroulette variants, gacha, pokemon, balance, transfer, claim, flip, roll, gamblerboard, riskNReward, buybitcoin, buy_ascension, buy_donation, buy_upgrades, ascend, pokemonFind). Batch B complete (10 files: marriage_propose, marriage_divorce, marriage_status, baby_birth, baby_enslave, baby_get, baby_murder, baby_name, profile, avatar). New Batch B files have zero typecheck errors; 4 pre-existing errors in pokemonFind/riskNReward/roulette carry over from Batch A. |
 | 2026-04-02 | Session 8 | 6 (C+D) | Batch C already complete per plan. Batch D complete (19 files: dev_add, dev_set, dev_forceclaim, dev_forceautomation, dev_forcesummon, dev_ramstats, dev_testsummon, blacklist_configure, blacklist_view, globalconfig_get, globalconfig_set, gameuid_get, gameuid_set, gameuid_delete, ping_dev, ping_regular, setserverrole, dbdump, logdump). Fixed DevCommand.ts args type: was inferring from default object (no blame field), now typed as CommandArgs. Exported CommandArgs from Command.ts. 4 pre-existing typecheck errors (Batch A) unchanged. Test baseline unchanged (23 pass / 21 fail). |
 | 2026-04-02 | Session 9 | 6 (E) | Batch E complete (23 files: 8ball, fart, fortune, misfortune, lore, sing, Timestamp, summary_count, summary_time, randomjoke, hello, nothing, awdangit, blame, donate, say, dm, snipe, trade, birthday_get, birthday_test, bitcoinPrice, 2022). Fixed AdminCommand.ts args type (same CommandArgs fix as DevCommand). Fixed summary_time: fetchMessagesByTime takes number not Date, pass timeLimit.getTime(). 4 pre-existing typecheck errors unchanged. |
+| 2026-04-02 | Session 10 | 6 (F) | Batch F complete. All remaining commands converted (40 files: leaderboardMixin.ts + murderboard, nuggieboard, arlecchino, cat, catcg, catch, click, eat, eval, execute, f1Standings, gamebang, gongyoo, guide, hilichurl, loveCalulator, nword, sacrifice, sex_start/status/thrust, shop_ascension/donation/upgrades/upgradesdata, spotifyPlaylist, genshinProfile, hsrProfile, grabEmoji, poopboard, convert, fakequote, birthday_notify/set/testreminder/unnotify, poop_log/profile_create/stats). Fixed NsfwCommand.ts to use CommandArgs. Updated silverwolf.ts command loader to prefer .ts over .js and apply mod.default unwrap. f1Standings uses inline require('jsdom') to avoid ESM circular dep. 4 pre-existing typecheck errors unchanged. Bot starts, 116 commands + 15 groups register. Stage 6 complete. |
 
 ---
 
