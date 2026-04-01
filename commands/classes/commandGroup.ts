@@ -1,7 +1,13 @@
-const { log } = require('../../utils/log');
+import { log } from '../../utils/log';
 
-class CommandGroup {
-  constructor(client, name, description, commands) {
+export class CommandGroup {
+  client: any;
+  name: string;
+  description: string;
+  commands: string[];
+  isSubcommandOf: string | null;
+
+  constructor(client: any, name: string, description: string, commands: string[]) {
     this.client = client;
     this.name = name;
     this.description = description;
@@ -9,7 +15,7 @@ class CommandGroup {
     this.isSubcommandOf = null;
   }
 
-  async execute(interaction) {
+  async execute(interaction: any): Promise<void> {
     const commandName = interaction.options.getSubcommand();
     log(`> Subcommand: ${commandName}`);
     const command = this.client.commands.get(`${this.name}.${commandName}`);
@@ -17,7 +23,7 @@ class CommandGroup {
     await command.execute(interaction);
   }
 
-  toJSON() {
+  toJSON(): object {
     return {
       name: this.name,
       description: this.description,
@@ -34,5 +40,3 @@ class CommandGroup {
     };
   }
 }
-
-module.exports = { CommandGroup };

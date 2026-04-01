@@ -110,11 +110,12 @@ All wrongs reserved.
 
     log('--------------------\nLoading command groups...\n--------------------');
     const commandGroupDir = path.join(import.meta.dir, '../commands/commandgroups');
-    const commandGroupFiles = fs.readdirSync(commandGroupDir).filter((file) => file.endsWith('.js'));
+    const commandGroupFiles = fs.readdirSync(commandGroupDir).filter((file) => file.endsWith('.ts'));
 
     let commandGroupCount = 0;
     for (const file of commandGroupFiles) {
-      const CommandGroupClass = _require(path.join(commandGroupDir, file));
+      const mod = _require(path.join(commandGroupDir, file));
+      const CommandGroupClass = mod.default ?? mod;
       const commandGroup = new CommandGroupClass(this);
       this.commands.set(commandGroup.name, commandGroup);
       log(`Command group ${commandGroup.name} loaded.`);

@@ -160,7 +160,7 @@ silverwolf/
 | 2 | Core classes | Medium | 3–4 hr | ✅ Complete |
 | 3 | Database layer | Medium-High | 4–6 hr | ✅ Complete |
 | 4 | Utilities | Medium | 3–4 hr | ✅ Complete |
-| 5 | Commands (base + groups) | Medium | 2–3 hr | ⬜ Not started |
+| 5 | Commands (base + groups) | Medium | 2–3 hr | ✅ Complete |
 | 6 | Commands (bulk — 112 files) | High | 8–12 hr | ⬜ Not started |
 | 7 | Tests & ESLint | Low | 2–3 hr | ⬜ Not started |
 | 8 | Strict mode + final polish | Medium | 2–4 hr | ⬜ Not started |
@@ -379,14 +379,23 @@ bun test            # caseConvert and math unit tests must pass
 ## Stage 5 — Commands: Base + Groups
 > Goal: Convert command groups (7 files). These define subcommand structure, not execution logic — lower risk than the 112 individual commands.
 
-### Files to convert
-- [ ] `commands/commandgroups/buy.js` → `.ts`
-- [ ] `commands/commandgroups/baby.js` → `.ts`
-- [ ] `commands/commandgroups/shop.js` → `.ts`
-- [ ] `commands/commandgroups/sex.js` → `.ts`
-- [ ] `commands/commandgroups/marriage.js` → `.ts`
-- [ ] `commands/commandgroups/russianroulette.js` → `.ts`
-- [ ] Remaining group files → `.ts`
+### Files to convert (16 total: commandGroup base + 15 group files)
+- [x] `commands/classes/commandGroup.js` → `.ts`
+- [x] `commands/commandgroups/buy.js` → `.ts`
+- [x] `commands/commandgroups/baby.js` → `.ts`
+- [x] `commands/commandgroups/shop.js` → `.ts`
+- [x] `commands/commandgroups/sex.js` → `.ts`
+- [x] `commands/commandgroups/marriage.js` → `.ts`
+- [x] `commands/commandgroups/russianroulette.js` → `.ts`
+- [x] `commands/commandgroups/ping.js` → `.ts`
+- [x] `commands/commandgroups/blacklist.js` → `.ts`
+- [x] `commands/commandgroups/gameuid.js` → `.ts`
+- [x] `commands/commandgroups/globalconfig.js` → `.ts`
+- [x] `commands/commandgroups/summary.js` → `.ts`
+- [x] `commands/commandgroups/dev.js` → `.ts`
+- [x] `commands/commandgroups/birthday.js` → `.ts`
+- [x] `commands/commandgroups/ai.js` → `.ts`
+- [x] `commands/commandgroups/poop.js` → `.ts`
 
 ### Gate Test
 ```bash
@@ -395,10 +404,10 @@ bun index.ts        # bot starts AND slash commands register correctly
 ```
 
 ### ✅ Stage complete when
-- [ ] All 7 command group files converted
-- [ ] `typecheck` passes
-- [ ] Bot starts and commands register
-- [ ] Committed
+- [x] All 16 files converted (commandGroup base + 15 group files)
+- [x] `typecheck` passes
+- [x] Bot starts and 15 command groups register
+- [x] Committed
 
 ---
 
@@ -536,6 +545,7 @@ docker build -t silverwolf . && docker run silverwolf  # container works
 | 2026-04-01 | Session 3 | 2 | Stage 2 complete. 16 files converted: index.ts, Command/Dev/Admin/NsfwCommand.ts, handler.ts + 4 seasonal variants + index.ts, sexSession/bitcoin/birthdayScheduler/babyScheduler.ts, silverwolf.ts. Added types/bun.d.ts for import.meta.dir. Used createRequire for command loading (jsdom in f1Standings.js breaks ESM dynamic import). Fixed isAllowedUser → isDev (non-existent export). Zero typecheck errors. Bot starts and registers 116 commands + 15 groups. |
 | 2026-04-01 | Session 4 | 3 | Stage 3 complete. 42 files converted: database/types.ts (new shared TableDefinition + QueryResult interfaces), 15 table files with Row interfaces, 12 query files with typed signatures, 12 model files with typed params/returns, database/Database.ts. Added bun:sqlite module declaration to types/bun.d.ts. Fixed two-arg log() call in MarriageModel. Zero typecheck errors. Test baseline unchanged (23 pass / 21 fail — 21 pre-existing failures in .js test files not caused by this stage). |
 | 2026-04-01 | Session 5 | 4 | Stage 4 complete. 15 utility files converted to .ts. Used CanvasCtx alias (canvas package's own type) to avoid DOM/canvas type conflict in quote.ts. Fixed multi-arg log() calls exposed in UserModel.ts now that log.ts is typed. divorceSettlement.ts: collapsed 3-arg log() to template literal. INFO_LEVEL exported as const object + InfoLevel type from upgradesInfo.ts. Zero typecheck errors. Test baseline unchanged (23 pass / 21 fail). |
+| 2026-04-01 | Session 6 | 5 | Stage 5 complete. 16 files converted: commandGroup.ts (base class, typed commands: string[], isSubcommandOf: string\|null) + 15 group files using export default. Updated silverwolf.ts commandgroups filter from .js → .ts; added mod.default ?? mod unwrap since ESM default exports land on .default when loaded via createRequire. Bot starts, 15 command groups register. Zero typecheck errors. |
 
 ---
 
