@@ -1,13 +1,13 @@
-const { Command } = require('./command');
-const { log } = require('../../utils/log');
-const { isDev } = require('../../utils/accessControl');
+import { Command } from './Command';
+import { log } from '../../utils/log';
+import { isDev } from '../../utils/accessControl';
 
 class DevCommand extends Command {
-  constructor(client, name, description, options, args = { ephemeral: false, skipDefer: false, isSubcommandOf: null }) {
+  constructor(client: any, name: string, description: string, options: any[], args = { ephemeral: false, skipDefer: false, isSubcommandOf: null as string | null }) {
     super(client, name, description, options, args);
   }
 
-  async execute(interaction) {
+  async execute(interaction: any): Promise<void> {
     if (!isDev(interaction)) {
       log(`${interaction.user.username} tried using a dev command smh`);
       if (interaction.deferred) {
@@ -21,4 +21,4 @@ class DevCommand extends Command {
   }
 }
 
-module.exports = { DevCommand };
+export { DevCommand };

@@ -1,26 +1,23 @@
-const {
-  EmbedBuilder,
-} = require('discord.js');
-// Note: Bun automatically reads .env files
-const Handler = require('./handler');
+import { EmbedBuilder } from 'discord.js';
+import Handler from './handler';
 
 class AprilFoolsHandler extends Handler {
   // eslint-disable-next-line class-methods-use-this, no-unused-vars
-  async summonShinyPokemon(client, message, _member, _pfp) {
+  async summonShinyPokemon(client: any, message: any, _member: any, _pfp: string): Promise<void> {
     this.summonSilverwolf(client, message);
   }
 
   // eslint-disable-next-line class-methods-use-this, no-unused-vars
-  async summonMysteryPokemon(client, message, _member, _pfp) {
+  async summonMysteryPokemon(client: any, message: any, _member: any, _pfp: string): Promise<void> {
     this.summonSilverwolf(client, message);
   }
 
   // eslint-disable-next-line class-methods-use-this, no-unused-vars
-  async summonNormalPokemon(client, message, _member, _pfp) {
+  async summonNormalPokemon(client: any, message: any, _member: any, _pfp: string): Promise<void> {
     this.summonSilverwolf(client, message);
   }
 
-  async summonSilverwolf(client, message) {
+  async summonSilverwolf(client: any, message: any): Promise<void> {
     message.channel.send({
       embeds: [new EmbedBuilder()
         .setTitle('A Silverwolf appeared!')
@@ -33,4 +30,4 @@ class AprilFoolsHandler extends Handler {
   }
 }
 
-module.exports = AprilFoolsHandler;
+export default AprilFoolsHandler;

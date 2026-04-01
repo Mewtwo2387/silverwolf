@@ -1,14 +1,16 @@
-const cron = require('node-cron');
-const { log } = require('../utils/log');
+import cron from 'node-cron';
+import { log } from '../utils/log';
 // Note: Bun automatically reads .env files
-const { getAmount } = require('../utils/claim');
+import { getAmount } from '../utils/claim';
 
 class BabyScheduler {
-  constructor(client) {
+  client: any;
+
+  constructor(client: any) {
     this.client = client;
   }
 
-  start() {
+  start(): void {
     cron.schedule('0 0 * * *', async () => {
       await this.dailyAutomations();
     });
@@ -17,9 +19,9 @@ class BabyScheduler {
     });
   }
 
-  async dailyAutomations() {
+  async dailyAutomations(): Promise<void> {
     const babies = await this.client.db.baby.getAllBabies();
-    babies.forEach(async (baby) => {
+    babies.forEach(async (baby: any) => {
       if (baby.status === 'born') {
         switch (baby.job) {
           case 'nuggieClaimer':
@@ -37,9 +39,9 @@ class BabyScheduler {
     });
   }
 
-  async tenMinuteAutomations() {
+  async tenMinuteAutomations(): Promise<void> {
     const babies = await this.client.db.baby.getAllBabies();
-    babies.forEach(async (baby) => {
+    babies.forEach(async (baby: any) => {
       if (baby.status === 'born') {
         switch (baby.job) {
           case 'gambler':
@@ -54,9 +56,9 @@ class BabyScheduler {
     });
   }
 
-  async dailyNuggieClaim(baby) {
+  async dailyNuggieClaim(baby: any): Promise<void> {
     const parents = [baby.motherId, baby.fatherId];
-    parents.forEach(async (parent) => {
+    parents.forEach(async (parent: string) => {
       const { amount } = await getAmount(this.client, parent, 0);
       await this.client.db.user.addUserAttr(parent, 'dinonuggies', amount);
       await this.client.db.baby.addBabyAttr(baby.id, 'nuggieClaimerClaims', 1);
@@ -65,7 +67,7 @@ class BabyScheduler {
     });
   }
 
-  async dailyPing(baby) {
+  async dailyPing(baby: any): Promise<void> {
     const channel = await this.client.channels.cache.get(baby.pingerChannel);
     if (channel) {
       await channel.send(`${baby.name}: <@${baby.pingerTarget}>`);
@@ -76,9 +78,9 @@ class BabyScheduler {
     }
   }
 
-  async tenMinuteGamble(baby) {
+  async tenMinuteGamble(baby: any): Promise<void> {
     const parents = [baby.motherId, baby.fatherId];
-    parents.forEach(async (parent) => {
+    parents.forEach(async (parent: string) => {
       const credits = await this.client.db.user.getUserAttr(parent, 'credits');
       const betAmount = Math.floor(credits * 0.01);
       if (betAmount > 0) {
@@ -99,4 +101,4 @@ class BabyScheduler {
   }
 }
 
-module.exports = BabyScheduler;
+export default BabyScheduler;

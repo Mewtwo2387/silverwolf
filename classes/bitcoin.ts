@@ -1,11 +1,13 @@
-const { logError } = require('../utils/log');
+import { logError } from '../utils/log';
 
 class Bitcoin {
+  bitcoinPriceUrl: string;
+
   constructor() {
     this.bitcoinPriceUrl = 'https://api.coindesk.com/v1/bpi/currentprice.json';
   }
 
-  async getData() {
+  async getData(): Promise<any> {
     try {
       const response = await fetch(this.bitcoinPriceUrl);
       if (!response.ok) {
@@ -18,7 +20,7 @@ class Bitcoin {
     }
   }
 
-  async getPrice() {
+  async getPrice(): Promise<number | null> {
     const data = await this.getData();
     if (!data) {
       return null;
@@ -33,4 +35,4 @@ class Bitcoin {
   }
 }
 
-module.exports = { Bitcoin };
+export { Bitcoin };

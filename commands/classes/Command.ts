@@ -1,12 +1,33 @@
-const Discord = require('discord.js');
-const { logError } = require('../../utils/log');
-const { log } = require('../../utils/log');
-const { isAllowedUser } = require('../../utils/accessControl');
+import { EmbedBuilder } from 'discord.js';
+import { logError, log } from '../../utils/log';
+import { isDev } from '../../utils/accessControl';
+
+interface CommandArgs {
+  ephemeral?: boolean;
+  skipDefer?: boolean;
+  isSubcommandOf?: string | null;
+  blame?: string;
+}
 
 class Command {
-  constructor(client, name, description, options, args = {
-    ephemeral: false, skipDefer: false, isSubcommandOf: null, blame: '',
-  }) {
+  client: any;
+  name: string;
+  description: string;
+  options: any[];
+  ephemeral: boolean;
+  skipDefer: boolean;
+  isSubcommandOf: string | null;
+  blame: string;
+
+  constructor(
+    client: any,
+    name: string,
+    description: string,
+    options: any[],
+    args: CommandArgs = {
+      ephemeral: false, skipDefer: false, isSubcommandOf: null, blame: '',
+    },
+  ) {
     this.client = client;
     this.name = name;
     this.description = description;
@@ -17,11 +38,11 @@ class Command {
     this.blame = args.blame || '';
   }
 
-  async execute(interaction) {
+  async execute(interaction: any): Promise<void> {
     if (await this.client.db.globalConfig.getGlobalConfig('banned') === 'true') {
-      if (!isAllowedUser(interaction)) {
+      if (!isDev(interaction)) {
         log('ehe banned');
-        const embed = new Discord.EmbedBuilder()
+        const embed = new EmbedBuilder()
           .setColor('Red')
           .setTitle(`Sorry, ${this.name} isn't available right now.`)
           .setDescription(
@@ -68,11 +89,11 @@ class Command {
   }
 
   // eslint-disable-next-line class-methods-use-this, no-unused-vars
-  async run(_interaction) {
+  async run(_interaction: any): Promise<void> {
     throw new Error('run method must be implemented by subclasses');
   }
 
-  toJSON() {
+  toJSON(): object | null {
     if (this.isSubcommandOf === null) {
       return {
         name: this.name,
@@ -84,4 +105,4 @@ class Command {
   }
 }
 
-module.exports = { Command };
+export { Command };

@@ -1,13 +1,12 @@
-const {
+import {
   EmbedBuilder, escapeMarkdown, AttachmentBuilder,
-} = require('discord.js');
-const Canvas = require('canvas');
-const { log } = require('../../utils/log');
-// Note: Bun automatically reads .env files
-const Handler = require('./handler');
+} from 'discord.js';
+import Canvas from 'canvas';
+import { log } from '../../utils/log';
+import Handler from './handler';
 
 class HalloweenHandler extends Handler {
-  applyRedTint(ctx, img) {
+  applyRedTint(ctx: any, img: any): void {
     ctx.drawImage(img, 0, 0, 512, 512);
     const imageData = ctx.getImageData(0, 0, 512, 512);
     const { data } = imageData;
@@ -20,7 +19,7 @@ class HalloweenHandler extends Handler {
   }
 
   // Helper function to apply color inversion
-  applyColorInversion(ctx, img) {
+  applyColorInversion(ctx: any, img: any): void {
     ctx.drawImage(img, 0, 0, 512, 512);
     const imageData = ctx.getImageData(0, 0, 512, 512);
     const { data } = imageData;
@@ -32,7 +31,7 @@ class HalloweenHandler extends Handler {
     ctx.putImageData(imageData, 0, 0);
   }
 
-  async summonShinyPokemon(client, message, member, pfp) {
+  async summonShinyPokemon(client: any, message: any, member: any, pfp: string): Promise<void> {
     log('Nightmare Mode Pokemon');
     const canvas = Canvas.createCanvas(512, 512);
     const ctx = canvas.getContext('2d');
@@ -77,7 +76,7 @@ class HalloweenHandler extends Handler {
     client.setCurrentPokemon(`Nightmare mode ${member.user.username}`);
   }
 
-  async summonMysteryPokemon(client, message, member, pfp) {
+  async summonMysteryPokemon(client: any, message: any, member: any, pfp: string): Promise<void> {
     log('Mystery Pokemon');
     // Apply only color inversion for "mystery"
     const canvas = Canvas.createCanvas(512, 512);
@@ -100,7 +99,7 @@ class HalloweenHandler extends Handler {
     client.setCurrentPokemon(member.user.username);
   }
 
-  async summonNormalPokemon(client, message, member, pfp) {
+  async summonNormalPokemon(client: any, message: any, member: any, pfp: string): Promise<void> {
     log('Normal Pokemon');
     // Apply only red tint for normal
     const canvas = Canvas.createCanvas(512, 512);
@@ -124,4 +123,4 @@ class HalloweenHandler extends Handler {
   }
 }
 
-module.exports = HalloweenHandler;
+export default HalloweenHandler;

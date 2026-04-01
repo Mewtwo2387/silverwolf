@@ -1,15 +1,17 @@
-const cron = require('node-cron');
-const { EmbedBuilder } = require('discord.js');
-const { log, logError } = require('../utils/log');
+import cron from 'node-cron';
+import { EmbedBuilder } from 'discord.js';
+import { log, logError } from '../utils/log';
 // Note: Bun automatically reads .env files
 
 class BirthdayScheduler {
-  constructor(client) {
+  client: any;
+
+  constructor(client: any) {
     this.client = client;
   }
 
   // Start the scheduler to run every hour
-  start() {
+  start(): void {
     cron.schedule('0 * * * *', async () => { // * * * * * every minute for testing, change to '0 * * * *' for every hour
       const now = new Date();
       const utcMonth = (now.getUTCMonth() + 1).toString().padStart(2, '0');
@@ -20,18 +22,18 @@ class BirthdayScheduler {
 
       try {
         const birthdays = await this.client.db.user.getUsersWithBirthday(todayHour);
-        log('Users with birthdays this hour:', birthdays);
+        log(`Users with birthdays this hour: ${birthdays}`);
 
         if (birthdays.length > 0) {
-          const channelIds = process.env.BIRTHDAY_CHANNELS.split(','); // Get all channel IDs from .env
-          channelIds.forEach(async (channelId) => {
+          const channelIds = process.env.BIRTHDAY_CHANNELS!.split(','); // Get all channel IDs from .env
+          channelIds.forEach(async (channelId: string) => {
             const channel = this.client.channels.cache.get(channelId.trim()); // Trim spaces and get the channel
             if (!channel) {
               logError(`Channel ID ${channelId} not found or invalid.`);
               return;
             }
 
-            birthdays.forEach(async (user) => {
+            birthdays.forEach(async (user: any) => {
               const discordUser = await this.client.users.fetch(user.id).catch(() => null);
               const username = discordUser ? discordUser.username : `Unknown User (${user.id})`;
 
@@ -77,7 +79,7 @@ class BirthdayScheduler {
             ? new Date(new Date(birthday).setUTCFullYear(currentYear + 1))
             : thisYear;
 
-          const daysUntil = Math.ceil((nextBirthday - now) / (1000 * 60 * 60 * 24));
+          const daysUntil = Math.ceil((nextBirthday.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
           if (daysUntil !== entry.daysBefore) continue;
 
@@ -117,4 +119,4 @@ class BirthdayScheduler {
   }
 }
 
-module.exports = BirthdayScheduler;
+export default BirthdayScheduler;

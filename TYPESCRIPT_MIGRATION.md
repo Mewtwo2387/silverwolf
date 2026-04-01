@@ -157,7 +157,7 @@ silverwolf/
 |-------|------|------|-------------|--------|
 | 0 | Pre-flight cleanup | Low | 30 min | ✅ Complete |
 | 1 | Scaffold & config | Low | 1–2 hr | ✅ Complete |
-| 2 | Core classes | Medium | 3–4 hr | ⬜ Not started |
+| 2 | Core classes | Medium | 3–4 hr | ✅ Complete |
 | 3 | Database layer | Medium-High | 4–6 hr | ⬜ Not started |
 | 4 | Utilities | Medium | 3–4 hr | ⬜ Not started |
 | 5 | Commands (base + groups) | Medium | 2–3 hr | ⬜ Not started |
@@ -288,11 +288,11 @@ bun test            # existing tests must still pass
 ```
 
 ### ✅ Stage complete when
-- [ ] All 11 files converted
-- [ ] `typecheck` passes
-- [ ] Bot starts via `bun index.ts`
-- [ ] Tests pass
-- [ ] Committed
+- [x] All 11 files converted (16 total: index + 4 command classes + 6 handlers + 4 small classes + silverwolf)
+- [x] `typecheck` passes
+- [x] Bot starts via `bun index.ts`
+- [x] Tests pass (pre-existing math.test.js float precision failure unrelated to migration)
+- [x] Committed
 
 ---
 
@@ -533,6 +533,7 @@ docker build -t silverwolf . && docker run silverwolf  # container works
 |------|--------------|----------------|---------|
 | 2026-04-01 | Planning session | N/A | Plan created. Codebase fully explored. No code changed. |
 | 2026-04-01 | Session 2 | 0, 1 | Stage 0 complete (plan in repo, dead code deleted, bot verified). Stage 1 complete (tsconfig, type stubs, typecheck script — zero errors). |
+| 2026-04-01 | Session 3 | 2 | Stage 2 complete. 16 files converted: index.ts, Command/Dev/Admin/NsfwCommand.ts, handler.ts + 4 seasonal variants + index.ts, sexSession/bitcoin/birthdayScheduler/babyScheduler.ts, silverwolf.ts. Added types/bun.d.ts for import.meta.dir. Used createRequire for command loading (jsdom in f1Standings.js breaks ESM dynamic import). Fixed isAllowedUser → isDev (non-existent export). Zero typecheck errors. Bot starts and registers 116 commands + 15 groups. |
 
 ---
 

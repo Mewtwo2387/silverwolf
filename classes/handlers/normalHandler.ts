@@ -1,13 +1,12 @@
-const {
+import {
   EmbedBuilder, escapeMarkdown, AttachmentBuilder,
-} = require('discord.js');
-const Canvas = require('canvas');
-const { log } = require('../../utils/log');
-// Note: Bun automatically reads .env files
-const Handler = require('./handler');
+} from 'discord.js';
+import Canvas from 'canvas';
+import { log } from '../../utils/log';
+import Handler from './handler';
 
 class NormalHandler extends Handler {
-  async summonShinyPokemon(client, message, member, pfp) {
+  async summonShinyPokemon(client: any, message: any, member: any, pfp: string): Promise<void> {
     log('Shiny Pokemon');
     const canvas = Canvas.createCanvas(512, 512);
     const ctx = canvas.getContext('2d');
@@ -40,7 +39,7 @@ class NormalHandler extends Handler {
     client.setCurrentPokemon(`${member.user.username} shiny`);
   }
 
-  async summonMysteryPokemon(client, message, member, pfp) {
+  async summonMysteryPokemon(client: any, message: any, member: any, pfp: string): Promise<void> {
     log('Mystery Pokemon');
     message.channel.send({
       embeds: [new EmbedBuilder()
@@ -53,7 +52,7 @@ class NormalHandler extends Handler {
     client.setCurrentPokemon(member.user.username);
   }
 
-  async summonNormalPokemon(client, message, member, pfp) {
+  async summonNormalPokemon(client: any, message: any, member: any, pfp: string): Promise<void> {
     log('Normal Pokemon');
     message.channel.send({
       embeds: [new EmbedBuilder()
@@ -67,4 +66,4 @@ class NormalHandler extends Handler {
   }
 }
 
-module.exports = NormalHandler;
+export default NormalHandler;

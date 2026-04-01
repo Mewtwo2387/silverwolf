@@ -1,14 +1,13 @@
-const {
+import {
   EmbedBuilder, escapeMarkdown, AttachmentBuilder,
-} = require('discord.js');
-const path = require('path');
-const Canvas = require('canvas');
-const { log } = require('../../utils/log');
-// Note: Bun automatically reads .env files
-const Handler = require('./handler');
+} from 'discord.js';
+import path from 'path';
+import Canvas from 'canvas';
+import { log } from '../../utils/log';
+import Handler from './handler';
 
 class ChristmasHandler extends Handler {
-  async summonShinyPokemon(client, message, member, pfp) {
+  async summonShinyPokemon(client: any, message: any, member: any, pfp: string): Promise<void> {
     log('Santa Pokemon');
     const canvasSize = 512;
     const canvas = Canvas.createCanvas(canvasSize, canvasSize);
@@ -29,12 +28,12 @@ class ChristmasHandler extends Handler {
     ctx.putImageData(imageData, 0, 0);
 
     // Load and overlay the Christmas snow image
-    const snowOverlayPath = path.join(__dirname, '../data/images/1christmasSnow.png');
+    const snowOverlayPath = path.join(import.meta.dir, '../data/images/1christmasSnow.png');
     const snowOverlay = await Canvas.loadImage(snowOverlayPath);
     ctx.drawImage(snowOverlay, 0, 0, canvasSize, canvasSize);
 
     // Load and overlay the Christmas decoration image
-    const decoOverlayPath = path.join(__dirname, '../data/images/1christmasDeco.png');
+    const decoOverlayPath = path.join(import.meta.dir, '../data/images/1christmasDeco.png');
     const decoOverlay = await Canvas.loadImage(decoOverlayPath);
     ctx.drawImage(decoOverlay, 0, 0, canvasSize, canvasSize);
 
@@ -54,9 +53,9 @@ class ChristmasHandler extends Handler {
     client.setCurrentPokemon(`santa ${member.user.username}`);
   }
 
-  async summonMysteryPokemon(client, message, member, pfp) {
+  async summonMysteryPokemon(client: any, message: any, member: any, pfp: string): Promise<void> {
     // Load the mystery border
-    const borderPath = path.join(__dirname, '../data/images/3christmasBorder.png');
+    const borderPath = path.join(import.meta.dir, '../data/images/3christmasBorder.png');
     const borderImg = await Canvas.loadImage(borderPath);
 
     // Create a canvas to fit both profile picture and border
@@ -86,10 +85,10 @@ class ChristmasHandler extends Handler {
     client.setCurrentPokemon(member.user.username);
   }
 
-  async summonNormalPokemon(client, message, member, pfp) {
+  async summonNormalPokemon(client: any, message: any, member: any, pfp: string): Promise<void> {
     log('Normal Pokemon');
     // Load the border image
-    const borderPath = path.join(__dirname, '../data/images/1christmasBorder.png');
+    const borderPath = path.join(import.meta.dir, '../data/images/1christmasBorder.png');
     const borderImg = await Canvas.loadImage(borderPath);
 
     // Create a canvas to fit both profile picture and border
@@ -120,4 +119,4 @@ class ChristmasHandler extends Handler {
   }
 }
 
-module.exports = ChristmasHandler;
+export default ChristmasHandler;
