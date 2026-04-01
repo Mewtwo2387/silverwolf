@@ -89,13 +89,21 @@ All wrongs reserved.
   async loadCommands(): Promise<void> {
     log('--------------------\nLoading commands...\n--------------------');
     const commandDir = path.join(import.meta.dir, '../commands');
-    const commandFiles = fs.readdirSync(commandDir).filter((file) => file.endsWith('.js'));
+    // Prefer .ts files; only fall back to .js if no .ts version exists
+    const allFiles = fs.readdirSync(commandDir);
+    const tsFiles = new Set(allFiles.filter((f) => f.endsWith('.ts')).map((f) => f.replace('.ts', '')));
+    const commandFiles = allFiles.filter((file) => {
+      if (file.endsWith('.ts')) return true;
+      if (file.endsWith('.js')) return !tsFiles.has(file.replace('.js', ''));
+      return false;
+    });
     // Use createRequire so CJS command files load correctly (avoids ESM circular-dep issues with some deps)
     const _require = createRequire(import.meta.url);
 
     let commandCount = 0;
     for (const file of commandFiles) {
-      const CommandClass = _require(path.join(commandDir, file));
+      const mod = _require(path.join(commandDir, file));
+      const CommandClass = mod.default ?? mod;
       const command = new CommandClass(this);
       if (command.isSubcommandOf === null) {
         this.commands.set(command.name, command);
