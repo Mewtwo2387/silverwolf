@@ -21,15 +21,14 @@
   "license": "ISC",
   "dependencies": {
     "@google/generative-ai": "^0.16.0",
-    "canvas": "^3.0.0-rc3",
-    "discord.js": "^14.15.2",
+    "canvas": "^3.2.3",
+    "discord.js": "^14.26.0",
     "gif-frames": "^1.0.1",
     "gifencoder": "^2.0.1",
     "gifuct-js": "^2.1.2",
     "jsdom": "^13.2.0",
     "mime": "^2.5.2",
     "node-cron": "^3.0.3",
-    "node_characterai": "^1.2.7",
     "openai": "^5.12.2",
     "xml2js": "^0.6.2"
   },
@@ -77,6 +76,6 @@
     "skia-canvas"
   ],
   "overrides": {
-    "canvas": "^3.0.0-rc3"
+    "canvas": "^3.2.3"
   }
 }
