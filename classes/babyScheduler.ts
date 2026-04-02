@@ -21,7 +21,7 @@ class BabyScheduler {
 
   async dailyAutomations(): Promise<void> {
     const babies = await this.client.db.baby.getAllBabies();
-    babies.forEach(async (baby: any) => {
+    for (const baby of babies) {
       if (baby.status === 'born') {
         switch (baby.job) {
           case 'nuggieClaimer':
@@ -36,12 +36,12 @@ class BabyScheduler {
       } else {
         log(`${baby.name} (${baby.id}) is not born`);
       }
-    });
+    }
   }
 
   async tenMinuteAutomations(): Promise<void> {
     const babies = await this.client.db.baby.getAllBabies();
-    babies.forEach(async (baby: any) => {
+    for (const baby of babies) {
       if (baby.status === 'born') {
         switch (baby.job) {
           case 'gambler':
@@ -53,18 +53,18 @@ class BabyScheduler {
       } else {
         log(`${baby.name} (${baby.id}) is not born`);
       }
-    });
+    }
   }
 
   async dailyNuggieClaim(baby: any): Promise<void> {
     const parents = [baby.motherId, baby.fatherId];
-    parents.forEach(async (parent: string) => {
+    for (const parent of parents) {
       const { amount } = await getAmount(this.client, parent, 0);
       await this.client.db.user.addUserAttr(parent, 'dinonuggies', amount);
       await this.client.db.baby.addBabyAttr(baby.id, 'nuggieClaimerClaims', 1);
       await this.client.db.baby.addBabyAttr(baby.id, 'nuggieClaimerClaimed', amount);
       log(`${baby.name} (${baby.id}) claimed ${amount} dinonuggies for ${parent}`);
-    });
+    }
   }
 
   async dailyPing(baby: any): Promise<void> {
@@ -80,7 +80,7 @@ class BabyScheduler {
 
   async tenMinuteGamble(baby: any): Promise<void> {
     const parents = [baby.motherId, baby.fatherId];
-    parents.forEach(async (parent: string) => {
+    for (const parent of parents) {
       const credits = await this.client.db.user.getUserAttr(parent, 'credits');
       const betAmount = Math.floor(credits * 0.01);
       if (betAmount > 0) {
@@ -97,7 +97,7 @@ class BabyScheduler {
           log(`${baby.name} (${baby.id}) lost ${betAmount} credits for ${parent}`);
         }
       }
-    });
+    }
   }
 }
 

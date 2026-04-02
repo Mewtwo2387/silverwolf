@@ -17,7 +17,7 @@ class AdminCommand extends Command {
       }
       return;
     }
-    super.execute(interaction);
+    await super.execute(interaction);
   }
 }
 

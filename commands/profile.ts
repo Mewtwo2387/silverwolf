@@ -60,12 +60,12 @@ class Profile extends Command {
       user = await this.client.db.user.getUser(interaction.options.getMember('user').id);
       const discordUser = await this.client.users.fetch(user.id);
       username = discordUser.username;
-      avatarURL = discordUser.displayAvatarURL({ dynamic: true, size: 512 });
+      avatarURL = discordUser.displayAvatarURL({ size: 512 });
       pokemons = await this.client.db.pokemon.getPokemons(interaction.options.getMember('user').id);
     } else {
       user = await this.client.db.user.getUser(interaction.user.id);
       username = interaction.user.username;
-      avatarURL = interaction.user.displayAvatarURL({ dynamic: true, size: 512 });
+      avatarURL = interaction.user.displayAvatarURL({ size: 512 });
       pokemons = await this.client.db.pokemon.getPokemons(interaction.user.id);
     }
 

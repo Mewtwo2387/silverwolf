@@ -10,11 +10,11 @@ class Handler {
 
     const pfp = await member.user.displayAvatarURL({ extension: 'png', size: 512 });
     if (mode === 'shiny' || (mode === 'normal' && Math.random() < SHINY_CHANCE)) {
-      this.summonShinyPokemon(client, message, member, pfp);
+      await this.summonShinyPokemon(client, message, member, pfp);
     } else if (mode === 'mystery' || (mode === 'normal' && Math.random() < MYSTERY_CHANCE)) {
-      this.summonMysteryPokemon(client, message, member, pfp);
+      await this.summonMysteryPokemon(client, message, member, pfp);
     } else {
-      this.summonNormalPokemon(client, message, member, pfp);
+      await this.summonNormalPokemon(client, message, member, pfp);
     }
   }
 

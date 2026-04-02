@@ -26,30 +26,31 @@ class BirthdayScheduler {
 
         if (birthdays.length > 0) {
           const channelIds = process.env.BIRTHDAY_CHANNELS!.split(','); // Get all channel IDs from .env
-          channelIds.forEach(async (channelId: string) => {
+          for (const channelId of channelIds) {
             const channel = this.client.channels.cache.get(channelId.trim()); // Trim spaces and get the channel
             if (!channel) {
               logError(`Channel ID ${channelId} not found or invalid.`);
-              return;
+              continue;
             }
 
-            birthdays.forEach(async (user: any) => {
+            for (const user of birthdays) {
               const discordUser = await this.client.users.fetch(user.id).catch(() => null);
               const username = discordUser ? discordUser.username : `Unknown User (${user.id})`;
+              const avatarUrl = discordUser?.displayAvatarURL({ extension: 'png', size: 4096 }) ?? null;
 
               const birthdayEmbed = new EmbedBuilder()
                 .setTitle('🎉 Birthday Alert! 🎉')
                 .setDescription(`Today is ${username}'s birthday! Let's all wish them a great day! 🥳`)
-                .setImage(discordUser.displayAvatarURL({ dynamic: true, format: 'png', size: 4096 }))
                 .setColor(0x00FF00);
+              if (avatarUrl) birthdayEmbed.setImage(avatarUrl);
 
               log(`Sending birthday message for ${user.id} to channel ${channelId}`);
               await channel.send({
                 content: `<@${user.id}>`,
                 embeds: [birthdayEmbed],
               });
-            });
-          });
+            }
+          }
         } else {
           log('No birthdays this hour.');
         }

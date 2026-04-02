@@ -168,14 +168,14 @@ All wrongs reserved.
   async processInteraction(interaction: any): Promise<void> {
     if (interaction.isCommand()) {
       if (!interaction.guild) {
-        interaction.reply('commands can only be used in servers.');
+        await interaction.reply('commands can only be used in servers.');
         return;
       }
       const command = this.commands.get(interaction.commandName);
       if (!command) return;
       log(`> Command ${command.name} executed by ${interaction.user.username} (${interaction.user.id}) in ${interaction.channel.name} (${interaction.channel.id}) in ${interaction.guild.name} (${interaction.guild.id})`);
       try {
-        command.execute(interaction);
+        await command.execute(interaction);
       } catch (error) {
         logError('Error processing interaction:', error);
       }

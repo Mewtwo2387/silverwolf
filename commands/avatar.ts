@@ -37,15 +37,15 @@ class Avatar extends Command {
       try {
         const member = await interaction.guild.members.fetch(user.id);
         if (member.avatar) {
-          avatarUrl = member.displayAvatarURL({ dynamic: true, format: 'png', size: 4096 });
+          avatarUrl = member.displayAvatarURL({ extension: 'png', size: 4096 });
           title = `Server Avatar of ${user.username}`;
         } else {
-          avatarUrl = user.displayAvatarURL({ dynamic: true, format: 'png', size: 4096 });
+          avatarUrl = user.displayAvatarURL({ extension: 'png', size: 4096 });
           title = `Global avatar of ${user.username} (no server avatar found)`;
         }
       } catch (error: any) {
         if (error.code === 10007) {
-          avatarUrl = user.displayAvatarURL({ dynamic: true, format: 'png', size: 4096 });
+          avatarUrl = user.displayAvatarURL({ extension: 'png', size: 4096 });
           title = `Global avatar of ${user.username} (user not found in this server)`;
         } else {
           logError('An error occurred while fetching the member:', error);
@@ -54,7 +54,7 @@ class Avatar extends Command {
         }
       }
     } else {
-      avatarUrl = user.displayAvatarURL({ dynamic: true, format: 'png', size: 4096 });
+      avatarUrl = user.displayAvatarURL({ extension: 'png', size: 4096 });
       title = `Global avatar of ${user.username}`;
     }
 
