@@ -1,8 +1,9 @@
 import Database from '../../database/Database';
+import type AiChatModel from '../../database/models/AiChatModel';
 
 describe('AiChatModel', () => {
-  let db;
-  let aiChat;
+  let db: Database;
+  let aiChat: AiChatModel;
 
   beforeAll(async () => {
     const timestamp = Date.now();
@@ -26,7 +27,7 @@ describe('AiChatModel', () => {
   describe('getOrCreateSession', () => {
     it('should create a new session on the first call', async () => {
       const userId = '111111111111111111';
-      const session = await aiChat.getOrCreateSession(userId, 'Grok');
+      const session = (await aiChat.getOrCreateSession(userId, 'Grok'))!;
 
       expect(session).toBeDefined();
       expect(session.userId).toBe(userId);
@@ -37,8 +38,8 @@ describe('AiChatModel', () => {
     it('should return the same active session on subsequent calls', async () => {
       const userId = '111111111111111111';
 
-      const s1 = await aiChat.getOrCreateSession(userId, 'Grok');
-      const s2 = await aiChat.getOrCreateSession(userId, 'Grok');
+      const s1 = (await aiChat.getOrCreateSession(userId, 'Grok'))!;
+      const s2 = (await aiChat.getOrCreateSession(userId, 'Grok'))!;
 
       expect(s1.sessionId).toBe(s2.sessionId);
     });
@@ -46,8 +47,8 @@ describe('AiChatModel', () => {
     it('should create separate sessions per persona', async () => {
       const userId = '111111111111111111';
 
-      const grokSession = await aiChat.getOrCreateSession(userId, 'Grok');
-      const gptSession = await aiChat.getOrCreateSession(userId, 'GPT');
+      const grokSession = (await aiChat.getOrCreateSession(userId, 'Grok'))!;
+      const gptSession = (await aiChat.getOrCreateSession(userId, 'GPT'))!;
 
       expect(grokSession.sessionId).not.toBe(gptSession.sessionId);
       expect(grokSession.personaName).toBe('Grok');
@@ -58,8 +59,8 @@ describe('AiChatModel', () => {
       const user1 = '111111111111111111';
       const user2 = '222222222222222222';
 
-      const s1 = await aiChat.getOrCreateSession(user1, 'Grok');
-      const s2 = await aiChat.getOrCreateSession(user2, 'Grok');
+      const s1 = (await aiChat.getOrCreateSession(user1, 'Grok'))!;
+      const s2 = (await aiChat.getOrCreateSession(user2, 'Grok'))!;
 
       expect(s1.sessionId).not.toBe(s2.sessionId);
     });
@@ -89,7 +90,7 @@ describe('AiChatModel', () => {
     it('should include both active and inactive sessions', async () => {
       const userId = '111111111111111111';
 
-      const s = await aiChat.getOrCreateSession(userId, 'Grok');
+      const s = (await aiChat.getOrCreateSession(userId, 'Grok'))!;
       await aiChat.endSession(s.sessionId);
       await aiChat.getOrCreateSession(userId, 'Grok');
 
@@ -103,7 +104,7 @@ describe('AiChatModel', () => {
   describe('deleteSession', () => {
     it('should delete a session and its history', async () => {
       const userId = '111111111111111111';
-      const session = await aiChat.getOrCreateSession(userId, 'Grok');
+      const session = (await aiChat.getOrCreateSession(userId, 'Grok'))!;
 
       await aiChat.addHistory(session.sessionId, 'user', 'hello');
       await aiChat.addHistory(session.sessionId, 'model', 'hi!');
@@ -111,7 +112,7 @@ describe('AiChatModel', () => {
       const result = await aiChat.deleteSession(userId, session.sessionId);
       expect(result).toBe(true);
 
-      const afterDelete = await aiChat.getSessionById(session.sessionId);
+      const afterDelete = (await aiChat.getSessionById(session.sessionId))!;
       expect(afterDelete).toBeNull();
 
       const history = await aiChat.getHistory(session.sessionId);
@@ -122,13 +123,13 @@ describe('AiChatModel', () => {
       const owner = '111111111111111111';
       const intruder = '222222222222222222';
 
-      const session = await aiChat.getOrCreateSession(owner, 'Grok');
+      const session = (await aiChat.getOrCreateSession(owner, 'Grok'))!;
       const result = await aiChat.deleteSession(intruder, session.sessionId);
 
       expect(result).toBe(false);
 
       // Session should still exist
-      const stillThere = await aiChat.getSessionById(session.sessionId);
+      const stillThere = (await aiChat.getSessionById(session.sessionId))!;
       expect(stillThere).toBeDefined();
     });
 
@@ -143,7 +144,7 @@ describe('AiChatModel', () => {
   describe('getHistory', () => {
     it('should return history in chronological order (oldest first)', async () => {
       const userId = '111111111111111111';
-      const session = await aiChat.getOrCreateSession(userId, 'Grok');
+      const session = (await aiChat.getOrCreateSession(userId, 'Grok'))!;
 
       await aiChat.addHistory(session.sessionId, 'user', 'first');
       await aiChat.addHistory(session.sessionId, 'model', 'second');
@@ -157,7 +158,7 @@ describe('AiChatModel', () => {
 
     it('should cap results at the specified limit', async () => {
       const userId = '111111111111111111';
-      const session = await aiChat.getOrCreateSession(userId, 'Grok');
+      const session = (await aiChat.getOrCreateSession(userId, 'Grok'))!;
 
       for (let i = 0; i < 40; i += 1) {
         // eslint-disable-next-line no-await-in-loop
@@ -170,7 +171,7 @@ describe('AiChatModel', () => {
 
     it('should respect the 30-message default cap', async () => {
       const userId = '111111111111111111';
-      const session = await aiChat.getOrCreateSession(userId, 'Grok');
+      const session = (await aiChat.getOrCreateSession(userId, 'Grok'))!;
 
       for (let i = 0; i < 35; i += 1) {
         // eslint-disable-next-line no-await-in-loop
@@ -183,8 +184,8 @@ describe('AiChatModel', () => {
 
     it('should only return history for the specified session', async () => {
       const userId = '111111111111111111';
-      const s1 = await aiChat.getOrCreateSession(userId, 'Grok');
-      const s2 = await aiChat.getOrCreateSession(userId, 'GPT');
+      const s1 = (await aiChat.getOrCreateSession(userId, 'Grok'))!;
+      const s2 = (await aiChat.getOrCreateSession(userId, 'GPT'))!;
 
       await aiChat.addHistory(s1.sessionId, 'user', 'grok msg');
       await aiChat.addHistory(s2.sessionId, 'user', 'gpt msg');
@@ -196,7 +197,7 @@ describe('AiChatModel', () => {
 
     it('should return empty array for session with no history', async () => {
       const userId = '111111111111111111';
-      const session = await aiChat.getOrCreateSession(userId, 'Grok');
+      const session = (await aiChat.getOrCreateSession(userId, 'Grok'))!;
       const history = await aiChat.getHistory(session.sessionId);
       expect(history).toHaveLength(0);
     });
@@ -208,14 +209,14 @@ describe('AiChatModel', () => {
     it('should deactivate current session and activate the target', async () => {
       const userId = '111111111111111111';
 
-      const oldSession = await aiChat.getOrCreateSession(userId, 'Grok');
+      const oldSession = (await aiChat.getOrCreateSession(userId, 'Grok'))!;
       await aiChat.endSession(oldSession.sessionId);
-      const newSession = await aiChat.getOrCreateSession(userId, 'Grok');
+      const newSession = (await aiChat.getOrCreateSession(userId, 'Grok'))!;
 
       await aiChat.switchSession(userId, oldSession.sessionId);
 
-      const reactivated = await aiChat.getSessionById(oldSession.sessionId);
-      const deactivated = await aiChat.getSessionById(newSession.sessionId);
+      const reactivated = (await aiChat.getSessionById(oldSession.sessionId))!;
+      const deactivated = (await aiChat.getSessionById(newSession.sessionId))!;
 
       expect(reactivated.active).toBe(1);
       expect(deactivated.active).toBe(0);

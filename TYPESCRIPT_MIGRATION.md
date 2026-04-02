@@ -505,16 +505,23 @@ bun index.ts        # bot starts
 > Goal: Enable `strict: true` and resolve all remaining type errors.
 
 ### Tasks
-- [ ] Set `"strict": true` and `"checkJs": false` in `tsconfig.json`
-- [ ] Run `bun run typecheck` and triage all new errors
-- [ ] Common fixes needed:
-  - Null checks on `interaction.guild`, `interaction.member`, `interaction.channel`
-  - Optional chaining on Discord.js objects that can be null
-  - Return type annotations on async functions
-  - `unknown` vs `any` in catch blocks
-- [ ] Remove any temporary `// @ts-ignore` or `as any` added in earlier stages
-- [ ] Update Dockerfile if needed (it should still work as-is)
-- [ ] Final `bun run typecheck` with zero errors
+- [x] Set `"strict": true` and `"checkJs": false` in `tsconfig.json`
+- [x] Run `bun run typecheck` and triage all new errors
+- [x] Common fixes needed:
+  - `process.env.ALLOWED_USERS` possibly undefined → `?? ''`
+  - `number | null` from `checkValidBet` used before null guard → removed early log()
+  - `string` vs `'user' | 'model'` literal union in ChatModel tests → `as const`
+  - `string | undefined` passed to `generateContent({ systemPrompt })` → `?? ''`
+  - `ActionRowBuilder.components` typed as `AnyComponentBuilder[]` (lacks `setDisabled`) → cast to `ButtonBuilder`
+  - `string < string` in riskNReward failureChance comparison → `parseFloat()`
+  - `AiChatModel.getOrCreateSession/startNewSession/switchSession` return `| null` propagating to tests → `!` assertions
+  - `BabyModel.getBabyById`, `ChatModel.startChatSession/getChatSessionById/etc`, `GameUIDModel.getGameUID` → `!` assertions in tests
+  - `@types/mime@4` is a stub (mime v4 ships own types); downgraded to `@types/mime@2` for mime v2
+  - `Database.db` not definitely assigned (IIFE constructor) → `db!: BunDatabase`
+  - 10 test files missing `db: Database` + model type annotations → added imports + explicit types
+- [x] Remove any temporary `// @ts-ignore` or `as any` added in earlier stages
+- [x] Update Dockerfile if needed (it should still work as-is)
+- [x] Final `bun run typecheck` with zero errors
 
 ### Gate Test
 ```bash
@@ -526,8 +533,8 @@ docker build -t silverwolf . && docker run silverwolf  # container works
 ```
 
 ### ✅ Stage complete when
-- [ ] `strict: true` with zero type errors
-- [ ] Lint passes
+- [x] `strict: true` with zero type errors
+- [x] Lint passes
 - [ ] All tests pass
 - [ ] Docker build succeeds
 - [ ] Bot starts and runs in container
@@ -551,6 +558,7 @@ docker build -t silverwolf . && docker run silverwolf  # container works
 | 2026-04-02 | Session 9 | 6 (E) | Batch E complete (23 files: 8ball, fart, fortune, misfortune, lore, sing, Timestamp, summary_count, summary_time, randomjoke, hello, nothing, awdangit, blame, donate, say, dm, snipe, trade, birthday_get, birthday_test, bitcoinPrice, 2022). Fixed AdminCommand.ts args type (same CommandArgs fix as DevCommand). Fixed summary_time: fetchMessagesByTime takes number not Date, pass timeLimit.getTime(). 4 pre-existing typecheck errors unchanged. |
 | 2026-04-02 | Session 11 | 7 | Stage 7 complete. Installed @types/jest@29, @typescript-eslint/parser, @typescript-eslint/eslint-plugin, ts-jest. Renamed 13 test files (.js→.ts) and converted require()→import. Deleted 116 superseded commands/*.js files (all had .ts counterparts from Stage 6). Added TypeScript override block to .eslintrc.json (disables import/extensions, lines-between-class-members, configures no-unused-vars with _ prefix support). Fixed 23 lint errors: float-precision test unchanged (pre-existing), 4 pre-existing typecheck errors unchanged. bun test: 153/154 pass (1 pre-existing float precision). jest: 24/24 pass (database tests excluded — they use bun:sqlite which Node can't resolve). tsconfig: added "types": ["node", "jest"]. |
 | 2026-04-02 | Session 10 | 6 (F) | Batch F complete. All remaining commands converted (40 files: leaderboardMixin.ts + murderboard, nuggieboard, arlecchino, cat, catcg, catch, click, eat, eval, execute, f1Standings, gamebang, gongyoo, guide, hilichurl, loveCalulator, nword, sacrifice, sex_start/status/thrust, shop_ascension/donation/upgrades/upgradesdata, spotifyPlaylist, genshinProfile, hsrProfile, grabEmoji, poopboard, convert, fakequote, birthday_notify/set/testreminder/unnotify, poop_log/profile_create/stats). Fixed NsfwCommand.ts to use CommandArgs. Updated silverwolf.ts command loader to prefer .ts over .js and apply mod.default unwrap. f1Standings uses inline require('jsdom') to avoid ESM circular dep. 4 pre-existing typecheck errors unchanged. Bot starts, 116 commands + 15 groups register. Stage 6 complete. |
+| 2026-04-02 | Session 12 | 8 | Stage 8 in progress. Enabled `strict: true`. Fixed 15 source-level errors: `db!` definite assignment in Database.ts, AiChatModel null return types + null guards, `process.env.ALLOWED_USERS ?? ''`, removed premature `log(amount)` before null guard in roulette.ts, `parseFloat(failureChance)` in riskNReward.ts, `systemPrompt ?? ''` in summary_count/time.ts, `ButtonBuilder` cast for `setDisabled` in pokemonFind.ts, downgraded `@types/mime` from v4 stub to v2. Added explicit `db: Database` + model type imports to 10 test files. Applied `(await model.method())!` non-null assertions in aiChat/baby/chat/gameUID tests. Fixed `'user' as const` role literals in chat.test.ts. `new Date(date!)` in marriage.test.ts. Zero typecheck errors, zero lint errors, 153/154 tests pass (1 pre-existing float precision). |
 
 ---
 

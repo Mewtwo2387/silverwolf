@@ -1,8 +1,9 @@
 import Database from '../../database/Database';
+import type GameUIDModel from '../../database/models/GameUIDModel';
 
 describe('GameUIDModel', () => {
-  let db;
-  let gameUIDModel;
+  let db: Database;
+  let gameUIDModel: GameUIDModel;
 
   beforeAll(async () => {
     // Create test database using current timestamp
@@ -31,7 +32,7 @@ describe('GameUIDModel', () => {
       const region = 'HK';
 
       await gameUIDModel.setGameUID(userId, game, gameUid, region);
-      const result = await gameUIDModel.getGameUID(userId, game);
+      const result = (await gameUIDModel.getGameUID(userId, game))!;
 
       expect(result).toBeDefined();
       expect(result.userId).toBe(userId);
@@ -51,7 +52,7 @@ describe('GameUIDModel', () => {
       await gameUIDModel.setGameUID(userId, game, gameUid, region);
       await gameUIDModel.setGameUID(userId, game, gameUid2, region2);
 
-      const result = await gameUIDModel.getGameUID(userId, game);
+      const result = (await gameUIDModel.getGameUID(userId, game))!;
 
       expect(result).toBeDefined();
       expect(result.gameUid).toBe(gameUid2);
@@ -65,11 +66,11 @@ describe('GameUIDModel', () => {
       const game2 = 'genshin';
       const region = 'HK';
 
-      const result = await gameUIDModel.getGameUID(userId, game1);
+      const result = (await gameUIDModel.getGameUID(userId, game1))!;
       expect(result).toBeNull();
 
       await gameUIDModel.setGameUID(userId, game1, gameUID, region);
-      const result2 = await gameUIDModel.getGameUID(userId, game2);
+      const result2 = (await gameUIDModel.getGameUID(userId, game2))!;
       expect(result2).toBeNull();
     });
   });
@@ -112,7 +113,7 @@ describe('GameUIDModel', () => {
       await gameUIDModel.setGameUID(userId, game, gameUid, region);
       await gameUIDModel.deleteGameUID(userId, game);
 
-      const result = await gameUIDModel.getGameUID(userId, game);
+      const result = (await gameUIDModel.getGameUID(userId, game))!;
       expect(result).toBeNull();
     });
 

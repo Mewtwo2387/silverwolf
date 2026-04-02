@@ -1,8 +1,9 @@
 import Database from '../../database/Database';
+import type UserModel from '../../database/models/UserModel';
 
 describe('UserModel', () => {
-  let db;
-  let userModel;
+  let db: Database;
+  let userModel: UserModel;
 
   beforeAll(async () => {
     // Create test database using current timestamp

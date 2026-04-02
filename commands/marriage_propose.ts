@@ -17,7 +17,7 @@ class MarriagePropose extends Command {
   async run(interaction: any): Promise<void> {
     const targetUser = interaction.options.getUser('user');
     const userId = interaction.user.id;
-    const allowedUsers = process.env.ALLOWED_USERS.split(',');
+    const allowedUsers = (process.env.ALLOWED_USERS ?? '').split(',');
 
     let modAbooz = targetUser.id === this.client.user.id && allowedUsers.includes(userId);
 

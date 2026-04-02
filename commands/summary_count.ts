@@ -47,7 +47,7 @@ class Summary extends Command {
       summary = await generateContent({
         provider: persona.provider,
         model: persona.model,
-        systemPrompt: persona.systemPrompt,
+        systemPrompt: persona.systemPrompt ?? '',
         prompt: content,
       });
       log(`Generated summary: ${summary.text}`);

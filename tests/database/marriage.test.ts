@@ -1,8 +1,9 @@
 import Database from '../../database/Database';
+import type MarriageModel from '../../database/models/MarriageModel';
 
 describe('MarriageModel', () => {
-  let db;
-  let marriageModel;
+  let db: Database;
+  let marriageModel: MarriageModel;
 
   beforeAll(async () => {
     // Create test database using current timestamp
@@ -84,9 +85,9 @@ describe('MarriageModel', () => {
       const date2 = await marriageModel.getMarriageDate(user2Id);
 
       expect(date).toBeDefined();
-      expect(new Date(date)).toBeInstanceOf(Date);
+      expect(new Date(date!)).toBeInstanceOf(Date);
       expect(date2).toBeDefined();
-      expect(new Date(date2)).toBeInstanceOf(Date);
+      expect(new Date(date2!)).toBeInstanceOf(Date);
     });
 
     it('should return null for non-married couple', async () => {

@@ -2,7 +2,6 @@ import * as Discord from 'discord.js';
 import { Command } from './classes/Command';
 import { format } from '../utils/math';
 import { checkValidBet } from '../utils/betting';
-import { log } from '../utils/log';
 
 class Roulette extends Command {
   constructor(client: any) {
@@ -39,7 +38,6 @@ class Roulette extends Command {
   async run(interaction: any): Promise<void> {
     const amountString = interaction.options.getString('amount');
     const amount = await checkValidBet(interaction, amountString);
-    log(amount);
     if (amount === null) {
       return;
     }

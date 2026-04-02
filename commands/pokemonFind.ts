@@ -80,8 +80,8 @@ class PokemonFind extends Command {
         embed.setDescription(`\`\`\`${nextPage}\`\`\``)
           .setFooter({ text: `Page ${currentPage + 1} of ${totalPages}` });
 
-        row.components[0].setDisabled(currentPage === 0);
-        row.components[1].setDisabled(currentPage === totalPages - 1);
+        (row.components[0] as ButtonBuilder).setDisabled(currentPage === 0);
+        (row.components[1] as ButtonBuilder).setDisabled(currentPage === totalPages - 1);
 
         await i.update({ embeds: [embed], components: [row] });
       });

@@ -16,7 +16,7 @@ class AiChatModel {
   /**
    * Retrieves an active session for a user+persona pair, or creates one if none exists.
    */
-  async getOrCreateSession(userId: string, personaName: string): Promise<Record<string, any>> {
+  async getOrCreateSession(userId: string, personaName: string): Promise<Record<string, any> | null> {
     // Ensure the user exists in the User table
     await this.db.user.getUser(userId);
 
@@ -54,7 +54,7 @@ class AiChatModel {
    * Creates a brand-new active session for a user+persona pair.
    * Deactivates any existing active sessions for that persona first.
    */
-  async startNewSession(userId: string, personaName: string): Promise<Record<string, any>> {
+  async startNewSession(userId: string, personaName: string): Promise<Record<string, any> | null> {
     // Ensure the user exists in the User table
     await this.db.user.getUser(userId);
 
@@ -65,7 +65,9 @@ class AiChatModel {
     });
 
     const session = await this.getSessionById(newSessionId);
-    log(`AiChat: Started new session ${session.sessionId} for user ${userId} with persona ${personaName}`);
+    if (session) {
+      log(`AiChat: Started new session ${session.sessionId} for user ${userId} with persona ${personaName}`);
+    }
     return session;
   }
 
@@ -98,6 +100,7 @@ class AiChatModel {
    */
   async switchSession(userId: string, sessionId: number): Promise<Record<string, any> | null> {
     const session = await this.getSessionById(sessionId);
+    if (!session) return null;
     await this.db.executeQuery(
       aiChatQueries.END_ALL_USER_PERSONA_SESSIONS,
       [userId, session.personaName],

@@ -1,8 +1,9 @@
 import Database from '../../database/Database';
+import type CommandConfigModel from '../../database/models/CommandConfigModel';
 
 describe('CommandConfigModel', () => {
-  let db;
-  let commandConfigModel;
+  let db: Database;
+  let commandConfigModel: CommandConfigModel;
 
   beforeAll(async () => {
     // Create test database using current timestamp

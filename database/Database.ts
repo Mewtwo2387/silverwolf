@@ -18,7 +18,7 @@ import type BirthdayReminderModel from './models/BirthdayReminderModel';
 import type PoopModel from './models/PoopModel';
 
 class Database {
-  db: BunDatabase;
+  db!: BunDatabase;
   models: Record<string, any>;
   ready: Promise<void>;
 

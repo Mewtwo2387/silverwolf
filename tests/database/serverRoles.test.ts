@@ -1,8 +1,9 @@
 import Database from '../../database/Database';
+import type ServerRolesModel from '../../database/models/ServerRolesModel';
 
 describe('ServerRolesModel', () => {
-  let db;
-  let serverRolesModel;
+  let db: Database;
+  let serverRolesModel: ServerRolesModel;
 
   beforeAll(async () => {
     // Create test database using current timestamp

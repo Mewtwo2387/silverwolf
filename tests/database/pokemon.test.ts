@@ -1,8 +1,9 @@
 import Database from '../../database/Database';
+import type PokemonModel from '../../database/models/PokemonModel';
 
 describe('PokemonModel', () => {
-  let db;
-  let pokemonModel;
+  let db: Database;
+  let pokemonModel: PokemonModel;
 
   beforeAll(async () => {
     // Create test database using current timestamp

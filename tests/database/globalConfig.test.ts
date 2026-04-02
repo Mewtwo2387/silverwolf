@@ -1,8 +1,9 @@
 import Database from '../../database/Database';
+import type GlobalConfigModel from '../../database/models/GlobalConfigModel';
 
 describe('GlobalConfigModel', () => {
-  let db;
-  let globalConfigModel;
+  let db: Database;
+  let globalConfigModel: GlobalConfigModel;
 
   beforeAll(async () => {
     // Create test database using current timestamp

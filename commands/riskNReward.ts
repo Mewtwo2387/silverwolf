@@ -52,7 +52,7 @@ class RiskNReward extends Command {
     collector.on('collect', async (i: any) => {
       if (i.customId === 'continue') {
         const rng = Math.random() * 100;
-        if (rng < failureChance) {
+        if (rng < parseFloat(failureChance)) {
           const lostAmount = currentAmount * (1 + (winAmount / 100));
           await this.client.db.user.addUserAttr(interaction.user.id, 'credits', -lostAmount);
           await i.update({

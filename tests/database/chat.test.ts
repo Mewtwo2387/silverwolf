@@ -1,8 +1,9 @@
 import Database from '../../database/Database';
+import type ChatModel from '../../database/models/ChatModel';
 
 describe('ChatModel', () => {
-  let db;
-  let chatModel;
+  let db: Database;
+  let chatModel: ChatModel;
 
   beforeAll(async () => {
     // Create test database using current timestamp
@@ -29,8 +30,8 @@ describe('ChatModel', () => {
       const userId = '123456789';
       const serverId = '987654321';
 
-      const session = await chatModel.startChatSession(userId, serverId);
-      const retrievedSession = await chatModel.getChatSessionById(session.sessionId);
+      const session = (await chatModel.startChatSession(userId, serverId))!;
+      const retrievedSession = (await chatModel.getChatSessionById(session.sessionId))!;
 
       expect(retrievedSession).toBeDefined();
       expect(retrievedSession.startedBy).toBe(userId);
@@ -43,9 +44,9 @@ describe('ChatModel', () => {
     it('should end an active chat session', async () => {
       const userId = '123456789';
       const serverId = '987654321';
-      const session = await chatModel.startChatSession(userId, serverId);
+      const session = (await chatModel.startChatSession(userId, serverId))!;
 
-      const endedSession = await chatModel.endChatSession(session.sessionId);
+      const endedSession = (await chatModel.endChatSession(session.sessionId))!;
       expect(endedSession.active).toBe(0);
     });
   });
@@ -55,8 +56,8 @@ describe('ChatModel', () => {
       const userId = '123456789';
       const serverId = '987654321';
 
-      const session1 = await chatModel.startChatSession(userId, serverId);
-      const session2 = await chatModel.startChatSession(userId, serverId);
+      const session1 = (await chatModel.startChatSession(userId, serverId))!;
+      const session2 = (await chatModel.startChatSession(userId, serverId))!;
       await chatModel.endChatSession(session1.sessionId);
 
       const activeSessions = await chatModel.getActiveChatSessions();
@@ -76,9 +77,9 @@ describe('ChatModel', () => {
       const serverId = '987654321';
 
       await chatModel.startChatSession(userId, serverId);
-      const session2 = await chatModel.startChatSession(userId, serverId);
+      const session2 = (await chatModel.startChatSession(userId, serverId))!;
 
-      const lastSession = await chatModel.getLastActiveServerChatSession(serverId);
+      const lastSession = (await chatModel.getLastActiveServerChatSession(serverId))!;
       expect(lastSession.sessionId).toBe(session2.sessionId);
     });
 
@@ -86,12 +87,12 @@ describe('ChatModel', () => {
       const userId = '123456789';
       const serverId = '987654321';
 
-      const session1 = await chatModel.startChatSession(userId, serverId);
+      const session1 = (await chatModel.startChatSession(userId, serverId))!;
       await chatModel.endChatSession(session1.sessionId);
 
-      const session2 = await chatModel.startChatSession(userId, serverId);
+      const session2 = (await chatModel.startChatSession(userId, serverId))!;
 
-      const lastSession = await chatModel.getLastActiveServerChatSession(serverId);
+      const lastSession = (await chatModel.getLastActiveServerChatSession(serverId))!;
       expect(lastSession.sessionId).toBe(session2.sessionId);
     });
 
@@ -100,16 +101,16 @@ describe('ChatModel', () => {
       const serverId = '987654321';
       const serverId2 = '123456789';
 
-      const correctSession = await chatModel.startChatSession(userId, serverId);
+      const correctSession = (await chatModel.startChatSession(userId, serverId))!;
       await chatModel.startChatSession(userId, serverId2);
 
-      const lastSession = await chatModel.getLastActiveServerChatSession(serverId);
+      const lastSession = (await chatModel.getLastActiveServerChatSession(serverId))!;
       expect(lastSession.sessionId).toBe(correctSession.sessionId);
     });
 
     it('should return null for server with no sessions', async () => {
       const serverId = '987654321';
-      const lastSession = await chatModel.getLastActiveServerChatSession(serverId);
+      const lastSession = (await chatModel.getLastActiveServerChatSession(serverId))!;
       expect(lastSession).toBeNull();
     });
   });
@@ -119,16 +120,16 @@ describe('ChatModel', () => {
       const userId = '123456789';
       const serverId = '987654321';
 
-      const session1 = await chatModel.startChatSession(userId, serverId);
-      const session2 = await chatModel.startChatSession(userId, serverId);
+      const session1 = (await chatModel.startChatSession(userId, serverId))!;
+      const session2 = (await chatModel.startChatSession(userId, serverId))!;
       const result = await chatModel.endLastActiveServerChatSession(serverId);
 
       expect(result).toBe(true);
 
-      const retrievedSession = await chatModel.getChatSessionById(session2.sessionId);
+      const retrievedSession = (await chatModel.getChatSessionById(session2.sessionId))!;
       expect(retrievedSession.active).toBe(0);
 
-      const retrievedSession2 = await chatModel.getChatSessionById(session1.sessionId);
+      const retrievedSession2 = (await chatModel.getChatSessionById(session1.sessionId))!;
       expect(retrievedSession2.active).toBe(1);
     });
 
@@ -144,7 +145,7 @@ describe('ChatModel', () => {
       const userId = '123456789';
       const serverId = '987654321';
 
-      const session = await chatModel.startChatSessionIfNotExists(userId, serverId);
+      const session = (await chatModel.startChatSessionIfNotExists(userId, serverId))!;
       expect(session.startedBy).toBe(userId);
       expect(session.serverId).toBe(serverId);
       expect(session.active).toBe(1);
@@ -154,8 +155,8 @@ describe('ChatModel', () => {
       const userId = '123456789';
       const serverId = '987654321';
 
-      const session = await chatModel.startChatSession(userId, serverId);
-      const retrievedSession = await chatModel.startChatSessionIfNotExists(userId, serverId);
+      const session = (await chatModel.startChatSession(userId, serverId))!;
+      const retrievedSession = (await chatModel.startChatSessionIfNotExists(userId, serverId))!;
 
       expect(retrievedSession.sessionId).toBe(session.sessionId);
       expect(retrievedSession.active).toBe(1);
@@ -167,11 +168,11 @@ describe('ChatModel', () => {
       const userId = '123456789';
       const serverId = '987654321';
 
-      const session1 = await chatModel.startChatSession(userId, serverId);
-      const session2 = await chatModel.endAndStartNewChatSession(userId, serverId);
+      const session1 = (await chatModel.startChatSession(userId, serverId))!;
+      const session2 = (await chatModel.endAndStartNewChatSession(userId, serverId))!;
 
-      const retrievedSession1 = await chatModel.getChatSessionById(session1.sessionId);
-      const retrievedSession2 = await chatModel.getChatSessionById(session2.sessionId);
+      const retrievedSession1 = (await chatModel.getChatSessionById(session1.sessionId))!;
+      const retrievedSession2 = (await chatModel.getChatSessionById(session2.sessionId))!;
 
       expect(retrievedSession1.active).toBe(0);
       expect(retrievedSession2.active).toBe(1);
@@ -181,7 +182,7 @@ describe('ChatModel', () => {
       const userId = '123456789';
       const serverId = '987654321';
 
-      const session = await chatModel.endAndStartNewChatSession(userId, serverId);
+      const session = (await chatModel.endAndStartNewChatSession(userId, serverId))!;
       expect(session.startedBy).toBe(userId);
       expect(session.serverId).toBe(serverId);
       expect(session.active).toBe(1);
@@ -193,10 +194,10 @@ describe('ChatModel', () => {
       const userId = '123456789';
       const serverId = '987654321';
 
-      const session = await chatModel.startChatSession(userId, serverId);
+      const session = (await chatModel.startChatSession(userId, serverId))!;
 
-      const message1 = { role: 'user', content: 'Hello' };
-      const message2 = { role: 'model', content: 'Hi there!' };
+      const message1 = { role: 'user' as const, content: 'Hello' };
+      const message2 = { role: 'model' as const, content: 'Hi there!' };
 
       await chatModel.addChatHistory(session.sessionId, message1.role, message1.content);
       await chatModel.addChatHistory(session.sessionId, message2.role, message2.content);
@@ -213,7 +214,7 @@ describe('ChatModel', () => {
       const userId = '123456789';
       const serverId = '987654321';
 
-      const session = await chatModel.startChatSession(userId, serverId);
+      const session = (await chatModel.startChatSession(userId, serverId))!;
 
       const history = await chatModel.getChatHistory(session.sessionId);
       expect(history).toHaveLength(0);
@@ -223,11 +224,11 @@ describe('ChatModel', () => {
       const userId = '123456789';
       const serverId = '987654321';
 
-      const session1 = await chatModel.startChatSession(userId, serverId);
-      const session2 = await chatModel.startChatSession(userId, serverId);
+      const session1 = (await chatModel.startChatSession(userId, serverId))!;
+      const session2 = (await chatModel.startChatSession(userId, serverId))!;
 
-      const message1 = { role: 'user', content: 'Hello' };
-      const message2 = { role: 'model', content: 'Hi there!' };
+      const message1 = { role: 'user' as const, content: 'Hello' };
+      const message2 = { role: 'model' as const, content: 'Hi there!' };
 
       await chatModel.addChatHistory(session1.sessionId, message1.role, message1.content);
       await chatModel.addChatHistory(session2.sessionId, message2.role, message2.content);

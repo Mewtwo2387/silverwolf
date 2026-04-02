@@ -1,8 +1,9 @@
 import Database from '../../database/Database';
+import type BabyModel from '../../database/models/BabyModel';
 
 describe('BabyModel', () => {
-  let db;
-  let babyModel;
+  let db: Database;
+  let babyModel: BabyModel;
 
   beforeAll(async () => {
     // Create test database using current timestamp
@@ -29,7 +30,7 @@ describe('BabyModel', () => {
       const motherId = '123456789';
       const fatherId = '987654321';
       await babyModel.createBaby(motherId, fatherId);
-      const baby = await babyModel.getBabyById(1);
+      const baby = (await babyModel.getBabyById(1))!;
       expect(baby).toBeDefined();
       expect(baby.motherId).toBe(motherId);
       expect(baby.fatherId).toBe(fatherId);
@@ -40,8 +41,8 @@ describe('BabyModel', () => {
       const fatherId = '987654321';
       await babyModel.createBaby(motherId, fatherId);
       await babyModel.createBaby(motherId, fatherId);
-      const baby1 = await babyModel.getBabyById(1);
-      const baby2 = await babyModel.getBabyById(2);
+      const baby1 = (await babyModel.getBabyById(1))!;
+      const baby2 = (await babyModel.getBabyById(2))!;
       expect(baby1).toBeDefined();
       expect(baby2).toBeDefined();
       expect(baby1.motherId).toBe(motherId);
@@ -96,7 +97,7 @@ describe('BabyModel', () => {
     it('should update baby attributes correctly', async () => {
       await babyModel.createBaby('123', '456');
       await babyModel.updateBabyAttr(1, 'name', 'TestBaby');
-      const baby = await babyModel.getBabyById(1);
+      const baby = (await babyModel.getBabyById(1))!;
       expect(baby.name).toBe('TestBaby');
     });
 
@@ -104,7 +105,7 @@ describe('BabyModel', () => {
       await babyModel.createBaby('123', '456');
       await babyModel.updateBabyAttr(1, 'level', 10);
       await babyModel.addBabyAttr(1, 'level', 1);
-      const baby = await babyModel.getBabyById(1);
+      const baby = (await babyModel.getBabyById(1))!;
       expect(baby.level).toBe(11);
     });
   });
@@ -113,7 +114,7 @@ describe('BabyModel', () => {
     it('should delete a baby by ID', async () => {
       await babyModel.createBaby('123', '456');
       await babyModel.deleteBaby(1);
-      const baby = await babyModel.getBabyById(1);
+      const baby = (await babyModel.getBabyById(1))!;
       expect(baby).toBeNull();
     });
   });
@@ -122,7 +123,7 @@ describe('BabyModel', () => {
     it('should update baby status correctly', async () => {
       await babyModel.createBaby('123', '456');
       await babyModel.updateBabyStatus(1, 'born');
-      const baby = await babyModel.getBabyById(1);
+      const baby = (await babyModel.getBabyById(1))!;
       expect(baby.status).toBe('born');
     });
   });
@@ -131,7 +132,7 @@ describe('BabyModel', () => {
     it('should update baby name correctly', async () => {
       await babyModel.createBaby('123', '456');
       await babyModel.updateBabyName(1, 'TestBaby');
-      const baby = await babyModel.getBabyById(1);
+      const baby = (await babyModel.getBabyById(1))!;
       expect(baby.name).toBe('TestBaby');
     });
   });
@@ -140,7 +141,7 @@ describe('BabyModel', () => {
     it('should update baby birthday correctly', async () => {
       await babyModel.createBaby('123', '456');
       await babyModel.updateBabyBirthday(1);
-      const baby = await babyModel.getBabyById(1);
+      const baby = (await babyModel.getBabyById(1))!;
       expect(baby.born).toBeDefined();
     });
   });
@@ -165,7 +166,7 @@ describe('BabyModel', () => {
       await babyModel.createBaby('123', '456');
       const result = await babyModel.bornBaby(1);
       expect(result).toBe(true);
-      const baby = await babyModel.getBabyById(1);
+      const baby = (await babyModel.getBabyById(1))!;
       expect(baby.status).toBe('born');
       expect(baby.born).toBeDefined();
     });
@@ -182,7 +183,7 @@ describe('BabyModel', () => {
     it('should update baby job and pinger info correctly', async () => {
       await babyModel.createBaby('123', '456');
       await babyModel.updateBabyJob(1, 'pinger', 'target123', 'channel456');
-      const baby = await babyModel.getBabyById(1);
+      const baby = (await babyModel.getBabyById(1))!;
       expect(baby.job).toBe('pinger');
       expect(baby.pingerTarget).toBe('target123');
       expect(baby.pingerChannel).toBe('channel456');
@@ -191,7 +192,7 @@ describe('BabyModel', () => {
     it('should update baby job without pinger info', async () => {
       await babyModel.createBaby('123', '456');
       await babyModel.updateBabyJob(1, 'gambler');
-      const baby = await babyModel.getBabyById(1);
+      const baby = (await babyModel.getBabyById(1))!;
       expect(baby.job).toBe('gambler');
       expect(baby.pingerTarget).toBeNull();
       expect(baby.pingerChannel).toBeNull();
@@ -202,7 +203,7 @@ describe('BabyModel', () => {
     it('should increment baby level by 1', async () => {
       await babyModel.createBaby('123', '456');
       await babyModel.levelUpBaby(1);
-      const baby = await babyModel.getBabyById(1);
+      const baby = (await babyModel.getBabyById(1))!;
       expect(baby.level).toBe(1);
     });
   });
@@ -211,11 +212,11 @@ describe('BabyModel', () => {
     it('should increment nuggie claimer stats correctly', async () => {
       await babyModel.createBaby('123', '456');
       await babyModel.incrementNuggieClaimerStats(1, 5);
-      const baby = await babyModel.getBabyById(1);
+      const baby = (await babyModel.getBabyById(1))!;
       expect(baby.nuggieClaimerClaims).toBe(1);
       expect(baby.nuggieClaimerClaimed).toBe(5);
       await babyModel.incrementNuggieClaimerStats(1, 5);
-      const baby2 = await babyModel.getBabyById(1);
+      const baby2 = (await babyModel.getBabyById(1))!;
       expect(baby2.nuggieClaimerClaims).toBe(2);
       expect(baby2.nuggieClaimerClaimed).toBe(10);
     });
@@ -225,14 +226,14 @@ describe('BabyModel', () => {
     it('should increment gambler stats correctly', async () => {
       await babyModel.createBaby('123', '456');
       await babyModel.incrementGamblerStats(1, 1, 1, 0, 100, 200);
-      const baby = await babyModel.getBabyById(1);
+      const baby = (await babyModel.getBabyById(1))!;
       expect(baby.gamblerGames).toBe(1);
       expect(baby.gamblerWins).toBe(1);
       expect(baby.gamblerLosses).toBe(0);
       expect(baby.gamblerCreditsGambled).toBe(100);
       expect(baby.gamblerCreditsWon).toBe(200);
       await babyModel.incrementGamblerStats(1, 1, 1, 0, 100, 200);
-      const baby2 = await babyModel.getBabyById(1);
+      const baby2 = (await babyModel.getBabyById(1))!;
       expect(baby2.gamblerGames).toBe(2);
       expect(baby2.gamblerWins).toBe(2);
       expect(baby2.gamblerLosses).toBe(0);
@@ -245,10 +246,10 @@ describe('BabyModel', () => {
     it('should increment pinger pings correctly', async () => {
       await babyModel.createBaby('123', '456');
       await babyModel.incrementPingerPings(1);
-      const baby = await babyModel.getBabyById(1);
+      const baby = (await babyModel.getBabyById(1))!;
       expect(baby.pingerPings).toBe(1);
       await babyModel.incrementPingerPings(1);
-      const baby2 = await babyModel.getBabyById(1);
+      const baby2 = (await babyModel.getBabyById(1))!;
       expect(baby2.pingerPings).toBe(2);
     });
   });
