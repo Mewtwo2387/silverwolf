@@ -24,6 +24,4 @@ const silverwolf = new Silverwolf(TOKEN, {
   ],
 });
 
-silverwolf.login().then(() => {
-  return silverwolf.registerCommands(CLIENT_ID);
-});
+silverwolf.login().then(() => silverwolf.registerCommands(CLIENT_ID));
