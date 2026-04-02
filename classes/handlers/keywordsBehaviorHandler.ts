@@ -1,30 +1,30 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { EmbedBuilder } = require('discord.js');
-const { log, logError } = require('../../utils/log');
-
-const { resolvePersona, generateContent } = require('../../utils/ai');
+import {
+  ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, type Message,
+  type TextChannel,
+} from 'discord.js';
+import { log, logError } from '../../utils/log';
+import { resolvePersona, generateContent } from '../../utils/ai';
 
 const WEBHOOK_NAME = process.env.WEBHOOK_NAME || 'grok-webhook';
 
-module.exports = {
-  girlCockx: async (message) => {
-    // const username = message.author.username.toLowerCase();
+const scriptHandlers = {
+  girlCockx: async (message: Message): Promise<void> => {
     const xLinkRegex = /https:\/\/(?:x\.com|twitter\.com)\/([^/]+)\/status\/(\d+)(?:\?[^\s]*)?/g;
     const girlcockxContent = message.content.replace(xLinkRegex, (_, user, id) => `https://fxtwitter.com/${user}/status/${id}`);
 
     try {
-      const webhooks = await message.channel.fetchWebhooks();
-      let webhook = webhooks.find((wh) => wh.name === 'girlcockx' && wh.token);
+      const webhooks = await (message.channel as TextChannel).fetchWebhooks();
+      let webhook = webhooks.find((wh: any) => wh.name === 'girlcockx' && wh.token);
 
       if (!webhook) {
-        webhook = await message.channel.createWebhook({
+        webhook = await (message.channel as TextChannel).createWebhook({
           name: 'girlcockx',
-          avatar: message.client.user.displayAvatarURL(),
+          avatar: message.client.user!.displayAvatarURL(),
         });
       }
 
       let content = girlcockxContent;
-      const components = [];
+      const components: ActionRowBuilder<ButtonBuilder>[] = [];
 
       const deleteButton = new ButtonBuilder()
         .setCustomId(`del_girlcockx_${message.author.id}`)
@@ -36,7 +36,7 @@ module.exports = {
           const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
           const repliedLink = `https://discord.com/channels/${message.guildId}/${message.channelId}/${repliedTo.id}`;
 
-          const buttonRow = new ActionRowBuilder().addComponents(
+          const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder()
               .setLabel(`↩ Replying to: ${repliedTo.author.username}`)
               .setStyle(ButtonStyle.Link)
@@ -48,20 +48,18 @@ module.exports = {
           content = `<@${repliedTo.author.id}> - ${girlcockxContent}`;
         } catch (err) {
           logError('Could not fetch replied-to message:', err);
-          components.push(new ActionRowBuilder().addComponents(deleteButton));
+          components.push(new ActionRowBuilder<ButtonBuilder>().addComponents(deleteButton));
         }
       } else {
-        components.push(new ActionRowBuilder().addComponents(deleteButton));
+        components.push(new ActionRowBuilder<ButtonBuilder>().addComponents(deleteButton));
       }
 
-      await webhook.send({
+      await webhook!.send({
         content,
-        username: message.member?.displayName || message.author.username,
-        avatarURL: message.member?.displayAvatarURL() || message.author.displayAvatarURL(),
+        username: (message.member?.displayName || message.author.username),
+        avatarURL: (message.member?.displayAvatarURL() || message.author.displayAvatarURL()),
         components,
-        allowedMentions: {
-          parse: ['users'],
-        },
+        allowedMentions: { parse: ['users'] },
       });
 
       await message.delete();
@@ -69,7 +67,8 @@ module.exports = {
       logError('Error sending girlcockx webhook:', err);
     }
   },
-  grok: async (message) => {
+
+  grok: async (message: Message): Promise<void> => {
     const username = message.author?.username
       ? message.author.username.toLowerCase()
       : 'user';
@@ -78,21 +77,19 @@ module.exports = {
 
     const contextMsg = message.reference
       ? await message.channel.messages
-        .fetch(message.reference.messageId)
+        .fetch(message.reference.messageId!)
         .catch(() => null)
       : null;
 
-    // Resolve the persona
     const persona = await resolvePersona(query);
     const displayName = persona.name;
 
-    // Personas excluded from persistent memory
     const NO_MEMORY_PERSONAS = ['Summarizer'];
     const hasMemory = !NO_MEMORY_PERSONAS.includes(displayName);
 
     if (shouldStartNewSession && hasMemory) {
       try {
-        const newSession = await message.client.db.aiChat.startNewSession(
+        const newSession = await (message.client as any).db.aiChat.startNewSession(
           message.author.id,
           displayName,
         );
@@ -118,7 +115,7 @@ module.exports = {
     if (contextMsg) {
       const promptName = (contextMsg.author.username === displayName) ? 'You' : contextMsg.author.username;
       prompt = `Previous message by ${promptName}: "${contextMsg.content}"
-      
+
       User ${username} said: ${query}`;
     } else {
       prompt = `User ${username} said: ${query}`;
@@ -126,69 +123,36 @@ module.exports = {
 
     log(`Prompt: ${prompt}`);
 
-    const avatarURL = persona.avatarURL || message.client.user.displayAvatarURL();
+    const avatarURL = persona.avatarURL || message.client.user!.displayAvatarURL();
 
-    // Load persistent history for this user+persona (skip for excluded personas)
     let aiSession = null;
-    let history = [];
+    let history: any[] = [];
     if (hasMemory) {
       try {
-        aiSession = await message.client.db.aiChat.getOrCreateSession(
+        aiSession = await (message.client as any).db.aiChat.getOrCreateSession(
           message.author.id,
           displayName,
         );
-        history = await message.client.db.aiChat.getHistory(aiSession.sessionId, 30);
+        history = await (message.client as any).db.aiChat.getHistory(aiSession.sessionId, 30);
       } catch (histErr) {
         logError('AiChat: Failed to load history, proceeding without it:', histErr);
       }
     }
 
     try {
-      const webhooks = await message.channel.fetchWebhooks();
-      let webhook = webhooks.find((wh) => wh.name === WEBHOOK_NAME && wh.token);
+      const webhooks = await (message.channel as TextChannel).fetchWebhooks();
+      let webhook = webhooks.find((wh: any) => wh.name === WEBHOOK_NAME && wh.token);
 
-      // No Free Deepseek in Openrouter
-      // const censorshipRegex = /(1989|winnie[\s-]?the[\s-]?pooh|tiananmen|taiwan|hong\s?kong|tibet|xinjiang)/i;
-
-      // if (displayName === 'Deepseek' && censorshipRegex.test(prompt)) {
-      //   const responses = [
-      //     "I'm sorry, but I cannot provide information on that topic.",
-      //     '⚠️ This topic is not available due to local regulations.',
-      //     'DeepSeek has detected a Level 404 Thoughtcrime. Please proceed to your nearest re-education center.',
-      //     'This conversation has been harmonized ✨. Please enjoy some wholesome content instead.',
-      //     '🚫 Access denied. The Ministry of Truth thanks you for your cooperation.',
-      //     'https://tenor.com/view/nalog-gif-25906765 ',
-      //   ];
-      //   const reply = responses[Math.floor(Math.random() * responses.length)];
-
-      //   if (!webhook) {
-      //     webhook = await message.channel.createWebhook({
-      //       name: WEBHOOK_NAME,
-      //       avatar: avatarURL,
-      //     });
-      //   }
-
-      //   await webhook.send({
-      //     content: reply,
-      //     username: displayName,
-      //     avatarURL,
-      //     allowedMentions: { parse: [] },
-      //   });
-
-      //   return;
-      // }
-
-      // Call generateContent with history context
       const { text, images } = await generateContent({
         provider: persona.provider,
         model: persona.model,
-        systemPrompt: persona.systemPrompt,
+        systemPrompt: persona.systemPrompt ?? '',
         prompt,
         history,
       });
 
       if (!webhook) {
-        webhook = await message.channel.createWebhook({
+        webhook = await (message.channel as TextChannel).createWebhook({
           name: WEBHOOK_NAME,
           avatar: avatarURL,
         });
@@ -196,15 +160,15 @@ module.exports = {
 
       const MAX_LENGTH = 2000;
       let remainingText = (text || '').toString();
-      let previousMsg = null;
-      let filesToAttach = images || [];
+      let previousMsg: any = null;
+      let filesToAttach: any[] = images || [];
 
       let currentChunk = remainingText.slice(0, MAX_LENGTH);
       remainingText = remainingText.slice(currentChunk.length).trimStart();
 
-      const componentsForFirstMessage = [];
+      const componentsForFirstMessage: ActionRowBuilder<ButtonBuilder>[] = [];
       const jumpLinkToOriginal = `https://discord.com/channels/${message.guildId}/${message.channelId}/${message.id}`;
-      const replyButton = new ActionRowBuilder().addComponents(
+      const replyButton = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
           .setLabel(`↩ Replying to: ${username}`)
           .setStyle(ButtonStyle.Link)
@@ -212,7 +176,7 @@ module.exports = {
       );
       componentsForFirstMessage.push(replyButton);
 
-      const sentInitial = await webhook.send({
+      const sentInitial = await webhook!.send({
         content: currentChunk || (filesToAttach.length > 0 ? '' : '(no content)'),
         username: displayName,
         avatarURL,
@@ -236,9 +200,9 @@ module.exports = {
 
         remainingText = remainingText.slice(currentChunk.length).trimStart();
 
-        const componentsForFollowUp = [];
+        const componentsForFollowUp: ActionRowBuilder<ButtonBuilder>[] = [];
         const jumpLinkToPrevious = `https://discord.com/channels/${message.guildId}/${message.channelId}/${previousMsg.id}`;
-        const previousButton = new ActionRowBuilder().addComponents(
+        const previousButton = new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
             .setLabel('⬅ Previous')
             .setStyle(ButtonStyle.Link)
@@ -247,7 +211,7 @@ module.exports = {
         componentsForFollowUp.push(previousButton);
 
         // eslint-disable-next-line no-await-in-loop
-        const sent = await webhook.send({
+        const sent = await webhook!.send({
           content: currentChunk,
           username: displayName,
           avatarURL,
@@ -257,35 +221,31 @@ module.exports = {
         previousMsg = sent;
       }
 
-      // Persist history only after a successful response (no ghost messages on error)
       if (hasMemory && aiSession && text) {
         const aiRole = persona.provider === 'openrouter' ? 'assistant' : 'model';
         try {
-          await message.client.db.aiChat.addHistory(aiSession.sessionId, 'user', prompt);
-          await message.client.db.aiChat.addHistory(aiSession.sessionId, aiRole, text);
+          await (message.client as any).db.aiChat.addHistory(aiSession.sessionId, 'user', prompt);
+          await (message.client as any).db.aiChat.addHistory(aiSession.sessionId, aiRole, text);
         } catch (saveErr) {
           logError('AiChat: Failed to save history:', saveErr);
         }
       }
     } catch (err) {
-      try {
-        logError('AI unified handler error', err);
-      } catch (_) {
-        logError('AI unified handler error:', err);
-      }
+      logError('AI unified handler error', err);
       await message.reply(
         'Either, our code is fucked, their API is fucked, or you are just fucked. Please try again later.',
       );
     }
   },
-  stealSticker: async (message) => {
+
+  stealSticker: async (message: Message): Promise<void> => {
     if (!message.reference) {
       await message.reply('You need to reply to a message with a sticker to steal it!');
       return;
     }
 
     try {
-      const referenced = await message.channel.messages.fetch(message.reference.messageId);
+      const referenced = await message.channel.messages.fetch(message.reference.messageId!);
       const sticker = referenced.stickers?.first();
 
       if (!sticker) {
@@ -305,29 +265,30 @@ module.exports = {
       await message.reply("Failed to fetch the sticker. Maybe it's gone or inaccessible.");
     }
   },
-  chalker: async (message) => {
+
+  chalker: async (message: Message): Promise<void> => {
     const userid = '911042005113643070';
     try {
       const { guild } = message;
-      await guild.bans.create(userid, { reason: 'placeholder reason' });
-    } catch
-    (err) {
+      await guild!.bans.create(userid, { reason: 'placeholder reason' });
+    } catch (err) {
       logError('Error fetching guild ID:', err);
     }
   },
-  avadaKedavra: async (message) => {
+
+  avadaKedavra: async (message: Message): Promise<void> => {
     if (!message.member || !message.member.permissions.has('Administrator')) {
       await message.reply('You need intent to kill.');
       return;
     }
 
     const targetUser = message.mentions.users.first();
-    let targetId = null;
+    let targetId: string | null = null;
 
     if (targetUser) {
       targetId = targetUser.id;
     } else {
-      const banid = message.references?.messageId;
+      const banid = message.reference?.messageId;
       if (banid) {
         try {
           const referenced = await message.channel.messages.fetch(banid);
@@ -346,12 +307,13 @@ module.exports = {
     }
 
     try {
-      await message.guild.bans.create(targetId, { reason: 'Avada Kedavra' });
+      await message.guild!.bans.create(targetId, { reason: 'Avada Kedavra' });
       await message.reply(`<@${targetId}> has been Avada Kedavra'd[.](https://tenor.com/view/avada-kadavra-star-wars-voldemort-spell-gif-16160198)`);
     } catch (err) {
       logError('Error executing Avada Kedavra:', err);
       await message.reply('https://tenor.com/view/voldemort-death-harry-potter-dust-gif-21709239 ');
     }
   },
-
 };
+
+export default scriptHandlers;

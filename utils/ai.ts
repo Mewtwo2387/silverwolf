@@ -22,7 +22,7 @@ import personasData from '../data/aiPersonas.json';
 
 const personasConfig: any = (personasData as any).personasConfig || personasData;
 
-interface Persona {
+export interface Persona {
   name: string;
   provider: string;
   model: string;
@@ -30,6 +30,7 @@ interface Persona {
   systemPromptFile?: string;
   triggers?: string[];
   responseModalities?: string[];
+  avatarURL?: string;
 }
 
 interface HistoryEntry {
