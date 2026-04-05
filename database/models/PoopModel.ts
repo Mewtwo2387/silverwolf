@@ -55,6 +55,11 @@ class PoopModel {
     return this.db.executeSelectQuery(query, [{ $userId: userId }]);
   }
 
+  async getRandomPoop(): Promise<Record<string, any> | null> {
+    const query = poopQueries.GET_RANDOM_POOP;
+    return this.db.executeSelectQuery(query);
+  }
+
   async getLeaderboard(period: string, limit: number, offset: number): Promise<Record<string, any>[]> {
     const query = poopQueries.GET_LEADERBOARD(period);
     return this.db.executeSelectAllQuery(query, [limit, offset]);
