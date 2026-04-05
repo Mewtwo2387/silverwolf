@@ -79,10 +79,12 @@ async function formatReward(
 ): Promise<RewardResult> {
   const season = await client.db.globalConfig.getGlobalConfig('season') || 'normal';
   const json = JSON.parse(fs.readFileSync(path.join(import.meta.dir, '../data/config/skin/claim.json'), 'utf8'));
+  const resolvedSeason = json[season] ? season : 'normal';
   log(`season: ${season}`);
+  log(`resolvedSeason: ${resolvedSeason}`);
   log(`skinKey: ${skinKey}`);
-  log(`json[season]: ${JSON.stringify(json[season])}`);
-  const skin = json[season][skinKey];
+  log(`json[resolvedSeason]: ${JSON.stringify(json[resolvedSeason])}`);
+  const skin = json[resolvedSeason][skinKey];
   const goldPercentage = format(percentage.gold * 100, true);
   const silverPercentage = format(percentage.silver * 100, true);
   const bronzePercentage = format(percentage.bronze * 100, true);
