@@ -18,6 +18,13 @@ const poopQueries = {
     SELECT COUNT(*) as poop_count FROM PoopEntry WHERE user_id = ?
   `,
 
+  GET_RANDOM_POOP: `
+    SELECT id, user_id, logged_at, colour, size, type, duration
+    FROM PoopEntry
+    ORDER BY RANDOM()
+    LIMIT 1
+  `,
+
   GET_USER_STATS: `
     SELECT
       COUNT(*) as total_poops,
