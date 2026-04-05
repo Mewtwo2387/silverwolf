@@ -12,7 +12,6 @@ if (!process.env.TOKEN) {
 const TOKEN = process.env.TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 
-log(`TOKEN: ${TOKEN}`);
 log(`CLIENT_ID: ${CLIENT_ID}`);
 
 const silverwolf = new Silverwolf(TOKEN, {

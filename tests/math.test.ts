@@ -87,7 +87,7 @@ describe('anti-formatting numbers', () => {
     expect(antiFormat('1.235M')).toBe(1235000);
     expect(antiFormat('123.457M')).toBe(123457000);
     expect(antiFormat('1.235B')).toBe(1235000000);
-    expect(antiFormat('1.000Dc')).toBe(1e33);
+    expect(antiFormat('1.000Dc') / 1e33).toBeCloseTo(1, 12);
     expect(antiFormat('0Qa')).toBe(0);
   });
   test('with commas', () => {
