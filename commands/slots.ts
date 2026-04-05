@@ -24,9 +24,10 @@ class Slots extends Command {
       return;
     }
 
-    const season = await this.client.db.globalConfig.getGlobalConfig('season') || 'Normal';
-
-    const skin = await JSON.parse(fs.readFileSync(path.join(import.meta.dir, '../data/config/skin/slots.json'), 'utf8'))[season];
+    const season = await this.client.db.globalConfig.getGlobalConfig('season') || 'normal';
+    const skins = JSON.parse(fs.readFileSync(path.join(import.meta.dir, '../data/config/skin/slots.json'), 'utf8'));
+    const resolvedSeason = skins[season] ? season : 'normal';
+    const skin = skins[resolvedSeason];
 
     const smugs = skin.emotes;
 
@@ -70,7 +71,7 @@ class Slots extends Command {
       }
     }
 
-    if (season === 'aprilFools') {
+    if (resolvedSeason === 'aprilFools') {
       multi = 0.9;
     }
 
