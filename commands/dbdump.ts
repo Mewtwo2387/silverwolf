@@ -3,6 +3,122 @@ import * as path from 'path';
 import { DevCommand } from './classes/DevCommand';
 import { logError } from '../utils/log';
 
+interface DumpDefinition {
+  choiceName: string;
+  value: string;
+  tableName: string;
+  fileName: string;
+  formatUserIds: string[];
+}
+
+const DUMP_DEFINITIONS: DumpDefinition[] = [
+  {
+    choiceName: 'User Data',
+    value: 'user',
+    tableName: 'User',
+    fileName: 'User_Data.csv',
+    formatUserIds: ['id'],
+  },
+  {
+    choiceName: 'Pokemon Data',
+    value: 'pokemon',
+    tableName: 'Pokemon',
+    fileName: 'Pokemon_Data.csv',
+    formatUserIds: ['user_id'],
+  },
+  {
+    choiceName: 'Marriage Data',
+    value: 'marriage',
+    tableName: 'Marriage',
+    fileName: 'Marriage_Data.csv',
+    formatUserIds: ['user1_id', 'user2_id'],
+  },
+  {
+    choiceName: 'Baby Data',
+    value: 'baby',
+    tableName: 'Baby',
+    fileName: 'Baby_Data.csv',
+    formatUserIds: ['mother_id', 'father_id'],
+  },
+  {
+    choiceName: 'Command Config Data',
+    value: 'commandConfig',
+    tableName: 'CommandConfig',
+    fileName: 'Command_Config_Data.csv',
+    formatUserIds: [],
+  },
+  {
+    choiceName: 'Server Roles Data',
+    value: 'serverRoles',
+    tableName: 'ServerRoles',
+    fileName: 'Server_Roles_Data.csv',
+    formatUserIds: [],
+  },
+  {
+    choiceName: 'Chat History Data',
+    value: 'chatHistory',
+    tableName: 'ChatHistory',
+    fileName: 'Chat_History_Data.csv',
+    formatUserIds: [],
+  },
+  {
+    choiceName: 'Chat Session Data',
+    value: 'chatSession',
+    tableName: 'ChatSession',
+    fileName: 'Chat_Session_Data.csv',
+    formatUserIds: ['started_by'],
+  },
+  {
+    choiceName: 'Global Config Data',
+    value: 'globalConfig',
+    tableName: 'GlobalConfig',
+    fileName: 'Global_Config_Data.csv',
+    formatUserIds: [],
+  },
+  {
+    choiceName: 'Game UID Data',
+    value: 'gameUID',
+    tableName: 'GameUID',
+    fileName: 'Game_UID_Data.csv',
+    formatUserIds: ['user_id'],
+  },
+  {
+    choiceName: 'AI Chat History Data',
+    value: 'aiChatHistory',
+    tableName: 'AiChatHistory',
+    fileName: 'AI_Chat_History_Data.csv',
+    formatUserIds: [],
+  },
+  {
+    choiceName: 'AI Chat Session Data',
+    value: 'aiChatSession',
+    tableName: 'AiChatSession',
+    fileName: 'AI_Chat_Session_Data.csv',
+    formatUserIds: ['user_id'],
+  },
+  {
+    choiceName: 'Birthday Reminder Data',
+    value: 'birthdayReminder',
+    tableName: 'BirthdayReminder',
+    fileName: 'Birthday_Reminder_Data.csv',
+    formatUserIds: ['notifier_id', 'tracked_user_id'],
+  },
+  {
+    choiceName: 'Poop Entry Data',
+    value: 'poopEntry',
+    tableName: 'PoopEntry',
+    fileName: 'Poop_Entry_Data.csv',
+    formatUserIds: ['user_id'],
+  },
+  {
+    choiceName: 'Poop Profile Data',
+    value: 'poopProfile',
+    tableName: 'PoopProfile',
+    fileName: 'Poop_Profile_Data.csv',
+    formatUserIds: ['user_id'],
+  },
+];
+
 class DBDump extends DevCommand {
   constructor(client: any) {
     super(client, 'dbdump', 'Output a specific database table or all tables.', [
@@ -12,16 +128,7 @@ class DBDump extends DevCommand {
         type: 3,
         required: true,
         choices: [
-          { name: 'User Data', value: 'user' },
-          { name: 'Pokemon Data', value: 'pokemon' },
-          { name: 'Marriage Data', value: 'marriage' },
-          { name: 'Baby Data', value: 'baby' },
-          { name: 'Command Config Data', value: 'commandConfig' },
-          { name: 'Server Roles Data', value: 'serverRoles' },
-          { name: 'Chat History Data', value: 'chatHistory' },
-          { name: 'Chat Session Data', value: 'chatSession' },
-          { name: 'Global Config Data', value: 'globalConfig' },
-          { name: 'Game UID Data', value: 'gameUID' },
+          ...DUMP_DEFINITIONS.map((definition) => ({ name: definition.choiceName, value: definition.value })),
           { name: 'All Data', value: 'all' },
         ],
       },
@@ -33,71 +140,31 @@ class DBDump extends DevCommand {
 
     try {
       const filesToDump: { attachment: string; name: string }[] = [];
+      const selectedDefinitions = table === 'all'
+        ? DUMP_DEFINITIONS
+        : DUMP_DEFINITIONS.filter((definition) => definition.value === table);
 
-      if (table === 'user' || table === 'all') {
-        const userData = await this.client.db.dumpUser();
-        const userFilePath = this.createCSVFile('User_Data.csv', userData);
-        filesToDump.push({ attachment: userFilePath, name: 'User_Data.csv' });
+      for (const definition of selectedDefinitions) {
+        const tableData = await this.client.db.dumpTable(definition.tableName, definition.formatUserIds);
+        const filePath = this.createCSVFile(definition.fileName, tableData);
+        filesToDump.push({ attachment: filePath, name: definition.fileName });
       }
 
-      if (table === 'pokemon' || table === 'all') {
-        const pokemonData = await this.client.db.dumpPokemon();
-        const pokemonFilePath = this.createCSVFile('Pokemon_Data.csv', pokemonData);
-        filesToDump.push({ attachment: pokemonFilePath, name: 'Pokemon_Data.csv' });
-      }
+      if (filesToDump.length === 0) {
+        await interaction.editReply({ content: 'No database dump files were generated.' });
+      } else {
+        const ATTACHMENTS_PER_MESSAGE = 10;
+        for (let i = 0; i < filesToDump.length; i += ATTACHMENTS_PER_MESSAGE) {
+          const chunk = filesToDump.slice(i, i + ATTACHMENTS_PER_MESSAGE);
+          const content = i === 0 ? 'Database dump files:' : 'Additional database dump files:';
 
-      if (table === 'marriage' || table === 'all') {
-        const marriageData = await this.client.db.dumpMarriage();
-        const marriageFilePath = this.createCSVFile('Marriage_Data.csv', marriageData);
-        filesToDump.push({ attachment: marriageFilePath, name: 'Marriage_Data.csv' });
+          if (i === 0) {
+            await interaction.editReply({ content, files: chunk });
+          } else {
+            await interaction.followUp({ content, files: chunk });
+          }
+        }
       }
-
-      if (table === 'baby' || table === 'all') {
-        const babyData = await this.client.db.dumpBaby();
-        const babyFilePath = this.createCSVFile('Baby_Data.csv', babyData);
-        filesToDump.push({ attachment: babyFilePath, name: 'Baby_Data.csv' });
-      }
-
-      if (table === 'commandConfig' || table === 'all') {
-        const commandConfigData = await this.client.db.dumpCommandConfig();
-        const commandConfigFilePath = this.createCSVFile('Command_Config_Data.csv', commandConfigData);
-        filesToDump.push({ attachment: commandConfigFilePath, name: 'Command_Config_Data.csv' });
-      }
-
-      if (table === 'serverRoles' || table === 'all') {
-        const serverRolesData = await this.client.db.dumpServerRoles();
-        const serverRolesFilePath = this.createCSVFile('Server_Roles_Data.csv', serverRolesData);
-        filesToDump.push({ attachment: serverRolesFilePath, name: 'Server_Roles_Data.csv' });
-      }
-
-      if (table === 'chatHistory' || table === 'all') {
-        const chatHistoryData = await this.client.db.dumpChatHistory();
-        const chatHistoryFilePath = this.createCSVFile('Chat_History_Data.csv', chatHistoryData);
-        filesToDump.push({ attachment: chatHistoryFilePath, name: 'Chat_History_Data.csv' });
-      }
-
-      if (table === 'chatSession' || table === 'all') {
-        const chatSessionData = await this.client.db.dumpChatSession();
-        const chatSessionFilePath = this.createCSVFile('Chat_Session_Data.csv', chatSessionData);
-        filesToDump.push({ attachment: chatSessionFilePath, name: 'Chat_Session_Data.csv' });
-      }
-
-      if (table === 'globalConfig' || table === 'all') {
-        const globalConfigData = await this.client.db.dumpGlobalConfig();
-        const globalConfigFilePath = this.createCSVFile('Global_Config_Data.csv', globalConfigData);
-        filesToDump.push({ attachment: globalConfigFilePath, name: 'Global_Config_Data.csv' });
-      }
-
-      if (table === 'gameUID' || table === 'all') {
-        const gameUIDData = await this.client.db.dumpGameUID();
-        const gameUIDFilePath = this.createCSVFile('Game_UID_Data.csv', gameUIDData);
-        filesToDump.push({ attachment: gameUIDFilePath, name: 'Game_UID_Data.csv' });
-      }
-
-      await interaction.editReply({
-        content: 'Database dump files:',
-        files: filesToDump,
-      });
 
       filesToDump.forEach((file) => {
         this.cleanupFile(file.attachment);
@@ -106,7 +173,7 @@ class DBDump extends DevCommand {
       const databasePath = path.join(import.meta.dir, '../persistence/database.db');
 
       if (fs.existsSync(databasePath)) {
-        interaction.followUp({
+        await interaction.followUp({
           content: 'database:',
           files: [{ attachment: databasePath, name: 'database.db' }],
         });
