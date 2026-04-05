@@ -1,9 +1,31 @@
 const SHINY_CHANCE = 0.03;
 const MYSTERY_CHANCE = 0.3;
+const GUILD_MEMBER_CACHE_TTL_MS = 60 * 1000;
+
+interface CachedGuildMembers {
+  fetchedAt: number;
+  members: any;
+}
 
 class Handler {
+  private static guildMemberCache = new Map<string, CachedGuildMembers>();
+
+  private async getGuildMembers(message: any): Promise<any> {
+    const guildId = message.guild.id;
+    const cachedMembers = Handler.guildMemberCache.get(guildId);
+    const now = Date.now();
+
+    if (cachedMembers && now - cachedMembers.fetchedAt < GUILD_MEMBER_CACHE_TTL_MS) {
+      return cachedMembers.members;
+    }
+
+    const members = await message.guild.members.fetch();
+    Handler.guildMemberCache.set(guildId, { fetchedAt: now, members });
+    return members;
+  }
+
   async summonPokemon(message: any, mode = 'normal'): Promise<void> {
-    const allMembers = await message.guild.members.fetch();
+    const allMembers = await this.getGuildMembers(message);
     const members = allMembers.filter((member: any) => !member.user.bot);
     const member = members.random();
     const { client } = message;

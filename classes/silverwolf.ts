@@ -495,8 +495,10 @@ All wrongs reserved.
 
   async getHandler(): Promise<any> {
     const currentSeason = await this.db.globalConfig.getGlobalConfig('season') || 'normal';
-    const HandlerClass = handlers[(seasonConfig as any).seasons[currentSeason].handler];
-    const settings = (seasonConfig as any).seasons[currentSeason].settings || {};
+    const seasons = (seasonConfig as any).seasons;
+    const resolvedSeason = seasons[currentSeason] ? currentSeason : 'normal';
+    const HandlerClass = handlers[seasons[resolvedSeason].handler];
+    const settings = seasons[resolvedSeason].settings || {};
     return new HandlerClass(settings);
   }
 
