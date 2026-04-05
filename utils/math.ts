@@ -36,26 +36,35 @@ function getNumberFromPrefix(prefix: string): number {
 // Shorten numbers above a magnitude of shortenThreshold.
 // format(1234567, false, 9) => "1,234,567"
 // format(1234567, false, 6) => "1.235M"
-function format(num: number, alwaysFixed = false, shortenThreshold = 6): string {
+function format(num: number | null | undefined, alwaysFixed = false, shortenThreshold = 6): string {
+  if (num === null) {
+    return 'null';
+  }
+  if (typeof num === 'undefined') {
+    return 'undefined';
+  }
+
+  const normalizedNum = Number(num);
+  const safeNum = Number.isFinite(normalizedNum) ? normalizedNum : 0;
   let formattedNum: string;
 
   if (alwaysFixed) {
-    formattedNum = num.toFixed(2);
+    formattedNum = safeNum.toFixed(2);
   } else {
-    const magnitude = Math.floor(Math.log10(num));
-    if (magnitude >= shortenThreshold && num >= 1000) {
+    const magnitude = safeNum > 0 ? Math.floor(Math.log10(safeNum)) : 0;
+    if (magnitude >= shortenThreshold && safeNum >= 1000) {
       const prefix = getPrefix(Math.floor(magnitude / 3) - 1);
       const magnitudeUsed = magnitude - (magnitude % 3);
-      const numUsed = num / 10 ** magnitudeUsed;
+      const numUsed = safeNum / 10 ** magnitudeUsed;
       return `${numUsed.toFixed(3)}${prefix}`;
     }
-    const numStr = num.toString();
+    const numStr = safeNum.toString();
     const decimalIndex = numStr.indexOf('.');
 
     if (decimalIndex === -1 || numStr.length - decimalIndex - 1 <= 2) {
-      formattedNum = num.toString();
+      formattedNum = safeNum.toString();
     } else {
-      formattedNum = num.toFixed(2);
+      formattedNum = safeNum.toFixed(2);
     }
   }
 
