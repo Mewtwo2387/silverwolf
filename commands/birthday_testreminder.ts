@@ -7,12 +7,7 @@ class BirthdayTestReminder extends DevCommand {
     super(client, 'testreminder', 'Immediately fires all your pending birthday reminders as DMs', [], { isSubcommandOf: 'birthday', blame: 'xei' });
   }
 
-  async execute(interaction: any): Promise<void> {
-    await super.execute(interaction);
-    if (interaction.replied) return;
-
-    await interaction.deferReply({ ephemeral: true });
-
+  async run(interaction: any): Promise<void> {
     const notifierId = interaction.user.id;
     const currentYear = new Date().getUTCFullYear();
 
