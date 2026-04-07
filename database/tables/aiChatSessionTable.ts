@@ -6,6 +6,7 @@ export interface AiChatSessionRow {
   persona_name: string;
   active: number;
   created_at: string;
+  title: string | null;
 }
 
 const aiChatSessionTable: TableDefinition = {
@@ -16,6 +17,7 @@ const aiChatSessionTable: TableDefinition = {
     { name: 'persona_name', type: 'VARCHAR NOT NULL' },
     { name: 'active', type: 'INTEGER DEFAULT 1' },
     { name: 'created_at', type: 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP' },
+    { name: 'title', type: 'TEXT DEFAULT NULL' },
   ],
   primaryKey: ['session_id'],
   specialConstraints: [],

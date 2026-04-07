@@ -234,9 +234,34 @@ function getOpenRouterClient(): OpenAI {
   return openrouter;
 }
 
+/**
+ * Generates a short title for a conversation using OpenRouter.
+ * Returns the title string on success, or null on failure.
+ */
+async function generateSessionTitle(userMessage: string, aiResponse: string): Promise<string | null> {
+  const personas: Persona[] = personasConfig.personas || [];
+  const persona = personas.find((p) => p.name === 'TitleGen');
+  if (!persona) return null;
+
+  try {
+    const completion = await openrouter.chat.completions.create({
+      model: persona.model,
+      messages: [
+        { role: 'system', content: persona.systemPrompt ?? '' },
+        { role: 'user', content: `User: ${userMessage}\n\nAssistant: ${aiResponse}` },
+      ],
+      max_tokens: 64,
+    });
+    return completion.choices?.[0]?.message?.content?.trim() ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export {
   resolvePersona,
   generateContent,
+  generateSessionTitle,
   getGeminiAI,
   getOpenRouterClient,
   getPersonaByName,

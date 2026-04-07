@@ -286,9 +286,14 @@ All wrongs reserved.
           if (hexTest) textColor = `#${hexTest[1]}`;
         }
 
-        const guildMember = await message.guild.members.fetch(referencedMessage.author.id);
         const person = referencedMessage.author;
-        const nickname = guildMember.nickname || person.username;
+        let nickname: string;
+        if (referencedMessage.webhookId) {
+          nickname = referencedMessage.author.username;
+        } else {
+          const guildMember = await message.guild.members.fetch(referencedMessage.author.id);
+          nickname = guildMember.nickname || person.username;
+        }
         const originalMessage = referencedMessage.content;
 
         log(`original message: ${originalMessage}`);

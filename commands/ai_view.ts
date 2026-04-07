@@ -38,7 +38,7 @@ class AiView extends Command {
         const date = new Date(s.createdAt).toLocaleDateString('en-GB', {
           year: 'numeric', month: 'short', day: 'numeric',
         });
-        return `**[${s.sessionId}]** ${s.personaName} · ${status} · ${messageCount} ${messageLabel} · Created ${date}`;
+        return `**[${s.sessionId}]** ${s.title || s.personaName} · ${status} · ${messageCount} ${messageLabel} · Created ${date}`;
       });
 
       const description = rows.join('\n')

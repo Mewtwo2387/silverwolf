@@ -466,10 +466,20 @@ async function quote(
       }
     } catch (error) {
       logError('Failed to fetch server avatar:', error);
-      pfp = _person.displayAvatarURL({ extension: 'png', size: 512 });
+      if (typeof _person.displayAvatarURL === 'function') {
+        pfp = _person.displayAvatarURL({ extension: 'png', size: 512 });
+      } else if (_person.avatar) {
+        pfp = `https://cdn.discordapp.com/avatars/${_person.id}/${_person.avatar}.png?size=512`;
+      } else {
+        pfp = `https://cdn.discordapp.com/embed/avatars/${Number(_person.id) % 5}.png`;
+      }
     }
-  } else {
+  } else if (typeof _person.displayAvatarURL === 'function') {
     pfp = _person.displayAvatarURL({ extension: 'png', size: 512 });
+  } else if (_person.avatar) {
+    pfp = `https://cdn.discordapp.com/avatars/${_person.id}/${_person.avatar}.png?size=512`;
+  } else {
+    pfp = `https://cdn.discordapp.com/embed/avatars/${Number(_person.id) % 5}.png`;
   }
 
   // ── Canvas Setup ──────────────────────────────────────────────────────────
