@@ -21,7 +21,23 @@ export interface CharacterImagePanelConfig extends ImagePanelOptions {
 }
 
 /**
- * Helper to create a character with named parameters for better readability
+ * Create a Character using a single named-parameters object for clarity.
+ *
+ * Constructs and returns a Character configured from the provided parameters.
+ * - `titleColor` defaults to `#777777` when not provided.
+ * - `background` defaults to a simple gradient background when not provided.
+ * - `skills` and `abilities` default to empty arrays when not provided.
+ * - `imagePanel.imagePath` is forwarded as the ImagePanel source; the full `imagePanel` options are passed to the ImagePanel constructor.
+ *
+ * @param params - Configuration object for the character
+ * @param params.titleColor - Optional color for the title text; defaults to `#777777`
+ * @param params.imagePanel - Image panel configuration; `imagePath` (if present) is used as the image source
+ * @param params.background - Optional Background; if omitted a simple gradient background is used
+ * @param params.skills - Optional list of Skills; defaults to an empty array
+ * @param params.abilities - Optional list of Abilities; defaults to an empty array
+ * @param params.defaultForm - Optional array of skill indices available in the character's default form
+ * @param params.textColors - Optional partial CharacterTextColors forwarded to the Character
+ * @returns The constructed Character instance
  */
 export function createCharacter(params: {
   name: string;
@@ -142,7 +158,13 @@ export function createRangeEffect(
 }
 
 /**
- * Helper to create an ability with effect pairs
+ * Construct an ability composed of one or more ability-effect pairs.
+ *
+ * @param params.name - The ability's display name
+ * @param params.description - A short description of the ability's effect
+ * @param params.effects - An array of ability-effect pairs that define the ability's applied effects and their ranges/activation conditions
+ * @param params.panelColor - Optional hex color used for the ability's UI panel
+ * @returns The created Ability instance
  */
 export function createAbility(params: {
   name: string;

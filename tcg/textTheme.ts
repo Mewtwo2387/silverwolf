@@ -48,6 +48,12 @@ export const DEFAULT_CHARACTER_TEXT_COLORS: CharacterTextColors = {
   abilityDescStroke: '#1F1F1F',
 };
 
+/**
+ * Produce a complete CharacterTextColors object by applying any provided overrides to the defaults.
+ *
+ * @param textColors - Partial overrides for the default character text color values
+ * @returns A `CharacterTextColors` object with default values overridden by properties from `textColors` where provided
+ */
 export function resolveCharacterTextColors(
   textColors?: Partial<CharacterTextColors>,
 ): CharacterTextColors {
