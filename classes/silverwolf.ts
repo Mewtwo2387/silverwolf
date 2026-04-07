@@ -17,6 +17,7 @@ import scriptHandlers from './handlers/keywordsBehaviorHandler';
 import quoteDefault from '../utils/quote';
 
 const FONT_INDEX: string[] = (quoteDefault as any).FONT_INDEX;
+const MAX_MESSAGE_HISTORY = 100;
 
 const handlers: Record<string, any> = {
   ChristmasHandler,
@@ -371,7 +372,7 @@ All wrongs reserved.
       repliedMessageContent,
       repliedMessageAuthor,
     });
-    if (this.deletedMessages.length > 100) this.deletedMessages.length = 100;
+    if (this.deletedMessages.length > MAX_MESSAGE_HISTORY) this.deletedMessages.length = MAX_MESSAGE_HISTORY;
   }
 
   processEdit(oldMessage: any, newMessage: any): void {
@@ -387,7 +388,7 @@ All wrongs reserved.
 
     log(`> Message edited by ${oldMessage.author.username} (${oldMessage.author.id}) in ${oldMessage.channel.name} (${oldMessage.channel.id}) in ${oldMessage.guild.name} (${oldMessage.guild.id}): ${oldMessage.content} -> ${newMessage.content}`);
     this.editedMessages.unshift({ old: oldMessage, new: newMessage });
-    if (this.editedMessages.length > 100) this.editedMessages.length = 100;
+    if (this.editedMessages.length > MAX_MESSAGE_HISTORY) this.editedMessages.length = MAX_MESSAGE_HISTORY;
   }
 
   async registerCommands(clientId: string | undefined): Promise<void> {
