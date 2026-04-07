@@ -52,4 +52,4 @@ COPY --chown=bun:bun . .
 # Refresh font cache
 RUN fc-cache -f
 
-CMD ["bun", "index.js"]
+CMD ["bun", "index.ts"]

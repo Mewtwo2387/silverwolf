@@ -77,7 +77,7 @@ export class TitleDesc implements DrawableBlock {
     );
 
     // Convert hex color to RGB and create translucent versions
-    const hexToRgb = (hex) => {
+    const hexToRgb = (hex: string) => {
       const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
       return result ? {
         r: parseInt(result[1], 16),

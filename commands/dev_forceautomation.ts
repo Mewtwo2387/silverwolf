@@ -1,0 +1,37 @@
+import { DevCommand } from './classes/DevCommand';
+
+class ForceAutomation extends DevCommand {
+  constructor(client: any) {
+    super(client, 'forceautomation', 'force a baby task', [
+      {
+        name: 'frequency',
+        description: 'the frequency of the automation',
+        type: 3,
+        required: true,
+        choices: [
+          { name: 'daily', value: 'daily' },
+          { name: 'ten_minutes', value: 'ten_minutes' },
+        ],
+      },
+    ], { ephemeral: true, isSubcommandOf: 'dev', blame: 'ei' });
+  }
+
+  async run(interaction: any): Promise<void> {
+    const frequency = interaction.options.getString('frequency');
+    switch (frequency) {
+      case 'daily':
+        await this.client.babyScheduler.dailyAutomations();
+        interaction.editReply('Daily automations forced');
+        break;
+      case 'ten_minutes':
+        await this.client.babyScheduler.tenMinuteAutomations();
+        interaction.editReply('Ten minute automations forced');
+        break;
+      default:
+        interaction.editReply('Invalid frequency');
+        break;
+    }
+  }
+}
+
+export default ForceAutomation;

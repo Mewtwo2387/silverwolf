@@ -19,7 +19,7 @@
     "linebreak-style": "off",
     "class-methods-use-this": "off",
     "import/no-extraneous-dependencies": ["error", {
-      "devDependencies": ["**/*.test.js", "**/*.spec.js", "tests/**/*.js"]
+      "devDependencies": ["**/*.test.js", "**/*.spec.js", "tests/**/*.js", "**/*.test.ts", "**/*.spec.ts", "tests/**/*.ts"]
     }],
     "node/no-unpublished-require": ["error", {
       "allowModules": ["jest", "@jest/globals"]
@@ -46,10 +46,62 @@
       "version": ">=18.0.0"
     }]
   },
+  "overrides": [
+    {
+      "files": ["**/*.ts", "**/*.tsx"],
+      "parser": "@typescript-eslint/parser",
+      "parserOptions": {
+        "ecmaVersion": "latest",
+        "sourceType": "module"
+      },
+      "plugins": ["@typescript-eslint"],
+      "extends": [
+        "plugin:@typescript-eslint/recommended"
+      ],
+      "rules": {
+        "no-console": "off",
+        "linebreak-style": "off",
+        "class-methods-use-this": "off",
+        "max-len": ["error", {
+          "code": 120,
+          "ignoreComments": true,
+          "ignoreStrings": true,
+          "ignoreTemplateLiterals": true
+        }],
+
+        "node/no-unsupported-features/es-syntax": "off",
+        "node/no-missing-import": "off",
+        "node/no-unpublished-require": "off",
+        "import/no-unresolved": "off",
+        "import/extensions": "off",
+        "import/no-extraneous-dependencies": ["error", {
+          "devDependencies": ["**/*.test.ts", "**/*.spec.ts", "tests/**/*.ts"]
+        }],
+
+        "@typescript-eslint/no-explicit-any": "off",
+        "@typescript-eslint/no-require-imports": "off",
+        "@typescript-eslint/no-unused-vars": ["error", {
+          "argsIgnorePattern": "^_",
+          "varsIgnorePattern": "^_",
+          "caughtErrorsIgnorePattern": "^_"
+        }],
+
+        "lines-between-class-members": "off",
+        "no-underscore-dangle": ["error", { "allow": ["_id", "_require"] }],
+        "no-await-in-loop": "off",
+        "no-restricted-syntax": "off",
+        "no-continue": "off",
+        "import/prefer-default-export": "off",
+        "prefer-destructuring": "off",
+        "promise/always-return": "off",
+        "promise/catch-or-return": "off"
+      }
+    }
+  ],
   "ignorePatterns": [
     "node_modules/",
     "coverage/",
     "dist/",
     ".git/"
   ]
-} 
+}
