@@ -11,10 +11,65 @@ import {
   createAbilityEffect,
   createSimpleBackground,
 } from './characterBuilder';
+import { ImagePanelMode } from './imagePanel';
 
 /**
  * A list of all characters in the game
  */
+
+const FAIRY_TEXT_COLORS = {
+  nameFill: '#FFF6F9',
+  nameStroke: '#3A1323',
+  hpLabelFill: '#FFD8EC',
+  hpLabelStroke: '#3A1323',
+  hpValueFill: '#FFFFFF',
+  hpValueStroke: '#2B1020',
+  titleFill: '#FFE5F2',
+  titleStroke: '#2E1320',
+  titleDescFill: '#FFF9FD',
+  titleDescStroke: '#23111A',
+  skillNameFill: '#FFE0F0',
+  skillNameStroke: '#2E1320',
+  skillDamageFill: '#FFFFFF',
+  skillDamageStroke: '#2B1020',
+  skillCostFill: '#FFEFFF',
+  skillCostStroke: '#2B1636',
+  skillDescFill: '#FFFFFF',
+  skillDescStroke: '#221824',
+  abilityNameFill: '#FFE0F0',
+  abilityNameStroke: '#2E1320',
+  abilityDescFill: '#FFFFFF',
+  abilityDescStroke: '#221824',
+};
+
+const FAIRY_ABILITY_PANEL_COLOR = '#D5ABB2';
+
+const QUANTUM_TEXT_COLORS = {
+  nameFill: '#EDE2FF',
+  nameStroke: '#1A123A',
+  hpLabelFill: '#D7CCFF',
+  hpLabelStroke: '#1A123A',
+  hpValueFill: '#F8F3FF',
+  hpValueStroke: '#16122D',
+  titleFill: '#E5D8FF',
+  titleStroke: '#1B1433',
+  titleDescFill: '#F8F3FF',
+  titleDescStroke: '#1A1730',
+  skillNameFill: '#E3D5FF',
+  skillNameStroke: '#1B1433',
+  skillDamageFill: '#FDFBFF',
+  skillDamageStroke: '#16122D',
+  skillCostFill: '#CDE8FF',
+  skillCostStroke: '#18223D',
+  skillDescFill: '#F9F5FF',
+  skillDescStroke: '#1A1730',
+  abilityNameFill: '#E3D5FF',
+  abilityNameStroke: '#1B1433',
+  abilityDescFill: '#F9F5FF',
+  abilityDescStroke: '#1A1730',
+};
+
+const QUANTUM_ABILITY_PANEL_COLOR = '#5539CC';
 
 export const KAITLIN = createCharacter({
   name: 'Kaitlin',
@@ -23,8 +78,12 @@ export const KAITLIN = createCharacter({
   rarity: 6,
   hp: 100,
   element: Element.Fairy,
-  image: './tcg/assets/characters/kaitlin.png',
+  imagePanel: {
+    imagePath: './tcg/assets/characters/kaitlin.png',
+    mode: ImagePanelMode.Crop,
+  },
   background: createSimpleBackground('#D5ABB2', '#B76E79'),
+  textColors: FAIRY_TEXT_COLORS,
   skills: [
     createSkill({
       name: 'Unlimited Doge Works',
@@ -61,6 +120,7 @@ export const KAITLIN = createCharacter({
     createAbility({
       name: 'Coincidence? I Think Not.',
       description: 'Deals 15/40% more damage when there are 1/2 allies with name starting in "V".',
+      panelColor: FAIRY_ABILITY_PANEL_COLOR,
       effects: [
         createAbilityEffect({
           range: RangeType.Self,
@@ -99,8 +159,13 @@ export const VENFEI = createCharacter({
   rarity: 6,
   hp: 80,
   element: Element.Fairy,
-  image: '',
+  imagePanel: {
+    mode: ImagePanelMode.Background,
+    backgroundColor: '#FFFFFF',
+    imagePath: './tcg/assets/characters/venfei.png',
+  },
   background: createSimpleBackground('#D5ABB2', '#B76E79'),
+  textColors: FAIRY_TEXT_COLORS,
   skills: [
     createSkill({
       name: 'h',
@@ -136,8 +201,13 @@ export const EI = createCharacter({
   rarity: 6,
   hp: 100,
   element: Element.Quantum,
-  image: '',
+  imagePanel: {
+    mode: ImagePanelMode.Background,
+    backgroundColor: '#49497d',
+    imagePath: './tcg/assets/characters/ei.png',
+  },
   background: createSimpleBackground('#5539CC', '#332266'),
+  textColors: QUANTUM_TEXT_COLORS,
   skills: [
     createSkill({
       name: 'Plap',
@@ -169,6 +239,7 @@ export const EI = createCharacter({
     createAbility({
       name: 'I love all my quantum girls',
       description: 'Deals 15/40% more damage when there are 1/2 quantum allies',
+      panelColor: QUANTUM_ABILITY_PANEL_COLOR,
       effects: [
         createAbilityEffect({
           range: RangeType.Self,
@@ -206,8 +277,12 @@ export const SILVERWOLF = createCharacter({
   rarity: 6,
   hp: 80,
   element: Element.Quantum,
-  image: '',
+  imagePanel: {
+    imagePath: './tcg/assets/characters/silverwolf.jpg',
+    mode: ImagePanelMode.Crop,
+  },
   background: createSimpleBackground('#5539CC', '#332266'),
+  textColors: QUANTUM_TEXT_COLORS,
   skills: [
     createSkill({
       name: 'System Warning',
@@ -289,6 +364,7 @@ export const SILVERWOLF = createCharacter({
       return createAbility({
         name: 'Awaiting System Response...',
         description: "After attacking an opponent, implants one of the following three effects on them for 3 turns: increases incoming damage by 10%, decreases outgoing damage by 10%, or decreases energy gain by 10%.",
+        panelColor: QUANTUM_ABILITY_PANEL_COLOR,
         effects: [
           createAbilityEffect({
             range: RangeType.SingleOpponent,
@@ -339,8 +415,13 @@ export const SPARKLE = createCharacter({
   rarity: 6,
   hp: 80,
   element: Element.Quantum,
-  image: '',
+  imagePanel: {
+    mode: ImagePanelMode.Background,
+    backgroundColor: '#000000',
+    imagePath: './tcg/assets/characters/sparkle.jpg',
+  },
   background: createSimpleBackground('#5539CC', '#332266'),
+  textColors: QUANTUM_TEXT_COLORS,
   skills: [
     createSkill({
       name: 'Monodrama',
@@ -389,6 +470,7 @@ export const SPARKLE = createCharacter({
     createAbility({
       name: 'Red Herring',
       description: 'Increases energy gain of all allies by 20%.',
+      panelColor: QUANTUM_ABILITY_PANEL_COLOR,
       effects: [
         createAbilityEffect({
           range: RangeType.AllAllies,

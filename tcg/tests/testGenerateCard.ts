@@ -1,10 +1,12 @@
 import fs from 'fs';
-import { KAITLIN } from '../characters';
+import { CHARACTERS } from '../characters';
 
 async function testGenerateCard() {
-  const canvas = await KAITLIN.generateCard();
-  const buffer = canvas.toBuffer('image/png') as Buffer;
-  fs.writeFileSync('./tcg/assets/cards/kaitlin.png', buffer);
+  for (const character of CHARACTERS) {
+    const canvas = await character.generateCard();
+    const buffer = canvas.toBuffer('image/png') as Buffer;
+    fs.writeFileSync(`./tcg/assets/cards/${character.name.toLowerCase().replace(/\s+/g, '_')}.png`, buffer);
+  }
 }
 
 testGenerateCard().catch((error) => {

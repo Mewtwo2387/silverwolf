@@ -1,6 +1,8 @@
 import Canvas from 'canvas';
-import { wrapText, calculateWrappedTextHeight, drawWrappedText } from './utils/textWrapper';
+import { wrapText, calculateWrappedTextHeight } from './utils/textWrapper';
 import { DrawableBlock } from './interfaces/drawable';
+import { drawWrappedTcgText } from './utils/tcgTextStyle';
+import { CharacterTextColors, DEFAULT_CHARACTER_TEXT_COLORS } from './textTheme';
 
 /**
  * The title and description of a character.
@@ -20,13 +22,15 @@ export class TitleDesc implements DrawableBlock {
     this.color = color;
   }
 
-  async draw(ctx: Canvas.CanvasRenderingContext2D, y: number): Promise<number> {
+  async draw(ctx: Canvas.CanvasRenderingContext2D, y: number, textColors: CharacterTextColors = DEFAULT_CHARACTER_TEXT_COLORS): Promise<number> {
     let currentY = y;
 
     // Set up text wrapping parameters
     const maxTextWidth = 800; // Maximum width for text wrapping
     const titleLineHeight = 48;
     const descLineHeight = 32;
+    const topTextPadding = 6;
+    const titleToDescSpacing = 10;
 
     // Wrap text
     ctx.font = '48px "Bahnschrift"';
@@ -38,20 +42,37 @@ export class TitleDesc implements DrawableBlock {
     // Calculate total height needed
     const titleHeight = calculateWrappedTextHeight(titleLines, titleLineHeight);
     const descHeight = calculateWrappedTextHeight(descLines, descLineHeight);
-    const totalTextHeight = titleHeight + descHeight + 16; // 16px spacing between title and description
+    const totalTextHeight = topTextPadding + titleHeight + titleToDescSpacing + descHeight;
 
-    // Trapezium dimensions - now dynamic based on text height
-    const trapeziumHeight = Math.max(100, totalTextHeight + 40); // Minimum 100px, or text height + padding
-    const trapeziumTopWidth = maxTextWidth + 128; // Text width + padding
-    const trapeziumBottomWidth = trapeziumTopWidth + 64; // Slightly wider at bottom
-    const trapeziumLeft = 32; // Starting position
-    const trapeziumTop = currentY - 40; // Position above the text
+    // Trapezium dimensions
+    const trapeziumHeight = Math.max(104, totalTextHeight + 44);
+    const trapeziumTopWidth = maxTextWidth + 120;
+    const trapeziumBottomWidth = trapeziumTopWidth + 56;
+    const trapeziumLeft = 32;
+    const trapeziumTop = currentY - 42;
+    const cornerRadius = 22;
+    const rightTop = trapeziumLeft + trapeziumTopWidth;
+    const rightBottom = trapeziumLeft + trapeziumBottomWidth;
+
+    const drawTrapeziumPath = () => {
+      ctx.beginPath();
+      ctx.moveTo(trapeziumLeft + cornerRadius, trapeziumTop);
+      ctx.lineTo(rightTop - cornerRadius, trapeziumTop);
+      ctx.quadraticCurveTo(rightTop, trapeziumTop, rightTop + (cornerRadius * 0.75), trapeziumTop + cornerRadius);
+      ctx.lineTo(rightBottom, trapeziumTop + trapeziumHeight - cornerRadius);
+      ctx.quadraticCurveTo(rightBottom, trapeziumTop + trapeziumHeight, rightBottom - cornerRadius, trapeziumTop + trapeziumHeight);
+      ctx.lineTo(trapeziumLeft + cornerRadius, trapeziumTop + trapeziumHeight);
+      ctx.quadraticCurveTo(trapeziumLeft, trapeziumTop + trapeziumHeight, trapeziumLeft, trapeziumTop + trapeziumHeight - cornerRadius);
+      ctx.lineTo(trapeziumLeft, trapeziumTop + cornerRadius);
+      ctx.quadraticCurveTo(trapeziumLeft, trapeziumTop, trapeziumLeft + cornerRadius, trapeziumTop);
+      ctx.closePath();
+    };
 
     // Create gradient for trapezium using this.color
     const gradient = ctx.createLinearGradient(
       trapeziumLeft,
       trapeziumTop,
-      trapeziumLeft + trapeziumBottomWidth,
+      trapeziumLeft,
       trapeziumTop + trapeziumHeight,
     );
 
@@ -67,44 +88,83 @@ export class TitleDesc implements DrawableBlock {
 
     const rgb = hexToRgb(this.color);
     if (rgb) {
-      gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.8)`); // Translucent at top
-      gradient.addColorStop(0.5, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.5)`); // More translucent in middle
-      gradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.2)`); // Most translucent at bottom
+      gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.92)`);
+      gradient.addColorStop(0.55, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.68)`);
+      gradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.34)`);
     } else {
       // Fallback to original gray colors if color parsing fails
-      gradient.addColorStop(0, 'rgba(240, 240, 240, 0.8)');
-      gradient.addColorStop(0.5, 'rgba(220, 220, 220, 0.5)');
-      gradient.addColorStop(1, 'rgba(200, 200, 200, 0.2)');
+      gradient.addColorStop(0, 'rgba(245, 245, 245, 0.9)');
+      gradient.addColorStop(0.55, 'rgba(225, 225, 225, 0.65)');
+      gradient.addColorStop(1, 'rgba(205, 205, 205, 0.34)');
     }
+
+    // Draw panel drop shadow first so the panel pops from the background
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.28)';
+    ctx.shadowBlur = 20;
+    ctx.shadowOffsetY = 7;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+    drawTrapeziumPath();
+    ctx.fill();
+    ctx.restore();
 
     // Draw trapezium container with gradient
     ctx.fillStyle = gradient;
-    ctx.strokeStyle = 'rgba(51, 51, 51, 0.7)'; // Semi-transparent dark border
-    ctx.lineWidth = 2;
-
-    ctx.beginPath();
-    ctx.moveTo(trapeziumLeft, trapeziumTop);
-    ctx.lineTo(trapeziumLeft + trapeziumTopWidth, trapeziumTop);
-    ctx.lineTo(trapeziumLeft + trapeziumBottomWidth, trapeziumTop + trapeziumHeight);
-    ctx.lineTo(trapeziumLeft, trapeziumTop + trapeziumHeight);
-    ctx.closePath();
-
+    ctx.strokeStyle = 'rgba(32, 32, 32, 0.75)';
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    drawTrapeziumPath();
     ctx.fill();
     ctx.stroke();
 
-    // Draw title on top of trapezium
-    ctx.font = '48px "Bahnschrift"';
-    ctx.fillStyle = '#000000';
-    ctx.textAlign = 'left';
-    drawWrappedText(ctx, titleLines, 64, currentY, titleLineHeight);
+    // Add a soft glossy band near the top for extra depth
+    const glossGradient = ctx.createLinearGradient(
+      trapeziumLeft,
+      trapeziumTop,
+      trapeziumLeft,
+      trapeziumTop + (trapeziumHeight * 0.48),
+    );
+    glossGradient.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+    glossGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.18)');
+    glossGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
 
-    currentY += titleHeight + 16; // Add spacing between title and description
+    ctx.save();
+    drawTrapeziumPath();
+    ctx.clip();
+    ctx.fillStyle = glossGradient;
+    ctx.fillRect(trapeziumLeft, trapeziumTop, trapeziumBottomWidth + 8, trapeziumHeight * 0.52);
+    ctx.restore();
+
+    // Thin inner highlight so edges read cleaner against busy backgrounds
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.34)';
+    ctx.lineWidth = 1.1;
+    drawTrapeziumPath();
+    ctx.stroke();
+
+    // Draw title on top of trapezium
+    drawWrappedTcgText(ctx, titleLines, 64, currentY + topTextPadding, titleLineHeight, {
+      font: '700 48px "Bahnschrift"',
+      fillStyle: textColors.titleFill,
+      strokeStyle: textColors.titleStroke,
+      lineWidth: 4,
+      textAlign: 'left',
+      shadowBlur: 8,
+      shadowOffsetY: 2,
+    });
+
+    currentY += topTextPadding + titleHeight + titleToDescSpacing;
 
     // Draw description on top of trapezium
-    ctx.font = '32px "Bahnschrift"';
-    ctx.fillStyle = '#000000';
-    ctx.textAlign = 'left';
-    drawWrappedText(ctx, descLines, 64, currentY, descLineHeight);
+    drawWrappedTcgText(ctx, descLines, 64, currentY, descLineHeight, {
+      font: '600 32px "Bahnschrift"',
+      fillStyle: textColors.titleDescFill,
+      strokeStyle: textColors.titleDescStroke,
+      lineWidth: 3,
+      textAlign: 'left',
+      shadowBlur: 4,
+      shadowOffsetY: 1,
+    });
 
     currentY += descHeight + 32; // Add padding at bottom
 

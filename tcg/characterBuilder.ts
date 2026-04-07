@@ -13,6 +13,12 @@ import { Effect } from './effect';
 import { EffectType } from './effectType';
 import { RangeType } from './rangeType';
 import { Element } from './element';
+import { CharacterTextColors } from './textTheme';
+import { ImagePanel, ImagePanelOptions } from './imagePanel';
+
+export interface CharacterImagePanelConfig extends ImagePanelOptions {
+  imagePath?: string;
+}
 
 /**
  * Helper to create a character with named parameters for better readability
@@ -25,11 +31,12 @@ export function createCharacter(params: {
   rarity: number;
   hp: number;
   element: Element;
-  image: string;
+  imagePanel: CharacterImagePanelConfig;
   background?: Background;
   skills?: Skill[];
   abilities?: Ability[];
   defaultForm?: number[]; // skill indices available in default form
+  textColors?: Partial<CharacterTextColors>;
 }): Character {
   const titleDesc = new TitleDesc(
     params.title,
@@ -45,11 +52,12 @@ export function createCharacter(params: {
     new Rarity(params.rarity),
     params.hp,
     params.element,
-    params.image,
+    new ImagePanel(params.imagePanel.imagePath, params.imagePanel),
     background,
     params.skills || [],
     params.abilities || [],
-    params.defaultForm
+    params.defaultForm,
+    params.textColors
   );
 }
 
@@ -140,8 +148,9 @@ export function createAbility(params: {
   name: string;
   description: string;
   effects: AbilityEffectPair[];
+  panelColor?: string;
 }): Ability {
-  return new Ability(params.name, params.description, params.effects);
+  return new Ability(params.name, params.description, params.effects, params.panelColor);
 }
 
 /**

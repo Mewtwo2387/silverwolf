@@ -7,6 +7,9 @@ import { Skill } from './skill';
 import { Ability } from './ability';
 import { Card } from './interfaces/card';
 import { Element } from './element';
+import { drawTcgText } from './utils/tcgTextStyle';
+import { CharacterTextColors, resolveCharacterTextColors } from './textTheme';
+import { ImagePanel } from './imagePanel';
 
 /**
  * A single character card and their stats
@@ -15,7 +18,7 @@ import { Element } from './element';
  * @param rarity - The rarity of the character
  * @param hp - Max HP of the character
  * @param element - The type/element of the character
- * @param image - Character image used for generating the card
+ * @param imagePanel - Character image panel used for generating the card
  * @param background - Background used for generating the card
  * @param skills - A list of skills the character can use
  * @param abilities - A list of passive abilities the character has
@@ -27,23 +30,25 @@ export class Character implements Card {
   rarity: Rarity;
   hp: number;
   element: Element;
-  image: string;
+  imagePanel: ImagePanel;
   background: Background;
   skills: Skill[];
   abilities: Ability[];
   defaultActiveSkillIndices?: number[];
+  textColors: CharacterTextColors;
 
-  constructor(name: string, titleDesc: TitleDesc, rarity: Rarity, hp: number, element: Element, image: string, background: Background, skills: Skill[] = [], abilities: Ability[] = [], defaultActiveSkillIndices?: number[]) {
+  constructor(name: string, titleDesc: TitleDesc, rarity: Rarity, hp: number, element: Element, imagePanel: ImagePanel, background: Background, skills: Skill[] = [], abilities: Ability[] = [], defaultActiveSkillIndices?: number[], textColors?: Partial<CharacterTextColors>) {
     this.name = name;
     this.titleDesc = titleDesc;
     this.rarity = rarity;
     this.hp = hp;
     this.element = element;
-    this.image = image;
+    this.imagePanel = imagePanel;
     this.background = background;
     this.skills = skills;
     this.abilities = abilities;
     this.defaultActiveSkillIndices = defaultActiveSkillIndices;
+    this.textColors = resolveCharacterTextColors(textColors);
   }
 
   async generateCard() {
@@ -63,40 +68,48 @@ export class Character implements Card {
     }
 
     // Draw HP on the rightmost side
-    ctx.font = '48px "Bahnschrift"';
-    ctx.fillStyle = '#000000';
-    ctx.textAlign = 'right';
-    ctx.fillText(`HP:`, 1048, 32);
+    drawTcgText(ctx, 'HP', 1048, 46, {
+      font: '700 44px "Bahnschrift"',
+      fillStyle: this.textColors.hpLabelFill,
+      strokeStyle: this.textColors.hpLabelStroke,
+      lineWidth: 5,
+      textAlign: 'right',
+      shadowBlur: 8,
+      shadowOffsetY: 3,
+    });
 
-    ctx.font = '64px "Bahnschrift"';
-    ctx.fillStyle = '#000000';
-    ctx.textAlign = 'right';
-    ctx.fillText(`${this.hp}`, 1048, 96);
+    drawTcgText(ctx, `${this.hp}`, 1048, 104, {
+      font: '700 64px "Bahnschrift"',
+      fillStyle: this.textColors.hpValueFill,
+      strokeStyle: this.textColors.hpValueStroke,
+      lineWidth: 6,
+      textAlign: 'right',
+      shadowBlur: 10,
+      shadowOffsetY: 3,
+    });
 
     await this.rarity.draw(ctx);
 
-    ctx.font = '96px "Bahnschrift"';
-    ctx.fillStyle = '#000000';
-    ctx.textAlign = 'left';
-    ctx.fillText(this.name, 144, 96);
+    drawTcgText(ctx, this.name.toUpperCase(), 144, 96, {
+      font: '700 90px "Bahnschrift"',
+      fillStyle: this.textColors.nameFill,
+      strokeStyle: this.textColors.nameStroke,
+      lineWidth: 7,
+      textAlign: 'left',
+      shadowBlur: 12,
+      shadowOffsetY: 4,
+    });
 
-    let currentY = await this.titleDesc.draw(ctx, 192);
+    let currentY = await this.titleDesc.draw(ctx, 192, this.textColors);
 
-    // Draw image and background
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(64, currentY, 956, 512);
-
-    const image = await Canvas.loadImage(this.image);
-    ctx.drawImage(image, 64, currentY, 956, 512);
-
-    currentY += 512 + 96;
+    currentY = await this.imagePanel.draw(ctx, currentY);
 
     for (const skill of this.skills) {
-      currentY = await skill.draw(ctx, currentY);
+      currentY = await skill.draw(ctx, currentY, this.textColors);
     }
 
     for (const ability of this.abilities) {
-      currentY = await ability.draw(ctx, currentY);
+      currentY = await ability.draw(ctx, currentY, this.textColors);
     }
 
     return canvas;

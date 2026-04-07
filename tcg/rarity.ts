@@ -17,14 +17,25 @@ export class Rarity implements DrawableFixed {
   }
 
   async draw(ctx: Canvas.CanvasRenderingContext2D): Promise<void> {
-    const starSize = 64;
-    const starSpacing = 16;
+    const topBarHeight = 128;
+    const starSize = 42;
+    const starSpacing = 6;
     const star = await Canvas.loadImage('./tcg/assets/common/star.png');
     let x = 1080 - 128 - starSize - starSpacing;
-    const y = 32;
+    const y = (topBarHeight - starSize) / 2;
+
+    // Add a soft golden glow around stars
+    ctx.save();
+    ctx.shadowColor = 'rgba(255, 215, 120, 0.9)';
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+
     for (let i = 0; i < this.rarity; i += 1) {
       ctx.drawImage(star, x, y, starSize, starSize);
       x -= starSize + starSpacing;
     }
+
+    ctx.restore();
   }
 }
