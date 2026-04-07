@@ -19,6 +19,7 @@ class Handler {
       return cachedMembers.members;
     }
 
+    Handler.guildMemberCache.delete(guildId);
     const members = await message.guild.members.fetch();
     Handler.guildMemberCache.set(guildId, { fetchedAt: now, members });
     return members;

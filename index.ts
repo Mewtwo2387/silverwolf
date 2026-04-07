@@ -1,4 +1,4 @@
-import { GatewayIntentBits } from 'discord.js';
+import { GatewayIntentBits, Options, Sweepers } from 'discord.js';
 import { log, logError } from './utils/log';
 import { Silverwolf } from './classes/silverwolf';
 
@@ -21,6 +21,22 @@ const silverwolf = new Silverwolf(TOKEN, {
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
   ],
+  makeCache: Options.cacheWithLimits({
+    ...Options.DefaultMakeCacheSettings,
+    MessageManager: 50,
+    GuildMemberManager: 200,
+  }),
+  sweepers: {
+    ...Options.DefaultSweeperSettings,
+    messages: {
+      interval: 300,
+      lifetime: 1800,
+    },
+    guildMembers: {
+      interval: 300,
+      filter: Sweepers.filterByLifetime({ lifetime: 3600 }),
+    },
+  },
 });
 
 silverwolf.login().then(() => silverwolf.registerCommands(CLIENT_ID));

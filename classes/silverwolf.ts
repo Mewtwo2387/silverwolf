@@ -371,6 +371,7 @@ All wrongs reserved.
       repliedMessageContent,
       repliedMessageAuthor,
     });
+    if (this.deletedMessages.length > 100) this.deletedMessages.length = 100;
   }
 
   processEdit(oldMessage: any, newMessage: any): void {
@@ -386,6 +387,7 @@ All wrongs reserved.
 
     log(`> Message edited by ${oldMessage.author.username} (${oldMessage.author.id}) in ${oldMessage.channel.name} (${oldMessage.channel.id}) in ${oldMessage.guild.name} (${oldMessage.guild.id}): ${oldMessage.content} -> ${newMessage.content}`);
     this.editedMessages.unshift({ old: oldMessage, new: newMessage });
+    if (this.editedMessages.length > 100) this.editedMessages.length = 100;
   }
 
   async registerCommands(clientId: string | undefined): Promise<void> {
