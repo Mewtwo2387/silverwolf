@@ -160,7 +160,9 @@ export const VENFEI = createCharacter({
   hp: 80,
   element: Element.Fairy,
   imagePanel: {
-    mode: ImagePanelMode.None,
+    mode: ImagePanelMode.Background,
+    backgroundColor: '#FFFFFF',
+    imagePath: './tcg/assets/characters/venfei.png',
   },
   background: createSimpleBackground('#D5ABB2', '#B76E79'),
   textColors: FAIRY_TEXT_COLORS,
@@ -414,7 +416,9 @@ export const SPARKLE = createCharacter({
   hp: 80,
   element: Element.Quantum,
   imagePanel: {
-    mode: ImagePanelMode.None,
+    mode: ImagePanelMode.Background,
+    backgroundColor: '#000000',
+    imagePath: './tcg/assets/characters/sparkle.jpg',
   },
   background: createSimpleBackground('#5539CC', '#332266'),
   textColors: QUANTUM_TEXT_COLORS,
