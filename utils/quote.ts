@@ -7,6 +7,7 @@ Credits:
 
 import path from 'path';
 import Canvas, { type CanvasRenderingContext2D as CanvasCtx } from 'canvas';
+import type { APIUser } from 'discord-api-types/v10';
 import type { Guild, User } from 'discord.js';
 import { log, logError } from './log';
 
@@ -422,11 +423,24 @@ function fitNickname(
   return size;
 }
 
+// ─── Avatar URL Resolution ────────────────────────────────────────────────────
+
+function resolveAvatarUrl(person: User | APIUser): string {
+  if (typeof (person as User).displayAvatarURL === 'function') {
+    return (person as User).displayAvatarURL({ extension: 'png', size: 512 });
+  }
+  if (person.avatar) {
+    return `https://cdn.discordapp.com/avatars/${person.id}/${person.avatar}.png?size=512`;
+  }
+  const defaultIndex = (BigInt(person.id) >> 22n) % 6n;
+  return `https://cdn.discordapp.com/embed/avatars/${defaultIndex}.png`;
+}
+
 // ─── Main Quote Function ──────────────────────────────────────────────────────
 
 async function quote(
   guild: Guild,
-  _person: User,
+  _person: User | APIUser,
   _nickname: string | null,
   _message: string,
   _backgroundColor: string | null,
@@ -466,10 +480,10 @@ async function quote(
       }
     } catch (error) {
       logError('Failed to fetch server avatar:', error);
-      pfp = _person.displayAvatarURL({ extension: 'png', size: 512 });
+      pfp = resolveAvatarUrl(_person);
     }
   } else {
-    pfp = _person.displayAvatarURL({ extension: 'png', size: 512 });
+    pfp = resolveAvatarUrl(_person);
   }
 
   // ── Canvas Setup ──────────────────────────────────────────────────────────

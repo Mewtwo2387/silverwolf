@@ -49,6 +49,13 @@
       "systemPromptFile": "data/SummarizerSystemPrompt.txt"
     },
     {
+      "name": "TitleGen",
+      "triggers": [],
+      "provider": "openrouter",
+      "model": "openrouter/free",
+      "systemPrompt": "Generate a concise title of 5-10 words max summarizing the conversation topic. Output only the raw title text — no quotes, no prefixes, no punctuation at the end."
+    },
+    {
       "name": "Xiaomi",
       "triggers": [
         "@xiaomi"

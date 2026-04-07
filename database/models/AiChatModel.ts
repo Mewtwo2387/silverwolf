@@ -95,6 +95,14 @@ class AiChatModel {
   }
 
   /**
+   * Updates the generated title for a session.
+   */
+  async updateTitle(sessionId: number, title: string): Promise<void> {
+    await this.db.executeQuery(aiChatQueries.UPDATE_SESSION_TITLE, [title, sessionId]);
+    log(`AiChat: Updated title for session ${sessionId}`);
+  }
+
+  /**
    * Switches the active session for a user/persona to a specific session.
    * Deactivates all current sessions for that user/persona first, then activates the target.
    */

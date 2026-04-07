@@ -69,7 +69,7 @@ class PoopLog extends Command {
 
       const count = await this.client.db.poop.logPoop(userId, colour, size, type, duration);
 
-      await interaction.editReply(`Entry success! This is poop number **${count}**, keep poopin'! 💩`);
+      await interaction.editReply(`flushed🚽! This is poop number **${count}**, keep poopin'! 💩`);
     } catch (error) {
       logError('Failed to log poop:', error);
       await interaction.editReply('Failed to record your poop. Please try again.');

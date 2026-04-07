@@ -3,7 +3,7 @@ import {
   type TextChannel,
 } from 'discord.js';
 import { log, logError } from '../../utils/log';
-import { resolvePersona, generateContent } from '../../utils/ai';
+import { resolvePersona, generateContent, generateSessionTitle } from '../../utils/ai';
 
 const WEBHOOK_NAME = process.env.WEBHOOK_NAME || 'grok-webhook';
 
@@ -127,6 +127,7 @@ const scriptHandlers = {
 
     let aiSession = null;
     let history: any[] = [];
+    let historyLoaded = false;
     if (hasMemory) {
       try {
         aiSession = await (message.client as any).db.aiChat.getOrCreateSession(
@@ -134,6 +135,7 @@ const scriptHandlers = {
           displayName,
         );
         history = await (message.client as any).db.aiChat.getHistory(aiSession.sessionId, 30);
+        historyLoaded = true;
       } catch (histErr) {
         logError('AiChat: Failed to load history, proceeding without it:', histErr);
       }
@@ -226,6 +228,19 @@ const scriptHandlers = {
         try {
           await (message.client as any).db.aiChat.addHistory(aiSession.sessionId, 'user', prompt);
           await (message.client as any).db.aiChat.addHistory(aiSession.sessionId, aiRole, text);
+
+          if (historyLoaded && history.length === 0) {
+            (async () => {
+              try {
+                const title = await generateSessionTitle(prompt, text);
+                if (title) {
+                  await (message.client as any).db.aiChat.updateTitle(aiSession.sessionId, title);
+                }
+              } catch (titleErr) {
+                logError('AiChat: Failed to generate session title:', titleErr);
+              }
+            })();
+          }
         } catch (saveErr) {
           logError('AiChat: Failed to save history:', saveErr);
         }
