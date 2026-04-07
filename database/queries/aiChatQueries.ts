@@ -14,7 +14,7 @@ const aiChatQueries = {
     ORDER BY s.session_id DESC
   `,
   END_SESSION: 'UPDATE AiChatSession SET active = 0 WHERE session_id = ?',
-  UPDATE_SESSION_TITLE: 'UPDATE AiChatSession SET title = ? WHERE session_id = ?',
+  UPDATE_SESSION_TITLE: 'UPDATE AiChatSession SET title = ? WHERE session_id = ? AND title IS NULL',
   ACTIVATE_SESSION: 'UPDATE AiChatSession SET active = 1 WHERE session_id = ?',
   END_ALL_USER_PERSONA_SESSIONS: 'UPDATE AiChatSession SET active = 0 WHERE user_id = ? AND persona_name = ?',
 

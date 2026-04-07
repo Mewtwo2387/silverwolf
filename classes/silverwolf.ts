@@ -291,8 +291,8 @@ All wrongs reserved.
         if (referencedMessage.webhookId) {
           nickname = referencedMessage.author.username;
         } else {
-          const guildMember = await message.guild.members.fetch(referencedMessage.author.id);
-          nickname = guildMember.nickname || person.username;
+          const guildMember = await message.guild.members.fetch(referencedMessage.author.id).catch(() => null);
+          nickname = guildMember?.nickname || person.username;
         }
         const originalMessage = referencedMessage.content;
 

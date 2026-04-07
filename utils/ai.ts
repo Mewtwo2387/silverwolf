@@ -252,7 +252,13 @@ async function generateSessionTitle(userMessage: string, aiResponse: string): Pr
       ],
       max_tokens: 64,
     });
-    return completion.choices?.[0]?.message?.content?.trim() ?? null;
+    const raw = completion.choices?.[0]?.message?.content;
+    if (!raw) return null;
+    const normalized = raw.replace(/\s+/g, ' ').trim();
+    if (!normalized) return null;
+    const words = normalized.split(' ');
+    const clamped = words.length > 10 ? words.slice(0, 10).join(' ') : normalized;
+    return clamped.length > 80 ? clamped.slice(0, 80).trimEnd() : clamped;
   } catch {
     return null;
   }
