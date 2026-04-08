@@ -1,5 +1,6 @@
 import { DevCommand } from './classes/DevCommand';
 import { log } from '../utils/log';
+import { clearCachedAllowedServers } from '../utils/accessControl';
 
 class ServerRegister extends DevCommand {
   constructor(client: any) {
@@ -20,6 +21,7 @@ class ServerRegister extends DevCommand {
 
     servers.push(guildId);
     await this.client.db.globalConfig.setGlobalConfig('allowed_servers', servers.join(','));
+    clearCachedAllowedServers();
     log(`Registered server ${guildName} (${guildId}) to allowed_servers`);
 
     await interaction.editReply(`Server **${guildName}** (\`${guildId}\`) registered. Re-registering commands...`);

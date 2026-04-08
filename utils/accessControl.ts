@@ -4,7 +4,7 @@ import { PermissionsBitField, type ChatInputCommandInteraction } from 'discord.j
 const ALLOWED_USERS = process.env.ALLOWED_USERS!.split(',');
 const BASEMENT_ID = '969953667597893672';
 
-// Cache for DB-sourced allowed servers (refreshed on first use)
+// Cache for DB-sourced allowed servers (refreshed on first use or after mutations)
 let cachedAllowedServers: string[] | null = null;
 
 /**
@@ -15,7 +15,7 @@ async function loadAllowedServers(db: any): Promise<string[]> {
   try {
     const dbValue = await db.globalConfig.getGlobalConfig('allowed_servers');
     if (dbValue) {
-      const servers = dbValue.split(',');
+      const servers = dbValue.split(',').map((s: string) => s.trim()).filter(Boolean);
       cachedAllowedServers = servers;
       return servers;
     }
@@ -24,6 +24,14 @@ async function loadAllowedServers(db: any): Promise<string[]> {
   }
   cachedAllowedServers = [BASEMENT_ID];
   return [BASEMENT_ID];
+}
+
+/**
+ * Invalidates the cached allowed servers so the next isAllowedServer call
+ * will reload from DB. Call after register/unregister mutations.
+ */
+function clearCachedAllowedServers(): void {
+  cachedAllowedServers = null;
 }
 
 function isDev(interaction: ChatInputCommandInteraction): boolean {
@@ -50,4 +58,5 @@ export {
   isBasement,
   isAllowedServer,
   loadAllowedServers,
+  clearCachedAllowedServers,
 };

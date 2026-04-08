@@ -10,12 +10,12 @@ class BirthdayTest extends DevCommand {
   async execute(interaction: any): Promise<void> {
     const dbChannels = await this.client.db.globalConfig.getGlobalConfig('birthday_channels');
     const channelIds = dbChannels
-      ? dbChannels.split(',').map((id: string) => id.trim())
+      ? dbChannels.split(',').map((id: string) => id.trim()).filter(Boolean)
       : (process.env.BIRTHDAY_CHANNELS || '').split(',').map((id: string) => id.trim()).filter(Boolean);
     const successChannels: string[] = [];
     const failedChannels: string[] = [];
 
-    channelIds.forEach(async (channelId: string) => {
+    for (const channelId of channelIds) {
       const channel = this.client.channels.cache.get(channelId);
       if (channel) {
         try {
@@ -34,7 +34,7 @@ class BirthdayTest extends DevCommand {
         logError(`Channel ID ${channelId} is invalid or not found.`);
         failedChannels.push(channelId);
       }
-    });
+    }
 
     let resultMessage = 'Birthday Scheduler Channel Test Results:\n\n';
     if (successChannels.length > 0) {

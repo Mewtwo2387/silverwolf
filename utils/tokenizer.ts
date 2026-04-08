@@ -62,7 +62,10 @@ function getContextLimit(model: string): number {
 }
 
 // Reserve tokens for system prompt + new user message + response
-const RESERVED_TOKENS = 8_192;
+// Dynamic reserve: 10% of context, clamped between 1024 and 8192
+function computeReservedTokens(contextSize: number): number {
+  return Math.min(8_192, Math.max(1_024, Math.floor(contextSize * 0.1)));
+}
 
 /**
  * Trims history from the oldest messages to fit within the token budget.
@@ -76,7 +79,7 @@ async function trimHistoryToFit(
   newPrompt: string,
 ): Promise<{ trimmedHistory: typeof history; budget: TokenBudget; warnings: ContextWarning[] }> {
   const contextLimit = getContextLimit(model);
-  const availableForHistory = contextLimit - RESERVED_TOKENS;
+  const availableForHistory = contextLimit - computeReservedTokens(contextLimit);
 
   let systemTokens: number;
   let promptTokens: number;
@@ -95,14 +98,13 @@ async function trimHistoryToFit(
   const budgetForHistory = Math.max(0, availableForHistory - fixedTokens);
 
   // Count tokens for each history message and trim from oldest
-  const messageCosts: number[] = [];
-  for (const msg of history) {
-    if (provider === 'gemini') {
-      // eslint-disable-next-line no-await-in-loop
-      messageCosts.push(await countTokensGemini(model, msg.message));
-    } else {
-      messageCosts.push(countTokensOpenRouter(msg.message) + 4);
-    }
+  let messageCosts: number[];
+  if (provider === 'gemini') {
+    messageCosts = await Promise.all(
+      history.map((msg) => countTokensGemini(model, msg.message)),
+    );
+  } else {
+    messageCosts = history.map((msg) => countTokensOpenRouter(msg.message) + 4);
   }
 
   // Trim from the start (oldest) until we fit

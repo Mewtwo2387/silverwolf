@@ -250,7 +250,11 @@ const scriptHandlers = {
           .setColor(warningColor as `#${string}`)
           .setDescription(contextWarnings[0].message)
           .setFooter({ text: 'Use "kys" to start a fresh session' });
-        await message.reply({ embeds: [warningEmbed] });
+        try {
+          await message.reply({ embeds: [warningEmbed] });
+        } catch (warnErr) {
+          logError('Failed to send context warning embed:', warnErr);
+        }
       }
 
       if (hasMemory && aiSession && text) {

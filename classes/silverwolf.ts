@@ -421,9 +421,11 @@ All wrongs reserved.
 
     const guildIds = dbServers.split(',');
 
-    // Servers exist — clear global commands and register per-guild instead
-    await rest.put(Routes.applicationCommands(clientId!), { body: [] });
-    log('Global commands cleared.');
+    // Servers exist — keep /server globally, register everything else per-guild
+    const serverCommand = allCommandsArray.find((cmd: any) => cmd.name === 'server');
+    const globalCommands = serverCommand ? [serverCommand] : [];
+    await rest.put(Routes.applicationCommands(clientId!), { body: globalCommands });
+    log(`Registered ${globalCommands.length} global command(s) (keeping /server).`);
 
     // Loop over each guild ID
     await Promise.all(guildIds.map(async (guildId: string) => {

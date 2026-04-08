@@ -1,5 +1,6 @@
 import { DevCommand } from './classes/DevCommand';
 import { log } from '../utils/log';
+import { clearCachedAllowedServers } from '../utils/accessControl';
 import { REST, Routes } from 'discord.js';
 
 class ServerUnregister extends DevCommand {
@@ -25,6 +26,7 @@ class ServerUnregister extends DevCommand {
     } else {
       await this.client.db.globalConfig.deleteGlobalConfig('allowed_servers');
     }
+    clearCachedAllowedServers();
     log(`Unregistered server ${guildName} (${guildId}) from allowed_servers`);
 
     // Clear guild-specific commands for this server

@@ -21,13 +21,9 @@ class BirthdayChannel extends DevCommand {
     const channels = existing ? existing.split(',') : [];
 
     if (channels.includes(channel.id)) {
-      // Remove it (toggle behavior)
+      // Remove it (toggle behavior) — always persist explicit value (even empty string)
       const updated = channels.filter((id: string) => id !== channel.id);
-      if (updated.length > 0) {
-        await this.client.db.globalConfig.setGlobalConfig('birthday_channels', updated.join(','));
-      } else {
-        await this.client.db.globalConfig.deleteGlobalConfig('birthday_channels');
-      }
+      await this.client.db.globalConfig.setGlobalConfig('birthday_channels', updated.join(','));
       log(`Removed birthday channel ${channel.name} (${channel.id})`);
       await interaction.editReply(`Removed <#${channel.id}> from birthday channels.`);
       return;
