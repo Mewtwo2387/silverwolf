@@ -251,7 +251,7 @@ async function generateSessionTitle(userMessage: string, aiResponse: string): Pr
         { role: 'user', content: `User: ${userMessage}\n\nAssistant: ${aiResponse}` },
         { role: 'assistant', content: 'Title: ' },
       ],
-      max_tokens: 64,
+      max_tokens: 512,
     });
     const raw = completion.choices?.[0]?.message?.content;
     if (!raw) return null;

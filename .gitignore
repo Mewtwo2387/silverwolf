@@ -8,6 +8,7 @@ node_modules/*
 *.log
 _*.js
 persistence/
+.claude
 
 *.db-wal
 *.db-shm
