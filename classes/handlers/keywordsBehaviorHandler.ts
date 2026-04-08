@@ -4,6 +4,7 @@ import {
 } from 'discord.js';
 import { log, logError } from '../../utils/log';
 import { resolvePersona, generateContent, generateSessionTitle } from '../../utils/ai';
+import { trimHistoryToFit } from '../../utils/tokenizer';
 
 const WEBHOOK_NAME = process.env.WEBHOOK_NAME || 'grok-webhook';
 
@@ -128,14 +129,30 @@ const scriptHandlers = {
     let aiSession = null;
     let history: any[] = [];
     let historyLoaded = false;
+    let contextWarnings: { level: number; message: string }[] = [];
     if (hasMemory) {
       try {
         aiSession = await (message.client as any).db.aiChat.getOrCreateSession(
           message.author.id,
           displayName,
         );
-        history = await (message.client as any).db.aiChat.getHistory(aiSession.sessionId, 30);
+        const rawHistory = await (message.client as any).db.aiChat.getHistory(aiSession.sessionId, 100);
+
+        // Token-based sliding window: trim oldest messages to fit context
+        const { trimmedHistory, warnings } = await trimHistoryToFit(
+          persona.provider,
+          persona.model,
+          persona.systemPrompt ?? '',
+          rawHistory,
+          prompt,
+        );
+        history = trimmedHistory;
+        contextWarnings = warnings;
         historyLoaded = true;
+
+        if (rawHistory.length !== trimmedHistory.length) {
+          log(`AiChat: Trimmed history from ${rawHistory.length} to ${trimmedHistory.length} messages for session ${aiSession.sessionId}`);
+        }
       } catch (histErr) {
         logError('AiChat: Failed to load history, proceeding without it:', histErr);
       }
@@ -221,6 +238,19 @@ const scriptHandlers = {
           allowedMentions: { parse: [] },
         });
         previousMsg = sent;
+      }
+
+      // Send context usage warnings as a subtle embed
+      if (contextWarnings.length > 0) {
+        let warningColor = '#5865F2'; // blue for 50%
+        if (contextWarnings[0].level >= 95) warningColor = '#ED4245'; // red
+        else if (contextWarnings[0].level >= 75) warningColor = '#FEE75C'; // yellow
+
+        const warningEmbed = new EmbedBuilder()
+          .setColor(warningColor as `#${string}`)
+          .setDescription(contextWarnings[0].message)
+          .setFooter({ text: 'Use "kys" to start a fresh session' });
+        await message.reply({ embeds: [warningEmbed] });
       }
 
       if (hasMemory && aiSession && text) {

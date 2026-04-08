@@ -15,6 +15,7 @@ import {
 } from './handlers/index';
 import scriptHandlers from './handlers/keywordsBehaviorHandler';
 import quoteDefault from '../utils/quote';
+import { loadAllowedServers } from '../utils/accessControl';
 
 const FONT_INDEX: string[] = (quoteDefault as any).FONT_INDEX;
 const MAX_MESSAGE_HISTORY = 100;
@@ -68,6 +69,9 @@ class Silverwolf extends Client {
     await this.loadKeywords();
     await this.loadListeners();
     await this.db.ready;
+
+    await loadAllowedServers(this.db);
+    log('Allowed servers loaded from DB.');
 
     this.birthdayScheduler.start();
     log('Birthday scheduler started.');
@@ -397,15 +401,32 @@ All wrongs reserved.
   }
 
   async registerCommands(clientId: string | undefined): Promise<void> {
-    const guildIds = process.env.GUILD_ID!.split(','); // Split the GUILD_IDs into an array
+    const dbServers = await this.db.globalConfig.getGlobalConfig('allowed_servers');
     const rest = new REST({ version: '10' }).setToken(this.token);
 
-    // Clear any globally registered commands (they persist across restarts and cause duplicates)
+    // Build the full command list
+    const commandValues = Array.from(this.commands.values());
+    const validCommands = commandValues.filter((command: any) => command !== null && command.isSubcommandOf === null);
+    const allCommandsArray = validCommands.map((command: any) => command.toJSON());
+
+    if (!dbServers) {
+      // No servers registered yet — only register /server globally so /server register is available
+      const serverCommand = allCommandsArray.find((cmd: any) => cmd.name === 'server');
+      const globalCommands = serverCommand ? [serverCommand] : [];
+      log('No allowed_servers in DB. Registering /server command globally.');
+      await rest.put(Routes.applicationCommands(clientId!), { body: globalCommands });
+      log(`Registered ${globalCommands.length} command(s) globally.`);
+      return;
+    }
+
+    const guildIds = dbServers.split(',');
+
+    // Servers exist — clear global commands and register per-guild instead
     await rest.put(Routes.applicationCommands(clientId!), { body: [] });
     log('Global commands cleared.');
 
     // Loop over each guild ID
-    await Promise.all(guildIds.map(async (guildId) => {
+    await Promise.all(guildIds.map(async (guildId: string) => {
       try {
         // Retrieve blacklisted commands for the guild
         const blacklistedCommandsData = await this.db.commandConfig.getBlacklistedCommands(guildId);

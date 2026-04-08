@@ -3,7 +3,28 @@ import { PermissionsBitField, type ChatInputCommandInteraction } from 'discord.j
 
 const ALLOWED_USERS = process.env.ALLOWED_USERS!.split(',');
 const BASEMENT_ID = '969953667597893672';
-const ALLOWED_SERVERS: string | string[] = process.env.ALLOWED_SERVERS ? process.env.ALLOWED_SERVERS.split(',') : BASEMENT_ID;
+
+// Cache for DB-sourced allowed servers (refreshed on first use)
+let cachedAllowedServers: string[] | null = null;
+
+/**
+ * Loads allowed servers from DB (GlobalConfig key: allowed_servers).
+ * Falls back to BASEMENT_ID only.
+ */
+async function loadAllowedServers(db: any): Promise<string[]> {
+  try {
+    const dbValue = await db.globalConfig.getGlobalConfig('allowed_servers');
+    if (dbValue) {
+      const servers = dbValue.split(',');
+      cachedAllowedServers = servers;
+      return servers;
+    }
+  } catch {
+    // DB not ready or error — fall back
+  }
+  cachedAllowedServers = [BASEMENT_ID];
+  return [BASEMENT_ID];
+}
 
 function isDev(interaction: ChatInputCommandInteraction): boolean {
   return ALLOWED_USERS.includes(interaction.user.id);
@@ -19,9 +40,8 @@ function isBasement(interaction: ChatInputCommandInteraction): boolean {
 }
 
 function isAllowedServer(interaction: ChatInputCommandInteraction): boolean {
-  return Array.isArray(ALLOWED_SERVERS)
-    ? ALLOWED_SERVERS.includes(interaction.guild?.id ?? '')
-    : ALLOWED_SERVERS === interaction.guild?.id;
+  const servers = cachedAllowedServers ?? [BASEMENT_ID];
+  return servers.includes(interaction.guild?.id ?? '');
 }
 
 export {
@@ -29,4 +49,5 @@ export {
   isAdmin,
   isBasement,
   isAllowedServer,
+  loadAllowedServers,
 };

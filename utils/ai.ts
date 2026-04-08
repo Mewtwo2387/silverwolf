@@ -249,12 +249,15 @@ async function generateSessionTitle(userMessage: string, aiResponse: string): Pr
       messages: [
         { role: 'system', content: persona.systemPrompt ?? '' },
         { role: 'user', content: `User: ${userMessage}\n\nAssistant: ${aiResponse}` },
+        { role: 'assistant', content: 'Title: ' },
       ],
       max_tokens: 64,
     });
     const raw = completion.choices?.[0]?.message?.content;
     if (!raw) return null;
-    const normalized = raw.replace(/\s+/g, ' ').trim();
+    // Strip any "Title:" prefix the model may echo, quotes, and trailing punctuation
+    const cleaned = raw.replace(/^(title:\s*)/i, '').replace(/^["']+|["']+$/g, '').replace(/[.!?]+$/, '');
+    const normalized = cleaned.replace(/\s+/g, ' ').trim();
     if (!normalized) return null;
     const words = normalized.split(' ');
     const clamped = words.length > 10 ? words.slice(0, 10).join(' ') : normalized;

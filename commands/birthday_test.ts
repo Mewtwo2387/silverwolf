@@ -8,11 +8,14 @@ class BirthdayTest extends DevCommand {
   }
 
   async execute(interaction: any): Promise<void> {
-    const channelIds = process.env.BIRTHDAY_CHANNELS!.split(',').map((id) => id.trim());
+    const dbChannels = await this.client.db.globalConfig.getGlobalConfig('birthday_channels');
+    const channelIds = dbChannels
+      ? dbChannels.split(',').map((id: string) => id.trim())
+      : (process.env.BIRTHDAY_CHANNELS || '').split(',').map((id: string) => id.trim()).filter(Boolean);
     const successChannels: string[] = [];
     const failedChannels: string[] = [];
 
-    channelIds.forEach(async (channelId) => {
+    channelIds.forEach(async (channelId: string) => {
       const channel = this.client.channels.cache.get(channelId);
       if (channel) {
         try {
