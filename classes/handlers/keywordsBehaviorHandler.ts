@@ -4,6 +4,7 @@ import {
 } from 'discord.js';
 import { log, logError } from '../../utils/log';
 import { resolvePersona, generateContent, generateSessionTitle } from '../../utils/ai';
+import { trimHistoryToFit } from '../../utils/tokenizer';
 
 const WEBHOOK_NAME = process.env.WEBHOOK_NAME || 'grok-webhook';
 
@@ -128,14 +129,32 @@ const scriptHandlers = {
     let aiSession = null;
     let history: any[] = [];
     let historyLoaded = false;
+    let hadRawHistory = false;
+    let contextWarnings: { level: number; message: string }[] = [];
     if (hasMemory) {
       try {
         aiSession = await (message.client as any).db.aiChat.getOrCreateSession(
           message.author.id,
           displayName,
         );
-        history = await (message.client as any).db.aiChat.getHistory(aiSession.sessionId, 30);
+        const rawHistory = await (message.client as any).db.aiChat.getHistory(aiSession.sessionId, 100);
+        hadRawHistory = rawHistory.length > 0;
+
+        // Token-based sliding window: trim oldest messages to fit context
+        const { trimmedHistory, warnings } = await trimHistoryToFit(
+          persona.provider,
+          persona.model,
+          persona.systemPrompt ?? '',
+          rawHistory,
+          prompt,
+        );
+        history = trimmedHistory;
+        contextWarnings = warnings;
         historyLoaded = true;
+
+        if (rawHistory.length !== trimmedHistory.length) {
+          log(`AiChat: Trimmed history from ${rawHistory.length} to ${trimmedHistory.length} messages for session ${aiSession.sessionId}`);
+        }
       } catch (histErr) {
         logError('AiChat: Failed to load history, proceeding without it:', histErr);
       }
@@ -223,23 +242,39 @@ const scriptHandlers = {
         previousMsg = sent;
       }
 
+      // Send context usage warnings as a subtle embed
+      if (contextWarnings.length > 0) {
+        let warningColor = '#5865F2'; // blue for 50%
+        if (contextWarnings[0].level >= 95) warningColor = '#ED4245'; // red
+        else if (contextWarnings[0].level >= 75) warningColor = '#FEE75C'; // yellow
+
+        const warningEmbed = new EmbedBuilder()
+          .setColor(warningColor as `#${string}`)
+          .setDescription(contextWarnings[0].message)
+          .setFooter({ text: 'Use "kys" to start a fresh session' });
+        try {
+          await message.reply({ embeds: [warningEmbed], allowedMentions: { repliedUser: false } });
+        } catch (warnErr) {
+          logError('Failed to send context warning embed:', warnErr);
+        }
+      }
+
       if (hasMemory && aiSession && text) {
         const aiRole = persona.provider === 'openrouter' ? 'assistant' : 'model';
         try {
           await (message.client as any).db.aiChat.addHistory(aiSession.sessionId, 'user', prompt);
           await (message.client as any).db.aiChat.addHistory(aiSession.sessionId, aiRole, text);
 
-          if (historyLoaded && history.length === 0) {
-            (async () => {
-              try {
-                const title = await generateSessionTitle(prompt, text);
+          if (historyLoaded && !hadRawHistory) {
+            generateSessionTitle(prompt, text)
+              .then((title) => {
                 if (title) {
-                  await (message.client as any).db.aiChat.updateTitle(aiSession.sessionId, title);
+                  return (message.client as any).db.aiChat.updateTitle(aiSession.sessionId, title);
                 }
-              } catch (titleErr) {
+              })
+              .catch((titleErr) => {
                 logError('AiChat: Failed to generate session title:', titleErr);
-              }
-            })();
+              });
           }
         } catch (saveErr) {
           logError('AiChat: Failed to save history:', saveErr);

@@ -1,6 +1,7 @@
 import { EmbedBuilder } from 'discord.js';
 import { DevCommand } from './classes/DevCommand';
 import { logError } from '../utils/log';
+import { parseChannelIds } from '../utils/parseChannelIds';
 
 class BirthdayTest extends DevCommand {
   constructor(client: any) {
@@ -8,30 +9,31 @@ class BirthdayTest extends DevCommand {
   }
 
   async execute(interaction: any): Promise<void> {
-    const channelIds = process.env.BIRTHDAY_CHANNELS!.split(',').map((id) => id.trim());
+    const dbChannels = await this.client.db.globalConfig.getGlobalConfig('birthday_channels');
+    const channelIds = parseChannelIds(dbChannels ?? process.env.BIRTHDAY_CHANNELS);
     const successChannels: string[] = [];
     const failedChannels: string[] = [];
 
-    channelIds.forEach(async (channelId) => {
-      const channel = this.client.channels.cache.get(channelId);
-      if (channel) {
-        try {
+    for (const channelId of channelIds) {
+      try {
+        const channel = this.client.channels.cache.get(channelId) ?? await this.client.channels.fetch(channelId);
+        if (channel && channel.isTextBased()) {
           const testEmbed = new EmbedBuilder()
             .setTitle('Test: Birthday Scheduler')
             .setDescription('This is a test to verify the birthday scheduler can send messages.')
             .setColor(0x00FF00);
 
-          await (channel as any).send({ embeds: [testEmbed] });
+          await channel.send({ embeds: [testEmbed] });
           successChannels.push(channelId);
-        } catch (error) {
-          logError(`Error sending message to channel ${channelId}:`, error);
+        } else {
+          logError(`Channel ID ${channelId} is invalid or not text-based.`);
           failedChannels.push(channelId);
         }
-      } else {
-        logError(`Channel ID ${channelId} is invalid or not found.`);
+      } catch (error) {
+        logError(`Error accessing or sending to channel ${channelId}:`, error);
         failedChannels.push(channelId);
       }
-    });
+    }
 
     let resultMessage = 'Birthday Scheduler Channel Test Results:\n\n';
     if (successChannels.length > 0) {

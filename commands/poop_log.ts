@@ -20,6 +20,7 @@ class PoopLog extends Command {
             { name: 'Green', value: 'green' },
             { name: 'Black', value: 'black' },
             { name: 'Red', value: 'red' },
+            { name: 'Holy', value: 'holy' },
           ],
         },
         {
@@ -31,6 +32,7 @@ class PoopLog extends Command {
             { name: 'Small', value: 'small' },
             { name: 'Medium', value: 'medium' },
             { name: 'Large', value: 'large' },
+            { name: 'Omnipresent', value: 'omnipresent' },
           ],
         },
         {
@@ -44,6 +46,7 @@ class PoopLog extends Command {
             { name: 'Normal', value: 'normal' },
             { name: 'Hard', value: 'hard' },
             { name: 'Pellet', value: 'pellet' },
+            { name: 'Divine', value: 'divine' },
           ],
         },
         {
