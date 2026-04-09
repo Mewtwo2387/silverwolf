@@ -1,11 +1,8 @@
-import { encodingForModel } from 'js-tiktoken';
 import { getGeminiAI } from './ai';
 
-// OpenRouter token counting via tiktoken (cl100k_base covers GPT-3.5/4 and most OR models)
-const tiktoken = encodingForModel('gpt-4o');
-
+// Lightweight character-based token estimation (~4 chars per token for English text)
 function countTokensOpenRouter(text: string): number {
-  return tiktoken.encode(text).length;
+  return Math.ceil(text.length / 4);
 }
 
 function countTokensOpenRouterMessages(messages: { role: string; content: string }[]): number {
