@@ -129,6 +129,7 @@ const scriptHandlers = {
     let aiSession = null;
     let history: any[] = [];
     let historyLoaded = false;
+    let hadRawHistory = false;
     let contextWarnings: { level: number; message: string }[] = [];
     if (hasMemory) {
       try {
@@ -137,6 +138,7 @@ const scriptHandlers = {
           displayName,
         );
         const rawHistory = await (message.client as any).db.aiChat.getHistory(aiSession.sessionId, 100);
+        hadRawHistory = rawHistory.length > 0;
 
         // Token-based sliding window: trim oldest messages to fit context
         const { trimmedHistory, warnings } = await trimHistoryToFit(
@@ -263,7 +265,7 @@ const scriptHandlers = {
           await (message.client as any).db.aiChat.addHistory(aiSession.sessionId, 'user', prompt);
           await (message.client as any).db.aiChat.addHistory(aiSession.sessionId, aiRole, text);
 
-          if (historyLoaded && history.length === 0) {
+          if (historyLoaded && !hadRawHistory) {
             (async () => {
               try {
                 const title = await generateSessionTitle(prompt, text);

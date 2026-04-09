@@ -1,6 +1,7 @@
 import { EmbedBuilder } from 'discord.js';
 import { DevCommand } from './classes/DevCommand';
 import { logError } from '../utils/log';
+import { parseChannelIds } from '../utils/parseChannelIds';
 
 class BirthdayTest extends DevCommand {
   constructor(client: any) {
@@ -9,9 +10,7 @@ class BirthdayTest extends DevCommand {
 
   async execute(interaction: any): Promise<void> {
     const dbChannels = await this.client.db.globalConfig.getGlobalConfig('birthday_channels');
-    const channelIds = dbChannels
-      ? dbChannels.split(',').map((id: string) => id.trim()).filter(Boolean)
-      : (process.env.BIRTHDAY_CHANNELS || '').split(',').map((id: string) => id.trim()).filter(Boolean);
+    const channelIds = parseChannelIds(dbChannels || process.env.BIRTHDAY_CHANNELS);
     const successChannels: string[] = [];
     const failedChannels: string[] = [];
 

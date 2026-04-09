@@ -8,19 +8,21 @@ class ServerRegister extends DevCommand {
   }
 
   async run(interaction: any): Promise<void> {
+    if (!interaction.guild) {
+      await interaction.editReply('This command must be used in a server.');
+      return;
+    }
+
     const guildId = interaction.guild.id;
     const guildName = interaction.guild.name;
 
-    const existing = await this.client.db.globalConfig.getGlobalConfig('allowed_servers');
-    const servers = existing ? existing.split(',') : [];
+    const added = await this.client.db.globalConfig.appendUniqueToList('allowed_servers', guildId);
 
-    if (servers.includes(guildId)) {
+    if (!added) {
       await interaction.editReply(`Server **${guildName}** (\`${guildId}\`) is already registered.`);
       return;
     }
 
-    servers.push(guildId);
-    await this.client.db.globalConfig.setGlobalConfig('allowed_servers', servers.join(','));
     clearCachedAllowedServers();
     log(`Registered server ${guildName} (${guildId}) to allowed_servers`);
 

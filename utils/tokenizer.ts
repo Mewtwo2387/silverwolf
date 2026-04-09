@@ -121,8 +121,9 @@ async function trimHistoryToFit(
   const percentage = Math.round((usedTokens / contextLimit) * 100);
 
   const warnings: ContextWarning[] = [];
-  if (percentage >= 95) {
-    warnings.push({ level: 95, message: `Context is **95%** full (${usedTokens.toLocaleString()}/${contextLimit.toLocaleString()} tokens). Old messages are being trimmed.` });
+  const wasTrimmed = startIndex > 0;
+  if (percentage >= 95 || wasTrimmed) {
+    warnings.push({ level: 95, message: `Context is **${percentage}%** full (${usedTokens.toLocaleString()}/${contextLimit.toLocaleString()} tokens). Old messages are being trimmed.` });
   } else if (percentage >= 75) {
     warnings.push({ level: 75, message: `Context is **75%** full (${usedTokens.toLocaleString()}/${contextLimit.toLocaleString()} tokens).` });
   } else if (percentage >= 50) {

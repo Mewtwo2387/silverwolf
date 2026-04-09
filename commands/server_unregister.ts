@@ -9,23 +9,21 @@ class ServerUnregister extends DevCommand {
   }
 
   async run(interaction: any): Promise<void> {
+    if (!interaction.guild) {
+      await interaction.editReply('This command must be used in a server.');
+      return;
+    }
+
     const guildId = interaction.guild.id;
     const guildName = interaction.guild.name;
 
-    const existing = await this.client.db.globalConfig.getGlobalConfig('allowed_servers');
-    const servers = existing ? existing.split(',') : [];
+    const removed = await this.client.db.globalConfig.removeFromList('allowed_servers', guildId);
 
-    if (!servers.includes(guildId)) {
+    if (!removed) {
       await interaction.editReply(`Server **${guildName}** (\`${guildId}\`) is not registered.`);
       return;
     }
 
-    const updated = servers.filter((id: string) => id !== guildId);
-    if (updated.length > 0) {
-      await this.client.db.globalConfig.setGlobalConfig('allowed_servers', updated.join(','));
-    } else {
-      await this.client.db.globalConfig.deleteGlobalConfig('allowed_servers');
-    }
     clearCachedAllowedServers();
     log(`Unregistered server ${guildName} (${guildId}) from allowed_servers`);
 

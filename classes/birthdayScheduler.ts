@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { EmbedBuilder } from 'discord.js';
 import { log, logError } from '../utils/log';
+import { parseChannelIds } from '../utils/parseChannelIds';
 // Note: Bun automatically reads .env files
 
 class BirthdayScheduler {
@@ -27,9 +28,7 @@ class BirthdayScheduler {
         if (birthdays.length > 0) {
           // Read from DB first, fall back to env var
           const dbChannels = await this.client.db.globalConfig.getGlobalConfig('birthday_channels');
-          const channelIds = dbChannels
-            ? dbChannels.split(',').map((id: string) => id.trim()).filter(Boolean)
-            : (process.env.BIRTHDAY_CHANNELS || '').split(',').map((id: string) => id.trim()).filter(Boolean);
+          const channelIds = parseChannelIds(dbChannels || process.env.BIRTHDAY_CHANNELS);
           for (const channelId of channelIds) {
             const channel = this.client.channels.cache.get(channelId.trim()); // Trim spaces and get the channel
             if (!channel) {
