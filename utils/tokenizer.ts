@@ -23,8 +23,8 @@ async function countTokensGemini(model: string, text: string): Promise<number> {
     const modelClient = genAI.getGenerativeModel({ model });
     const result = await modelClient.countTokens(text);
     return result.totalTokens;
-  } catch {
-    // Fallback: rough estimate
+  } catch (err) {
+    console.error(`[countTokensGemini] Failed for model ${model}:`, err);
     return Math.ceil(text.length / 4);
   }
 }
@@ -53,6 +53,11 @@ const CONTEXT_LIMITS: Record<string, number> = {
   // Gemini models
   'gemini-3-flash-preview': 1_000_000,
   'gemini-2.0-flash-preview-image-generation': 8_192,
+  // OpenRouter models
+  'x-ai/grok-4.1-fast': 2_000_000,
+  'stepfun/step-3.5-flash:free': 256_000,
+  'xiaomi/mimo-v2-flash:nitro': 256_000,
+  'cognitivecomputations/dolphin-mistral-24b-venice-edition:free': 32_768,
   // Default for unknown models
   default: 128_000,
 };
@@ -97,6 +102,12 @@ async function trimHistoryToFit(
   const fixedTokens = systemTokens + promptTokens;
   const budgetForHistory = Math.max(0, availableForHistory - fixedTokens);
 
+  if (fixedTokens > contextLimit) {
+    throw new Error(
+      `System prompt + user prompt (${fixedTokens.toLocaleString()} tokens) exceeds context limit (${contextLimit.toLocaleString()} tokens) for model ${model}`,
+    );
+  }
+
   // Count tokens for each history message and trim from oldest
   let messageCosts: number[];
   if (provider === 'gemini') {
@@ -122,12 +133,16 @@ async function trimHistoryToFit(
 
   const warnings: ContextWarning[] = [];
   const wasTrimmed = startIndex > 0;
-  if (percentage >= 95 || wasTrimmed) {
-    warnings.push({ level: 95, message: `Context is **${percentage}%** full (${usedTokens.toLocaleString()}/${contextLimit.toLocaleString()} tokens). Old messages are being trimmed.` });
-  } else if (percentage >= 75) {
-    warnings.push({ level: 75, message: `Context is **75%** full (${usedTokens.toLocaleString()}/${contextLimit.toLocaleString()} tokens).` });
-  } else if (percentage >= 50) {
-    warnings.push({ level: 50, message: `Context is **50%** full (${usedTokens.toLocaleString()}/${contextLimit.toLocaleString()} tokens).` });
+  let warningLevel: 50 | 75 | 95 | null = null;
+  if (percentage >= 95) warningLevel = 95;
+  else if (percentage >= 75) warningLevel = 75;
+  else if (percentage >= 50) warningLevel = 50;
+
+  if (warningLevel) {
+    const trimNote = wasTrimmed ? ' Old messages are being trimmed.' : '';
+    warnings.push({ level: warningLevel, message: `Context is **${percentage}%** full (${usedTokens.toLocaleString()}/${contextLimit.toLocaleString()} tokens).${trimNote}` });
+  } else if (wasTrimmed) {
+    warnings.push({ level: 50, message: `Old messages are being trimmed to fit context (${usedTokens.toLocaleString()}/${contextLimit.toLocaleString()} tokens).` });
   }
 
   return {

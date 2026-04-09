@@ -10,7 +10,7 @@ class BirthdayTest extends DevCommand {
 
   async execute(interaction: any): Promise<void> {
     const dbChannels = await this.client.db.globalConfig.getGlobalConfig('birthday_channels');
-    const channelIds = parseChannelIds(dbChannels || process.env.BIRTHDAY_CHANNELS);
+    const channelIds = parseChannelIds(dbChannels ?? process.env.BIRTHDAY_CHANNELS);
     const successChannels: string[] = [];
     const failedChannels: string[] = [];
 

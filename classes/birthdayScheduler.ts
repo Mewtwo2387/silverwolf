@@ -28,7 +28,7 @@ class BirthdayScheduler {
         if (birthdays.length > 0) {
           // Read from DB first, fall back to env var
           const dbChannels = await this.client.db.globalConfig.getGlobalConfig('birthday_channels');
-          const channelIds = parseChannelIds(dbChannels || process.env.BIRTHDAY_CHANNELS);
+          const channelIds = parseChannelIds(dbChannels ?? process.env.BIRTHDAY_CHANNELS);
           for (const channelId of channelIds) {
             const channel = this.client.channels.cache.get(channelId.trim()); // Trim spaces and get the channel
             if (!channel) {

@@ -266,16 +266,15 @@ const scriptHandlers = {
           await (message.client as any).db.aiChat.addHistory(aiSession.sessionId, aiRole, text);
 
           if (historyLoaded && !hadRawHistory) {
-            (async () => {
-              try {
-                const title = await generateSessionTitle(prompt, text);
+            generateSessionTitle(prompt, text)
+              .then((title) => {
                 if (title) {
-                  await (message.client as any).db.aiChat.updateTitle(aiSession.sessionId, title);
+                  return (message.client as any).db.aiChat.updateTitle(aiSession.sessionId, title);
                 }
-              } catch (titleErr) {
+              })
+              .catch((titleErr) => {
                 logError('AiChat: Failed to generate session title:', titleErr);
-              }
-            })();
+              });
           }
         } catch (saveErr) {
           logError('AiChat: Failed to save history:', saveErr);

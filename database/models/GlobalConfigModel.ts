@@ -30,37 +30,41 @@ class GlobalConfigModel {
   }
 
   /**
-   * Atomically appends a value to a comma-separated list stored under `key`.
+   * Appends a value to a comma-separated list stored under `key`, within a transaction.
    * Returns true if the value was added, false if it was already present.
    */
   async appendUniqueToList(key: string, value: string): Promise<boolean> {
-    const existing = await this.getGlobalConfig(key);
-    const items = existing ? existing.split(',').map((s) => s.trim()).filter(Boolean) : [];
+    return this.db.executeTransaction(async () => {
+      const existing = await this.getGlobalConfig(key);
+      const items = existing ? existing.split(',').map((s) => s.trim()).filter(Boolean) : [];
 
-    if (items.includes(value)) return false;
+      if (items.includes(value)) return false;
 
-    items.push(value);
-    await this.setGlobalConfig(key, items.join(','));
-    return true;
+      items.push(value);
+      await this.setGlobalConfig(key, items.join(','));
+      return true;
+    });
   }
 
   /**
-   * Atomically removes a value from a comma-separated list stored under `key`.
+   * Removes a value from a comma-separated list stored under `key`, within a transaction.
    * Returns true if the value was removed, false if it was not present.
    */
   async removeFromList(key: string, value: string): Promise<boolean> {
-    const existing = await this.getGlobalConfig(key);
-    const items = existing ? existing.split(',').map((s) => s.trim()).filter(Boolean) : [];
+    return this.db.executeTransaction(async () => {
+      const existing = await this.getGlobalConfig(key);
+      const items = existing ? existing.split(',').map((s) => s.trim()).filter(Boolean) : [];
 
-    if (!items.includes(value)) return false;
+      if (!items.includes(value)) return false;
 
-    const updated = items.filter((id) => id !== value);
-    if (updated.length > 0) {
-      await this.setGlobalConfig(key, updated.join(','));
-    } else {
-      await this.deleteGlobalConfig(key);
-    }
-    return true;
+      const updated = items.filter((id) => id !== value);
+      if (updated.length > 0) {
+        await this.setGlobalConfig(key, updated.join(','));
+      } else {
+        await this.deleteGlobalConfig(key);
+      }
+      return true;
+    });
   }
 }
 
