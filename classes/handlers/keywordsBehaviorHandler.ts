@@ -253,7 +253,7 @@ const scriptHandlers = {
           .setDescription(contextWarnings[0].message)
           .setFooter({ text: 'Use "kys" to start a fresh session' });
         try {
-          await message.reply({ embeds: [warningEmbed] });
+          await message.reply({ embeds: [warningEmbed], allowedMentions: { repliedUser: false } });
         } catch (warnErr) {
           logError('Failed to send context warning embed:', warnErr);
         }

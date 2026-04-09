@@ -15,22 +15,22 @@ class BirthdayTest extends DevCommand {
     const failedChannels: string[] = [];
 
     for (const channelId of channelIds) {
-      const channel = this.client.channels.cache.get(channelId);
-      if (channel) {
-        try {
+      try {
+        const channel = this.client.channels.cache.get(channelId) ?? await this.client.channels.fetch(channelId);
+        if (channel && channel.isTextBased()) {
           const testEmbed = new EmbedBuilder()
             .setTitle('Test: Birthday Scheduler')
             .setDescription('This is a test to verify the birthday scheduler can send messages.')
             .setColor(0x00FF00);
 
-          await (channel as any).send({ embeds: [testEmbed] });
+          await channel.send({ embeds: [testEmbed] });
           successChannels.push(channelId);
-        } catch (error) {
-          logError(`Error sending message to channel ${channelId}:`, error);
+        } else {
+          logError(`Channel ID ${channelId} is invalid or not text-based.`);
           failedChannels.push(channelId);
         }
-      } else {
-        logError(`Channel ID ${channelId} is invalid or not found.`);
+      } catch (error) {
+        logError(`Error accessing or sending to channel ${channelId}:`, error);
         failedChannels.push(channelId);
       }
     }
