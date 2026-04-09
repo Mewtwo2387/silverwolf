@@ -55,7 +55,7 @@ const CONTEXT_LIMITS: Record<string, number> = {
   'gemini-2.0-flash-preview-image-generation': 8_192,
   // OpenRouter models
   'x-ai/grok-4.1-fast': 2_000_000,
-  'stepfun/step-3.5-flash:free': 256_000,
+  'nvidia/nemotron-3-super-120b-a12b:free': 262_144,
   'xiaomi/mimo-v2-flash:nitro': 256_000,
   'cognitivecomputations/dolphin-mistral-24b-venice-edition:free': 32_768,
   // Default for unknown models
