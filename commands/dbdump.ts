@@ -138,8 +138,8 @@ class DBDump extends DevCommand {
   async run(interaction: any): Promise<void> {
     const table = interaction.options.getString('table');
 
+    const filesToDump: { attachment: string; name: string }[] = [];
     try {
-      const filesToDump: { attachment: string; name: string }[] = [];
       const selectedDefinitions = table === 'all'
         ? DUMP_DEFINITIONS
         : DUMP_DEFINITIONS.filter((definition) => definition.value === table);
@@ -166,10 +166,6 @@ class DBDump extends DevCommand {
         }
       }
 
-      filesToDump.forEach((file) => {
-        this.cleanupFile(file.attachment);
-      });
-
       const databasePath = path.join(import.meta.dir, '../persistence/database.db');
 
       if (await Bun.file(databasePath).exists()) {
@@ -181,6 +177,10 @@ class DBDump extends DevCommand {
     } catch (error) {
       logError('Error dumping database:', error);
       await interaction.followUp({ content: 'An error occurred while executing the command.', ephemeral: true });
+    } finally {
+      filesToDump.forEach((file) => {
+        this.cleanupFile(file.attachment);
+      });
     }
   }
 

@@ -25,7 +25,7 @@ class Slots extends Command {
 
     const season = await this.client.db.globalConfig.getGlobalConfig('season') || 'normal';
     const skinsAny = skins as any;
-    const resolvedSeason = skinsAny[season] ? season : 'normal';
+    const resolvedSeason = Object.hasOwn(skinsAny, season) ? season : 'normal';
     const skin = skinsAny[resolvedSeason];
 
     const smugs = skin.emotes;

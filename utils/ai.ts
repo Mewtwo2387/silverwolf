@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { OpenAI } from 'openai';
 import mime from 'mime';
+import { logError } from './log';
 // Note: Bun automatically reads .env files
 
 // Initialize AI providers
@@ -68,7 +69,12 @@ async function resolvePersona(messageContent = ''): Promise<Persona> {
 
   if (foundPersona) {
     if (foundPersona.systemPromptFile) {
-      foundPersona.systemPrompt = await Bun.file(foundPersona.systemPromptFile).text();
+      try {
+        foundPersona.systemPrompt = await Bun.file(foundPersona.systemPromptFile).text();
+      } catch (error) {
+        logError(`Failed to read system prompt file ${foundPersona.systemPromptFile}:`, error);
+        foundPersona.systemPrompt = '';
+      }
     }
     return foundPersona;
   }

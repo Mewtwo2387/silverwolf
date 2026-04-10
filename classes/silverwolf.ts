@@ -124,7 +124,13 @@ All wrongs reserved.
 
     log('--------------------\nLoading command groups...\n--------------------');
     const commandGroupDir = path.join(import.meta.dir, '../commands/commandgroups');
-    const commandGroupFiles = [...new Bun.Glob('*.ts').scanSync(commandGroupDir)];
+    const allGroupFiles = [...new Bun.Glob('*.{ts,js}').scanSync(commandGroupDir)];
+    const tsGroupFiles = new Set(allGroupFiles.filter((f) => f.endsWith('.ts')).map((f) => f.replace('.ts', '')));
+    const commandGroupFiles = allGroupFiles.filter((file) => {
+      if (file.endsWith('.ts')) return true;
+      if (file.endsWith('.js')) return !tsGroupFiles.has(file.replace('.js', ''));
+      return false;
+    });
 
     let commandGroupCount = 0;
     for (const file of commandGroupFiles) {

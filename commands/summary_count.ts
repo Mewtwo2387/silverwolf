@@ -32,7 +32,13 @@ class Summary extends Command {
       return;
     }
     if (persona.systemPromptFile) {
-      persona.systemPrompt = await Bun.file(persona.systemPromptFile).text();
+      try {
+        persona.systemPrompt = await Bun.file(persona.systemPromptFile).text();
+      } catch (error) {
+        logError(`Failed to read system prompt file ${persona.systemPromptFile}:`, error);
+        await interaction.editReply('Failed to load summarizer prompt. Please try again later.');
+        return;
+      }
     }
 
     let summary: any;
