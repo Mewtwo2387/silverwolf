@@ -30,6 +30,16 @@ const handlers: Record<string, any> = {
 
 const SERIOUS_CHANNELS = ['1262239871758766221'];
 
+/** Given a list of .ts and .js filenames, prefer .ts; only keep a .js file when no .ts counterpart exists. */
+function preferTsOverJs(files: string[]): string[] {
+  const tsBasenames = new Set(files.filter((f) => f.endsWith('.ts')).map((f) => f.replace('.ts', '')));
+  return files.filter((file) => {
+    if (file.endsWith('.ts')) return true;
+    if (file.endsWith('.js')) return !tsBasenames.has(file.replace('.js', ''));
+    return false;
+  });
+}
+
 class Silverwolf extends Client {
   declare token: string;
   commands: Map<string, any>;
@@ -97,12 +107,7 @@ All wrongs reserved.
     const commandDir = path.join(import.meta.dir, '../commands');
     // Prefer .ts files; only fall back to .js if no .ts version exists
     const allFiles = [...new Bun.Glob('*.{ts,js}').scanSync(commandDir)];
-    const tsFiles = new Set(allFiles.filter((f) => f.endsWith('.ts')).map((f) => f.replace('.ts', '')));
-    const commandFiles = allFiles.filter((file) => {
-      if (file.endsWith('.ts')) return true;
-      if (file.endsWith('.js')) return !tsFiles.has(file.replace('.js', ''));
-      return false;
-    });
+    const commandFiles = preferTsOverJs(allFiles);
     // Use createRequire so CJS command files load correctly (avoids ESM circular-dep issues with some deps)
     const _require = createRequire(import.meta.url);
 
@@ -125,12 +130,7 @@ All wrongs reserved.
     log('--------------------\nLoading command groups...\n--------------------');
     const commandGroupDir = path.join(import.meta.dir, '../commands/commandgroups');
     const allGroupFiles = [...new Bun.Glob('*.{ts,js}').scanSync(commandGroupDir)];
-    const tsGroupFiles = new Set(allGroupFiles.filter((f) => f.endsWith('.ts')).map((f) => f.replace('.ts', '')));
-    const commandGroupFiles = allGroupFiles.filter((file) => {
-      if (file.endsWith('.ts')) return true;
-      if (file.endsWith('.js')) return !tsGroupFiles.has(file.replace('.js', ''));
-      return false;
-    });
+    const commandGroupFiles = preferTsOverJs(allGroupFiles);
 
     let commandGroupCount = 0;
     for (const file of commandGroupFiles) {
@@ -146,7 +146,22 @@ All wrongs reserved.
 
   async loadKeywords(): Promise<void> {
     log('--------------------\nLoading keywords...\n--------------------');
-    this.keywords = keywordsJson as any;
+    const raw = keywordsJson as any[];
+    this.keywords = raw.filter((entry: any, i: number) => {
+      if (!entry || typeof entry !== 'object') {
+        log(`Warning: skipping keywords entry at index ${i} (not an object).`);
+        return false;
+      }
+      if (!Array.isArray(entry.triggers) || entry.triggers.length === 0) {
+        log(`Warning: skipping keywords entry at index ${i} (missing or empty triggers).`);
+        return false;
+      }
+      if (!entry.triggers.every((t: any) => typeof t === 'string')) {
+        log(`Warning: skipping keywords entry at index ${i} (triggers contains non-string).`);
+        return false;
+      }
+      return true;
+    });
 
     this.keywords.forEach((entry: any) => {
       log(`Keyword(s) [${entry.triggers.join(', ')}] loaded.`);
@@ -489,6 +504,7 @@ All wrongs reserved.
   }
 
   setRandomGame(): void {
+    if (!this.games || this.games.length === 0) return;
     const randomGame = this.games[Math.floor(Math.random() * this.games.length)];
     this.user!.setPresence({
       activities: [{
@@ -512,7 +528,10 @@ All wrongs reserved.
 
   loadGames(): void {
     try {
-      this.games = (statusJson as any).games || [];
+      const games = (statusJson as any).games;
+      if (games && Array.isArray(games) && games.length > 0) {
+        this.games = games;
+      }
       log(`Games loaded from status.json: ${this.games}`);
     } catch (error) {
       logError('Error loading games from status.json:', error);
