@@ -32,10 +32,10 @@ const SERIOUS_CHANNELS = ['1262239871758766221'];
 
 /** Given a list of .ts and .js filenames, prefer .ts; only keep a .js file when no .ts counterpart exists. */
 function preferTsOverJs(files: string[]): string[] {
-  const tsBasenames = new Set(files.filter((f) => f.endsWith('.ts')).map((f) => f.replace('.ts', '')));
+  const tsBasenames = new Set(files.filter((f) => f.endsWith('.ts')).map((f) => f.replace(/\.ts$/, '')));
   return files.filter((file) => {
     if (file.endsWith('.ts')) return true;
-    if (file.endsWith('.js')) return !tsBasenames.has(file.replace('.js', ''));
+    if (file.endsWith('.js')) return !tsBasenames.has(file.replace(/\.js$/, ''));
     return false;
   });
 }
@@ -530,7 +530,7 @@ All wrongs reserved.
     try {
       const games = (statusJson as any).games;
       if (games && Array.isArray(games) && games.length > 0) {
-        this.games = games;
+        this.games = games.filter((g: unknown) => typeof g === 'string' && g.trim().length > 0);
       }
       log(`Games loaded from status.json: ${this.games}`);
     } catch (error) {
