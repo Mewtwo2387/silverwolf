@@ -1,9 +1,8 @@
 import * as Discord from 'discord.js';
-import fs from 'fs';
-import path from 'path';
 import { Command } from './classes/Command';
 import { format } from '../utils/math';
 import { checkValidBet } from '../utils/betting';
+import skins from '../data/config/skin/slots.json';
 
 class Slots extends Command {
   constructor(client: any) {
@@ -25,9 +24,9 @@ class Slots extends Command {
     }
 
     const season = await this.client.db.globalConfig.getGlobalConfig('season') || 'normal';
-    const skins = JSON.parse(fs.readFileSync(path.join(import.meta.dir, '../data/config/skin/slots.json'), 'utf8'));
-    const resolvedSeason = skins[season] ? season : 'normal';
-    const skin = skins[resolvedSeason];
+    const skinsAny = skins as any;
+    const resolvedSeason = skinsAny[season] ? season : 'normal';
+    const skin = skinsAny[resolvedSeason];
 
     const smugs = skin.emotes;
 

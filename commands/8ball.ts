@@ -1,5 +1,4 @@
 import { EmbedBuilder } from 'discord.js';
-import * as crypto from 'crypto';
 import { Command } from './classes/Command';
 
 class EightBall extends Command {
@@ -19,10 +18,10 @@ class EightBall extends Command {
     const user = interaction.user.id;
     const combined = question + user;
 
-    const hash1 = crypto.createHash('md5').update(combined).digest('hex');
+    const hash1 = new Bun.CryptoHasher('md5').update(combined).digest('hex');
     const isSavage = parseInt(hash1.slice(0, 4), 16) % 2 === 0;
 
-    const hash2 = crypto.createHash('sha256').update(combined).digest('hex');
+    const hash2 = new Bun.CryptoHasher('sha256').update(combined).digest('hex');
 
     const normalResponses = [
       'Yes, definitely.',

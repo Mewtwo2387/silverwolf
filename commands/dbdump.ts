@@ -1,5 +1,5 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import path from 'path';
+import { unlinkSync } from 'fs';
 import { DevCommand } from './classes/DevCommand';
 import { logError } from '../utils/log';
 
@@ -146,7 +146,7 @@ class DBDump extends DevCommand {
 
       for (const definition of selectedDefinitions) {
         const tableData = await this.client.db.dumpTable(definition.tableName, definition.formatUserIds);
-        const filePath = this.createCSVFile(definition.fileName, tableData);
+        const filePath = await this.createCSVFile(definition.fileName, tableData);
         filesToDump.push({ attachment: filePath, name: definition.fileName });
       }
 
@@ -172,7 +172,7 @@ class DBDump extends DevCommand {
 
       const databasePath = path.join(import.meta.dir, '../persistence/database.db');
 
-      if (fs.existsSync(databasePath)) {
+      if (await Bun.file(databasePath).exists()) {
         await interaction.followUp({
           content: 'database:',
           files: [{ attachment: databasePath, name: 'database.db' }],
@@ -184,15 +184,15 @@ class DBDump extends DevCommand {
     }
   }
 
-  createCSVFile(fileName: string, data: string): string {
+  async createCSVFile(fileName: string, data: string): Promise<string> {
     const filePath = path.join(import.meta.dir, fileName);
-    fs.writeFileSync(filePath, data, 'utf8');
+    await Bun.write(filePath, data);
     return filePath;
   }
 
   cleanupFile(filePath: string): void {
     try {
-      fs.unlinkSync(filePath);
+      unlinkSync(filePath);
     } catch (err) {
       logError(`Failed to delete file ${filePath}:`, err);
     }

@@ -1,12 +1,14 @@
-import path from 'path';
-import fs from 'fs';
 import { Command } from './classes/Command';
 import { logError } from '../utils/log';
+import _avatarData from '../data/hsrAvartars.json';
+import _characterData from '../data/hsrCharacters.json';
+import _namesData from '../data/hsr.json';
+import _lightconeData from '../data/hsrLC.json';
 
-const hsrAvatars = path.join(import.meta.dir, '../data/hsrAvartars.json');
-const hsrCharacters = path.join(import.meta.dir, '../data/hsrCharacters.json');
-const hsrNames = path.join(import.meta.dir, '../data/hsr.json');
-const hsrLC = path.join(import.meta.dir, '../data/hsrLC.json');
+const avatarData: any = _avatarData;
+const characterData: any = _characterData;
+const namesData: any = _namesData;
+const lightconeData: any = _lightconeData;
 
 class HsrProfile extends Command {
   constructor(client: any) {
@@ -26,11 +28,6 @@ class HsrProfile extends Command {
     const headers = {
       'User-Agent': 'Silverwolf-bot/1.0 (Example@gmail.com)',
     };
-
-    const avatarData = JSON.parse(fs.readFileSync(hsrAvatars, 'utf8'));
-    const characterData = JSON.parse(fs.readFileSync(hsrCharacters, 'utf8'));
-    const namesData = JSON.parse(fs.readFileSync(hsrNames, 'utf8'));
-    const lightconeData = JSON.parse(fs.readFileSync(hsrLC, 'utf8'));
 
     try {
       const response = await fetch(url, { headers });

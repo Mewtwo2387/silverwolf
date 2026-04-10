@@ -1,10 +1,10 @@
-import path from 'path';
-import fs from 'fs';
 import { Command } from './classes/Command';
 import { logError } from '../utils/log';
+import _profilePictures from '../data/genshinPfps.json';
+import _namecards from '../data/genshinNamecards.json';
 
-const genshinPfp = path.join(import.meta.dir, '../data/genshinPfps.json');
-const genshinNamecards = path.join(import.meta.dir, '../data/genshinNamecards.json');
+const profilePictures: any = _profilePictures;
+const namecards: any = _namecards;
 
 class GenshinProfile extends Command {
   constructor(client: any) {
@@ -24,9 +24,6 @@ class GenshinProfile extends Command {
     const headers = {
       'User-Agent': 'Silverwolf-bot/1.0 (Example@gmail.com)',
     };
-
-    const profilePictures = JSON.parse(fs.readFileSync(genshinPfp, 'utf8'));
-    const namecards = JSON.parse(fs.readFileSync(genshinNamecards, 'utf8'));
 
     try {
       const response = await fetch(url, { headers });

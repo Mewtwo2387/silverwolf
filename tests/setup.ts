@@ -1,8 +1,9 @@
-// Jest setup file
+// Bun test setup file
 // This file runs before each test file
+import { setDefaultTimeout, beforeAll, afterAll } from 'bun:test';
 
 // Set test timeout to 30 seconds
-jest.setTimeout(30000);
+setDefaultTimeout(30000);
 
 // Add any global test setup here
 beforeAll(() => {

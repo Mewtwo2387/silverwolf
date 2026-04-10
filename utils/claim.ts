@@ -1,8 +1,7 @@
-import fs from 'fs';
-import path from 'path';
 import { EmbedBuilder, type ChatInputCommandInteraction, type ColorResolvable } from 'discord.js';
 
 import { log } from './log';
+import claimSkinConfig from '../data/config/skin/claim.json';
 import {
   getNuggieFlatMultiplier,
   getNuggieStreakMultiplier,
@@ -78,7 +77,7 @@ async function formatReward(
   percentage: MultiplierChance,
 ): Promise<RewardResult> {
   const season = await client.db.globalConfig.getGlobalConfig('season') || 'normal';
-  const json = JSON.parse(fs.readFileSync(path.join(import.meta.dir, '../data/config/skin/claim.json'), 'utf8'));
+  const json = claimSkinConfig as any;
   const resolvedSeason = json[season] ? season : 'normal';
   log(`season: ${season}`);
   log(`resolvedSeason: ${resolvedSeason}`);

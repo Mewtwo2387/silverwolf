@@ -1,7 +1,6 @@
-import fs from 'fs';
-import path from 'path';
 import { Command } from './classes/Command';
 import { logError } from '../utils/log';
+import gifs from '../data/hilichurl.json';
 
 class Hilichurl extends Command {
   constructor(client: any) {
@@ -10,8 +9,6 @@ class Hilichurl extends Command {
 
   async run(interaction: any): Promise<void> {
     try {
-      const gifsPath = path.join(import.meta.dir, '../data/hilichurl.json');
-      const gifs = JSON.parse(fs.readFileSync(gifsPath, 'utf8'));
       const randomGif = gifs[Math.floor(Math.random() * gifs.length)];
       await interaction.editReply({ content: randomGif });
     } catch (error) {

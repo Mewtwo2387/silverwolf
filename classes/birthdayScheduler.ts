@@ -1,4 +1,3 @@
-import cron from 'node-cron';
 import { EmbedBuilder } from 'discord.js';
 import { log, logError } from '../utils/log';
 import { parseChannelIds } from '../utils/parseChannelIds';
@@ -6,6 +5,8 @@ import { parseChannelIds } from '../utils/parseChannelIds';
 
 class BirthdayScheduler {
   client: any;
+  private hourlyJob: BunCronJob | null = null;
+  private dailyJob: BunCronJob | null = null;
 
   constructor(client: any) {
     this.client = client;
@@ -13,7 +14,7 @@ class BirthdayScheduler {
 
   // Start the scheduler to run every hour
   start(): void {
-    cron.schedule('0 * * * *', async () => { // * * * * * every minute for testing, change to '0 * * * *' for every hour
+    this.hourlyJob = (Bun.cron as any)('0 * * * *', async () => { // * * * * * every minute for testing, change to '0 * * * *' for every hour
       const now = new Date();
       const utcMonth = (now.getUTCMonth() + 1).toString().padStart(2, '0');
       const utcDay = now.getUTCDate().toString().padStart(2, '0');
@@ -64,7 +65,10 @@ class BirthdayScheduler {
     });
 
     // Daily reminder check at midnight UTC
-    cron.schedule('0 0 * * *', async () => {
+    // Note: Bun.cron does not support timezone options like node-cron did.
+    // The callback uses UTC date methods internally, so the logic is UTC-safe.
+    // The cron expression fires at system local time (UTC in Docker by default).
+    this.dailyJob = (Bun.cron as any)('0 0 * * *', async () => {
       const now = new Date();
       const currentYear = now.getUTCFullYear();
       log(`Running daily birthday reminder check for year ${currentYear}`);
@@ -119,7 +123,12 @@ class BirthdayScheduler {
       } catch (error) {
         logError('Error during daily reminder check:', error);
       }
-    }, { timezone: 'UTC' });
+    });
+  }
+
+  stop(): void {
+    this.hourlyJob?.stop();
+    this.dailyJob?.stop();
   }
 }
 

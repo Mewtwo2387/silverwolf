@@ -1,7 +1,6 @@
 import {
   Client, REST, Routes, type ClientOptions, type Message, type Interaction,
 } from 'discord.js';
-import fs from 'fs';
 import path from 'path';
 import { createRequire } from 'node:module';
 import Database from '../database/Database';
@@ -10,6 +9,8 @@ import BabyScheduler from './babyScheduler';
 import { log, logError } from '../utils/log';
 // Note: Bun automatically reads .env files
 import seasonConfig from '../data/config/skin/pokemon.json';
+import keywordsJson from '../data/keywords.json';
+import statusJson from '../data/status.json';
 import {
   ChristmasHandler, NormalHandler, HalloweenHandler, AprilFoolsHandler,
 } from './handlers/index';
@@ -95,7 +96,7 @@ All wrongs reserved.
     log('--------------------\nLoading commands...\n--------------------');
     const commandDir = path.join(import.meta.dir, '../commands');
     // Prefer .ts files; only fall back to .js if no .ts version exists
-    const allFiles = fs.readdirSync(commandDir);
+    const allFiles = [...new Bun.Glob('*.{ts,js}').scanSync(commandDir)];
     const tsFiles = new Set(allFiles.filter((f) => f.endsWith('.ts')).map((f) => f.replace('.ts', '')));
     const commandFiles = allFiles.filter((file) => {
       if (file.endsWith('.ts')) return true;
@@ -123,7 +124,7 @@ All wrongs reserved.
 
     log('--------------------\nLoading command groups...\n--------------------');
     const commandGroupDir = path.join(import.meta.dir, '../commands/commandgroups');
-    const commandGroupFiles = fs.readdirSync(commandGroupDir).filter((file) => file.endsWith('.ts'));
+    const commandGroupFiles = [...new Bun.Glob('*.ts').scanSync(commandGroupDir)];
 
     let commandGroupCount = 0;
     for (const file of commandGroupFiles) {
@@ -139,9 +140,7 @@ All wrongs reserved.
 
   async loadKeywords(): Promise<void> {
     log('--------------------\nLoading keywords...\n--------------------');
-    const keywordsFile = path.join(import.meta.dir, '../data/keywords.json');
-    const keywordsRaw = fs.readFileSync(keywordsFile, 'utf8');
-    this.keywords = JSON.parse(keywordsRaw);
+    this.keywords = keywordsJson as any;
 
     this.keywords.forEach((entry: any) => {
       log(`Keyword(s) [${entry.triggers.join(', ')}] loaded.`);
@@ -506,11 +505,8 @@ All wrongs reserved.
   }
 
   loadGames(): void {
-    const filePath = path.join(import.meta.dir, '../data/status.json');
     try {
-      const data = fs.readFileSync(filePath, 'utf8');
-      const json = JSON.parse(data);
-      this.games = json.games || [];
+      this.games = (statusJson as any).games || [];
       log(`Games loaded from status.json: ${this.games}`);
     } catch (error) {
       logError('Error loading games from status.json:', error);
