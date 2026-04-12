@@ -11,7 +11,7 @@ const WEBHOOK_NAME = process.env.WEBHOOK_NAME || 'grok-webhook';
 const scriptHandlers = {
   girlCockx: async (message: Message): Promise<void> => {
     const xLinkRegex = /https:\/\/(?:x\.com|twitter\.com)\/([^/]+)\/status\/(\d+)(?:\?[^\s]*)?/g;
-    const girlcockxContent = message.content.replace(xLinkRegex, (_, user, id) => `https://fxtwitter.com/${user}/status/${id}`);
+    const girlcockxContent = message.content.replace(xLinkRegex, (_, user, id) => `https://fxtwitter.com/${user}/status/${id}/en`);
 
     try {
       const webhooks = await (message.channel as TextChannel).fetchWebhooks();
