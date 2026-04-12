@@ -1,28 +1,26 @@
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const { Command } = require('./classes/command');
-const { CHARACTERS } = require('../tcg/characters.ts');
+const {
+  CHARACTER_ROSTER_DISCORD_CHOICES,
+  characterFromRosterValue,
+} = require('../tcg/characterRoster.ts');
 
 class CardShow extends Command {
   constructor(client) {
-    const choices = CHARACTERS.map((character) => ({
-      name: character.name,
-      value: character.name.toLowerCase(),
-    }));
-
     super(client, 'show', 'Show a card from the built-in TCG character list', [
       {
         name: 'character',
         description: 'Choose a character from the TCG roster',
         type: 3,
         required: true,
-        choices,
+        choices: CHARACTER_ROSTER_DISCORD_CHOICES,
       },
     ], { isSubcommandOf: 'card', blame: 'ei' });
   }
 
   async run(interaction) {
     const selectedCharacter = interaction.options.getString('character');
-    const character = CHARACTERS.find((entry) => entry.name.toLowerCase() === selectedCharacter);
+    const character = characterFromRosterValue(selectedCharacter);
 
     if (!character) {
       await interaction.editReply('Character not found in the TCG roster.');

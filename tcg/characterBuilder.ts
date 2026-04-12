@@ -95,9 +95,9 @@ export function createSkill(params: {
     params.description,
     params.damage || 0,
     params.cost || 0,
-    params.range || RangeType.SingleOpponent,
+    params.range ?? RangeType.SingleOpponent,
     params.effects || [],
-    params.formChange
+    params.formChange,
   );
 }
 
