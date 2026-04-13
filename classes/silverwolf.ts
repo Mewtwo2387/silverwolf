@@ -161,8 +161,9 @@ All wrongs reserved.
         log(`Warning: skipping keywords entry at index ${i} (missing or empty triggers).`);
         return false;
       }
-      if (!entry.triggers.every((t: any) => typeof t === 'string')) {
-        log(`Warning: skipping keywords entry at index ${i} (triggers contains non-string).`);
+      if (!entry.triggers.every((t: any) => typeof t === 'string' && t.trim().length > 0)) {
+        const blanks = entry.triggers.filter((t: any) => typeof t !== 'string' || t.trim().length === 0);
+        log(`Warning: skipping keywords entry at index ${i} (triggers contains non-string or blank values: ${JSON.stringify(blanks)}).`);
         return false;
       }
       return true;
