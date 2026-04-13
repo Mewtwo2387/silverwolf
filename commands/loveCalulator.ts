@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import { Command } from './classes/Command';
 
 class LoveCalculator extends Command {
@@ -42,7 +41,7 @@ class LoveCalculator extends Command {
     input2 = await replaceMentionWithUsername(input2);
 
     const sortedInputs = [input1.toLowerCase(), input2.toLowerCase()].sort().join('');
-    const hash = crypto.createHash('md5').update(sortedInputs).digest('hex');
+    const hash = new Bun.CryptoHasher('md5').update(sortedInputs).digest('hex');
     const percentage = parseInt(hash.slice(0, 4), 16) % 101;
 
     let phrase = '';

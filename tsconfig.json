@@ -12,7 +12,7 @@
     "forceConsistentCasingInFileNames": true,
     "outDir": ".tsbuild",
     "typeRoots": ["./types", "./node_modules/@types"],
-    "types": ["node", "jest"]
+    "types": ["node", "bun"]
   },
   "include": ["**/*.ts", "types/**/*.d.ts"],
   "exclude": ["node_modules", "persistence", "data", ".tsbuild", "coverage", "local_db_folder"]

@@ -1,5 +1,4 @@
 import { EmbedBuilder } from 'discord.js';
-import * as fs from 'fs';
 import { Command } from './classes/Command';
 import { generateContent, getPersonaByName } from '../utils/ai';
 import { log, logError } from '../utils/log';
@@ -49,13 +48,7 @@ class Summary extends Command {
       return;
     }
     if (persona.systemPromptFile) {
-      const systemPromptFile = await new Promise<string>((resolve, reject) => {
-        fs.readFile(persona.systemPromptFile!, 'utf8', (err, data) => {
-          if (err) reject(err);
-          else resolve(data);
-        });
-      });
-      persona.systemPrompt = systemPromptFile;
+      persona.systemPrompt = await Bun.file(persona.systemPromptFile).text();
     }
 
     let summary: any;

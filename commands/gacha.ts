@@ -1,9 +1,11 @@
 /* eslint-disable no-unreachable */
-import fs from 'fs';
 import {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
 } from 'discord.js';
 import { Command } from './classes/Command';
+import charactersRaw from '../data/hsrCharacters.json';
+import lightconesRaw from '../data/hsrLC.json';
+import hsrNames from '../data/hsr.json';
 
 class Gacha extends Command {
   namesData: any;
@@ -24,10 +26,7 @@ class Gacha extends Command {
       },
     ], { blame: 'xei' });
 
-    const charactersRaw = JSON.parse(fs.readFileSync('./data/hsrCharacters.json', 'utf-8'));
-    const lightconesRaw = JSON.parse(fs.readFileSync('./data/hsrLC.json', 'utf-8'));
-    this.namesData = JSON.parse(fs.readFileSync('./data/hsr.json', 'utf-8'));
-
+    this.namesData = hsrNames;
     this.characterPool = Object.values(charactersRaw);
     this.lightconePool = Object.values(lightconesRaw);
   }

@@ -1,4 +1,3 @@
-import { promises as fs } from 'fs';
 import { DevCommand } from './classes/DevCommand';
 import { logError, logErrorFilePath, logFilePath } from '../utils/log';
 
@@ -34,7 +33,7 @@ class LogDump extends DevCommand {
     const type = interaction.options.getString('type');
     const filePath = type === 'error' ? logErrorFilePath : logFilePath;
     try {
-      const log = await fs.readFile(filePath, 'utf8');
+      const log = await Bun.file(filePath).text();
       const logLines = log.split('\n').slice(-lines);
       const content = logLines.join('\n');
       if (content.length > 1990) {

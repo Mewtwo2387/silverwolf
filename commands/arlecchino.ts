@@ -1,7 +1,6 @@
-import fs from 'fs';
-import path from 'path';
 import { Command } from './classes/Command';
 import { logError } from '../utils/log';
+import gifs from '../data/arlecchino.json';
 
 class Arlecchino extends Command {
   constructor(client: any) {
@@ -10,8 +9,6 @@ class Arlecchino extends Command {
 
   async run(interaction: any): Promise<void> {
     try {
-      const gifsPath = path.join(import.meta.dir, '../data/arlecchino.json');
-      const gifs = JSON.parse(fs.readFileSync(gifsPath, 'utf8'));
       const randomGif = gifs[Math.floor(Math.random() * gifs.length)];
       await interaction.editReply({ content: randomGif });
       await interaction.followUp({ content: '<@993614772354416673>' });

@@ -1,12 +1,10 @@
 {
   "env": {
     "node": true,
-    "es2021": true,
-    "jest": true
+    "es2021": true
   },
   "extends": [
     "airbnb-base",
-    "plugin:jest/recommended",
     "plugin:node/recommended",
     "plugin:promise/recommended"
   ],
@@ -22,7 +20,7 @@
       "devDependencies": ["**/*.test.js", "**/*.spec.js", "tests/**/*.js", "**/*.test.ts", "**/*.spec.ts", "tests/**/*.ts"]
     }],
     "node/no-unpublished-require": ["error", {
-      "allowModules": ["jest", "@jest/globals"]
+      "allowModules": []
     }],
     "node/no-missing-require": "off",
     "import/no-unresolved": ["error", {

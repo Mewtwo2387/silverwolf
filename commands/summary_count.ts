@@ -1,5 +1,4 @@
 import { EmbedBuilder } from 'discord.js';
-import * as fs from 'fs';
 import { Command } from './classes/Command';
 import { generateContent, getPersonaByName } from '../utils/ai';
 import { log, logError } from '../utils/log';
@@ -33,13 +32,13 @@ class Summary extends Command {
       return;
     }
     if (persona.systemPromptFile) {
-      const systemPromptFile = await new Promise<string>((resolve, reject) => {
-        fs.readFile(persona.systemPromptFile!, 'utf8', (err, data) => {
-          if (err) reject(err);
-          else resolve(data);
-        });
-      });
-      persona.systemPrompt = systemPromptFile;
+      try {
+        persona.systemPrompt = await Bun.file(persona.systemPromptFile).text();
+      } catch (error) {
+        logError(`Failed to read system prompt file ${persona.systemPromptFile}:`, error);
+        await interaction.editReply('Failed to load summarizer prompt. Please try again later.');
+        return;
+      }
     }
 
     let summary: any;
