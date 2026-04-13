@@ -146,6 +146,11 @@ All wrongs reserved.
 
   async loadKeywords(): Promise<void> {
     log('--------------------\nLoading keywords...\n--------------------');
+    if (!Array.isArray(keywordsJson)) {
+      log('Warning: keywordsJson is not an array, defaulting to empty keywords list.');
+      this.keywords = [];
+      return;
+    }
     const raw = keywordsJson as any[];
     this.keywords = raw.filter((entry: any, i: number) => {
       if (!entry || typeof entry !== 'object') {
