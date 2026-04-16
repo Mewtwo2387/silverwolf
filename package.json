@@ -19,6 +19,7 @@
     "@google/generative-ai": "^0.16.0",
     "canvas": "^3.2.3",
     "discord.js": "^14.26.0",
+    "gpt-tokenizer": "^3.4.0",
     "jsdom": "^29.0.1",
     "mime": "^2.5.2",
     "openai": "^5.12.2",

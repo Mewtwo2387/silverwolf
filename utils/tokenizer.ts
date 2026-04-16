@@ -1,8 +1,16 @@
+import { encode as encodeCl100k } from 'gpt-tokenizer';
 import { getGeminiAI } from './ai';
+import { getCalibrationMultiplier } from './tokenCalibration';
 
-// Lightweight character-based token estimation (~4 chars per token for English text)
+// Real BPE tokenizer (GPT-4 cl100k_base). Not vocab-exact for nemotron/grok,
+// but within ~10% on typical text — orders of magnitude better than char/4.
+// Per-model drift is corrected by tokenCalibration against usage.prompt_tokens.
 function countTokensOpenRouter(text: string): number {
-  return Math.ceil(text.length / 4);
+  try {
+    return encodeCl100k(text).length;
+  } catch {
+    return Math.ceil(text.length / 3);
+  }
 }
 
 function countTokensOpenRouterMessages(messages: { role: string; content: string }[]): number {
@@ -44,6 +52,8 @@ export interface TokenBudget {
 export interface ContextWarning {
   level: 50 | 75 | 95;
   message: string;
+  wasTrimmed: boolean;
+  trimmedCount: number;
 }
 
 const CONTEXT_LIMITS: Record<string, number> = {
@@ -52,7 +62,9 @@ const CONTEXT_LIMITS: Record<string, number> = {
   'gemini-2.0-flash-preview-image-generation': 8_192,
   // OpenRouter models
   'x-ai/grok-4.1-fast': 2_000_000,
-  'nvidia/nemotron-3-super-120b-a12b:free': 262_144,
+  // Spec says 262k but the :free tier caps well below that in practice.
+  // Calibration further narrows the effective budget based on real usage.
+  'nvidia/nemotron-3-super-120b-a12b:free': 131_072,
   'xiaomi/mimo-v2-flash:nitro': 256_000,
   'cognitivecomputations/dolphin-mistral-24b-venice-edition:free': 32_768,
   // Default for unknown models
@@ -81,7 +93,11 @@ async function trimHistoryToFit(
   newPrompt: string,
 ): Promise<{ trimmedHistory: typeof history; budget: TokenBudget; warnings: ContextWarning[] }> {
   const contextLimit = getContextLimit(model);
-  const availableForHistory = contextLimit - computeReservedTokens(contextLimit);
+  const reserved = computeReservedTokens(contextLimit);
+  const rawAvailable = contextLimit - reserved;
+  // Shrink budget by the calibrated drift factor for this model (openrouter only).
+  const calibration = provider === 'openrouter' ? getCalibrationMultiplier(model) : 1.0;
+  const availableForHistory = Math.floor(rawAvailable / calibration);
 
   let systemTokens: number;
   let promptTokens: number;
@@ -130,16 +146,27 @@ async function trimHistoryToFit(
 
   const warnings: ContextWarning[] = [];
   const wasTrimmed = startIndex > 0;
+  const trimmedCount = startIndex;
   let warningLevel: 50 | 75 | 95 | null = null;
   if (percentage >= 95) warningLevel = 95;
   else if (percentage >= 75) warningLevel = 75;
   else if (percentage >= 50) warningLevel = 50;
 
   if (warningLevel) {
-    const trimNote = wasTrimmed ? ' Old messages are being trimmed.' : '';
-    warnings.push({ level: warningLevel, message: `Context is **${percentage}%** full (${usedTokens.toLocaleString()}/${contextLimit.toLocaleString()} tokens).${trimNote}` });
+    const trimNote = wasTrimmed ? ` Trimmed ${trimmedCount} old message${trimmedCount === 1 ? '' : 's'}.` : '';
+    warnings.push({
+      level: warningLevel,
+      message: `Context is **${percentage}%** full (${usedTokens.toLocaleString()}/${contextLimit.toLocaleString()} tokens).${trimNote}`,
+      wasTrimmed,
+      trimmedCount,
+    });
   } else if (wasTrimmed) {
-    warnings.push({ level: 50, message: `Old messages are being trimmed to fit context (${usedTokens.toLocaleString()}/${contextLimit.toLocaleString()} tokens).` });
+    warnings.push({
+      level: 50,
+      message: `Trimmed ${trimmedCount} old message${trimmedCount === 1 ? '' : 's'} to fit context (${usedTokens.toLocaleString()}/${contextLimit.toLocaleString()} tokens).`,
+      wasTrimmed,
+      trimmedCount,
+    });
   }
 
   return {
