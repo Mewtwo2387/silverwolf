@@ -1,4 +1,4 @@
-import { encode as encodeCl100k } from 'gpt-tokenizer';
+import { encode as encodeCl100k } from 'gpt-tokenizer/encoding/cl100k_base';
 import { getGeminiAI } from './ai';
 import { getCalibrationMultiplier } from './tokenCalibration';
 
@@ -115,9 +115,9 @@ async function trimHistoryToFit(
   const fixedTokens = systemTokens + promptTokens;
   const budgetForHistory = Math.max(0, availableForHistory - fixedTokens);
 
-  if (fixedTokens > contextLimit) {
+  if (fixedTokens > availableForHistory) {
     throw new Error(
-      `System prompt + user prompt (${fixedTokens.toLocaleString()} tokens) exceeds context limit (${contextLimit.toLocaleString()} tokens) for model ${model}`,
+      `System prompt + user prompt (${fixedTokens.toLocaleString()} tokens) exceeds calibrated budget (${availableForHistory.toLocaleString()} tokens) for ${model} [${provider}]`,
     );
   }
 

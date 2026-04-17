@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { OpenAI } from 'openai';
 import mime from 'mime';
-import { encode as encodeCl100k } from 'gpt-tokenizer';
+import { encode as encodeCl100k } from 'gpt-tokenizer/encoding/cl100k_base';
 import { logError } from './log';
 import { recordUsage } from './tokenCalibration';
 // Note: Bun automatically reads .env files
@@ -131,7 +131,9 @@ async function generateContent({
       for (const m of requestMessages) {
         try {
           estimated += encodeCl100k(m.content).length + 4;
-        } catch { /* ignore */ }
+        } catch {
+          estimated += Math.ceil(m.content.length / 3) + 4;
+        }
       }
       recordUsage(model, estimated, actualPromptTokens);
     }
