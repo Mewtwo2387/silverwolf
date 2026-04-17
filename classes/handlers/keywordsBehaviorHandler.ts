@@ -130,7 +130,7 @@ const scriptHandlers = {
     let history: any[] = [];
     let historyLoaded = false;
     let hadRawHistory = false;
-    let contextWarnings: { level: number; message: string }[] = [];
+    let contextWarnings: { level: number; message: string; wasTrimmed: boolean; trimmedCount: number }[] = [];
     if (hasMemory) {
       try {
         aiSession = await (message.client as any).db.aiChat.getOrCreateSession(
@@ -177,6 +177,22 @@ const scriptHandlers = {
           name: WEBHOOK_NAME,
           avatar: avatarURL,
         });
+      }
+
+      // Prominent pre-reply notice when history was trimmed — so the user sees
+      // it before the wall of AI text, not buried after.
+      const trimWarning = contextWarnings.find((w) => w.wasTrimmed);
+      if (trimWarning) {
+        const trimEmbed = new EmbedBuilder()
+          .setColor('#FEE75C')
+          .setTitle('⚠ Context limit reached')
+          .setDescription(`Trimmed **${trimWarning.trimmedCount}** old message${trimWarning.trimmedCount === 1 ? '' : 's'} to fit this model's context window. The oldest parts of the conversation are no longer visible to me.`)
+          .setFooter({ text: 'Use "kys" to start a fresh session' });
+        try {
+          await message.reply({ embeds: [trimEmbed], allowedMentions: { repliedUser: false } });
+        } catch (warnErr) {
+          logError('Failed to send trim warning embed:', warnErr);
+        }
       }
 
       const MAX_LENGTH = 2000;
@@ -242,15 +258,17 @@ const scriptHandlers = {
         previousMsg = sent;
       }
 
-      // Send context usage warnings as a subtle embed
-      if (contextWarnings.length > 0) {
+      // Post-reply context-usage embed (percentage). Skip if we only had a
+      // trim-only warning — that was already shown loudly before the reply.
+      const pctWarning = contextWarnings.find((w) => w.level >= 75 || (w.level >= 50 && !w.wasTrimmed));
+      if (pctWarning) {
         let warningColor = '#5865F2'; // blue for 50%
-        if (contextWarnings[0].level >= 95) warningColor = '#ED4245'; // red
-        else if (contextWarnings[0].level >= 75) warningColor = '#FEE75C'; // yellow
+        if (pctWarning.level >= 95) warningColor = '#ED4245'; // red
+        else if (pctWarning.level >= 75) warningColor = '#FEE75C'; // yellow
 
         const warningEmbed = new EmbedBuilder()
           .setColor(warningColor as `#${string}`)
-          .setDescription(contextWarnings[0].message)
+          .setDescription(pctWarning.message)
           .setFooter({ text: 'Use "kys" to start a fresh session' });
         try {
           await message.reply({ embeds: [warningEmbed], allowedMentions: { repliedUser: false } });
