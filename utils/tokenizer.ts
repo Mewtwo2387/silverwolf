@@ -108,8 +108,8 @@ async function trimHistoryToFit(
       countTokensGemini(model, newPrompt),
     ]);
   } else {
-    systemTokens = countTokensOpenRouter(systemPrompt);
-    promptTokens = countTokensOpenRouter(newPrompt);
+    systemTokens = countTokensOpenRouter(systemPrompt) + 4;
+    promptTokens = countTokensOpenRouter(newPrompt) + 4;
   }
 
   const fixedTokens = systemTokens + promptTokens;
@@ -142,7 +142,7 @@ async function trimHistoryToFit(
 
   const trimmedHistory = history.slice(startIndex);
   const usedTokens = fixedTokens + totalHistoryTokens;
-  const percentage = Math.round((usedTokens / contextLimit) * 100);
+  const percentage = Math.round(((usedTokens * calibration) / contextLimit) * 100);
 
   const warnings: ContextWarning[] = [];
   const wasTrimmed = startIndex > 0;
