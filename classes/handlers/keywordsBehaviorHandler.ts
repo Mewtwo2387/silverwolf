@@ -289,6 +289,7 @@ const scriptHandlers = {
                 if (title) {
                   return (message.client as any).db.aiChat.updateTitle(aiSession.sessionId, title);
                 }
+                return undefined;
               })
               .catch((titleErr) => {
                 logError('AiChat: Failed to generate session title:', titleErr);

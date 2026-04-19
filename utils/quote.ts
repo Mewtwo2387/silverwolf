@@ -7,8 +7,7 @@ Credits:
 
 import path from 'path';
 import Canvas, { type CanvasRenderingContext2D as CanvasCtx } from 'canvas';
-import type { APIUser } from 'discord-api-types/v10';
-import type { Guild, User } from 'discord.js';
+import type { APIUser, Guild, User } from 'discord.js';
 import { log, logError } from './log';
 
 // ─── Font Registration ────────────────────────────────────────────────────────
@@ -432,6 +431,7 @@ function resolveAvatarUrl(person: User | APIUser): string {
   if (person.avatar) {
     return `https://cdn.discordapp.com/avatars/${person.id}/${person.avatar}.png?size=512`;
   }
+  // eslint-disable-next-line no-bitwise, node/no-unsupported-features/es-builtins
   const defaultIndex = (BigInt(person.id) >> 22n) % 6n;
   return `https://cdn.discordapp.com/embed/avatars/${defaultIndex}.png`;
 }

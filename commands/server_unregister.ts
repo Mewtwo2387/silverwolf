@@ -1,7 +1,7 @@
+import { REST, Routes } from 'discord.js';
 import { DevCommand } from './classes/DevCommand';
 import { log } from '../utils/log';
 import { clearCachedAllowedServers } from '../utils/accessControl';
-import { REST, Routes } from 'discord.js';
 
 class ServerUnregister extends DevCommand {
   constructor(client: any) {

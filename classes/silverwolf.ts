@@ -321,7 +321,12 @@ All wrongs reserved.
         if (referencedMessage.webhookId) {
           nickname = referencedMessage.author.username;
         } else {
-          const guildMember = await message.guild.members.fetch(referencedMessage.author.id).catch(() => null);
+          let guildMember = null;
+          try {
+            guildMember = await message.guild.members.fetch(referencedMessage.author.id);
+          } catch {
+            guildMember = null;
+          }
           nickname = guildMember?.nickname || person.username;
         }
         const originalMessage = referencedMessage.content;
@@ -464,10 +469,10 @@ All wrongs reserved.
         const blacklistedCommands = blacklistedCommandsData.map((item: any) => item.commandName);
 
         // Create a copy of the commands array
-        const commandValues = Array.from(this.commands.values());
+        const guildCommandValues = Array.from(this.commands.values());
         // eslint-disable-next-line max-len
-        const validCommands = commandValues.filter((command: any) => command !== null && command.isSubcommandOf === null);
-        const commandsArray = validCommands.map((command: any) => command.toJSON());
+        const guildValidCommands = guildCommandValues.filter((command: any) => command !== null && command.isSubcommandOf === null);
+        const commandsArray = guildValidCommands.map((command: any) => command.toJSON());
 
         // If there are no blacklisted commands, register all commands
         if (blacklistedCommands.length === 0) {

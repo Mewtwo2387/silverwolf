@@ -63,5 +63,7 @@ export function AboutPage() {
     </section>
   `;
 
-  return Layout({ title: 'Silverwolf — About', active: 'about', extraStyles: aboutStyles, body });
+  return Layout({
+    title: 'Silverwolf — About', active: 'about', extraStyles: aboutStyles, body,
+  });
 }
