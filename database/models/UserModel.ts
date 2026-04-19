@@ -132,6 +132,12 @@ class UserModel {
     const rows = await this.db.executeSelectAllQuery(query, [todayHour]);
     return rows;
   }
+
+  async getAllBirthdays(): Promise<{ id: string; birthdays: string }[]> {
+    const query = userQueries.GET_ALL_BIRTHDAYS;
+    const rows = await this.db.executeSelectAllQuery(query);
+    return rows as { id: string; birthdays: string }[];
+  }
 }
 
 export default UserModel;

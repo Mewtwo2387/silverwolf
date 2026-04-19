@@ -23,16 +23,20 @@ function LeaderboardMixin<TBase extends Constructor>(BaseClass: TBase) {
       this.itemsPerPage = 10;
     }
 
+    async fetchData(page: number = 0): Promise<{ attrs: any[]; totalCount: number }> {
+      const attrs = await this.client.db.user.getEveryoneAttr(
+        this.attribute,
+        this.itemsPerPage,
+        page * this.itemsPerPage,
+      );
+      const totalCount = await this.client.db.user.getEveryoneAttrCount(this.attribute);
+      return { attrs, totalCount };
+    }
+
     async run(interaction: any): Promise<void> {
       try {
         let currentPage = 0;
-        const attrs = await this.client.db.user.getEveryoneAttr(
-          this.attribute,
-          this.itemsPerPage,
-          currentPage * this.itemsPerPage,
-        );
-
-        const totalCount = await this.client.db.user.getEveryoneAttrCount(this.attribute);
+        const { attrs, totalCount } = await this.fetchData(currentPage);
         const maxPage = Math.ceil(totalCount / this.itemsPerPage) - 1;
         const leaderboard = await this.generateLeaderboard(attrs, currentPage);
 
@@ -64,11 +68,7 @@ function LeaderboardMixin<TBase extends Constructor>(BaseClass: TBase) {
             currentPage += 1;
           }
 
-          const newAttrs = await this.client.db.user.getEveryoneAttr(
-            this.attribute,
-            this.itemsPerPage,
-            currentPage * this.itemsPerPage,
-          );
+          const { attrs: newAttrs } = await this.fetchData(currentPage);
           const newLeaderboard = await this.generateLeaderboard(newAttrs, currentPage);
 
           const newRow = new Discord.ActionRowBuilder()

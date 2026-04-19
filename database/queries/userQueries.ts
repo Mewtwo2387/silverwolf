@@ -131,6 +131,13 @@ const userQueries = {
     FROM User
     WHERE strftime('%m-%dT%H', birthdays) = ?
   `,
+
+  GET_ALL_BIRTHDAYS: `
+    SELECT
+      id, birthdays
+    FROM User
+    WHERE birthdays IS NOT NULL
+  `,
 };
 
 export default userQueries;

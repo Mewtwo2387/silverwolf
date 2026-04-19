@@ -30,19 +30,24 @@ class PoopBoard extends (LeaderboardMixin(Command) as any) {
     ];
   }
 
+  async fetchData(period: string = 'all-time', page: number = 0): Promise<{ attrs: any[]; totalCount: number; periodLabel: string }> {
+    const totalCount = await this.client.db.poop.getLeaderboardCount(period);
+    const attrs = await this.client.db.poop.getLeaderboard(period, this.itemsPerPage, page * this.itemsPerPage);
+    const labels: Record<string, string> = { 'all-time': 'All Time', weekly: 'This Week', monthly: 'This Month' };
+    return { attrs, totalCount, periodLabel: labels[period] ?? 'All Time' };
+  }
+
   async run(interaction: any): Promise<void> {
     try {
       const period = interaction.options.getString('period') ?? 'all-time';
       let currentPage = 0;
 
-      const totalCount = await this.client.db.poop.getLeaderboardCount(period);
+      const { attrs, totalCount, periodLabel: label } = await this.fetchData(period, currentPage);
       const maxPage = Math.max(Math.ceil(totalCount / this.itemsPerPage) - 1, 0);
-
-      const attrs = await this.client.db.poop.getLeaderboard(period, this.itemsPerPage, 0);
       const leaderboard = await this.generateLeaderboard(attrs, currentPage);
 
       const periodLabel: Record<string, string> = { 'all-time': 'All Time', weekly: 'This Week', monthly: 'This Month' };
-      leaderboard.setTitle(`Poop Leaderboard 💩 — ${periodLabel[period]}`);
+      leaderboard.setTitle(`Poop Leaderboard 💩 — ${label}`);
 
       const row = new Discord.ActionRowBuilder()
         .addComponents(
@@ -74,8 +79,7 @@ class PoopBoard extends (LeaderboardMixin(Command) as any) {
           currentPage += 1;
         }
 
-        // eslint-disable-next-line max-len
-        const newAttrs = await this.client.db.poop.getLeaderboard(period, this.itemsPerPage, currentPage * this.itemsPerPage);
+        const { attrs: newAttrs } = await this.fetchData(period, currentPage);
         const newLeaderboard = await this.generateLeaderboard(newAttrs, currentPage);
         newLeaderboard.setTitle(`Poop Leaderboard 💩 — ${periodLabel[period]}`);
 

@@ -24,30 +24,28 @@ class GamblerBoard extends Command {
     this.itemsPerPage = 10;
   }
 
+  async fetchData(leaderboardType: string, page: number = 0): Promise<{ winnings: any[]; totalCount: number }> {
+    const winnings = (leaderboardType === 'all')
+      ? await this.client.db.user.getAllRelativeNetWinnings(
+        this.itemsPerPage,
+        page * this.itemsPerPage,
+      )
+      : await this.client.db.user.getRelativeNetWinnings(
+        leaderboardType,
+        this.itemsPerPage,
+        page * this.itemsPerPage,
+      );
+    const totalCount = (leaderboardType === 'all')
+      ? await this.client.db.user.getAllRelativeNetWinningsCount()
+      : await this.client.db.user.getEveryoneAttrCount(`${leaderboardType}TimesPlayed`);
+    return { winnings, totalCount };
+  }
+
   async run(interaction: any): Promise<void> {
     try {
       let currentPage = 0;
       const leaderboardType = interaction.options.getString('leaderboard');
-      let winnings;
-      if (leaderboardType === 'all') {
-        winnings = await this.client.db.user.getAllRelativeNetWinnings(
-          this.itemsPerPage,
-          currentPage * this.itemsPerPage,
-        );
-      } else {
-        winnings = await this.client.db.user.getRelativeNetWinnings(
-          leaderboardType,
-          this.itemsPerPage,
-          currentPage * this.itemsPerPage,
-        );
-      }
-
-      let totalCount;
-      if (leaderboardType === 'all') {
-        totalCount = await this.client.db.user.getAllRelativeNetWinningsCount();
-      } else {
-        totalCount = await this.client.db.user.getEveryoneAttrCount(`${leaderboardType}TimesPlayed`);
-      }
+      const { winnings, totalCount } = await this.fetchData(leaderboardType, currentPage);
       const maxPage = Math.ceil(totalCount / this.itemsPerPage) - 1;
       const leaderboard = await this.generateLeaderboard(winnings, currentPage, leaderboardType);
 
@@ -79,19 +77,7 @@ class GamblerBoard extends Command {
           currentPage += 1;
         }
 
-        let newWinnings;
-        if (leaderboardType === 'all') {
-          newWinnings = await this.client.db.user.getAllRelativeNetWinnings(
-            this.itemsPerPage,
-            currentPage * this.itemsPerPage,
-          );
-        } else {
-          newWinnings = await this.client.db.user.getRelativeNetWinnings(
-            leaderboardType,
-            this.itemsPerPage,
-            currentPage * this.itemsPerPage,
-          );
-        }
+        const { winnings: newWinnings } = await this.fetchData(leaderboardType, currentPage);
         const newLeaderboard = await this.generateLeaderboard(newWinnings, currentPage, leaderboardType);
 
         const newRow = new Discord.ActionRowBuilder()

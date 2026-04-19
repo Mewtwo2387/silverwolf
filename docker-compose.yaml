@@ -1,9 +1,12 @@
 services:
   bot:
     image: mewtwo2387/silverwolf-bot:latest
+    build: .
     container_name: silverwolf-bot
     restart: unless-stopped
     env_file: .env
+    ports:
+      - "6769:6769"
     volumes:
       - ./persistence:/app/persistence
     deploy:

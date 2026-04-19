@@ -1,6 +1,7 @@
 import { GatewayIntentBits, Options, Sweepers } from 'discord.js';
 import { log, logError } from './utils/log';
 import { Silverwolf } from './classes/silverwolf';
+import { startWebsite } from './site_src/server';
 
 // Note: Bun automatically reads .env files, no dotenv needed
 
@@ -40,3 +41,4 @@ const silverwolf = new Silverwolf(TOKEN, {
 });
 
 silverwolf.login().then(() => silverwolf.registerCommands(CLIENT_ID));
+startWebsite(silverwolf);
