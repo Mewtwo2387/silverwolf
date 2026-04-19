@@ -28,13 +28,18 @@ export function LeaderboardsPage(opts: {
       <h2 style="text-align:center; margin-top:2rem;">${result.title}</h2>
       <table>
         <thead>
-          <tr><th>#</th><th>User ID</th><th>Score</th></tr>
+          <tr><th>#</th><th>User</th><th>Score</th></tr>
         </thead>
         <tbody>
           ${result.rows.map((row) => html`
             <tr>
               <td>${row.rank}</td>
-              <td><code>${row.id}</code></td>
+              <td>
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                  ${row.avatarURL ? html`<img src="${row.avatarURL}" alt="" style="width:24px; height:24px; border-radius:50%; object-fit:cover;" />` : html`<div style="width:24px; height:24px; border-radius:50%; background:#2a2b33;"></div>`}
+                  <span>${row.username}</span>
+                </div>
+              </td>
               <td>${row.valueLabel}</td>
             </tr>
           `)}

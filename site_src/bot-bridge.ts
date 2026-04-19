@@ -5,6 +5,8 @@ export type LeaderboardKind = 'gambler' | 'murder' | 'nuggie' | 'poop';
 export interface LeaderboardRow {
   rank: number;
   id: string;
+  username: string;
+  avatarURL: string | null;
   value: number;
   valueLabel: string;
 }
@@ -18,6 +20,21 @@ const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
+
+async function resolveUser(silverwolf: Silverwolf, id: string) {
+  try {
+    const user = await silverwolf.users.fetch(id);
+    return {
+      username: user.username,
+      avatarURL: user.displayAvatarURL({ extension: 'png', size: 64 })
+    };
+  } catch {
+    return {
+      username: id,
+      avatarURL: null
+    };
+  }
+}
 
 export async function getLeaderboard(
   silverwolf: Silverwolf,
@@ -33,11 +50,16 @@ export async function getLeaderboard(
     const counter = command.counter as string;
     return {
       title: command.title as string,
-      rows: attrs.map((row: any, i: number) => ({
-        rank: i + 1,
-        id: row.id,
-        value: row[attribute],
-        valueLabel: `${row[attribute]} ${counter}`,
+      rows: await Promise.all(attrs.map(async (row: any, i: number) => {
+        const u = await resolveUser(silverwolf, row.id);
+        return {
+          rank: i + 1,
+          id: row.id,
+          username: u.username,
+          avatarURL: u.avatarURL,
+          value: row[attribute],
+          valueLabel: `${row[attribute]} ${counter}`,
+        };
       })),
     };
   }
@@ -50,11 +72,16 @@ export async function getLeaderboard(
     const title = type === 'all' ? 'The Ultimate Gambler Leaderboard' : `${type.charAt(0).toUpperCase() + type.slice(1)} Leaderboard`;
     return {
       title,
-      rows: winnings.map((row: any, i: number) => ({
-        rank: i + 1,
-        id: row.id,
-        value: row.relativeWon,
-        valueLabel: `${row.relativeWon > 0 ? '+' : ''}${row.relativeWon} bets`,
+      rows: await Promise.all(winnings.map(async (row: any, i: number) => {
+        const u = await resolveUser(silverwolf, row.id);
+        return {
+          rank: i + 1,
+          id: row.id,
+          username: u.username,
+          avatarURL: u.avatarURL,
+          value: row.relativeWon,
+          valueLabel: `${row.relativeWon > 0 ? '+' : ''}${row.relativeWon} bets`,
+        };
       })),
     };
   }
@@ -66,11 +93,16 @@ export async function getLeaderboard(
     const { attrs, periodLabel } = await command.fetchData(period, 0);
     return {
       title: `Poop Leaderboard — ${periodLabel}`,
-      rows: attrs.map((row: any, i: number) => ({
-        rank: i + 1,
-        id: row.id,
-        value: row.poopCount,
-        valueLabel: `${row.poopCount} Poops`,
+      rows: await Promise.all(attrs.map(async (row: any, i: number) => {
+        const u = await resolveUser(silverwolf, row.id);
+        return {
+          rank: i + 1,
+          id: row.id,
+          username: u.username,
+          avatarURL: u.avatarURL,
+          value: row.poopCount,
+          valueLabel: `${row.poopCount} Poops`,
+        };
       })),
     };
   }
@@ -78,20 +110,30 @@ export async function getLeaderboard(
   throw new Error(`Unknown leaderboard kind: ${kind}`);
 }
 
+export interface BirthdayUser {
+  id: string;
+  username: string;
+}
+
 export async function getAllBirthdaysByMonth(
   silverwolf: Silverwolf,
-): Promise<Record<string, string[]>> {
+): Promise<Record<string, BirthdayUser[]>> {
   const rows = await (silverwolf as any).db.user.getAllBirthdays();
-  const grouped: Record<string, string[]> = {};
+  const grouped: Record<string, BirthdayUser[]> = {};
   for (const name of MONTHS) grouped[name] = [];
 
-  for (const row of rows) {
-    if (!row.birthdays) continue;
+  const validRows = rows.filter((row: any) => {
+    if (!row.birthdays) return false;
     const date = new Date(row.birthdays);
-    if (Number.isNaN(date.getTime())) continue;
+    return !Number.isNaN(date.getTime());
+  });
+
+  await Promise.all(validRows.map(async (row: any) => {
+    const date = new Date(row.birthdays);
     const monthName = MONTHS[date.getUTCMonth()];
-    grouped[monthName].push(row.id);
-  }
+    const u = await resolveUser(silverwolf, row.id);
+    grouped[monthName].push({ id: row.id, username: u.username });
+  }));
 
   return grouped;
 }
