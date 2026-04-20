@@ -10,6 +10,9 @@ import {
   createAbility,
   createAbilityEffect,
   createSimpleBackground,
+  Normal,
+  Charged,
+  Ultimate,
 } from './characterBuilder';
 import { ImagePanelMode } from './imagePanel';
 
@@ -90,18 +93,20 @@ export const KAITLIN = createCharacter({
       description: 'Basic Attack when in Doge Form.',
       damage: 5,
       range: RangeType.SingleOpponent,
+      battleCost: Normal(1),
     }),
     createSkill({
       name: 'Slay Queen',
       description: 'Basic Attack when in Kaitlin Form.',
       damage: 35,
       range: RangeType.SingleOpponent,
+      battleCost: Normal(1),
     }),
     createSkill({
       name: 'Estrogen',
       description: 'Our girl finally goes through her transformation and becomes a girl. Converts into Kaitlin Form.',
-      cost: 30,
       range: RangeType.Self,
+      battleCost: Ultimate(30),
       effects: [
         createRangeEffect(
           RangeType.Self,
@@ -110,7 +115,7 @@ export const KAITLIN = createCharacter({
             description: 'Converted into Kaitlin Form.',
             type: EffectType.FormChange,
             amount: 1,
-          })
+          }),
         ),
       ],
       formChange: [1, 2], // When transformed, skills 1 (Slay Queen) and 2 (Estrogen) become active
@@ -130,9 +135,9 @@ export const KAITLIN = createCharacter({
             type: EffectType.OutgoingDamage,
             amount: 1.15,
           }),
-          condition: (context: AbilityActivationContext) => {
-            return context.getAllies().filter(ally => ally.character.name.startsWith('V')).length === 1;
-          },
+          condition: (context: AbilityActivationContext) => (
+            context.getAllies().filter((ally) => ally.character.name.startsWith('V')).length === 1
+          ),
         }),
         createAbilityEffect({
           range: RangeType.Self,
@@ -142,9 +147,9 @@ export const KAITLIN = createCharacter({
             type: EffectType.OutgoingDamage,
             amount: 1.4,
           }),
-          condition: (context: AbilityActivationContext) => {
-            return context.getAllies().filter(ally => ally.character.name.startsWith('V')).length === 2;
-          },
+          condition: (context: AbilityActivationContext) => (
+            context.getAllies().filter((ally) => ally.character.name.startsWith('V')).length === 2
+          ),
         }),
       ],
     }),
@@ -172,12 +177,13 @@ export const VENFEI = createCharacter({
       description: 'h',
       damage: 5,
       range: RangeType.SingleOpponent,
+      battleCost: Normal(1),
     }),
     createSkill({
       name: 'aaaaaaa',
       description: 'Increases outgoing damage of all allies by 30% for 5 turns.',
-      cost: 20,
       range: RangeType.AllAllies,
+      battleCost: Ultimate(20),
       effects: [
         createRangeEffect(
           RangeType.AllAllies,
@@ -187,7 +193,7 @@ export const VENFEI = createCharacter({
             type: EffectType.OutgoingDamage,
             amount: 1.3,
             duration: 5,
-          })
+          }),
         ),
       ],
     }),
@@ -214,13 +220,14 @@ export const EI = createCharacter({
       description: 'Basic Attack.',
       damage: 5,
       range: RangeType.SingleOpponent,
+      battleCost: Normal(1),
     }),
     createSkill({
       name: 'Correction',
       description: 'All your [redacted] needs correction! Attacks all opponents, reducing their outgoing damage by 30% for 5 turns.',
-      cost: 35,
       damage: 35,
       range: RangeType.AllOpponents,
+      battleCost: Ultimate(35),
       effects: [
         createRangeEffect(
           RangeType.AllOpponents,
@@ -230,7 +237,7 @@ export const EI = createCharacter({
             type: EffectType.OutgoingDamage,
             amount: 0.7,
             duration: 5,
-          })
+          }),
         ),
       ],
     }),
@@ -249,9 +256,9 @@ export const EI = createCharacter({
             type: EffectType.OutgoingDamage,
             amount: 1.15,
           }),
-          condition: (context: AbilityActivationContext) => {
-            return context.getAllies().filter(ally => ally.character.element === Element.Quantum).length === 2;
-          },
+          condition: (context: AbilityActivationContext) => (
+            context.getAllies().filter((ally) => ally.character.element === Element.Quantum).length === 2
+          ),
         }),
         createAbilityEffect({
           range: RangeType.Self,
@@ -261,9 +268,9 @@ export const EI = createCharacter({
             type: EffectType.OutgoingDamage,
             amount: 1.4,
           }),
-          condition: (context: AbilityActivationContext) => {
-            return context.getAllies().filter(ally => ally.character.element === Element.Quantum).length === 3;
-          },
+          condition: (context: AbilityActivationContext) => (
+            context.getAllies().filter((ally) => ally.character.element === Element.Quantum).length === 3
+          ),
         }),
       ],
     }),
@@ -289,32 +296,33 @@ export const SILVERWOLF = createCharacter({
       description: 'Basic Attack.',
       damage: 5,
       range: RangeType.SingleOpponent,
+      battleCost: Normal(1),
     }),
     createSkill({
       name: 'Allow Changes?',
       description: 'Increases incoming quantum damage of one opponent by 50% for 5 turns.',
       damage: 10,
-      cost: 20,
       range: RangeType.SingleOpponent,
+      battleCost: Charged(1),
       effects: [
-      createRangeEffect(
-        RangeType.SingleOpponent,
-        createEffect({
-          name: 'Allow Changes?',
-          description: 'Increases incoming quantum damage by 50%.',
-          type: EffectType.IncomingDamage,
-          amount: 1.5,
-          duration: 5,
-          appliesToElement: Element.Quantum,
-        })
-      ),
+        createRangeEffect(
+          RangeType.SingleOpponent,
+          createEffect({
+            name: 'Allow Changes?',
+            description: 'Increases incoming quantum damage by 50%.',
+            type: EffectType.IncomingDamage,
+            amount: 1.5,
+            duration: 5,
+            appliesToElement: Element.Quantum,
+          }),
+        ),
       ],
     }),
     createSkill({
       name: 'User Banned',
       description: 'Increases incoming damage of all opponents by 50% for 3 turns.',
-      cost: 35,
       range: RangeType.AllOpponents,
+      battleCost: Ultimate(35),
       effects: [
         createRangeEffect(
           RangeType.AllOpponents,
@@ -324,7 +332,7 @@ export const SILVERWOLF = createCharacter({
             type: EffectType.IncomingDamage,
             amount: 1.5,
             duration: 5,
-          })
+          }),
         ),
       ],
     }),
@@ -339,7 +347,7 @@ export const SILVERWOLF = createCharacter({
         amount: 1.1,
         duration: 3,
       });
-      
+
       const effect2 = createEffect({
         name: 'Bug: Outgoing Damage',
         description: 'Outgoing damage decreased by 10%.',
@@ -347,7 +355,7 @@ export const SILVERWOLF = createCharacter({
         amount: 0.9,
         duration: 3,
       });
-      
+
       const effect3 = createEffect({
         name: 'Bug: Energy Gain',
         description: 'Energy gain decreased by 10%.',
@@ -355,21 +363,21 @@ export const SILVERWOLF = createCharacter({
         amount: 0.9,
         duration: 3,
       });
-      
+
       // Randomly select one effect when the ability triggers
       // We use a closure to ensure only one effect is selected per activation
       // State is reset at the start of each applyEffects call (when selectedEffectIndex is null)
       let selectedEffectIndex: number | null = null;
-      
+
       return createAbility({
         name: 'Awaiting System Response...',
-        description: "After attacking an opponent, implants one of the following three effects on them for 3 turns: increases incoming damage by 10%, decreases outgoing damage by 10%, or decreases energy gain by 10%.",
+        description: 'After attacking an opponent, implants one of the following three effects on them for 3 turns: increases incoming damage by 10%, decreases outgoing damage by 10%, or decreases energy gain by 10%.',
         panelColor: QUANTUM_ABILITY_PANEL_COLOR,
         effects: [
           createAbilityEffect({
             range: RangeType.SingleOpponent,
             effect: effect1,
-            condition: (context: AbilityActivationContext) => {
+            condition: (_context: AbilityActivationContext) => {
               // Randomize on first evaluation (when selectedEffectIndex is null)
               if (selectedEffectIndex === null) {
                 selectedEffectIndex = Math.floor(Math.random() * 3);
@@ -380,7 +388,7 @@ export const SILVERWOLF = createCharacter({
           createAbilityEffect({
             range: RangeType.SingleOpponent,
             effect: effect2,
-            condition: (context: AbilityActivationContext) => {
+            condition: (_context: AbilityActivationContext) => {
               // Randomize on first evaluation (when selectedEffectIndex is null)
               if (selectedEffectIndex === null) {
                 selectedEffectIndex = Math.floor(Math.random() * 3);
@@ -391,7 +399,7 @@ export const SILVERWOLF = createCharacter({
           createAbilityEffect({
             range: RangeType.SingleOpponent,
             effect: effect3,
-            condition: (context: AbilityActivationContext) => {
+            condition: (_context: AbilityActivationContext) => {
               // Randomize on first evaluation (when selectedEffectIndex is null)
               if (selectedEffectIndex === null) {
                 selectedEffectIndex = Math.floor(Math.random() * 3);
@@ -428,12 +436,13 @@ export const SPARKLE = createCharacter({
       description: 'Basic Attack.',
       damage: 5,
       range: RangeType.SingleOpponent,
+      battleCost: Normal(1),
     }),
     createSkill({
       name: 'Dreamdiver',
       description: 'Increases outgoing damage of one ally by 60% for 5 turns.',
-      cost: 20,
       range: RangeType.SingleAlly,
+      battleCost: Charged(1),
       effects: [
         createRangeEffect(
           RangeType.SingleAlly,
@@ -443,15 +452,15 @@ export const SPARKLE = createCharacter({
             type: EffectType.OutgoingDamage,
             amount: 1.6,
             duration: 5,
-          })
+          }),
         ),
       ],
     }),
     createSkill({
       name: 'The Hero with a Thousand Faces',
       description: 'Increases energy gain of all allies by 50% for 5 turns.',
-      cost: 35,
       range: RangeType.AllAllies,
+      battleCost: Ultimate(35),
       effects: [
         createRangeEffect(
           RangeType.AllAllies,
@@ -461,7 +470,7 @@ export const SPARKLE = createCharacter({
             type: EffectType.EnergyGain,
             amount: 1.5,
             duration: 5,
-          })
+          }),
         ),
       ],
     }),

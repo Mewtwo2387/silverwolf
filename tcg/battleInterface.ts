@@ -1,8 +1,9 @@
-import { Battle, BattleStatus } from './battle';
+import { Battle, BattleStatus, SKILL_POINTS_CAP } from './battle';
 import { CharacterInBattle } from './characterInBattle';
 import { CHARACTERS } from './characters';
 import type { Skill } from './skill';
 import { RangeType } from './rangeType';
+import { SkillCategory } from './skillCategory';
 
 export type BattleSide = 'p1' | 'p2';
 export type BattleTextStyle = 'cli' | 'markdown';
@@ -108,6 +109,57 @@ export function resolveTargetForSkill(
   return { ok: false, error: `Invalid target index: ${targetIndex}` };
 }
 
+/**
+ * Human-readable gate for using this skill from the skills list UI.
+ */
+function formatSkillAvailabilityLine(
+  battle: Battle,
+  side: BattleSide,
+  charIndex: number,
+  char: CharacterInBattle,
+  skill: Skill,
+  style: BattleTextStyle,
+): string {
+  const activeSkills = char.getActiveSkills();
+  if (!activeSkills.includes(skill)) {
+    return style === 'markdown' ? 'FORM LOCKED' : '[FORM LOCKED]';
+  }
+  if (char.isKnockedOut) {
+    return style === 'markdown' ? 'KO' : '[KO]';
+  }
+
+  if (skill.category === SkillCategory.Ultimate) {
+    const need = skill.ultimateEnergyCost;
+    const ok = need <= 0 || char.energy >= need;
+    if (ok) return style === 'markdown' ? 'AVAILABLE (ultimate)' : '[ULTIMATE — AVAILABLE]';
+    return style === 'markdown'
+      ? `LOCKED (need ${need} energy)`
+      : `[ULTIMATE — need ${need} energy, have ${char.energy}]`;
+  }
+
+  if (side !== battle.currentPlayer) {
+    return style === 'markdown'
+      ? 'Only ultimates (not your side to act)'
+      : '[NORMAL/CHARGED — not your phase]';
+  }
+  if (charIndex !== battle.getCurrentActiveSlot()) {
+    return style === 'markdown'
+      ? 'Only ultimates (not active slot)'
+      : `[NORMAL/CHARGED — active slot is ${battle.getCurrentActiveSlot()}]`;
+  }
+  if (battle.mainActionUsedThisPhase) {
+    return style === 'markdown'
+      ? 'Main action used — ultimates still OK'
+      : '[NORMAL/CHARGED — already used this phase]';
+  }
+  if (skill.category === SkillCategory.Charged && battle.skillPointsForSide(side) < skill.skillPointsCost) {
+    return style === 'markdown'
+      ? `LOCKED (need 1 skill point, have ${battle.skillPointsForSide(side)})`
+      : '[CHARGED — need 1 team skill point]';
+  }
+  return style === 'markdown' ? 'AVAILABLE (main action)' : '[MAIN ACTION — AVAILABLE]';
+}
+
 export interface UseSkillSuccessDetail {
   characterName: string;
   skillName: string;
@@ -151,13 +203,17 @@ export function executeUseSkill(
     return { ok: false, error: resolved.error };
   }
 
-  const success = battle.useSkill(character, skillIndex, resolved.target);
+  const currentSkill = character.character.skills[skillIndex];
+  if (!currentSkill) {
+    return { ok: false, error: `Invalid skill index: ${skillIndex}` };
+  }
+
+  const success = currentSkill.category === SkillCategory.Ultimate
+    ? battle.useUltimate(character, skillIndex, resolved.target)
+    : battle.useMainAction(character, skillIndex, resolved.target);
   if (success) {
-    const currentSkill = character.character.skills[skillIndex];
     const skillName = currentSkill?.name ?? `skill ${skillIndex}`;
-    const targetName = currentSkill
-      ? formatSkillTargetLabel(currentSkill, character, resolved.target)
-      : '(unknown)';
+    const targetName = formatSkillTargetLabel(currentSkill, character, resolved.target);
     return {
       ok: true,
       detail: {
@@ -169,16 +225,32 @@ export function executeUseSkill(
   }
 
   const hints: string[] = [];
-  if (character.hasUsedSkillThisTurn) {
-    hints.push('Character has already used a skill this turn (1 skill per character per turn).');
-  }
   const activeSkills = character.getActiveSkills();
-  const currentSkill = character.character.skills[skillIndex];
   if (currentSkill && !activeSkills.includes(currentSkill)) {
     hints.push('Skill not available in current form.');
   }
-  if (currentSkill && character.energy < currentSkill.cost) {
-    hints.push(`Not enough energy (need ${currentSkill.cost}, have ${character.energy}).`);
+  if (currentSkill?.category === SkillCategory.Ultimate && currentSkill.ultimateEnergyCost > 0) {
+    if (character.energy < currentSkill.ultimateEnergyCost) {
+      hints.push(`Ultimate needs ${currentSkill.ultimateEnergyCost} energy (have ${character.energy}).`);
+    }
+  }
+  if (currentSkill
+    && (currentSkill.category === SkillCategory.Normal || currentSkill.category === SkillCategory.Charged)) {
+    if (charIndex !== battle.getCurrentActiveSlot()) {
+      hints.push(
+        `Only the active character (slot ${battle.getCurrentActiveSlot()}) may use normal/charged right now.`,
+      );
+    }
+    if (battle.mainActionUsedThisPhase) {
+      hints.push('Normal/charged already used this phase; end turn or use ultimates.');
+    }
+    const shortOnSp = currentSkill.category === SkillCategory.Charged
+      && battle.skillPointsForSide(side) < currentSkill.skillPointsCost;
+    if (shortOnSp) {
+      hints.push(
+        `Need ${currentSkill.skillPointsCost} team skill point(s) (have ${battle.skillPointsForSide(side)}/${SKILL_POINTS_CAP}).`,
+      );
+    }
   }
   if (!currentSkill) {
     hints.push('Invalid skill index.');
@@ -230,38 +302,25 @@ export function formatSkillsForSide(
     return { ok: false, error: `${char.character.name} is knocked out.` };
   }
 
-  const activeSkills = char.getActiveSkills();
   const lines: string[] = [];
 
   if (style === 'cli') {
+    lines.push(
+      `\nTeam skill points ${battle.skillPointsForSide(side)}/${SKILL_POINTS_CAP} — active slot ${battle.getCurrentActiveSlot()}`,
+    );
     lines.push(`\n${char.character.name}'s skills:`);
-    char.character.skills.forEach((skill, idx) => {
-      const isActive = activeSkills.includes(skill);
-      const canUse = isActive && char.energy >= skill.cost;
-      let status: string;
-      if (!isActive) {
-        status = '[FORM LOCKED]';
-      } else if (canUse) {
-        status = '[AVAILABLE]';
-      } else {
-        status = `[LOCKED - Need ${skill.cost} energy, have ${char.energy}]`;
-      }
-      lines.push(`  [${idx}] ${skill.toString()} - ${status}`);
+    char.character.skills.forEach((skill) => {
+      const status = formatSkillAvailabilityLine(battle, side, charIndex, char, skill, 'cli');
+      lines.push(`  [${char.character.skills.indexOf(skill)}] ${skill.toString()} - ${status}`);
       lines.push(`      Description: ${skill.description}`);
     });
   } else {
     lines.push(`**${char.character.name}** (slot ${charIndex})`);
+    lines.push(
+      `Team skill points **${battle.skillPointsForSide(side)}** / **${SKILL_POINTS_CAP}**  ·  Active slot **${battle.getCurrentActiveSlot()}**`,
+    );
     char.character.skills.forEach((skill, idx) => {
-      const isActive = activeSkills.includes(skill);
-      const canUse = isActive && char.energy >= skill.cost;
-      let status: string;
-      if (!isActive) {
-        status = 'FORM LOCKED';
-      } else if (canUse) {
-        status = 'AVAILABLE';
-      } else {
-        status = `LOCKED (need ${skill.cost} energy, have ${char.energy})`;
-      }
+      const status = formatSkillAvailabilityLine(battle, side, charIndex, char, skill, 'markdown');
       lines.push(`**[${idx}]** ${skill.name} — ${status}`);
       lines.push(skill.description);
     });
@@ -288,7 +347,6 @@ export function formatAllyStatusForDiscord(
   }
 
   const char = allies[charIndex];
-  const activeSkills = char.getActiveSkills();
   const lines: string[] = [];
 
   lines.push(`**${char.character.name}** (slot ${charIndex})`);
@@ -296,24 +354,16 @@ export function formatAllyStatusForDiscord(
     lines.push('*Knocked out*');
   }
   lines.push(`HP **${char.currentHp}** / **${char.character.hp}**  ·  Energy **${char.energy}**`);
-  if (char.hasUsedSkillThisTurn) {
-    lines.push('*Already used a skill this turn*');
+  lines.push(
+    `Team skill points **${battle.skillPointsForSide(side)}** / **${SKILL_POINTS_CAP}**  ·  Active slot **${battle.getCurrentActiveSlot()}**`,
+  );
+  if (battle.mainActionUsedThisPhase && side === battle.currentPlayer && charIndex === battle.getCurrentActiveSlot()) {
+    lines.push('*Main action used this phase (ultimates still allowed)*');
   }
   lines.push('');
 
   char.character.skills.forEach((skill, idx) => {
-    const isActive = activeSkills.includes(skill);
-    const canUse = isActive && !char.isKnockedOut && char.energy >= skill.cost;
-    let status: string;
-    if (char.isKnockedOut) {
-      status = 'KO';
-    } else if (!isActive) {
-      status = 'FORM LOCKED';
-    } else if (canUse) {
-      status = 'AVAILABLE';
-    } else {
-      status = `LOCKED (need ${skill.cost} energy, have ${char.energy})`;
-    }
+    const status = formatSkillAvailabilityLine(battle, side, charIndex, char, skill, 'markdown');
     lines.push(`**[${idx}]** ${skill.name} — ${status}`);
     lines.push(skill.description);
   });
@@ -344,10 +394,11 @@ export function statusLine(battle: Battle, style: BattleTextStyle = 'markdown'):
       ? `Battle finished: **${battle.status}**`
       : `Battle finished: ${battle.status}`;
   }
+  const sp = battle.skillPointsForSide(battle.currentPlayer);
   if (style === 'markdown') {
-    return `Turn **${battle.currentTurn}** — **${battle.currentPlayer.toUpperCase()}** to act`;
+    return `Round **${battle.currentTurn}** — **${battle.currentPlayer.toUpperCase()}** (active slot **${battle.getCurrentActiveSlot()}**, team SP **${sp}/${SKILL_POINTS_CAP}**)`;
   }
-  return `Turn ${battle.currentTurn} — ${battle.currentPlayer.toUpperCase()} to act`;
+  return `Round ${battle.currentTurn} — ${battle.currentPlayer.toUpperCase()} (slot ${battle.getCurrentActiveSlot()}, SP ${sp}/${SKILL_POINTS_CAP})`;
 }
 
 /** Discord: labels + battle snapshot in a code block, length-capped. */
@@ -399,10 +450,9 @@ export function endTurnAsCurrentPlayer(battle: Battle, side: BattleSide): EndTur
   };
 }
 
-/** Text after a turn switch (CLI banner helper). */
-export function getLatestEnergyGainSummary(battle: Battle): string | null {
-  const energyGainEntries = battle.turnHistory.filter((h) => h.includes('Energy gained (2d6)'));
-  if (energyGainEntries.length === 0) return null;
-  const latestEnergyGain = energyGainEntries[energyGainEntries.length - 1];
-  return latestEnergyGain.replace('Energy gained (2d6): ', '');
+/** Last rotation line from turn history (CLI banner helper). */
+export function getLatestPhaseSummary(battle: Battle): string | null {
+  const rows = battle.turnHistory.filter((h) => h.startsWith('Round '));
+  if (rows.length === 0) return null;
+  return rows[rows.length - 1];
 }

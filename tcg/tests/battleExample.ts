@@ -1,6 +1,6 @@
 import * as readline from 'readline';
 import type { Battle } from '../battle';
-import { BattleStatus } from '../battle';
+import { BattleStatus, SKILL_POINTS_CAP } from '../battle';
 import {
   createDemoBattle,
   debugMaxEnergy,
@@ -9,7 +9,7 @@ import {
   formatBattleStatus,
   formatSkillsForSide,
   formatUseSkillMessage,
-  getLatestEnergyGainSummary,
+  getLatestPhaseSummary,
   parseBattleSide,
 } from '../battleInterface';
 
@@ -95,10 +95,11 @@ function handleCommand(input: string, battle: Battle, rl: readline.Interface, pr
       console.log('  status - Show battle status');
       console.log('  skills [p1|p2] [index] - Show skills for a character');
       console.log('  use [p1|p2] [charIndex] [skillIndex] [targetIndex] - Use a skill');
-      console.log('  end - End current turn (REQUIRED to switch to next player)');
+      console.log('  end - Advance rotation (next active character / next side)');
       console.log('  help - Show this help');
       console.log('  quit - Exit');
-      console.log('\nNote: You can use multiple skills per turn. Type "end" when done.');
+      console.log('\nEach phase one active character may use a normal or charged attack; ultimates are unlimited.');
+      console.log('Type "end" when ready to pass to the next slot.');
       break;
 
     case 'debug':
@@ -167,14 +168,14 @@ export function runBattleExample() {
       console.log(`║  TURN SWITCHED TO ${currentSide.toUpperCase().padEnd(20)} ║`);
       console.log('╚════════════════════════════════════════╝');
 
-      const energyInfo = getLatestEnergyGainSummary(battle);
-      if (energyInfo) {
-        console.log(`Energy gained: ${energyInfo} (2d6 roll)`);
+      const phaseInfo = getLatestPhaseSummary(battle);
+      if (phaseInfo) {
+        console.log(phaseInfo);
       }
     }
     lastPlayer = currentSide;
 
-    console.log(`\n=== Turn ${battle.currentTurn} - ${currentSide.toUpperCase()}'s Turn ===`);
+    console.log(`\n=== Round ${battle.currentTurn} - ${currentSide.toUpperCase()} (active slot ${battle.getCurrentActiveSlot()}, SP ${battle.skillPointsForSide(currentSide)}/${SKILL_POINTS_CAP}) ===`);
     console.log('Your characters:');
     currentAlly.forEach((char, idx) => {
       console.log(`  [${idx}] ${char.toString()}\n`);
@@ -183,7 +184,7 @@ export function runBattleExample() {
     currentOpponent.forEach((char, idx) => {
       console.log(`  [${idx}] ${char.toString()}\n`);
     });
-    console.log('\n(Each character can use 1 skill per turn. Type "end" when done with your turn.)');
+    console.log('\n(Active slot uses normal/charged once; ultimates from anyone on your side. Type "end" to pass.)');
 
     rl.question('\n> ', (input) => {
       handleCommand(input.trim(), battle, rl, prompt);

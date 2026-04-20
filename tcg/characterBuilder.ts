@@ -7,6 +7,12 @@ import { TitleDesc } from './titleDesc';
 import { Rarity } from './rarity';
 import { Background, BackgroundType, TopBarType } from './background';
 import { Skill } from './skill';
+import {
+  Normal,
+  Charged,
+  Ultimate,
+  type SkillBattleCost,
+} from './skillBattleCost';
 import { Ability, AbilityEffectPair, AbilityActivationContext } from './ability';
 import { RangeEffect } from './rangeEffect';
 import { Effect } from './effect';
@@ -16,8 +22,32 @@ import { Element } from './element';
 import { CharacterTextColors } from './textTheme';
 import { ImagePanel, ImagePanelOptions } from './imagePanel';
 
+export {
+  Normal,
+  Charged,
+  Ultimate,
+  type SkillBattleCost,
+};
+
 export interface CharacterImagePanelConfig extends ImagePanelOptions {
   imagePath?: string;
+}
+
+/**
+ * Helper to create a simple gradient background
+ */
+export function createSimpleBackground(
+  color1: string,
+  color2: string,
+  topBarColor: string = '#68343B',
+): Background {
+  return new Background(
+    BackgroundType.Gradient,
+    { color1, color2, image: '' },
+    topBarColor,
+    TopBarType.Fade,
+    { color: '#440000', opacity1: 0.6, opacity2: 0.3 },
+  );
 }
 
 /**
@@ -41,7 +71,7 @@ export function createCharacter(params: {
   const titleDesc = new TitleDesc(
     params.title,
     params.description,
-    params.titleColor || '#777777'
+    params.titleColor || '#777777',
   );
 
   const background = params.background || createSimpleBackground('#FFFFFF', '#68343B');
@@ -57,24 +87,7 @@ export function createCharacter(params: {
     params.skills || [],
     params.abilities || [],
     params.defaultForm,
-    params.textColors
-  );
-}
-
-/**
- * Helper to create a simple gradient background
- */
-export function createSimpleBackground(
-  color1: string,
-  color2: string,
-  topBarColor: string = '#68343B'
-): Background {
-  return new Background(
-    BackgroundType.Gradient,
-    { color1, color2, image: '' },
-    topBarColor,
-    TopBarType.Fade,
-    { color: '#440000', opacity1: 0.6, opacity2: 0.3 }
+    params.textColors,
   );
 }
 
@@ -85,19 +98,20 @@ export function createSkill(params: {
   name: string;
   description: string;
   damage?: number;
-  cost?: number;
   range?: RangeType;
   effects?: RangeEffect[];
   formChange?: number[]; // skill indices active after transformation
+  /** Normal(n) / Charged(n) / Ultimate(energy); defaults to Normal(1). */
+  battleCost?: SkillBattleCost;
 }): Skill {
   return new Skill(
     params.name,
     params.description,
     params.damage || 0,
-    params.cost || 0,
     params.range ?? RangeType.SingleOpponent,
     params.effects || [],
     params.formChange,
+    params.battleCost ?? Normal(1),
   );
 }
 
@@ -120,14 +134,14 @@ export function createEffect(params: {
   if (params.appliesToElement !== undefined) {
     metadata.appliesToElement = params.appliesToElement;
   }
-  
+
   return new Effect(
     params.name,
     params.description,
     params.type,
     params.amount,
     params.duration !== undefined ? params.duration : 9999,
-    Object.keys(metadata).length > 0 ? metadata : undefined
+    Object.keys(metadata).length > 0 ? metadata : undefined,
   );
 }
 
@@ -136,7 +150,7 @@ export function createEffect(params: {
  */
 export function createRangeEffect(
   range: RangeType,
-  effect: Effect
+  effect: Effect,
 ): RangeEffect {
   return new RangeEffect(range, effect);
 }
@@ -166,4 +180,3 @@ export function createAbilityEffect(params: {
     activationCondition: params.condition,
   };
 }
-

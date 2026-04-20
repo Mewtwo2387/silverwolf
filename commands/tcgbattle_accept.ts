@@ -75,7 +75,7 @@ class TcgbattleAccept extends Command {
       statusLine(session),
       '',
       '**Commands:** `status` · `use` · `end` · `cancel`',
-      'Each character can use one skill per turn; `/tcgbattle end` ends your turn when you are done.',
+      'One active character per step: they may use a normal or charged attack once; ultimates may be used by anyone on your side, any number of times. `/tcgbattle end` passes to the next slot in rotation.',
     ].join('\n');
     const payload = await battleDisplayPayload(session, description);
     await interaction.editReply(payload);
