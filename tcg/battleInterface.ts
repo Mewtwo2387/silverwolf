@@ -12,8 +12,8 @@ const MAX_DISCORD_BATTLE_LEN = 1800;
 
 /** Same teams as the interactive demo everywhere (CLI + Discord). */
 export function createDemoBattle(): Battle {
-  const [kaitlin, venfei, ei, silverwolf, sparkle] = CHARACTERS;
-  return new Battle([kaitlin, kaitlin, venfei], [ei, silverwolf, sparkle]);
+  const [kaitlin, venfei, ei, silverwolf, sparkle, electro] = CHARACTERS;
+  return new Battle([kaitlin, electro, venfei], [ei, silverwolf, sparkle]);
 }
 
 export function parseBattleSide(raw: string): BattleSide | null {
