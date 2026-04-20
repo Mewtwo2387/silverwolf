@@ -58,7 +58,7 @@ export interface ContextWarning {
 
 const CONTEXT_LIMITS: Record<string, number> = {
   // Gemini models
-  'gemini-3-flash-preview': 1_000_000,
+  'gemini-3.1-flash-lite-preview': 1_000_000,
   'gemini-2.0-flash-preview-image-generation': 8_192,
   // OpenRouter models
   'x-ai/grok-4.1-fast': 2_000_000,
