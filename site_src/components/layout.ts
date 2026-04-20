@@ -15,7 +15,7 @@ const pageHead = (nonce: string) => raw(`
 
 export function Layout(opts: {
   title: string;
-  active?: 'about' | 'leaderboards' | 'birthdays';
+  active?: 'about' | 'leaderboards' | 'birthdays' | 'games';
   extraHead?: HtmlEscapedString;
   body: HtmlEscapedString;
   nonce: string;

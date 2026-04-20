@@ -229,4 +229,16 @@ export async function getAllBirthdaysByMonth(
   return grouped;
 }
 
+export function getEightBallResponses() {
+  const data = require('../data/8ball.json');
+  return { normal: data.normal as string[], savage: data.savage as string[] };
+}
+
+export function getFortunes() {
+  // We can't easily import JSON in the bridge if it's used in both client/server contexts in some setups,
+  // but here it's fine since it's Bun.
+  const data = require('../data/fortune.json');
+  return data.fortunes as string[];
+}
+
 export { MONTHS };

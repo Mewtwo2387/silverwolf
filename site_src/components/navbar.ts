@@ -63,7 +63,7 @@ const navbarExtras = (nonce: string) => raw(`
 </script>
 `);
 
-export function Navbar(active: 'about' | 'leaderboards' | 'birthdays' | undefined, nonce: string) {
+export function Navbar(active: 'about' | 'leaderboards' | 'birthdays' | 'games' | undefined, nonce: string) {
   const base = 'nav-link text-[0.95rem] px-[0.1rem] py-1 border-b-2 border-transparent transition-colors no-underline';
   const link = (href: string, label: string, key: string) => {
     const isActive = active === key;
@@ -80,6 +80,7 @@ export function Navbar(active: 'about' | 'leaderboards' | 'birthdays' | undefine
         ${link('/about', 'About', 'about')}
         ${link('/leaderboards', 'Leaderboards', 'leaderboards')}
         ${link('/birthdays', 'Birthdays', 'birthdays')}
+        ${link('/games', 'Games', 'games')}
         <span class="nav-underline absolute left-0 h-[2px] w-0 bg-accent rounded-sm opacity-0 pointer-events-none" style="bottom:-2px;" aria-hidden="true"></span>
       </div>
     </nav>

@@ -6,9 +6,15 @@ import type { Silverwolf } from '../classes/silverwolf';
 import { AboutPage } from './pages/about';
 import { LeaderboardsPage } from './pages/leaderboards';
 import { BirthdaysPage } from './pages/birthdays';
+import { GamesPage } from './pages/games';
+import { EightBallPage } from './pages/games/8ball';
+import { FlipPage } from './pages/games/flip';
+import { FortunePage } from './pages/games/fortune';
 import {
   getLeaderboard,
   getAllBirthdaysByMonth,
+  getEightBallResponses,
+  getFortunes,
   type LeaderboardKind,
 } from './bot-bridge';
 
@@ -122,6 +128,22 @@ export function startWebsite(silverwolf: Silverwolf) {
       logError('website /birthdays failed:', err);
       return c.html(BirthdaysPage({ grouped: {}, error: 'Failed to load birthdays.', nonce }).toString(), 500);
     }
+  });
+
+  app.get('/games', (c) => c.html(GamesPage({ nonce: c.get('nonce') }).toString()));
+
+  app.get('/games/8ball', (c) => {
+    const { normal, savage } = getEightBallResponses();
+    return c.html(EightBallPage({ normal, savage, nonce: c.get('nonce') }).toString());
+  });
+
+  app.get('/games/flip', (c) => {
+    return c.html(FlipPage({ nonce: c.get('nonce') }).toString());
+  });
+
+  app.get('/games/fortune', (c) => {
+    const fortunes = getFortunes();
+    return c.html(FortunePage({ fortunes, nonce: c.get('nonce') }).toString());
   });
 
   app.notFound((c) => c.text('not found', 404));
