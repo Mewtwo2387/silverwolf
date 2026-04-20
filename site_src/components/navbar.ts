@@ -9,7 +9,7 @@ const STICKER_IMAGES = [
 
 const navbarExtras = raw(`
 <style>
-  .nav-link.active { border-bottom-color: #6d7cff; }
+  .nav-link.active { border-bottom-color: var(--accent); }
   .nav-links.js-ready .nav-link.active { border-bottom-color: transparent; }
 </style>
 <script>
@@ -50,6 +50,15 @@ const navbarExtras = raw(`
     const current = links.find((x) => x.classList.contains('active'));
     if (current) place(current, false);
   });
+
+  const theme = new URLSearchParams(location.search).get('theme');
+  if (theme) {
+    links.forEach((l) => {
+      const u = new URL(l.href);
+      u.searchParams.set('theme', theme);
+      l.href = u.toString();
+    });
+  }
 })();
 </script>
 `);
@@ -58,7 +67,7 @@ export function Navbar(active?: 'about' | 'leaderboards' | 'birthdays') {
   const base = 'nav-link text-[0.95rem] px-[0.1rem] py-1 border-b-2 border-transparent transition-colors no-underline';
   const link = (href: string, label: string, key: string) => {
     const isActive = active === key;
-    const state = isActive ? 'text-white active' : 'text-fog-200 hover:text-white';
+    const state = isActive ? 'text-fog-100 active' : 'text-fog-200 hover:text-fog-100';
     return html`<a href="${href}" class="${base} ${state}">${label}</a>`;
   };
 

@@ -11,9 +11,9 @@ const birthdayExtras = raw(`
     bottom: calc(100% + 6px);
     left: 50%;
     transform: translateX(-50%);
-    background: #0f1014;
-    border: 1px solid #2a2b33;
-    color: #e6e6e9;
+    background: var(--ink-900);
+    border: 1px solid var(--ink-500);
+    color: var(--fog-100);
     padding: 0.4rem 0.6rem;
     border-radius: 4px;
     white-space: nowrap;
@@ -29,29 +29,29 @@ const birthdayExtras = raw(`
     left: 50%;
     transform: translateX(-50%);
     border: 5px solid transparent;
-    border-top-color: #2a2b33;
+    border-top-color: var(--ink-500);
     z-index: 10;
     pointer-events: none;
   }
   @keyframes month-glow {
-    from { box-shadow: 0 0 6px 1px rgba(109,124,255,0.35), 0 0 0 1px #6d7cff; }
-    to   { box-shadow: 0 0 18px 4px rgba(109,124,255,0.6), 0 0 0 1px #8fa1ff; }
+    from { box-shadow: 0 0 6px 1px var(--glow-faint), 0 0 0 1px var(--accent); }
+    to   { box-shadow: 0 0 18px 4px var(--glow-bright), 0 0 0 1px var(--accent-light); }
   }
   .month-current {
-    border-color: #6d7cff !important;
+    border-color: var(--accent) !important;
     animation: month-glow 2s ease-in-out infinite alternate;
   }
   .bday-user-upcoming {
-    border-color: #f87171 !important;
-    box-shadow: 0 0 8px 2px rgba(248,113,113,0.4);
+    border-color: var(--danger) !important;
+    box-shadow: 0 0 8px 2px var(--danger-glow);
   }
   .upcoming-tag {
     position: absolute;
     bottom: calc(100% + 5px);
     left: 50%;
     transform: translateX(-50%);
-    background: #f87171;
-    color: #0f1014;
+    background: var(--danger);
+    color: var(--ink-900);
     font-size: 0.6rem;
     font-weight: 700;
     letter-spacing: 0.04em;

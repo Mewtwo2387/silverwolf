@@ -9,7 +9,7 @@ const aboutExtras = raw(`
 <style>
   main:has(.about-wrap) { max-width: 100vw; padding-right: 0; padding-left: clamp(1rem, 4vw, 3rem); }
   .about-text h1 {
-    background: linear-gradient(180deg, #fff 0%, #a2adff 100%);
+    background: linear-gradient(180deg, var(--heading-top) 0%, var(--heading-bottom) 100%);
     -webkit-background-clip: text;
             background-clip: text;
     color: transparent;
@@ -32,7 +32,7 @@ const aboutExtras = raw(`
   /* eidolon sections */
   .eidolon-section { padding-top: clamp(4rem, 8vw, 7rem); padding-bottom: clamp(4rem, 8vw, 7rem); padding-left: clamp(1rem, 4vw, 3rem); padding-right: clamp(1rem, 4vw, 3rem); }
   .eid-txt h2 {
-    background: linear-gradient(180deg, #fff 0%, #a2adff 100%);
+    background: linear-gradient(180deg, var(--heading-top) 0%, var(--heading-bottom) 100%);
     -webkit-background-clip: text;
             background-clip: text;
     color: transparent;
