@@ -1,4 +1,5 @@
 import { html } from 'hono/html';
+import type { HtmlEscapedString } from 'hono/utils/html';
 import { Layout } from '../components/layout';
 import type { LeaderboardResult } from '../bot-bridge';
 
@@ -21,11 +22,11 @@ export function LeaderboardsPage(opts: {
   );
 
   const tableSection = (() => {
-    if (error) return html`<p style="color:#f87171; text-align:center;">${error}</p>`;
-    if (!result) return html`<p style="color:#8b8c95; text-align:center;">Select a leaderboard above.</p>`;
-    if (result.rows.length === 0) return html`<p style="color:#8b8c95; text-align:center;">No data yet for ${result.title}.</p>`;
+    if (error) return html`<p class="text-danger text-center">${error}</p>`;
+    if (!result) return html`<p class="text-fog-300 text-center">Select a leaderboard above.</p>`;
+    if (result.rows.length === 0) return html`<p class="text-fog-300 text-center">No data yet for ${result.title}.</p>`;
     return html`
-      <h2 style="text-align:center; margin-top:2rem;">${result.title}</h2>
+      <h2 class="text-center mt-8">${result.title}</h2>
       <table>
         <thead>
           <tr><th>#</th><th>User</th><th>Score</th></tr>
@@ -35,8 +36,10 @@ export function LeaderboardsPage(opts: {
             <tr>
               <td>${row.rank}</td>
               <td>
-                <div style="display:flex; align-items:center; gap:0.5rem;">
-                  ${row.avatarURL ? html`<img src="${row.avatarURL}" alt="" style="width:24px; height:24px; border-radius:50%; object-fit:cover;" />` : html`<div style="width:24px; height:24px; border-radius:50%; background:#2a2b33;"></div>`}
+                <div class="flex items-center gap-2">
+                  ${row.avatarURL
+      ? html`<img src="${row.avatarURL}" alt="" class="w-6 h-6 rounded-full object-cover" />`
+      : html`<div class="w-6 h-6 rounded-full bg-ink-500"></div>`}
                   <span>${row.username}</span>
                 </div>
               </td>
@@ -49,21 +52,30 @@ export function LeaderboardsPage(opts: {
   })();
 
   const body = html`
-    <h1 style="text-align:center;">Leaderboards</h1>
-    <form method="get" action="/leaderboards" style="text-align:center; margin:1.5rem 0;">
-      <label for="board" style="display:block; margin-bottom:0.5rem;">View a leaderboard</label>
-      <select name="board" id="board" onchange="this.form.submit()" style="padding:0.45rem 0.7rem; font-size:1rem; background:#1a1b23; color:#e6e6e9; border:1px solid #2a2b33; border-radius:4px;">
+    <h1 class="text-center">Leaderboards</h1>
+    <form method="get" action="/leaderboards" class="text-center my-6">
+      <label for="board" class="block mb-2">View a leaderboard</label>
+      <select
+        name="board"
+        id="board"
+        onchange="this.form.submit()"
+        class="py-[0.45rem] px-[0.7rem] text-base bg-ink-700 text-fog-100 border border-ink-500 rounded"
+      >
         <option value="" ${!selected ? 'selected' : ''}>— choose —</option>
         ${options}
       </select>
-      <noscript><button type="submit" style="margin-left:0.5rem;">Go</button></noscript>
+      <noscript><button type="submit" class="ml-2">Go</button></noscript>
     </form>
-    <div style="display:flex; justify-content:center;">
-      <div style="min-width:min(560px, 100%);">
+    <div class="flex justify-center">
+      <div class="min-w-[min(560px,100%)]">
         ${tableSection}
       </div>
     </div>
   `;
 
-  return Layout({ title: 'Silverwolf — Leaderboards', active: 'leaderboards', body });
+  return Layout({
+    title: 'Silverwolf — Leaderboards',
+    active: 'leaderboards',
+    body: body as unknown as HtmlEscapedString,
+  });
 }

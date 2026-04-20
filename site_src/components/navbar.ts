@@ -1,6 +1,10 @@
 import { html, raw } from 'hono/html';
 
-const navbarScript = raw(`
+const navbarExtras = raw(`
+<style>
+  .nav-link.active { border-bottom-color: #6d7cff; }
+  .nav-links.js-ready .nav-link.active { border-bottom-color: transparent; }
+</style>
 <script>
 (() => {
   const container = document.getElementById('nav-links');
@@ -44,20 +48,23 @@ const navbarScript = raw(`
 `);
 
 export function Navbar(active?: 'about' | 'leaderboards' | 'birthdays') {
-  const link = (href: string, label: string, key: string) => html`
-    <a href="${href}" class="nav-link ${active === key ? 'active' : ''}">${label}</a>
-  `;
+  const base = 'nav-link text-[0.95rem] px-[0.1rem] py-1 border-b-2 border-transparent transition-colors no-underline';
+  const link = (href: string, label: string, key: string) => {
+    const isActive = active === key;
+    const state = isActive ? 'text-white active' : 'text-fog-200 hover:text-white';
+    return html`<a href="${href}" class="${base} ${state}">${label}</a>`;
+  };
 
   return html`
-    <nav class="navbar">
-      <div class="nav-brand">Silverwolf</div>
-      <div class="nav-links" id="nav-links">
+    <nav class="flex items-center justify-between py-[0.9rem] px-[clamp(1rem,4vw,3rem)] border-b border-ink-600 bg-ink-800">
+      <div class="font-bold tracking-[0.02em]">Silverwolf</div>
+      <div class="nav-links flex gap-5 relative" id="nav-links">
         ${link('/about', 'About', 'about')}
         ${link('/leaderboards', 'Leaderboards', 'leaderboards')}
         ${link('/birthdays', 'Birthdays', 'birthdays')}
-        <span class="nav-underline" aria-hidden="true"></span>
+        <span class="nav-underline absolute left-0 h-[2px] w-0 bg-accent rounded-sm opacity-0 pointer-events-none" style="bottom:-2px;" aria-hidden="true"></span>
       </div>
     </nav>
-    ${navbarScript}
+    ${navbarExtras}
   `;
 }
