@@ -2,7 +2,11 @@ import { html } from 'hono/html';
 import { Layout } from '../components/layout';
 
 const aboutStyles = html`
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Italianno&display=swap" rel="stylesheet" />
   <style>
+    main:has(.about-wrap) { max-width: 100vw; padding-right: 0; padding-left: clamp(1rem, 4vw, 3rem); }
     .about-wrap {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -10,13 +14,14 @@ const aboutStyles = html`
       align-items: center;
       min-height: calc(100vh - 180px);
     }
-    .about-text { max-width: 32rem; }
+    .about-text { max-width: 38rem; justify-self: start; }
     .about-text h1 {
-      font-size: clamp(3rem, 7vw, 5.5rem);
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      line-height: 1;
-      margin: 0 0 1.25rem;
+      font-family: 'Italianno', cursive;
+      font-size: clamp(5rem, 12vw, 9rem);
+      font-weight: 400;
+      letter-spacing: 0.01em;
+      line-height: 0.95;
+      margin: 0 0 1rem;
       background: linear-gradient(180deg, #fff 0%, #a2adff 100%);
       -webkit-background-clip: text;
       background-clip: text;
@@ -29,18 +34,18 @@ const aboutStyles = html`
     }
     .about-image {
       display: flex;
-      justify-content: center;
+      justify-content: flex-start;
       align-items: center;
     }
     .about-image img {
       width: 100%;
-      max-width: 460px;
       height: auto;
-      -webkit-mask-image: radial-gradient(ellipse 60% 70% at 50% 50%, #000 55%, transparent 100%);
-              mask-image: radial-gradient(ellipse 60% 70% at 50% 50%, #000 55%, transparent 100%);
+      -webkit-mask-image: radial-gradient(ellipse 110% 110% at 100% 50%, #000 35%, transparent 90%);
+              mask-image: radial-gradient(ellipse 110% 110% at 100% 50%, #000 35%, transparent 90%);
     }
     @media (max-width: 800px) {
       .about-wrap { grid-template-columns: 1fr; text-align: left; }
+      .about-text { justify-self: start; }
       .about-image { order: -1; }
     }
   </style>
