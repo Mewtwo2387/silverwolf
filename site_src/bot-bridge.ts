@@ -21,6 +21,52 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
+// Local shapes for the command objects on `silverwolf.commands` (typed as Map<string, any> upstream).
+// Only the fields this bridge actually consumes are declared.
+interface AttrRow {
+  id: string;
+  [k: string]: unknown;
+}
+
+interface AttrLeaderboardCommand {
+  title: string;
+  attribute: string;
+  counter: string;
+  fetchData(page: number): Promise<{ attrs: AttrRow[] }>;
+}
+
+interface GamblerBoardCommand {
+  fetchData(
+    leaderboardType: string,
+    page: number,
+  ): Promise<{ winnings: { id: string; relativeWon: number }[] }>;
+}
+
+interface PoopBoardCommand {
+  fetchData(
+    period: string,
+    page: number,
+  ): Promise<{ attrs: { id: string; poopCount: number }[]; periodLabel: string }>;
+}
+
+interface BirthdayRow {
+  id: string;
+  birthdays: string | null | undefined;
+}
+
+// The Silverwolf class types `db` and `commands` as `any` / `Map<string, any>`; this helper localises the cast.
+function db(silverwolf: Silverwolf): { user: { getAllBirthdays(): Promise<BirthdayRow[]> } } {
+  return (silverwolf as unknown as { db: { user: { getAllBirthdays(): Promise<BirthdayRow[]> } } }).db;
+}
+
+function getCommand<T>(silverwolf: Silverwolf, name: string): T {
+  const cmd = silverwolf.commands.get(name) as T | undefined;
+  if (!cmd || typeof (cmd as { fetchData?: unknown }).fetchData !== 'function') {
+    throw new Error(`${name} command not available`);
+  }
+  return cmd;
+}
+
 async function resolveUser(silverwolf: Silverwolf, id: string) {
   try {
     const user = await silverwolf.users.fetch(id);
@@ -43,36 +89,36 @@ export async function getLeaderboard(
 ): Promise<LeaderboardResult> {
   if (kind === 'murder' || kind === 'nuggie') {
     const commandName = kind === 'murder' ? 'murderboard' : 'nuggieboard';
-    const command = silverwolf.commands.get(commandName) as any;
-    if (!command?.fetchData) throw new Error(`${commandName} command not available`);
+    const command = getCommand<AttrLeaderboardCommand>(silverwolf, commandName);
     const { attrs } = await command.fetchData(0);
-    const attribute = command.attribute as string;
-    const counter = command.counter as string;
+    const { attribute, counter, title } = command;
     return {
-      title: command.title as string,
-      rows: await Promise.all(attrs.map(async (row: any, i: number) => {
+      title,
+      rows: await Promise.all(attrs.map(async (row, i) => {
         const u = await resolveUser(silverwolf, row.id);
+        const value = Number(row[attribute] ?? 0);
         return {
           rank: i + 1,
           id: row.id,
           username: u.username,
           avatarURL: u.avatarURL,
-          value: row[attribute],
-          valueLabel: `${row[attribute]} ${counter}`,
+          value,
+          valueLabel: `${value} ${counter}`,
         };
       })),
     };
   }
 
   if (kind === 'gambler') {
-    const command = silverwolf.commands.get('gamblerboard') as any;
-    if (!command?.fetchData) throw new Error('gamblerboard command not available');
+    const command = getCommand<GamblerBoardCommand>(silverwolf, 'gamblerboard');
     const type = opts?.gamblerType ?? 'all';
     const { winnings } = await command.fetchData(type, 0);
-    const title = type === 'all' ? 'The Ultimate Gambler Leaderboard' : `${type.charAt(0).toUpperCase() + type.slice(1)} Leaderboard`;
+    const title = type === 'all'
+      ? 'The Ultimate Gambler Leaderboard'
+      : `${type.charAt(0).toUpperCase() + type.slice(1)} Leaderboard`;
     return {
       title,
-      rows: await Promise.all(winnings.map(async (row: any, i: number) => {
+      rows: await Promise.all(winnings.map(async (row, i) => {
         const u = await resolveUser(silverwolf, row.id);
         return {
           rank: i + 1,
@@ -87,13 +133,12 @@ export async function getLeaderboard(
   }
 
   if (kind === 'poop') {
-    const command = silverwolf.commands.get('poopboard') as any;
-    if (!command?.fetchData) throw new Error('poopboard command not available');
+    const command = getCommand<PoopBoardCommand>(silverwolf, 'poopboard');
     const period = opts?.poopPeriod ?? 'all-time';
     const { attrs, periodLabel } = await command.fetchData(period, 0);
     return {
       title: `Poop Leaderboard — ${periodLabel}`,
-      rows: await Promise.all(attrs.map(async (row: any, i: number) => {
+      rows: await Promise.all(attrs.map(async (row, i) => {
         const u = await resolveUser(silverwolf, row.id);
         return {
           rank: i + 1,
@@ -107,7 +152,7 @@ export async function getLeaderboard(
     };
   }
 
-  throw new Error(`Unknown leaderboard kind: ${kind}`);
+  throw new Error(`Unknown leaderboard kind: ${kind as string}`);
 }
 
 export interface BirthdayUser {
@@ -155,29 +200,30 @@ function formatNextBirthday(birthdayISO: string): string {
 export async function getAllBirthdaysByMonth(
   silverwolf: Silverwolf,
 ): Promise<Record<string, BirthdayUser[]>> {
-  const rows = await (silverwolf as any).db.user.getAllBirthdays();
-  const grouped: Record<string, BirthdayUser[]> = {};
-  for (const name of MONTHS) grouped[name] = [];
+  const rows = await db(silverwolf).user.getAllBirthdays();
+  const grouped: Record<string, BirthdayUser[]> = Object.fromEntries(
+    MONTHS.map((m) => [m, [] as BirthdayUser[]]),
+  );
 
-  const validRows = rows.filter((row: any) => {
-    if (!row.birthdays) return false;
+  const parsed: { row: BirthdayRow; date: Date }[] = [];
+  for (const row of rows) {
+    if (!row.birthdays) continue;
     const date = new Date(row.birthdays);
-    return !Number.isNaN(date.getTime());
-  });
+    if (!Number.isNaN(date.getTime())) parsed.push({ row, date });
+  }
 
-  await Promise.all(validRows.map(async (row: any) => {
-    const date = new Date(row.birthdays);
-    const monthName = MONTHS[date.getUTCMonth()];
+  await Promise.all(parsed.map(async ({ row, date }) => {
     const u = await resolveUser(silverwolf, row.id);
-    grouped[monthName].push({
+    grouped[MONTHS[date.getUTCMonth()]].push({
       id: row.id,
       username: u.username,
       avatarURL: u.avatarURL,
-      nextBirthday: formatNextBirthday(row.birthdays),
+      nextBirthday: formatNextBirthday(row.birthdays as string),
       day: date.getUTCDate(),
     });
   }));
 
+  // Promise.all resolves in arbitrary order; sort each month to present a stable view.
   for (const name of MONTHS) grouped[name].sort((a, b) => a.day - b.day);
 
   return grouped;

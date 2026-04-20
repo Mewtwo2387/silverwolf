@@ -2,10 +2,7 @@ import { html, raw } from 'hono/html';
 import type { HtmlEscapedString } from 'hono/utils/html';
 import { Layout } from '../components/layout';
 
-const aboutExtras = raw(`
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Italianno&display=swap" rel="stylesheet" />
+const aboutExtras = (nonce: string) => raw(`
 <style>
   main:has(.about-wrap) { max-width: 100vw; padding-right: 0; padding-left: clamp(1rem, 4vw, 3rem); }
   .about-text h1 {
@@ -47,7 +44,7 @@ const aboutExtras = raw(`
     .eid-txt, .eid-img { opacity: 1 !important; transform: none !important; }
   </style>
 </noscript>
-<script>
+<script nonce="${nonce}">
 (() => {
   const run = () => {
     const els = document.querySelectorAll('.about-text, .about-image');
@@ -77,7 +74,7 @@ const aboutExtras = raw(`
 </script>
 `);
 
-export function AboutPage() {
+export function AboutPage(opts: { nonce: string }) {
   const eidolonData = [
     {
       n: 1,
@@ -148,7 +145,8 @@ export function AboutPage() {
   return Layout({
     title: 'Silverwolf — About',
     active: 'about',
-    extraStyles: aboutExtras as unknown as HtmlEscapedString,
+    extraHead: aboutExtras(opts.nonce) as unknown as HtmlEscapedString,
     body: body as unknown as HtmlEscapedString,
+    nonce: opts.nonce,
   });
 }

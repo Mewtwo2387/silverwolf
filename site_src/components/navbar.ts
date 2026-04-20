@@ -7,12 +7,12 @@ const STICKER_IMAGES = [
   '/static/stickers/Sticker_PPG_04_Silver_Wolf_02.webp',
 ];
 
-const navbarExtras = raw(`
+const navbarExtras = (nonce: string) => raw(`
 <style>
   .nav-link.active { border-bottom-color: var(--accent); }
   .nav-links.js-ready .nav-link.active { border-bottom-color: transparent; }
 </style>
-<script>
+<script nonce="${nonce}">
 (() => {
   const container = document.getElementById('nav-links');
   if (!container) return;
@@ -63,7 +63,7 @@ const navbarExtras = raw(`
 </script>
 `);
 
-export function Navbar(active?: 'about' | 'leaderboards' | 'birthdays') {
+export function Navbar(active: 'about' | 'leaderboards' | 'birthdays' | undefined, nonce: string) {
   const base = 'nav-link text-[0.95rem] px-[0.1rem] py-1 border-b-2 border-transparent transition-colors no-underline';
   const link = (href: string, label: string, key: string) => {
     const isActive = active === key;
@@ -75,7 +75,7 @@ export function Navbar(active?: 'about' | 'leaderboards' | 'birthdays') {
 
   return html`
     <nav id="site-nav" class="flex items-center justify-between py-[0.9rem] px-[clamp(1rem,4vw,3rem)] border-b border-ink-600 bg-ink-800">
-      <img src="${sticker}" alt="Silverwolf" style="height:3rem;width:auto;" />
+      <img src="${sticker}" alt="Silverwolf" width="48" height="48" style="height:3rem;width:auto;" decoding="async" />
       <div class="nav-links flex gap-5 relative" id="nav-links">
         ${link('/about', 'About', 'about')}
         ${link('/leaderboards', 'Leaderboards', 'leaderboards')}
@@ -83,6 +83,6 @@ export function Navbar(active?: 'about' | 'leaderboards' | 'birthdays') {
         <span class="nav-underline absolute left-0 h-[2px] w-0 bg-accent rounded-sm opacity-0 pointer-events-none" style="bottom:-2px;" aria-hidden="true"></span>
       </div>
     </nav>
-    ${navbarExtras}
+    ${navbarExtras(nonce)}
   `;
 }

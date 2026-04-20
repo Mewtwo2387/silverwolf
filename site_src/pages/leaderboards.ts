@@ -1,4 +1,4 @@
-import { html } from 'hono/html';
+import { html, raw } from 'hono/html';
 import type { HtmlEscapedString } from 'hono/utils/html';
 import { Layout } from '../components/layout';
 import type { LeaderboardResult } from '../bot-bridge';
@@ -10,12 +10,22 @@ const BOARD_OPTIONS: { value: string; label: string }[] = [
   { value: 'poop', label: 'Poop' },
 ];
 
+const leaderboardsExtras = (nonce: string) => raw(`
+<script nonce="${nonce}">
+(() => {
+  const sel = document.getElementById('board');
+  if (sel) sel.addEventListener('change', () => sel.form && sel.form.submit());
+})();
+</script>
+`);
+
 export function LeaderboardsPage(opts: {
   selected?: string;
   result?: LeaderboardResult;
   error?: string;
+  nonce: string;
 }) {
-  const { selected, result, error } = opts;
+  const { selected, result, error, nonce } = opts;
 
   const options = BOARD_OPTIONS.map(
     (o) => html`<option value="${o.value}" ${o.value === selected ? 'selected' : ''}>${o.label}</option>`,
@@ -58,7 +68,6 @@ export function LeaderboardsPage(opts: {
       <select
         name="board"
         id="board"
-        onchange="this.form.submit()"
         class="py-[0.45rem] px-[0.7rem] text-base bg-ink-700 text-fog-100 border border-ink-500 rounded"
       >
         <option value="" ${!selected ? 'selected' : ''}>— choose —</option>
@@ -71,11 +80,13 @@ export function LeaderboardsPage(opts: {
         ${tableSection}
       </div>
     </div>
+    ${leaderboardsExtras(nonce)}
   `;
 
   return Layout({
     title: 'Silverwolf — Leaderboards',
     active: 'leaderboards',
     body: body as unknown as HtmlEscapedString,
+    nonce,
   });
 }

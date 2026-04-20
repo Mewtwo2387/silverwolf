@@ -93,17 +93,24 @@ function renderUser(u: BirthdayUser, upcoming = false) {
 export function BirthdaysPage(opts: {
   grouped: Record<string, BirthdayUser[]>;
   error?: string;
+  nonce: string;
 }) {
-  const { grouped, error } = opts;
+  const { grouped, error, nonce } = opts;
 
   const currentMonth = MONTHS[new Date().getUTCMonth()];
 
   const allUsers = MONTHS.flatMap((m) => grouped[m] ?? []);
-  const minDays = Math.min(...allUsers.map((u) => daysUntil(u.nextBirthday)));
-  const upcomingDay = isFinite(minDays) ? minDays : null;
-  const upcomingIds = upcomingDay !== null
-    ? new Set(allUsers.filter((u) => daysUntil(u.nextBirthday) === upcomingDay).map((u) => u.id))
-    : new Set<string>();
+  let minDays = Infinity;
+  const userDays = new Map<string, number>();
+  for (const u of allUsers) {
+    const d = daysUntil(u.nextBirthday);
+    userDays.set(u.id, d);
+    if (d < minDays) minDays = d;
+  }
+  const upcomingIds = new Set<string>();
+  if (isFinite(minDays)) {
+    for (const [id, d] of userDays) if (d === minDays) upcomingIds.add(id);
+  }
 
   const body = error
     ? html`
@@ -131,7 +138,8 @@ export function BirthdaysPage(opts: {
   return Layout({
     title: 'Silverwolf — Birthdays',
     active: 'birthdays',
-    extraStyles: birthdayExtras as unknown as HtmlEscapedString,
+    extraHead: birthdayExtras as unknown as HtmlEscapedString,
     body: body as unknown as HtmlEscapedString,
+    nonce,
   });
 }
