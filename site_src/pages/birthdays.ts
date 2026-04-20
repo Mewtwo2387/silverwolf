@@ -33,19 +33,59 @@ const birthdayExtras = raw(`
     z-index: 10;
     pointer-events: none;
   }
+  @keyframes month-glow {
+    from { box-shadow: 0 0 6px 1px rgba(109,124,255,0.35), 0 0 0 1px #6d7cff; }
+    to   { box-shadow: 0 0 18px 4px rgba(109,124,255,0.6), 0 0 0 1px #8fa1ff; }
+  }
+  .month-current {
+    border-color: #6d7cff !important;
+    animation: month-glow 2s ease-in-out infinite alternate;
+  }
+  .bday-user-upcoming {
+    border-color: #f87171 !important;
+    box-shadow: 0 0 8px 2px rgba(248,113,113,0.4);
+  }
+  .upcoming-tag {
+    position: absolute;
+    bottom: calc(100% + 5px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #f87171;
+    color: #0f1014;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 1px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 5;
+    line-height: 1.5;
+  }
 </style>
 `);
 
-function renderUser(u: BirthdayUser) {
+function daysUntil(nextBirthday: string): number {
+  if (nextBirthday.startsWith('Today')) return 0;
+  if (nextBirthday.startsWith('Tomorrow')) return 1;
+  const m = nextBirthday.match(/\(in (\d+) days\)/);
+  return m ? parseInt(m[1], 10) : Infinity;
+}
+
+function renderUser(u: BirthdayUser, upcoming = false) {
   const avatar = u.avatarURL
     ? html`<img src="${u.avatarURL}" alt="" class="w-[22px] h-[22px] rounded-full object-cover bg-ink-500 shrink-0" />`
     : html`<div class="w-[22px] h-[22px] rounded-full bg-ink-500 shrink-0"></div>`;
+  const upcomingClass = upcoming ? ' bday-user-upcoming' : '';
+  const upcomingBadge = upcoming
+    ? html`<span class="upcoming-tag">Upcoming!</span>`
+    : '';
   return html`
     <span
-      class="bday-user relative inline-flex items-center gap-[0.4rem] pl-1 pr-[0.6rem] py-[0.2rem] bg-ink-700 border border-ink-600 rounded-full text-[0.85rem] cursor-default"
+      class="bday-user${upcomingClass} relative inline-flex items-center gap-[0.4rem] pl-1 pr-[0.6rem] py-[0.2rem] bg-ink-700 border border-ink-600 rounded-full text-[0.85rem] cursor-default"
       data-next="Next birthday: ${u.nextBirthday}"
     >
-      ${avatar}<span>${u.username}</span>
+      ${upcomingBadge}${avatar}<span>${u.username}</span>
     </span>
   `;
 }
@@ -55,6 +95,15 @@ export function BirthdaysPage(opts: {
   error?: string;
 }) {
   const { grouped, error } = opts;
+
+  const currentMonth = MONTHS[new Date().getUTCMonth()];
+
+  const allUsers = MONTHS.flatMap((m) => grouped[m] ?? []);
+  const minDays = Math.min(...allUsers.map((u) => daysUntil(u.nextBirthday)));
+  const upcomingDay = isFinite(minDays) ? minDays : null;
+  const upcomingIds = upcomingDay !== null
+    ? new Set(allUsers.filter((u) => daysUntil(u.nextBirthday) === upcomingDay).map((u) => u.id))
+    : new Set<string>();
 
   const body = error
     ? html`
@@ -66,12 +115,13 @@ export function BirthdaysPage(opts: {
         <div class="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-6 mt-6">
           ${MONTHS.map((month) => {
     const users = grouped[month] ?? [];
+    const isCurrent = month === currentMonth;
     return html`
-              <section class="bg-ink-800 border border-ink-600 rounded-md py-[0.9rem] px-4">
+              <section class="${`bg-ink-800 border border-ink-600 rounded-md py-[0.9rem] px-4${isCurrent ? ' month-current' : ''}`}">
                 <h3 class="text-accent-light">${month}</h3>
                 ${users.length === 0
     ? html`<div class="text-fog-500 text-[0.85rem]">no birthdays</div>`
-    : html`<div class="flex flex-wrap gap-[0.45rem]">${users.map(renderUser)}</div>`}
+    : html`<div class="flex flex-wrap gap-[0.45rem] pt-[1.2rem]">${users.map((u) => renderUser(u, upcomingIds.has(u.id)))}</div>`}
               </section>
             `;
   })}
