@@ -29,6 +29,30 @@ export function startWebsite(silverwolf: Silverwolf) {
     });
   });
 
+  for (const name of [
+    'Sticker_PPG_04_Silver_Wolf_01.webp',
+    'Sticker_PPG_19_Silver_Wolf_01.webp',
+    'Sticker_PPG_02_Silver_Wolf_01.webp',
+    'Sticker_PPG_04_Silver_Wolf_02.webp',
+  ]) {
+    app.get(`/static/stickers/${name}`, () => {
+      const file = Bun.file(`./site_src/Assets/Images/${name}`);
+      return new Response(file, {
+        headers: { 'content-type': 'image/webp', 'cache-control': 'public, max-age=3600' },
+      });
+    });
+  }
+
+  for (let i = 1; i <= 6; i++) {
+    const name = `Character_Silver_Wolf_Eidolon_${i}.webp`;
+    app.get(`/static/eidolons/${name}`, () => {
+      const file = Bun.file(`./site_src/Assets/Images/${name}`);
+      return new Response(file, {
+        headers: { 'content-type': 'image/webp', 'cache-control': 'public, max-age=3600' },
+      });
+    });
+  }
+
   app.get('/leaderboards', async (c) => {
     const raw = c.req.query('board');
     const selected = raw && (VALID_BOARDS as string[]).includes(raw) ? (raw as LeaderboardKind) : undefined;

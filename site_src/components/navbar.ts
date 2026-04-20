@@ -1,5 +1,12 @@
 import { html, raw } from 'hono/html';
 
+const STICKER_IMAGES = [
+  '/static/stickers/Sticker_PPG_04_Silver_Wolf_01.webp',
+  '/static/stickers/Sticker_PPG_19_Silver_Wolf_01.webp',
+  '/static/stickers/Sticker_PPG_02_Silver_Wolf_01.webp',
+  '/static/stickers/Sticker_PPG_04_Silver_Wolf_02.webp',
+];
+
 const navbarExtras = raw(`
 <style>
   .nav-link.active { border-bottom-color: #6d7cff; }
@@ -55,9 +62,11 @@ export function Navbar(active?: 'about' | 'leaderboards' | 'birthdays') {
     return html`<a href="${href}" class="${base} ${state}">${label}</a>`;
   };
 
+  const sticker = STICKER_IMAGES[Math.floor(Math.random() * STICKER_IMAGES.length)];
+
   return html`
-    <nav class="flex items-center justify-between py-[0.9rem] px-[clamp(1rem,4vw,3rem)] border-b border-ink-600 bg-ink-800">
-      <div class="font-bold tracking-[0.02em]">Silverwolf</div>
+    <nav id="site-nav" class="flex items-center justify-between py-[0.9rem] px-[clamp(1rem,4vw,3rem)] border-b border-ink-600 bg-ink-800">
+      <img src="${sticker}" alt="Silverwolf" style="height:3rem;width:auto;" />
       <div class="nav-links flex gap-5 relative" id="nav-links">
         ${link('/about', 'About', 'about')}
         ${link('/leaderboards', 'Leaderboards', 'leaderboards')}
