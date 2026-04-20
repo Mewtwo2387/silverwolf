@@ -2,6 +2,8 @@ import { CharacterInBattle } from './characterInBattle';
 import { Character } from './character';
 import { SkillCategory } from './skillCategory';
 import type { Skill } from './skill';
+import type { BattleEvent } from './battleEvents';
+import { EffectType } from './effectType';
 
 export enum BattleStatus {
   Ongoing = 'ongoing',
@@ -74,14 +76,79 @@ export class Battle {
     return side === 'p1' ? this.p1SkillPoints : this.p2SkillPoints;
   }
 
+  /**
+   * Base cap ({@link SKILL_POINTS_CAP}) plus sum of {@link EffectType.SkillPointsMaxBonus} on alive allies.
+   */
+  skillPointsCapForSide(side: 'p1' | 'p2'): number {
+    let bonus = 0;
+    this.ally(side).forEach((c) => {
+      if (c.isKnockedOut) return;
+      c.effects
+        .filter((e) => e.type === EffectType.SkillPointsMaxBonus)
+        .forEach((e) => {
+          bonus += e.amount;
+        });
+    });
+    return SKILL_POINTS_CAP + Math.floor(bonus);
+  }
+
+  /**
+   * Fan-out for passive hooks (skill point spend, gains, etc.).
+   */
+  dispatchBattleEvent(event: BattleEvent): void {
+    this.allCards().forEach((cib) => {
+      if (cib.isKnockedOut) return;
+      cib.character.abilities.forEach((ability) => {
+        ability.notifyBattleEvent(event, cib);
+      });
+    });
+  }
+
   private setSkillPoints(side: 'p1' | 'p2', value: number) {
-    const clamped = Math.max(0, Math.min(SKILL_POINTS_CAP, value));
+    const cap = this.skillPointsCapForSide(side);
+    const clamped = Math.max(0, Math.min(cap, value));
     if (side === 'p1') this.p1SkillPoints = clamped;
     else this.p2SkillPoints = clamped;
   }
 
-  private changeSkillPoints(side: 'p1' | 'p2', delta: number) {
-    this.setSkillPoints(side, this.skillPointsForSide(side) + delta);
+  private changeSkillPoints(
+    side: 'p1' | 'p2',
+    delta: number,
+    meta?: {
+      consumer?: CharacterInBattle;
+      sourceCharacter?: CharacterInBattle | null;
+      gainReason?: 'normal_attack' | 'ultimate' | 'other';
+    },
+  ): void {
+    const before = this.skillPointsForSide(side);
+    this.setSkillPoints(side, before + delta);
+    const after = this.skillPointsForSide(side);
+    const gained = Math.max(0, after - before);
+    const lost = Math.max(0, before - after);
+    if (lost > 0 && meta?.consumer) {
+      this.dispatchBattleEvent({
+        type: 'skill_points_consumed',
+        side,
+        consumer: meta.consumer,
+        pointsConsumed: lost,
+      });
+    }
+    if (gained > 0) {
+      this.dispatchBattleEvent({
+        type: 'skill_points_gained',
+        side,
+        pointsGained: gained,
+        sourceCharacter: meta?.sourceCharacter ?? null,
+        reason: meta?.gainReason ?? 'other',
+      });
+    }
+  }
+
+  /** Re-clamp pools after effect durations change (e.g. max-SP bonus expired). */
+  private clampSkillPointsToCaps(): void {
+    (['p1', 'p2'] as const).forEach((side) => {
+      this.setSkillPoints(side, this.skillPointsForSide(side));
+    });
   }
 
   /**
@@ -194,16 +261,20 @@ export class Battle {
     character.onSkillCompleted(skill, target);
 
     if (skill.category === SkillCategory.Normal) {
-      this.changeSkillPoints(side, skill.skillPointsGranted);
+      this.changeSkillPoints(side, skill.skillPointsGranted, {
+        sourceCharacter: character,
+        gainReason: 'normal_attack',
+      });
       character.gainEnergy(ENERGY_AFTER_NORMAL);
     } else {
-      this.changeSkillPoints(side, -spCost);
+      this.changeSkillPoints(side, -spCost, { consumer: character });
       character.gainEnergy(ENERGY_AFTER_CHARGED);
     }
 
     this.mainActionUsedThisPhase = true;
     this.turnHistory.push(`${character.character.name} used ${skill.category} skill [${skillIndex}] ${skill.name}`);
     this.status = this.checkVictory();
+    this.clampSkillPointsToCaps();
     return true;
   }
 
@@ -237,8 +308,17 @@ export class Battle {
     skill.useSkill(character, target);
     character.onSkillCompleted(skill, target);
 
+    const spGrant = skill.teamSkillPointsGrantedOnUltimate;
+    if (spGrant > 0) {
+      this.changeSkillPoints(character.side as 'p1' | 'p2', spGrant, {
+        sourceCharacter: character,
+        gainReason: 'ultimate',
+      });
+    }
+
     this.turnHistory.push(`${character.character.name} used ultimate [${skillIndex}] ${skill.name}`);
     this.status = this.checkVictory();
+    this.clampSkillPointsToCaps();
     return true;
   }
 
@@ -261,6 +341,7 @@ export class Battle {
           c.processEndOfTurn();
         }
       });
+      this.clampSkillPointsToCaps();
       this.currentTurn += 1;
     }
 
@@ -278,6 +359,8 @@ export class Battle {
       activeSlot: this.getCurrentActiveSlot(),
       p1SkillPoints: this.p1SkillPoints,
       p2SkillPoints: this.p2SkillPoints,
+      p1SkillPointsCap: this.skillPointsCapForSide('p1'),
+      p2SkillPointsCap: this.skillPointsCapForSide('p2'),
       status: this.status,
       p1: {
         alive: this.getAliveAlly('p1').map((char) => ({
@@ -305,7 +388,9 @@ export class Battle {
     lines.push(
       `Round: ${this.currentTurn}, Acting: ${this.currentPlayer.toUpperCase()}, Active slot: ${this.getCurrentActiveSlot()} (${this.getActiveCharacterForCurrentPhase()?.character.name ?? '—'})`,
     );
-    lines.push(`Team skill points — P1: ${this.p1SkillPoints}/${SKILL_POINTS_CAP}  P2: ${this.p2SkillPoints}/${SKILL_POINTS_CAP}`);
+    lines.push(
+      `Team skill points — P1: ${this.p1SkillPoints}/${this.skillPointsCapForSide('p1')}  P2: ${this.p2SkillPoints}/${this.skillPointsCapForSide('p2')}`,
+    );
     if (this.mainActionUsedThisPhase) {
       lines.push(`This phase: main action already used by active character`);
     }

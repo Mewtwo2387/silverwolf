@@ -53,8 +53,8 @@ export class Skill implements DrawableBlock {
       case 'ultimate':
         return SkillCategory.Ultimate;
       default: {
-        const _exhaustive: never = this.battleCost;
-        throw new Error(`Unexpected battle cost: ${JSON.stringify(_exhaustive)}`);
+        const bad: never = this.battleCost;
+        throw new Error(`Unexpected battle cost: ${JSON.stringify(bad)}`);
       }
     }
   }
@@ -69,6 +69,11 @@ export class Skill implements DrawableBlock {
 
   get skillPointsCost(): number {
     return this.battleCost.kind === 'charged' ? this.battleCost.skillPointsCost : 0;
+  }
+
+  /** Team pool restoration when this ultimate resolves (0 if not an ultimate or no grant). */
+  get teamSkillPointsGrantedOnUltimate(): number {
+    return this.battleCost.kind === 'ultimate' ? (this.battleCost.grantTeamSkillPoints ?? 0) : 0;
   }
 
   async draw(
@@ -99,8 +104,12 @@ export class Skill implements DrawableBlock {
     const descLines = wrapText(ctx, this.description, maxTextWidth);
 
     let costHeight = 0;
-    if (this.battleCost.kind === 'ultimate' && this.battleCost.energyCost > 0) {
-      costHeight = costLineHeight;
+    if (this.battleCost.kind === 'ultimate') {
+      const ultLines = (this.battleCost.energyCost > 0 ? 1 : 0)
+        + (this.teamSkillPointsGrantedOnUltimate > 0 ? 1 : 0);
+      if (ultLines > 0) {
+        costHeight = ultLines * costLineHeight + (ultLines > 1 ? 8 : 0);
+      }
     } else if (this.battleCost.kind === 'charged') {
       costHeight = costLineHeight;
     } else if (this.battleCost.kind === 'normal' && this.battleCost.skillPointsGranted > 0) {
@@ -132,17 +141,35 @@ export class Skill implements DrawableBlock {
 
     currentY += nameHeight + 16;
 
-    if (this.battleCost.kind === 'ultimate' && this.battleCost.energyCost > 0) {
-      drawTcgText(ctx, `ENERGY ${this.battleCost.energyCost}`, 64, currentY, {
-        font: '700 44px "Bahnschrift"',
-        fillStyle: textColors.skillCostFill,
-        strokeStyle: textColors.skillCostStroke,
-        lineWidth: 4,
-        textAlign: 'left',
-        shadowBlur: 6,
-        shadowOffsetY: 2,
-      });
-      currentY += costHeight + 16;
+    if (this.battleCost.kind === 'ultimate') {
+      if (this.battleCost.energyCost > 0) {
+        drawTcgText(ctx, `ENERGY ${this.battleCost.energyCost}`, 64, currentY, {
+          font: '700 44px "Bahnschrift"',
+          fillStyle: textColors.skillCostFill,
+          strokeStyle: textColors.skillCostStroke,
+          lineWidth: 4,
+          textAlign: 'left',
+          shadowBlur: 6,
+          shadowOffsetY: 2,
+        });
+        currentY += costLineHeight + 8;
+      }
+      const spGrant = this.teamSkillPointsGrantedOnUltimate;
+      if (spGrant > 0) {
+        drawTcgText(ctx, `TEAM SP +${spGrant}`, 64, currentY, {
+          font: '700 44px "Bahnschrift"',
+          fillStyle: textColors.skillCostFill,
+          strokeStyle: textColors.skillCostStroke,
+          lineWidth: 4,
+          textAlign: 'left',
+          shadowBlur: 6,
+          shadowOffsetY: 2,
+        });
+        currentY += costLineHeight;
+      }
+      if (this.battleCost.energyCost > 0 || spGrant > 0) {
+        currentY += 8;
+      }
     } else if (this.battleCost.kind === 'charged') {
       const n = this.battleCost.skillPointsCost;
       drawTcgText(ctx, n === 1 ? 'SKILL POINT 1' : `SKILL POINTS ${n}`, 64, currentY, {
@@ -304,8 +331,15 @@ export class Skill implements DrawableBlock {
   toString(): string {
     const damageStr = this.damage > 0 ? `Damage: ${this.damage}` : '';
     let costStr = '';
-    if (this.battleCost.kind === 'ultimate' && this.battleCost.energyCost > 0) {
-      costStr = `Energy: ${this.battleCost.energyCost}`;
+    if (this.battleCost.kind === 'ultimate') {
+      const ultParts: string[] = [];
+      if (this.battleCost.energyCost > 0) {
+        ultParts.push(`Energy: ${this.battleCost.energyCost}`);
+      }
+      if (this.teamSkillPointsGrantedOnUltimate > 0) {
+        ultParts.push(`Team SP +${this.teamSkillPointsGrantedOnUltimate}`);
+      }
+      costStr = ultParts.join('; ');
     } else if (this.battleCost.kind === 'charged') {
       costStr = `Skill points: ${this.battleCost.skillPointsCost}`;
     } else if (this.battleCost.kind === 'normal' && this.battleCost.skillPointsGranted > 0) {

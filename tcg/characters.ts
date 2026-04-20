@@ -1,4 +1,5 @@
 import { Element } from './element';
+import { Effect } from './effect';
 import { EffectType } from './effectType';
 import { RangeType } from './rangeType';
 import { AbilityActivationContext } from './ability';
@@ -181,17 +182,35 @@ export const VENFEI = createCharacter({
     }),
     createSkill({
       name: 'aaaaaaa',
-      description: 'Increases outgoing damage of all allies by 30% for 5 turns.',
+      description: 'Increases outgoing damage of one ally by 60% for 3 turns.',
+      range: RangeType.SingleAlly,
+      battleCost: Charged(1),
+      effects: [
+        createRangeEffect(
+          RangeType.SingleAlly,
+          createEffect({
+            name: 'aaaaaaa',
+            description: 'Increases outgoing damage by 60%',
+            type: EffectType.OutgoingDamage,
+            amount: 1.6,
+            duration: 3,
+          }),
+        ),
+      ],
+    }),
+    createSkill({
+      name: 'aaaaaaaaaaaaaa',
+      description: 'Increases outgoing damage of all allies by 35% for 5 turns.',
       range: RangeType.AllAllies,
       battleCost: Ultimate(20),
       effects: [
         createRangeEffect(
           RangeType.AllAllies,
           createEffect({
-            name: 'aaaaaaa',
-            description: 'Increases outgoing damage by 30%',
+            name: 'aaaaaaaaaaaaaa',
+            description: 'Increases outgoing damage by 35%',
             type: EffectType.OutgoingDamage,
-            amount: 1.3,
+            amount: 1.35,
             duration: 5,
           }),
         ),
@@ -223,8 +242,15 @@ export const EI = createCharacter({
       battleCost: Normal(1),
     }),
     createSkill({
-      name: 'Correction',
-      description: 'All your [redacted] needs correction! Attacks all opponents, reducing their outgoing damage by 30% for 5 turns.',
+      name: 'uuoohhh',
+      description: 'Attacks a single opponent.',
+      damage: 45,
+      range: RangeType.SingleOpponent,
+      battleCost: Charged(1),
+    }),
+    createSkill({
+      name: 'PLAP PLAP PLAP GET CORRECTED',
+      description: 'All your [redacted] needs correction! Attacks all opponents, reducing their outgoing damage by 35% for 5 turns.',
       damage: 35,
       range: RangeType.AllOpponents,
       battleCost: Ultimate(35),
@@ -232,10 +258,10 @@ export const EI = createCharacter({
         createRangeEffect(
           RangeType.AllOpponents,
           createEffect({
-            name: 'Correction',
-            description: 'Reduces outgoing damage by 30%.',
+            name: 'PLAP PLAP PLAP GET CORRECTED',
+            description: 'Reduces outgoing damage by 35%.',
             type: EffectType.OutgoingDamage,
-            amount: 0.7,
+            amount: 0.65,
             duration: 5,
           }),
         ),
@@ -320,7 +346,8 @@ export const SILVERWOLF = createCharacter({
     }),
     createSkill({
       name: 'User Banned',
-      description: 'Increases incoming damage of all opponents by 50% for 3 turns.',
+      description: 'Increases incoming damage of all opponents by 50% for 5 turns.',
+      damage: 25,
       range: RangeType.AllOpponents,
       battleCost: Ultimate(35),
       effects: [
@@ -440,7 +467,7 @@ export const SPARKLE = createCharacter({
     }),
     createSkill({
       name: 'Dreamdiver',
-      description: 'Increases outgoing damage of one ally by 60% for 5 turns.',
+      description: 'Increases outgoing damage of one ally by 60% for 3 turns.',
       range: RangeType.SingleAlly,
       battleCost: Charged(1),
       effects: [
@@ -451,48 +478,57 @@ export const SPARKLE = createCharacter({
             description: 'Increases outgoing damage by 60%.',
             type: EffectType.OutgoingDamage,
             amount: 1.6,
-            duration: 5,
+            duration: 3,
           }),
         ),
       ],
     }),
     createSkill({
       name: 'The Hero with a Thousand Faces',
-      description: 'Increases energy gain of all allies by 50% for 5 turns.',
+      description: 'Regenerates 6 skill points for all allies.',
       range: RangeType.AllAllies,
-      battleCost: Ultimate(35),
-      effects: [
-        createRangeEffect(
-          RangeType.AllAllies,
-          createEffect({
-            name: 'The Hero with a Thousand Faces',
-            description: 'Increases energy gain by 50%.',
-            type: EffectType.EnergyGain,
-            amount: 1.5,
-            duration: 5,
-          }),
-        ),
-      ],
+      battleCost: Ultimate(35, { grantTeamSkillPoints: 6 }),
     }),
   ],
   abilities: [
-    createAbility({
-      name: 'Red Herring',
-      description: 'Increases energy gain of all allies by 20%.',
-      panelColor: QUANTUM_ABILITY_PANEL_COLOR,
-      effects: [
-        createAbilityEffect({
-          range: RangeType.AllAllies,
-          effect: createEffect({
-            name: 'Red Herring',
-            description: 'Increases energy gain by 20%.',
-            type: EffectType.EnergyGain,
-            amount: 1.2,
-            duration: 9999,
+    (() => {
+      let redHerringSurgeSerial = 0;
+      return createAbility({
+        name: 'Red Herring',
+        description:
+          'Increases the maximum number of skill points by 2. For every skill point an ally consumes, increase their damage by 5% for 5 turns.',
+        panelColor: QUANTUM_ABILITY_PANEL_COLOR,
+        effects: [
+          createAbilityEffect({
+            range: RangeType.Self,
+            effect: createEffect({
+              name: 'Red Herring',
+              description: '+2 to maximum team skill points.',
+              type: EffectType.SkillPointsMaxBonus,
+              amount: 2,
+              duration: 9999,
+            }),
           }),
-        }),
-      ],
-    }),
+        ],
+        onBattleEvent(event, owner) {
+          if (event.type !== 'skill_points_consumed') return;
+          if (event.side !== owner.side) return;
+          if (owner.isKnockedOut) return;
+          for (let i = 0; i < event.pointsConsumed; i += 1) {
+            redHerringSurgeSerial += 1;
+            event.consumer.addEffect(
+              new Effect(
+                `Red Herring •${redHerringSurgeSerial}`,
+                'Outgoing damage +5% from Red Herring.',
+                EffectType.OutgoingDamage,
+                1.05,
+                5,
+              ),
+            );
+          }
+        },
+      });
+    })(),
   ],
 });
 

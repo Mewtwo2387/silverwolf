@@ -1,4 +1,4 @@
-import { Battle, BattleStatus, SKILL_POINTS_CAP } from './battle';
+import { Battle, BattleStatus } from './battle';
 import { CharacterInBattle } from './characterInBattle';
 import { CHARACTERS } from './characters';
 import type { Skill } from './skill';
@@ -153,8 +153,9 @@ function formatSkillAvailabilityLine(
       : '[NORMAL/CHARGED — already used this phase]';
   }
   if (skill.category === SkillCategory.Charged && battle.skillPointsForSide(side) < skill.skillPointsCost) {
+    const spCap = battle.skillPointsCapForSide(side);
     return style === 'markdown'
-      ? `LOCKED (need 1 skill point, have ${battle.skillPointsForSide(side)})`
+      ? `LOCKED (need 1 skill point, have ${battle.skillPointsForSide(side)}/${spCap})`
       : '[CHARGED — need 1 team skill point]';
   }
   return style === 'markdown' ? 'AVAILABLE (main action)' : '[MAIN ACTION — AVAILABLE]';
@@ -248,7 +249,7 @@ export function executeUseSkill(
       && battle.skillPointsForSide(side) < currentSkill.skillPointsCost;
     if (shortOnSp) {
       hints.push(
-        `Need ${currentSkill.skillPointsCost} team skill point(s) (have ${battle.skillPointsForSide(side)}/${SKILL_POINTS_CAP}).`,
+        `Need ${currentSkill.skillPointsCost} team skill point(s) (have ${battle.skillPointsForSide(side)}/${battle.skillPointsCapForSide(side)}).`,
       );
     }
   }
@@ -306,7 +307,7 @@ export function formatSkillsForSide(
 
   if (style === 'cli') {
     lines.push(
-      `\nTeam skill points ${battle.skillPointsForSide(side)}/${SKILL_POINTS_CAP} — active slot ${battle.getCurrentActiveSlot()}`,
+      `\nTeam skill points ${battle.skillPointsForSide(side)}/${battle.skillPointsCapForSide(side)} — active slot ${battle.getCurrentActiveSlot()}`,
     );
     lines.push(`\n${char.character.name}'s skills:`);
     char.character.skills.forEach((skill) => {
@@ -317,7 +318,7 @@ export function formatSkillsForSide(
   } else {
     lines.push(`**${char.character.name}** (slot ${charIndex})`);
     lines.push(
-      `Team skill points **${battle.skillPointsForSide(side)}** / **${SKILL_POINTS_CAP}**  ·  Active slot **${battle.getCurrentActiveSlot()}**`,
+      `Team skill points **${battle.skillPointsForSide(side)}** / **${battle.skillPointsCapForSide(side)}**  ·  Active slot **${battle.getCurrentActiveSlot()}**`,
     );
     char.character.skills.forEach((skill, idx) => {
       const status = formatSkillAvailabilityLine(battle, side, charIndex, char, skill, 'markdown');
@@ -355,7 +356,7 @@ export function formatAllyStatusForDiscord(
   }
   lines.push(`HP **${char.currentHp}** / **${char.character.hp}**  ·  Energy **${char.energy}**`);
   lines.push(
-    `Team skill points **${battle.skillPointsForSide(side)}** / **${SKILL_POINTS_CAP}**  ·  Active slot **${battle.getCurrentActiveSlot()}**`,
+    `Team skill points **${battle.skillPointsForSide(side)}** / **${battle.skillPointsCapForSide(side)}**  ·  Active slot **${battle.getCurrentActiveSlot()}**`,
   );
   if (battle.mainActionUsedThisPhase && side === battle.currentPlayer && charIndex === battle.getCurrentActiveSlot()) {
     lines.push('*Main action used this phase (ultimates still allowed)*');
@@ -395,10 +396,11 @@ export function statusLine(battle: Battle, style: BattleTextStyle = 'markdown'):
       : `Battle finished: ${battle.status}`;
   }
   const sp = battle.skillPointsForSide(battle.currentPlayer);
+  const cap = battle.skillPointsCapForSide(battle.currentPlayer);
   if (style === 'markdown') {
-    return `Round **${battle.currentTurn}** — **${battle.currentPlayer.toUpperCase()}** (active slot **${battle.getCurrentActiveSlot()}**, team SP **${sp}/${SKILL_POINTS_CAP}**)`;
+    return `Round **${battle.currentTurn}** — **${battle.currentPlayer.toUpperCase()}** (active slot **${battle.getCurrentActiveSlot()}**, team SP **${sp}/${cap}**)`;
   }
-  return `Round ${battle.currentTurn} — ${battle.currentPlayer.toUpperCase()} (slot ${battle.getCurrentActiveSlot()}, SP ${sp}/${SKILL_POINTS_CAP})`;
+  return `Round ${battle.currentTurn} — ${battle.currentPlayer.toUpperCase()} (slot ${battle.getCurrentActiveSlot()}, SP ${sp}/${cap})`;
 }
 
 /** Discord: labels + battle snapshot in a code block, length-capped. */

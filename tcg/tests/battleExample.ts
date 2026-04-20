@@ -1,6 +1,6 @@
 import * as readline from 'readline';
 import type { Battle } from '../battle';
-import { BattleStatus, SKILL_POINTS_CAP } from '../battle';
+import { BattleStatus } from '../battle';
 import {
   createDemoBattle,
   debugMaxEnergy,
@@ -175,7 +175,7 @@ export function runBattleExample() {
     }
     lastPlayer = currentSide;
 
-    console.log(`\n=== Round ${battle.currentTurn} - ${currentSide.toUpperCase()} (active slot ${battle.getCurrentActiveSlot()}, SP ${battle.skillPointsForSide(currentSide)}/${SKILL_POINTS_CAP}) ===`);
+    console.log(`\n=== Round ${battle.currentTurn} - ${currentSide.toUpperCase()} (active slot ${battle.getCurrentActiveSlot()}, SP ${battle.skillPointsForSide(currentSide)}/${battle.skillPointsCapForSide(currentSide)}) ===`);
     console.log('Your characters:');
     currentAlly.forEach((char, idx) => {
       console.log(`  [${idx}] ${char.toString()}\n`);

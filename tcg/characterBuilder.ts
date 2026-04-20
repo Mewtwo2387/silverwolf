@@ -7,13 +7,9 @@ import { TitleDesc } from './titleDesc';
 import { Rarity } from './rarity';
 import { Background, BackgroundType, TopBarType } from './background';
 import { Skill } from './skill';
-import {
-  Normal,
-  Charged,
-  Ultimate,
-  type SkillBattleCost,
-} from './skillBattleCost';
+import { Normal, type SkillBattleCost } from './skillBattleCost';
 import { Ability, AbilityEffectPair, AbilityActivationContext } from './ability';
+import type { AbilityBattleEventHandler } from './battleEvents';
 import { RangeEffect } from './rangeEffect';
 import { Effect } from './effect';
 import { EffectType } from './effectType';
@@ -27,7 +23,10 @@ export {
   Charged,
   Ultimate,
   type SkillBattleCost,
-};
+  type UltimateOptions,
+} from './skillBattleCost';
+
+export type { AbilityBattleEventHandler, BattleEvent } from './battleEvents';
 
 export interface CharacterImagePanelConfig extends ImagePanelOptions {
   imagePath?: string;
@@ -161,10 +160,17 @@ export function createRangeEffect(
 export function createAbility(params: {
   name: string;
   description: string;
-  effects: AbilityEffectPair[];
+  effects?: AbilityEffectPair[];
   panelColor?: string;
+  onBattleEvent?: AbilityBattleEventHandler;
 }): Ability {
-  return new Ability(params.name, params.description, params.effects, params.panelColor);
+  return new Ability(
+    params.name,
+    params.description,
+    params.effects ?? [],
+    params.panelColor,
+    params.onBattleEvent,
+  );
 }
 
 /**
