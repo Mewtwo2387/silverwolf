@@ -23,13 +23,27 @@ const baseStyles = html`
       background: #14151b;
     }
     .nav-brand { font-weight: 700; letter-spacing: 0.02em; }
-    .nav-links { display: flex; gap: 1.25rem; }
+    .nav-links { display: flex; gap: 1.25rem; position: relative; }
     .nav-link {
       color: #b8b9c2; text-decoration: none; font-size: 0.95rem;
       padding: 0.25rem 0.1rem; border-bottom: 2px solid transparent;
+      transition: color 0.2s ease;
     }
     .nav-link:hover { color: #fff; }
     .nav-link.active { color: #fff; border-bottom-color: #6d7cff; }
+    .nav-underline {
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      height: 2px;
+      width: 0;
+      background: #6d7cff;
+      border-radius: 2px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(0);
+    }
+    .nav-links.js-ready .nav-link.active { border-bottom-color: transparent; }
     .footer {
       border-top: 1px solid #22232b;
       background: #14151b;

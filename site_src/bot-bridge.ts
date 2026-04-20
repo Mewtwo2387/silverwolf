@@ -26,12 +26,12 @@ async function resolveUser(silverwolf: Silverwolf, id: string) {
     const user = await silverwolf.users.fetch(id);
     return {
       username: user.username,
-      avatarURL: user.displayAvatarURL({ extension: 'png', size: 64 })
+      avatarURL: user.displayAvatarURL({ extension: 'png', size: 64 }),
     };
   } catch {
     return {
       username: id,
-      avatarURL: null
+      avatarURL: null,
     };
   }
 }
@@ -113,6 +113,43 @@ export async function getLeaderboard(
 export interface BirthdayUser {
   id: string;
   username: string;
+  avatarURL: string | null;
+  nextBirthday: string;
+  day: number;
+}
+
+function formatNextBirthday(birthdayISO: string): string {
+  const d = new Date(birthdayISO);
+  if (Number.isNaN(d.getTime())) return '';
+  const now = new Date();
+  const month = d.getUTCMonth();
+  const day = d.getUTCDate();
+  const hour = d.getUTCHours();
+  const minute = d.getUTCMinutes();
+
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  let candidate = new Date(Date.UTC(now.getUTCFullYear(), month, day, hour, minute));
+  const candidateDay = new Date(Date.UTC(candidate.getUTCFullYear(), candidate.getUTCMonth(), candidate.getUTCDate()));
+  if (candidateDay.getTime() < today.getTime()) {
+    candidate = new Date(Date.UTC(now.getUTCFullYear() + 1, month, day, hour, minute));
+  }
+
+  const dateStr = candidate.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'UTC',
+    timeZoneName: 'short',
+  });
+  const diffDays = Math.round(
+    (new Date(Date.UTC(candidate.getUTCFullYear(), candidate.getUTCMonth(), candidate.getUTCDate())).getTime()
+      - today.getTime()) / 86400000,
+  );
+  if (diffDays === 0) return `Today — ${dateStr}`;
+  if (diffDays === 1) return `Tomorrow — ${dateStr}`;
+  return `${dateStr} (in ${diffDays} days)`;
 }
 
 export async function getAllBirthdaysByMonth(
@@ -132,8 +169,16 @@ export async function getAllBirthdaysByMonth(
     const date = new Date(row.birthdays);
     const monthName = MONTHS[date.getUTCMonth()];
     const u = await resolveUser(silverwolf, row.id);
-    grouped[monthName].push({ id: row.id, username: u.username });
+    grouped[monthName].push({
+      id: row.id,
+      username: u.username,
+      avatarURL: u.avatarURL,
+      nextBirthday: formatNextBirthday(row.birthdays),
+      day: date.getUTCDate(),
+    });
   }));
+
+  for (const name of MONTHS) grouped[name].sort((a, b) => a.day - b.day);
 
   return grouped;
 }
