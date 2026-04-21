@@ -52,6 +52,8 @@ for (let i = 1; i <= 6; i++) {
   const name = `Character_Silver_Wolf_Eidolon_${i}.webp`;
   STATIC_ASSETS[`/static/eidolons/${name}`] = { path: path.join(IMAGES_DIR, name), contentType: 'image/webp' };
 }
+STATIC_ASSETS['/static/images/game-8-ball.webp'] = { path: path.join(IMAGES_DIR, 'game-8-ball.webp'), contentType: 'image/webp' };
+STATIC_ASSETS['/static/images/game-fortune-cookie.png'] = { path: path.join(IMAGES_DIR, 'game-fortune-cookie.png'), contentType: 'image/png' };
 
 async function serveStatic(entry: StaticEntry) {
   const file = Bun.file(entry.path);
