@@ -11,7 +11,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
-    "build:css": "tailwindcss -i ./site_src/Assets/input.css -o ./site_src/Assets/styles.css --minify",
+    "build:css": "tailwindcss -i ./site_src/Assets/input.css -o ./site_src/Assets/styles.css",
     "build:css:watch": "tailwindcss -i ./site_src/Assets/input.css -o ./site_src/Assets/styles.css --watch"
   },
   "keywords": [],
