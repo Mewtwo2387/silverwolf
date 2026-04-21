@@ -7,7 +7,7 @@ const GAMES = [
     href: '/games/8ball',
     info: 'Ask the magic 8-ball a question and let fate decide.',
     imageType: 'img' as const,
-    imageSrc: '/static/images/game-8-ball.webp',
+    imageSrc: '/static/svg/pool-8-ball-svgrepo-com.svg',
   },
   {
     name: 'flip',
@@ -20,7 +20,7 @@ const GAMES = [
     href: '/games/fortune',
     info: 'Munch on a virtual fortune cookie to see what the future holds.',
     imageType: 'img' as const,
-    imageSrc: '/static/images/game-fortune-cookie.png',
+    imageSrc: '/static/svg/fortune-cookie-svgrepo-com.svg',
   },
 ];
 

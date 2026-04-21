@@ -27,6 +27,7 @@ const VALID_BOARDS: LeaderboardKind[] = ['gambler', 'murder', 'nuggie', 'poop'];
 const ROOT_DIR = path.resolve(import.meta.dir, '..');
 const ASSETS_DIR = path.join(import.meta.dir, 'Assets');
 const IMAGES_DIR = path.join(ASSETS_DIR, 'Images');
+const SVG_DIR = path.join(ASSETS_DIR, 'svg');
 const FONTS_DIR = path.join(ASSETS_DIR, 'fonts');
 const IMMUTABLE_CACHE = 'public, max-age=31536000, immutable';
 
@@ -52,8 +53,8 @@ for (let i = 1; i <= 6; i++) {
   const name = `Character_Silver_Wolf_Eidolon_${i}.webp`;
   STATIC_ASSETS[`/static/eidolons/${name}`] = { path: path.join(IMAGES_DIR, name), contentType: 'image/webp' };
 }
-STATIC_ASSETS['/static/images/game-8-ball.webp'] = { path: path.join(IMAGES_DIR, 'game-8-ball.webp'), contentType: 'image/webp' };
-STATIC_ASSETS['/static/images/game-fortune-cookie.png'] = { path: path.join(IMAGES_DIR, 'game-fortune-cookie.png'), contentType: 'image/png' };
+STATIC_ASSETS['/static/svg/pool-8-ball-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'pool-8-ball-svgrepo-com.svg'), contentType: 'image/svg+xml' };
+STATIC_ASSETS['/static/svg/fortune-cookie-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'fortune-cookie-svgrepo-com.svg'), contentType: 'image/svg+xml' };
 
 async function serveStatic(entry: StaticEntry) {
   const file = Bun.file(entry.path);
