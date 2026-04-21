@@ -5,11 +5,31 @@ services:
     container_name: silverwolf-bot
     restart: unless-stopped
     env_file: .env
-    ports:
-      - "6769:6769"
+    expose:
+      - "6769"
     volumes:
       - ./persistence:/app/persistence
+    networks:
+      - silverwolf-net
     deploy:
       resources:
         limits:
           memory: 512M
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: silverwolf-nginx
+    restart: unless-stopped
+    ports:
+      - "6443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    networks:
+      - silverwolf-net
+    depends_on:
+      - bot
+
+networks:
+  silverwolf-net:
+    driver: bridge
