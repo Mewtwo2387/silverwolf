@@ -4,7 +4,6 @@ export type LeaderboardKind = 'gambler' | 'murder' | 'nuggie' | 'poop';
 
 export interface LeaderboardRow {
   rank: number;
-  id: string;
   username: string;
   avatarURL: string | null;
   value: number;
@@ -67,18 +66,31 @@ function getCommand<T>(silverwolf: Silverwolf, name: string): T {
   return cmd;
 }
 
+const userCache = new Map<string, { username: string; avatarURL: string | null; expiresAt: number }>();
+const CACHE_TTL = 1000 * 60 * 60; // 1 hour
+
 async function resolveUser(silverwolf: Silverwolf, id: string) {
+  const now = Date.now();
+  const cached = userCache.get(id);
+  if (cached && cached.expiresAt > now) return cached;
+
   try {
     const user = await silverwolf.users.fetch(id);
-    return {
+    const res = {
       username: user.username,
       avatarURL: user.displayAvatarURL({ extension: 'png', size: 64 }),
+      expiresAt: now + CACHE_TTL,
     };
+    userCache.set(id, res);
+    return res;
   } catch {
-    return {
+    const res = {
       username: id,
       avatarURL: null,
+      expiresAt: now + CACHE_TTL,
     };
+    userCache.set(id, res);
+    return res;
   }
 }
 
@@ -99,7 +111,6 @@ export async function getLeaderboard(
         const value = Number(row[attribute] ?? 0);
         return {
           rank: i + 1,
-          id: row.id,
           username: u.username,
           avatarURL: u.avatarURL,
           value,
@@ -122,7 +133,6 @@ export async function getLeaderboard(
         const u = await resolveUser(silverwolf, row.id);
         return {
           rank: i + 1,
-          id: row.id,
           username: u.username,
           avatarURL: u.avatarURL,
           value: row.relativeWon,
@@ -142,7 +152,6 @@ export async function getLeaderboard(
         const u = await resolveUser(silverwolf, row.id);
         return {
           rank: i + 1,
-          id: row.id,
           username: u.username,
           avatarURL: u.avatarURL,
           value: row.poopCount,

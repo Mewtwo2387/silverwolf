@@ -114,7 +114,7 @@ export function FortunePage(opts: { fortunes: string[]; nonce: string }) {
 </style>
 <script nonce="${nonce}">
 (() => {
-  const fortunes = ${JSON.stringify(fortunes)};
+  const fortunes = ${JSON.stringify([...fortunes].sort(() => 0.5 - Math.random()).slice(0, 30)).replace(/</g, '\\u003c')};
 
   const svg = document.getElementById('fortune-svg');
 

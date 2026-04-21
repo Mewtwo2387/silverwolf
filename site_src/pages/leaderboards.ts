@@ -25,7 +25,9 @@ export function LeaderboardsPage(opts: {
   error?: string;
   nonce: string;
 }) {
-  const { selected, result, error, nonce } = opts;
+  const {
+    selected, result, error, nonce,
+  } = opts;
 
   const options = BOARD_OPTIONS.map(
     (o) => html`<option value="${o.value}" ${o.value === selected ? 'selected' : ''}>${o.label}</option>`,

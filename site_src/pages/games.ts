@@ -151,20 +151,20 @@ export function GamesPage(opts: { nonce: string }) {
     <p class="text-center text-fog-300 mb-8">Choose a game to play!</p>
     <div class="games-grid">
       ${GAMES.map(
-        (game) => html`
+    (game) => html`
           <a href="${game.href}" class="game-card">
             <div class="card-image">
               ${game.imageType === 'coin'
-                ? CoinImage()
-                : html`<img src="${(game as any).imageSrc}" alt="${game.name}" />`}
+    ? CoinImage()
+    : html`<img src="${(game as any).imageSrc}" alt="${game.name}" />`}
             </div>
             <div class="card-body">
               <h2>${game.name}</h2>
               <p>${game.info}</p>
             </div>
           </a>
-        `
-      )}
+        `,
+  )}
     </div>
   `;
 

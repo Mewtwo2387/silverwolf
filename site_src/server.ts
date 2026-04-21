@@ -49,7 +49,7 @@ for (const name of [
 ]) {
   STATIC_ASSETS[`/static/stickers/${name}`] = { path: path.join(IMAGES_DIR, name), contentType: 'image/webp' };
 }
-for (let i = 1; i <= 6; i++) {
+for (let i = 1; i <= 6; i += 1) {
   const name = `Character_Silver_Wolf_Eidolon_${i}.webp`;
   STATIC_ASSETS[`/static/eidolons/${name}`] = { path: path.join(IMAGES_DIR, name), contentType: 'image/webp' };
 }
@@ -80,9 +80,28 @@ function buildCsp(nonce: string): string {
   ].join('; ');
 }
 
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+function rateLimiter(limit: number, windowMs: number) {
+  return async (c: any, next: any) => {
+    const ip = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
+    const now = Date.now();
+    let record = rateLimitMap.get(ip);
+    if (!record || record.resetAt < now) {
+      record = { count: 0, resetAt: now + windowMs };
+      rateLimitMap.set(ip, record);
+    }
+    record.count += 1;
+    if (record.count > limit) {
+      return c.text('Too Many Requests', 429);
+    }
+    return next();
+  };
+}
+
 export function startWebsite(silverwolf: Silverwolf) {
   const app = new Hono<{ Variables: { nonce: string } }>();
 
+  app.use('*', rateLimiter(120, 60000)); // 120 reqs per minute per IP
   app.use('*', async (c, next) => {
     const nonce = randomBytes(16).toString('base64');
     c.set('nonce', nonce);
@@ -140,9 +159,7 @@ export function startWebsite(silverwolf: Silverwolf) {
     return c.html(EightBallPage({ normal, savage, nonce: c.get('nonce') }).toString());
   });
 
-  app.get('/games/flip', (c) => {
-    return c.html(FlipPage({ nonce: c.get('nonce') }).toString());
-  });
+  app.get('/games/flip', (c) => c.html(FlipPage({ nonce: c.get('nonce') }).toString()));
 
   app.get('/games/fortune', (c) => {
     const fortunes = getFortunes();

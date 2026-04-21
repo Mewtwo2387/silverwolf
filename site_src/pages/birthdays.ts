@@ -108,7 +108,7 @@ export function BirthdaysPage(opts: {
     if (d < minDays) minDays = d;
   }
   const upcomingIds = new Set<string>();
-  if (isFinite(minDays)) {
+  if (Number.isFinite(minDays)) {
     for (const [id, d] of userDays) if (d === minDays) upcomingIds.add(id);
   }
 
