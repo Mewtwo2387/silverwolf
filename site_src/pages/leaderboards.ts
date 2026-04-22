@@ -78,7 +78,7 @@ export function LeaderboardsPage(opts: {
       <noscript><button type="submit" class="ml-2">Go</button></noscript>
     </form>
     <div class="flex justify-center">
-      <div class="min-w-[min(560px,100%)]">
+      <div class="min-w-[min(560px,100%)] overflow-x-auto">
         ${tableSection}
       </div>
     </div>

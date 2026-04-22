@@ -5,34 +5,6 @@ import { MONTHS, type BirthdayUser } from '../bot-bridge';
 
 const birthdayExtras = raw(`
 <style>
-  .bday-user[data-next]:hover::after {
-    content: attr(data-next);
-    position: absolute;
-    bottom: calc(100% + 6px);
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--ink-900);
-    border: 1px solid var(--ink-500);
-    color: var(--fog-100);
-    padding: 0.4rem 0.6rem;
-    border-radius: 4px;
-    white-space: nowrap;
-    font-size: 0.75rem;
-    z-index: 10;
-    pointer-events: none;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  }
-  .bday-user[data-next]:hover::before {
-    content: '';
-    position: absolute;
-    bottom: calc(100% + 1px);
-    left: 50%;
-    transform: translateX(-50%);
-    border: 5px solid transparent;
-    border-top-color: var(--ink-500);
-    z-index: 10;
-    pointer-events: none;
-  }
   @keyframes month-glow {
     from { box-shadow: 0 0 6px 1px var(--glow-faint), 0 0 0 1px var(--accent); }
     to   { box-shadow: 0 0 18px 4px var(--glow-bright), 0 0 0 1px var(--accent-light); }
@@ -62,6 +34,111 @@ const birthdayExtras = raw(`
     z-index: 5;
     line-height: 1.5;
   }
+
+  /* ── Hover tooltip ─────────────────────────────────────────────────────── */
+  .bday-user {
+    position: relative;
+  }
+  .bday-user::after {
+    content: attr(data-next);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ink-700);
+    color: var(--fog-200);
+    border: 1px solid var(--ink-500);
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 5px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+  .bday-user:hover::after {
+    opacity: 1;
+  }
+
+  /* ── Birthday modal ────────────────────────────────────────────────────── */
+  /* All positioning here — never rely on Tailwind for fixed/inset/z-index   */
+  #bday-modal-backdrop {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+  }
+  #bday-modal {
+    position: relative;
+    width: 100%;
+    max-width: 24rem;
+    background: var(--ink-800);
+    border: 1px solid var(--ink-600);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+  }
+  #bday-modal-close {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 1.75rem;
+    height: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.375rem;
+    background: transparent;
+    border: none;
+    color: var(--fog-400);
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+  }
+  #bday-modal-close:hover { color: var(--fog-100); background: var(--ink-700); }
+  #bday-modal-body {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding-right: 1.5rem;
+  }
+  #bday-modal-avatar {
+    flex-shrink: 0;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--ink-600);
+  }
+  #bday-modal-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  #bday-modal-text { min-width: 0; padding-top: 2px; }
+  #bday-modal-name {
+    color: var(--fog-100);
+    font-weight: 600;
+    font-size: 1rem;
+    line-height: 1.3;
+    margin: 0 0 0.3rem;
+  }
+  #bday-modal-when {
+    color: var(--accent-light);
+    font-size: 0.88rem;
+    margin: 0 0 0.25rem;
+    line-height: 1.3;
+  }
+  #bday-modal-date {
+    color: var(--fog-300);
+    font-size: 0.78rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    margin: 0;
+    line-height: 1.5;
+  }
 </style>
 `);
 
@@ -82,13 +159,145 @@ function renderUser(u: BirthdayUser, upcoming = false) {
     : '';
   return html`
     <span
-      class="bday-user${upcomingClass} relative inline-flex items-center gap-[0.4rem] pl-1 pr-[0.6rem] py-[0.2rem] bg-ink-700 border border-ink-600 rounded-full text-[0.85rem] cursor-default"
-      data-next="Next birthday: ${u.nextBirthday}"
+      class="bday-user${upcomingClass} relative inline-flex items-center gap-[0.4rem] pl-1 pr-[0.6rem] py-[0.2rem] bg-ink-700 border border-ink-600 rounded-full text-[0.85rem] cursor-pointer select-none transition-colors hover:border-ink-500"
+      data-username="${u.username}"
+      data-avatar="${u.avatarURL ?? ''}"
+      data-next="${u.nextBirthday}"
+      role="button"
+      tabindex="0"
+      aria-haspopup="dialog"
     >
       ${upcomingBadge}${avatar}<span>${u.username}</span>
     </span>
   `;
 }
+
+// Server-rendered modal shell — always hidden via CSS until JS opens it
+const birthdayModal = raw(`
+<div id="bday-modal-backdrop" role="presentation">
+  <div id="bday-modal" role="dialog" aria-modal="true" aria-labelledby="bday-modal-name">
+    <button id="bday-modal-close" aria-label="Close">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14"
+           fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="1" y1="1" x2="13" y2="13"/><line x1="13" y1="1" x2="1" y2="13"/>
+      </svg>
+    </button>
+    <div id="bday-modal-body">
+      <div id="bday-modal-avatar"></div>
+      <div id="bday-modal-text">
+        <p id="bday-modal-name"></p>
+        <p id="bday-modal-when"></p>
+        <p id="bday-modal-date"></p>
+      </div>
+    </div>
+  </div>
+</div>
+`);
+
+const birthdayModalScript = (nonce: string) => raw(`
+<script nonce="${nonce}">
+(() => {
+  const backdrop = document.getElementById('bday-modal-backdrop');
+  const modal    = document.getElementById('bday-modal');
+  const closeBtn = document.getElementById('bday-modal-close');
+  const avatarEl = document.getElementById('bday-modal-avatar');
+  const nameEl   = document.getElementById('bday-modal-name');
+  const whenEl   = document.getElementById('bday-modal-when');
+  const dateEl   = document.getElementById('bday-modal-date');
+  if (!backdrop || !modal || !closeBtn) return;
+
+  // Move modal to <body> so it escapes any stacking context inside <main>
+  document.body.appendChild(backdrop);
+
+  let closeTimer = null;
+
+  function openModal(el) {
+    if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
+
+    const username = el.dataset.username || '';
+    const avatar   = el.dataset.avatar   || '';
+    const next     = el.dataset.next     || '';
+
+    // Parse the nextBirthday string from bot-bridge into (when, date) parts
+    var when = '', date = '';
+    if (next.startsWith('Today')) {
+      when = 'birthday is today!';
+      var sep = next.indexOf(' \u2014 ');
+      date = sep >= 0 ? next.slice(sep + 3) : next;
+    } else if (next.startsWith('Tomorrow')) {
+      when = 'birthday is tomorrow';
+      var sep2 = next.indexOf(' \u2014 ');
+      date = sep2 >= 0 ? next.slice(sep2 + 3) : next;
+    } else {
+      var dm = next.match(/\\(in (\\d+) days\\)/);
+      var days = dm ? dm[1] : '?';
+      when = 'birthday is in ' + days + (days === '1' ? ' day' : ' days');
+      date = next.replace(/\\s*\\(in \\d+ days\\)$/, '');
+    }
+
+    nameEl.textContent  = username + '\u2019s';
+    whenEl.textContent  = when;
+    dateEl.textContent  = '\u0040 ' + date;
+
+    avatarEl.innerHTML = '';
+    if (avatar) {
+      var img = document.createElement('img');
+      img.src = avatar; img.alt = '';
+      avatarEl.appendChild(img);
+    }
+
+    // Animate in
+    modal.style.transition = 'none';
+    modal.style.transform  = 'scale(0.94) translateY(8px)';
+    modal.style.opacity    = '0';
+    backdrop.style.display = 'flex';
+
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        modal.style.transition = 'transform 0.22s cubic-bezier(0.22,1,0.36,1), opacity 0.18s ease';
+        modal.style.transform  = 'scale(1) translateY(0)';
+        modal.style.opacity    = '1';
+      });
+    });
+
+    document.body.style.overflow = 'hidden';
+    closeBtn.focus();
+  }
+
+  function closeModal() {
+    if (closeTimer) return;
+    modal.style.transition = 'transform 0.15s cubic-bezier(0.4,0,1,1), opacity 0.15s ease';
+    modal.style.transform  = 'scale(0.94) translateY(6px)';
+    modal.style.opacity    = '0';
+    closeTimer = setTimeout(function() {
+      backdrop.style.display       = 'none';
+      modal.style.transition       = 'none';
+      modal.style.transform        = '';
+      modal.style.opacity          = '';
+      document.body.style.overflow = '';
+      closeTimer = null;
+    }, 160);
+  }
+
+  // Pill clicks (delegated)
+  document.addEventListener('click', function(e) {
+    var pill = e.target.closest('.bday-user');
+    if (pill) { openModal(pill); return; }
+    if (e.target === backdrop) closeModal();
+  });
+
+  closeBtn.addEventListener('click', closeModal);
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && backdrop.style.display !== 'none') { closeModal(); return; }
+    if (e.key === 'Enter' || e.key === ' ') {
+      var pill = document.activeElement && document.activeElement.closest('.bday-user');
+      if (pill) { e.preventDefault(); openModal(pill); }
+    }
+  });
+})();
+</script>
+`);
 
 export function BirthdaysPage(opts: {
   grouped: Record<string, BirthdayUser[]>;
@@ -133,6 +342,8 @@ export function BirthdaysPage(opts: {
             `;
   })}
         </div>
+        ${birthdayModal}
+        ${birthdayModalScript(nonce)}
       `;
 
   return Layout({
