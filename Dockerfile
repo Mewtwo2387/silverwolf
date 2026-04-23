@@ -52,7 +52,4 @@ COPY --chown=bun:bun . .
 # Refresh font cache
 RUN fc-cache -f
 
-# Website (site_src) listens on 6769
-EXPOSE 6769
-
 CMD ["bun", "index.ts"]

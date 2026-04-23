@@ -16,7 +16,3 @@ persistence/
 # whitelist
 !data/*.txt
 .DS_Store
-
-# nginx TLS certificates (generated locally, never commit private keys)
-nginx/certs/privkey.pem
-nginx/certs/fullchain.pem
