@@ -568,11 +568,13 @@ export const ELECTRO = createCharacter({
   hp: 100,
   element: Element.Electro,
   imagePanel: {
-    imagePath: '',
-    mode: ImagePanelMode.None,
+    mode: ImagePanelMode.Background,
+    backgroundColor: '#39AACC',
+    imagePath: './tcg/assets/characters/electro.jpg',
   },
   background: createSimpleBackground('#39AACC', '#7ADDFF'),
   textColors: ELECTRO_TEXT_COLORS,
+  twoColumnSkills: true,
   skills: [
     createSkill({
       name: '60',
