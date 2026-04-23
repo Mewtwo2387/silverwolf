@@ -78,33 +78,33 @@ export function AboutPage(opts: { nonce: string }) {
   const eidolonData = [
     {
       n: 1,
-      title: 'Lorem Ipsum',
-      text: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque vehicula urna vel felis tincidunt, at lacinia nulla fringilla. Pellentesque habitant morbi tristique senectus et netus.',
+      title: 'Utils',
+      text: 'Honestly.. boring? like even silver wolf pictured here isnt even facing us cuz she lowkirkenuinely doesnt give a fuge. some utils : /say, /convert,/profile, /avatar and...shurg idk not exactly exciting imo. more out of boring necessity.',
     },
     {
       n: 2,
-      title: 'Dolor Sit Amet',
-      text: 'Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit.',
+      title: '@grok is this true?',
+      text: 'ask the totally real grok or gork. omg we are so relevant now we added ai into the bot :fire: we are at the forefront of tech! we should ipo and get 7 dollars. enough to get something nice but not expensive! ',
     },
     {
       n: 3,
-      title: 'Consectetur',
-      text: 'At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti. Quis autem vel eum iure reprehenderit qui in ea voluptate velit.',
+      title: 'Games',
+      text: 'claim dinonuggies, gamble mystic credits, and buy..more upgrades so you can earn more dinonuggies...economy is kinda broken tho...',
     },
     {
       n: 4,
-      title: 'Adipiscing Elit',
-      text: 'Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo minus id quod maxime placeat. Temporibus autem quibusdam et aut officiis debitis rerum necessitatibus.',
+      title: 'Womb eviction commemoration day',
+      text: 'Set your birthday, when it comes you get a ping and everyone knows, #OnThisDay you got expelled from you momma. You can also set a reminder to other peeps bdays.',
     },
     {
       n: 5,
-      title: 'Sed Do Eiusmod',
-      text: 'Quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit.',
+      title: 'Health & Wellness - Poop tracking!',
+      text: 'LIVE SILVERWOLF REACTION. Dont be like finch who hates the idea of poop tracking. ANNOUNCE TO THE WHOLE WORLD YOU DID YOUR BUINSESS!! and also gut health is important you start by tracking it smh',
     },
     {
       n: 6,
-      title: 'Tempor Incididunt',
-      text: 'Similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio nam libero tempore.',
+      title: 'E sex!',
+      text: 'Yes... incase you couldnt get laid irl, you can with someone...on discord!!!. consent is important tho. Theres also a chance you make a virtual kid that can slave off gambling and doing tasks... Horrified yet? ',
     },
   ];
 

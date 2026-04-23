@@ -9,7 +9,7 @@ export function Footer() {
         <span>[uptime: yes]</span>
         <span>[vibes: immaculate]</span>
       </div>
-      <div class="text-fog-500">© Silverwolf — prototype build</div>
+      <div class="text-fog-500">Silverwolf — prototype build</div>
     </footer>
   `;
 }
