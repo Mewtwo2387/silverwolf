@@ -8,6 +8,8 @@ import { Element } from './element';
  * @param type - The thing this effect modifies
  * @param amount - The amplitude it modifies
  * @param duration - The number of turns remaining until the effect wears off
+ * @param positive - True for buffs (applied to self/allies), false for debuffs (applied to enemies).
+ *   Used for log phrasing ("gained" vs "was inflicted with") and future UI cues.
  * @param metadata - Optional metadata for the effect
  */
 export class Effect {
@@ -16,6 +18,7 @@ export class Effect {
   type: EffectType;
   amount: number;
   duration: number;
+  positive: boolean;
   metadata?: {
     activeSkillIndices?: number[]; // For FormChange: which skill indices should be active in this form
     appliesToElement?: Element; // For damage effects: if specified, only applies to damage of this element type
@@ -27,6 +30,7 @@ export class Effect {
     type: EffectType,
     amount: number,
     duration: number,
+    positive: boolean,
     metadata?: { activeSkillIndices?: number[]; appliesToElement?: Element }
   ) {
     this.name = name;
@@ -34,6 +38,7 @@ export class Effect {
     this.type = type;
     this.amount = amount;
     this.duration = duration;
+    this.positive = positive;
     this.metadata = metadata;
   }
 

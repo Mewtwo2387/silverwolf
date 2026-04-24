@@ -125,6 +125,8 @@ export function createEffect(params: {
   description: string;
   type: EffectType;
   amount: number;
+  /** True for buffs, false for debuffs. Drives log phrasing and future UI cues. */
+  positive: boolean;
   duration?: number; // defaults to permanent (9999)
   activeSkillIndices?: number[]; // for FormChange effects
   appliesToElement?: Element; // for damage effects: if specified, only applies to damage of this element type
@@ -143,6 +145,7 @@ export function createEffect(params: {
     params.type,
     params.amount,
     params.duration !== undefined ? params.duration : 9999,
+    params.positive,
     Object.keys(metadata).length > 0 ? metadata : undefined,
   );
 }

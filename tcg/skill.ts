@@ -367,6 +367,7 @@ export class Skill implements DrawableBlock {
           rangeEffect.effect.type,
           rangeEffect.effect.amount,
           rangeEffect.effect.duration,
+          rangeEffect.effect.positive,
           { activeSkillIndices: this.formActiveSkillIndices },
         );
       }

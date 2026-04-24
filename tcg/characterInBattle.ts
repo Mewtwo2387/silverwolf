@@ -115,9 +115,13 @@ export class CharacterInBattle {
     damage = round2(Math.max(0, damage));
     this.currentHp = round2(this.currentHp - damage);
     this.stats.damageReceived = round2(this.stats.damageReceived + damage);
+    if (damage > 0) {
+      this.battle.logEvent(`${this.character.name} lost ${damage} HP`);
+    }
     if (this.currentHp <= 0) {
       this.currentHp = 0;
       this.isKnockedOut = true;
+      this.battle.logEvent(`${this.character.name} fainted`);
     }
 
     if (attacker && attacker !== this) {
@@ -163,9 +167,11 @@ export class CharacterInBattle {
       if (effect.duration > existingEffect.duration) {
         existingEffect.duration = effect.duration;
       }
-    } else {
-      this.effects.push(effect);
+      return;
     }
+    this.effects.push(effect);
+    const verb = effect.positive ? 'gained' : 'was inflicted with';
+    this.battle.logEvent(`${this.character.name} ${verb} [${effect.name}]`);
   }
 
   /**

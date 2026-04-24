@@ -144,6 +144,7 @@ export const KAITLIN = createCharacter({
             description: 'Converted into Kaitlin Form.',
             type: EffectType.FormChange,
             amount: 1,
+            positive: true,
           }),
         ),
       ],
@@ -163,6 +164,7 @@ export const KAITLIN = createCharacter({
             description: 'Increases outgoing damage by 15%.',
             type: EffectType.OutgoingDamage,
             amount: 1.15,
+            positive: true,
           }),
           condition: (context: AbilityActivationContext) => (
             context.getAllies().filter((ally) => ally.character.name.startsWith('V')).length === 1
@@ -175,6 +177,7 @@ export const KAITLIN = createCharacter({
             description: 'Increases outgoing damage by 40%.',
             type: EffectType.OutgoingDamage,
             amount: 1.4,
+            positive: true,
           }),
           condition: (context: AbilityActivationContext) => (
             context.getAllies().filter((ally) => ally.character.name.startsWith('V')).length === 2
@@ -222,6 +225,7 @@ export const VENFEI = createCharacter({
             type: EffectType.OutgoingDamage,
             amount: 1.6,
             duration: 3,
+            positive: true,
           }),
         ),
       ],
@@ -240,6 +244,7 @@ export const VENFEI = createCharacter({
             type: EffectType.OutgoingDamage,
             amount: 1.35,
             duration: 5,
+            positive: true,
           }),
         ),
       ],
@@ -291,6 +296,7 @@ export const EI = createCharacter({
             type: EffectType.OutgoingDamage,
             amount: 0.65,
             duration: 5,
+            positive: false,
           }),
         ),
       ],
@@ -309,6 +315,7 @@ export const EI = createCharacter({
             description: 'Increases outgoing damage by 15%.',
             type: EffectType.OutgoingDamage,
             amount: 1.15,
+            positive: true,
           }),
           condition: (context: AbilityActivationContext) => (
             context.getAllies().filter((ally) => ally.character.element === Element.Quantum).length === 2
@@ -321,6 +328,7 @@ export const EI = createCharacter({
             description: 'Increases outgoing damage by 40%.',
             type: EffectType.OutgoingDamage,
             amount: 1.4,
+            positive: true,
           }),
           condition: (context: AbilityActivationContext) => (
             context.getAllies().filter((ally) => ally.character.element === Element.Quantum).length === 3
@@ -368,6 +376,7 @@ export const SILVERWOLF = createCharacter({
             amount: 1.5,
             duration: 5,
             appliesToElement: Element.Quantum,
+            positive: false,
           }),
         ),
       ],
@@ -387,6 +396,7 @@ export const SILVERWOLF = createCharacter({
             type: EffectType.IncomingDamage,
             amount: 1.5,
             duration: 5,
+            positive: false,
           }),
         ),
       ],
@@ -401,6 +411,7 @@ export const SILVERWOLF = createCharacter({
         type: EffectType.IncomingDamage,
         amount: 1.1,
         duration: 3,
+        positive: false,
       });
 
       const effect2 = createEffect({
@@ -409,6 +420,7 @@ export const SILVERWOLF = createCharacter({
         type: EffectType.OutgoingDamage,
         amount: 0.9,
         duration: 3,
+        positive: false,
       });
 
       const effect3 = createEffect({
@@ -417,6 +429,7 @@ export const SILVERWOLF = createCharacter({
         type: EffectType.EnergyGain,
         amount: 0.9,
         duration: 3,
+        positive: false,
       });
 
       // Randomly select one effect when the ability triggers
@@ -507,6 +520,7 @@ export const SPARKLE = createCharacter({
             type: EffectType.OutgoingDamage,
             amount: 1.6,
             duration: 3,
+            positive: true,
           }),
         ),
       ],
@@ -535,6 +549,7 @@ export const SPARKLE = createCharacter({
               type: EffectType.SkillPointsMaxBonus,
               amount: 2,
               duration: 9999,
+              positive: true,
             }),
           }),
         ],
@@ -551,6 +566,7 @@ export const SPARKLE = createCharacter({
                 EffectType.OutgoingDamage,
                 1.05,
                 5,
+                true,
               ),
             );
           }
@@ -640,6 +656,7 @@ export const ELECTRO = createCharacter({
             type: EffectType.IncomingDamage,
             amount: 0.6,
             duration: 9999,
+            positive: true,
           }),
           condition: (context: AbilityActivationContext) => (
             context.getAllies().some((ally) => ally.character.name === 'Furina')

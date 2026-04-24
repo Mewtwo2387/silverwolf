@@ -194,6 +194,8 @@ export interface UseSkillSuccessDetail {
   characterName: string;
   skillName: string;
   targetName: string;
+  /** Battle events (damage, effects applied, KOs) produced during the skill's resolution. */
+  logLines: string[];
 }
 
 export type ExecuteUseSkillResult =
@@ -250,6 +252,7 @@ export function executeUseSkill(
         characterName: character.character.name,
         skillName,
         targetName,
+        logLines: battle.getLastActionLog(),
       },
     };
   }
@@ -300,10 +303,13 @@ export function formatUseSkillMessage(
   detail: UseSkillSuccessDetail,
   style: BattleTextStyle,
 ): string {
-  if (style === 'markdown') {
-    return `**${detail.characterName}** used **${detail.skillName}** on **${detail.targetName}**!`;
+  const header = style === 'markdown'
+    ? `**${detail.characterName}** used **${detail.skillName}** on **${detail.targetName}**!`
+    : `${detail.characterName} used ${detail.skillName} on ${detail.targetName}!`;
+  if (detail.logLines.length === 0) {
+    return header;
   }
-  return `${detail.characterName} used ${detail.skillName} on ${detail.targetName}!`;
+  return [header, ...detail.logLines].join('\n');
 }
 
 export function formatUseSkillFailureMessage(result: Extract<ExecuteUseSkillResult, { ok: false }>): string {

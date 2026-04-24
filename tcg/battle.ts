@@ -4,6 +4,7 @@ import { SkillCategory } from './skillCategory';
 import type { Skill } from './skill';
 import type { BattleEvent } from './battleEvents';
 import { EffectType } from './effectType';
+import { log } from '../utils/log';
 
 export enum BattleStatus {
   Ongoing = 'ongoing',
@@ -35,6 +36,8 @@ export class Battle {
   slotsPerSide: number;
   status: BattleStatus;
   turnHistory: string[];
+  /** Event lines produced during the most recent useMainAction / useUltimate call. */
+  currentActionLog: string[];
 
   constructor(p1cards: Character[], p2cards: Character[]) {
     this.p1cards = p1cards.map((char) => new CharacterInBattle(char, this, 'p1'));
@@ -48,6 +51,7 @@ export class Battle {
     this.mainActionUsedThisPhase = false;
     this.status = BattleStatus.Ongoing;
     this.turnHistory = [];
+    this.currentActionLog = [];
 
     this.activateAllAbilities();
     this.turnHistory.push(
@@ -90,6 +94,21 @@ export class Battle {
         });
     });
     return SKILL_POINTS_CAP + Math.floor(bonus);
+  }
+
+  /**
+   * Append a line to the currently-accumulating action log (and the full turn history).
+   * Call sites: damage resolution, effect application, knockouts, etc.
+   */
+  logEvent(message: string): void {
+    this.currentActionLog.push(message);
+    this.turnHistory.push(message);
+    log(`[tcg] ${message}`);
+  }
+
+  /** Snapshot of the lines produced during the most recent action. */
+  getLastActionLog(): string[] {
+    return [...this.currentActionLog];
   }
 
   /**
@@ -257,6 +276,7 @@ export class Battle {
       return false;
     }
 
+    this.currentActionLog = [];
     skill.useSkill(character, target);
     character.onSkillCompleted(skill, target);
 
@@ -304,6 +324,7 @@ export class Battle {
       return false;
     }
 
+    this.currentActionLog = [];
     character.spendEnergy(energy);
     skill.useSkill(character, target);
     character.onSkillCompleted(skill, target);
