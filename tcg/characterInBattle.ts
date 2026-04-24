@@ -4,6 +4,7 @@ import { Battle } from './battle';
 import { Effect } from './effect';
 import { Skill } from './skill';
 import { Element } from './element';
+import { round2 } from '../utils/math';
 
 /**
  * A single character and their status in a battle
@@ -111,8 +112,9 @@ export class CharacterInBattle {
       .forEach((effect) => {
         damage *= effect.amount;
       });
-    this.currentHp -= Math.max(0, damage);
-    this.stats.damageReceived += Math.max(0, damage);
+    damage = round2(Math.max(0, damage));
+    this.currentHp = round2(this.currentHp - damage);
+    this.stats.damageReceived = round2(this.stats.damageReceived + damage);
     if (this.currentHp <= 0) {
       this.currentHp = 0;
       this.isKnockedOut = true;
@@ -125,7 +127,7 @@ export class CharacterInBattle {
 
   heal(amount: number) {
     if (this.isKnockedOut) return;
-    this.currentHp += amount;
+    this.currentHp = round2(this.currentHp + amount);
     if (this.currentHp > this.character.hp) this.currentHp = this.character.hp;
   }
 
@@ -142,7 +144,7 @@ export class CharacterInBattle {
       .forEach((effect) => {
         damage *= effect.amount;
       });
-    return Math.max(0, damage);
+    return round2(Math.max(0, damage));
   }
 
   /**
@@ -150,7 +152,7 @@ export class CharacterInBattle {
    */
   dealDamage(amount: number, damageElement?: Element): number {
     const damage = this.calculateDamage(amount, damageElement);
-    this.stats.damageDealt += damage;
+    this.stats.damageDealt = round2(this.stats.damageDealt + damage);
     return damage;
   }
 
