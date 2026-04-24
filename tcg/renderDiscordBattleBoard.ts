@@ -47,7 +47,7 @@ function overlayBarHeight(effectLines: string[]): number {
   return base + GAP_BEFORE_EFFECTS + effectLines.length * LINE_EFFECT;
 }
 
-async function renderCharacterThumb(cib: CharacterInBattle): Promise<Canvas.Canvas> {
+async function renderCharacterThumb(cib: CharacterInBattle, slotIndex: number): Promise<Canvas.Canvas> {
   const base = await cib.character.generateCard();
   const effectLines = buildEffectDisplayLines(cib);
   const barH = overlayBarHeight(effectLines);
@@ -64,10 +64,12 @@ async function renderCharacterThumb(cib: CharacterInBattle): Promise<Canvas.Canv
   let y = overlayTop + OVERLAY_TOP_PAD;
   ctx.fillStyle = '#ffffff';
   ctx.font = '600 15px "Segoe UI", "Bahnschrift", sans-serif';
-  const shortName = cib.character.name.length > 18
-    ? `${cib.character.name.slice(0, 16)}…`
+  const prefix = `${slotIndex}. `;
+  const maxNameLen = 18 - prefix.length;
+  const shortName = cib.character.name.length > maxNameLen
+    ? `${cib.character.name.slice(0, Math.max(0, maxNameLen - 1))}…`
     : cib.character.name;
-  ctx.fillText(shortName, 8, y);
+  ctx.fillText(`${prefix}${shortName}`, 8, y);
   y += LINE_NAME + GAP_NAME_HP;
 
   ctx.font = '600 13px "Segoe UI", "Bahnschrift", sans-serif';
@@ -105,8 +107,8 @@ async function renderCharacterThumb(cib: CharacterInBattle): Promise<Canvas.Canv
  */
 export async function renderBattleBoardPng(battle: Battle): Promise<Buffer> {
   const [p1Thumbs, p2Thumbs] = await Promise.all([
-    Promise.all(battle.p1cards.map((c) => renderCharacterThumb(c))),
-    Promise.all(battle.p2cards.map((c) => renderCharacterThumb(c))),
+    Promise.all(battle.p1cards.map((c, i) => renderCharacterThumb(c, i))),
+    Promise.all(battle.p2cards.map((c, i) => renderCharacterThumb(c, i))),
   ]);
 
   const rowW = 3 * TW + 2 * GAP;

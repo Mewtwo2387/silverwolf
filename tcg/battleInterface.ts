@@ -37,15 +37,37 @@ function skillWantsAllyIndex(skill: Skill): boolean {
     || skill.effects.some((e) => e.range === RangeType.SingleAlly);
 }
 
+/** Find the absolute slot index of a character in the battle (searches both teams). */
+function findSlotIndex(battle: Battle, char: CharacterInBattle): number | null {
+  const p1 = battle.p1cards.indexOf(char);
+  if (p1 >= 0) return p1;
+  const p2 = battle.p2cards.indexOf(char);
+  if (p2 >= 0) return p2;
+  return null;
+}
+
+function formatCharWithSlot(battle: Battle, char: CharacterInBattle): string {
+  const slot = findSlotIndex(battle, char);
+  return slot != null ? `${char.character.name} (slot ${slot})` : char.character.name;
+}
+
+/** Describes the current active slot like "Slot 2 (Kaitlin)". */
+function formatActiveSlotLabel(battle: Battle): string {
+  const slot = battle.getCurrentActiveSlot();
+  const active = battle.getActiveCharacterForCurrentPhase();
+  return active ? `Slot ${slot} (${active.character.name})` : `Slot ${slot}`;
+}
+
 /** Human-readable who this skill applies to (matches damage range; used in CLI + Discord). */
 export function formatSkillTargetLabel(
+  battle: Battle,
   skill: Skill,
   caster: CharacterInBattle,
   resolved: CharacterInBattle | null,
 ): string {
   switch (skill.damageRange) {
     case RangeType.Self:
-      return 'self';
+      return `self (slot ${findSlotIndex(battle, caster) ?? '?'})`;
     case RangeType.AllOpponents:
       return 'all opponents';
     case RangeType.AllAllies:
@@ -53,12 +75,13 @@ export function formatSkillTargetLabel(
     case RangeType.AllCards:
       return 'everyone';
     case RangeType.SingleOpponent:
-      return resolved ? resolved.character.name : '(unknown)';
+      return resolved ? formatCharWithSlot(battle, resolved) : '(unknown)';
     case RangeType.SingleAlly:
       if (!resolved) return '(unknown)';
-      return resolved === caster ? 'self' : resolved.character.name;
+      if (resolved === caster) return `self (slot ${findSlotIndex(battle, caster) ?? '?'})`;
+      return formatCharWithSlot(battle, resolved);
     default:
-      return resolved ? resolved.character.name : 'self';
+      return resolved ? formatCharWithSlot(battle, resolved) : `self (slot ${findSlotIndex(battle, caster) ?? '?'})`;
   }
 }
 
@@ -91,22 +114,28 @@ export function resolveTargetForSkill(
   }
 
   const targetIndex = parseInt((targetRaw?.trim() || '0'), 10);
+  // Target indices are ABSOLUTE slot indices — they never shift when a character is KO'd.
+  // Slot 1 is always slot 1 even if slot 0 is gone.
   if (skillWantsAllyIndex(skill)) {
-    const allAllies = battle.getAliveAlly(side);
-    if (targetIndex >= 0 && targetIndex < allAllies.length) {
-      return { ok: true, target: allAllies[targetIndex] };
+    const allies = battle.ally(side);
+    if (targetIndex < 0 || targetIndex >= allies.length) {
+      return { ok: false, error: `Invalid ally target slot: ${targetIndex}` };
     }
-    return { ok: false, error: `Invalid ally target index: ${targetIndex}` };
+    const target = allies[targetIndex];
+    if (target.isKnockedOut) {
+      return { ok: false, error: `Ally slot ${targetIndex} is knocked out.` };
+    }
+    return { ok: true, target };
   }
-  const opponents = battle.getAliveOpponent(side);
+  const opponents = battle.opponent(side);
   if (targetIndex >= 0 && targetIndex < opponents.length) {
-    return { ok: true, target: opponents[targetIndex] };
+    const target = opponents[targetIndex];
+    if (target.isKnockedOut) {
+      return { ok: false, error: `Opponent slot ${targetIndex} is knocked out.` };
+    }
+    return { ok: true, target };
   }
-  const allAllies = battle.getAliveAlly(side);
-  if (targetIndex >= 0 && targetIndex < allAllies.length) {
-    return { ok: true, target: allAllies[targetIndex] };
-  }
-  return { ok: false, error: `Invalid target index: ${targetIndex}` };
+  return { ok: false, error: `Invalid target slot: ${targetIndex}` };
 }
 
 /**
@@ -145,7 +174,7 @@ function formatSkillAvailabilityLine(
   if (charIndex !== battle.getCurrentActiveSlot()) {
     return style === 'markdown'
       ? 'Only ultimates (not active slot)'
-      : `[NORMAL/CHARGED — active slot is ${battle.getCurrentActiveSlot()}]`;
+      : `[NORMAL/CHARGED — active is ${formatActiveSlotLabel(battle)}]`;
   }
   if (battle.mainActionUsedThisPhase) {
     return style === 'markdown'
@@ -214,7 +243,7 @@ export function executeUseSkill(
     : battle.useMainAction(character, skillIndex, resolved.target);
   if (success) {
     const skillName = currentSkill?.name ?? `skill ${skillIndex}`;
-    const targetName = formatSkillTargetLabel(currentSkill, character, resolved.target);
+    const targetName = formatSkillTargetLabel(battle, currentSkill, character, resolved.target);
     return {
       ok: true,
       detail: {
@@ -239,7 +268,7 @@ export function executeUseSkill(
     && (currentSkill.category === SkillCategory.Normal || currentSkill.category === SkillCategory.Charged)) {
     if (charIndex !== battle.getCurrentActiveSlot()) {
       hints.push(
-        `Only the active character (slot ${battle.getCurrentActiveSlot()}) may use normal/charged right now.`,
+        `Only the active character (${formatActiveSlotLabel(battle)}) may use normal/charged right now.`,
       );
     }
     if (battle.mainActionUsedThisPhase) {
@@ -307,7 +336,7 @@ export function formatSkillsForSide(
 
   if (style === 'cli') {
     lines.push(
-      `\nTeam skill points ${battle.skillPointsForSide(side)}/${battle.skillPointsCapForSide(side)} — active slot ${battle.getCurrentActiveSlot()}`,
+      `\nTeam skill points ${battle.skillPointsForSide(side)}/${battle.skillPointsCapForSide(side)} — active ${formatActiveSlotLabel(battle)}`,
     );
     lines.push(`\n${char.character.name}'s skills:`);
     char.character.skills.forEach((skill) => {
@@ -318,7 +347,7 @@ export function formatSkillsForSide(
   } else {
     lines.push(`**${char.character.name}** (slot ${charIndex})`);
     lines.push(
-      `Team skill points **${battle.skillPointsForSide(side)}** / **${battle.skillPointsCapForSide(side)}**  ·  Active slot **${battle.getCurrentActiveSlot()}**`,
+      `Team skill points **${battle.skillPointsForSide(side)}** / **${battle.skillPointsCapForSide(side)}**  ·  Active: **${formatActiveSlotLabel(battle)}**`,
     );
     char.character.skills.forEach((skill, idx) => {
       const status = formatSkillAvailabilityLine(battle, side, charIndex, char, skill, 'markdown');
@@ -356,7 +385,7 @@ export function formatAllyStatusForDiscord(
   }
   lines.push(`HP **${char.currentHp}** / **${char.character.hp}**  ·  Energy **${char.energy}**`);
   lines.push(
-    `Team skill points **${battle.skillPointsForSide(side)}** / **${battle.skillPointsCapForSide(side)}**  ·  Active slot **${battle.getCurrentActiveSlot()}**`,
+    `Team skill points **${battle.skillPointsForSide(side)}** / **${battle.skillPointsCapForSide(side)}**  ·  Active: **${formatActiveSlotLabel(battle)}**`,
   );
   if (battle.mainActionUsedThisPhase && side === battle.currentPlayer && charIndex === battle.getCurrentActiveSlot()) {
     lines.push('*Main action used this phase (ultimates still allowed)*');
@@ -398,9 +427,9 @@ export function statusLine(battle: Battle, style: BattleTextStyle = 'markdown'):
   const sp = battle.skillPointsForSide(battle.currentPlayer);
   const cap = battle.skillPointsCapForSide(battle.currentPlayer);
   if (style === 'markdown') {
-    return `Round **${battle.currentTurn}** — **${battle.currentPlayer.toUpperCase()}** (active slot **${battle.getCurrentActiveSlot()}**, team SP **${sp}/${cap}**)`;
+    return `Round **${battle.currentTurn}** — **${battle.currentPlayer.toUpperCase()}** · Active **${formatActiveSlotLabel(battle)}** · team SP **${sp}/${cap}**`;
   }
-  return `Round ${battle.currentTurn} — ${battle.currentPlayer.toUpperCase()} (slot ${battle.getCurrentActiveSlot()}, SP ${sp}/${cap})`;
+  return `Round ${battle.currentTurn} — ${battle.currentPlayer.toUpperCase()} · Active ${formatActiveSlotLabel(battle)} · SP ${sp}/${cap}`;
 }
 
 /** Discord: labels + battle snapshot in a code block, length-capped. */
