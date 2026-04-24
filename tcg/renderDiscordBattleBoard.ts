@@ -47,14 +47,34 @@ function overlayBarHeight(effectLines: string[]): number {
   return base + GAP_BEFORE_EFFECTS + effectLines.length * LINE_EFFECT;
 }
 
-async function renderCharacterThumb(cib: CharacterInBattle, slotIndex: number): Promise<Canvas.Canvas> {
+async function renderCharacterThumb(
+  cib: CharacterInBattle,
+  slotIndex: number,
+  isActive: boolean,
+): Promise<Canvas.Canvas> {
   const base = await cib.character.generateCard();
   const effectLines = buildEffectDisplayLines(cib);
   const barH = overlayBarHeight(effectLines);
 
   const thumb = Canvas.createCanvas(TW, TH);
   const ctx = thumb.getContext('2d');
-  ctx.drawImage(base, 0, 0, TW, TH);
+
+  if (isActive && !cib.isKnockedOut) {
+    ctx.save();
+    ctx.shadowColor = 'rgba(255, 214, 96, 0.95)';
+    ctx.shadowBlur = 28;
+    ctx.drawImage(base, 0, 0, TW, TH);
+    ctx.shadowBlur = 18;
+    ctx.drawImage(base, 0, 0, TW, TH);
+    ctx.restore();
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 214, 96, 0.95)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(1.5, 1.5, TW - 3, TH - 3);
+    ctx.restore();
+  } else {
+    ctx.drawImage(base, 0, 0, TW, TH);
+  }
 
   const overlayTop = TH - barH;
   ctx.fillStyle = 'rgba(0,0,0,0.78)';
@@ -106,10 +126,19 @@ async function renderCharacterThumb(cib: CharacterInBattle, slotIndex: number): 
  * Renders P1 and P2 teams as a single PNG (scaled card art + HP/energy overlays).
  */
 export async function renderBattleBoardPng(battle: Battle): Promise<Buffer> {
+  const activeSlot = battle.getCurrentActiveSlot();
+  const activeSide = battle.currentPlayer;
+
   const [p1Thumbs, p2Thumbs] = await Promise.all([
-    Promise.all(battle.p1cards.map((c, i) => renderCharacterThumb(c, i))),
-    Promise.all(battle.p2cards.map((c, i) => renderCharacterThumb(c, i))),
+    Promise.all(battle.p1cards.map((c, i) => renderCharacterThumb(c, i, activeSide === 'p1' && i === activeSlot))),
+    Promise.all(battle.p2cards.map((c, i) => renderCharacterThumb(c, i, activeSide === 'p2' && i === activeSlot))),
   ]);
+
+  // Active side is rendered on the BOTTOM so it flips when turns change.
+  const topLabel = activeSide === 'p1' ? 'P2' : 'P1';
+  const bottomLabel = activeSide === 'p1' ? 'P1' : 'P2';
+  const topThumbs = activeSide === 'p1' ? p2Thumbs : p1Thumbs;
+  const bottomThumbs = activeSide === 'p1' ? p1Thumbs : p2Thumbs;
 
   const rowW = 3 * TW + 2 * GAP;
   const boardW = MARGIN * 2 + rowW;
@@ -125,17 +154,17 @@ export async function renderBattleBoardPng(battle: Battle): Promise<Buffer> {
   ctx.textBaseline = 'top';
 
   let y = MARGIN;
-  ctx.fillText('P1', MARGIN, y);
+  ctx.fillText(topLabel, MARGIN, y);
   y += LABEL_H;
-  for (let i = 0; i < p1Thumbs.length; i += 1) {
-    ctx.drawImage(p1Thumbs[i], MARGIN + i * (TW + GAP), y);
+  for (let i = 0; i < topThumbs.length; i += 1) {
+    ctx.drawImage(topThumbs[i], MARGIN + i * (TW + GAP), y);
   }
   y += TH + GAP;
 
-  ctx.fillText('P2', MARGIN, y);
+  ctx.fillText(`${bottomLabel}  (active)`, MARGIN, y);
   y += LABEL_H;
-  for (let i = 0; i < p2Thumbs.length; i += 1) {
-    ctx.drawImage(p2Thumbs[i], MARGIN + i * (TW + GAP), y);
+  for (let i = 0; i < bottomThumbs.length; i += 1) {
+    ctx.drawImage(bottomThumbs[i], MARGIN + i * (TW + GAP), y);
   }
 
   return board.toBuffer('image/png') as Buffer;
