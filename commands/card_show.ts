@@ -1,12 +1,12 @@
-const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
-const { Command } = require('./classes/command');
-const {
+import { EmbedBuilder, AttachmentBuilder } from 'discord.js';
+import { Command } from './classes/Command';
+import {
   CHARACTER_ROSTER_DISCORD_CHOICES,
   characterFromRosterValue,
-} = require('../tcg/characterRoster.ts');
+} from '../tcg/characterRoster';
 
 class CardShow extends Command {
-  constructor(client) {
+  constructor(client: any) {
     super(client, 'show', 'Show a card from the built-in TCG character list', [
       {
         name: 'character',
@@ -18,7 +18,7 @@ class CardShow extends Command {
     ], { isSubcommandOf: 'card', blame: 'ei' });
   }
 
-  async run(interaction) {
+  async run(interaction: any): Promise<void> {
     const selectedCharacter = interaction.options.getString('character');
     const character = characterFromRosterValue(selectedCharacter);
 
@@ -48,4 +48,4 @@ class CardShow extends Command {
   }
 }
 
-module.exports = CardShow;
+export default CardShow;
