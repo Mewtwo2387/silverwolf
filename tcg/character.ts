@@ -36,8 +36,9 @@ export class Character implements Card {
   abilities: Ability[];
   defaultActiveSkillIndices?: number[];
   textColors: CharacterTextColors;
+  twoColumnSkills: boolean;
 
-  constructor(name: string, titleDesc: TitleDesc, rarity: Rarity, hp: number, element: Element, imagePanel: ImagePanel, background: Background, skills: Skill[] = [], abilities: Ability[] = [], defaultActiveSkillIndices?: number[], textColors?: Partial<CharacterTextColors>) {
+  constructor(name: string, titleDesc: TitleDesc, rarity: Rarity, hp: number, element: Element, imagePanel: ImagePanel, background: Background, skills: Skill[] = [], abilities: Ability[] = [], defaultActiveSkillIndices?: number[], textColors?: Partial<CharacterTextColors>, twoColumnSkills: boolean = false) {
     this.name = name;
     this.titleDesc = titleDesc;
     this.rarity = rarity;
@@ -49,6 +50,7 @@ export class Character implements Card {
     this.abilities = abilities;
     this.defaultActiveSkillIndices = defaultActiveSkillIndices;
     this.textColors = resolveCharacterTextColors(textColors);
+    this.twoColumnSkills = twoColumnSkills;
   }
 
   async generateCard() {
@@ -104,8 +106,45 @@ export class Character implements Card {
 
     currentY = await this.imagePanel.draw(ctx, currentY);
 
-    for (const skill of this.skills) {
-      currentY = await skill.draw(ctx, currentY, this.textColors);
+    if (this.twoColumnSkills && this.skills.length > 0) {
+      const edgeInset = 20;
+      const gutter = 20;
+      const renderedColumnWidth = (canvas.width - edgeInset * 2 - gutter) / 2;
+      const scale = 0.85;
+      const internalColumnWidth = renderedColumnWidth / scale;
+      const skillLayout = {
+        left: 30,
+        right: internalColumnWidth - 30,
+        maxTextWidth: internalColumnWidth - 80,
+        compact: true,
+      };
+      let leftColY = currentY;
+      let rightColY = currentY;
+
+      for (let i = 0; i < this.skills.length; i += 1) {
+        const isLeft = i % 2 === 0;
+        const colX = isLeft ? edgeInset : edgeInset + renderedColumnWidth + gutter;
+        const colY = isLeft ? leftColY : rightColY;
+
+        ctx.save();
+        ctx.translate(colX, colY);
+        ctx.scale(scale, scale);
+        const endYScaled = await this.skills[i].draw(ctx, 0, this.textColors, skillLayout);
+        ctx.restore();
+
+        const newY = colY + endYScaled * scale;
+        if (isLeft) {
+          leftColY = newY;
+        } else {
+          rightColY = newY;
+        }
+      }
+
+      currentY = Math.max(leftColY, rightColY);
+    } else {
+      for (const skill of this.skills) {
+        currentY = await skill.draw(ctx, currentY, this.textColors);
+      }
     }
 
     for (const ability of this.abilities) {

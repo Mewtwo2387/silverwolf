@@ -1,15 +1,17 @@
-const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
-const { Command } = require('./classes/command');
-const { Character } = require('../tcg/character.ts');
-const { Background, BackgroundType, TopBarType } = require('../tcg/background.ts');
-const { Rarity } = require('../tcg/rarity.ts');
-const { Skill } = require('../tcg/skill.ts');
-const { Ability } = require('../tcg/ability.ts');
-const { TitleDesc } = require('../tcg/titleDesc.ts');
-const { Element } = require('../tcg/element.ts');
-const { RangeType } = require('../tcg/rangeType.ts');
+import { EmbedBuilder, AttachmentBuilder } from 'discord.js';
+import { Command } from './classes/Command';
+import { Character } from '../tcg/character';
+import { Background, BackgroundType, TopBarType } from '../tcg/background';
+import { Rarity } from '../tcg/rarity';
+import { Skill } from '../tcg/skill';
+import { Ability } from '../tcg/ability';
+import { TitleDesc } from '../tcg/titleDesc';
+import { Element } from '../tcg/element';
+import { RangeType } from '../tcg/rangeType';
+import { ImagePanel } from '../tcg/imagePanel';
+import { Normal } from '../tcg/skillBattleCost';
 
-function normalizeHexColor(value) {
+function normalizeHexColor(value: string | null | undefined): string | null {
   if (typeof value !== 'string') {
     return null;
   }
@@ -39,8 +41,22 @@ function normalizeHexColor(value) {
   return `#${normalized.toUpperCase()}`;
 }
 
+type BackgroundOptions = {
+  color?: string;
+  color1?: string;
+  color2?: string;
+  image?: string;
+};
+
+type TopBarOptions = {
+  color?: string;
+  opacity?: number;
+  opacity1?: number;
+  opacity2?: number;
+};
+
 class CardCustom extends Command {
-  constructor(client) {
+  constructor(client: any) {
     super(client, 'custom', 'Generate a custom card', [
       {
         name: 'name',
@@ -186,34 +202,33 @@ class CardCustom extends Command {
     ], { isSubcommandOf: 'card', blame: 'ei' });
   }
 
-  async run(interaction) {
+  async run(interaction: any): Promise<void> {
     try {
-      // Get all the parameters
-      const name = interaction.options.getString('name');
-      const title = interaction.options.getString('title');
-      const description = interaction.options.getString('description');
-      const rarity = interaction.options.getInteger('rarity');
-      const hp = interaction.options.getInteger('hp');
-      const type = interaction.options.getString('type');
+      const name = interaction.options.getString('name') as string;
+      const title = interaction.options.getString('title') as string;
+      const description = interaction.options.getString('description') as string;
+      const rarity = interaction.options.getInteger('rarity') as number;
+      const hp = interaction.options.getInteger('hp') as number;
+      const type = interaction.options.getString('type') as string;
       const elementKey = type ? type.charAt(0).toUpperCase() + type.slice(1).toLowerCase() : '';
-      const element = Element[elementKey];
+      const element = Element[elementKey as keyof typeof Element];
       if (element === undefined) {
         await interaction.editReply('Invalid element type.');
         return;
       }
-      const image = interaction.options.getString('image');
+      const image = interaction.options.getString('image') as string;
       const borderColorInput = interaction.options.getString('border_color');
       const borderColor = normalizeHexColor(borderColorInput);
       if (!borderColor) {
         await interaction.editReply('Invalid border color. Use hex like #FF00AA or FF00AA.');
         return;
       }
-      const backgroundType = interaction.options.getString('background_type');
-      const topBarType = interaction.options.getString('top_bar_type');
-      let backgroundTypeInternal;
-      let backgroundOptions;
-      let topBarTypeInternal;
-      let topBarOptions;
+      const backgroundType = interaction.options.getString('background_type') as string;
+      const topBarType = interaction.options.getString('top_bar_type') as string;
+      let backgroundTypeInternal: BackgroundType;
+      let backgroundOptions: BackgroundOptions;
+      let topBarTypeInternal: TopBarType;
+      let topBarOptions: TopBarOptions;
       switch (backgroundType) {
         case 'solid': {
           const backgroundColorInput = interaction.options.getString('background_color');
@@ -319,11 +334,11 @@ class CardCustom extends Command {
         await interaction.editReply('Invalid title color. Use hex like #777777 or 777777.');
         return;
       }
-      const attacks = interaction.options.getString('attacks');
-      const abilities = interaction.options.getString('abilities');
+      const attacks = interaction.options.getString('attacks') as string | null;
+      const abilities = interaction.options.getString('abilities') as string | null;
 
-      const attacksArray = [];
-      const abilitiesArray = [];
+      const attacksArray: Skill[] = [];
+      const abilitiesArray: Ability[] = [];
 
       if (attacks) {
         const attackEntries = attacks.split(';').map((attack) => attack.trim()).filter(Boolean);
@@ -357,9 +372,10 @@ class CardCustom extends Command {
               attack.attackName,
               attack.attackDescription,
               attack.attackDamage,
-              attack.attackCost,
               RangeType.SingleOpponent,
               [],
+              undefined,
+              Normal(attack.attackCost),
             ),
           );
         });
@@ -379,27 +395,23 @@ class CardCustom extends Command {
         });
       }
 
-      // Create the card
       const card = new Character(
         name,
         new TitleDesc(title, description, titleColor),
         new Rarity(rarity),
         hp,
         element,
-        image,
+        new ImagePanel(image),
         new Background(backgroundTypeInternal, backgroundOptions, borderColor, topBarTypeInternal, topBarOptions),
         attacksArray,
         abilitiesArray,
       );
 
-      // Generate the card
       const canvas = await card.generateCard();
       const buffer = canvas.toBuffer('image/png');
 
-      // Create attachment
       const attachment = new AttachmentBuilder(buffer, { name: `${name.toLowerCase().replace(/\s+/g, '_')}_card.png` });
 
-      // Create embed
       const embed = new EmbedBuilder()
         .setColor('#0099ff')
         .setTitle(`Generated Card: ${name}`)
@@ -414,4 +426,4 @@ class CardCustom extends Command {
   }
 }
 
-module.exports = CardCustom;
+export default CardCustom;

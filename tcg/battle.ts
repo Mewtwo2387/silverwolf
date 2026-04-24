@@ -1,5 +1,10 @@
 import { CharacterInBattle } from './characterInBattle';
 import { Character } from './character';
+import { SkillCategory } from './skillCategory';
+import type { Skill } from './skill';
+import type { BattleEvent } from './battleEvents';
+import { EffectType } from './effectType';
+import { log } from '../utils/log';
 
 export enum BattleStatus {
   Ongoing = 'ongoing',
@@ -8,31 +13,55 @@ export enum BattleStatus {
   Draw = 'draw',
 }
 
+export const SKILL_POINTS_START = 2;
+export const SKILL_POINTS_CAP = 5;
+const ENERGY_AFTER_NORMAL = 5;
+const ENERGY_AFTER_CHARGED = 15;
+
+/**
+ * Turn order: P1 slot 0 → P2 slot 0 → P1 slot 1 → P2 slot 1 → … (wraps each round).
+ * `currentTurn` increments after each full round of both sides' slots.
+ */
 export class Battle {
   p1cards: CharacterInBattle[];
   p2cards: CharacterInBattle[];
+  /** Round counter; increases when the rotation completes a full cycle. */
   currentTurn: number;
-  currentPlayer: 'p1' | 'p2';
+  /** 0 … (2 * teamSize - 1); even = P1, odd = P2; slot = floor(phaseIndex / 2) % teamSize */
+  phaseIndex: number;
+  p1SkillPoints: number;
+  p2SkillPoints: number;
+  /** Whether the current active character has already used their normal or charged action this phase. */
+  mainActionUsedThisPhase: boolean;
+  slotsPerSide: number;
   status: BattleStatus;
-  turnHistory: string[]; // Log of actions for debugging
+  turnHistory: string[];
+  /** Event lines produced during the most recent useMainAction / useUltimate call. */
+  currentActionLog: string[];
 
   constructor(p1cards: Character[], p2cards: Character[]) {
-    // Convert Characters to CharacterInBattle
-    this.p1cards = p1cards.map(char => new CharacterInBattle(char, this, 'p1'));
-    this.p2cards = p2cards.map(char => new CharacterInBattle(char, this, 'p2'));
-    
+    this.p1cards = p1cards.map((char) => new CharacterInBattle(char, this, 'p1'));
+    this.p2cards = p2cards.map((char) => new CharacterInBattle(char, this, 'p2'));
+
+    this.slotsPerSide = Math.max(this.p1cards.length, this.p2cards.length);
     this.currentTurn = 1;
-    this.currentPlayer = 'p1';
+    this.phaseIndex = 0;
+    this.p1SkillPoints = SKILL_POINTS_START;
+    this.p2SkillPoints = SKILL_POINTS_START;
+    this.mainActionUsedThisPhase = false;
     this.status = BattleStatus.Ongoing;
     this.turnHistory = [];
+    this.currentActionLog = [];
 
-    // Activate abilities at battle start
     this.activateAllAbilities();
-    
-    // Give starting energy
-    this.allCards().forEach(char => {
-      char.gainEnergy(3); // Start with 3 energy
-    });
+    this.turnHistory.push(
+      `Round ${this.currentTurn} — ${this.currentPlayer.toUpperCase()}'s active slot ${this.getCurrentActiveSlot()} (${this.getActiveCharacterForCurrentPhase()?.character.name ?? 'none'})`,
+    );
+  }
+
+  /** Whose “turn” it is: the side that may act (normals / charged / ultimates). */
+  get currentPlayer(): 'p1' | 'p2' {
+    return this.phaseIndex % 2 === 0 ? 'p1' : 'p2';
   }
 
   ally(side: string): CharacterInBattle[] {
@@ -47,180 +76,354 @@ export class Battle {
     return [...this.p1cards, ...this.p2cards];
   }
 
+  skillPointsForSide(side: 'p1' | 'p2'): number {
+    return side === 'p1' ? this.p1SkillPoints : this.p2SkillPoints;
+  }
+
   /**
-   * Activate all passive abilities at battle start
-   * Each effect in each ability is checked individually with its own activation condition
+   * Base cap ({@link SKILL_POINTS_CAP}) plus sum of {@link EffectType.SkillPointsMaxBonus} on alive allies.
    */
+  skillPointsCapForSide(side: 'p1' | 'p2'): number {
+    let bonus = 0;
+    this.ally(side).forEach((c) => {
+      if (c.isKnockedOut) return;
+      c.effects
+        .filter((e) => e.type === EffectType.SkillPointsMaxBonus)
+        .forEach((e) => {
+          bonus += e.amount;
+        });
+    });
+    return SKILL_POINTS_CAP + Math.floor(bonus);
+  }
+
+  /**
+   * Append a line to the currently-accumulating action log (and the full turn history).
+   * Call sites: damage resolution, effect application, knockouts, etc.
+   */
+  logEvent(message: string): void {
+    this.currentActionLog.push(message);
+    this.turnHistory.push(message);
+    log(`[tcg] ${message}`);
+  }
+
+  /** Snapshot of the lines produced during the most recent action. */
+  getLastActionLog(): string[] {
+    return [...this.currentActionLog];
+  }
+
+  /**
+   * Fan-out for passive hooks (skill point spend, gains, etc.).
+   */
+  dispatchBattleEvent(event: BattleEvent): void {
+    this.allCards().forEach((cib) => {
+      if (cib.isKnockedOut) return;
+      cib.character.abilities.forEach((ability) => {
+        ability.notifyBattleEvent(event, cib);
+      });
+    });
+  }
+
+  private setSkillPoints(side: 'p1' | 'p2', value: number) {
+    const cap = this.skillPointsCapForSide(side);
+    const clamped = Math.max(0, Math.min(cap, value));
+    if (side === 'p1') this.p1SkillPoints = clamped;
+    else this.p2SkillPoints = clamped;
+  }
+
+  private changeSkillPoints(
+    side: 'p1' | 'p2',
+    delta: number,
+    meta?: {
+      consumer?: CharacterInBattle;
+      sourceCharacter?: CharacterInBattle | null;
+      gainReason?: 'normal_attack' | 'ultimate' | 'other';
+    },
+  ): void {
+    const before = this.skillPointsForSide(side);
+    this.setSkillPoints(side, before + delta);
+    const after = this.skillPointsForSide(side);
+    const gained = Math.max(0, after - before);
+    const lost = Math.max(0, before - after);
+    if (lost > 0 && meta?.consumer) {
+      this.dispatchBattleEvent({
+        type: 'skill_points_consumed',
+        side,
+        consumer: meta.consumer,
+        pointsConsumed: lost,
+      });
+    }
+    if (gained > 0) {
+      this.dispatchBattleEvent({
+        type: 'skill_points_gained',
+        side,
+        pointsGained: gained,
+        sourceCharacter: meta?.sourceCharacter ?? null,
+        reason: meta?.gainReason ?? 'other',
+      });
+    }
+  }
+
+  /** Re-clamp pools after effect durations change (e.g. max-SP bonus expired). */
+  private clampSkillPointsToCaps(): void {
+    (['p1', 'p2'] as const).forEach((side) => {
+      this.setSkillPoints(side, this.skillPointsForSide(side));
+    });
+  }
+
+  /**
+   * Index along the front row (0..slots-1) for the side that is acting this phase.
+   */
+  getCurrentActiveSlot(): number {
+    return Math.floor(this.phaseIndex / 2) % this.slotsPerSide;
+  }
+
+  /**
+   * The character who must act if using a normal or charged attack; may be knocked out.
+   */
+  getActiveCharacterForCurrentPhase(): CharacterInBattle | null {
+    const side = this.currentPlayer;
+    const allies = this.ally(side);
+    const slot = this.getCurrentActiveSlot();
+    return allies[slot] ?? null;
+  }
+
   activateAllAbilities() {
-    this.allCards().forEach(character => {
-      character.character.abilities.forEach(ability => {
+    this.allCards().forEach((character) => {
+      character.character.abilities.forEach((ability) => {
         const context = {
           character,
           getAllies: () => this.ally(character.side),
           getAllCards: () => this.allCards(),
         };
-        
-        // applyEffects checks each effect's activation condition individually
+
         ability.applyEffects(context);
       });
     });
   }
 
-  /**
-   * Get all alive characters for a side
-   */
   getAliveAlly(side: string): CharacterInBattle[] {
-    return this.ally(side).filter(char => !char.isKnockedOut);
+    return this.ally(side).filter((char) => !char.isKnockedOut);
   }
 
-  /**
-   * Get all alive opponents for a side
-   */
   getAliveOpponent(side: string): CharacterInBattle[] {
-    return this.opponent(side).filter(char => !char.isKnockedOut);
+    return this.opponent(side).filter((char) => !char.isKnockedOut);
   }
 
-  /**
-   * Check if a side has any alive characters
-   */
   hasAliveCharacters(side: string): boolean {
     return this.getAliveAlly(side).length > 0;
   }
 
-  /**
-   * Check victory conditions and update battle status
-   */
   checkVictory(): BattleStatus {
     const p1Alive = this.hasAliveCharacters('p1');
     const p2Alive = this.hasAliveCharacters('p2');
 
     if (!p1Alive && !p2Alive) {
       return BattleStatus.Draw;
-    } else if (!p1Alive) {
+    }
+    if (!p1Alive) {
       return BattleStatus.P2Won;
-    } else if (!p2Alive) {
+    }
+    if (!p2Alive) {
       return BattleStatus.P1Won;
     }
     return BattleStatus.Ongoing;
   }
 
+  private assertAlive(actor: CharacterInBattle): boolean {
+    return !actor.isKnockedOut;
+  }
+
+  private skillAllowedInForm(actor: CharacterInBattle, skill: Skill): boolean {
+    return actor.getActiveSkills().includes(skill);
+  }
+
   /**
-   * Use a skill from a character
-   * @param character The character using the skill
-   * @param skillIndex Index of the skill to use
-   * @param target Target character (can be null for self-targeting skills)
-   * @returns true if successful, false otherwise
+   * Normal or charged attack from the currently active character only.
    */
-  useSkill(character: CharacterInBattle, skillIndex: number, target: CharacterInBattle | null): boolean {
+  useMainAction(character: CharacterInBattle, skillIndex: number, target: CharacterInBattle | null): boolean {
     if (this.status !== BattleStatus.Ongoing) {
       return false;
     }
-
-    if (character.isKnockedOut) {
+    if (!this.assertAlive(character)) {
       return false;
     }
-
-    // Verify character belongs to current player
     if (character.side !== this.currentPlayer) {
       return false;
     }
 
-    const success = character.useSkill(skillIndex, target);
-    
-    if (success) {
-      this.turnHistory.push(`${character.character.name} used skill ${skillIndex}`);
-      // Check for victory after each action
-      this.status = this.checkVictory();
+    const activeExpected = this.getActiveCharacterForCurrentPhase();
+    if (!activeExpected || activeExpected !== character) {
+      return false;
+    }
+    if (this.mainActionUsedThisPhase) {
+      return false;
     }
 
-    return success;
+    const skill = character.getSkillByOriginalIndex(skillIndex);
+    if (!skill) {
+      return false;
+    }
+    if (skill.category !== SkillCategory.Normal && skill.category !== SkillCategory.Charged) {
+      return false;
+    }
+    if (!this.skillAllowedInForm(character, skill)) {
+      return false;
+    }
+
+    const side = character.side as 'p1' | 'p2';
+    const spCost = skill.skillPointsCost;
+    if (skill.category === SkillCategory.Charged && this.skillPointsForSide(side) < spCost) {
+      return false;
+    }
+
+    this.currentActionLog = [];
+    skill.useSkill(character, target);
+    character.onSkillCompleted(skill, target);
+
+    if (skill.category === SkillCategory.Normal) {
+      this.changeSkillPoints(side, skill.skillPointsGranted, {
+        sourceCharacter: character,
+        gainReason: 'normal_attack',
+      });
+      character.gainEnergy(ENERGY_AFTER_NORMAL);
+    } else {
+      this.changeSkillPoints(side, -spCost, { consumer: character });
+      character.gainEnergy(ENERGY_AFTER_CHARGED);
+    }
+
+    this.mainActionUsedThisPhase = true;
+    this.turnHistory.push(`${character.character.name} used ${skill.category} skill [${skillIndex}] ${skill.name}`);
+    this.status = this.checkVictory();
+    this.clampSkillPointsToCaps();
+    return true;
   }
 
   /**
-   * End the current turn and start the next turn
+   * Ultimate: any alive ally on your side, any number of times per phase; costs energy.
+   */
+  useUltimate(character: CharacterInBattle, skillIndex: number, target: CharacterInBattle | null): boolean {
+    if (this.status !== BattleStatus.Ongoing) {
+      return false;
+    }
+    if (!this.assertAlive(character)) {
+      return false;
+    }
+    if (character.side !== this.currentPlayer) {
+      return false;
+    }
+
+    const skill = character.getSkillByOriginalIndex(skillIndex);
+    if (!skill || skill.category !== SkillCategory.Ultimate) {
+      return false;
+    }
+    if (!this.skillAllowedInForm(character, skill)) {
+      return false;
+    }
+    const energy = skill.ultimateEnergyCost;
+    if (character.energy < energy) {
+      return false;
+    }
+
+    this.currentActionLog = [];
+    character.spendEnergy(energy);
+    skill.useSkill(character, target);
+    character.onSkillCompleted(skill, target);
+
+    const spGrant = skill.teamSkillPointsGrantedOnUltimate;
+    if (spGrant > 0) {
+      this.changeSkillPoints(character.side as 'p1' | 'p2', spGrant, {
+        sourceCharacter: character,
+        gainReason: 'ultimate',
+      });
+    }
+
+    this.turnHistory.push(`${character.character.name} used ultimate [${skillIndex}] ${skill.name}`);
+    this.status = this.checkVictory();
+    this.clampSkillPointsToCaps();
+    return true;
+  }
+
+  /**
+   * Pass to the next slot in the rotation. Durations tick once per full round (after both players’ slots).
    */
   endTurn() {
     if (this.status !== BattleStatus.Ongoing) {
       return;
     }
 
-    const currentSide = this.currentPlayer;
+    const phasesPerRound = this.slotsPerSide * 2;
+    const previousPhase = this.phaseIndex;
+    this.phaseIndex = (this.phaseIndex + 1) % phasesPerRound;
+    this.mainActionUsedThisPhase = false;
 
-    // Process end of turn for all characters
-    this.allCards().forEach(character => {
-      if (!character.isKnockedOut) {
-        character.processEndOfTurn();
-      }
-    });
-
-    // Switch to next player
-    if (this.currentPlayer === 'p1') {
-      this.currentPlayer = 'p2';
-    } else {
-      this.currentPlayer = 'p1';
+    if (this.phaseIndex < previousPhase) {
+      this.allCards().forEach((c) => {
+        if (!c.isKnockedOut) {
+          c.processEndOfTurn();
+        }
+      });
+      this.clampSkillPointsToCaps();
       this.currentTurn += 1;
     }
 
-    // Start of turn effects - gain energy from 2d6 roll
-    const energyGains: { name: string; amount: number }[] = [];
-    this.getAliveAlly(this.currentPlayer).forEach(character => {
-      const energyGained = character.nextTurn(); // This also gains energy from 2d6 roll
-      energyGains.push({ name: character.character.name, amount: energyGained });
-    });
-    
-    // Log energy gains for this turn
-    if (energyGains.length > 0) {
-      const gainMessages = energyGains.map(g => `${g.name}: +${g.amount}`).join(', ');
-      this.turnHistory.push(`Energy gained (2d6): ${gainMessages}`);
-    }
-
-    // Check for victory
+    this.turnHistory.push(
+      `Round ${this.currentTurn} — ${this.currentPlayer.toUpperCase()}'s active slot ${this.getCurrentActiveSlot()} (${this.getActiveCharacterForCurrentPhase()?.character.name ?? 'none'})`,
+    );
     this.status = this.checkVictory();
-    
-    this.turnHistory.push(`Turn ${this.currentTurn} - ${this.currentPlayer}'s turn`);
   }
 
-  /**
-   * Get battle state for display/debugging
-   */
   getBattleState() {
     return {
       turn: this.currentTurn,
+      phaseIndex: this.phaseIndex,
       currentPlayer: this.currentPlayer,
+      activeSlot: this.getCurrentActiveSlot(),
+      p1SkillPoints: this.p1SkillPoints,
+      p2SkillPoints: this.p2SkillPoints,
+      p1SkillPointsCap: this.skillPointsCapForSide('p1'),
+      p2SkillPointsCap: this.skillPointsCapForSide('p2'),
       status: this.status,
       p1: {
-        alive: this.getAliveAlly('p1').map(char => ({
+        alive: this.getAliveAlly('p1').map((char) => ({
           name: char.character.name,
           hp: char.currentHp,
           maxHp: char.character.hp,
           energy: char.energy,
-          effects: char.effects.map(e => e.toString()),
+          effects: char.effects.map((e) => e.toString()),
         })),
       },
       p2: {
-        alive: this.getAliveAlly('p2').map(char => ({
+        alive: this.getAliveAlly('p2').map((char) => ({
           name: char.character.name,
           hp: char.currentHp,
           maxHp: char.character.hp,
           energy: char.energy,
-          effects: char.effects.map(e => e.toString()),
+          effects: char.effects.map((e) => e.toString()),
         })),
       },
     };
   }
 
-  /**
-   * Get a string representation of the battle status
-   */
   toString(): string {
     const lines: string[] = [];
-    lines.push(`Turn: ${this.currentTurn}, Current Player: ${this.currentPlayer}, Status: ${this.status}`);
+    lines.push(
+      `Round: ${this.currentTurn}, Acting: ${this.currentPlayer.toUpperCase()}, Active slot: ${this.getCurrentActiveSlot()} (${this.getActiveCharacterForCurrentPhase()?.character.name ?? '—'})`,
+    );
+    lines.push(
+      `Team skill points — P1: ${this.p1SkillPoints}/${this.skillPointsCapForSide('p1')}  P2: ${this.p2SkillPoints}/${this.skillPointsCapForSide('p2')}`,
+    );
+    if (this.mainActionUsedThisPhase) {
+      lines.push(`This phase: main action already used by active character`);
+    }
+    lines.push(`Status: ${this.status}`);
+
     lines.push('\nP1:');
-    this.getAliveAlly('p1').forEach(char => {
+    this.getAliveAlly('p1').forEach((char) => {
       lines.push(`  ${char.toString()}`);
     });
+
     lines.push('\nP2:');
-    this.getAliveAlly('p2').forEach(char => {
+    this.getAliveAlly('p2').forEach((char) => {
       lines.push(`  ${char.toString()}`);
     });
     return lines.join('\n');

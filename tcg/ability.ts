@@ -6,6 +6,7 @@ import { CharacterInBattle } from './characterInBattle';
 import { RangeType } from './rangeType';
 import { drawWrappedTcgText } from './utils/tcgTextStyle';
 import { CharacterTextColors, DEFAULT_CHARACTER_TEXT_COLORS } from './textTheme';
+import type { AbilityBattleEventHandler, BattleEvent } from './battleEvents';
 
 /**
  * Context for ability activation check
@@ -37,12 +38,29 @@ export class Ability implements DrawableBlock {
   description: string;
   effectPairs: AbilityEffectPair[];
   panelColor: string;
+  /** Optional reaction to global battle events (skill point spend, etc.). */
+  private readonly onBattleEvent?: AbilityBattleEventHandler;
 
-  constructor(name: string, description: string, effectPairs: AbilityEffectPair[] = [], panelColor: string = '#D6DDE8') {
+  constructor(
+    name: string,
+    description: string,
+    effectPairs: AbilityEffectPair[] = [],
+    panelColor: string = '#D6DDE8',
+    onBattleEvent?: AbilityBattleEventHandler,
+  ) {
     this.name = name;
     this.description = description;
     this.effectPairs = effectPairs;
     this.panelColor = panelColor;
+    this.onBattleEvent = onBattleEvent;
+  }
+
+  /**
+   * Invoked by the battle engine when a subscribed event occurs.
+   * Each alive character’s abilities receive the event; handlers typically no-op unless relevant.
+   */
+  notifyBattleEvent(event: BattleEvent, owner: CharacterInBattle): void {
+    this.onBattleEvent?.(event, owner);
   }
 
   toString(): string {

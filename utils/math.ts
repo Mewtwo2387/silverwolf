@@ -71,6 +71,11 @@ function format(num: number | null | undefined, alwaysFixed = false, shortenThre
   return formattedNum.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
+/** Round to 2 decimal places to avoid floating-point drift from chained multipliers. */
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
 function antiFormat(input: string): number {
   const cleanInput = input.replace(/,/g, '');
   // pure numerical
@@ -99,5 +104,5 @@ function antiFormat(input: string): number {
 }
 
 export {
-  format, antiFormat, getPrefix, getNumberFromPrefix,
+  format, antiFormat, getPrefix, getNumberFromPrefix, round2,
 };
