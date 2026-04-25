@@ -19,6 +19,7 @@ export function Layout(opts: {
   extraHead?: HtmlEscapedString;
   body: HtmlEscapedString;
   nonce: string;
+  lv999?: boolean;
 }) {
   return html`<!doctype html>
     <html lang="en">
@@ -30,7 +31,7 @@ export function Layout(opts: {
         ${opts.extraHead ?? ''}
       </head>
       <body class="font-sans bg-ink-900 text-fog-100 min-h-screen flex flex-col">
-        ${Navbar(opts.active, opts.nonce)}
+        ${Navbar(opts.active, opts.nonce, opts.lv999)}
         <main class="flex-1 w-full max-w-[1100px] mx-auto py-8 px-[clamp(1rem,4vw,3rem)]">${opts.body}</main>
         ${Footer()}
       </body>

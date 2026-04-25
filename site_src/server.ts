@@ -38,6 +38,7 @@ interface StaticEntry {
 
 const STATIC_ASSETS: Record<string, StaticEntry> = {
   '/static/silverwolf.webp': { path: path.join(ROOT_DIR, 'silverwolf.webp'), contentType: 'image/webp' },
+  '/static/silverwolfLv.999.webp': { path: path.join(ROOT_DIR, 'silverwolfLv.999.webp'), contentType: 'image/webp' },
   '/static/styles.css': { path: path.join(ASSETS_DIR, 'styles.css'), contentType: 'text/css; charset=utf-8' },
   '/static/fonts/italianno.woff2': { path: path.join(FONTS_DIR, 'italianno.woff2'), contentType: 'font/woff2' },
 };
@@ -46,12 +47,18 @@ for (const name of [
   'Sticker_PPG_19_Silver_Wolf_01.webp',
   'Sticker_PPG_02_Silver_Wolf_01.webp',
   'Sticker_PPG_04_Silver_Wolf_02.webp',
+  'Sticker_PPG_27_Silver_Wolf_LV.999_01.webp',
+  'Sticker_PPG_27_Silver_Wolf_LV.999_02.webp',
+  'Sticker_PPG_27_Silver_Wolf_LV.999_03.webp',
+  'Sticker_PPG_27_Silver_Wolf_LV.999_04.webp',
 ]) {
   STATIC_ASSETS[`/static/stickers/${name}`] = { path: path.join(IMAGES_DIR, name), contentType: 'image/webp' };
 }
 for (let i = 1; i <= 6; i += 1) {
   const name = `Character_Silver_Wolf_Eidolon_${i}.webp`;
   STATIC_ASSETS[`/static/eidolons/${name}`] = { path: path.join(IMAGES_DIR, name), contentType: 'image/webp' };
+  const nameLv = `Character_Silver_Wolf_LV.999_Eidolon_${i}.webp`;
+  STATIC_ASSETS[`/static/eidolons/${nameLv}`] = { path: path.join(IMAGES_DIR, nameLv), contentType: 'image/webp' };
 }
 STATIC_ASSETS['/static/svg/pool-8-ball-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'pool-8-ball-svgrepo-com.svg'), contentType: 'image/svg+xml' };
 STATIC_ASSETS['/static/svg/fortune-cookie-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'fortune-cookie-svgrepo-com.svg'), contentType: 'image/svg+xml' };
@@ -114,7 +121,7 @@ export function startWebsite(silverwolf: Silverwolf) {
 
   app.get('/', (c) => c.redirect('/about'));
 
-  app.get('/about', (c) => c.html(AboutPage({ nonce: c.get('nonce') }).toString()));
+  app.get('/about', (c) => c.html(AboutPage({ nonce: c.get('nonce'), lv999: c.req.query('lv') === '999' }).toString()));
 
   for (const [route, entry] of Object.entries(STATIC_ASSETS)) {
     app.get(route, () => serveStatic(entry));

@@ -74,7 +74,8 @@ const aboutExtras = (nonce: string) => raw(`
 </script>
 `);
 
-export function AboutPage(opts: { nonce: string }) {
+export function AboutPage(opts: { nonce: string; lv999?: boolean }) {
+  const { lv999 } = opts;
   const eidolonData = [
     {
       n: 1,
@@ -112,7 +113,7 @@ export function AboutPage(opts: { nonce: string }) {
     const imgLeft = n % 2 === 1;
     const imgEl = html`
       <div class="eid-img ${imgLeft ? 'eid-from-left' : 'eid-from-right'} flex justify-center items-center max-[800px]:order-[-1]">
-        <img src="/static/eidolons/Character_Silver_Wolf_Eidolon_${n}.webp" alt="Silver Wolf Eidolon ${n}" class="w-full h-auto max-w-[28rem]" />
+        <img src="/static/eidolons/${lv999 ? `Character_Silver_Wolf_LV.999_Eidolon_${n}.webp` : `Character_Silver_Wolf_Eidolon_${n}.webp`}" alt="Silver Wolf Eidolon ${n}" class="w-full h-auto max-w-[28rem]" />
       </div>`;
     const txtEl = html`
       <div class="eid-txt ${imgLeft ? 'eid-from-right' : 'eid-from-left'} max-w-[38rem] ${imgLeft ? 'justify-self-end' : 'justify-self-start'}">
@@ -136,7 +137,7 @@ export function AboutPage(opts: { nonce: string }) {
         </p>
       </div>
       <div class="about-image flex justify-start items-center max-[800px]:order-[-1]">
-        <img src="/static/silverwolf.webp" alt="Silverwolf" class="w-full h-auto" />
+        <img src="${lv999 ? '/static/silverwolfLv.999.webp' : '/static/silverwolf.webp'}" alt="Silverwolf" class="w-full h-auto" />
       </div>
     </section>
     ${eidolonSections}
@@ -148,5 +149,6 @@ export function AboutPage(opts: { nonce: string }) {
     extraHead: aboutExtras(opts.nonce) as unknown as HtmlEscapedString,
     body: body as unknown as HtmlEscapedString,
     nonce: opts.nonce,
+    lv999,
   });
 }

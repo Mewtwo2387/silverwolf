@@ -7,6 +7,13 @@ const STICKER_IMAGES = [
   '/static/stickers/Sticker_PPG_04_Silver_Wolf_02.webp',
 ];
 
+const STICKER_IMAGES_LV999 = [
+  '/static/stickers/Sticker_PPG_27_Silver_Wolf_LV.999_01.webp',
+  '/static/stickers/Sticker_PPG_27_Silver_Wolf_LV.999_02.webp',
+  '/static/stickers/Sticker_PPG_27_Silver_Wolf_LV.999_03.webp',
+  '/static/stickers/Sticker_PPG_27_Silver_Wolf_LV.999_04.webp',
+];
+
 const navbarExtras = (nonce: string) => raw(`
 <style>
   /* Responsive nav — defined in CSS to avoid Tailwind scan dependency */
@@ -113,7 +120,7 @@ const navbarExtras = (nonce: string) => raw(`
 </script>
 `);
 
-export function Navbar(active: 'about' | 'leaderboards' | 'birthdays' | 'games' | undefined, nonce: string) {
+export function Navbar(active: 'about' | 'leaderboards' | 'birthdays' | 'games' | undefined, nonce: string, lv999?: boolean) {
   const base = 'nav-link text-[0.95rem] px-[0.1rem] py-1 border-b-2 border-transparent transition-colors no-underline';
   const link = (href: string, label: string, key: string) => {
     const isActive = active === key;
@@ -130,7 +137,8 @@ export function Navbar(active: 'about' | 'leaderboards' | 'birthdays' | 'games' 
     return html`<a href="${href}" class="${mobileBase} ${state}">${label}</a>`;
   };
 
-  const sticker = STICKER_IMAGES[Math.floor(Math.random() * STICKER_IMAGES.length)];
+  const pool = lv999 ? STICKER_IMAGES_LV999 : STICKER_IMAGES;
+  const sticker = pool[Math.floor(Math.random() * pool.length)];
 
   return html`
     <nav id="site-nav" class="flex items-center justify-between py-[0.9rem] px-[clamp(1rem,4vw,3rem)] border-b border-ink-600 bg-ink-800">
