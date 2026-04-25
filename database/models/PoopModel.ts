@@ -1,5 +1,5 @@
 import { log } from '../../utils/log';
-import poopQueries from '../queries/poopQueries';
+import poopQueries, { DAILY_POOP_LIMIT } from '../queries/poopQueries';
 import type Database from '../Database';
 
 class PoopModel {
@@ -24,25 +24,37 @@ class PoopModel {
     return this.db.executeSelectQuery(query, [userId]);
   }
 
+  private startOfLocalDay(timezoneSeconds: number): number {
+    const now = Math.floor(Date.now() / 1000);
+    const localNow = now + timezoneSeconds;
+    return Math.floor(localNow / 86400) * 86400 - timezoneSeconds;
+  }
+
   // eslint-disable-next-line max-len
-  async logPoop(userId: string, colour: string | null, size: string | null, type: string | null, duration: number | null): Promise<number> {
+  async logPoop(userId: string, colour: string | null, size: string | null, type: string | null, duration: number | null): Promise<number | null> {
     // Auto-create user and profile at UTC+0 if none exists
     await this.db.user.getUser(userId);
-    const profile = await this.getProfile(userId);
+    let profile = await this.getProfile(userId);
     if (!profile) {
       await this.db.executeQuery(poopQueries.CREATE_OR_UPDATE_PROFILE, [userId, 0]);
+      profile = { timezone: 0 };
     }
 
-    const loggedAt = Math.floor(Date.now() / 1000);
-    const query = poopQueries.LOG_POOP;
-    await this.db.executeQuery(query, [
-      userId,
-      loggedAt,
-      colour ?? null,
-      size ?? null,
-      type ?? null,
-      duration ?? null,
-    ]);
+    const timezone: number = profile.timezone ?? 0;
+    const timezoneSeconds = Math.round(timezone * 3600);
+    const dayStart = this.startOfLocalDay(timezoneSeconds);
+    const dayEnd = dayStart + 86400;
+
+    const inserted = await this.db.executeTransaction((rawDb) => {
+      const todayRow = rawDb.query(poopQueries.GET_TODAY_COUNT).get(userId, dayStart, dayEnd) as Record<string, any> | null;
+      if ((todayRow?.today_count ?? 0) >= DAILY_POOP_LIMIT) return false;
+
+      const loggedAt = Math.floor(Date.now() / 1000);
+      rawDb.query(poopQueries.LOG_POOP).run(userId, loggedAt, colour ?? null, size ?? null, type ?? null, duration ?? null);
+      return true;
+    });
+
+    if (!inserted) return null;
 
     const countRow = await this.db.executeSelectQuery(poopQueries.GET_USER_POOP_COUNT, [userId]);
     const count = countRow?.poopCount ?? 1;
