@@ -1,3 +1,5 @@
+export const DAILY_POOP_LIMIT = 4;
+
 const OUTLIER_CTE = `
   WITH daily_counts AS (
     SELECT e.user_id,
@@ -14,7 +16,29 @@ const OUTLIER_CTE = `
     JOIN daily_counts dc
       ON dc.user_id = e.user_id
       AND dc.local_day = date(e.logged_at + COALESCE(p.timezone, 0) * 3600, 'unixepoch')
-    WHERE dc.day_count <= 4
+    WHERE dc.day_count <= ${DAILY_POOP_LIMIT}
+  )
+`;
+
+// Scoped variant used for per-user queries to avoid full-table scans.
+const OUTLIER_CTE_USER = `
+  WITH daily_counts AS (
+    SELECT e.user_id,
+           date(e.logged_at + COALESCE(p.timezone, 0) * 3600, 'unixepoch') AS local_day,
+           COUNT(*) AS day_count
+    FROM PoopEntry e
+    LEFT JOIN PoopProfile p ON p.user_id = e.user_id
+    WHERE e.user_id = $userId
+    GROUP BY e.user_id, local_day
+  ),
+  valid_entries AS (
+    SELECT e.*
+    FROM PoopEntry e
+    LEFT JOIN PoopProfile p ON p.user_id = e.user_id
+    JOIN daily_counts dc
+      ON dc.user_id = e.user_id
+      AND dc.local_day = date(e.logged_at + COALESCE(p.timezone, 0) * 3600, 'unixepoch')
+    WHERE dc.day_count <= ${DAILY_POOP_LIMIT}
   )
 `;
 
@@ -43,7 +67,7 @@ const poopQueries = {
     FROM PoopEntry
     WHERE user_id = ?
       AND logged_at >= ?
-      AND logged_at < ? + 86400
+      AND logged_at < ?
   `,
 
   GET_RANDOM_POOP: `${OUTLIER_CTE}
@@ -53,7 +77,7 @@ const poopQueries = {
     LIMIT 1
   `,
 
-  GET_USER_STATS: `${OUTLIER_CTE}
+  GET_USER_STATS: `${OUTLIER_CTE_USER}
     SELECT
       COUNT(*) as total_poops,
       MAX(logged_at) as last_logged_at,

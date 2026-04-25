@@ -104,6 +104,12 @@ class Database {
       WHERE active = 1
     `);
 
+    // Speed up per-user poop lookups and daily-count range queries
+    this.db.run(`
+      CREATE INDEX IF NOT EXISTS idx_poopentry_user_logged
+      ON PoopEntry (user_id, logged_at)
+    `);
+
     // Initialize models
     Object.entries(modelClasses).forEach(([modelName, ModelClass]) => {
       this.models[modelName] = new (ModelClass as any)(this);
