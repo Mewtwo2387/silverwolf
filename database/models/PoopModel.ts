@@ -24,14 +24,26 @@ class PoopModel {
     return this.db.executeSelectQuery(query, [userId]);
   }
 
+  private startOfLocalDay(timezone: number): number {
+    const now = Math.floor(Date.now() / 1000);
+    const localNow = now + timezone * 3600;
+    return Math.floor(localNow / 86400) * 86400 - timezone * 3600;
+  }
+
   // eslint-disable-next-line max-len
-  async logPoop(userId: string, colour: string | null, size: string | null, type: string | null, duration: number | null): Promise<number> {
+  async logPoop(userId: string, colour: string | null, size: string | null, type: string | null, duration: number | null): Promise<number | null> {
     // Auto-create user and profile at UTC+0 if none exists
     await this.db.user.getUser(userId);
-    const profile = await this.getProfile(userId);
+    let profile = await this.getProfile(userId);
     if (!profile) {
       await this.db.executeQuery(poopQueries.CREATE_OR_UPDATE_PROFILE, [userId, 0]);
+      profile = { timezone: 0 };
     }
+
+    const timezone: number = profile.timezone ?? 0;
+    const dayStart = this.startOfLocalDay(timezone);
+    const todayRow = await this.db.executeSelectQuery(poopQueries.GET_TODAY_COUNT, [userId, dayStart, dayStart]);
+    if ((todayRow?.todayCount ?? 0) >= 4) return null;
 
     const loggedAt = Math.floor(Date.now() / 1000);
     const query = poopQueries.LOG_POOP;
