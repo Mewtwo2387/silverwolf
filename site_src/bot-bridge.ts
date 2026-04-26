@@ -210,9 +210,10 @@ export async function getAllBirthdaysByMonth(
   silverwolf: Silverwolf,
 ): Promise<Record<string, BirthdayUser[]>> {
   const rows = await db(silverwolf).user.getAllBirthdays();
-  const grouped: Record<string, BirthdayUser[]> = Object.fromEntries(
-    MONTHS.map((m) => [m, [] as BirthdayUser[]]),
-  );
+  const grouped: Record<string, BirthdayUser[]> = MONTHS.reduce((acc, m) => {
+    acc[m] = [];
+    return acc;
+  }, {} as Record<string, BirthdayUser[]>);
 
   const parsed: { row: BirthdayRow; date: Date }[] = [];
   for (const row of rows) {
@@ -239,6 +240,7 @@ export async function getAllBirthdaysByMonth(
 }
 
 export function getEightBallResponses() {
+  // eslint-disable-next-line global-require
   const data = require('../data/8ball.json');
   return { normal: data.normal as string[], savage: data.savage as string[] };
 }
@@ -246,6 +248,7 @@ export function getEightBallResponses() {
 export function getFortunes() {
   // We can't easily import JSON in the bridge if it's used in both client/server contexts in some setups,
   // but here it's fine since it's Bun.
+  // eslint-disable-next-line global-require
   const data = require('../data/fortune.json');
   return data.fortunes as string[];
 }
