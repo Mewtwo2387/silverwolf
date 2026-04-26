@@ -10,6 +10,13 @@ const pageHead = (nonce: string) => raw(`
      Older browsers ignore the rule and navigate normally. */
   @view-transition { navigation: auto; }
 
+  /* Guard against any descendant (entrance-animation transforms, full-bleed
+     images, etc.) accidentally pushing the page wider than the viewport.
+     Applies everywhere — Chrome responsive mode doesn't always match the
+     touch media query, so scoping this to touch leaves desktop responsive
+     previews able to get stuck mid-overflow on first paint. */
+  html, body { overflow-x: clip; }
+
   /* On touch devices, the bottom-fixed liquid-glass dock would otherwise cover
      the tail of the page content — reserve space for it (plus iOS home indicator). */
   @media (hover: none) and (pointer: coarse) {

@@ -81,6 +81,12 @@ const navbarExtras = (nonce: string) => raw(`
   @media (hover: none) and (pointer: coarse) {
     #nav-links { display: none; }
 
+    /* Reserve scroll space below the page content so the floating dock
+       never permanently covers the footer — users can scroll past it. */
+    body {
+      padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+    }
+
     #nav-mobile {
       display: flex;
       position: fixed;

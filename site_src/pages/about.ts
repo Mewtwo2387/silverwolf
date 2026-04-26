@@ -4,7 +4,19 @@ import { Layout } from '../components/layout';
 
 const aboutExtras = (nonce: string) => raw(`
 <style>
-  main:has(.about-wrap) { max-width: 100vw; padding-right: 0; padding-left: clamp(1rem, 4vw, 3rem); }
+  /* Desktop: hero image bleeds to the right edge; text gets the left gutter. */
+  @media (min-width: 801px) {
+    main:has(.about-wrap) { max-width: 100vw; padding-right: 0; padding-left: clamp(1rem, 4vw, 3rem); }
+  }
+  /* Mobile: drop main's side gutters entirely so images go edge-to-edge,
+     and re-apply symmetric padding only on the text blocks. This avoids the
+     horizontal-overflow / navbar-protrusion that 100vw + padding-right:0 caused. */
+  @media (max-width: 800px) {
+    main:has(.about-wrap) { max-width: 100%; padding-left: 0; padding-right: 0; }
+    .about-wrap .about-text,
+    .eidolon-section .eid-txt { padding-left: clamp(1rem, 4vw, 3rem); padding-right: clamp(1rem, 4vw, 3rem); }
+    .eidolon-section { padding-left: 0; padding-right: 0; }
+  }
   .about-text h1 {
     background: linear-gradient(180deg, var(--heading-top) 0%, var(--heading-bottom) 100%);
     -webkit-background-clip: text;
