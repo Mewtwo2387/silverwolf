@@ -69,6 +69,15 @@ function getCommand<T>(silverwolf: Silverwolf, name: string): T {
 const userCache = new Map<string, { username: string; avatarURL: string | null; expiresAt: number }>();
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour
 
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, cached] of userCache.entries()) {
+    if (cached.expiresAt < now) {
+      userCache.delete(id);
+    }
+  }
+}, 30 * 60 * 1000).unref();
+
 async function resolveUser(silverwolf: Silverwolf, id: string) {
   const now = Date.now();
   const cached = userCache.get(id);

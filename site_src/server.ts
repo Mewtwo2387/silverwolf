@@ -88,9 +88,20 @@ function buildCsp(nonce: string): string {
 }
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, record] of rateLimitMap.entries()) {
+    if (record.resetAt < now) {
+      rateLimitMap.delete(ip);
+    }
+  }
+}, 5 * 60 * 1000).unref();
+
 function rateLimiter(limit: number, windowMs: number) {
   return async (c: any, next: any) => {
-    const ip = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
+    const rawIp = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
+    const ip = rawIp.split(',')[0].trim();
     const now = Date.now();
     let record = rateLimitMap.get(ip);
     if (!record || record.resetAt < now) {
@@ -110,6 +121,7 @@ export function startWebsite(silverwolf: Silverwolf) {
 
   app.use('*', rateLimiter(120, 60000)); // 120 reqs per minute per IP
   app.use('*', async (c, next) => {
+    if (c.req.path.startsWith('/static/')) return next();
     const nonce = randomBytes(16).toString('base64');
     c.set('nonce', nonce);
     await next();
