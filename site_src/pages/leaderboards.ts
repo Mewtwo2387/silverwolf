@@ -14,7 +14,21 @@ const leaderboardsExtras = (nonce: string) => raw(`
 <script nonce="${nonce}">
 (() => {
   const sel = document.getElementById('board');
-  if (sel) sel.addEventListener('change', () => sel.form && sel.form.submit());
+  const form = sel && sel.form;
+  if (form) {
+    // Preserve any non-form query params (e.g. ?theme=) across submission
+    const params = new URLSearchParams(location.search);
+    params.forEach((value, key) => {
+      if (key === 'board') return;
+      if (form.querySelector('input[name="' + key + '"]')) return;
+      const hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.name = key;
+      hidden.value = value;
+      form.appendChild(hidden);
+    });
+    sel.addEventListener('change', () => form.submit());
+  }
 })();
 </script>
 `);
