@@ -38,10 +38,13 @@ interface StaticEntry {
 
 const STATIC_ASSETS: Record<string, StaticEntry> = {
   '/static/silverwolf.webp': { path: path.join(ROOT_DIR, 'silverwolf.webp'), contentType: 'image/webp' },
+  '/static/silverwolf.avif': { path: path.join(ROOT_DIR, 'silverwolf.avif'), contentType: 'image/avif' },
   '/static/silverwolfLv.999.webp': { path: path.join(ROOT_DIR, 'silverwolfLv.999.webp'), contentType: 'image/webp' },
+  '/static/silverwolfLv.999.avif': { path: path.join(ROOT_DIR, 'silverwolfLv.999.avif'), contentType: 'image/avif' },
   '/static/styles.css': { path: path.join(ASSETS_DIR, 'styles.css'), contentType: 'text/css; charset=utf-8' },
   '/static/fonts/italianno.woff2': { path: path.join(FONTS_DIR, 'italianno.woff2'), contentType: 'font/woff2' },
 };
+// Stickers: WebP only — they're tiny (~30 KB) and AVIF savings don't justify the decode overhead.
 for (const name of [
   'Sticker_PPG_04_Silver_Wolf_01.webp',
   'Sticker_PPG_19_Silver_Wolf_01.webp',
@@ -54,11 +57,13 @@ for (const name of [
 ]) {
   STATIC_ASSETS[`/static/stickers/${name}`] = { path: path.join(IMAGES_DIR, name), contentType: 'image/webp' };
 }
+// Eidolons: serve both WebP and AVIF; <picture> in pages/about.ts picks the best.
 for (let i = 1; i <= 6; i += 1) {
-  const name = `Character_Silver_Wolf_Eidolon_${i}.webp`;
-  STATIC_ASSETS[`/static/eidolons/${name}`] = { path: path.join(IMAGES_DIR, name), contentType: 'image/webp' };
-  const nameLv = `Character_Silver_Wolf_LV.999_Eidolon_${i}.webp`;
-  STATIC_ASSETS[`/static/eidolons/${nameLv}`] = { path: path.join(IMAGES_DIR, nameLv), contentType: 'image/webp' };
+  for (const variant of ['', 'LV.999_']) {
+    const stem = `Character_Silver_Wolf_${variant}Eidolon_${i}`;
+    STATIC_ASSETS[`/static/eidolons/${stem}.webp`] = { path: path.join(IMAGES_DIR, `${stem}.webp`), contentType: 'image/webp' };
+    STATIC_ASSETS[`/static/eidolons/${stem}.avif`] = { path: path.join(IMAGES_DIR, `${stem}.avif`), contentType: 'image/avif' };
+  }
 }
 STATIC_ASSETS['/static/svg/pool-8-ball-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'pool-8-ball-svgrepo-com.svg'), contentType: 'image/svg+xml' };
 STATIC_ASSETS['/static/svg/fortune-cookie-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'fortune-cookie-svgrepo-com.svg'), contentType: 'image/svg+xml' };

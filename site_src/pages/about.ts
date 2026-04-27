@@ -123,9 +123,13 @@ export function AboutPage(opts: { nonce: string; lv999?: boolean }) {
 
   const eidolonSections = eidolonData.map(({ n, title, text }) => {
     const imgLeft = n % 2 === 1;
+    const eidolonStem = lv999 ? `Character_Silver_Wolf_LV.999_Eidolon_${n}` : `Character_Silver_Wolf_Eidolon_${n}`;
     const imgEl = html`
       <div class="eid-img ${imgLeft ? 'eid-from-left' : 'eid-from-right'} flex justify-center items-center max-[800px]:order-[-1]">
-        <img src="/static/eidolons/${lv999 ? `Character_Silver_Wolf_LV.999_Eidolon_${n}.webp` : `Character_Silver_Wolf_Eidolon_${n}.webp`}" alt="Silver Wolf Eidolon ${n}" class="w-full h-auto max-w-[28rem]" />
+        <picture class="block w-full max-w-[28rem]">
+          <source type="image/avif" srcset="/static/eidolons/${eidolonStem}.avif" />
+          <img src="/static/eidolons/${eidolonStem}.webp" alt="Silver Wolf Eidolon ${n}" width="1000" height="1000" loading="lazy" decoding="async" class="w-full h-auto" />
+        </picture>
       </div>`;
     const txtEl = html`
       <div class="eid-txt ${imgLeft ? 'eid-from-right' : 'eid-from-left'} max-w-[38rem] ${imgLeft ? 'justify-self-end' : 'justify-self-start'}">
@@ -149,7 +153,10 @@ export function AboutPage(opts: { nonce: string; lv999?: boolean }) {
         </p>
       </div>
       <div class="about-image flex justify-start items-center max-[800px]:order-[-1]">
-        <img src="${lv999 ? '/static/silverwolfLv.999.webp' : '/static/silverwolf.webp'}" alt="Silverwolf" class="w-full h-auto" />
+        <picture class="block w-full">
+          <source type="image/avif" srcset="${lv999 ? '/static/silverwolfLv.999.avif' : '/static/silverwolf.avif'}" />
+          <img src="${lv999 ? '/static/silverwolfLv.999.webp' : '/static/silverwolf.webp'}" alt="Silverwolf" width="${lv999 ? '1800' : '2000'}" height="${lv999 ? '1800' : '2000'}" decoding="async" fetchpriority="high" class="w-full h-auto" />
+        </picture>
       </div>
     </section>
     ${eidolonSections}
