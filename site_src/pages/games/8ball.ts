@@ -90,8 +90,8 @@ export function EightBallPage(opts: { normal: string[]; savage: string[]; nonce:
 </style>
 <script nonce="${nonce}">
 (() => {
-  const normal = ${JSON.stringify([...normal].sort(() => 0.5 - Math.random()).slice(0, 30)).replace(/</g, '\\u003c')};
-  const savage = ${JSON.stringify([...savage].sort(() => 0.5 - Math.random()).slice(0, 30)).replace(/</g, '\\u003c')};
+  const normal = ${JSON.stringify(normal).replace(/</g, '\\u003c')};
+  const savage = ${JSON.stringify(savage).replace(/</g, '\\u003c')};
   const btn = document.getElementById('ask-btn');
   const input = document.getElementById('question-input');
   const inner = document.getElementById('eightball-text');

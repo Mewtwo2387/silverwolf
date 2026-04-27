@@ -92,6 +92,7 @@ function buildCsp(nonce: string): string {
   ].join('; ');
 }
 
+const RATE_LIMIT_MAX_ENTRIES = 50_000;
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
 setInterval(() => {
@@ -103,15 +104,30 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000).unref();
 
+// Cloudflare overwrites cf-connecting-ip on every request, so it can't be spoofed
+// by clients. The deploy MUST keep origin port unreachable except via Cloudflare
+// (firewall to CF IP ranges, cloudflared tunnel, or 127.0.0.1 bind behind a local
+// proxy) — otherwise direct callers all collapse into the same 'unknown' bucket.
+function clientIp(c: any): string {
+  const cf = c.req.header('cf-connecting-ip');
+  if (cf) return cf.trim();
+  const peer = c.env?.requestIP?.(c.req.raw);
+  return peer?.address ?? 'unknown';
+}
+
 function rateLimiter(limit: number, windowMs: number) {
   return async (c: any, next: any) => {
-    const rawIp = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
-    const ip = rawIp.split(',')[0].trim();
+    if (c.req.path.startsWith('/static/')) return next();
+    const ip = clientIp(c);
     const now = Date.now();
     let record = rateLimitMap.get(ip);
     if (!record || record.resetAt < now) {
       record = { count: 0, resetAt: now + windowMs };
       rateLimitMap.set(ip, record);
+      if (rateLimitMap.size > RATE_LIMIT_MAX_ENTRIES) {
+        const firstKey = rateLimitMap.keys().next().value;
+        if (firstKey !== undefined) rateLimitMap.delete(firstKey);
+      }
     }
     record.count += 1;
     if (record.count > limit) {
