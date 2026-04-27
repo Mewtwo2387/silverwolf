@@ -37,28 +37,39 @@ async function run(cmd: string[]): Promise<void> {
   if (code !== 0) throw new Error(`command failed (${code}): ${cmd.join(' ')}`);
 }
 
-async function recompressLv999(): Promise<void> {
+// Returns true if HERO_LV999 needs (or just got) recompression — i.e. its
+// mtime will change, so any derived AVIF must be treated as stale.
+async function recompressLv999(): Promise<boolean> {
   const stat = await fs.stat(HERO_LV999);
   if (stat.size <= LV999_RECOMPRESS_THRESHOLD) {
     console.log(`[skip] ${path.basename(HERO_LV999)} already small (${(stat.size / 1024).toFixed(0)} KB)`);
-    return;
+    return false;
   }
   if (checkOnly) {
     console.error(`[stale] ${path.basename(HERO_LV999)} is ${(stat.size / 1024 / 1024).toFixed(2)} MB — needs recompression`);
     process.exitCode = 1;
-    return;
+    return true;
   }
   console.log(`[recompress] ${path.basename(HERO_LV999)} (${(stat.size / 1024 / 1024).toFixed(2)} MB → q${LV999_QUALITY})`);
   const tmp = `${HERO_LV999}.tmp.webp`;
-  await run([
-    'magick', HERO_LV999,
-    '-quality', String(LV999_QUALITY),
-    '-define', 'webp:method=6',
-    tmp,
-  ]);
-  await fs.rename(tmp, HERO_LV999);
+  let renamed = false;
+  try {
+    await run([
+      'magick', HERO_LV999,
+      '-quality', String(LV999_QUALITY),
+      '-define', 'webp:method=6',
+      tmp,
+    ]);
+    await fs.rename(tmp, HERO_LV999);
+    renamed = true;
+  } finally {
+    if (!renamed && await fileExists(tmp)) {
+      try { await fs.unlink(tmp); } catch { /* best-effort cleanup */ }
+    }
+  }
   const after = await fs.stat(HERO_LV999);
   console.log(`           → ${(after.size / 1024 / 1024).toFixed(2)} MB`);
+  return true;
 }
 
 async function encodeAvif(src: string): Promise<void> {
@@ -87,8 +98,18 @@ async function encodeAvif(src: string): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  await recompressLv999();
-  for (const src of AVIF_TARGETS) await encodeAvif(src);
+  const lv999Pending = await recompressLv999();
+  for (const src of AVIF_TARGETS) {
+    if (src === HERO_LV999 && lv999Pending && checkOnly) {
+      // Source webp is about to change; the existing avif's mtime comparison
+      // would be misleading, so flag it stale outright.
+      const dst = src.replace(/\.webp$/i, '.avif');
+      console.error(`[stale] ${path.basename(dst)} pending: source will be recompressed`);
+      process.exitCode = 1;
+      continue;
+    }
+    await encodeAvif(src);
+  }
   if (checkOnly && process.exitCode === 1) {
     console.error('\nbuild:images --check failed: run `bun run build:images` and commit the result');
   }
