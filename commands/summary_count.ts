@@ -25,7 +25,7 @@ class Summary extends Command {
 
     const messages = await fetchMessagesByCount(interaction.channel, count);
     log(`Fetched ${messages.length} messages`);
-    const content = messages.map((message: any) => `Message by ${message[1].author.username}: ${message[1].content}`).join('\n');
+    const content = `Summarizing ${messages.length} messages.\n\n${messages.map((message: any) => `Message by ${message[1].author.username}: ${message[1].content}`).join('\n')}`;
     const persona = await getPersonaByName('Summarizer');
     if (!persona) {
       await interaction.editReply('Summarizer persona not configured.');
