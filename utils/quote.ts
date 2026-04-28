@@ -157,7 +157,7 @@ async function resolveMentions(guild: Guild | null, text: string): Promise<strin
   while ((m = USER_MENTION_RE.exec(text)) !== null) userIds.add(m[1]);
 
   const userNames = new Map<string, string>();
-  await Promise.all([...userIds].map(async (id) => {
+  for (const id of userIds) {
     let name: string | null = null;
     try {
       if (guild) {
@@ -172,7 +172,7 @@ async function resolveMentions(guild: Guild | null, text: string): Promise<strin
       // ignore
     }
     userNames.set(id, name || id);
-  }));
+  }
 
   out = out.replace(USER_MENTION_RE, (_match, id) => `@${userNames.get(id) || id}`);
 
