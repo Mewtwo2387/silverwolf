@@ -3,6 +3,26 @@ import type { HtmlEscapedString } from 'hono/utils/html';
 import { Navbar } from './navbar';
 import { Footer } from './footer';
 
+const FAVICON_STICKERS = [
+  '/static/stickers/Sticker_PPG_04_Silver_Wolf_01.webp',
+  '/static/stickers/Sticker_PPG_19_Silver_Wolf_01.webp',
+  '/static/stickers/Sticker_PPG_02_Silver_Wolf_01.webp',
+  '/static/stickers/Sticker_PPG_04_Silver_Wolf_02.webp',
+];
+
+const FAVICON_STICKERS_LV999 = [
+  '/static/stickers/Sticker_PPG_27_Silver_Wolf_LV.999_01.webp',
+  '/static/stickers/Sticker_PPG_27_Silver_Wolf_LV.999_02.webp',
+  '/static/stickers/Sticker_PPG_27_Silver_Wolf_LV.999_03.webp',
+  '/static/stickers/Sticker_PPG_27_Silver_Wolf_LV.999_04.webp',
+];
+
+const faviconLink = (lv999: boolean) => {
+  const pool = lv999 ? FAVICON_STICKERS_LV999 : FAVICON_STICKERS;
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  return raw(`<link rel="icon" type="image/webp" href="${pick}" />`);
+};
+
 const pageHead = (nonce: string) => raw(`
 <link rel="stylesheet" href="/static/styles.css" />
 <style>
@@ -69,13 +89,14 @@ export function Layout(opts: {
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>${opts.title}</title>
+        ${faviconLink(opts.lv999 ?? false)}
         ${pageHead(opts.nonce)}
         ${opts.extraHead ?? ''}
       </head>
       <body class="font-sans bg-ink-900 text-fog-100 min-h-screen flex flex-col">
         ${Navbar(opts.active, opts.nonce, opts.lv999)}
         <main class="flex-1 w-full max-w-[1100px] mx-auto py-8 px-[clamp(1rem,4vw,3rem)]">${opts.body}</main>
-        ${Footer()}
+        ${Footer(opts.nonce)}
       </body>
     </html>`;
 }

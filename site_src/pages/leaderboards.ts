@@ -38,9 +38,10 @@ export function LeaderboardsPage(opts: {
   result?: LeaderboardResult;
   error?: string;
   nonce: string;
+  lv999?: boolean;
 }) {
   const {
-    selected, result, error, nonce,
+    selected, result, error, nonce, lv999,
   } = opts;
 
   const options = BOARD_OPTIONS.map(
@@ -104,5 +105,6 @@ export function LeaderboardsPage(opts: {
     active: 'leaderboards',
     body: body as unknown as HtmlEscapedString,
     nonce,
+    lv999,
   });
 }

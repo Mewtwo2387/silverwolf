@@ -303,8 +303,11 @@ export function BirthdaysPage(opts: {
   grouped: Record<string, BirthdayUser[]>;
   error?: string;
   nonce: string;
+  lv999?: boolean;
 }) {
-  const { grouped, error, nonce } = opts;
+  const {
+    grouped, error, nonce, lv999,
+  } = opts;
 
   const currentMonth = MONTHS[new Date().getUTCMonth()];
 
@@ -352,5 +355,6 @@ export function BirthdaysPage(opts: {
     extraHead: birthdayExtras as unknown as HtmlEscapedString,
     body: body as unknown as HtmlEscapedString,
     nonce,
+    lv999,
   });
 }

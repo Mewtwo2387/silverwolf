@@ -144,7 +144,7 @@ function CoinImage() {
   `;
 }
 
-export function GamesPage(opts: { nonce: string }) {
+export function GamesPage(opts: { nonce: string; lv999?: boolean }) {
   const body = html`
     ${styles}
     <h1 class="text-center">Games</h1>
@@ -173,5 +173,6 @@ export function GamesPage(opts: { nonce: string }) {
     active: 'games',
     body: body as any,
     nonce: opts.nonce,
+    lv999: opts.lv999,
   });
 }

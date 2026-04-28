@@ -1,8 +1,8 @@
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 
-export function FortunePage(opts: { fortunes: string[]; nonce: string }) {
-  const { fortunes, nonce } = opts;
+export function FortunePage(opts: { fortunes: string[]; nonce: string; lv999?: boolean }) {
+  const { fortunes, nonce, lv999 } = opts;
 
   const extras = raw(`
 <style>
@@ -245,5 +245,6 @@ export function FortunePage(opts: { fortunes: string[]; nonce: string }) {
     active: 'games',
     body: body as any,
     nonce,
+    lv999,
   });
 }

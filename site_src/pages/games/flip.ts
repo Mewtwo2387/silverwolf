@@ -1,8 +1,8 @@
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 
-export function FlipPage(opts: { nonce: string }) {
-  const { nonce } = opts;
+export function FlipPage(opts: { nonce: string; lv999?: boolean }) {
+  const { nonce, lv999 } = opts;
 
   const extras = raw(`
 <style>
@@ -165,5 +165,6 @@ export function FlipPage(opts: { nonce: string }) {
     active: 'games',
     body: body as any,
     nonce,
+    lv999,
   });
 }

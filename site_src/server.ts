@@ -164,18 +164,19 @@ export function startWebsite(silverwolf: Silverwolf) {
     const raw = c.req.query('board');
     const selected = raw && (VALID_BOARDS as string[]).includes(raw) ? (raw as LeaderboardKind) : undefined;
     const nonce = c.get('nonce');
+    const lv999 = c.req.query('lv') === '999';
 
     if (!selected) {
-      return c.html(LeaderboardsPage({ nonce }).toString());
+      return c.html(LeaderboardsPage({ nonce, lv999 }).toString());
     }
 
     try {
       const result = await getLeaderboard(silverwolf, selected);
-      return c.html(LeaderboardsPage({ selected, result, nonce }).toString());
+      return c.html(LeaderboardsPage({ selected, result, nonce, lv999 }).toString());
     } catch (err) {
       logError('website /leaderboards failed:', err);
       return c.html(
-        LeaderboardsPage({ selected, error: 'Failed to load leaderboard.', nonce }).toString(),
+        LeaderboardsPage({ selected, error: 'Failed to load leaderboard.', nonce, lv999 }).toString(),
         500,
       );
     }
@@ -183,27 +184,28 @@ export function startWebsite(silverwolf: Silverwolf) {
 
   app.get('/birthdays', async (c) => {
     const nonce = c.get('nonce');
+    const lv999 = c.req.query('lv') === '999';
     try {
       const grouped = await getAllBirthdaysByMonth(silverwolf);
-      return c.html(BirthdaysPage({ grouped, nonce }).toString());
+      return c.html(BirthdaysPage({ grouped, nonce, lv999 }).toString());
     } catch (err) {
       logError('website /birthdays failed:', err);
-      return c.html(BirthdaysPage({ grouped: {}, error: 'Failed to load birthdays.', nonce }).toString(), 500);
+      return c.html(BirthdaysPage({ grouped: {}, error: 'Failed to load birthdays.', nonce, lv999 }).toString(), 500);
     }
   });
 
-  app.get('/games', (c) => c.html(GamesPage({ nonce: c.get('nonce') }).toString()));
+  app.get('/games', (c) => c.html(GamesPage({ nonce: c.get('nonce'), lv999: c.req.query('lv') === '999' }).toString()));
 
   app.get('/games/8ball', (c) => {
     const { normal, savage } = getEightBallResponses();
-    return c.html(EightBallPage({ normal, savage, nonce: c.get('nonce') }).toString());
+    return c.html(EightBallPage({ normal, savage, nonce: c.get('nonce'), lv999: c.req.query('lv') === '999' }).toString());
   });
 
-  app.get('/games/flip', (c) => c.html(FlipPage({ nonce: c.get('nonce') }).toString()));
+  app.get('/games/flip', (c) => c.html(FlipPage({ nonce: c.get('nonce'), lv999: c.req.query('lv') === '999' }).toString()));
 
   app.get('/games/fortune', (c) => {
     const fortunes = getFortunes();
-    return c.html(FortunePage({ fortunes, nonce: c.get('nonce') }).toString());
+    return c.html(FortunePage({ fortunes, nonce: c.get('nonce'), lv999: c.req.query('lv') === '999' }).toString());
   });
 
   app.notFound((c) => c.text('not found', 404));

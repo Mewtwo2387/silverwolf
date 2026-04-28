@@ -1,8 +1,10 @@
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 
-export function EightBallPage(opts: { normal: string[]; savage: string[]; nonce: string }) {
-  const { normal, savage, nonce } = opts;
+export function EightBallPage(opts: { normal: string[]; savage: string[]; nonce: string; lv999?: boolean }) {
+  const {
+    normal, savage, nonce, lv999,
+  } = opts;
 
   const extras = raw(`
 <style>
@@ -160,5 +162,6 @@ export function EightBallPage(opts: { normal: string[]; savage: string[]; nonce:
     active: 'games',
     body: body as any,
     nonce,
+    lv999,
   });
 }
