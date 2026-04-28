@@ -18,8 +18,8 @@ class Summary extends Command {
 
   async run(interaction: any): Promise<void> {
     const count = interaction.options.getInteger('n');
-    if (count < 1 || count > 1000) {
-      await interaction.editReply('Invalid count. Please enter a number between 1 and 1000.');
+    if (count < 1 || count > 3000) {
+      await interaction.editReply('Invalid count. Please enter a number between 1 and 3000.');
       return;
     }
 
@@ -56,16 +56,38 @@ class Summary extends Command {
       return;
     }
 
+    const chunks = splitForEmbed(summary.text);
     await interaction.editReply(
       {
         embeds: [
           new EmbedBuilder()
             .setTitle(`Summary of ${messages.length} messages`)
-            .setDescription(summary.text),
+            .setDescription(chunks[0]),
         ],
       },
     );
+    for (let i = 1; i < chunks.length; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await interaction.followUp({
+        embeds: [new EmbedBuilder().setDescription(chunks[i])],
+      });
+    }
   }
+}
+
+function splitForEmbed(text: string, max = 4096): string[] {
+  if (text.length <= max) return [text];
+  const chunks: string[] = [];
+  let remaining = text;
+  while (remaining.length > max) {
+    let end = remaining.lastIndexOf('\n', max);
+    if (end <= 0) end = remaining.lastIndexOf(' ', max);
+    if (end <= 0) end = max;
+    chunks.push(remaining.slice(0, end));
+    remaining = remaining.slice(end).replace(/^\s+/, '');
+  }
+  if (remaining.length > 0) chunks.push(remaining);
+  return chunks;
 }
 
 export default Summary;
