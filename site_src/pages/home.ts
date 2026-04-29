@@ -134,8 +134,22 @@ function pct(num: number, den: number): string {
   return `${format((num / den) * 100, true)}%`;
 }
 
-function renderHtmlNewlines(str: string): any {
-  return raw(str.replace(/\n/g, '<br/>'));
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderUpgradeInfo(str: string): any {
+  const lines = str.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
+  const withoutHeading = lines.filter((l) => !l.startsWith('### '));
+  const rendered = withoutHeading
+    .map((l) => escapeHtml(l).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>'))
+    .join('<br/>');
+  return raw(rendered);
 }
 
 export function HomePage(opts: {
@@ -208,14 +222,14 @@ export function HomePage(opts: {
           <div class="me-card"><div class="label">Max Upgrade Level</div><div class="value">${maxLevel}</div></div>
         </div>
         <div class="me-grid">
-          <div class="me-card"><div class="label">Multiplier Amount</div><div style="margin-top: 0.5rem">${renderHtmlNewlines(getMultiplierAmountInfo(stats.multiplierAmountLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
-          <div class="me-card"><div class="label">Multiplier Rarity</div><div style="margin-top: 0.5rem">${renderHtmlNewlines(getMultiplierChanceInfo(stats.multiplierRarityLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
-          <div class="me-card"><div class="label">Beki Cooldown</div><div style="margin-top: 0.5rem">${renderHtmlNewlines(getBekiCooldownInfo(stats.bekiLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
-          <div class="me-card"><div class="label">Nuggie Flat Multiplier</div><div style="margin-top: 0.5rem">${renderHtmlNewlines(getNuggieFlatMultiplierInfo(stats.nuggieFlatMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
-          <div class="me-card"><div class="label">Nuggie Streak Multiplier</div><div style="margin-top: 0.5rem">${renderHtmlNewlines(getNuggieStreakMultiplierInfo(stats.nuggieStreakMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
-          <div class="me-card"><div class="label">Nuggie Credits Multiplier</div><div style="margin-top: 0.5rem">${renderHtmlNewlines(getNuggieCreditsMultiplierInfo(stats.nuggieCreditsMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
-          <div class="me-card"><div class="label">Nuggie Pokemon Multiplier</div><div style="margin-top: 0.5rem">${renderHtmlNewlines(getNuggiePokeMultiplierInfo(stats.nuggiePokemonMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
-          <div class="me-card"><div class="label">Nuggie Nuggie Multiplier</div><div style="margin-top: 0.5rem">${renderHtmlNewlines(getNuggieNuggieMultiplierInfo(stats.nuggieNuggieMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
+          <div class="me-card"><div class="label">Multiplier Amount</div><div style="margin-top: 0.5rem">${renderUpgradeInfo(getMultiplierAmountInfo(stats.multiplierAmountLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
+          <div class="me-card"><div class="label">Multiplier Rarity</div><div style="margin-top: 0.5rem">${renderUpgradeInfo(getMultiplierChanceInfo(stats.multiplierRarityLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
+          <div class="me-card"><div class="label">Beki Cooldown</div><div style="margin-top: 0.5rem">${renderUpgradeInfo(getBekiCooldownInfo(stats.bekiLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
+          <div class="me-card"><div class="label">Nuggie Flat Multiplier</div><div style="margin-top: 0.5rem">${renderUpgradeInfo(getNuggieFlatMultiplierInfo(stats.nuggieFlatMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
+          <div class="me-card"><div class="label">Nuggie Streak Multiplier</div><div style="margin-top: 0.5rem">${renderUpgradeInfo(getNuggieStreakMultiplierInfo(stats.nuggieStreakMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
+          <div class="me-card"><div class="label">Nuggie Credits Multiplier</div><div style="margin-top: 0.5rem">${renderUpgradeInfo(getNuggieCreditsMultiplierInfo(stats.nuggieCreditsMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
+          <div class="me-card"><div class="label">Nuggie Pokemon Multiplier</div><div style="margin-top: 0.5rem">${renderUpgradeInfo(getNuggiePokeMultiplierInfo(stats.nuggiePokemonMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
+          <div class="me-card"><div class="label">Nuggie Nuggie Multiplier</div><div style="margin-top: 0.5rem">${renderUpgradeInfo(getNuggieNuggieMultiplierInfo(stats.nuggieNuggieMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
         </div>
       </div>
     </details>
