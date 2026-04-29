@@ -174,7 +174,10 @@ export function startWebsite(silverwolf: Silverwolf) {
 
   app.use('*', rateLimiter(120, 60000)); // 120 reqs per minute per IP
   app.use('*', async (c, next) => {
-    if (c.req.path.startsWith('/static/')) return next();
+    if (c.req.path.startsWith('/static/')) {
+      await next();
+      return;
+    }
     const nonce = randomBytes(16).toString('base64');
     c.set('nonce', nonce);
     await next();
@@ -269,19 +272,16 @@ export function startWebsite(silverwolf: Silverwolf) {
     const lv999 = c.req.query('lv') === '999';
     try {
       const stats = await silverwolf.db.user.getUser(user.discordId);
+      const pokemonCount = await silverwolf.db.pokemon.getUniquePokemonCount(user.discordId);
+      const marriageBenefits = await silverwolf.db.marriage.getMarriageBenefits(user.discordId);
+
       const profile: DashboardProfile = {
         discordId: user.discordId,
         username: user.nav.username,
         avatarURL: user.nav.avatarURL,
-        credits: Number(stats.credits ?? 0),
-        dinonuggies: Number(stats.dinonuggies ?? 0),
-        bitcoin: Number(stats.bitcoin ?? 0),
-        murderSuccess: Number(stats.murderSuccess ?? 0),
-        murderFail: Number(stats.murderFail ?? 0),
-        blackjackNetWinnings: Number(stats.blackjackNetWinnings ?? 0),
-        rouletteNetWinnings: Number(stats.rouletteNetWinnings ?? 0),
-        slotsNetWinnings: Number(stats.slotsNetWinnings ?? 0),
-        birthday: stats.birthdays ?? null,
+        stats,
+        pokemonCount,
+        marriageBenefits,
       };
       return c.html(HomePage({
         profile, user: user.nav, nonce, lv999,
