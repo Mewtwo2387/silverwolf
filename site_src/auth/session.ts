@@ -107,6 +107,9 @@ export async function createSession(
   return { id, csrfToken };
 }
 
+// Note: not fully constant-time — the early length-mismatch return leaks
+// the length of `a` vs `b`. Acceptable here because the compared values
+// (CSRF tokens) have a fixed, non-secret length.
 export function constantTimeEqual(a: string, b: string): boolean {
   const bufA = Buffer.from(a);
   const bufB = Buffer.from(b);

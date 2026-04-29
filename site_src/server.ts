@@ -252,7 +252,7 @@ export function startWebsite(silverwolf: Silverwolf) {
     }
   });
 
-  app.get('/auth/logout', async (c) => {
+  app.post('/auth/logout', async (c) => {
     const user = c.get('user');
     if (user) {
       try {

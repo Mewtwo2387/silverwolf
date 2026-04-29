@@ -26,7 +26,7 @@ export interface DashboardProfile {
   discordId: string;
   username: string;
   avatarURL: string | null;
-  stats: any;
+  stats: Record<string, any>;
   pokemonCount: number;
   marriageBenefits: number;
 }

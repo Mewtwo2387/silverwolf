@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { log } from '../../utils/log';
 import webSessionQueries from '../queries/webSessionQueries';
 import type Database from '../Database';
@@ -30,7 +31,9 @@ class WebSessionModel {
       webSessionQueries.INSERT_SESSION,
       [id, discordId, csrfToken, now, expiresAt, now],
     );
-    log(`Created web session for discord_id=${discordId}`);
+    // Anonymize discord_id in logs: PII shouldn't appear in plaintext.
+    const discordIdHash = createHash('sha256').update(discordId).digest('hex').slice(0, 12);
+    log(`Created web session for discord_id=${discordIdHash}`);
   }
 
   async getSession(id: string): Promise<WebSession | null> {

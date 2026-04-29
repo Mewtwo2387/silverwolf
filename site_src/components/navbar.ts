@@ -51,7 +51,7 @@ const ICONS: Record<string, ReturnType<typeof raw>> = {
   games: ICON_GAMES,
 };
 
-export type NavActive = 'home' | 'leaderboards' | 'birthdays' | 'games';
+export type NavActive = 'home' | 'about' | 'leaderboards' | 'birthdays' | 'games';
 
 export interface NavUser {
   username: string;
@@ -410,6 +410,7 @@ export function Navbar(active: NavActive | undefined, nonce: string, lv999?: boo
     return html`<a href="${href}" class="${cls}" aria-label="${label}"${isActive ? raw(' aria-current="page"') : ''}>${ICONS[key]}<span class="label">${label}</span></a>`;
   };
 
+  const homeHref = user ? '/' : '/about';
   const pool = lv999 ? STICKER_IMAGES_LV999 : STICKER_IMAGES;
   const sticker = pool[Math.floor(Math.random() * pool.length)];
 
@@ -419,7 +420,7 @@ export function Navbar(active: NavActive | undefined, nonce: string, lv999?: boo
 
       <!-- Desktop nav — display controlled by CSS above, not Tailwind classes -->
       <div class="nav-links relative" id="nav-links">
-        ${link('/', 'Home', 'home')}
+        ${link(homeHref, 'Home', 'home')}
         ${link('/leaderboards', 'Leaderboards', 'leaderboards')}
         ${link('/birthdays', 'Birthdays', 'birthdays')}
         ${link('/games', 'Games', 'games')}
@@ -432,7 +433,9 @@ export function Navbar(active: NavActive | undefined, nonce: string, lv999?: boo
           <div class="nav-auth">
             ${user.avatarURL ? html`<img class="nav-avatar" src="${user.avatarURL}" alt="${user.username}" width="32" height="32" />` : ''}
             <span class="nav-username">@${user.username}</span>
-            <a href="/auth/logout" class="nav-auth-link">Logout</a>
+            <form action="/auth/logout" method="POST" style="display:inline;margin:0;">
+              <button type="submit" class="nav-auth-link" style="background:none;cursor:pointer;font-family:inherit;">Logout</button>
+            </form>
           </div>
         </div>`
     : html`<span class="nav-spacer" aria-hidden="true"></span>`}
@@ -441,7 +444,7 @@ export function Navbar(active: NavActive | undefined, nonce: string, lv999?: boo
     <!-- Mobile bottom dock — visible only on touch devices via CSS media query -->
     <div id="nav-mobile" role="navigation" aria-label="Mobile navigation">
       <span class="dock-pill" aria-hidden="true"></span>
-      ${dockLink('/', 'Home', 'home')}
+      ${dockLink(homeHref, 'Home', 'home')}
       ${dockLink('/leaderboards', 'Leaderboard', 'leaderboards')}
       ${dockLink('/birthdays', 'Birthdays', 'birthdays')}
       ${dockLink('/games', 'Games', 'games')}

@@ -2,6 +2,7 @@ const AUTHORIZE_URL = 'https://discord.com/oauth2/authorize';
 const TOKEN_URL = 'https://discord.com/api/oauth2/token';
 const USERS_ME_URL = 'https://discord.com/api/users/@me';
 const SCOPE = 'identify';
+const DEFAULT_FETCH_TIMEOUT_MS = 10_000;
 
 export interface DiscordMe {
   id: string;
@@ -16,6 +17,29 @@ function requireEnv(name: string): string {
   return v;
 }
 
+function fetchTimeoutMs(): number {
+  const raw = process.env.DISCORD_FETCH_TIMEOUT_MS;
+  if (!raw) return DEFAULT_FETCH_TIMEOUT_MS;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_FETCH_TIMEOUT_MS;
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit, label: string): Promise<Response> {
+  const controller = new AbortController();
+  const ms = fetchTimeoutMs();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (err) {
+    if ((err as { name?: string })?.name === 'AbortError') {
+      throw new Error(`${label} timed out after ${ms}ms`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export function getRedirectUri(): string {
   return requireEnv('OAUTH_REDIRECT_URI');
 }
@@ -27,7 +51,6 @@ export function buildAuthorizeUrl(state: string): string {
     response_type: 'code',
     scope: SCOPE,
     state,
-    prompt: 'none',
   });
   return `${AUTHORIZE_URL}?${params.toString()}`;
 }
@@ -40,11 +63,11 @@ export async function exchangeCode(code: string): Promise<{ accessToken: string 
     code,
     redirect_uri: getRedirectUri(),
   });
-  const res = await fetch(TOKEN_URL, {
+  const res = await fetchWithTimeout(TOKEN_URL, {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body,
-  });
+  }, 'Discord token exchange');
   if (!res.ok) {
     throw new Error(`Discord token exchange failed: ${res.status} ${await res.text()}`);
   }
@@ -54,9 +77,9 @@ export async function exchangeCode(code: string): Promise<{ accessToken: string 
 }
 
 export async function fetchDiscordMe(accessToken: string): Promise<DiscordMe> {
-  const res = await fetch(USERS_ME_URL, {
+  const res = await fetchWithTimeout(USERS_ME_URL, {
     headers: { authorization: `Bearer ${accessToken}` },
-  });
+  }, 'Discord /users/@me');
   if (!res.ok) {
     throw new Error(`Discord /users/@me failed: ${res.status} ${await res.text()}`);
   }
