@@ -16,11 +16,11 @@ const STICKER_IMAGES_LV999 = [
 
 // Inline SVG icons — fill/stroke set to currentColor so they inherit the
 // link's themed text color via CSS variables.
-const ICON_ABOUT = raw(
-  '<svg viewBox="0 0 512 512" fill="currentColor" fill-rule="evenodd" aria-hidden="true">'
-    + '<g transform="translate(42.666667, 42.666667)">'
-    + '<path d="M213.333333,3.55271368e-14 C95.51296,3.55271368e-14 3.55271368e-14,95.51168 3.55271368e-14,213.333333 C3.55271368e-14,331.153707 95.51296,426.666667 213.333333,426.666667 C331.154987,426.666667 426.666667,331.153707 426.666667,213.333333 C426.666667,95.51168 331.154987,3.55271368e-14 213.333333,3.55271368e-14 Z M213.333333,384 C119.227947,384 42.6666667,307.43872 42.6666667,213.333333 C42.6666667,119.227947 119.227947,42.6666667 213.333333,42.6666667 C307.44,42.6666667 384,119.227947 384,213.333333 C384,307.43872 307.44,384 213.333333,384 Z M240.04672,128 C240.04672,143.46752 228.785067,154.666667 213.55008,154.666667 C197.698773,154.666667 186.713387,143.46752 186.713387,127.704107 C186.713387,112.5536 197.99616,101.333333 213.55008,101.333333 C228.785067,101.333333 240.04672,112.5536 240.04672,128 Z M192.04672,192 L234.713387,192 L234.713387,320 L192.04672,320 L192.04672,192 Z"/>'
-    + '</g></svg>',
+const ICON_HOME = raw(
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+    + '<path d="M3 11.2 12 4l9 7.2"/>'
+    + '<path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/>'
+    + '</svg>',
 );
 
 const ICON_LEADERBOARD = raw(
@@ -45,11 +45,18 @@ const ICON_GAMES = raw(
 );
 
 const ICONS: Record<string, ReturnType<typeof raw>> = {
-  about: ICON_ABOUT,
+  home: ICON_HOME,
   leaderboards: ICON_LEADERBOARD,
   birthdays: ICON_BIRTHDAY,
   games: ICON_GAMES,
 };
+
+export type NavActive = 'home' | 'leaderboards' | 'birthdays' | 'games';
+
+export interface NavUser {
+  username: string;
+  avatarURL: string | null;
+}
 
 const navbarExtras = (nonce: string) => raw(`
 <style>
@@ -73,6 +80,21 @@ const navbarExtras = (nonce: string) => raw(`
 
   /* Desktop nav link spacing */
   #nav-links { gap: 1.75rem; }
+
+  /* Spacer balances the logo so links stay visually centered when no auth chip is present. */
+  .nav-spacer { width: 3rem; height: 3rem; flex: none; }
+
+  /* Desktop auth chip (right side of navbar, logged-in only) */
+  #nav-auth-desktop { display: flex; align-items: center; }
+  .nav-auth { display: flex; align-items: center; gap: 0.6rem; color: var(--fog-200); font-size: 0.9rem; }
+  .nav-avatar { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--accent); }
+  .nav-username { font-weight: 500; color: var(--fog-100); max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nav-auth-link { color: var(--fog-300); text-decoration: none; font-size: 0.85rem; padding: 0.3rem 0.6rem; border-radius: 0.4rem; border: 1px solid transparent; transition: color 0.2s, border-color 0.2s; }
+  .nav-auth-link:hover { color: var(--fog-100); border-color: var(--ink-600); }
+  /* Hide desktop auth chip on touch devices — auth lives in /home there */
+  @media (hover: none) and (pointer: coarse) {
+    #nav-auth-desktop { display: none; }
+  }
 
   /* ── Touch-device dock ──────────────────────────────────────────────────
      Real touch devices (iPhone/iPad Safari) get a floating glass tab bar
@@ -373,7 +395,7 @@ const navbarExtras = (nonce: string) => raw(`
 </script>
 `);
 
-export function Navbar(active: 'about' | 'leaderboards' | 'birthdays' | 'games' | undefined, nonce: string, lv999?: boolean) {
+export function Navbar(active: NavActive | undefined, nonce: string, lv999?: boolean, user?: NavUser | null) {
   const base = 'nav-link text-[0.95rem] px-[0.1rem] py-1 border-b-2 border-transparent transition-colors no-underline';
   const link = (href: string, label: string, key: string) => {
     const isActive = active === key;
@@ -397,18 +419,29 @@ export function Navbar(active: 'about' | 'leaderboards' | 'birthdays' | 'games' 
 
       <!-- Desktop nav — display controlled by CSS above, not Tailwind classes -->
       <div class="nav-links relative" id="nav-links">
-        ${link('/about', 'About', 'about')}
+        ${link('/', 'Home', 'home')}
         ${link('/leaderboards', 'Leaderboards', 'leaderboards')}
         ${link('/birthdays', 'Birthdays', 'birthdays')}
         ${link('/games', 'Games', 'games')}
         <span class="nav-underline nav-underline-grad absolute left-0 h-[2px] w-0 rounded-sm opacity-0 pointer-events-none" style="bottom:-2px;" aria-hidden="true"></span>
       </div>
+
+      ${user
+    ? html`
+        <div id="nav-auth-desktop">
+          <div class="nav-auth">
+            ${user.avatarURL ? html`<img class="nav-avatar" src="${user.avatarURL}" alt="${user.username}" width="32" height="32" />` : ''}
+            <span class="nav-username">@${user.username}</span>
+            <a href="/auth/logout" class="nav-auth-link">Logout</a>
+          </div>
+        </div>`
+    : html`<span class="nav-spacer" aria-hidden="true"></span>`}
     </nav>
 
     <!-- Mobile bottom dock — visible only on touch devices via CSS media query -->
     <div id="nav-mobile" role="navigation" aria-label="Mobile navigation">
       <span class="dock-pill" aria-hidden="true"></span>
-      ${dockLink('/about', 'About', 'about')}
+      ${dockLink('/', 'Home', 'home')}
       ${dockLink('/leaderboards', 'Leaderboard', 'leaderboards')}
       ${dockLink('/birthdays', 'Birthdays', 'birthdays')}
       ${dockLink('/games', 'Games', 'games')}

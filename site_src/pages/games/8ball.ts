@@ -1,9 +1,9 @@
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 
-export function EightBallPage(opts: { normal: string[]; savage: string[]; nonce: string; lv999?: boolean }) {
+export function EightBallPage(opts: { normal: string[]; savage: string[]; nonce: string; lv999?: boolean; user?: import('../../components/navbar').NavUser | null }) {
   const {
-    normal, savage, nonce, lv999,
+    normal, savage, nonce, lv999, user,
   } = opts;
 
   const extras = raw(`
@@ -163,5 +163,6 @@ export function EightBallPage(opts: { normal: string[]; savage: string[]; nonce:
     body: body as any,
     nonce,
     lv999,
+    user,
   });
 }

@@ -78,7 +78,7 @@ setInterval(() => {
   }
 }, 30 * 60 * 1000).unref();
 
-async function resolveUser(silverwolf: Silverwolf, id: string) {
+export async function resolveUser(silverwolf: Silverwolf, id: string) {
   const now = Date.now();
   const cached = userCache.get(id);
   if (cached && cached.expiresAt > now) return cached;

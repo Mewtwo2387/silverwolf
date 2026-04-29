@@ -8,6 +8,7 @@ import marriageQueries from './marriageQueries';
 import pokemonQueries from './pokemonQueries';
 import serverRolesQueries from './serverRolesQueries';
 import userQueries from './userQueries';
+import webSessionQueries from './webSessionQueries';
 
 export {
   aiChatQueries,
@@ -20,4 +21,5 @@ export {
   pokemonQueries,
   serverRolesQueries,
   userQueries,
+  webSessionQueries,
 };

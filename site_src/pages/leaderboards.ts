@@ -39,9 +39,10 @@ export function LeaderboardsPage(opts: {
   error?: string;
   nonce: string;
   lv999?: boolean;
+  user?: import('../components/navbar').NavUser | null;
 }) {
   const {
-    selected, result, error, nonce, lv999,
+    selected, result, error, nonce, lv999, user,
   } = opts;
 
   const options = BOARD_OPTIONS.map(
@@ -106,5 +107,6 @@ export function LeaderboardsPage(opts: {
     body: body as unknown as HtmlEscapedString,
     nonce,
     lv999,
+    user,
   });
 }

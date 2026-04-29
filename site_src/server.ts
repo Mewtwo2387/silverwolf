@@ -10,13 +10,34 @@ import { GamesPage } from './pages/games';
 import { EightBallPage } from './pages/games/8ball';
 import { FlipPage } from './pages/games/flip';
 import { FortunePage } from './pages/games/fortune';
+import { HomePage, type DashboardProfile } from './pages/home';
+import type { NavUser } from './components/navbar';
 import {
   getLeaderboard,
   getAllBirthdaysByMonth,
   getEightBallResponses,
   getFortunes,
+  resolveUser,
   type LeaderboardKind,
 } from './bot-bridge';
+import {
+  buildAuthorizeUrl,
+  exchangeCode,
+  fetchDiscordMe,
+} from './auth/discord-oauth';
+import {
+  clearOAuthStateCookie,
+  clearSessionCookie,
+  constantTimeEqual,
+  createSession,
+  loadSession,
+  newRandomId,
+  readOAuthStateCookie,
+  readSessionId,
+  setOAuthStateCookie,
+  setSessionCookie,
+  SESSION_TTL_MS,
+} from './auth/session';
 
 const PORT = 6769;
 // Bind to 0.0.0.0 so the site is reachable when the bot runs inside a container.
@@ -137,8 +158,19 @@ function rateLimiter(limit: number, windowMs: number) {
   };
 }
 
+interface SessionUser {
+  discordId: string;
+  sessionId: string;
+  nav: NavUser;
+}
+
 export function startWebsite(silverwolf: Silverwolf) {
-  const app = new Hono<{ Variables: { nonce: string } }>();
+  const app = new Hono<{ Variables: { nonce: string; user: SessionUser | null } }>();
+
+  const navUser = (c: any): NavUser | null => {
+    const u = c.get('user');
+    return u ? u.nav : null;
+  };
 
   app.use('*', rateLimiter(120, 60000)); // 120 reqs per minute per IP
   app.use('*', async (c, next) => {
@@ -152,9 +184,120 @@ export function startWebsite(silverwolf: Silverwolf) {
     c.header('X-Frame-Options', 'DENY');
   });
 
-  app.get('/', (c) => c.redirect('/about'));
+  // Session middleware: populate c.var.user from cookie. Skips static assets.
+  app.use('*', async (c, next) => {
+    if (c.req.path.startsWith('/static/')) return next();
+    const sessionId = readSessionId(c);
+    if (!sessionId) {
+      c.set('user', null);
+      return next();
+    }
+    try {
+      const session = await loadSession(silverwolf, sessionId);
+      if (!session) {
+        clearSessionCookie(c);
+        c.set('user', null);
+      } else {
+        const display = await resolveUser(silverwolf, session.discordId);
+        c.set('user', {
+          discordId: session.discordId,
+          sessionId: session.id,
+          nav: { username: display.username, avatarURL: display.avatarURL },
+        });
+        // Sliding expiry: bump on every authed request.
+        await silverwolf.db.webSession.touchSession(session.id, SESSION_TTL_MS);
+      }
+    } catch (err) {
+      logError('session middleware failed:', err);
+      c.set('user', null);
+    }
+    return next();
+  });
 
-  app.get('/about', (c) => c.html(AboutPage({ nonce: c.get('nonce'), lv999: c.req.query('lv') === '999' }).toString()));
+  app.get('/auth/discord/login', (c) => {
+    try {
+      const state = newRandomId(16);
+      setOAuthStateCookie(c, state);
+      return c.redirect(buildAuthorizeUrl(state));
+    } catch (err) {
+      logError('login init failed:', err);
+      return c.text('Login is not configured', 500);
+    }
+  });
+
+  app.get('/auth/discord/callback', async (c) => {
+    const code = c.req.query('code');
+    const state = c.req.query('state');
+    const expectedState = readOAuthStateCookie(c);
+    clearOAuthStateCookie(c);
+
+    if (!code || !state || !expectedState || !constantTimeEqual(state, expectedState)) {
+      return c.text('Invalid OAuth state', 400);
+    }
+
+    try {
+      const { accessToken } = await exchangeCode(code);
+      const me = await fetchDiscordMe(accessToken);
+      // Ensure a User row exists so downstream pages can read stats by Discord ID.
+      await silverwolf.db.user.getUser(me.id);
+      const { id: sessionId } = await createSession(silverwolf, me.id);
+      setSessionCookie(c, sessionId);
+      return c.redirect('/me');
+    } catch (err) {
+      logError('OAuth callback failed:', err);
+      return c.text('Login failed', 500);
+    }
+  });
+
+  app.get('/auth/logout', async (c) => {
+    const user = c.get('user');
+    if (user) {
+      try {
+        await silverwolf.db.webSession.deleteSession(user.sessionId);
+      } catch (err) {
+        logError('logout failed:', err);
+      }
+    }
+    clearSessionCookie(c);
+    return c.redirect('/');
+  });
+
+  app.get('/me', async (c) => {
+    const user = c.get('user');
+    if (!user) return c.redirect('/');
+    const nonce = c.get('nonce');
+    const lv999 = c.req.query('lv') === '999';
+    try {
+      const stats = await silverwolf.db.user.getUser(user.discordId);
+      const profile: DashboardProfile = {
+        discordId: user.discordId,
+        username: user.nav.username,
+        avatarURL: user.nav.avatarURL,
+        credits: Number(stats.credits ?? 0),
+        dinonuggies: Number(stats.dinonuggies ?? 0),
+        bitcoin: Number(stats.bitcoin ?? 0),
+        murderSuccess: Number(stats.murderSuccess ?? 0),
+        murderFail: Number(stats.murderFail ?? 0),
+        blackjackNetWinnings: Number(stats.blackjackNetWinnings ?? 0),
+        rouletteNetWinnings: Number(stats.rouletteNetWinnings ?? 0),
+        slotsNetWinnings: Number(stats.slotsNetWinnings ?? 0),
+        birthday: stats.birthdays ?? null,
+      };
+      return c.html(HomePage({
+        profile, user: user.nav, nonce, lv999,
+      }).toString());
+    } catch (err) {
+      logError('website /me dashboard failed:', err);
+      return c.text('Failed to load dashboard', 500);
+    }
+  });
+
+  app.get('/', (c) => {
+    const user = c.get('user');
+    return c.redirect(user ? '/me' : '/about');
+  });
+
+  app.get('/about', (c) => c.html(AboutPage({ nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c) }).toString()));
 
   for (const [route, entry] of Object.entries(STATIC_ASSETS)) {
     app.get(route, () => serveStatic(entry));
@@ -166,17 +309,22 @@ export function startWebsite(silverwolf: Silverwolf) {
     const nonce = c.get('nonce');
     const lv999 = c.req.query('lv') === '999';
 
+    const user = navUser(c);
     if (!selected) {
-      return c.html(LeaderboardsPage({ nonce, lv999 }).toString());
+      return c.html(LeaderboardsPage({ nonce, lv999, user }).toString());
     }
 
     try {
       const result = await getLeaderboard(silverwolf, selected);
-      return c.html(LeaderboardsPage({ selected, result, nonce, lv999 }).toString());
+      return c.html(LeaderboardsPage({
+        selected, result, nonce, lv999, user,
+      }).toString());
     } catch (err) {
       logError('website /leaderboards failed:', err);
       return c.html(
-        LeaderboardsPage({ selected, error: 'Failed to load leaderboard.', nonce, lv999 }).toString(),
+        LeaderboardsPage({
+          selected, error: 'Failed to load leaderboard.', nonce, lv999, user,
+        }).toString(),
         500,
       );
     }
@@ -185,27 +333,40 @@ export function startWebsite(silverwolf: Silverwolf) {
   app.get('/birthdays', async (c) => {
     const nonce = c.get('nonce');
     const lv999 = c.req.query('lv') === '999';
+    const user = navUser(c);
     try {
       const grouped = await getAllBirthdaysByMonth(silverwolf);
-      return c.html(BirthdaysPage({ grouped, nonce, lv999 }).toString());
+      return c.html(BirthdaysPage({
+        grouped, nonce, lv999, user,
+      }).toString());
     } catch (err) {
       logError('website /birthdays failed:', err);
-      return c.html(BirthdaysPage({ grouped: {}, error: 'Failed to load birthdays.', nonce, lv999 }).toString(), 500);
+      return c.html(BirthdaysPage({
+        grouped: {}, error: 'Failed to load birthdays.', nonce, lv999, user,
+      }).toString(), 500);
     }
   });
 
-  app.get('/games', (c) => c.html(GamesPage({ nonce: c.get('nonce'), lv999: c.req.query('lv') === '999' }).toString()));
+  app.get('/games', (c) => c.html(GamesPage({
+    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+  }).toString()));
 
   app.get('/games/8ball', (c) => {
     const { normal, savage } = getEightBallResponses();
-    return c.html(EightBallPage({ normal, savage, nonce: c.get('nonce'), lv999: c.req.query('lv') === '999' }).toString());
+    return c.html(EightBallPage({
+      normal, savage, nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+    }).toString());
   });
 
-  app.get('/games/flip', (c) => c.html(FlipPage({ nonce: c.get('nonce'), lv999: c.req.query('lv') === '999' }).toString()));
+  app.get('/games/flip', (c) => c.html(FlipPage({
+    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+  }).toString()));
 
   app.get('/games/fortune', (c) => {
     const fortunes = getFortunes();
-    return c.html(FortunePage({ fortunes, nonce: c.get('nonce'), lv999: c.req.query('lv') === '999' }).toString());
+    return c.html(FortunePage({
+      fortunes, nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+    }).toString());
   });
 
   app.notFound((c) => c.text('not found', 404));

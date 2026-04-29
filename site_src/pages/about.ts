@@ -1,6 +1,7 @@
 import { html, raw } from 'hono/html';
 import type { HtmlEscapedString } from 'hono/utils/html';
 import { Layout } from '../components/layout';
+import type { NavUser } from '../components/navbar';
 
 const aboutExtras = (nonce: string) => raw(`
 <style>
@@ -27,6 +28,27 @@ const aboutExtras = (nonce: string) => raw(`
     -webkit-mask-image: radial-gradient(ellipse 110% 110% at 100% 50%, #000 35%, transparent 90%);
             mask-image: radial-gradient(ellipse 110% 110% at 100% 50%, #000 35%, transparent 90%);
   }
+  .about-cta-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .about-login-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.8rem 1.4rem;
+    border-radius: 0.5rem;
+    background: #5865F2;
+    color: #fff;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid #4752C4;
+    transition: filter 0.2s;
+  }
+  .about-login-cta:hover { filter: brightness(1.1); }
   @keyframes about-slide-left {
     0%   { opacity: 0; transform: translate3d(-5rem, 0, 0); }
     100% { opacity: 1; transform: translate3d(0, 0, 0); }
@@ -86,8 +108,20 @@ const aboutExtras = (nonce: string) => raw(`
 </script>
 `);
 
-export function AboutPage(opts: { nonce: string; lv999?: boolean }) {
-  const { lv999 } = opts;
+export function AboutPage(opts: { nonce: string; lv999?: boolean; user?: NavUser | null }) {
+  const { lv999, user } = opts;
+  const ctaBlock = user
+    ? html`
+      <div class="about-cta-row">
+        <a href="/me" class="about-login-cta">Go to your dashboard →</a>
+      </div>`
+    : html`
+      <div class="about-cta-row">
+        <a href="/auth/discord/login" class="about-login-cta">
+          <svg width="20" height="20" viewBox="0 0 71 55" aria-hidden="true"><path fill="currentColor" d="M60.1 4.9A58.6 58.6 0 0 0 45.6.6a40.7 40.7 0 0 0-1.9 3.9 54.1 54.1 0 0 0-16.2 0A40.4 40.4 0 0 0 25.5.6 58.4 58.4 0 0 0 11 4.9C2 18.4-.4 31.5.7 44.4a58.9 58.9 0 0 0 17.9 9.1 43.2 43.2 0 0 0 3.8-6.2 38 38 0 0 1-6-2.9c.5-.4 1-.8 1.5-1.2a42 42 0 0 0 35.3 0c.5.4 1 .8 1.5 1.2a37.6 37.6 0 0 1-6 2.9 43 43 0 0 0 3.8 6.2 58.7 58.7 0 0 0 17.9-9.1c1.2-14.9-2.7-27.9-9.4-39.5ZM23.7 36.6c-3.5 0-6.5-3.3-6.5-7.3 0-4.1 2.9-7.4 6.5-7.4 3.6 0 6.5 3.3 6.5 7.4 0 4-2.9 7.3-6.5 7.3Zm23.6 0c-3.6 0-6.5-3.3-6.5-7.3 0-4.1 2.9-7.4 6.5-7.4 3.5 0 6.5 3.3 6.5 7.4 0 4-2.9 7.3-6.5 7.3Z"/></svg>
+          Login with Discord
+        </a>
+      </div>`;
   const eidolonData = [
     {
       n: 1,
@@ -151,6 +185,7 @@ export function AboutPage(opts: { nonce: string; lv999?: boolean }) {
           Mostly inside jokes, parodies and tech stack exploration,
           it runs on Bun using Typescript.
         </p>
+        ${ctaBlock}
       </div>
       <div class="about-image flex justify-start items-center max-[800px]:order-[-1]">
         <picture class="block w-full">
@@ -164,10 +199,11 @@ export function AboutPage(opts: { nonce: string; lv999?: boolean }) {
 
   return Layout({
     title: 'Silverwolf — About',
-    active: 'about',
+    active: 'home',
     extraHead: aboutExtras(opts.nonce) as unknown as HtmlEscapedString,
     body: body as unknown as HtmlEscapedString,
     nonce: opts.nonce,
     lv999,
+    user: opts.user,
   });
 }

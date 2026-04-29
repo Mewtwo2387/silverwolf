@@ -304,9 +304,10 @@ export function BirthdaysPage(opts: {
   error?: string;
   nonce: string;
   lv999?: boolean;
+  user?: import('../components/navbar').NavUser | null;
 }) {
   const {
-    grouped, error, nonce, lv999,
+    grouped, error, nonce, lv999, user,
   } = opts;
 
   const currentMonth = MONTHS[new Date().getUTCMonth()];
@@ -356,5 +357,6 @@ export function BirthdaysPage(opts: {
     body: body as unknown as HtmlEscapedString,
     nonce,
     lv999,
+    user,
   });
 }
