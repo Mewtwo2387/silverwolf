@@ -137,6 +137,58 @@ function getDiscordEmojiUrl(id: string, animated: boolean): string {
 // Matches custom Discord emoji tags: <:name:id> and <a:name:id>
 const DISCORD_EMOJI_RE = /<(a?):([^:>]+):(\d+)>/g;
 
+// Matches Discord user, role, and channel mentions
+const USER_MENTION_RE = /<@!?(\d+)>/g;
+const ROLE_MENTION_RE = /<@&(\d+)>/g;
+const CHANNEL_MENTION_RE = /<#(\d+)>/g;
+
+/**
+ * Replaces Discord mention tokens (<@id>, <@!id>, <@&id>, <#id>) in `text`
+ * with human-readable @name / #name strings, using the provided guild for lookup.
+ */
+async function resolveMentions(guild: Guild | null, text: string): Promise<string> {
+  let out = text;
+
+  const userIds = new Set<string>();
+  let m: RegExpExecArray | null;
+  USER_MENTION_RE.lastIndex = 0;
+  // eslint-disable-next-line no-cond-assign
+  while ((m = USER_MENTION_RE.exec(text)) !== null) userIds.add(m[1]);
+
+  const userNames = new Map<string, string>();
+  for (const id of userIds) {
+    let name: string | null = null;
+    try {
+      if (guild) {
+        const member = guild.members.cache.get(id) || await guild.members.fetch(id).catch(() => null);
+        if (member) name = member.nickname || member.user.username;
+      }
+      if (!name && guild?.client) {
+        const user = guild.client.users.cache.get(id) || await guild.client.users.fetch(id).catch(() => null);
+        if (user) name = user.username;
+      }
+    } catch {
+      // ignore
+    }
+    userNames.set(id, name || id);
+  }
+
+  out = out.replace(USER_MENTION_RE, (_match, id) => `@${userNames.get(id) || id}`);
+
+  if (guild) {
+    out = out.replace(ROLE_MENTION_RE, (_match, id) => {
+      const role = guild.roles.cache.get(id);
+      return `@${role ? role.name : id}`;
+    });
+    out = out.replace(CHANNEL_MENTION_RE, (_match, id) => {
+      const channel = guild.channels.cache.get(id) as any;
+      return `#${channel?.name || id}`;
+    });
+  }
+
+  return out;
+}
+
 // Matches Unicode emoji sequences (presentations, ZWJ, skin tones, flags, keycaps, etc.)
 const UNICODE_EMOJI_RE = new RegExp(
   '(\\p{Emoji_Presentation}|\\p{Extended_Pictographic})'
@@ -451,7 +503,8 @@ async function quote(
 ): Promise<Buffer> {
   const { username } = _person;
   const nickname = _nickname || username;
-  const message = `"${_message}"`;
+  const resolvedMessage = await resolveMentions(guild, _message);
+  const message = `"${resolvedMessage}"`;
   const backgroundColor = _backgroundColor || 'black';
   const profileColor = _profileColor || 'normal';
   const avatarSource = _avatarSource || 'global';
