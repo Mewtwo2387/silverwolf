@@ -56,6 +56,10 @@ export type NavActive = 'home' | 'leaderboards' | 'birthdays' | 'games';
 export interface NavUser {
   username: string;
   avatarURL: string | null;
+  // Per-session token embedded in the logout form. Validated server-side
+  // against WebSession.csrf_token to prevent forged POST /auth/logout
+  // calls (defence-in-depth on top of SameSite=Lax).
+  csrf: string;
 }
 
 const navbarExtras = (nonce: string) => raw(`
@@ -434,6 +438,7 @@ export function Navbar(active: NavActive | undefined, nonce: string, lv999?: boo
             ${user.avatarURL ? html`<img class="nav-avatar" src="${user.avatarURL}" alt="${user.username}" width="32" height="32" />` : ''}
             <span class="nav-username">@${user.username}</span>
             <form action="/auth/logout" method="POST" style="display:inline;margin:0;">
+              <input type="hidden" name="csrf" value="${user.csrf}" />
               <button type="submit" class="nav-auth-link" style="background:none;cursor:pointer;font-family:inherit;">Logout</button>
             </form>
           </div>

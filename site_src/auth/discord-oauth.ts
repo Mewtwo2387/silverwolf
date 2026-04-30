@@ -69,7 +69,9 @@ export async function exchangeCode(code: string): Promise<{ accessToken: string 
     body,
   }, 'Discord token exchange');
   if (!res.ok) {
-    throw new Error(`Discord token exchange failed: ${res.status} ${await res.text()}`);
+    // Body intentionally not interpolated: Discord echoes the OAuth `code` on
+    // invalid_grant, and that ends up in persistence/logs_error.txt.
+    throw new Error(`Discord token exchange failed: ${res.status}`);
   }
   const json = await res.json() as { access_token?: string };
   if (!json.access_token) throw new Error('Discord token response missing access_token');
@@ -81,7 +83,7 @@ export async function fetchDiscordMe(accessToken: string): Promise<DiscordMe> {
     headers: { authorization: `Bearer ${accessToken}` },
   }, 'Discord /users/@me');
   if (!res.ok) {
-    throw new Error(`Discord /users/@me failed: ${res.status} ${await res.text()}`);
+    throw new Error(`Discord /users/@me failed: ${res.status}`);
   }
   return await res.json() as DiscordMe;
 }

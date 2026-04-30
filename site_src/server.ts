@@ -92,16 +92,25 @@ STATIC_ASSETS['/static/svg/fortune-cookie-svgrepo-com.svg'] = { path: path.join(
 async function serveStatic(entry: StaticEntry) {
   const file = Bun.file(entry.path);
   if (!(await file.exists())) return new Response('not found', { status: 404 });
-  return new Response(file, {
-    headers: { 'content-type': entry.contentType, 'cache-control': IMMUTABLE_CACHE },
-  });
+  const headers: Record<string, string> = {
+    'content-type': entry.contentType,
+    'cache-control': IMMUTABLE_CACHE,
+  };
+  // SVGs can carry <script> if served as a top-level document. Lock them down
+  // so even a future malicious-SVG drop in Assets/svg/ can't run JS.
+  if (entry.contentType === 'image/svg+xml') {
+    headers['content-security-policy'] = "default-src 'none'; style-src 'unsafe-inline'; sandbox";
+  }
+  return new Response(file, { headers });
 }
 
 function buildCsp(nonce: string): string {
   return [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}'`,
-    // style-src keeps 'unsafe-inline' to cover the many style="" attributes used across pages.
+    // TODO(security): drop 'unsafe-inline' once every inline style="…" / <style>
+    // block is migrated to a class or hash. Today this allowance gives any future
+    // XSS a CSS-injection exfil channel (background-image: url(...) leaks).
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https://cdn.discordapp.com",
     "font-src 'self'",
@@ -136,10 +145,29 @@ function clientIp(c: any): string {
   return peer?.address ?? 'unknown';
 }
 
+// IPv6 ISPs hand out /64 subnets (2^64 addresses) per customer. Per-IP rate
+// limiting on raw IPv6 means an attacker can rotate addresses inside their
+// /64 and bypass the limit forever. Bucket by /64 instead.
+function rateLimitKey(ip: string): string {
+  if (!ip.includes(':')) return ip;
+  // Expand "::" if present so we can grab the first 4 hextets reliably.
+  const [head, tail] = ip.split('::', 2);
+  let hextets: string[];
+  if (tail !== undefined) {
+    const headParts = head ? head.split(':') : [];
+    const tailParts = tail ? tail.split(':') : [];
+    const fillCount = 8 - headParts.length - tailParts.length;
+    hextets = [...headParts, ...Array(Math.max(0, fillCount)).fill('0'), ...tailParts];
+  } else {
+    hextets = ip.split(':');
+  }
+  return `${hextets.slice(0, 4).join(':')}::/64`;
+}
+
 function rateLimiter(limit: number, windowMs: number) {
   return async (c: any, next: any) => {
     if (c.req.path.startsWith('/static/')) return next();
-    const ip = clientIp(c);
+    const ip = rateLimitKey(clientIp(c));
     const now = Date.now();
     let record = rateLimitMap.get(ip);
     if (!record || record.resetAt < now) {
@@ -161,6 +189,7 @@ function rateLimiter(limit: number, windowMs: number) {
 interface SessionUser {
   discordId: string;
   sessionId: string;
+  csrfToken: string;
   nav: NavUser;
 }
 
@@ -185,6 +214,12 @@ export function startWebsite(silverwolf: Silverwolf) {
     c.header('X-Content-Type-Options', 'nosniff');
     c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
     c.header('X-Frame-Options', 'DENY');
+    // Per-user / nonce-bearing HTML must never be cached by intermediaries.
+    // A single CF "Cache Everything" misconfiguration would otherwise reuse one
+    // user's nonce (and /me payload) across visitors.
+    c.header('Cache-Control', 'private, no-store');
+    c.header('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+    c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), interest-cohort=()');
   });
 
   // Session middleware: populate c.var.user from cookie. Skips static assets.
@@ -205,7 +240,8 @@ export function startWebsite(silverwolf: Silverwolf) {
         c.set('user', {
           discordId: session.discordId,
           sessionId: session.id,
-          nav: { username: display.username, avatarURL: display.avatarURL },
+          csrfToken: session.csrfToken,
+          nav: { username: display.username, avatarURL: display.avatarURL, csrf: session.csrfToken },
         });
         // Sliding expiry: bump server-side TTL and re-issue the cookie so the
         // browser's maxAge stays in sync with the DB expiry.
@@ -257,6 +293,20 @@ export function startWebsite(silverwolf: Silverwolf) {
   app.post('/auth/logout', async (c) => {
     const user = c.get('user');
     if (user) {
+      // CSRF: validate the form-supplied token against the per-session
+      // token. SameSite=Lax already blocks cross-origin POST cookies, but
+      // this closes any future hole if a sibling endpoint relaxes that.
+      let formToken = '';
+      try {
+        const body = await c.req.parseBody();
+        const raw = (body as Record<string, unknown>).csrf;
+        formToken = typeof raw === 'string' ? raw : '';
+      } catch {
+        formToken = '';
+      }
+      if (!formToken || !constantTimeEqual(formToken, user.csrfToken)) {
+        return c.text('CSRF check failed', 403);
+      }
       try {
         await silverwolf.db.webSession.deleteSession(user.sessionId);
       } catch (err) {
