@@ -1,6 +1,6 @@
 import { html, raw } from 'hono/html';
 import type { HtmlEscapedString } from 'hono/utils/html';
-import { Navbar } from './navbar';
+import { Navbar, type NavActive, type NavUser } from './navbar';
 import { Footer } from './footer';
 
 const FAVICON_STICKERS = [
@@ -77,11 +77,12 @@ const pageHead = (nonce: string) => raw(`
 
 export function Layout(opts: {
   title: string;
-  active?: 'about' | 'leaderboards' | 'birthdays' | 'games';
+  active?: NavActive;
   extraHead?: HtmlEscapedString;
   body: HtmlEscapedString;
   nonce: string;
   lv999?: boolean;
+  user?: NavUser | null;
 }) {
   return html`<!doctype html>
     <html lang="en">
@@ -94,7 +95,7 @@ export function Layout(opts: {
         ${opts.extraHead ?? ''}
       </head>
       <body class="font-sans bg-ink-900 text-fog-100 min-h-screen flex flex-col">
-        ${Navbar(opts.active, opts.nonce, opts.lv999)}
+        ${Navbar(opts.active, opts.nonce, opts.lv999, opts.user)}
         <main class="flex-1 w-full max-w-[1100px] mx-auto py-8 px-[clamp(1rem,4vw,3rem)]">${opts.body}</main>
         ${Footer(opts.nonce)}
       </body>

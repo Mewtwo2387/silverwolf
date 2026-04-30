@@ -16,6 +16,7 @@ import type GlobalConfigModel from './models/GlobalConfigModel';
 import type ServerRolesModel from './models/ServerRolesModel';
 import type BirthdayReminderModel from './models/BirthdayReminderModel';
 import type PoopModel from './models/PoopModel';
+import type WebSessionModel from './models/WebSessionModel';
 
 class Database {
   db!: BunDatabase;
@@ -232,6 +233,7 @@ class Database {
   get poop(): PoopModel { return this.models.PoopModel; }
   get serverRoles(): ServerRolesModel { return this.models.ServerRolesModel; }
   get user(): UserModel { return this.models.UserModel; }
+  get webSession(): WebSessionModel { return this.models.WebSessionModel; }
 }
 
 export default Database;

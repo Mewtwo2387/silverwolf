@@ -13,6 +13,7 @@ import poopEntryTable from './poopEntryTable';
 import poopProfileTable from './poopProfileTable';
 import serverRolesTable from './serverRolesTable';
 import userTable from './userTable';
+import webSessionTable from './webSessionTable';
 
 export {
   aiChatHistoryTable,
@@ -30,6 +31,7 @@ export {
   poopProfileTable,
   serverRolesTable,
   userTable,
+  webSessionTable,
 };
 
 export type { AiChatHistoryRow } from './aiChatHistoryTable';
@@ -44,6 +46,6 @@ export type { GlobalConfigRow } from './globalConfigTable';
 export type { MarriageRow } from './marriageTable';
 export type { PokemonRow } from './pokemonTable';
 export type { PoopEntryRow } from './poopEntryTable';
-export type { PoopProfileRow } from './poopProfileTable';
 export type { ServerRolesRow } from './serverRolesTable';
 export type { UserRow, UserStatsRow } from './userTable';
+export type { WebSessionRow } from './webSessionTable';
