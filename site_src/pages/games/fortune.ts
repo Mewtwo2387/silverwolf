@@ -1,5 +1,6 @@
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
+import { inlineJSON } from '../../inline';
 
 export function FortunePage(opts: { fortunes: string[]; nonce: string; lv999?: boolean; user?: import('../../components/navbar').NavUser | null }) {
   const {
@@ -116,7 +117,7 @@ export function FortunePage(opts: { fortunes: string[]; nonce: string; lv999?: b
 </style>
 <script nonce="${nonce}">
 (() => {
-  const fortunes = ${JSON.stringify(fortunes).replace(/</g, '\\u003c')};
+  const fortunes = ${inlineJSON(fortunes)};
 
   const svg = document.getElementById('fortune-svg');
 

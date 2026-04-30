@@ -1,5 +1,6 @@
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
+import { inlineJSON } from '../../inline';
 
 export function EightBallPage(opts: { normal: string[]; savage: string[]; nonce: string; lv999?: boolean; user?: import('../../components/navbar').NavUser | null }) {
   const {
@@ -92,8 +93,8 @@ export function EightBallPage(opts: { normal: string[]; savage: string[]; nonce:
 </style>
 <script nonce="${nonce}">
 (() => {
-  const normal = ${JSON.stringify(normal).replace(/</g, '\\u003c')};
-  const savage = ${JSON.stringify(savage).replace(/</g, '\\u003c')};
+  const normal = ${inlineJSON(normal)};
+  const savage = ${inlineJSON(savage)};
   const btn = document.getElementById('ask-btn');
   const input = document.getElementById('question-input');
   const inner = document.getElementById('eightball-text');

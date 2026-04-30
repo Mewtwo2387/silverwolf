@@ -4,9 +4,17 @@ import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import type { Silverwolf } from '../../classes/silverwolf';
 import type { WebSession } from '../../database/models/WebSessionModel';
 
-export const SESSION_COOKIE = 'sw_session';
-export const OAUTH_STATE_COOKIE = 'sw_oauth_state';
+// __Host- prefix locks the cookie to Secure + Path=/ + no Domain — browsers
+// reject anything else under that name. We only apply it in prod because the
+// prefix demands Secure, and dev runs HTTP.
+const USE_HOST_PREFIX = process.env.NODE_ENV === 'production';
+const HOST_PREFIX = USE_HOST_PREFIX ? '__Host-' : '';
+export const SESSION_COOKIE = `${HOST_PREFIX}sw_session`;
+export const OAUTH_STATE_COOKIE = `${HOST_PREFIX}sw_oauth_state`;
 export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+// Absolute ceiling on session age regardless of activity. A leaked cookie kept
+// alive by sliding TTL is invalidated once the underlying row crosses this.
+export const SESSION_ABSOLUTE_MAX_MS = 90 * 24 * 60 * 60 * 1000;
 export const OAUTH_STATE_TTL_S = 5 * 60;
 
 function getSecret(): string {
@@ -90,7 +98,8 @@ export async function loadSession(
 ): Promise<WebSession | null> {
   const session = await silverwolf.db.webSession.getSession(sessionId);
   if (!session) return null;
-  if (session.expiresAt < Date.now()) {
+  const now = Date.now();
+  if (session.expiresAt < now || now - session.createdAt > SESSION_ABSOLUTE_MAX_MS) {
     await silverwolf.db.webSession.deleteSession(sessionId);
     return null;
   }
