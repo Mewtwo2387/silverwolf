@@ -51,7 +51,7 @@ const ICONS: Record<string, ReturnType<typeof raw>> = {
   games: ICON_GAMES,
 };
 
-export type NavActive = 'home' | 'about' | 'leaderboards' | 'birthdays' | 'games';
+export type NavActive = 'home' | 'leaderboards' | 'birthdays' | 'games';
 
 export interface NavUser {
   username: string;

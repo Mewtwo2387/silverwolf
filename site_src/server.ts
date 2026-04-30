@@ -207,8 +207,10 @@ export function startWebsite(silverwolf: Silverwolf) {
           sessionId: session.id,
           nav: { username: display.username, avatarURL: display.avatarURL },
         });
-        // Sliding expiry: bump on every authed request.
+        // Sliding expiry: bump server-side TTL and re-issue the cookie so the
+        // browser's maxAge stays in sync with the DB expiry.
         await silverwolf.db.webSession.touchSession(session.id, SESSION_TTL_MS);
+        setSessionCookie(c, session.id);
       }
     } catch (err) {
       logError('session middleware failed:', err);

@@ -199,7 +199,7 @@ export function AboutPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
 
   return Layout({
     title: 'Silverwolf — About',
-    active: 'about',
+    active: 'home',
     extraHead: aboutExtras(opts.nonce) as unknown as HtmlEscapedString,
     body: body as unknown as HtmlEscapedString,
     nonce: opts.nonce,
