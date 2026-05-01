@@ -78,9 +78,10 @@ export async function spinSlots(client: any, userId: string, amount: number): Pr
 
   multi *= await client.db.marriage.getMarriageBenefits(userId);
   const winnings = multi * amount;
+  const netProfit = winnings - amount;
   await client.db.user.addUserAttr(userId, 'slotsTimesPlayed', 1);
   await client.db.user.addUserAttr(userId, 'slotsTimesGambled', amount);
-  await client.db.user.addUserAttr(userId, 'slotsTimesWon', multi > 0 ? 1 : 0);
+  await client.db.user.addUserAttr(userId, 'slotsTimesWon', netProfit > 0 ? 1 : 0);
   await client.db.user.addUserAttr(userId, 'slotsAmountWon', winnings);
   await client.db.user.addUserAttr(userId, 'slotsRelativeWon', multi);
   await client.db.user.addUserAttr(userId, 'credits', winnings - amount);
@@ -92,7 +93,7 @@ export async function spinSlots(client: any, userId: string, amount: number): Pr
     results,
     multi,
     winnings,
-    isWin: multi > 0,
+    isWin: netProfit > 0,
     season: resolvedSeason,
     skin,
     winMessage,

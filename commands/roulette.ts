@@ -57,11 +57,11 @@ export async function playRoulette(
     multi = 38 * 1.06 ** streak;
     streak += 1;
     resultMessage += `You correctly guessed green! You are now on a streak of ${streak}`;
-  } else if (betType === 'even' && wheelResult % 2 === 0) {
+  } else if (betType === 'even' && wheelResult !== 0 && wheelResult % 2 === 0) {
     multi = 2 * 1.06 ** streak;
     streak += 1;
     resultMessage += `You correctly guessed even! You are now on a streak of ${streak}`;
-  } else if (betType === 'odd' && wheelResult % 2 !== 0) {
+  } else if (betType === 'odd' && wheelResult !== 0 && wheelResult % 2 !== 0) {
     multi = 2 * 1.06 ** streak;
     streak += 1;
     resultMessage += `You correctly guessed odd! You are now on a streak of ${streak}`;

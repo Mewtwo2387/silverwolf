@@ -416,6 +416,8 @@ export function BlackjackPage(opts: { nonce: string; lv999?: boolean; user?: Nav
       data = await r.json();
     } catch (e) {
       setError('Network error.');
+      hitBtn.disabled = false;
+      standBtn.disabled = false;
       return;
     }
 
@@ -479,7 +481,8 @@ export function BlackjackPage(opts: { nonce: string; lv999?: boolean; user?: Nav
     : html`
             <div id="bj-error" class="result-banner loss" style="display:none"></div>
             <div id="bj-setup" class="bet-row">
-              <input id="amount-input" type="text" placeholder="amount (e.g. 1000 or 1k)" autocomplete="off" />
+              <label for="amount-input" class="sr-only">Bet amount</label>
+              <input id="amount-input" type="text" placeholder="amount (e.g. 1000 or 1k)" autocomplete="off" aria-label="Bet amount" />
               <button id="deal-btn" class="bj-btn">Deal</button>
             </div>
             <div id="bj-table" class="bj-table" style="display:none">

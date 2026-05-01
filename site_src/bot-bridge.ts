@@ -564,7 +564,6 @@ export async function playSlotsWeb(
   const err = mapBetCode(code);
   if (err) return err;
   const amount = code;
-  if (amount < 0) return { error: 'negative' };
 
   const result = await spinSlots(silverwolf, userId, amount);
   return { ok: true, data: { ...result, amount } };

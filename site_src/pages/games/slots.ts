@@ -335,7 +335,8 @@ export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
     ? html`<div class="login-cta">Log in with <a href="/auth/discord/login">Discord</a> to play.</div>`
     : html`
             <form class="slots-form" onsubmit="return false">
-              <input id="amount-input" type="text" placeholder="amount (e.g. 1000 or 1k)" autocomplete="off" />
+              <label for="amount-input" class="sr-only">Bet amount</label>
+              <input id="amount-input" type="text" placeholder="amount (e.g. 1000 or 1k)" autocomplete="off" aria-label="Bet amount" />
               <button id="roll-btn" type="button" class="roll-btn">Roll</button>
             </form>
           `}
