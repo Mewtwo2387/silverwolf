@@ -1,10 +1,10 @@
 import { EmbedBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { antiFormat } from './math';
 
-const INVALID_AMOUNT = -1;
-const NEGATIVE_AMOUNT = -2;
-const POOR_AMOUNT = -3;
-const INFINITY_AMOUNT = -4;
+export const INVALID_AMOUNT = -1;
+export const NEGATIVE_AMOUNT = -2;
+export const POOR_AMOUNT = -3;
+export const INFINITY_AMOUNT = -4;
 
 const INFINITY_KEYWORDS = [
   'infinity', 'inf', '∞', 'unlimited', 'forever',
@@ -12,7 +12,7 @@ const INFINITY_KEYWORDS = [
   'eternal', 'never-ending',
 ];
 
-async function checkValidBetRaw(client: any, user: { id: string }, amountString: string): Promise<number> {
+export async function checkValidBetRaw(client: any, user: { id: string }, amountString: string): Promise<number> {
   if (INFINITY_KEYWORDS.some((keyword) => amountString.toLowerCase().includes(keyword.toLowerCase()))) {
     return INFINITY_AMOUNT;
   }
