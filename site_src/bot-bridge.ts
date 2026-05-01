@@ -1,6 +1,40 @@
 import type { Silverwolf } from '../classes/silverwolf';
+import { logError } from '../utils/log';
+import {
+  checkValidBetRaw,
+  INVALID_AMOUNT,
+  NEGATIVE_AMOUNT,
+  POOR_AMOUNT,
+  INFINITY_AMOUNT,
+} from '../utils/betting';
+import {
+  type Card,
+  createDeck,
+  drawCard,
+  calculateHand,
+  recordBlackjackWin,
+  recordBlackjackLoss,
+  recordBlackjackTie,
+} from '../commands/blackjack';
+import { playRoulette, type RouletteBetType, type RouletteResult } from '../commands/roulette';
+import { spinSlots, type SlotsResult } from '../commands/slots';
 
 export type LeaderboardKind = 'gambler' | 'murder' | 'nuggie' | 'poop';
+
+export type BetErrorCode = 'invalid' | 'negative' | 'poor' | 'infinity' | 'in_progress' | 'no_game' | 'expired' | 'invalid_bet_value';
+export interface BetError { error: BetErrorCode; }
+export interface BetSuccess<T> { ok: true; data: T; }
+export type BetResult<T> = BetSuccess<T> | BetError;
+
+function mapBetCode(code: number): BetError | null {
+  switch (code) {
+    case INVALID_AMOUNT: return { error: 'invalid' };
+    case NEGATIVE_AMOUNT: return { error: 'negative' };
+    case POOR_AMOUNT: return { error: 'poor' };
+    case INFINITY_AMOUNT: return { error: 'infinity' };
+    default: return null;
+  }
+}
 
 export interface LeaderboardRow {
   rank: number;
@@ -263,3 +297,300 @@ export function getFortunes() {
 }
 
 export { MONTHS };
+
+// ─── Blackjack: in-memory per-user game state ──────────────────────────────
+// Mirrors the Discord bot's 60s collector. Keyed by Discord user ID. A user
+// may only have one active game; starting a new one while a game is live
+// returns 'in_progress'.
+
+export interface SerializableCard { suit: string; value: string; }
+
+interface BlackjackGameState {
+  deck: Card[];
+  playerHand: Card[];
+  dealerHand: Card[];
+  amount: number;
+  expiresAt: number;
+  timeoutHandle: ReturnType<typeof setTimeout>;
+  finalized: boolean;
+}
+
+const BLACKJACK_TTL_MS = 60_000;
+const blackjackGames = new Map<string, BlackjackGameState>();
+
+function expireBlackjackGame(silverwolf: Silverwolf, userId: string): void {
+  const game = blackjackGames.get(userId);
+  if (!game || game.finalized) return;
+  game.finalized = true;
+  blackjackGames.delete(userId);
+  recordBlackjackLoss(silverwolf, userId, game.amount).catch((err) => {
+    logError('blackjack expiry record failed:', err);
+  });
+}
+
+export interface BlackjackStartData {
+  playerHand: SerializableCard[];
+  dealerUpCard: SerializableCard;
+  playerTotal: number;
+  amount: number;
+  expiresAt: number;
+}
+
+export interface BlackjackHitData {
+  playerHand: SerializableCard[];
+  dealerHand?: SerializableCard[];
+  dealerTotal?: number;
+  playerTotal: number;
+  busted: boolean;
+  expiresAt: number;
+  result?: 'loss';
+  message?: string;
+  amount?: number;
+}
+
+export interface BlackjackStandData {
+  playerHand: SerializableCard[];
+  dealerHand: SerializableCard[];
+  playerTotal: number;
+  dealerTotal: number;
+  result: 'win' | 'loss' | 'tie';
+  message: string;
+  multi?: number;
+  winnings?: number;
+  streak?: number;
+  amount: number;
+}
+
+export async function startBlackjack(
+  silverwolf: Silverwolf,
+  userId: string,
+  amountString: string,
+): Promise<BetResult<BlackjackStartData>> {
+  const existing = blackjackGames.get(userId);
+  if (existing && !existing.finalized && Date.now() < existing.expiresAt) {
+    return { error: 'in_progress' };
+  }
+
+  const code = await checkValidBetRaw(silverwolf as any, { id: userId }, amountString);
+  const err = mapBetCode(code);
+  if (err) return err;
+  const amount = code;
+
+  const deck = createDeck();
+  const playerHand = [drawCard(deck), drawCard(deck)];
+  const dealerHand = [drawCard(deck), drawCard(deck)];
+  const expiresAt = Date.now() + BLACKJACK_TTL_MS;
+  const timeoutHandle = setTimeout(() => expireBlackjackGame(silverwolf, userId), BLACKJACK_TTL_MS);
+  // Don't keep the process alive purely for these timers.
+  (timeoutHandle as unknown as { unref?: () => void }).unref?.();
+
+  blackjackGames.set(userId, {
+    deck, playerHand, dealerHand, amount, expiresAt, timeoutHandle, finalized: false,
+  });
+
+  return {
+    ok: true,
+    data: {
+      playerHand,
+      dealerUpCard: dealerHand[0],
+      playerTotal: calculateHand(playerHand),
+      amount,
+      expiresAt,
+    },
+  };
+}
+
+export async function hitBlackjack(
+  silverwolf: Silverwolf,
+  userId: string,
+): Promise<BetResult<BlackjackHitData>> {
+  const game = blackjackGames.get(userId);
+  if (!game || game.finalized) return { error: 'no_game' };
+  if (Date.now() > game.expiresAt) {
+    expireBlackjackGame(silverwolf, userId);
+    return { error: 'expired' };
+  }
+
+  game.playerHand.push(drawCard(game.deck));
+  const playerTotal = calculateHand(game.playerHand);
+
+  if (playerTotal > 21) {
+    clearTimeout(game.timeoutHandle);
+    game.finalized = true;
+    blackjackGames.delete(userId);
+    await recordBlackjackLoss(silverwolf, userId, game.amount);
+    return {
+      ok: true,
+      data: {
+        playerHand: game.playerHand,
+        dealerHand: game.dealerHand,
+        dealerTotal: calculateHand(game.dealerHand),
+        playerTotal,
+        busted: true,
+        expiresAt: game.expiresAt,
+        result: 'loss',
+        message: 'You busted!',
+        amount: game.amount,
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      playerHand: game.playerHand,
+      playerTotal,
+      busted: false,
+      expiresAt: game.expiresAt,
+    },
+  };
+}
+
+export async function standBlackjack(
+  silverwolf: Silverwolf,
+  userId: string,
+): Promise<BetResult<BlackjackStandData>> {
+  const game = blackjackGames.get(userId);
+  if (!game || game.finalized) return { error: 'no_game' };
+  if (Date.now() > game.expiresAt) {
+    expireBlackjackGame(silverwolf, userId);
+    return { error: 'expired' };
+  }
+
+  clearTimeout(game.timeoutHandle);
+  game.finalized = true;
+  blackjackGames.delete(userId);
+
+  while (calculateHand(game.dealerHand) < 17) {
+    game.dealerHand.push(drawCard(game.deck));
+  }
+
+  const playerTotal = calculateHand(game.playerHand);
+  const dealerTotal = calculateHand(game.dealerHand);
+
+  if (dealerTotal > 21 || playerTotal > dealerTotal) {
+    const win = await recordBlackjackWin(silverwolf, userId, game.amount);
+    return {
+      ok: true,
+      data: {
+        playerHand: game.playerHand,
+        dealerHand: game.dealerHand,
+        playerTotal,
+        dealerTotal,
+        result: 'win',
+        message: 'You win!',
+        multi: win.multi,
+        winnings: win.winnings,
+        streak: win.streak,
+        amount: game.amount,
+      },
+    };
+  }
+
+  if (playerTotal < dealerTotal) {
+    await recordBlackjackLoss(silverwolf, userId, game.amount);
+    return {
+      ok: true,
+      data: {
+        playerHand: game.playerHand,
+        dealerHand: game.dealerHand,
+        playerTotal,
+        dealerTotal,
+        result: 'loss',
+        message: 'Silverwolf wins!',
+        amount: game.amount,
+      },
+    };
+  }
+
+  await recordBlackjackTie(silverwolf, userId, game.amount);
+  return {
+    ok: true,
+    data: {
+      playerHand: game.playerHand,
+      dealerHand: game.dealerHand,
+      playerTotal,
+      dealerTotal,
+      result: 'tie',
+      message: 'No one wins!',
+      amount: game.amount,
+    },
+  };
+}
+
+// ─── Roulette ──────────────────────────────────────────────────────────────
+
+const VALID_BET_TYPES: RouletteBetType[] = ['number', 'red', 'black', 'green', 'even', 'odd'];
+
+export async function playRouletteWeb(
+  silverwolf: Silverwolf,
+  userId: string,
+  amountString: string,
+  betType: string,
+  betValueRaw: number | null,
+): Promise<BetResult<RouletteResult & { amount: number }>> {
+  if (!(VALID_BET_TYPES as string[]).includes(betType)) {
+    return { error: 'invalid_bet_value' };
+  }
+  if (betType === 'number') {
+    if (betValueRaw === null || Number.isNaN(betValueRaw) || betValueRaw < 0 || betValueRaw > 36) {
+      return { error: 'invalid_bet_value' };
+    }
+  }
+
+  const code = await checkValidBetRaw(silverwolf as any, { id: userId }, amountString);
+  const err = mapBetCode(code);
+  if (err) return err;
+  const amount = code;
+
+  const result = await playRoulette(
+    silverwolf,
+    userId,
+    amount,
+    betType as RouletteBetType,
+    betType === 'number' ? betValueRaw : null,
+  );
+  return { ok: true, data: { ...result, amount } };
+}
+
+// ─── Slots ─────────────────────────────────────────────────────────────────
+
+export async function playSlotsWeb(
+  silverwolf: Silverwolf,
+  userId: string,
+  amountString: string,
+): Promise<BetResult<SlotsResult & { amount: number }>> {
+  const code = await checkValidBetRaw(silverwolf as any, { id: userId }, amountString);
+  const err = mapBetCode(code);
+  if (err) return err;
+  const amount = code;
+
+  const result = await spinSlots(silverwolf, userId, amount);
+  return { ok: true, data: { ...result, amount } };
+}
+
+// ─── Poop log ──────────────────────────────────────────────────────────────
+
+export interface PoopLogResult { count: number | null; }
+
+export async function logPoopWeb(
+  silverwolf: Silverwolf,
+  userId: string,
+  colour: string | null,
+  size: string | null,
+  type: string | null,
+  duration: number | null,
+): Promise<PoopLogResult> {
+  type PoopDb = {
+    db: { poop: { logPoop(
+      u: string,
+      c: string | null,
+      s: string | null,
+      t: string | null,
+      d: number | null,
+    ): Promise<number | null> } };
+  };
+  const dbAny = silverwolf as unknown as PoopDb;
+  const count = await dbAny.db.poop.logPoop(userId, colour, size, type, duration);
+  return { count };
+}

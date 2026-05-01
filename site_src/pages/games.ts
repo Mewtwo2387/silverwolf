@@ -22,6 +22,34 @@ const GAMES = [
     imageType: 'img' as const,
     imageSrc: '/static/svg/fortune-cookie-svgrepo-com.svg',
   },
+  {
+    name: 'blackjack',
+    href: '/games/blackjack',
+    info: 'Bet your mystic credits on a classic game of 21 against Silverwolf.',
+    imageType: 'img' as const,
+    imageSrc: '/static/svg/poker-svgrepo-com.svg',
+  },
+  {
+    name: 'roulette',
+    href: '/games/roulette',
+    info: 'Spin the wheel. Bet on numbers, colors, or odds and pray.',
+    imageType: 'img' as const,
+    imageSrc: '/static/svg/roulette-casino-svgrepo-com.svg',
+  },
+  {
+    name: 'slots',
+    href: '/games/slots',
+    info: 'Pull the lever and watch your mystic credits disappear in style.',
+    imageType: 'img' as const,
+    imageSrc: '/static/svg/slots-svgrepo-com.svg',
+  },
+  {
+    name: 'poop',
+    href: '/games/poop',
+    info: 'Log a bathroom visit and contribute to the leaderboard.',
+    imageType: 'img' as const,
+    imageSrc: '/static/svg/pile-of-poo-svgrepo-com.svg',
+  },
 ];
 
 const styles = raw(`

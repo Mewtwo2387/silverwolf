@@ -10,6 +10,10 @@ import { GamesPage } from './pages/games';
 import { EightBallPage } from './pages/games/8ball';
 import { FlipPage } from './pages/games/flip';
 import { FortunePage } from './pages/games/fortune';
+import { BlackjackPage } from './pages/games/blackjack';
+import { PoopPage } from './pages/games/poop';
+import { RoulettePage } from './pages/games/roulette';
+import { SlotsPage } from './pages/games/slots';
 import { HomePage, type DashboardProfile } from './pages/home';
 import type { NavUser } from './components/navbar';
 import {
@@ -18,6 +22,12 @@ import {
   getEightBallResponses,
   getFortunes,
   resolveUser,
+  startBlackjack,
+  hitBlackjack,
+  standBlackjack,
+  playRouletteWeb,
+  playSlotsWeb,
+  logPoopWeb,
   type LeaderboardKind,
 } from './bot-bridge';
 import {
@@ -88,6 +98,11 @@ for (let i = 1; i <= 6; i += 1) {
 }
 STATIC_ASSETS['/static/svg/pool-8-ball-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'pool-8-ball-svgrepo-com.svg'), contentType: 'image/svg+xml' };
 STATIC_ASSETS['/static/svg/fortune-cookie-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'fortune-cookie-svgrepo-com.svg'), contentType: 'image/svg+xml' };
+STATIC_ASSETS['/static/svg/poker-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'poker-svgrepo-com.svg'), contentType: 'image/svg+xml' };
+STATIC_ASSETS['/static/svg/pile-of-poo-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'pile-of-poo-svgrepo-com.svg'), contentType: 'image/svg+xml' };
+STATIC_ASSETS['/static/svg/roulette-casino-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'roulette-casino-svgrepo-com.svg'), contentType: 'image/svg+xml' };
+STATIC_ASSETS['/static/svg/slots-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'slots-svgrepo-com.svg'), contentType: 'image/svg+xml' };
+STATIC_ASSETS['/static/svg/toilet-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'toilet-svgrepo-com.svg'), contentType: 'image/svg+xml' };
 
 async function serveStatic(entry: StaticEntry) {
   const file = Bun.file(entry.path);
@@ -419,6 +434,152 @@ export function startWebsite(silverwolf: Silverwolf) {
     return c.html(FortunePage({
       fortunes, nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
     }).toString());
+  });
+
+  app.get('/games/blackjack', (c) => c.html(BlackjackPage({
+    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+  }).toString()));
+
+  app.get('/games/poop', (c) => c.html(PoopPage({
+    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+  }).toString()));
+
+  app.get('/games/roulette', (c) => c.html(RoulettePage({
+    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+  }).toString()));
+
+  app.get('/games/slots', (c) => c.html(SlotsPage({
+    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+  }).toString()));
+
+  // ─── Game POST endpoints ──────────────────────────────────────────────────
+  // All require an authenticated session and a matching CSRF token in the
+  // JSON body. Return JSON.
+
+  type GameBody = Record<string, unknown> & { csrf?: unknown };
+
+  async function readGameBody(c: any): Promise<GameBody | null> {
+    try {
+      return await c.req.json() as GameBody;
+    } catch {
+      return null;
+    }
+  }
+
+  function authedGameRequest(c: any, body: GameBody | null): SessionUser | Response {
+    const user = c.get('user');
+    if (!user) return c.json({ error: 'unauthenticated' }, 401);
+    if (!body) return c.json({ error: 'invalid_body' }, 400);
+    const token = typeof body.csrf === 'string' ? body.csrf : '';
+    if (!token || !constantTimeEqual(token, user.csrfToken)) {
+      return c.json({ error: 'csrf' }, 403);
+    }
+    return user;
+  }
+
+  app.post('/games/blackjack/start', async (c) => {
+    const body = await readGameBody(c);
+    const auth = authedGameRequest(c, body);
+    if (auth instanceof Response) return auth;
+    const amount = typeof body!.amount === 'string' ? body!.amount : '';
+    if (!amount) return c.json({ error: 'invalid' }, 400);
+    try {
+      const result = await startBlackjack(silverwolf, auth.discordId, amount);
+      return c.json(result);
+    } catch (err) {
+      logError('blackjack start failed:', err);
+      return c.json({ error: 'server' }, 500);
+    }
+  });
+
+  app.post('/games/blackjack/hit', async (c) => {
+    const body = await readGameBody(c);
+    const auth = authedGameRequest(c, body);
+    if (auth instanceof Response) return auth;
+    try {
+      const result = await hitBlackjack(silverwolf, auth.discordId);
+      return c.json(result);
+    } catch (err) {
+      logError('blackjack hit failed:', err);
+      return c.json({ error: 'server' }, 500);
+    }
+  });
+
+  app.post('/games/blackjack/stand', async (c) => {
+    const body = await readGameBody(c);
+    const auth = authedGameRequest(c, body);
+    if (auth instanceof Response) return auth;
+    try {
+      const result = await standBlackjack(silverwolf, auth.discordId);
+      return c.json(result);
+    } catch (err) {
+      logError('blackjack stand failed:', err);
+      return c.json({ error: 'server' }, 500);
+    }
+  });
+
+  app.post('/games/roulette/play', async (c) => {
+    const body = await readGameBody(c);
+    const auth = authedGameRequest(c, body);
+    if (auth instanceof Response) return auth;
+    const amount = typeof body!.amount === 'string' ? body!.amount : '';
+    const betType = typeof body!.betType === 'string' ? body!.betType : '';
+    const betValueRaw = body!.betValue;
+    let betValue: number | null = null;
+    if (typeof betValueRaw === 'number' && Number.isFinite(betValueRaw)) {
+      betValue = Math.trunc(betValueRaw);
+    } else if (typeof betValueRaw === 'string' && betValueRaw.trim() !== '') {
+      const parsed = parseInt(betValueRaw, 10);
+      if (!Number.isNaN(parsed)) betValue = parsed;
+    }
+    if (!amount || !betType) return c.json({ error: 'invalid' }, 400);
+    try {
+      const result = await playRouletteWeb(silverwolf, auth.discordId, amount, betType, betValue);
+      return c.json(result);
+    } catch (err) {
+      logError('roulette play failed:', err);
+      return c.json({ error: 'server' }, 500);
+    }
+  });
+
+  app.post('/games/slots/play', async (c) => {
+    const body = await readGameBody(c);
+    const auth = authedGameRequest(c, body);
+    if (auth instanceof Response) return auth;
+    const amount = typeof body!.amount === 'string' ? body!.amount : '';
+    if (!amount) return c.json({ error: 'invalid' }, 400);
+    try {
+      const result = await playSlotsWeb(silverwolf, auth.discordId, amount);
+      return c.json(result);
+    } catch (err) {
+      logError('slots play failed:', err);
+      return c.json({ error: 'server' }, 500);
+    }
+  });
+
+  const POOP_COLOURS = ['brown', 'dark-brown', 'yellow', 'green', 'black', 'red', 'holy'];
+  const POOP_SIZES = ['small', 'medium', 'large', 'omnipresent'];
+  const POOP_TYPES = ['liquid', 'soft', 'normal', 'hard', 'pellet', 'divine'];
+
+  app.post('/games/poop/log', async (c) => {
+    const body = await readGameBody(c);
+    const auth = authedGameRequest(c, body);
+    if (auth instanceof Response) return auth;
+    const colour = typeof body!.colour === 'string' && POOP_COLOURS.includes(body!.colour) ? body!.colour : null;
+    const size = typeof body!.size === 'string' && POOP_SIZES.includes(body!.size) ? body!.size : null;
+    const type = typeof body!.type === 'string' && POOP_TYPES.includes(body!.type) ? body!.type : null;
+    let duration: number | null = null;
+    if (typeof body!.duration === 'number' && Number.isFinite(body!.duration)) {
+      const d = Math.trunc(body!.duration);
+      if (d >= 1 && d <= 120) duration = d;
+    }
+    try {
+      const result = await logPoopWeb(silverwolf, auth.discordId, colour, size, type, duration);
+      return c.json(result);
+    } catch (err) {
+      logError('poop log failed:', err);
+      return c.json({ error: 'server' }, 500);
+    }
   });
 
   app.notFound((c) => c.text('not found', 404));
