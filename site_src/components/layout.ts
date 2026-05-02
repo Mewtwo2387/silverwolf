@@ -37,6 +37,14 @@ const pageHead = (nonce: string) => raw(`
      previews able to get stuck mid-overflow on first paint. */
   html, body { overflow-x: clip; }
 
+  /* Paint the dark background on <html> itself (not just <body>) so Chromium
+     doesn't flash white between navigations — Chromium uses the html element's
+     background for the initial canvas + cross-document paint hold. color-scheme
+     also keeps form controls / scrollbars dark from the first frame. */
+  html { background-color: #06080f; color-scheme: dark; }
+  html[data-theme="flashbang"] { background-color: #eef3ff; color-scheme: light; }
+  html[data-theme="blackout"] { background-color: #020308; color-scheme: dark; }
+
   /* On touch devices, the bottom-fixed liquid-glass dock would otherwise cover
      the tail of the page content — reserve space for it (plus iOS home indicator). */
   @media (hover: none) and (pointer: coarse) {
