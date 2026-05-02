@@ -14,6 +14,7 @@ import { BlackjackPage } from './pages/games/blackjack';
 import { PoopPage } from './pages/games/poop';
 import { RoulettePage } from './pages/games/roulette';
 import { SlotsPage } from './pages/games/slots';
+import { ClaimPage } from './pages/games/claim';
 import { HomePage, type DashboardProfile } from './pages/home';
 import type { NavUser } from './components/navbar';
 import {
@@ -28,6 +29,8 @@ import {
   playRouletteWeb,
   playSlotsWeb,
   logPoopWeb,
+  claimWeb,
+  startWebsiteCachePrewarm,
   type LeaderboardKind,
 } from './bot-bridge';
 import {
@@ -103,6 +106,7 @@ STATIC_ASSETS['/static/svg/pile-of-poo-svgrepo-com.svg'] = { path: path.join(SVG
 STATIC_ASSETS['/static/svg/roulette-casino-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'roulette-casino-svgrepo-com.svg'), contentType: 'image/svg+xml' };
 STATIC_ASSETS['/static/svg/slots-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'slots-svgrepo-com.svg'), contentType: 'image/svg+xml' };
 STATIC_ASSETS['/static/svg/toilet-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'toilet-svgrepo-com.svg'), contentType: 'image/svg+xml' };
+STATIC_ASSETS['/static/game-dinonuggie.webp'] = { path: path.join(IMAGES_DIR, 'game-dinonuggie.webp'), contentType: 'image/webp' };
 
 async function serveStatic(entry: StaticEntry) {
   const file = Bun.file(entry.path);
@@ -127,7 +131,7 @@ function buildCsp(nonce: string): string {
     // block is migrated to a class or hash. Today this allowance gives any future
     // XSS a CSS-injection exfil channel (background-image: url(...) leaks).
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: https://cdn.discordapp.com",
+    "img-src 'self' data: https://cdn.discordapp.com https://media.discordapp.net https://media.tenor.com https://c.tenor.com https://drive.google.com https://media.forgecdn.net",
     "font-src 'self'",
     "connect-src 'self'",
     "object-src 'none'",
@@ -452,6 +456,10 @@ export function startWebsite(silverwolf: Silverwolf) {
     nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
   }).toString()));
 
+  app.get('/games/claim', (c) => c.html(ClaimPage({
+    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+  }).toString()));
+
   // ─── Game POST endpoints ──────────────────────────────────────────────────
   // All require an authenticated session and a matching CSRF token in the
   // JSON body. Return JSON.
@@ -578,6 +586,19 @@ export function startWebsite(silverwolf: Silverwolf) {
       return c.json(result);
     } catch (err) {
       logError('poop log failed:', err);
+      return c.json({ error: 'server' }, 500);
+    }
+  });
+
+  app.post('/games/claim/claim', async (c) => {
+    const body = await readGameBody(c);
+    const auth = authedGameRequest(c, body);
+    if (auth instanceof Response) return auth;
+    try {
+      const result = await claimWeb(silverwolf, auth.discordId);
+      return c.json({ ok: true, data: result });
+    } catch (err) {
+      logError('claim failed:', err);
       return c.json({ error: 'server' }, 500);
     }
   });

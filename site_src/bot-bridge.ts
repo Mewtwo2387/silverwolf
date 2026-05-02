@@ -18,6 +18,7 @@ import {
 } from '../commands/blackjack';
 import { playRoulette, type RouletteBetType, type RouletteResult } from '../commands/roulette';
 import { spinSlots, type SlotsResult } from '../commands/slots';
+import { processClaim, type ClaimResult } from '../utils/claim';
 
 export type LeaderboardKind = 'gambler' | 'murder' | 'nuggie' | 'poop';
 
@@ -567,6 +568,15 @@ export async function playSlotsWeb(
 
   const result = await spinSlots(silverwolf, userId, amount);
   return { ok: true, data: { ...result, amount } };
+}
+
+// ─── Claim ─────────────────────────────────────────────────────────────────
+
+export async function claimWeb(
+  silverwolf: Silverwolf,
+  userId: string,
+): Promise<ClaimResult> {
+  return processClaim(silverwolf, userId);
 }
 
 // ─── Poop log ──────────────────────────────────────────────────────────────
