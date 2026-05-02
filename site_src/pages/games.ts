@@ -50,6 +50,13 @@ const GAMES = [
     imageType: 'img' as const,
     imageSrc: '/static/svg/pile-of-poo-svgrepo-com.svg',
   },
+  {
+    name: 'claim',
+    href: '/games/claim',
+    info: 'claim yer dinonuggies',
+    imageType: 'img' as const,
+    imageSrc: '/static/game-dinonuggie.webp',
+  },
 ];
 
 const styles = raw(`
