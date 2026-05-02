@@ -33,9 +33,14 @@ export function sessionMiddleware(silverwolf: Silverwolf) {
           nav: { username: display.username, avatarURL: display.avatarURL, csrf: session.csrfToken },
         });
         // Sliding expiry: bump server-side TTL and re-issue the cookie so the
-        // browser's maxAge stays in sync with the DB expiry.
-        await silverwolf.db.webSession.touchSession(session.id, SESSION_TTL_MS);
-        setSessionCookie(c, session.id);
+        // browser's maxAge stays in sync with the DB expiry. A failure here
+        // must not invalidate the already-validated session for this request.
+        try {
+          await silverwolf.db.webSession.touchSession(session.id, SESSION_TTL_MS);
+          setSessionCookie(c, session.id);
+        } catch (refreshErr) {
+          logError('session sliding-expiry refresh failed:', refreshErr);
+        }
       }
     } catch (err) {
       logError('session middleware failed:', err);

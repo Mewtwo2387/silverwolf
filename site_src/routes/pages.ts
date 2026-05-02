@@ -32,9 +32,11 @@ export function registerPageRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
     const nonce = c.get('nonce');
     const lv999 = c.req.query('lv') === '999';
     try {
-      const stats = await silverwolf.db.user.getUser(user.discordId);
-      const pokemonCount = await silverwolf.db.pokemon.getUniquePokemonCount(user.discordId);
-      const marriageBenefits = await silverwolf.db.marriage.getMarriageBenefits(user.discordId);
+      const [stats, pokemonCount, marriageBenefits] = await Promise.all([
+        silverwolf.db.user.getUser(user.discordId),
+        silverwolf.db.pokemon.getUniquePokemonCount(user.discordId),
+        silverwolf.db.marriage.getMarriageBenefits(user.discordId),
+      ]);
 
       const profile: DashboardProfile = {
         discordId: user.discordId,

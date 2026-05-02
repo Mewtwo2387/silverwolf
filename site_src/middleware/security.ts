@@ -23,6 +23,9 @@ export function buildCsp(nonce: string): string {
 export async function securityHeadersMiddleware(c: Context<AppEnv>, next: Next) {
   if (c.req.path.startsWith('/static/')) {
     await next();
+    c.header('X-Content-Type-Options', 'nosniff');
+    c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+    c.header('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
     return;
   }
   const nonce = randomBytes(16).toString('base64');
