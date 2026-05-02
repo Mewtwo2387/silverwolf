@@ -1,0 +1,150 @@
+import type { Hono } from 'hono';
+import { logError } from '../../utils/log';
+import type { Silverwolf } from '../../classes/silverwolf';
+import { AboutPage } from '../pages/about';
+import { LeaderboardsPage } from '../pages/leaderboards';
+import { BirthdaysPage } from '../pages/birthdays';
+import { GamesPage } from '../pages/games';
+import { EightBallPage } from '../pages/games/8ball';
+import { FlipPage } from '../pages/games/flip';
+import { FortunePage } from '../pages/games/fortune';
+import { BlackjackPage } from '../pages/games/blackjack';
+import { PoopPage } from '../pages/games/poop';
+import { RoulettePage } from '../pages/games/roulette';
+import { SlotsPage } from '../pages/games/slots';
+import { ClaimPage } from '../pages/games/claim';
+import { HomePage, type DashboardProfile } from '../pages/home';
+import {
+  getLeaderboard,
+  getAllBirthdaysByMonth,
+  getEightBallResponses,
+  getFortunes,
+  type LeaderboardKind,
+} from '../bot-bridge';
+import { type AppEnv, navUser } from '../shared';
+
+const VALID_BOARDS: LeaderboardKind[] = ['gambler', 'murder', 'nuggie', 'poop'];
+
+export function registerPageRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
+  app.get('/me', async (c) => {
+    const user = c.get('user');
+    if (!user) return c.redirect('/');
+    const nonce = c.get('nonce');
+    const lv999 = c.req.query('lv') === '999';
+    try {
+      const [stats, pokemonCount, marriageBenefits] = await Promise.all([
+        silverwolf.db.user.getUser(user.discordId),
+        silverwolf.db.pokemon.getUniquePokemonCount(user.discordId),
+        silverwolf.db.marriage.getMarriageBenefits(user.discordId),
+      ]);
+
+      const profile: DashboardProfile = {
+        discordId: user.discordId,
+        username: user.nav.username,
+        avatarURL: user.nav.avatarURL,
+        stats,
+        pokemonCount,
+        marriageBenefits,
+      };
+      return c.html(HomePage({
+        profile, user: user.nav, nonce, lv999,
+      }).toString());
+    } catch (err) {
+      logError('website /me dashboard failed:', err);
+      return c.text('Failed to load dashboard', 500);
+    }
+  });
+
+  app.get('/', (c) => {
+    const user = c.get('user');
+    return c.redirect(user ? '/me' : '/about');
+  });
+
+  app.get('/about', (c) => c.html(AboutPage({ nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c) }).toString()));
+
+  app.get('/leaderboards', async (c) => {
+    const raw = c.req.query('board');
+    const selected = raw && (VALID_BOARDS as string[]).includes(raw) ? (raw as LeaderboardKind) : undefined;
+    const nonce = c.get('nonce');
+    const lv999 = c.req.query('lv') === '999';
+
+    const user = navUser(c);
+    if (!selected) {
+      return c.html(LeaderboardsPage({ nonce, lv999, user }).toString());
+    }
+
+    try {
+      const result = await getLeaderboard(silverwolf, selected);
+      return c.html(LeaderboardsPage({
+        selected, result, nonce, lv999, user,
+      }).toString());
+    } catch (err) {
+      logError('website /leaderboards failed:', err);
+      return c.html(
+        LeaderboardsPage({
+          selected, error: 'Failed to load leaderboard.', nonce, lv999, user,
+        }).toString(),
+        500,
+      );
+    }
+  });
+
+  app.get('/birthdays', async (c) => {
+    const nonce = c.get('nonce');
+    const lv999 = c.req.query('lv') === '999';
+    const user = navUser(c);
+    try {
+      const grouped = await getAllBirthdaysByMonth(silverwolf);
+      return c.html(BirthdaysPage({
+        grouped, nonce, lv999, user,
+      }).toString());
+    } catch (err) {
+      logError('website /birthdays failed:', err);
+      return c.html(BirthdaysPage({
+        grouped: {}, error: 'Failed to load birthdays.', nonce, lv999, user,
+      }).toString(), 500);
+    }
+  });
+
+  app.get('/games', (c) => c.html(GamesPage({
+    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+  }).toString()));
+
+  app.get('/games/8ball', (c) => {
+    const { normal, savage } = getEightBallResponses();
+    return c.html(EightBallPage({
+      normal, savage, nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+    }).toString());
+  });
+
+  app.get('/games/flip', (c) => c.html(FlipPage({
+    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+  }).toString()));
+
+  app.get('/games/fortune', (c) => {
+    const fortunes = getFortunes();
+    return c.html(FortunePage({
+      fortunes, nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+    }).toString());
+  });
+
+  app.get('/games/blackjack', (c) => c.html(BlackjackPage({
+    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+  }).toString()));
+
+  app.get('/games/poop', (c) => c.html(PoopPage({
+    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+  }).toString()));
+
+  app.get('/games/roulette', (c) => c.html(RoulettePage({
+    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+  }).toString()));
+
+  app.get('/games/slots', (c) => c.html(SlotsPage({
+    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+  }).toString()));
+
+  app.get('/games/claim', (c) => c.html(ClaimPage({
+    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+  }).toString()));
+}
