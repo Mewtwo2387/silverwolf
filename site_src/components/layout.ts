@@ -26,10 +26,6 @@ const faviconLink = (lv999: boolean) => {
 const pageHead = (nonce: string) => raw(`
 <link rel="stylesheet" href="/static/styles.css" />
 <style>
-  /* Smooth cross-fade between pages on browsers that support it (Safari iOS 18+, Chromium 126+).
-     Older browsers ignore the rule and navigate normally. */
-  @view-transition { navigation: auto; }
-
   /* Guard against any descendant (entrance-animation transforms, full-bleed
      images, etc.) accidentally pushing the page wider than the viewport.
      Applies everywhere — Chrome responsive mode doesn't always match the
