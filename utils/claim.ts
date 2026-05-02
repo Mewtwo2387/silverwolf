@@ -177,7 +177,9 @@ type ClaimResult =
     previousStreak: number;
   };
 
-async function processClaim(client: any, uid: string): Promise<ClaimResult> {
+const claimLocks = new Map<string, Promise<ClaimResult>>();
+
+async function processClaimInner(client: any, uid: string): Promise<ClaimResult> {
   const now = Date.now();
   const lastClaimedInt = await client.db.user.getUserAttr(uid, 'dinonuggiesLastClaimed');
   const lastClaimed = lastClaimedInt || null;
@@ -200,7 +202,7 @@ async function processClaim(client: any, uid: string): Promise<ClaimResult> {
   }
 
   if (diff > 2 * DAY_LENGTH) {
-    const amount = await getBaseAmount(client, uid, 0);
+    const amount = Math.ceil(await getBaseAmount(client, uid, 0));
     await client.db.user.addUserAttr(uid, 'dinonuggies', amount);
     await client.db.user.setUserAttr(uid, 'dinonuggiesLastClaimed', now);
     await client.db.user.setUserAttr(uid, 'dinonuggiesClaimStreak', 1);
@@ -227,6 +229,20 @@ async function processClaim(client: any, uid: string): Promise<ClaimResult> {
     previousDinonuggies: dinonuggies,
     previousStreak: streak,
   };
+}
+
+async function processClaim(client: any, uid: string): Promise<ClaimResult> {
+  const existing = claimLocks.get(uid);
+  if (existing) {
+    await existing.catch(() => {});
+  }
+  const run = processClaimInner(client, uid);
+  claimLocks.set(uid, run);
+  try {
+    return await run;
+  } finally {
+    if (claimLocks.get(uid) === run) claimLocks.delete(uid);
+  }
 }
 
 // eslint-disable-next-line max-len
