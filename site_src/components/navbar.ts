@@ -414,7 +414,7 @@ export function Navbar(active: NavActive | undefined, nonce: string, lv999?: boo
     return html`<a href="${href}" class="${cls}" aria-label="${label}"${isActive ? raw(' aria-current="page"') : ''}>${ICONS[key]}<span class="label">${label}</span></a>`;
   };
 
-  const homeHref = user ? '/' : '/about';
+  const homeHref = user ? '/me' : '/about';
   const pool = lv999 ? STICKER_IMAGES_LV999 : STICKER_IMAGES;
   const sticker = pool[Math.floor(Math.random() * pool.length)];
 
