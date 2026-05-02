@@ -88,6 +88,14 @@ interface BirthdayRow {
   birthdays: string | null | undefined;
 }
 
+export interface BirthdayUser {
+  id: string;
+  username: string;
+  avatarURL: string | null;
+  nextBirthday: string;
+  day: number;
+}
+
 // The Silverwolf class types `db` and `commands` as `any` / `Map<string, any>`; this helper localises the cast.
 function db(silverwolf: Silverwolf): { user: { getAllBirthdays(): Promise<BirthdayRow[]> } } {
   return (silverwolf as unknown as { db: { user: { getAllBirthdays(): Promise<BirthdayRow[]> } } }).db;
@@ -104,12 +112,24 @@ function getCommand<T>(silverwolf: Silverwolf, name: string): T {
 const userCache = new Map<string, { username: string; avatarURL: string | null; expiresAt: number }>();
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour
 
+const RESULT_TTL = 15 * 60 * 1000; // 15 minutes
+const leaderboardResultCache = new Map<string, { value: LeaderboardResult; expiresAt: number }>();
+let birthdayResultCache: { value: Record<string, BirthdayUser[]>; expiresAt: number } | null = null;
+
 setInterval(() => {
   const now = Date.now();
   for (const [id, cached] of userCache.entries()) {
     if (cached.expiresAt < now) {
       userCache.delete(id);
     }
+  }
+  for (const [key, cached] of leaderboardResultCache.entries()) {
+    if (cached.expiresAt < now) {
+      leaderboardResultCache.delete(key);
+    }
+  }
+  if (birthdayResultCache && birthdayResultCache.expiresAt < now) {
+    birthdayResultCache = null;
   }
 }, 30 * 60 * 1000).unref();
 
@@ -138,7 +158,7 @@ export async function resolveUser(silverwolf: Silverwolf, id: string) {
   }
 }
 
-export async function getLeaderboard(
+async function getLeaderboardUncached(
   silverwolf: Silverwolf,
   kind: LeaderboardKind,
   opts?: { gamblerType?: string; poopPeriod?: string },
@@ -208,14 +228,6 @@ export async function getLeaderboard(
   throw new Error(`Unknown leaderboard kind: ${kind as string}`);
 }
 
-export interface BirthdayUser {
-  id: string;
-  username: string;
-  avatarURL: string | null;
-  nextBirthday: string;
-  day: number;
-}
-
 function formatNextBirthday(birthdayISO: string): string {
   const d = new Date(birthdayISO);
   if (Number.isNaN(d.getTime())) return '';
@@ -250,7 +262,22 @@ function formatNextBirthday(birthdayISO: string): string {
   return `${dateStr} (in ${diffDays} days)`;
 }
 
-export async function getAllBirthdaysByMonth(
+export async function getLeaderboard(
+  silverwolf: Silverwolf,
+  kind: LeaderboardKind,
+  opts?: { gamblerType?: string; poopPeriod?: string },
+): Promise<LeaderboardResult> {
+  const key = `${kind}|${opts?.gamblerType ?? ''}|${opts?.poopPeriod ?? ''}`;
+  const now = Date.now();
+  const cached = leaderboardResultCache.get(key);
+  if (cached && cached.expiresAt > now) return cached.value;
+
+  const value = await getLeaderboardUncached(silverwolf, kind, opts);
+  leaderboardResultCache.set(key, { value, expiresAt: now + RESULT_TTL });
+  return value;
+}
+
+async function getAllBirthdaysByMonthUncached(
   silverwolf: Silverwolf,
 ): Promise<Record<string, BirthdayUser[]>> {
   const rows = await db(silverwolf).user.getAllBirthdays();
@@ -281,6 +308,70 @@ export async function getAllBirthdaysByMonth(
   for (const name of MONTHS) grouped[name].sort((a, b) => a.day - b.day);
 
   return grouped;
+}
+
+export async function getAllBirthdaysByMonth(
+  silverwolf: Silverwolf,
+): Promise<Record<string, BirthdayUser[]>> {
+  const now = Date.now();
+  if (birthdayResultCache && birthdayResultCache.expiresAt > now) {
+    return birthdayResultCache.value;
+  }
+  const value = await getAllBirthdaysByMonthUncached(silverwolf);
+  birthdayResultCache = { value, expiresAt: now + RESULT_TTL };
+  return value;
+}
+
+export function bustBirthdayCache() {
+  birthdayResultCache = null;
+}
+
+// Fire-and-forget warming of the website's leaderboard + birthday caches.
+// First cold load is slow because each row triggers a serialized Discord
+// users.fetch — pre-warming on startup absorbs that cost in the background
+// so user requests hit a populated cache. Refresh on an interval shorter
+// than RESULT_TTL keeps the cache continuously warm.
+const PREWARM_VARIANTS: { kind: LeaderboardKind; opts?: { gamblerType?: string; poopPeriod?: string } }[] = [
+  { kind: 'gambler' },
+  { kind: 'murder' },
+  { kind: 'nuggie' },
+  { kind: 'poop' },
+];
+
+async function prewarmOnce(silverwolf: Silverwolf): Promise<undefined> {
+  // Each task swallows its own error so Promise.all never rejects;
+  // we never want a single failed variant to abort the others.
+  await Promise.all([
+    ...PREWARM_VARIANTS.map(async (v) => {
+      try {
+        const value = await getLeaderboardUncached(silverwolf, v.kind, v.opts);
+        const key = `${v.kind}|${v.opts?.gamblerType ?? ''}|${v.opts?.poopPeriod ?? ''}`;
+        leaderboardResultCache.set(key, { value, expiresAt: Date.now() + RESULT_TTL });
+      } catch (err) {
+        logError(`prewarm leaderboard ${v.kind} failed:`, err);
+      }
+    }),
+    (async () => {
+      try {
+        const value = await getAllBirthdaysByMonthUncached(silverwolf);
+        birthdayResultCache = { value, expiresAt: Date.now() + RESULT_TTL };
+      } catch (err) {
+        logError('prewarm birthdays failed:', err);
+      }
+    })(),
+  ]);
+  return undefined;
+}
+
+let prewarmInterval: ReturnType<typeof setInterval> | null = null;
+
+export function startWebsiteCachePrewarm(silverwolf: Silverwolf): undefined {
+  if (prewarmInterval) return undefined;
+  prewarmOnce(silverwolf).catch(() => {});
+  // Refresh slightly under RESULT_TTL so a request never lands on an expired slot.
+  prewarmInterval = setInterval(() => { prewarmOnce(silverwolf).catch(() => {}); }, 10 * 60 * 1000);
+  prewarmInterval.unref?.();
+  return undefined;
 }
 
 export function getEightBallResponses() {

@@ -612,5 +612,15 @@ export function startWebsite(silverwolf: Silverwolf) {
   });
 
   log(`site_src listening on http://${server.hostname}:${server.port}`);
+
+  // Kick off cache pre-warm once the Discord client is ready so the first
+  // /leaderboards or /birthdays request hits a populated cache instead of
+  // paying for ~10–50 serialized users.fetch() round-trips.
+  if (silverwolf.isReady()) {
+    startWebsiteCachePrewarm(silverwolf);
+  } else {
+    silverwolf.once('clientReady', () => startWebsiteCachePrewarm(silverwolf));
+  }
+
   return server;
 }
