@@ -8,11 +8,13 @@ import { GamesPage } from '../pages/games';
 import { EightBallPage } from '../pages/games/8ball';
 import { FlipPage } from '../pages/games/flip';
 import { FortunePage } from '../pages/games/fortune';
+import { LovePage } from '../pages/games/love';
 import { BlackjackPage } from '../pages/games/blackjack';
 import { PoopPage } from '../pages/games/poop';
 import { RoulettePage } from '../pages/games/roulette';
 import { SlotsPage } from '../pages/games/slots';
 import { ClaimPage } from '../pages/games/claim';
+import { AwdangitPage } from '../pages/games/awdangit';
 import { HomePage, type DashboardProfile } from '../pages/home';
 import {
   getLeaderboard,
@@ -128,6 +130,10 @@ export function registerPageRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
     }).toString());
   });
 
+  app.get('/games/love', (c) => c.html(LovePage({
+    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+  }).toString()));
+
   app.get('/games/blackjack', (c) => c.html(BlackjackPage({
     nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
   }).toString()));
@@ -145,6 +151,10 @@ export function registerPageRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
   }).toString()));
 
   app.get('/games/claim', (c) => c.html(ClaimPage({
+    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+  }).toString()));
+
+  app.get('/games/awdangit', (c) => c.html(AwdangitPage({
     nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
   }).toString()));
 }

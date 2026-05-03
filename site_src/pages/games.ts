@@ -23,6 +23,13 @@ const GAMES = [
     imageSrc: '/static/svg/fortune-cookie-svgrepo-com.svg',
   },
   {
+    name: 'love',
+    href: '/games/love',
+    info: 'Calculate your compatibility or incompatibility with someone.',
+    imageType: 'img' as const,
+    imageSrc: '/static/svg/love-heart-svgrepo-com.svg',
+  },
+  {
     name: 'blackjack',
     href: '/games/blackjack',
     info: 'Bet your mystic credits on a classic game of 21 against Silverwolf.',
@@ -56,6 +63,13 @@ const GAMES = [
     info: 'claim yer dinonuggies',
     imageType: 'img' as const,
     imageSrc: '/static/game-dinonuggie.webp',
+  },
+  {
+    name: 'awdangit',
+    href: '/games/awdangit',
+    info: '99% chance to earn $1M, 1% chance to become a girl.',
+    imageType: 'img' as const,
+    imageSrc: '/static/game-awdangit.jpeg',
   },
 ];
 

@@ -50,7 +50,10 @@ STATIC_ASSETS['/static/svg/pile-of-poo-svgrepo-com.svg'] = { path: path.join(SVG
 STATIC_ASSETS['/static/svg/roulette-casino-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'roulette-casino-svgrepo-com.svg'), contentType: 'image/svg+xml' };
 STATIC_ASSETS['/static/svg/slots-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'slots-svgrepo-com.svg'), contentType: 'image/svg+xml' };
 STATIC_ASSETS['/static/svg/toilet-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'toilet-svgrepo-com.svg'), contentType: 'image/svg+xml' };
+STATIC_ASSETS['/static/svg/love-heart-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'love-heart-svgrepo-com.svg'), contentType: 'image/svg+xml' };
+STATIC_ASSETS['/static/svg/coin-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'coin-svgrepo-com.svg'), contentType: 'image/svg+xml' };
 STATIC_ASSETS['/static/game-dinonuggie.webp'] = { path: path.join(IMAGES_DIR, 'game-dinonuggie.webp'), contentType: 'image/webp' };
+STATIC_ASSETS['/static/game-awdangit.jpeg'] = { path: path.join(IMAGES_DIR, 'game-awdangit.jpeg'), contentType: 'image/jpeg' };
 
 async function serveStatic(entry: StaticEntry) {
   const file = Bun.file(entry.path);
