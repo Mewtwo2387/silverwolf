@@ -83,6 +83,17 @@ const styles = raw(`
     font-weight: 600;
     color: var(--accent-light);
   }
+  .me-card .upgrade-info {
+    margin-top: 0.5rem;
+    color: var(--accent-light);
+    font-size: 0.9rem;
+    line-height: 1.7;
+    font-weight: 600;
+  }
+  .me-card .upgrade-info strong {
+    color: var(--fog-100);
+    font-weight: 600;
+  }
   
   details {
     background: var(--ink-800);
@@ -222,14 +233,14 @@ export function HomePage(opts: {
           <div class="me-card"><div class="label">Max Upgrade Level</div><div class="value">${maxLevel}</div></div>
         </div>
         <div class="me-grid">
-          <div class="me-card"><div class="label">Multiplier Amount</div><div style="margin-top: 0.5rem">${renderUpgradeInfo(getMultiplierAmountInfo(stats.multiplierAmountLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
-          <div class="me-card"><div class="label">Multiplier Rarity</div><div style="margin-top: 0.5rem">${renderUpgradeInfo(getMultiplierChanceInfo(stats.multiplierRarityLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
-          <div class="me-card"><div class="label">Beki Cooldown</div><div style="margin-top: 0.5rem">${renderUpgradeInfo(getBekiCooldownInfo(stats.bekiLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
-          <div class="me-card"><div class="label">Nuggie Flat Multiplier</div><div style="margin-top: 0.5rem">${renderUpgradeInfo(getNuggieFlatMultiplierInfo(stats.nuggieFlatMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
-          <div class="me-card"><div class="label">Nuggie Streak Multiplier</div><div style="margin-top: 0.5rem">${renderUpgradeInfo(getNuggieStreakMultiplierInfo(stats.nuggieStreakMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
-          <div class="me-card"><div class="label">Nuggie Credits Multiplier</div><div style="margin-top: 0.5rem">${renderUpgradeInfo(getNuggieCreditsMultiplierInfo(stats.nuggieCreditsMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
-          <div class="me-card"><div class="label">Nuggie Pokemon Multiplier</div><div style="margin-top: 0.5rem">${renderUpgradeInfo(getNuggiePokeMultiplierInfo(stats.nuggiePokemonMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
-          <div class="me-card"><div class="label">Nuggie Nuggie Multiplier</div><div style="margin-top: 0.5rem">${renderUpgradeInfo(getNuggieNuggieMultiplierInfo(stats.nuggieNuggieMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
+          <div class="me-card"><div class="label">Multiplier Amount</div><div class="upgrade-info">${renderUpgradeInfo(getMultiplierAmountInfo(stats.multiplierAmountLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
+          <div class="me-card"><div class="label">Multiplier Rarity</div><div class="upgrade-info">${renderUpgradeInfo(getMultiplierChanceInfo(stats.multiplierRarityLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
+          <div class="me-card"><div class="label">Beki Cooldown</div><div class="upgrade-info">${renderUpgradeInfo(getBekiCooldownInfo(stats.bekiLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
+          <div class="me-card"><div class="label">Nuggie Flat Multiplier</div><div class="upgrade-info">${renderUpgradeInfo(getNuggieFlatMultiplierInfo(stats.nuggieFlatMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
+          <div class="me-card"><div class="label">Nuggie Streak Multiplier</div><div class="upgrade-info">${renderUpgradeInfo(getNuggieStreakMultiplierInfo(stats.nuggieStreakMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
+          <div class="me-card"><div class="label">Nuggie Credits Multiplier</div><div class="upgrade-info">${renderUpgradeInfo(getNuggieCreditsMultiplierInfo(stats.nuggieCreditsMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
+          <div class="me-card"><div class="label">Nuggie Pokemon Multiplier</div><div class="upgrade-info">${renderUpgradeInfo(getNuggiePokeMultiplierInfo(stats.nuggiePokemonMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
+          <div class="me-card"><div class="label">Nuggie Nuggie Multiplier</div><div class="upgrade-info">${renderUpgradeInfo(getNuggieNuggieMultiplierInfo(stats.nuggieNuggieMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
         </div>
       </div>
     </details>

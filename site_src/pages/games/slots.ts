@@ -76,17 +76,25 @@ export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
 
   .slots-form {
     display: flex;
+    flex-direction: column;
     gap: 0.5rem;
     width: 100%;
     max-width: 420px;
   }
+  .slots-form label {
+    color: var(--fog-100);
+    font-weight: 600;
+  }
   .slots-form input {
-    flex: 1;
+    width: 100%;
     background: var(--ink-800);
     border: 1px solid var(--ink-600);
     border-radius: 4px;
     padding: 0.6rem 0.9rem;
     color: var(--fog-100);
+  }
+  .slots-form .roll-btn {
+    width: 100%;
   }
   .roll-btn {
     background: var(--accent);
@@ -335,7 +343,7 @@ export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
     ? html`<div class="login-cta">Log in with <a href="/auth/discord/login">Discord</a> to play.</div>`
     : html`
             <form class="slots-form" onsubmit="return false">
-              <label for="amount-input" class="sr-only">Bet amount</label>
+              <label for="amount-input">Bet amount</label>
               <input id="amount-input" type="text" placeholder="amount (e.g. 1000 or 1k)" autocomplete="off" aria-label="Bet amount" />
               <button id="roll-btn" type="button" class="roll-btn">Roll</button>
             </form>
