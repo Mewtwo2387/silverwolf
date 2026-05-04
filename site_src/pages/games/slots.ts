@@ -82,8 +82,8 @@ export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
     max-width: 420px;
   }
   .slots-form label {
-    color: var(--fog-100);
-    font-weight: 600;
+    color: var(--fog-300);
+    font-size: 0.85rem;
   }
   .slots-form input {
     width: 100%;
@@ -92,6 +92,11 @@ export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
     border-radius: 4px;
     padding: 0.6rem 0.9rem;
     color: var(--fog-100);
+    font: inherit;
+  }
+  .slots-form input:focus {
+    outline: none;
+    border-color: var(--accent);
   }
   .slots-form .roll-btn {
     width: 100%;

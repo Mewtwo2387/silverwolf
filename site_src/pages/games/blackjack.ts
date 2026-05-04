@@ -154,8 +154,8 @@ export function BlackjackPage(opts: { nonce: string; lv999?: boolean; user?: Nav
     margin: 0 auto;
   }
   .bet-row label {
-    color: var(--fog-100);
-    font-weight: 600;
+    color: var(--fog-300);
+    font-size: 0.85rem;
   }
   .bet-row input {
     width: 100%;
@@ -164,6 +164,11 @@ export function BlackjackPage(opts: { nonce: string; lv999?: boolean; user?: Nav
     border-radius: 4px;
     padding: 0.6rem 0.9rem;
     color: var(--fog-100);
+    font: inherit;
+  }
+  .bet-row input:focus {
+    outline: none;
+    border-color: var(--accent);
   }
   .bet-row .bj-btn {
     width: 100%;
