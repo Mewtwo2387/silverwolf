@@ -77,19 +77,24 @@ const styles = raw(`
 <style>
   .games-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    /* minmax(0, 1fr) — the 0 minimum lets columns shrink past their content's
+       intrinsic min-width, which is what stops long words ("Silverwolf",
+       fixed-width children like .mini-coin-wrap) from blowing out the row
+       on narrower tablet/smart-display widths. */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1.5rem;
   }
   @media (max-width: 700px) {
-    .games-grid { grid-template-columns: 1fr; }
+    .games-grid { grid-template-columns: minmax(0, 1fr); }
   }
   @media (min-width: 701px) and (max-width: 1000px) {
-    .games-grid { grid-template-columns: repeat(2, 1fr); }
+    .games-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 
   .game-card {
     display: flex;
     flex-direction: column;
+    min-width: 0;
     background: var(--ink-800);
     border: 1px solid var(--ink-600);
     border-radius: 0.75rem;

@@ -96,15 +96,17 @@ const navbarExtras = (nonce: string) => raw(`
   .nav-auth-link { color: var(--fog-300); text-decoration: none; font-size: 0.85rem; padding: 0.3rem 0.6rem; border-radius: 0.4rem; border: 1px solid transparent; transition: color 0.2s, border-color 0.2s; }
   .nav-auth-link:hover { color: var(--fog-100); border-color: var(--ink-600); }
   /* Hide desktop auth chip on touch devices — auth lives in /home there */
-  @media (hover: none) and (pointer: coarse) {
+  @media (max-width: 1024px), (hover: none) and (pointer: coarse) {
     #nav-auth-desktop { display: none; }
   }
 
-  /* ── Touch-device dock ──────────────────────────────────────────────────
-     Real touch devices (iPhone/iPad Safari) get a floating glass tab bar
-     pinned to the bottom. Desktop browsers in responsive-mode preview
-     keep pointer:fine, so they fall through to the desktop layout. */
-  @media (hover: none) and (pointer: coarse) {
+  /* ── Touch / narrow-viewport dock ───────────────────────────────────────
+     Floating glass tab bar pinned to the bottom. Triggered by either a
+     narrow viewport (covers tablets, foldables, phones in DevTools where
+     hover/pointer emulation is unreliable) OR a true touch device (covers
+     touchscreens that happen to be wider, e.g. Nest Hub Max, iPad Pro
+     12.9 in landscape). */
+  @media (max-width: 1024px), (hover: none) and (pointer: coarse) {
     #nav-links { display: none; }
 
     /* Reserve scroll space below the page content so the floating dock
@@ -116,7 +118,7 @@ const navbarExtras = (nonce: string) => raw(`
     #nav-mobile {
       display: flex;
       position: fixed;
-      bottom: calc(0.75rem + env(safe-area-inset-bottom));
+      bottom: calc(0.9rem + env(safe-area-inset-bottom));
       left: 50%;
       transform: translateX(-50%);
       width: min(92vw, 26rem);
@@ -250,8 +252,14 @@ const navbarExtras = (nonce: string) => raw(`
   // ── Mobile dock: sliding pill + drag-to-focus ─────────────────────────────
   const dock = document.getElementById('nav-mobile');
   const pill = dock && dock.querySelector('.dock-pill');
-  const isTouch = window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-  if (dock && pill && isTouch) {
+  // Mirror the CSS that decides when the dock is visible. Evaluate the two
+  // queries separately — older WebKit rejects comma-joined media-query lists
+  // passed to matchMedia.
+  const dockVisible = !!window.matchMedia && (
+    window.matchMedia('(max-width: 1024px)').matches
+    || window.matchMedia('(hover: none) and (pointer: coarse)').matches
+  );
+  if (dock && pill && dockVisible) {
     const tiles = Array.from(dock.querySelectorAll('.nav-link'));
     const NAV_DELAY = 320;
     const SPRING = '0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';

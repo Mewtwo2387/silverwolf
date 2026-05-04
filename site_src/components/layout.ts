@@ -41,9 +41,10 @@ const pageHead = (nonce: string) => raw(`
   html[data-theme="flashbang"] { background-color: #eef3ff; color-scheme: light; }
   html[data-theme="blackout"] { background-color: #020308; color-scheme: dark; }
 
-  /* On touch devices, the bottom-fixed liquid-glass dock would otherwise cover
-     the tail of the page content — reserve space for it (plus iOS home indicator). */
-  @media (hover: none) and (pointer: coarse) {
+  /* When the bottom-fixed liquid-glass dock is visible, it would otherwise
+     cover the tail of the page content — reserve space for it (plus iOS home
+     indicator). Match navbar.ts: width-based OR touch query. */
+  @media (max-width: 1024px), (hover: none) and (pointer: coarse) {
     main { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
   }
 </style>
