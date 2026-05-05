@@ -1,14 +1,28 @@
+import path from 'path';
 import { Command } from './classes/Command';
 import { logError } from '../utils/log';
-import _avatarData from '../data/hsrAvartars.json';
-import _characterData from '../data/hsrCharacters.json';
-import _namesData from '../data/hsr.json';
-import _lightconeData from '../data/hsrLC.json';
 
-const avatarData: any = _avatarData;
-const characterData: any = _characterData;
-const namesData: any = _namesData;
-const lightconeData: any = _lightconeData;
+let dataCache: {
+  avatarData: any;
+  characterData: any;
+  namesData: any;
+  lightconeData: any;
+} | null = null;
+
+async function loadHsrData() {
+  if (!dataCache) {
+    const [avatarData, characterData, namesData, lightconeData] = await Promise.all([
+      Bun.file(path.join(__dirname, '../data/hsrAvartars.json')).json(),
+      Bun.file(path.join(__dirname, '../data/hsrCharacters.json')).json(),
+      Bun.file(path.join(__dirname, '../data/hsr.json')).json(),
+      Bun.file(path.join(__dirname, '../data/hsrLC.json')).json(),
+    ]);
+    dataCache = {
+      avatarData, characterData, namesData, lightconeData,
+    };
+  }
+  return dataCache!;
+}
 
 class HsrProfile extends Command {
   constructor(client: any) {
@@ -28,6 +42,10 @@ class HsrProfile extends Command {
     const headers = {
       'User-Agent': 'Silverwolf-bot/1.0 (Example@gmail.com)',
     };
+
+    const {
+      avatarData, characterData, namesData, lightconeData,
+    } = await loadHsrData();
 
     try {
       const response = await fetch(url, { headers });

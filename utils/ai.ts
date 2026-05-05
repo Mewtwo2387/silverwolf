@@ -1,14 +1,12 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { OpenAI } from 'openai';
 import mime from 'mime';
-import { getEncoding } from 'js-tiktoken';
 import { logError } from './log';
 import { recordUsage } from './tokenCalibration';
 // Note: Bun automatically reads .env files
 
 // Initialize AI providers
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_TOKEN!);
-const enc = getEncoding('cl100k_base');
 
 const openrouter = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
@@ -130,11 +128,7 @@ async function generateContent({
     if (actualPromptTokens && actualPromptTokens > 0) {
       let estimated = 0;
       for (const m of requestMessages) {
-        try {
-          estimated += enc.encode(m.content).length + 4;
-        } catch {
-          estimated += Math.ceil(m.content.length / 3) + 4;
-        }
+        estimated += Math.ceil(m.content.length / 4) + 4;
       }
       recordUsage(model, estimated, actualPromptTokens);
     }

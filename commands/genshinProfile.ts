@@ -1,10 +1,19 @@
+import path from 'path';
 import { Command } from './classes/Command';
 import { logError } from '../utils/log';
-import _profilePictures from '../data/genshinPfps.json';
-import _namecards from '../data/genshinNamecards.json';
 
-const profilePictures: any = _profilePictures;
-const namecards: any = _namecards;
+let dataCache: { profilePictures: any; namecards: any } | null = null;
+
+async function loadGenshinData() {
+  if (!dataCache) {
+    const [profilePictures, namecards] = await Promise.all([
+      Bun.file(path.join(__dirname, '../data/genshinPfps.json')).json(),
+      Bun.file(path.join(__dirname, '../data/genshinNamecards.json')).json(),
+    ]);
+    dataCache = { profilePictures, namecards };
+  }
+  return dataCache!;
+}
 
 class GenshinProfile extends Command {
   constructor(client: any) {
@@ -25,6 +34,8 @@ class GenshinProfile extends Command {
       'User-Agent': 'Silverwolf-bot/1.0 (Example@gmail.com)',
     };
 
+    const { profilePictures, namecards } = await loadGenshinData();
+
     try {
       const response = await fetch(url, { headers });
       if (!response.ok) {
@@ -44,15 +55,15 @@ class GenshinProfile extends Command {
       const profilePictureId = playerInfo.profilePicture?.id;
       let profilePictureUrl = null;
       if (profilePictureId && profilePictures[profilePictureId]) {
-        const { iconPath } = profilePictures[profilePictureId];
-        profilePictureUrl = `https://enka.network/ui/${iconPath}.png`;
+        const { IconPath } = profilePictures[profilePictureId];
+        profilePictureUrl = `https://enka.network${IconPath}`;
       }
 
       const { nameCardId } = playerInfo;
       let namecardUrl = null;
       if (nameCardId && namecards[nameCardId]) {
-        const namecardPath = namecards[nameCardId].icon;
-        namecardUrl = `https://enka.network/ui/${namecardPath}.png`;
+        const namecardPath = namecards[nameCardId].Icon;
+        namecardUrl = `https://enka.network${namecardPath}`;
       }
 
       const embed = {

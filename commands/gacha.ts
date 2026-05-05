@@ -1,11 +1,27 @@
 /* eslint-disable no-unreachable */
+import path from 'path';
 import {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
 } from 'discord.js';
 import { Command } from './classes/Command';
-import charactersRaw from '../data/hsrCharacters.json';
-import lightconesRaw from '../data/hsrLC.json';
-import hsrNames from '../data/hsr.json';
+
+let pools: { namesData: any; characterPool: any[]; lightconePool: any[] } | null = null;
+
+async function getPools() {
+  if (!pools) {
+    const [charactersRaw, lightconesRaw, hsrNames] = await Promise.all([
+      Bun.file(path.join(__dirname, '../data/hsrCharacters.json')).json(),
+      Bun.file(path.join(__dirname, '../data/hsrLC.json')).json(),
+      Bun.file(path.join(__dirname, '../data/hsr.json')).json(),
+    ]);
+    pools = {
+      namesData: hsrNames,
+      characterPool: Object.values(charactersRaw),
+      lightconePool: Object.values(lightconesRaw),
+    };
+  }
+  return pools!;
+}
 
 class Gacha extends Command {
   namesData: any;
@@ -26,9 +42,9 @@ class Gacha extends Command {
       },
     ], { blame: 'xei' });
 
-    this.namesData = hsrNames;
-    this.characterPool = Object.values(charactersRaw);
-    this.lightconePool = Object.values(lightconesRaw);
+    this.namesData = null;
+    this.characterPool = [];
+    this.lightconePool = [];
   }
 
   getRandomItem(pool: any[]) {
@@ -49,7 +65,7 @@ class Gacha extends Command {
 
     return {
       name,
-      imageUrl: imagePath ? `https://enka.network/ui/hsr/${imagePath}` : null,
+      imageUrl: imagePath ? `https://enka.network${imagePath}` : null,
       rarity,
     };
   }
@@ -57,6 +73,11 @@ class Gacha extends Command {
   async run(interaction: any): Promise<void> {
     await interaction.editReply({ content: 'gacha is not ready yet', ephemeral: true });
     return;
+
+    const loaded = await getPools();
+    this.namesData = loaded.namesData;
+    this.characterPool = loaded.characterPool;
+    this.lightconePool = loaded.lightconePool;
 
     const amount = interaction.options.getInteger('amount');
     const userId = interaction.user.id;
