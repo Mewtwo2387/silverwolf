@@ -2,17 +2,23 @@ import path from 'path';
 import { Command } from './classes/Command';
 import { logError } from '../utils/log';
 
-let dataCache: { profilePictures: any; namecards: any } | null = null;
+type GenshinData = { profilePictures: any; namecards: any };
+let dataCache: GenshinData | null = null;
+let dataCachePromise: Promise<GenshinData> | null = null;
 
 async function loadGenshinData() {
-  if (!dataCache) {
-    const [profilePictures, namecards] = await Promise.all([
+  if (dataCache) return dataCache;
+  if (!dataCachePromise) {
+    dataCachePromise = Promise.all([
       Bun.file(path.join(__dirname, '../data/genshinPfps.json')).json(),
       Bun.file(path.join(__dirname, '../data/genshinNamecards.json')).json(),
-    ]);
-    dataCache = { profilePictures, namecards };
+    ]).then(([profilePictures, namecards]) => {
+      dataCache = { profilePictures, namecards };
+      dataCachePromise = null;
+      return dataCache;
+    });
   }
-  return dataCache!;
+  return dataCachePromise;
 }
 
 class GenshinProfile extends Command {

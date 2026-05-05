@@ -2,26 +2,32 @@ import path from 'path';
 import { Command } from './classes/Command';
 import { logError } from '../utils/log';
 
-let dataCache: {
+type HsrData = {
   avatarData: any;
   characterData: any;
   namesData: any;
   lightconeData: any;
-} | null = null;
+};
+let dataCache: HsrData | null = null;
+let dataCachePromise: Promise<HsrData> | null = null;
 
 async function loadHsrData() {
-  if (!dataCache) {
-    const [avatarData, characterData, namesData, lightconeData] = await Promise.all([
+  if (dataCache) return dataCache;
+  if (!dataCachePromise) {
+    dataCachePromise = Promise.all([
       Bun.file(path.join(__dirname, '../data/hsrAvartars.json')).json(),
       Bun.file(path.join(__dirname, '../data/hsrCharacters.json')).json(),
       Bun.file(path.join(__dirname, '../data/hsr.json')).json(),
       Bun.file(path.join(__dirname, '../data/hsrLC.json')).json(),
-    ]);
-    dataCache = {
-      avatarData, characterData, namesData, lightconeData,
-    };
+    ]).then(([avatarData, characterData, namesData, lightconeData]) => {
+      dataCache = {
+        avatarData, characterData, namesData, lightconeData,
+      };
+      dataCachePromise = null;
+      return dataCache;
+    });
   }
-  return dataCache!;
+  return dataCachePromise;
 }
 
 class HsrProfile extends Command {

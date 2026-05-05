@@ -4,22 +4,28 @@ import {
 } from 'discord.js';
 import { Command } from './classes/Command';
 
-let pools: { namesData: any; characterPool: any[]; lightconePool: any[] } | null = null;
+type Pools = { namesData: any; characterPool: any[]; lightconePool: any[] };
+let pools: Pools | null = null;
+let poolsPromise: Promise<Pools> | null = null;
 
 async function getPools() {
-  if (!pools) {
-    const [charactersRaw, lightconesRaw, hsrNames] = await Promise.all([
+  if (pools) return pools;
+  if (!poolsPromise) {
+    poolsPromise = Promise.all([
       Bun.file(path.join(__dirname, '../data/hsrCharacters.json')).json(),
       Bun.file(path.join(__dirname, '../data/hsrLC.json')).json(),
       Bun.file(path.join(__dirname, '../data/hsr.json')).json(),
-    ]);
-    pools = {
-      namesData: hsrNames,
-      characterPool: Object.values(charactersRaw),
-      lightconePool: Object.values(lightconesRaw),
-    };
+    ]).then(([charactersRaw, lightconesRaw, hsrNames]) => {
+      pools = {
+        namesData: hsrNames,
+        characterPool: Object.values(charactersRaw),
+        lightconePool: Object.values(lightconesRaw),
+      };
+      poolsPromise = null;
+      return pools;
+    });
   }
-  return pools!;
+  return poolsPromise;
 }
 
 class Gacha extends Command {
@@ -55,7 +61,7 @@ class Gacha extends Command {
   }
 
   getItemDetails(item: any) {
-    if (!item) return { name: 'Unknown', imagePath: null, rarity: 'Unknown' };
+    if (!item) return { name: 'Unknown', imageUrl: null, rarity: 'Unknown' };
 
     const nameHash = item.AvatarName?.Hash?.toString() || item.EquipmentName?.Hash?.toString();
     const name = this.namesData.en[nameHash] || 'Unknown';
