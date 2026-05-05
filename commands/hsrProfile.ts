@@ -1,14 +1,34 @@
+import path from 'path';
 import { Command } from './classes/Command';
 import { logError } from '../utils/log';
-import _avatarData from '../data/hsrAvartars.json';
-import _characterData from '../data/hsrCharacters.json';
-import _namesData from '../data/hsr.json';
-import _lightconeData from '../data/hsrLC.json';
 
-const avatarData: any = _avatarData;
-const characterData: any = _characterData;
-const namesData: any = _namesData;
-const lightconeData: any = _lightconeData;
+type HsrData = {
+  avatarData: any;
+  characterData: any;
+  namesData: any;
+  lightconeData: any;
+};
+let dataCache: HsrData | null = null;
+let dataCachePromise: Promise<HsrData> | null = null;
+
+async function loadHsrData() {
+  if (dataCache) return dataCache;
+  if (!dataCachePromise) {
+    dataCachePromise = Promise.all([
+      Bun.file(path.join(__dirname, '../data/hsrAvartars.json')).json(),
+      Bun.file(path.join(__dirname, '../data/hsrCharacters.json')).json(),
+      Bun.file(path.join(__dirname, '../data/hsr.json')).json(),
+      Bun.file(path.join(__dirname, '../data/hsrLC.json')).json(),
+    ]).then(([avatarData, characterData, namesData, lightconeData]) => {
+      dataCache = {
+        avatarData, characterData, namesData, lightconeData,
+      };
+      dataCachePromise = null;
+      return dataCache;
+    });
+  }
+  return dataCachePromise;
+}
 
 class HsrProfile extends Command {
   constructor(client: any) {
@@ -30,6 +50,9 @@ class HsrProfile extends Command {
     };
 
     try {
+      const {
+        avatarData, characterData, namesData, lightconeData,
+      } = await loadHsrData();
       const response = await fetch(url, { headers });
       if (!response.ok) {
         logError(`HTTP Error Response: Status ${response.status} ${response.statusText}`);

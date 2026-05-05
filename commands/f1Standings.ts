@@ -1,68 +1,69 @@
 import * as Discord from 'discord.js';
+import * as cheerio from 'cheerio';
 import { logError } from '../utils/log';
 import { Command } from './classes/Command';
 
+function safeParseInt(text: string): number {
+  const result = parseInt(text, 10);
+  return Number.isNaN(result) ? 0 : result;
+}
+
 function extractStandings(html: string, type: string): any[] {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
-  const { JSDOM } = require('jsdom') as { JSDOM: any };
-  const dom = new JSDOM(html);
-  const rows: any[] = dom.window.document.getElementById('results-table')
-    ?.querySelector('tbody')
-    ?.querySelectorAll('tr') || [];
-  return Array.from(rows)
-    .map((row: any) => {
-      const columns = row.querySelectorAll('td');
-      if (type === 'drivers' && columns.length === 5) {
-        const driverLinkEl = columns[1].querySelector('a');
-        let driverName = '';
+  const $ = cheerio.load(html);
+  const rows = $('#results-table tbody tr').toArray();
 
-        if (driverLinkEl) {
-          const nameContainerSpanCandidates = [
-            driverLinkEl.querySelectorAll('span')[1],
-            driverLinkEl.querySelectorAll('span')[0],
-          ];
+  return rows.map((rowEl) => {
+    const row = $(rowEl);
+    const columns = row.find('td');
 
-          let nameContainerSpan: Element | null = null;
-          nameContainerSpanCandidates.forEach((nameContainerSpanCandidate) => {
-            if (nameContainerSpanCandidate && nameContainerSpanCandidate.querySelector('.max-lg\\:hidden')) {
-              nameContainerSpan = nameContainerSpanCandidate;
-            }
-          });
+    if (type === 'drivers' && columns.length === 5) {
+      const driverLinkEl = $(columns[1]).find('a');
+      let driverName = '';
 
-          if (nameContainerSpan) {
-            const firstNameEl = (nameContainerSpan as Element).querySelector('.max-lg\\:hidden');
-            const lastNameEl = (nameContainerSpan as Element).querySelector('.max-md\\:hidden');
+      if (driverLinkEl.length) {
+        const nameContainerSpanCandidates = [
+          driverLinkEl.find('span').eq(1),
+          driverLinkEl.find('span').eq(0),
+        ];
 
-            const firstName = firstNameEl ? firstNameEl.textContent!.trim() : '';
-            const lastName = lastNameEl ? lastNameEl.textContent!.trim() : '';
-            driverName = `${firstName} ${lastName}`.trim();
-          } else {
-            driverName = driverLinkEl.textContent!.trim().replace(/\s+/g, ' ');
+        let nameContainerSpan: any = null;
+        for (const candidate of nameContainerSpanCandidates) {
+          if (candidate.length && candidate.find('.max-lg\\:hidden').length) {
+            nameContainerSpan = candidate;
+            break;
           }
-        } else {
-          driverName = columns[1].textContent!.trim().replace(/\s+/g, ' ');
         }
 
-        return {
-          position: parseInt(columns[0].textContent!.trim(), 10),
-          driver: driverName,
-          nationality: columns[2].textContent!.trim(),
-          car: columns[3].textContent!.trim(),
-          points: parseInt(columns[4].textContent!.trim(), 10),
-        };
+        if (nameContainerSpan) {
+          const firstName = nameContainerSpan.find('.max-lg\\:hidden').text().trim();
+          const lastName = nameContainerSpan.find('.max-md\\:hidden').text().trim();
+          driverName = `${firstName} ${lastName}`.trim();
+        } else {
+          driverName = driverLinkEl.text().trim().replace(/\s+/g, ' ');
+        }
+      } else {
+        driverName = $(columns[1]).text().trim().replace(/\s+/g, ' ');
       }
 
-      if (type === 'teams' && columns.length === 3) {
-        return {
-          position: parseInt(columns[0].textContent!.trim(), 10),
-          team: columns[1].textContent!.trim(),
-          points: parseInt(columns[2].textContent!.trim(), 10),
-        };
-      }
+      return {
+        position: safeParseInt($(columns[0]).text().trim()),
+        driver: driverName,
+        nationality: $(columns[2]).text().trim(),
+        car: $(columns[3]).text().trim(),
+        points: safeParseInt($(columns[4]).text().trim()),
+      };
+    }
 
-      return null;
-    })
-    .filter(Boolean);
+    if (type === 'teams' && columns.length === 3) {
+      return {
+        position: safeParseInt($(columns[0]).text().trim()),
+        team: $(columns[1]).text().trim(),
+        points: safeParseInt($(columns[2]).text().trim()),
+      };
+    }
+
+    return null;
+  }).filter(Boolean);
 }
 
 function buildEmbed(data: any[], type: string, year: number): Discord.EmbedBuilder {
@@ -114,10 +115,11 @@ class F1Standings extends Command {
     const minYear = type === 'drivers' ? 1950 : 1958;
 
     if (year > currentYear || year < minYear) {
-      interaction.editReply({
+      await interaction.editReply({
         content: `Invalid year for ${type} standings. Must be between ${minYear} and ${currentYear}.`,
         ephemeral: true,
       });
+      return;
     }
 
     const endpoint = type === 'drivers' ? 'drivers' : 'team';
