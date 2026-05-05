@@ -1,16 +1,11 @@
-import { encode as encodeCl100k } from 'gpt-tokenizer/encoding/cl100k_base';
 import { getGeminiAI } from './ai';
 import { getCalibrationMultiplier } from './tokenCalibration';
 
-// Real BPE tokenizer (GPT-4 cl100k_base). Not vocab-exact for nemotron/grok,
-// but within ~10% on typical text — orders of magnitude better than char/4.
-// Per-model drift is corrected by tokenCalibration against usage.prompt_tokens.
+// Cheap char-based estimate. ~10–20% off on English, worse on code/CJK, but
+// per-model drift is corrected by tokenCalibration against usage.prompt_tokens.
+// Trade vs. a real BPE tokenizer: tens of MB of resident heap saved.
 function countTokensOpenRouter(text: string): number {
-  try {
-    return encodeCl100k(text).length;
-  } catch {
-    return Math.ceil(text.length / 3);
-  }
+  return Math.ceil(text.length / 4);
 }
 
 function countTokensOpenRouterMessages(messages: { role: string; content: string }[]): number {
