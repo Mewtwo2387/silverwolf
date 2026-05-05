@@ -1,4 +1,3 @@
-/* eslint-disable no-unreachable */
 import path from 'path';
 import {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
@@ -71,9 +70,6 @@ class Gacha extends Command {
   }
 
   async run(interaction: any): Promise<void> {
-    await interaction.editReply({ content: 'gacha is not ready yet', ephemeral: true });
-    return;
-
     const loaded = await getPools();
     this.namesData = loaded.namesData;
     this.characterPool = loaded.characterPool;
@@ -126,7 +122,7 @@ class Gacha extends Command {
       const itemDetails = this.getItemDetails(rollResult);
       results.push(itemDetails);
 
-      const itemType = this.characterPool.some((c) => c.name === itemDetails.name) ? 'Character' : 'Lightcone';
+      const itemType = rollResult?.AvatarName ? 'Character' : 'Lightcone';
       this.client.db.gacha.addGachaItem(userId, itemDetails.name, itemType, itemDetails.rarity);
     }
 
@@ -183,12 +179,12 @@ class Gacha extends Command {
     const collector = message.createMessageComponentCollector({ time: 60000 });
 
     collector.on('collect', async (i: any) => {
-      if (i.customId === 'next_roll') {
+      if (i.customId === 'nextRoll') {
         currentIndex += 1;
         if (currentIndex < results.length) {
           await updateMessage(i);
         }
-      } else if (i.customId === 'skip_results') {
+      } else if (i.customId === 'skipResults') {
         collector.stop();
       }
     });

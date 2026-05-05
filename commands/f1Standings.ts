@@ -3,6 +3,11 @@ import * as cheerio from 'cheerio';
 import { logError } from '../utils/log';
 import { Command } from './classes/Command';
 
+function safeParseInt(text: string): number {
+  const result = parseInt(text, 10);
+  return Number.isNaN(result) ? 0 : result;
+}
+
 function extractStandings(html: string, type: string): any[] {
   const $ = cheerio.load(html);
   const rows = $('#results-table tbody tr').toArray();
@@ -41,19 +46,19 @@ function extractStandings(html: string, type: string): any[] {
       }
 
       return {
-        position: parseInt($(columns[0]).text().trim(), 10),
+        position: safeParseInt($(columns[0]).text().trim()),
         driver: driverName,
         nationality: $(columns[2]).text().trim(),
         car: $(columns[3]).text().trim(),
-        points: parseInt($(columns[4]).text().trim(), 10),
+        points: safeParseInt($(columns[4]).text().trim()),
       };
     }
 
     if (type === 'teams' && columns.length === 3) {
       return {
-        position: parseInt($(columns[0]).text().trim(), 10),
+        position: safeParseInt($(columns[0]).text().trim()),
         team: $(columns[1]).text().trim(),
-        points: parseInt($(columns[2]).text().trim(), 10),
+        points: safeParseInt($(columns[2]).text().trim()),
       };
     }
 
@@ -110,10 +115,11 @@ class F1Standings extends Command {
     const minYear = type === 'drivers' ? 1950 : 1958;
 
     if (year > currentYear || year < minYear) {
-      interaction.editReply({
+      await interaction.editReply({
         content: `Invalid year for ${type} standings. Must be between ${minYear} and ${currentYear}.`,
         ephemeral: true,
       });
+      return;
     }
 
     const endpoint = type === 'drivers' ? 'drivers' : 'team';

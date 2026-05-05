@@ -43,11 +43,10 @@ class HsrProfile extends Command {
       'User-Agent': 'Silverwolf-bot/1.0 (Example@gmail.com)',
     };
 
-    const {
-      avatarData, characterData, namesData, lightconeData,
-    } = await loadHsrData();
-
     try {
+      const {
+        avatarData, characterData, namesData, lightconeData,
+      } = await loadHsrData();
       const response = await fetch(url, { headers });
       if (!response.ok) {
         logError(`HTTP Error Response: Status ${response.status} ${response.statusText}`);

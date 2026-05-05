@@ -34,9 +34,8 @@ class GenshinProfile extends Command {
       'User-Agent': 'Silverwolf-bot/1.0 (Example@gmail.com)',
     };
 
-    const { profilePictures, namecards } = await loadGenshinData();
-
     try {
+      const { profilePictures, namecards } = await loadGenshinData();
       const response = await fetch(url, { headers });
       if (!response.ok) {
         logError(`HTTP Error Response: Status ${response.status} ${response.statusText}`);
