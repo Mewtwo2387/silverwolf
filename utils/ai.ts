@@ -1,13 +1,14 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { OpenAI } from 'openai';
 import mime from 'mime';
-import { encode as encodeCl100k } from 'gpt-tokenizer/encoding/cl100k_base';
+import { getEncoding } from 'js-tiktoken';
 import { logError } from './log';
 import { recordUsage } from './tokenCalibration';
 // Note: Bun automatically reads .env files
 
 // Initialize AI providers
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_TOKEN!);
+const enc = getEncoding('cl100k_base');
 
 const openrouter = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
@@ -130,7 +131,7 @@ async function generateContent({
       let estimated = 0;
       for (const m of requestMessages) {
         try {
-          estimated += encodeCl100k(m.content).length + 4;
+          estimated += enc.encode(m.content).length + 4;
         } catch {
           estimated += Math.ceil(m.content.length / 3) + 4;
         }

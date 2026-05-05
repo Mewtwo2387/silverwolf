@@ -1,13 +1,15 @@
-import { encode as encodeCl100k } from 'gpt-tokenizer/encoding/cl100k_base';
+import { getEncoding } from 'js-tiktoken';
 import { getGeminiAI } from './ai';
 import { getCalibrationMultiplier } from './tokenCalibration';
+
+const enc = getEncoding('cl100k_base');
 
 // Real BPE tokenizer (GPT-4 cl100k_base). Not vocab-exact for nemotron/grok,
 // but within ~10% on typical text — orders of magnitude better than char/4.
 // Per-model drift is corrected by tokenCalibration against usage.prompt_tokens.
 function countTokensOpenRouter(text: string): number {
   try {
-    return encodeCl100k(text).length;
+    return enc.encode(text).length;
   } catch {
     return Math.ceil(text.length / 3);
   }
