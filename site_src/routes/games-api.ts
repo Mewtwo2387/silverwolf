@@ -9,6 +9,11 @@ import {
   playSlotsWeb,
   logPoopWeb,
   claimWeb,
+  eatWeb,
+  buyUpgradeWeb,
+  buyAscensionUpgradeWeb,
+  ascendWeb,
+  getDinoUpgradesStateWeb,
 } from '../bot-bridge';
 import { type AppEnv, authedGameRequest, readGameBody } from '../shared';
 
@@ -116,6 +121,88 @@ export function registerGameApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf)
       return c.json(result);
     } catch (err) {
       logError('poop log failed:', err);
+      return c.json({ error: 'server' }, 500);
+    }
+  });
+
+  app.post('/games/dinonuggie-upgrades/state', async (c) => {
+    const body = await readGameBody(c);
+    const auth = authedGameRequest(c, body);
+    if (auth instanceof Response) return auth;
+    try {
+      const result = await getDinoUpgradesStateWeb(silverwolf, auth.discordId);
+      return c.json({ ok: true, data: result });
+    } catch (err) {
+      logError('dinonuggie state failed:', err);
+      return c.json({ error: 'server' }, 500);
+    }
+  });
+
+  app.post('/games/dinonuggie-upgrades/eat', async (c) => {
+    const body = await readGameBody(c);
+    const auth = authedGameRequest(c, body);
+    if (auth instanceof Response) return auth;
+    const amountRaw = body!.amount;
+    let amount: number;
+    if (typeof amountRaw === 'number' && Number.isFinite(amountRaw)) {
+      amount = Math.trunc(amountRaw);
+    } else if (typeof amountRaw === 'string' && amountRaw.trim() !== '') {
+      const parsed = parseInt(amountRaw, 10);
+      if (Number.isNaN(parsed)) return c.json({ error: 'invalid' }, 400);
+      amount = parsed;
+    } else {
+      amount = 1;
+    }
+    try {
+      const result = await eatWeb(silverwolf, auth.discordId, amount);
+      return c.json({ ok: true, data: result });
+    } catch (err) {
+      logError('eat failed:', err);
+      return c.json({ error: 'server' }, 500);
+    }
+  });
+
+  app.post('/games/dinonuggie-upgrades/buy-upgrade', async (c) => {
+    const body = await readGameBody(c);
+    const auth = authedGameRequest(c, body);
+    if (auth instanceof Response) return auth;
+    const upgradeId = typeof body!.upgradeId === 'number' ? Math.trunc(body!.upgradeId) : NaN;
+    const amount = typeof body!.amount === 'number' ? Math.trunc(body!.amount) : 1;
+    if (!Number.isFinite(upgradeId)) return c.json({ error: 'invalid' }, 400);
+    try {
+      const result = await buyUpgradeWeb(silverwolf, auth.discordId, upgradeId, amount);
+      return c.json({ ok: true, data: result });
+    } catch (err) {
+      logError('buy upgrade failed:', err);
+      return c.json({ error: 'server' }, 500);
+    }
+  });
+
+  app.post('/games/dinonuggie-upgrades/buy-ascension', async (c) => {
+    const body = await readGameBody(c);
+    const auth = authedGameRequest(c, body);
+    if (auth instanceof Response) return auth;
+    const upgradeId = typeof body!.upgradeId === 'number' ? Math.trunc(body!.upgradeId) : NaN;
+    const amount = typeof body!.amount === 'number' ? Math.trunc(body!.amount) : 1;
+    if (!Number.isFinite(upgradeId)) return c.json({ error: 'invalid' }, 400);
+    try {
+      const result = await buyAscensionUpgradeWeb(silverwolf, auth.discordId, upgradeId, amount);
+      return c.json({ ok: true, data: result });
+    } catch (err) {
+      logError('buy ascension upgrade failed:', err);
+      return c.json({ error: 'server' }, 500);
+    }
+  });
+
+  app.post('/games/dinonuggie-upgrades/ascend', async (c) => {
+    const body = await readGameBody(c);
+    const auth = authedGameRequest(c, body);
+    if (auth instanceof Response) return auth;
+    try {
+      const result = await ascendWeb(silverwolf, auth.discordId);
+      return c.json({ ok: true, data: result });
+    } catch (err) {
+      logError('ascend failed:', err);
       return c.json({ error: 'server' }, 500);
     }
   });

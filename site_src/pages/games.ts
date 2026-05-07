@@ -65,6 +65,14 @@ const GAMES = [
     imageSrc: '/static/game-dinonuggie.webp',
   },
   {
+    name: 'dinonuggie_upgrades',
+    href: '/games/dinonuggie-upgrades',
+    info: 'a hub for eating and upgrading',
+    imageType: 'composite' as const,
+    imageSrc: '/static/game-dinonuggie.webp',
+    overlaySrc: '/static/svg/wrench-screwdriver-svgrepo-com.svg',
+  },
+  {
     name: 'awdangit',
     href: '/games/awdangit',
     info: '99% chance to earn $1M, 1% chance to become a girl.',
@@ -75,6 +83,94 @@ const GAMES = [
 
 const styles = raw(`
 <style>
+  .games-header {
+    position: relative;
+    margin-bottom: 1.5rem;
+  }
+  .games-header h1 { margin: 0 0 0.25rem 0; }
+  .games-header p { margin: 0; }
+
+  .layout-switcher {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+  @media (max-width: 700px) {
+    .layout-switcher {
+      position: static;
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 0.75rem;
+    }
+  }
+
+  .layout-switcher-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--ink-800);
+    border: 1px solid var(--ink-600);
+    border-radius: 0.5rem;
+    color: var(--fog-200);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.9rem;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .layout-switcher-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent-light);
+  }
+  .layout-switcher-btn svg { width: 18px; height: 18px; }
+  .layout-switcher-btn .chevron {
+    width: 12px;
+    height: 12px;
+    transition: transform 0.2s;
+  }
+  .layout-switcher.open .layout-switcher-btn .chevron {
+    transform: rotate(180deg);
+  }
+
+  .layout-switcher-menu {
+    position: absolute;
+    top: calc(100% + 0.25rem);
+    right: 0;
+    background: var(--ink-800);
+    border: 1px solid var(--ink-600);
+    border-radius: 0.5rem;
+    padding: 0.25rem;
+    display: none;
+    flex-direction: column;
+    min-width: 170px;
+    z-index: 10;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  }
+  .layout-switcher.open .layout-switcher-menu { display: flex; }
+  .layout-switcher-menu button {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.75rem;
+    background: transparent;
+    border: none;
+    border-radius: 0.35rem;
+    color: var(--fog-200);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.9rem;
+    text-align: left;
+  }
+  .layout-switcher-menu button:hover {
+    background: var(--ink-700, #1e2030);
+    color: var(--accent-light);
+  }
+  .layout-switcher-menu button.active {
+    background: var(--ink-700, #1e2030);
+    color: var(--accent);
+  }
+  .layout-switcher-menu button svg { width: 16px; height: 16px; flex-shrink: 0; }
+
   .games-grid {
     display: grid;
     /* minmax(0, 1fr) — the 0 minimum lets columns shrink past their content's
@@ -84,11 +180,21 @@ const styles = raw(`
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1.5rem;
   }
+  .games-grid.grid-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1.25rem;
+  }
+  .games-grid.list-view {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
   @media (max-width: 700px) {
-    .games-grid { grid-template-columns: minmax(0, 1fr); }
+    .games-grid,
+    .games-grid.grid-4 { grid-template-columns: minmax(0, 1fr); }
   }
   @media (min-width: 701px) and (max-width: 1000px) {
     .games-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .games-grid.grid-4 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   }
 
   .game-card {
@@ -147,6 +253,73 @@ const styles = raw(`
     margin: 0;
   }
 
+  /* 4x4 grid: tighter padding so smaller cards don't feel cramped */
+  .games-grid.grid-4 .card-body { padding: 0.9rem; }
+  .games-grid.grid-4 .card-body h2 { font-size: 1rem; }
+  .games-grid.grid-4 .card-body p { font-size: 0.8rem; }
+
+  /* List view: horizontal layout with small icon and truncated description */
+  .games-grid.list-view .game-card {
+    flex-direction: row;
+    align-items: stretch;
+  }
+  .games-grid.list-view .game-card:hover {
+    transform: translateY(-2px);
+  }
+  .games-grid.list-view .card-image {
+    width: 88px;
+    height: 88px;
+    flex-shrink: 0;
+    aspect-ratio: 1 / 1;
+  }
+  .games-grid.list-view .card-image img {
+    width: 70%;
+    height: 70%;
+  }
+  .games-grid.list-view .card-body {
+    flex: 1;
+    min-width: 0;
+    padding: 0.75rem 1rem;
+    justify-content: center;
+    gap: 0.2rem;
+  }
+  .games-grid.list-view .card-body h2 { font-size: 1rem; }
+  .games-grid.list-view .card-body p {
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .games-grid.list-view .mini-coin-wrap {
+    width: 64px;
+    height: 64px;
+  }
+  .games-grid.list-view .mini-face { font-size: 0.6rem; border-width: 3px; }
+
+  /* Composite icon: base image with svg overlay in bottom-left corner */
+  .composite-icon {
+    position: relative;
+    width: 70%;
+    height: 70%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .composite-icon .base {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+  .composite-icon .overlay {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 38%;
+    height: 38%;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
+  }
+
   /* Mini spinning coin for the flip card */
   .mini-coin-wrap {
     width: 120px;
@@ -187,6 +360,11 @@ const styles = raw(`
 </style>
 `);
 
+const ICON_GRID_3 = raw(`<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="9.5" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="9.5" width="5" height="5" rx="1"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><rect x="16" y="9.5" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><rect x="9.5" y="16" width="5" height="5" rx="1"/><rect x="16" y="16" width="5" height="5" rx="1"/></svg>`);
+const ICON_GRID_4 = raw(`<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="3"  y="3"  width="3.5" height="3.5" rx="0.6"/><rect x="8"  y="3"  width="3.5" height="3.5" rx="0.6"/><rect x="13" y="3"  width="3.5" height="3.5" rx="0.6"/><rect x="18" y="3"  width="3.5" height="3.5" rx="0.6"/><rect x="3"  y="8"  width="3.5" height="3.5" rx="0.6"/><rect x="8"  y="8"  width="3.5" height="3.5" rx="0.6"/><rect x="13" y="8"  width="3.5" height="3.5" rx="0.6"/><rect x="18" y="8"  width="3.5" height="3.5" rx="0.6"/><rect x="3"  y="13" width="3.5" height="3.5" rx="0.6"/><rect x="8"  y="13" width="3.5" height="3.5" rx="0.6"/><rect x="13" y="13" width="3.5" height="3.5" rx="0.6"/><rect x="18" y="13" width="3.5" height="3.5" rx="0.6"/><rect x="3"  y="18" width="3.5" height="3.5" rx="0.6"/><rect x="8"  y="18" width="3.5" height="3.5" rx="0.6"/><rect x="13" y="18" width="3.5" height="3.5" rx="0.6"/><rect x="18" y="18" width="3.5" height="3.5" rx="0.6"/></svg>`);
+const ICON_LIST = raw(`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="4.5" cy="6" r="0.6" fill="currentColor"/><circle cx="4.5" cy="12" r="0.6" fill="currentColor"/><circle cx="4.5" cy="18" r="0.6" fill="currentColor"/></svg>`);
+const ICON_CHEVRON = raw(`<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>`);
+
 function CoinImage() {
   return html`
     <div class="mini-coin-wrap">
@@ -198,19 +376,102 @@ function CoinImage() {
   `;
 }
 
+const layoutScript = (nonce: string) => raw(`
+<script nonce="${nonce}">
+(function(){
+  var KEY = 'games-layout';
+  var VALID = ['grid-3', 'grid-4', 'list-view'];
+  var grid = document.querySelector('.games-grid');
+  var switcher = document.querySelector('.layout-switcher');
+  if (!grid || !switcher) return;
+  var btn = switcher.querySelector('.layout-switcher-btn');
+  var menu = switcher.querySelector('.layout-switcher-menu');
+  var btnIcon = btn.querySelector('.btn-icon');
+  var btnLabel = btn.querySelector('.btn-label');
+  var options = menu.querySelectorAll('button[data-layout]');
+
+  function apply(layout) {
+    grid.classList.remove('grid-3', 'grid-4', 'list-view');
+    if (layout !== 'grid-3') grid.classList.add(layout);
+    options.forEach(function(o) {
+      o.classList.toggle('active', o.dataset.layout === layout);
+    });
+    var active = menu.querySelector('button[data-layout="' + layout + '"]');
+    if (active && btnIcon && btnLabel) {
+      var srcIcon = active.querySelector('svg');
+      var srcLabel = active.querySelector('.label');
+      if (srcIcon) btnIcon.innerHTML = srcIcon.outerHTML;
+      if (srcLabel) btnLabel.textContent = srcLabel.textContent;
+    }
+  }
+
+  var saved;
+  try { saved = localStorage.getItem(KEY); } catch (e) {}
+  if (VALID.indexOf(saved) === -1) saved = 'grid-3';
+  apply(saved);
+
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    switcher.classList.toggle('open');
+  });
+  options.forEach(function(o) {
+    o.addEventListener('click', function() {
+      var layout = o.dataset.layout;
+      try { localStorage.setItem(KEY, layout); } catch (e) {}
+      apply(layout);
+      switcher.classList.remove('open');
+    });
+  });
+  document.addEventListener('click', function(e) {
+    if (!switcher.contains(e.target)) switcher.classList.remove('open');
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') switcher.classList.remove('open');
+  });
+})();
+</script>
+`);
+
 export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import('../components/navbar').NavUser | null }) {
   const body = html`
     ${styles}
-    <h1 class="text-center">Games</h1>
-    <p class="text-center text-fog-300 mb-8">Choose a game to play!</p>
+    <div class="games-header">
+      <h1 class="text-center">Games</h1>
+      <p class="text-center text-fog-300">Choose a game to play!</p>
+      <div class="layout-switcher">
+        <button class="layout-switcher-btn" type="button" aria-haspopup="true" aria-label="Change layout">
+          <span class="btn-icon">${ICON_GRID_3}</span>
+          <span class="btn-label">Grid 3×3</span>
+          ${ICON_CHEVRON}
+        </button>
+        <div class="layout-switcher-menu" role="menu">
+          <button type="button" data-layout="grid-3" role="menuitem">
+            ${ICON_GRID_3}<span class="label">Grid 3×3</span>
+          </button>
+          <button type="button" data-layout="grid-4" role="menuitem">
+            ${ICON_GRID_4}<span class="label">Grid 4×4</span>
+          </button>
+          <button type="button" data-layout="list-view" role="menuitem">
+            ${ICON_LIST}<span class="label">List</span>
+          </button>
+        </div>
+      </div>
+    </div>
     <div class="games-grid">
       ${GAMES.map(
     (game) => html`
           <a href="${game.href}" class="game-card">
             <div class="card-image">
-              ${game.imageType === 'coin'
-    ? CoinImage()
-    : html`<img src="${(game as any).imageSrc}" alt="${game.name}" />`}
+              ${(() => {
+    if (game.imageType === 'coin') return CoinImage();
+    if (game.imageType === 'composite') {
+      return html`<div class="composite-icon">
+              <img class="base" src="${(game as any).imageSrc}" alt="${game.name}" />
+              <img class="overlay" src="${(game as any).overlaySrc}" alt="" />
+            </div>`;
+    }
+    return html`<img src="${(game as any).imageSrc}" alt="${game.name}" />`;
+  })()}
             </div>
             <div class="card-body">
               <h2>${game.name}</h2>
@@ -220,6 +481,7 @@ export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import(
         `,
   )}
     </div>
+    ${layoutScript(opts.nonce)}
   `;
 
   return Layout({

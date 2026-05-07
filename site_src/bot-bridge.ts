@@ -19,6 +19,20 @@ import {
 import { playRoulette, type RouletteBetType, type RouletteResult } from '../commands/roulette';
 import { spinSlots, type SlotsResult } from '../commands/slots';
 import { processClaim, type ClaimResult } from '../utils/claim';
+import { processEat, type EatResult } from '../utils/eat';
+import { processBuyUpgrade, type BuyUpgradeResult } from '../utils/buyUpgrade';
+import {
+  processBuyAscensionUpgrade, type BuyAscensionResult,
+  ASCENSION_UPGRADES,
+  ASCENSION_AMPLIFIERS,
+  ASCENSION_LEVEL_REQ,
+  type AscensionUpgradeKey,
+} from '../utils/buyAscensionUpgrade';
+import {
+  getAscensionState, processAscend, type AscensionState, type AscendResult,
+} from '../utils/ascend';
+import { getMaxLevel, getNextUpgradeCost } from '../utils/upgrades';
+import { getNextAscensionUpgradeCost } from '../utils/ascensionupgrades';
 
 export type LeaderboardKind = 'gambler' | 'murder' | 'nuggie' | 'poop';
 
@@ -668,6 +682,146 @@ export async function claimWeb(
   userId: string,
 ): Promise<ClaimResult> {
   return processClaim(silverwolf, userId);
+}
+
+// ─── Dinonuggie upgrades hub ───────────────────────────────────────────────
+
+export interface UpgradeRowState {
+  key: 'multiplierAmount' | 'multiplierRarity' | 'beki';
+  upgradeId: number;
+  level: number;
+  maxLevel: number;
+  nextCost: number; // cost to go level -> level+1; 0 if maxed
+}
+
+export interface AscensionUpgradeRowState {
+  key: AscensionUpgradeKey;
+  upgradeId: number;
+  level: number;
+  amplifier: number;
+  required: number;
+  unlocked: boolean;
+  nextCost: number;
+}
+
+export interface DinoUpgradesState {
+  dinonuggies: number;
+  credits: number;
+  heavenlyNuggies: number;
+  ascensionLevel: number;
+  maxLevel: number;
+  upgrades: UpgradeRowState[];
+  ascension: {
+    state: AscensionState;
+    rows: AscensionUpgradeRowState[];
+  };
+}
+
+export async function getDinoUpgradesStateWeb(
+  silverwolf: Silverwolf,
+  userId: string,
+): Promise<DinoUpgradesState> {
+  const client = silverwolf as any;
+  const ascensionLevel = await client.db.user.getUserAttr(userId, 'ascensionLevel');
+  const maxLevel = getMaxLevel(ascensionLevel);
+
+  const [
+    dinonuggies, credits, heavenlyNuggies,
+    multiplierAmountLevel, multiplierRarityLevel, bekiLevel,
+  ] = await Promise.all([
+    client.db.user.getUserAttr(userId, 'dinonuggies'),
+    client.db.user.getUserAttr(userId, 'credits'),
+    client.db.user.getUserAttr(userId, 'heavenlyNuggies'),
+    client.db.user.getUserAttr(userId, 'multiplierAmountLevel'),
+    client.db.user.getUserAttr(userId, 'multiplierRarityLevel'),
+    client.db.user.getUserAttr(userId, 'bekiLevel'),
+  ]);
+
+  const upgrades: UpgradeRowState[] = [
+    {
+      key: 'multiplierAmount',
+      upgradeId: 1,
+      level: multiplierAmountLevel,
+      maxLevel,
+      nextCost: multiplierAmountLevel >= maxLevel ? 0 : getNextUpgradeCost(multiplierAmountLevel),
+    },
+    {
+      key: 'multiplierRarity',
+      upgradeId: 2,
+      level: multiplierRarityLevel,
+      maxLevel,
+      nextCost: multiplierRarityLevel >= maxLevel ? 0 : getNextUpgradeCost(multiplierRarityLevel),
+    },
+    {
+      key: 'beki',
+      upgradeId: 3,
+      level: bekiLevel,
+      maxLevel,
+      nextCost: bekiLevel >= maxLevel ? 0 : getNextUpgradeCost(bekiLevel),
+    },
+  ];
+
+  const ascensionState = await getAscensionState(client, userId);
+
+  const ascensionRows: AscensionUpgradeRowState[] = await Promise.all(
+    ASCENSION_UPGRADES.map(async (key, i) => {
+      const lvl = await client.db.user.getUserAttr(userId, `${key}Level`);
+      const amplifier = ASCENSION_AMPLIFIERS[key];
+      const required = ASCENSION_LEVEL_REQ[key];
+      return {
+        key,
+        upgradeId: i + 1,
+        level: lvl,
+        amplifier,
+        required,
+        unlocked: ascensionLevel >= required,
+        nextCost: getNextAscensionUpgradeCost(lvl, amplifier),
+      };
+    }),
+  );
+
+  return {
+    dinonuggies,
+    credits,
+    heavenlyNuggies,
+    ascensionLevel,
+    maxLevel,
+    upgrades,
+    ascension: { state: ascensionState, rows: ascensionRows },
+  };
+}
+
+export async function eatWeb(
+  silverwolf: Silverwolf,
+  userId: string,
+  amount: number,
+): Promise<EatResult> {
+  return processEat(silverwolf as any, userId, amount);
+}
+
+export async function buyUpgradeWeb(
+  silverwolf: Silverwolf,
+  userId: string,
+  upgradeId: number,
+  amount: number,
+): Promise<BuyUpgradeResult> {
+  return processBuyUpgrade(silverwolf as any, userId, upgradeId, amount);
+}
+
+export async function buyAscensionUpgradeWeb(
+  silverwolf: Silverwolf,
+  userId: string,
+  upgradeId: number,
+  amount: number,
+): Promise<BuyAscensionResult> {
+  return processBuyAscensionUpgrade(silverwolf as any, userId, upgradeId, amount);
+}
+
+export async function ascendWeb(
+  silverwolf: Silverwolf,
+  userId: string,
+): Promise<AscendResult> {
+  return processAscend(silverwolf as any, userId);
 }
 
 // ─── Poop log ──────────────────────────────────────────────────────────────

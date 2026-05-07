@@ -14,6 +14,7 @@ import { PoopPage } from '../pages/games/poop';
 import { RoulettePage } from '../pages/games/roulette';
 import { SlotsPage } from '../pages/games/slots';
 import { ClaimPage } from '../pages/games/claim';
+import { DinonuggieUpgradesPage } from '../pages/games/dinonuggie_upgrades';
 import { AwdangitPage } from '../pages/games/awdangit';
 import { HomePage, type DashboardProfile } from '../pages/home';
 import {
@@ -151,6 +152,10 @@ export function registerPageRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
   }).toString()));
 
   app.get('/games/claim', (c) => c.html(ClaimPage({
+    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+  }).toString()));
+
+  app.get('/games/dinonuggie-upgrades', (c) => c.html(DinonuggieUpgradesPage({
     nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
   }).toString()));
 
