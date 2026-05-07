@@ -185,6 +185,7 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
   }
   .toast.error { color: #FF6666; border-color: #803030; }
   .toast.ok { color: #83F28F; border-color: #2c6c3a; }
+  .toast.warn { color: #FFA500; border-color: #8a5a1c; }
 
   .login-cta {
     background: var(--ink-800);
@@ -297,12 +298,27 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
   }
 
   async function api(path, body) {
-    const r = await fetch(path, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(Object.assign({ csrf }, body || {})),
-    });
-    return r.json();
+    let r;
+    try {
+      r = await fetch(path, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(Object.assign({ csrf }, body || {})),
+      });
+    } catch (_e) {
+      return { error: 'network' };
+    }
+    let parsed = null;
+    try {
+      parsed = await r.json();
+    } catch (_e) {
+      if (!r.ok) return { error: r.statusText || 'Request failed' };
+      return { error: 'invalid_response' };
+    }
+    if (!r.ok) {
+      return { error: (parsed && parsed.error) || r.statusText || 'Request failed' };
+    }
+    return parsed;
   }
   function errMsg(code) {
     const map = {

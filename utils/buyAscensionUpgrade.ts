@@ -88,8 +88,10 @@ async function processBuyAscensionUpgradeInner(
     };
   }
 
-  await client.db.user.addUserAttr(userId, 'heavenlyNuggies', -cost);
-  await client.db.user.addUserAttr(userId, `${upgrade}Level`, amount);
+  await client.db.user.addUserAttrs(userId, {
+    heavenlyNuggies: -cost,
+    [`${upgrade}Level`]: amount,
+  });
   return {
     status: 'success', upgrade, upgradeId, level, amount, cost, heavenlyNuggies,
   };
@@ -101,8 +103,11 @@ export async function processBuyAscensionUpgrade(
   upgradeId: number,
   amount: number,
 ): Promise<BuyAscensionResult> {
-  const existing = buyAscLocks.get(userId);
-  if (existing) await existing.catch(() => {});
+  let existing = buyAscLocks.get(userId);
+  while (existing) {
+    await existing.catch(() => {});
+    existing = buyAscLocks.get(userId);
+  }
   const run = processBuyAscensionUpgradeInner(client, userId, upgradeId, amount);
   buyAscLocks.set(userId, run);
   try {

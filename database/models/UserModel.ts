@@ -46,6 +46,19 @@ class UserModel {
     log(`Updated user ${userId}: ${attribute} increased by ${value}.`);
   }
 
+  async addUserAttrs(userId: string, deltas: Record<string, number>): Promise<void> {
+    await this.getUser(userId);
+    const entries = Object.entries(deltas).filter(([, v]) => !Number.isNaN(v) && v !== null && v !== undefined);
+    if (entries.length === 0) return;
+    await this.db.executeTransaction((rawDb) => {
+      for (const [field, value] of entries) {
+        const attribute = camelToSnake(field);
+        rawDb.query(userQueries.ADD_USER_ATTR(attribute)).run(value, userId);
+      }
+    });
+    log(`Updated user ${userId}: ${entries.map(([f, v]) => `${f}+=${v}`).join(', ')}`);
+  }
+
   async setUserAttr(userId: string, field: string, value: any): Promise<void> {
     const attribute = camelToSnake(field);
     if (Number.isNaN(value)) {

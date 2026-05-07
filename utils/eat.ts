@@ -127,8 +127,9 @@ async function processEatInner(client: any, userId: string, amount: number): Pro
 
 export async function processEat(client: any, userId: string, amount: number): Promise<EatResult> {
   const existing = eatLocks.get(userId);
-  if (existing) await existing.catch(() => {});
-  const run = processEatInner(client, userId, amount);
+  const run = existing
+    ? existing.catch(() => undefined).then(() => processEatInner(client, userId, amount))
+    : processEatInner(client, userId, amount);
   eatLocks.set(userId, run);
   try {
     return await run;

@@ -60,8 +60,11 @@ async function processAscendInner(client: any, userId: string): Promise<AscendRe
 }
 
 export async function processAscend(client: any, userId: string): Promise<AscendResult> {
-  const existing = ascendLocks.get(userId);
-  if (existing) await existing.catch(() => {});
+  let existing = ascendLocks.get(userId);
+  while (existing) {
+    await existing.catch(() => {});
+    existing = ascendLocks.get(userId);
+  }
   const run = processAscendInner(client, userId);
   ascendLocks.set(userId, run);
   try {

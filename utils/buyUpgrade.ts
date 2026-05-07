@@ -59,8 +59,10 @@ async function processBuyUpgradeInner(
     };
   }
 
-  await client.db.user.addUserAttr(userId, 'credits', -cost);
-  await client.db.user.addUserAttr(userId, `${upgrade}Level`, amount);
+  await client.db.user.addUserAttrs(userId, {
+    credits: -cost,
+    [`${upgrade}Level`]: amount,
+  });
   return {
     status: 'success', upgrade, upgradeId, level, amount, cost, credits,
   };
@@ -72,8 +74,11 @@ export async function processBuyUpgrade(
   upgradeId: number,
   amount: number,
 ): Promise<BuyUpgradeResult> {
-  const existing = buyLocks.get(userId);
-  if (existing) await existing.catch(() => {});
+  let existing = buyLocks.get(userId);
+  while (existing) {
+    await existing.catch(() => {});
+    existing = buyLocks.get(userId);
+  }
   const run = processBuyUpgradeInner(client, userId, upgradeId, amount);
   buyLocks.set(userId, run);
   try {
