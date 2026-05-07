@@ -2,6 +2,7 @@ import * as Discord from 'discord.js';
 import { Command } from './classes/Command';
 import { getMaxLevel } from '../utils/upgrades';
 import { format } from '../utils/math';
+import { getAscensionState, processAscend } from '../utils/ascend';
 
 class Ascend extends Command {
   constructor(client: any) {
@@ -9,19 +10,14 @@ class Ascend extends Command {
   }
 
   async run(interaction: any): Promise<void> {
-    const user = await this.client.db.user.getUser(interaction.user.id);
-    const currentMaxLevel = getMaxLevel(user.ascensionLevel);
+    const state = await getAscensionState(this.client, interaction.user.id);
 
-    const allMaxed = user.multiplierAmountLevel >= currentMaxLevel
-                         && user.multiplierRarityLevel >= currentMaxLevel
-                         && user.bekiLevel >= currentMaxLevel;
-
-    if (user.dinonuggies < 500) {
+    if (!state.canAscend) {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#FFA500')
           .setTitle('Cannot ascend')
-          .setDescription(`You need at least 500 dinonuggies to ascend. You have ${format(user.dinonuggies)} dinonuggies.`)
+          .setDescription(`You need at least 500 dinonuggies to ascend. You have ${format(state.dinonuggies)} dinonuggies.`)
           .setFooter({ text: 'so no one ascends and complains they cant buy anything from it' })],
       });
       return;
@@ -31,16 +27,16 @@ class Ascend extends Command {
       .setColor('#FFA500')
       .setTitle('Ascension Confirmation')
       .setDescription(`Are you sure you want to ascend?
-- Your dinonuggies (${format(user.dinonuggies)}) will be converted to ${format(user.dinonuggies)} heavenly nuggies which can be used to buy better upgrades
+- Your dinonuggies (${format(state.dinonuggies)}) will be converted to ${format(state.dinonuggies)} heavenly nuggies which can be used to buy better upgrades
 - All your upgrades, credits, bitcoins, dinonuggies, and streak will reset
 - If you ascend with all upgrades maxed, you will gain an ascension level, which increases the level cap by 10
 
 Your current upgrades:
-• Multiplier amount: ${user.multiplierAmountLevel}/${currentMaxLevel}
-• Multiplier rarity: ${user.multiplierRarityLevel}/${currentMaxLevel}
-• Beki cooldown: ${user.bekiLevel}/${currentMaxLevel}
+• Multiplier amount: ${state.multiplierAmountLevel}/${state.currentMaxLevel}
+• Multiplier rarity: ${state.multiplierRarityLevel}/${state.currentMaxLevel}
+• Beki cooldown: ${state.bekiLevel}/${state.currentMaxLevel}
 
-${allMaxed ? `Your ascension level will increase from ${user.ascensionLevel} to ${user.ascensionLevel + 1} if you ascend now, allowing you to buy upgrades up to level ${getMaxLevel(user.ascensionLevel + 1)}` : `Your ascension level will remain at ${user.ascensionLevel} as not all upgrades are maxed.`}`)
+${state.allMaxed ? `Your ascension level will increase from ${state.ascensionLevel} to ${state.ascensionLevel + 1} if you ascend now, allowing you to buy upgrades up to level ${getMaxLevel(state.ascensionLevel + 1)}` : `Your ascension level will remain at ${state.ascensionLevel} as not all upgrades are maxed.`}`)
       .setFooter({ text: 'what even is this game now' });
 
     const row = new Discord.ActionRowBuilder()
@@ -69,16 +65,27 @@ ${allMaxed ? `Your ascension level will increase from ${user.ascensionLevel} to 
       await confirmMessage.edit({ components: [] });
 
       if (i.customId === 'confirm_ascend') {
-        await this.client.db.user.ascendUser(interaction.user.id, allMaxed);
+        const result = await processAscend(this.client, interaction.user.id);
+
+        if (result.status === 'too_few') {
+          await interaction.followUp({
+            embeds: [new Discord.EmbedBuilder()
+              .setColor('#FFA500')
+              .setTitle('Cannot ascend')
+              .setDescription(`You need at least 500 dinonuggies to ascend. You have ${format(result.dinonuggies)} dinonuggies.`)
+              .setFooter({ text: 'so no one ascends and complains they cant buy anything from it' })],
+          });
+          return;
+        }
 
         const resultEmbed = new Discord.EmbedBuilder()
           .setColor('#00AA00')
           .setTitle('Ascension Successful!')
           .setDescription(`You have ascended!
-- Gained ${format(user.dinonuggies)} heavenly nuggies
+- Gained ${format(result.gained)} heavenly nuggies
 - All other stuff reset
-${allMaxed ? `- Ascension level increased to ${user.ascensionLevel + 1}` : '- Ascension level remained the same'}
-- New max level: ${getMaxLevel(allMaxed ? user.ascensionLevel + 1 : user.ascensionLevel)}`)
+${result.allMaxed ? `- Ascension level increased to ${result.ascensionLevel}` : '- Ascension level remained the same'}
+- New max level: ${result.newMaxLevel}`)
           .setFooter({ text: 'what even is this game now' });
 
         await interaction.followUp({ embeds: [resultEmbed] });
