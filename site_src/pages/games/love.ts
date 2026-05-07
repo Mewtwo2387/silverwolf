@@ -14,10 +14,6 @@ const HEART_SYMBOL = raw(`
 </svg>
 `);
 
-function HeartUse() {
-  return raw('<svg viewBox="0 0 512 512" preserveAspectRatio="xMidYMid meet"><use href="#heart-symbol" width="512" height="512"/></svg>');
-}
-
 export function LovePage(opts: { nonce: string; lv999?: boolean; user?: import('../../components/navbar').NavUser | null }) {
   const { nonce, lv999, user } = opts;
 
