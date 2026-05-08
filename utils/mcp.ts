@@ -1,6 +1,8 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { log, logError, logWarning } from './log';
+
+const EXA_MCP_URL = process.env.EXA_MCP_URL || 'https://mcp.exa.ai/mcp';
 
 const MCP_REQUEST_TIMEOUT_MS = 15_000;
 const MAX_TOOL_CONTENT_CHARS = 4_000;
@@ -23,7 +25,7 @@ export type McpCallResult =
 type State = 'disconnected' | 'connecting' | 'ready' | 'crashed';
 
 let client: Client | null = null;
-let transport: StdioClientTransport | null = null;
+let transport: StreamableHTTPClientTransport | null = null;
 let state: State = 'disconnected';
 let nextRetryAt = 0;
 let consecutiveFailures = 0;
@@ -68,10 +70,7 @@ async function connect(): Promise<void> {
   state = 'connecting';
   inflightConnect = (async () => {
     try {
-      transport = new StdioClientTransport({
-        command: 'npx',
-        args: ['-y', 'mcp-remote', 'https://mcp.exa.ai/mcp'],
-      });
+      transport = new StreamableHTTPClientTransport(new URL(EXA_MCP_URL));
       client = new Client({ name: 'silverwolf', version: '1.0.0' }, { capabilities: {} });
 
       transport.onclose = () => {
@@ -91,7 +90,7 @@ async function connect(): Promise<void> {
       state = 'ready';
       consecutiveFailures = 0;
       nextRetryAt = 0;
-      log('[mcp] connected to exa via mcp-remote');
+      log(`[mcp] connected via streamable HTTP: ${EXA_MCP_URL}`);
     } catch (err) {
       state = 'crashed';
       consecutiveFailures += 1;
