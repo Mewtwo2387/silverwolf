@@ -74,7 +74,10 @@ function getContextLimit(model: string): number {
 // When web search is enabled, bump the floor so up to ~3 tool-call payloads
 // (~4k chars / ~1k tokens each) plus the final answer all fit.
 function computeReservedTokens(contextSize: number, webSearchEnabled = false): number {
-  const floor = webSearchEnabled ? 12_288 : 1_024;
+  // Clamp the floor to contextSize so tiny-context models (e.g. 8k image-gen)
+  // don't reserve more tokens than they have, sending rawAvailable negative.
+  const rawFloor = webSearchEnabled ? 12_288 : 1_024;
+  const floor = Math.min(rawFloor, contextSize);
   return Math.min(16_384, Math.max(floor, Math.floor(contextSize * 0.1)));
 }
 

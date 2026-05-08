@@ -29,6 +29,7 @@ let nextRetryAt = 0;
 let consecutiveFailures = 0;
 let inflightConnect: Promise<void> | null = null;
 let loggedToolList = false;
+let isShuttingDown = false;
 // Map sanitized public name → real MCP tool name. The model never sees "exa".
 const toolNameMap = new Map<string, string>();
 
@@ -48,7 +49,10 @@ function sanitizeText(raw: string): string {
 
 function computeBackoffMs(): number {
   const exp = Math.min(RECONNECT_MAX_MS, RECONNECT_BASE_MS * 2 ** consecutiveFailures);
-  return exp;
+  // ±20% jitter to avoid thundering-herd reconnects when many clients fail at once.
+  const jitterFactor = 1 + (Math.random() * 0.4 - 0.2);
+  const jittered = exp * jitterFactor;
+  return Math.max(0, Math.min(RECONNECT_MAX_MS, jittered));
 }
 
 async function connect(): Promise<void> {
@@ -71,6 +75,7 @@ async function connect(): Promise<void> {
       client = new Client({ name: 'silverwolf', version: '1.0.0' }, { capabilities: {} });
 
       transport.onclose = () => {
+        if (isShuttingDown) return;
         logWarning('[mcp] transport closed');
         state = 'crashed';
         consecutiveFailures += 1;
@@ -125,7 +130,14 @@ async function listSanitizedTools(): Promise<SanitizedTool[]> {
 
   toolNameMap.clear();
   const sanitized: SanitizedTool[] = res.tools.map((t: any) => {
-    const publicName = sanitizeName(t.name);
+    const base = sanitizeName(t.name);
+    let publicName = base;
+    let suffix = 1;
+    // Disambiguate collisions so the model can address each tool unambiguously.
+    while (toolNameMap.has(publicName)) {
+      publicName = `${base}-${suffix}`;
+      suffix += 1;
+    }
     toolNameMap.set(publicName, t.name);
     return {
       publicName,
@@ -228,10 +240,15 @@ export async function callSearchTool(name: string, args: Record<string, any>): P
 }
 
 export async function shutdownMcp(): Promise<void> {
-  if (client) {
-    try { await client.close(); } catch (err) { logError('[mcp] close failed:', err); }
+  isShuttingDown = true;
+  try {
+    if (client) {
+      try { await client.close(); } catch (err) { logError('[mcp] close failed:', err); }
+    }
+    client = null;
+    transport = null;
+    state = 'disconnected';
+  } finally {
+    isShuttingDown = false;
   }
-  client = null;
-  transport = null;
-  state = 'disconnected';
 }

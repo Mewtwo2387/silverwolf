@@ -176,7 +176,10 @@ ${systemPrompt || ''}
         completion = await openrouter.chat.completions.create(requestBody);
       } catch (err: any) {
         const msg = (err?.message || '').toLowerCase();
-        if (toolsAvailable && (msg.includes('tool') || msg.includes('function'))) {
+        const status = err?.status;
+        const statusSuggestsToolReject = status === 400 || status === 404;
+        const messageSuggestsToolReject = msg.includes('tool') || msg.includes('function');
+        if (toolsAvailable && (statusSuggestsToolReject || messageSuggestsToolReject)) {
           logWarning(`[ai] model ${model} rejected tools; retrying without`);
           toolsAvailable = false;
           iter -= 1;
@@ -314,7 +317,12 @@ ${systemPrompt || ''}
           ? (response.functionCalls() ?? [])
           : [];
 
-        if (!useTools || fnCalls.length === 0 || iter === MAX_TOOL_ITERATIONS) {
+        if (iter === MAX_TOOL_ITERATIONS && fnCalls.length > 0) {
+          fullText = 'Tool budget exhausted — the assistant could not complete the request. Try again or simplify the request.';
+          break;
+        }
+
+        if (!useTools || fnCalls.length === 0) {
           try { fullText = response.text(); } catch { fullText = ''; }
           break;
         }
