@@ -140,20 +140,25 @@ const scriptHandlers = {
         const rawHistory = await (message.client as any).db.aiChat.getHistory(aiSession.sessionId, 100);
         hadRawHistory = rawHistory.length > 0;
 
+        // Tool rows are audit-only and get filtered out before replay anyway —
+        // exclude them from the token budget so they don't crowd out real turns.
+        const filteredHistory = rawHistory.filter((h: { role: string }) => h.role !== 'tool');
+
         // Token-based sliding window: trim oldest messages to fit context
         const { trimmedHistory, warnings } = await trimHistoryToFit(
           persona.provider,
           persona.model,
           persona.systemPrompt ?? '',
-          rawHistory,
+          filteredHistory,
           prompt,
+          persona.webSearchEnabled,
         );
         history = trimmedHistory;
         contextWarnings = warnings;
         historyLoaded = true;
 
-        if (rawHistory.length !== trimmedHistory.length) {
-          log(`AiChat: Trimmed history from ${rawHistory.length} to ${trimmedHistory.length} messages for session ${aiSession.sessionId}`);
+        if (filteredHistory.length !== trimmedHistory.length) {
+          log(`AiChat: Trimmed history from ${filteredHistory.length} to ${trimmedHistory.length} messages for session ${aiSession.sessionId}`);
         }
       } catch (histErr) {
         logError('AiChat: Failed to load history, proceeding without it:', histErr);
@@ -164,12 +169,13 @@ const scriptHandlers = {
       const webhooks = await (message.channel as TextChannel).fetchWebhooks();
       let webhook = webhooks.find((wh: any) => wh.name === WEBHOOK_NAME && wh.token);
 
-      const { text, images } = await generateContent({
+      const { text, images, toolCalls } = await generateContent({
         provider: persona.provider,
         model: persona.model,
         systemPrompt: persona.systemPrompt ?? '',
         prompt,
         history,
+        webSearchEnabled: persona.webSearchEnabled,
       });
 
       if (!webhook) {
@@ -196,7 +202,10 @@ const scriptHandlers = {
       }
 
       const MAX_LENGTH = 2000;
-      let remainingText = (text || '').toString();
+      const searchPrefix = toolCalls && toolCalls.length > 0
+        ? `-# 🔎 searched the web (${toolCalls.length})\n`
+        : '';
+      let remainingText = `${searchPrefix}${(text || '').toString()}`;
       let previousMsg: any = null;
       let filesToAttach: any[] = images || [];
 
@@ -277,13 +286,37 @@ const scriptHandlers = {
         }
       }
 
-      if (hasMemory && aiSession && text) {
+      const hasToolCalls = !!(toolCalls && toolCalls.length > 0);
+      const hasImages = !!(images && images.length > 0);
+      if (hasMemory && aiSession && (text || hasToolCalls || hasImages)) {
         const aiRole = persona.provider === 'openrouter' ? 'assistant' : 'model';
         try {
           await (message.client as any).db.aiChat.addHistory(aiSession.sessionId, 'user', prompt);
-          await (message.client as any).db.aiChat.addHistory(aiSession.sessionId, aiRole, text);
+          if (hasToolCalls) {
+            // Persist tool exchanges between the user message and the final assistant
+            // text so chronological order is preserved. These rows are audit-only;
+            // they're filtered out when history is replayed to the model.
+            for (const tc of toolCalls) {
+              // eslint-disable-next-line no-await-in-loop
+              await (message.client as any).db.aiChat.addHistory(
+                aiSession.sessionId,
+                'tool',
+                JSON.stringify(tc),
+              );
+            }
+          }
+          if (text) {
+            await (message.client as any).db.aiChat.addHistory(aiSession.sessionId, aiRole, text);
+          } else if (hasImages) {
+            const imageMeta = JSON.stringify(images.map((img: any) => ({ name: img.name })));
+            await (message.client as any).db.aiChat.addHistory(
+              aiSession.sessionId,
+              aiRole,
+              `[image-only response] ${imageMeta}`,
+            );
+          }
 
-          if (historyLoaded && !hadRawHistory) {
+          if (historyLoaded && !hadRawHistory && text) {
             generateSessionTitle(prompt, text)
               .then((title) => {
                 if (title) {
