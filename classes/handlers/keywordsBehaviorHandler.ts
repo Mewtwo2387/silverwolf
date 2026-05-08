@@ -147,6 +147,7 @@ const scriptHandlers = {
           persona.systemPrompt ?? '',
           rawHistory,
           prompt,
+          persona.webSearchEnabled,
         );
         history = trimmedHistory;
         contextWarnings = warnings;
@@ -164,12 +165,13 @@ const scriptHandlers = {
       const webhooks = await (message.channel as TextChannel).fetchWebhooks();
       let webhook = webhooks.find((wh: any) => wh.name === WEBHOOK_NAME && wh.token);
 
-      const { text, images } = await generateContent({
+      const { text, images, toolCalls } = await generateContent({
         provider: persona.provider,
         model: persona.model,
         systemPrompt: persona.systemPrompt ?? '',
         prompt,
         history,
+        webSearchEnabled: persona.webSearchEnabled,
       });
 
       if (!webhook) {
@@ -196,7 +198,10 @@ const scriptHandlers = {
       }
 
       const MAX_LENGTH = 2000;
-      let remainingText = (text || '').toString();
+      const searchPrefix = toolCalls && toolCalls.length > 0
+        ? `-# 🔎 searched the web (${toolCalls.length})\n`
+        : '';
+      let remainingText = `${searchPrefix}${(text || '').toString()}`;
       let previousMsg: any = null;
       let filesToAttach: any[] = images || [];
 
@@ -281,6 +286,19 @@ const scriptHandlers = {
         const aiRole = persona.provider === 'openrouter' ? 'assistant' : 'model';
         try {
           await (message.client as any).db.aiChat.addHistory(aiSession.sessionId, 'user', prompt);
+          if (toolCalls && toolCalls.length > 0) {
+            // Persist tool exchanges between the user message and the final assistant
+            // text so chronological order is preserved. These rows are audit-only;
+            // they're filtered out when history is replayed to the model.
+            for (const tc of toolCalls) {
+              // eslint-disable-next-line no-await-in-loop
+              await (message.client as any).db.aiChat.addHistory(
+                aiSession.sessionId,
+                'tool',
+                JSON.stringify(tc),
+              );
+            }
+          }
           await (message.client as any).db.aiChat.addHistory(aiSession.sessionId, aiRole, text);
 
           if (historyLoaded && !hadRawHistory) {

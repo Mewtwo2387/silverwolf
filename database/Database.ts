@@ -104,6 +104,37 @@ class Database {
       WHERE active = 1
     `);
 
+    // SQLite can't ALTER a CHECK constraint — rebuild AiChatHistory if the
+    // 'tool' role isn't allowed yet. Idempotent: skipped on subsequent boots.
+    const aiChatSchema = this.db
+      .query("SELECT sql FROM sqlite_master WHERE type='table' AND name='AiChatHistory'")
+      .get() as { sql?: string } | null;
+    if (aiChatSchema?.sql && !aiChatSchema.sql.includes("'tool'")) {
+      log('Migrating AiChatHistory: adding tool role to CHECK constraint');
+      this.db.run('BEGIN IMMEDIATE TRANSACTION');
+      try {
+        this.db.run(`
+          CREATE TABLE AiChatHistory_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id INTEGER NOT NULL,
+            role TEXT CHECK(role IN ('user', 'model', 'assistant', 'tool')) NOT NULL,
+            message TEXT NOT NULL,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (session_id) REFERENCES AiChatSession(session_id)
+          )
+        `);
+        this.db.run('INSERT INTO AiChatHistory_new (id, session_id, role, message, timestamp) SELECT id, session_id, role, message, timestamp FROM AiChatHistory');
+        this.db.run('DROP TABLE AiChatHistory');
+        this.db.run('ALTER TABLE AiChatHistory_new RENAME TO AiChatHistory');
+        this.db.run('COMMIT');
+        log('AiChatHistory migration complete');
+      } catch (err) {
+        this.db.run('ROLLBACK');
+        logError('AiChatHistory migration failed:', err);
+        throw err;
+      }
+    }
+
     // Speed up per-user poop lookups and daily-count range queries
     this.db.run(`
       CREATE INDEX IF NOT EXISTS idx_poopentry_user_logged

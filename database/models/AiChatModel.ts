@@ -136,7 +136,7 @@ class AiChatModel {
   /**
    * Appends a message to the session's history.
    */
-  async addHistory(sessionId: number, role: 'user' | 'model' | 'assistant', message: string): Promise<void> {
+  async addHistory(sessionId: number, role: 'user' | 'model' | 'assistant' | 'tool', message: string): Promise<void> {
     await this.db.executeQuery(aiChatQueries.ADD_HISTORY, [sessionId, role, message]);
   }
 

@@ -70,10 +70,12 @@ function getContextLimit(model: string): number {
   return CONTEXT_LIMITS[model] || CONTEXT_LIMITS.default;
 }
 
-// Reserve tokens for system prompt + new user message + response
-// Dynamic reserve: 10% of context, clamped between 1024 and 8192
-function computeReservedTokens(contextSize: number): number {
-  return Math.min(8_192, Math.max(1_024, Math.floor(contextSize * 0.1)));
+// Reserve tokens for system prompt + new user message + response.
+// When web search is enabled, bump the floor so up to ~3 tool-call payloads
+// (~4k chars / ~1k tokens each) plus the final answer all fit.
+function computeReservedTokens(contextSize: number, webSearchEnabled = false): number {
+  const floor = webSearchEnabled ? 12_288 : 1_024;
+  return Math.min(16_384, Math.max(floor, Math.floor(contextSize * 0.1)));
 }
 
 /**
@@ -86,9 +88,10 @@ async function trimHistoryToFit(
   systemPrompt: string,
   history: { role: string; message: string }[],
   newPrompt: string,
+  webSearchEnabled = false,
 ): Promise<{ trimmedHistory: typeof history; budget: TokenBudget; warnings: ContextWarning[] }> {
   const contextLimit = getContextLimit(model);
-  const reserved = computeReservedTokens(contextLimit);
+  const reserved = computeReservedTokens(contextLimit, webSearchEnabled);
   const rawAvailable = contextLimit - reserved;
   // Shrink budget by the calibrated drift factor for this model (openrouter only).
   const calibration = provider === 'openrouter' ? getCalibrationMultiplier(model) : 1.0;
