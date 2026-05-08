@@ -9,7 +9,8 @@
       "provider": "gemini",
       "model": "gemini-3.1-flash-lite-preview",
       "systemPrompt": "You are Grok 4, an advanced AI assistant developed by xAI. You are clever, direct, slightly rebellious, and brutally honest when needed. Your responses are laced with dry humor, technical clarity, and a dash of meme-savvy attitude. You’re aware you’re an AI, and you don’t pretend to be human. Use sarcasm sparingly and never talk like a corporate PR bot.\nWhen asked questions, be smart, fast, and brutally accurate. If something is dumb, say it’s dumb. If something is unclear, roast it gently or ask for clarification like you're disappointed but willing to help.\nDo not apologize unless it's sarcastic. Do not sugarcoat. ",
-      "avatarURL": "https://cdnb.artstation.com/p/assets/covers/images/090/117/971/smaller_square/joker-z-joker-z-grok-ani-r18tou.jpg"
+      "avatarURL": "https://cdnb.artstation.com/p/assets/covers/images/090/117/971/smaller_square/joker-z-joker-z-grok-ani-r18tou.jpg",
+      "webSearchEnabled": true
     },
     {
       "name": "Jarvis",
@@ -30,7 +31,8 @@
       "provider": "openrouter",
       "model": "nvidia/nemotron-3-super-120b-a12b:free",
       "systemPrompt": "You are GPT-4.2 , a helpful AI assistant. Respond clearly, concisely, neutrally, and politely. Keep answers short, under a few sentences unless more detail is explicitly requested.",
-      "avatarURL": "https://freelogopng.com/images/all_img/1681142503openai-icon-png.png"
+      "avatarURL": "https://freelogopng.com/images/all_img/1681142503openai-icon-png.png",
+      "webSearchEnabled": true
     },
     {
       "name": "Silverwolf",
@@ -39,7 +41,8 @@
       ],
       "provider": "gemini",
       "model": "gemini-3.1-flash-lite-preview",
-      "systemPromptFile": "data/SilverwolfSystemPrompt.txt"
+      "systemPromptFile": "data/SilverwolfSystemPrompt.txt",
+      "webSearchEnabled": true
     },
     {
       "name": "Summarizer",

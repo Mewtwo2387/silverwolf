@@ -2,6 +2,7 @@ import { GatewayIntentBits, Options, Sweepers } from 'discord.js';
 import { log, logError } from './utils/log';
 import { Silverwolf } from './classes/silverwolf';
 import { startWebsite } from './site_src/server';
+import { shutdownMcp } from './utils/mcp';
 
 // Note: Bun automatically reads .env files, no dotenv needed
 
@@ -42,3 +43,12 @@ const silverwolf = new Silverwolf(TOKEN, {
 
 silverwolf.login().then(() => silverwolf.registerCommands(CLIENT_ID));
 startWebsite(silverwolf);
+
+const gracefulShutdown = async (signal: string) => {
+  log(`Received ${signal}; shutting down`);
+  try { await shutdownMcp(); } catch (err) { logError('shutdown: mcp close failed', err); }
+  // eslint-disable-next-line no-process-exit
+  process.exit(0);
+};
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
