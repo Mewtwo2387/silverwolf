@@ -434,7 +434,8 @@ async function generateSessionTitle(userMessage: string, aiResponse: string): Pr
         { role: 'assistant', content: 'Title: ' },
       ],
       max_tokens: 512,
-    });
+      reasoning: { enabled: false },
+    } as any);
     const raw = completion.choices?.[0]?.message?.content;
     if (!raw) return null;
     // Strip any "Title:" prefix the model may echo, quotes, and trailing punctuation
