@@ -98,7 +98,7 @@ async function resolvePersona(messageContent = ''): Promise<Persona> {
   return {
     name: 'Default',
     provider: defaults.provider || 'gemini',
-    model: defaults.model || 'gemini-3.1-flash-lite-preview',
+    model: defaults.model || 'gemini-3.1-flash-lite',
     systemPrompt: defaults.systemPrompt || 'You are a helpful AI assistant.',
     responseModalities: defaults.responseModalities || ['TEXT'],
   };
