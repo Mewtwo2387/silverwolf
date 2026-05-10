@@ -5,6 +5,7 @@ import {
 import { log, logError } from '../../utils/log';
 import { resolvePersona, generateContent, generateSessionTitle } from '../../utils/ai';
 import { trimHistoryToFit } from '../../utils/tokenizer';
+import { extractPdfsFromMessage } from '../../utils/pdf';
 
 const WEBHOOK_NAME = process.env.WEBHOOK_NAME || 'grok-webhook';
 
@@ -111,15 +112,23 @@ const scriptHandlers = {
       return;
     }
 
+    const { blocks: pdfBlocks, notices: pdfNotices } = await extractPdfsFromMessage(message);
+    for (const notice of pdfNotices) {
+      // eslint-disable-next-line no-await-in-loop
+      await message.reply({ content: notice, allowedMentions: { repliedUser: false } })
+        .catch((e) => { logError('PDF notice reply failed:', e); });
+    }
+    const pdfPrefix = pdfBlocks.length > 0 ? `${pdfBlocks.join('\n\n')}\n\n` : '';
+
     let prompt = '';
 
     if (contextMsg) {
       const promptName = (contextMsg.author.username === displayName) ? 'You' : contextMsg.author.username;
-      prompt = `Previous message by ${promptName}: "${contextMsg.content}"
+      prompt = `${pdfPrefix}Previous message by ${promptName}: "${contextMsg.content}"
 
       User ${username} said: ${query}`;
     } else {
-      prompt = `User ${username} said: ${query}`;
+      prompt = `${pdfPrefix}User ${username} said: ${query}`;
     }
 
     log(`Prompt: ${prompt}`);
