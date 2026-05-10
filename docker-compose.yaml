@@ -6,7 +6,5 @@ services:
     env_file: .env
     volumes:
       - ./persistence:/app/persistence
-    deploy:
-      resources:
-        limits:
-          memory: 1G
+    mem_limit: 1g
+    memswap_limit: 1g
