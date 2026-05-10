@@ -8,6 +8,22 @@ const MAX_CHARS_PER_PDF = 50_000;
 const MIN_USEFUL_TEXT_CHARS = 50;
 const PDF_MAGIC = '%PDF-';
 
+const ALLOWED_CDN_HOSTNAMES = new Set([
+  'cdn.discordapp.com',
+  'media.discordapp.net',
+]);
+
+function isValidDiscordCdnUrl(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== 'https:') return false;
+  return ALLOWED_CDN_HOSTNAMES.has(parsed.hostname);
+}
+
 interface AttachmentInfo {
   name: string;
   url: string;
@@ -34,13 +50,21 @@ function hasPdfMagic(bytes: Uint8Array): boolean {
 async function extractOne(att: AttachmentInfo): Promise<{ block?: string; notice?: string }> {
   const { name } = att;
 
+  if (!isValidDiscordCdnUrl(att.url)) {
+    return { notice: `Couldn't download **${name}** — skipping it. (untrusted source)` };
+  }
+
   let pdfBytes: Uint8Array | null = null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30_000);
   try {
-    const res = await fetch(att.url);
+    const res = await fetch(att.url, { signal: controller.signal });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     pdfBytes = new Uint8Array(await res.arrayBuffer());
   } catch (err) {
     return { notice: `Couldn't download **${name}** — skipping it. (${(err as Error).message})` };
+  } finally {
+    clearTimeout(timer);
   }
 
   if (!hasPdfMagic(pdfBytes)) {
@@ -79,7 +103,11 @@ async function extractOne(att: AttachmentInfo): Promise<{ block?: string; notice
     ? `${cleaned}\n\n[...truncated, original was ${originalLength} chars]`
     : cleaned;
 
-  const safeName = name.replace(/"/g, '\\"');
+  const safeName = name
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x1F\x7F]/g, ' ');
   return { block: `<<PDF_ATTACHMENT name="${safeName}">>\n${body}\n<</PDF_ATTACHMENT>>` };
 }
 
