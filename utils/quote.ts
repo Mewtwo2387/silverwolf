@@ -6,10 +6,34 @@ Credits:
 */
 
 import path from 'path';
-import Canvas, { type CanvasRenderingContext2D as CanvasCtx } from 'canvas';
+import type { CanvasRenderingContext2D as CanvasCtx } from 'canvas';
 import type { APIUser } from 'discord-api-types/v10';
 import type { Guild, User } from 'discord.js';
 import { log, logError } from './log';
+
+// Lazy-loaded canvas. Native module + 11 fonts (~30+ MB) only enter RSS once
+// quote() is invoked; the bot can boot without paying that cost.
+let Canvas: any = null;
+let fontsRegistered = false;
+async function loadCanvas(): Promise<any> {
+  if (!Canvas) {
+    Canvas = (await import('canvas')).default;
+  }
+  if (!fontsRegistered) {
+    fontsRegistered = true;
+    for (const {
+      file, family, style, weight,
+    } of FONT_REGISTRATIONS) {
+      try {
+        Canvas.registerFont(path.join(FONTS_DIR, file), { family, style, weight });
+        log(`Registered font: ${family} (${style})`);
+      } catch (e) {
+        logError(`Failed to register font ${family} from ${file}:`, e);
+      }
+    }
+  }
+  return Canvas;
+}
 
 // ─── Font Registration ────────────────────────────────────────────────────────
 const FONTS_DIR = path.join(import.meta.dir, '..', 'data', 'fonts');
@@ -73,17 +97,6 @@ const FONT_REGISTRATIONS: FontRegistration[] = [
     file: 'BebasNeue-Regular.ttf', family: 'Bebas Neue', style: 'normal', weight: '400',
   },
 ];
-
-FONT_REGISTRATIONS.forEach(({
-  file, family, style, weight,
-}) => {
-  try {
-    Canvas.registerFont(path.join(FONTS_DIR, file), { family, style, weight });
-    log(`Registered font: ${family} (${style})`);
-  } catch (e) {
-    logError(`Failed to register font ${family} from ${file}:`, e);
-  }
-});
 
 // ─── Hex Colour Validation ────────────────────────────────────────────────────
 const HEX_RE = /^#?([0-9A-Fa-f]{6})$/;
@@ -501,6 +514,7 @@ async function quote(
   _avatarSource: string | null,
   _fontStyle: string | null,
 ): Promise<Buffer> {
+  await loadCanvas();
   const { username } = _person;
   const nickname = _nickname || username;
   const resolvedMessage = await resolveMentions(guild, _message);

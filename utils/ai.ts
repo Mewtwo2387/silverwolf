@@ -7,17 +7,29 @@ import { countTokensOpenRouterMessages } from './tokenizer';
 import { listSearchTools, listSearchToolsGemini, callSearchTool } from './mcp';
 // Note: Bun automatically reads .env files
 
-// Initialize AI providers
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_TOKEN!);
+// Lazy-initialize AI provider clients. The module's transitive imports load
+// the SDK code regardless, but the client objects themselves don't allocate
+// until first call.
+let _genAI: GoogleGenerativeAI | null = null;
+function genAI(): GoogleGenerativeAI {
+  if (!_genAI) _genAI = new GoogleGenerativeAI(process.env.GEMINI_TOKEN!);
+  return _genAI;
+}
 
-const openrouter = new OpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY,
-  defaultHeaders: {
-    'HTTP-Referer': 'https://silverwolf.dev/',
-    'X-Title': 'Silverwolf',
-  },
-});
+let _openrouter: OpenAI | null = null;
+function openrouter(): OpenAI {
+  if (!_openrouter) {
+    _openrouter = new OpenAI({
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKey: process.env.OPENROUTER_API_KEY,
+      defaultHeaders: {
+        'HTTP-Referer': 'https://silverwolf.dev/',
+        'X-Title': 'Silverwolf',
+      },
+    });
+  }
+  return _openrouter;
+}
 
 // Load personas configuration
 // eslint-disable-next-line import/first
@@ -175,7 +187,7 @@ ${systemPrompt || ''}
       let completion: any;
       try {
         // eslint-disable-next-line no-await-in-loop
-        completion = await openrouter.chat.completions.create(requestBody);
+        completion = await openrouter().chat.completions.create(requestBody);
       } catch (err: any) {
         const msg = (err?.message || '').toLowerCase();
         const status = err?.status;
@@ -289,7 +301,7 @@ ${systemPrompt || ''}
       modelClientOptions.tools = geminiTools;
     }
 
-    const modelClient = genAI.getGenerativeModel(modelClientOptions);
+    const modelClient = genAI().getGenerativeModel(modelClientOptions);
 
     // Map DB history rows → Gemini SDK format ({ role: 'user'|'model', parts: [{text}] }).
     // 'assistant' (from openrouter turns) is normalized to 'model'; 'tool' rows are dropped.
@@ -408,14 +420,14 @@ ${systemPrompt || ''}
  * Gets the Gemini AI instance for direct usage
  */
 function getGeminiAI(): GoogleGenerativeAI {
-  return genAI;
+  return genAI();
 }
 
 /**
  * Gets the OpenRouter client for direct usage
  */
 function getOpenRouterClient(): OpenAI {
-  return openrouter;
+  return openrouter();
 }
 
 /**
@@ -428,7 +440,7 @@ async function generateSessionTitle(userMessage: string, aiResponse: string): Pr
   if (!persona) return null;
 
   try {
-    const completion = await openrouter.chat.completions.create({
+    const completion = await openrouter().chat.completions.create({
       model: persona.model,
       messages: [
         { role: 'system', content: persona.systemPrompt ?? '' },

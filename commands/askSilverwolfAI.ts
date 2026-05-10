@@ -21,7 +21,7 @@ class AskSilverwolfAI extends Command {
         type: 5,
         required: false,
       },
-    ], { blame: 'both' });
+    ], { blame: 'both', isInteractive: false });
   }
 
   async run(interaction: any): Promise<void> {

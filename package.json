@@ -4,13 +4,14 @@
   "description": "",
   "main": "index.ts",
   "scripts": {
-    "start": "bun index.ts",
-    "dev": "bun --watch index.ts",
+    "start": "bun --smol index.ts",
+    "dev": "bun --watch --smol index.ts",
     "test": "bun test --preload ./tests/setup.ts",
     "test:watch": "bun test --watch --preload ./tests/setup.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:manifest": "bun scripts/buildCommandManifest.ts"
   },
   "keywords": [],
   "author": "",

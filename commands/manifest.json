@@ -1,0 +1,3171 @@
+{
+  "version": 1,
+  "generatedAt": "2026-05-10T14:36:01.063Z",
+  "entries": [
+    {
+      "kind": "command",
+      "name": "dbdump",
+      "description": "Output a specific database table or all tables.",
+      "options": [
+        {
+          "name": "table",
+          "description": "Select the table to dump",
+          "type": 3,
+          "required": true,
+          "choices": [
+            {
+              "name": "User Data",
+              "value": "user"
+            },
+            {
+              "name": "Pokemon Data",
+              "value": "pokemon"
+            },
+            {
+              "name": "Marriage Data",
+              "value": "marriage"
+            },
+            {
+              "name": "Baby Data",
+              "value": "baby"
+            },
+            {
+              "name": "Command Config Data",
+              "value": "commandConfig"
+            },
+            {
+              "name": "Server Roles Data",
+              "value": "serverRoles"
+            },
+            {
+              "name": "Chat History Data",
+              "value": "chatHistory"
+            },
+            {
+              "name": "Chat Session Data",
+              "value": "chatSession"
+            },
+            {
+              "name": "Global Config Data",
+              "value": "globalConfig"
+            },
+            {
+              "name": "Game UID Data",
+              "value": "gameUID"
+            },
+            {
+              "name": "AI Chat History Data",
+              "value": "aiChatHistory"
+            },
+            {
+              "name": "AI Chat Session Data",
+              "value": "aiChatSession"
+            },
+            {
+              "name": "Birthday Reminder Data",
+              "value": "birthdayReminder"
+            },
+            {
+              "name": "Poop Entry Data",
+              "value": "poopEntry"
+            },
+            {
+              "name": "Poop Profile Data",
+              "value": "poopProfile"
+            },
+            {
+              "name": "All Data",
+              "value": "all"
+            }
+          ]
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/dbdump.ts"
+    },
+    {
+      "kind": "command",
+      "name": "add",
+      "description": "add something to a user",
+      "options": [
+        {
+          "name": "user",
+          "description": "the user to add something to",
+          "type": 6,
+          "required": true
+        },
+        {
+          "name": "attr",
+          "description": "the thing to add",
+          "type": 3,
+          "required": true
+        },
+        {
+          "name": "amount",
+          "description": "the amount of something to add",
+          "type": 3,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": "dev",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/dev_add.ts"
+    },
+    {
+      "kind": "command",
+      "name": "chatnew",
+      "description": "Start a new chat session for a specific AI",
+      "options": [
+        {
+          "name": "ai",
+          "description": "The AI persona to start a new chat with",
+          "type": 3,
+          "required": true,
+          "choices": [
+            {
+              "name": "Grok",
+              "value": "Grok"
+            },
+            {
+              "name": "Jarvis",
+              "value": "Jarvis"
+            },
+            {
+              "name": "GPT",
+              "value": "GPT"
+            },
+            {
+              "name": "Silverwolf",
+              "value": "Silverwolf"
+            },
+            {
+              "name": "TitleGen",
+              "value": "TitleGen"
+            }
+          ]
+        }
+      ],
+      "isSubcommandOf": "ai",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/ai_chatnew.ts"
+    },
+    {
+      "kind": "command",
+      "name": "setserverrole",
+      "description": "set server role",
+      "options": [
+        {
+          "name": "role_name",
+          "description": "the name of the role to set",
+          "type": 3,
+          "required": true
+        },
+        {
+          "name": "role",
+          "description": "the role to set",
+          "type": 8,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/setserverrole.ts"
+    },
+    {
+      "kind": "command",
+      "name": "delete",
+      "description": "Delete a game UID for the user",
+      "options": [
+        {
+          "name": "game",
+          "description": "The name of the game to delete the UID for",
+          "type": 3,
+          "required": true,
+          "choices": [
+            {
+              "name": "Minecraft",
+              "value": "Minecraft"
+            },
+            {
+              "name": "Genshin Impact",
+              "value": "Genshin Impact"
+            },
+            {
+              "name": "Honkai: Star Rail",
+              "value": "Honkai: Star Rail"
+            },
+            {
+              "name": "Honkai Impact 3rd",
+              "value": "Honkai Impact 3rd"
+            },
+            {
+              "name": "Zenless Zone Zero",
+              "value": "Zenless Zone Zero"
+            },
+            {
+              "name": "Wuthering Waves",
+              "value": "Wuthering Waves"
+            },
+            {
+              "name": "Valorant",
+              "value": "Valorant"
+            },
+            {
+              "name": "Fate/Grand Order",
+              "value": "Fate/Grand Order"
+            },
+            {
+              "name": "Reverse: 1999",
+              "value": "Reverse: 1999"
+            },
+            {
+              "name": "Arknights",
+              "value": "Arknights"
+            },
+            {
+              "name": "Azur Lane",
+              "value": "Azur Lane"
+            },
+            {
+              "name": "Punishing: Gray Raven",
+              "value": "Punishing: Gray Raven"
+            },
+            {
+              "name": "Blue Archive",
+              "value": "Blue Archive"
+            }
+          ]
+        }
+      ],
+      "isSubcommandOf": "gameuid",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/gameuid_delete.ts"
+    },
+    {
+      "kind": "command",
+      "name": "chatdelete",
+      "description": "Permanently delete one of your AI chat sessions",
+      "options": [
+        {
+          "name": "session_id",
+          "description": "The session ID to delete (visible in /ai view)",
+          "type": 4,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": "ai",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/ai_chatdelete.ts"
+    },
+    {
+      "kind": "command",
+      "name": "get",
+      "description": "get a list of babies from parents",
+      "options": [
+        {
+          "name": "parent",
+          "description": "The parent of the baby (default: you)",
+          "type": 6,
+          "required": false
+        }
+      ],
+      "isSubcommandOf": "baby",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/baby_get.ts"
+    },
+    {
+      "kind": "command",
+      "name": "pokemonfind",
+      "description": "Find users with Pokemon of a specific type",
+      "options": [
+        {
+          "name": "type",
+          "description": "The type of Pokemon to search for",
+          "type": 3,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/pokemonFind.ts"
+    },
+    {
+      "kind": "command",
+      "name": "ascension",
+      "description": "buy strong upgrades with your heavenly nuggies",
+      "options": [],
+      "isSubcommandOf": "shop",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/shop_ascension.ts"
+    },
+    {
+      "kind": "command",
+      "name": "donation",
+      "description": "buy stuff with stellar nuggies",
+      "options": [],
+      "isSubcommandOf": "shop",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/shop_donation.ts"
+    },
+    {
+      "kind": "command",
+      "name": "balance",
+      "description": "check your mystic credits and bitcoin",
+      "options": [
+        {
+          "name": "member",
+          "description": "member to check the balance of (default: you)",
+          "type": 6,
+          "required": false
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/balance.ts"
+    },
+    {
+      "kind": "command",
+      "name": "register",
+      "description": "Register this server for bot commands",
+      "options": [],
+      "isSubcommandOf": "server",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/server_register.ts"
+    },
+    {
+      "kind": "command",
+      "name": "set",
+      "description": "Set a global config value",
+      "options": [
+        {
+          "name": "key",
+          "description": "config key",
+          "type": 3,
+          "required": true
+        },
+        {
+          "name": "value",
+          "description": "config value",
+          "type": 3,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": "globalconfig",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/globalconfig_set.ts"
+    },
+    {
+      "kind": "command",
+      "name": "forceautomation",
+      "description": "force a baby task",
+      "options": [
+        {
+          "name": "frequency",
+          "description": "the frequency of the automation",
+          "type": 3,
+          "required": true,
+          "choices": [
+            {
+              "name": "daily",
+              "value": "daily"
+            },
+            {
+              "name": "ten_minutes",
+              "value": "ten_minutes"
+            }
+          ]
+        }
+      ],
+      "isSubcommandOf": "dev",
+      "ephemeral": true,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/dev_forceautomation.ts"
+    },
+    {
+      "kind": "command",
+      "name": "get",
+      "description": "Retrieve a user's birthday",
+      "options": [
+        {
+          "name": "user",
+          "description": "The user whose birthday you want to retrieve",
+          "type": 6,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": "birthday",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/birthday_get.ts"
+    },
+    {
+      "kind": "command",
+      "name": "lore",
+      "description": "send member lore",
+      "options": [
+        {
+          "name": "member",
+          "description": "lore of the member",
+          "type": 3,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/lore.ts"
+    },
+    {
+      "kind": "command",
+      "name": "donate",
+      "description": "our server's donation links and rewards (real)",
+      "options": [],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/donate.ts"
+    },
+    {
+      "kind": "command",
+      "name": "recruiter-game-오징어게임",
+      "description": "is this a squid game reference?",
+      "options": [],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/gongyoo.ts"
+    },
+    {
+      "kind": "command",
+      "name": "forcesummon",
+      "description": "force summon a pokemon",
+      "options": [
+        {
+          "name": "mode",
+          "description": "mode",
+          "type": 3,
+          "required": false,
+          "choices": [
+            {
+              "name": "normal",
+              "value": "normal"
+            },
+            {
+              "name": "shiny",
+              "value": "shiny"
+            },
+            {
+              "name": "mystery",
+              "value": "mystery"
+            }
+          ]
+        }
+      ],
+      "isSubcommandOf": "dev",
+      "ephemeral": true,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/dev_forcesummon.ts"
+    },
+    {
+      "kind": "command",
+      "name": "roll",
+      "description": "roll a dice",
+      "options": [
+        {
+          "name": "sides",
+          "description": "number of sides. wait, why is it a string?",
+          "type": 3,
+          "required": false
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/roll.ts"
+    },
+    {
+      "kind": "command",
+      "name": "set",
+      "description": "Sets your birthday. Enter 0 for all values to delete your birthday entry.",
+      "options": [
+        {
+          "name": "day",
+          "description": "Day of the month (1-31), or 0 to delete your birthday",
+          "type": 4,
+          "required": true
+        },
+        {
+          "name": "month",
+          "description": "Month (1-12), or 0 to delete your birthday",
+          "type": 4,
+          "required": true
+        },
+        {
+          "name": "year",
+          "description": "Year (e.g. 1990), or 0 to delete your birthday",
+          "type": 4,
+          "required": true
+        },
+        {
+          "name": "timezone",
+          "description": "Timezone offset (e.g. +8, -5, +5.30, 10.00). Defaults to UTC.",
+          "type": 3,
+          "required": false
+        }
+      ],
+      "isSubcommandOf": "birthday",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/birthday_set.ts"
+    },
+    {
+      "kind": "command",
+      "name": "arlecchino",
+      "description": "scare leon away",
+      "options": [],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/arlecchino.ts"
+    },
+    {
+      "kind": "command",
+      "name": "view",
+      "description": "Retrieve blacklisted commands for a specific server",
+      "options": [
+        {
+          "name": "server",
+          "description": "The ID of the server to retrieve blacklisted commands for",
+          "type": 3,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": "blacklist",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/blacklist_view.ts"
+    },
+    {
+      "kind": "command",
+      "name": "get",
+      "description": "Get a global config value",
+      "options": [
+        {
+          "name": "key",
+          "description": "config key (ALL to get all)",
+          "type": 3,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": "globalconfig",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/globalconfig_get.ts"
+    },
+    {
+      "kind": "command",
+      "name": "regular",
+      "description": "Play a game of Russian Roulette",
+      "options": [
+        {
+          "name": "user1",
+          "type": 6,
+          "description": "The first participant",
+          "required": true
+        },
+        {
+          "name": "user2",
+          "type": 6,
+          "description": "The second participant",
+          "required": true
+        },
+        {
+          "name": "user3",
+          "type": 6,
+          "description": "The third participant",
+          "required": false
+        },
+        {
+          "name": "user4",
+          "type": 6,
+          "description": "The fourth participant",
+          "required": false
+        },
+        {
+          "name": "user5",
+          "type": 6,
+          "description": "The fifth participant",
+          "required": false
+        },
+        {
+          "name": "user6",
+          "type": 6,
+          "description": "The sixth participant",
+          "required": false
+        }
+      ],
+      "isSubcommandOf": "russianroulette",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/russianroulette_regular.ts"
+    },
+    {
+      "kind": "command",
+      "name": "catch",
+      "description": "gotta catch em all",
+      "options": [
+        {
+          "name": "pokemon",
+          "description": "the name of the uhh.. pokemon?",
+          "type": 3,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/catch.ts"
+    },
+    {
+      "kind": "command",
+      "name": "donation",
+      "description": "buy stuff with stellar nuggies",
+      "options": [
+        {
+          "name": "upgrade",
+          "description": "The upgrade to buy",
+          "type": 4,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": "buy",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/buy_donation.ts"
+    },
+    {
+      "kind": "command",
+      "name": "eval",
+      "description": "evaluate js code. most dangerous command???",
+      "options": [
+        {
+          "name": "code",
+          "description": "js code",
+          "type": 3,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/eval.ts"
+    },
+    {
+      "kind": "command",
+      "name": "nothing",
+      "description": "Does absolutely nothing",
+      "options": [],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": true,
+      "isInteractive": true,
+      "file": "commands/nothing.ts"
+    },
+    {
+      "kind": "command",
+      "name": "propose",
+      "description": "Propose to a user",
+      "options": [
+        {
+          "name": "user",
+          "description": "The user you want to propose to",
+          "type": 6,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": "marriage",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/marriage_propose.ts"
+    },
+    {
+      "kind": "command",
+      "name": "flip",
+      "description": "50/50 for silverwolf to give you head",
+      "options": [],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/flip.ts"
+    },
+    {
+      "kind": "command",
+      "name": "singleplayer",
+      "description": "Play a single-player game of Russian Roulette",
+      "options": [],
+      "isSubcommandOf": "russianroulette",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/russianroulette_singleplayer.ts"
+    },
+    {
+      "kind": "command",
+      "name": "ascend",
+      "description": "Ascend to reset stuff but get more stuff",
+      "options": [],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/ascend.ts"
+    },
+    {
+      "kind": "command",
+      "name": "sing",
+      "description": "sing a song",
+      "options": [
+        {
+          "name": "song",
+          "description": "song to sing",
+          "type": 3,
+          "required": true,
+          "choices": [
+            {
+              "name": "If I Can Stop One Heart From Breaking",
+              "value": "IfICanStopOneHeartFromBreaking"
+            },
+            {
+              "name": "Unauthorized Access",
+              "value": "unauthorizedAccess"
+            },
+            {
+              "name": "Fly Me To The Moon",
+              "value": "flyMeToTheMoon"
+            },
+            {
+              "name": "Women Cheat",
+              "value": "WomenCheat"
+            },
+            {
+              "name": "All I Wantfor Christmas Is You",
+              "value": "AllIWantforChristmasIsYou"
+            },
+            {
+              "name": "We Are Charlie Kirk",
+              "value": "WeAreCharlieKirk"
+            },
+            {
+              "name": "Never Gonna Give You Up",
+              "value": "NeverGonnaGiveYouUp"
+            },
+            {
+              "name": "Golden",
+              "value": "Golden"
+            }
+          ]
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/sing.ts"
+    },
+    {
+      "kind": "command",
+      "name": "log",
+      "description": "Record a bathroom visit 💩",
+      "options": [
+        {
+          "name": "colour",
+          "description": "The colour of your poop",
+          "type": 3,
+          "required": false,
+          "choices": [
+            {
+              "name": "Brown",
+              "value": "brown"
+            },
+            {
+              "name": "Dark Brown",
+              "value": "dark-brown"
+            },
+            {
+              "name": "Yellow",
+              "value": "yellow"
+            },
+            {
+              "name": "Green",
+              "value": "green"
+            },
+            {
+              "name": "Black",
+              "value": "black"
+            },
+            {
+              "name": "Red",
+              "value": "red"
+            },
+            {
+              "name": "Holy",
+              "value": "holy"
+            }
+          ]
+        },
+        {
+          "name": "size",
+          "description": "The size of your poop",
+          "type": 3,
+          "required": false,
+          "choices": [
+            {
+              "name": "Small",
+              "value": "small"
+            },
+            {
+              "name": "Medium",
+              "value": "medium"
+            },
+            {
+              "name": "Large",
+              "value": "large"
+            },
+            {
+              "name": "Omnipresent",
+              "value": "omnipresent"
+            }
+          ]
+        },
+        {
+          "name": "type",
+          "description": "The consistency of your poop",
+          "type": 3,
+          "required": false,
+          "choices": [
+            {
+              "name": "Liquid",
+              "value": "liquid"
+            },
+            {
+              "name": "Soft",
+              "value": "soft"
+            },
+            {
+              "name": "Normal",
+              "value": "normal"
+            },
+            {
+              "name": "Hard",
+              "value": "hard"
+            },
+            {
+              "name": "Pellet",
+              "value": "pellet"
+            },
+            {
+              "name": "Divine",
+              "value": "divine"
+            }
+          ]
+        },
+        {
+          "name": "duration",
+          "description": "How long you were on the throne (minutes)",
+          "type": 4,
+          "required": false,
+          "min_value": 1,
+          "max_value": 120
+        }
+      ],
+      "isSubcommandOf": "poop",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/poop_log.ts"
+    },
+    {
+      "kind": "command",
+      "name": "dev",
+      "description": "pong but for dev",
+      "options": [],
+      "isSubcommandOf": "ping",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/ping_dev.ts"
+    },
+    {
+      "kind": "command",
+      "name": "status",
+      "description": "Check your or another user's marriage status",
+      "options": [
+        {
+          "name": "user",
+          "description": "The user whose marriage status you want to check (optional)",
+          "type": 6,
+          "required": false
+        }
+      ],
+      "isSubcommandOf": "marriage",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/marriage_status.ts"
+    },
+    {
+      "kind": "command",
+      "name": "discord_timestamp",
+      "description": "Displays the current or specified time in various formats",
+      "options": [
+        {
+          "name": "timezone",
+          "description": "Timezone offset in ±HH:MM format (e.g. +08:00)",
+          "type": 3,
+          "required": false
+        },
+        {
+          "name": "hour",
+          "description": "Hour (1-12)",
+          "type": 4,
+          "required": false
+        },
+        {
+          "name": "minute",
+          "description": "Minute (0-59)",
+          "type": 4,
+          "required": false
+        },
+        {
+          "name": "second",
+          "description": "Second (0-59)",
+          "type": 4,
+          "required": false
+        },
+        {
+          "name": "meridiem",
+          "description": "AM or PM",
+          "type": 3,
+          "required": false,
+          "choices": [
+            {
+              "name": "AM",
+              "value": "AM"
+            },
+            {
+              "name": "PM",
+              "value": "PM"
+            }
+          ]
+        },
+        {
+          "name": "date",
+          "description": "Day of the month (1-31)",
+          "type": 4,
+          "required": false
+        },
+        {
+          "name": "month",
+          "description": "Month (1-12)",
+          "type": 4,
+          "required": false
+        },
+        {
+          "name": "year",
+          "description": "Year (e.g., 2024)",
+          "type": 4,
+          "required": false
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/discordTimestamp.ts"
+    },
+    {
+      "kind": "command",
+      "name": "upgrades",
+      "description": "buy upgrades",
+      "options": [
+        {
+          "name": "upgrade",
+          "description": "The upgrade to buy",
+          "type": 4,
+          "required": true
+        },
+        {
+          "name": "amount",
+          "description": "The amount to buy",
+          "type": 4,
+          "required": false
+        }
+      ],
+      "isSubcommandOf": "buy",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/buy_upgrades.ts"
+    },
+    {
+      "kind": "command",
+      "name": "testsummon",
+      "description": "summon a pokemon at random intervals",
+      "options": [],
+      "isSubcommandOf": "dev",
+      "ephemeral": true,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/dev_testsummon.ts"
+    },
+    {
+      "kind": "command",
+      "name": "regular",
+      "description": "pong",
+      "options": [],
+      "isSubcommandOf": "ping",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/ping_regular.ts"
+    },
+    {
+      "kind": "command",
+      "name": "catcg",
+      "description": "gotta catcg em all",
+      "options": [
+        {
+          "name": "pokenom",
+          "description": "the pokenom to catcg",
+          "type": 3,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/catcg.ts"
+    },
+    {
+      "kind": "command",
+      "name": "blame",
+      "description": "spam ping the author of a command",
+      "options": [
+        {
+          "name": "command",
+          "description": "the name of the command to blame",
+          "type": 3,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/blame.ts"
+    },
+    {
+      "kind": "command",
+      "name": "pokemon",
+      "description": "list your pokemons?",
+      "options": [],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/pokemon.ts"
+    },
+    {
+      "kind": "command",
+      "name": "time",
+      "description": "Summarize messages from the last n hours/minutes",
+      "options": [
+        {
+          "name": "hours",
+          "description": "The number of hours",
+          "type": 4,
+          "required": true
+        },
+        {
+          "name": "minutes",
+          "description": "The number of minutes",
+          "type": 4,
+          "required": false
+        }
+      ],
+      "isSubcommandOf": "summary",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/summary_time.ts"
+    },
+    {
+      "kind": "command",
+      "name": "roulette",
+      "description": "guess what? more betting. bet your credits on roulette.",
+      "options": [
+        {
+          "name": "amount",
+          "description": "the amount of mystic credits to bet",
+          "type": 3,
+          "required": true
+        },
+        {
+          "name": "bet_type",
+          "description": "the type of bet (number, color, even, odd)",
+          "type": 3,
+          "required": true,
+          "choices": [
+            {
+              "name": "Number",
+              "value": "number"
+            },
+            {
+              "name": "Red",
+              "value": "red"
+            },
+            {
+              "name": "Black",
+              "value": "black"
+            },
+            {
+              "name": "Green",
+              "value": "green"
+            },
+            {
+              "name": "Even",
+              "value": "even"
+            },
+            {
+              "name": "Odd",
+              "value": "odd"
+            }
+          ]
+        },
+        {
+          "name": "bet_value",
+          "description": "the value if it is a number bet",
+          "type": 4,
+          "required": false
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/roulette.ts"
+    },
+    {
+      "kind": "command",
+      "name": "stats",
+      "description": "View poop stats for a user",
+      "options": [
+        {
+          "name": "user",
+          "description": "The user to view stats for (defaults to you)",
+          "type": 6,
+          "required": false
+        }
+      ],
+      "isSubcommandOf": "poop",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/poop_stats.ts"
+    },
+    {
+      "kind": "command",
+      "name": "test",
+      "description": "Tests the birthday scheduler to ensure channels are accessible",
+      "options": [],
+      "isSubcommandOf": "birthday",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/birthday_test.ts"
+    },
+    {
+      "kind": "command",
+      "name": "blackjack",
+      "description": "bj with silverwolf",
+      "options": [
+        {
+          "name": "amount",
+          "description": "the amount of mystic credits to bet",
+          "type": 3,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/blackjack.ts"
+    },
+    {
+      "kind": "command",
+      "name": "claim",
+      "description": "Claim your daily dinonuggies",
+      "options": [],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/claim.ts"
+    },
+    {
+      "kind": "command",
+      "name": "buybitcoin",
+      "description": "buy bitcoin with mystic credits",
+      "options": [
+        {
+          "name": "amount",
+          "description": "the amount of bitcoin to buy (negative to sell)",
+          "type": 10,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/buybitcoin.ts"
+    },
+    {
+      "kind": "command",
+      "name": "ramstats",
+      "description": "show RAM usage breakdown for the bot process",
+      "options": [],
+      "isSubcommandOf": "dev",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/dev_ramstats.ts"
+    },
+    {
+      "kind": "command",
+      "name": "enslave",
+      "description": "enslave a baby",
+      "options": [
+        {
+          "name": "id",
+          "description": "The id of the baby",
+          "type": 4,
+          "required": true
+        },
+        {
+          "name": "job",
+          "description": "The job to force the baby to do",
+          "type": 3,
+          "required": true,
+          "choices": [
+            {
+              "name": "Nuggie Claimer",
+              "value": "nuggieClaimer",
+              "description": "Auto claim nuggies every 24 hours, without streak bonuses."
+            },
+            {
+              "name": "Gambler",
+              "value": "gambler",
+              "description": "Auto bet on red once every 10 minutes, using 1% of your credits each time."
+            },
+            {
+              "name": "Pinger",
+              "value": "pinger",
+              "description": "Ping someone of your choice every day."
+            }
+          ]
+        },
+        {
+          "name": "pinger_target",
+          "description": "The user to ping if the job is pinger",
+          "type": 6,
+          "required": false
+        }
+      ],
+      "isSubcommandOf": "baby",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/baby_enslave.ts"
+    },
+    {
+      "kind": "command",
+      "name": "8ball",
+      "description": "Ask the combined magic 8-ball a question",
+      "options": [
+        {
+          "name": "question",
+          "description": "The question you want to ask the magic 8-ball",
+          "type": 3,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/8ball.ts"
+    },
+    {
+      "kind": "command",
+      "name": "risk-n-reward",
+      "description": "Risk & Reward: how much are you willing to?",
+      "options": [
+        {
+          "name": "amount",
+          "description": "The amount of credits to bet.",
+          "type": 3,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/riskNReward.ts"
+    },
+    {
+      "kind": "command",
+      "name": "ascension",
+      "description": "buy ascension upgrades",
+      "options": [
+        {
+          "name": "upgrade",
+          "description": "The upgrade to buy",
+          "type": 4,
+          "required": true
+        },
+        {
+          "name": "amount",
+          "description": "The number of levels to buy at once",
+          "type": 4,
+          "required": false
+        }
+      ],
+      "isSubcommandOf": "buy",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/buy_ascension.ts"
+    },
+    {
+      "kind": "command",
+      "name": "channel",
+      "description": "Set a channel for birthday announcements",
+      "options": [
+        {
+          "name": "channel",
+          "description": "The channel to send birthday messages to",
+          "type": 7,
+          "required": true,
+          "channel_types": [
+            0
+          ]
+        }
+      ],
+      "isSubcommandOf": "birthday",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/birthday_channel.ts"
+    },
+    {
+      "kind": "command",
+      "name": "upgrades",
+      "description": "upgrade your dinonuggie multipliers",
+      "options": [],
+      "isSubcommandOf": "shop",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/shop_upgrades.ts"
+    },
+    {
+      "kind": "command",
+      "name": "bitcoinprice",
+      "description": "Fetches the current Bitcoin price",
+      "options": [],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/bitcoinPrice.ts"
+    },
+    {
+      "kind": "command",
+      "name": "ask-silverwolf-ai",
+      "description": "wow this is so cool, should i add an ai art command ?",
+      "options": [
+        {
+          "name": "prompt",
+          "description": "The prompt",
+          "type": 3,
+          "required": true
+        },
+        {
+          "name": "reset",
+          "description": "Reset the chat session",
+          "type": 5,
+          "required": false
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": false,
+      "file": "commands/askSilverwolfAI.ts"
+    },
+    {
+      "kind": "command",
+      "name": "misfortune",
+      "description": "how bad is your day that you are munching virtual misfortune cookies ?",
+      "options": [],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/misfortune.ts"
+    },
+    {
+      "kind": "command",
+      "name": "notify",
+      "description": "Get a DM reminder before someone's birthday",
+      "options": [
+        {
+          "name": "user",
+          "description": "The user whose birthday you want to be reminded about",
+          "type": 6,
+          "required": true
+        },
+        {
+          "name": "days-before",
+          "description": "How many days in advance to remind you",
+          "type": 4,
+          "required": true,
+          "choices": [
+            {
+              "name": "14 days before",
+              "value": 14
+            },
+            {
+              "name": "7 days before",
+              "value": 7
+            },
+            {
+              "name": "1 day before",
+              "value": 1
+            }
+          ]
+        }
+      ],
+      "isSubcommandOf": "birthday",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/birthday_notify.ts"
+    },
+    {
+      "kind": "command",
+      "name": "hilichurl",
+      "description": "our 69th command",
+      "options": [],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/hilichurl.ts"
+    },
+    {
+      "kind": "command",
+      "name": "sacrifice",
+      "description": "sacrifice 3 pokemons to summon a random pokemon (you need to catch it back)",
+      "options": [
+        {
+          "name": "pokemon1",
+          "description": "the first pokemon to sacrifice",
+          "type": 3,
+          "required": true
+        },
+        {
+          "name": "pokemon2",
+          "description": "the second pokemon to sacrifice",
+          "type": 3,
+          "required": true
+        },
+        {
+          "name": "pokemon3",
+          "description": "the third pokemon to sacrifice",
+          "type": 3,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/sacrifice.ts"
+    },
+    {
+      "kind": "command",
+      "name": "say-dm",
+      "description": "Send a direct message to a user",
+      "options": [
+        {
+          "name": "user",
+          "type": 6,
+          "description": "The user you want to send a message to",
+          "required": true
+        },
+        {
+          "name": "message",
+          "type": 3,
+          "description": "The message you want to send",
+          "required": true
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": true,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/sayDm.ts"
+    },
+    {
+      "kind": "command",
+      "name": "chatswitch",
+      "description": "Switch to a previous AI chat session by its ID",
+      "options": [
+        {
+          "name": "session_id",
+          "description": "The session ID to switch to (visible in /ai view)",
+          "type": 4,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": "ai",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/ai_chatswitch.ts"
+    },
+    {
+      "kind": "command",
+      "name": "transfer",
+      "description": "transfer mystic credits to another user (taxed)",
+      "options": [
+        {
+          "name": "user",
+          "description": "the user to transfer to",
+          "type": 6,
+          "required": true
+        },
+        {
+          "name": "amount",
+          "description": "the amount of credits to transfer",
+          "type": 3,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/transfer.ts"
+    },
+    {
+      "kind": "command",
+      "name": "nword",
+      "description": "say an n-word",
+      "options": [],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/nword.ts"
+    },
+    {
+      "kind": "command",
+      "name": "randomjoke",
+      "description": "A random joke just like your existence that nobody asked for",
+      "options": [],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/randomjoke.ts"
+    },
+    {
+      "kind": "command",
+      "name": "status",
+      "description": "Check the status of you or another user's sex session",
+      "options": [
+        {
+          "name": "user",
+          "description": "The user to check the status of",
+          "type": 6,
+          "required": false
+        }
+      ],
+      "isSubcommandOf": "sex",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/sex_status.ts"
+    },
+    {
+      "kind": "command",
+      "name": "logdump",
+      "description": "dump the log files",
+      "options": [
+        {
+          "name": "lines",
+          "description": "last n lines of the error logs",
+          "type": 4,
+          "required": true
+        },
+        {
+          "name": "type",
+          "description": "the type of log to dump",
+          "type": 3,
+          "required": true,
+          "choices": [
+            {
+              "name": "error",
+              "value": "error"
+            },
+            {
+              "name": "log",
+              "value": "log"
+            }
+          ]
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/logdump.ts"
+    },
+    {
+      "kind": "command",
+      "name": "upgradesdata",
+      "description": "check stats at a certain level",
+      "options": [
+        {
+          "name": "level",
+          "description": "level",
+          "type": 4,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": "shop",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/shop_upgradesdata.ts"
+    },
+    {
+      "kind": "command",
+      "name": "murder",
+      "description": "kill a baby (omba told me to add this)",
+      "options": [
+        {
+          "name": "id",
+          "description": "The id of the baby",
+          "type": 4
+        }
+      ],
+      "isSubcommandOf": "baby",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/baby_murder.ts"
+    },
+    {
+      "kind": "command",
+      "name": "nuggieboard",
+      "description": "dinonuggie leaderboard",
+      "options": [],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/nuggieboard.ts"
+    },
+    {
+      "kind": "command",
+      "name": "avatar",
+      "description": "Displays the avatar of a user",
+      "options": [
+        {
+          "name": "user",
+          "type": 6,
+          "description": "The user whose avatar you want to steal",
+          "required": false
+        },
+        {
+          "name": "type",
+          "type": 3,
+          "description": "global or server avatar",
+          "required": false,
+          "choices": [
+            {
+              "name": "Global Avatar",
+              "value": "global"
+            },
+            {
+              "name": "Server Avatar",
+              "value": "server"
+            }
+          ]
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/avatar.ts"
+    },
+    {
+      "kind": "command",
+      "name": "forceclaim",
+      "description": "claim dinonuggies ignoring cooldown",
+      "options": [],
+      "isSubcommandOf": "dev",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/dev_forceclaim.ts"
+    },
+    {
+      "kind": "command",
+      "name": "profile-create",
+      "description": "Set your timezone for poop tracking",
+      "options": [
+        {
+          "name": "timezone",
+          "description": "Your UTC offset (e.g. 5 for UTC+5, -3 for UTC-3)",
+          "type": 4,
+          "required": true,
+          "min_value": -14,
+          "max_value": 14
+        }
+      ],
+      "isSubcommandOf": "poop",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/poop_profile_create.ts"
+    },
+    {
+      "kind": "command",
+      "name": "fart",
+      "description": "Let out a big... one?",
+      "options": [],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/fart.ts"
+    },
+    {
+      "kind": "command",
+      "name": "configure",
+      "description": "Add or remove a command from the blacklist for a specific server",
+      "options": [
+        {
+          "name": "command",
+          "description": "The name of the command to blacklist or remove",
+          "type": 3,
+          "required": true
+        },
+        {
+          "name": "server",
+          "description": "The ID of the server to blacklist the command in",
+          "type": 3,
+          "required": true
+        },
+        {
+          "name": "action",
+          "description": "Add or remove the command from the blacklist",
+          "type": 3,
+          "required": true,
+          "choices": [
+            {
+              "name": "Add",
+              "value": "add"
+            },
+            {
+              "name": "Remove",
+              "value": "remove"
+            }
+          ]
+        },
+        {
+          "name": "reason",
+          "description": "Reason for blacklisting the command (optional)",
+          "type": 3,
+          "required": false
+        }
+      ],
+      "isSubcommandOf": "blacklist",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/blacklist_configure.ts"
+    },
+    {
+      "kind": "command",
+      "name": "get",
+      "description": "Get all game UIDs for a user",
+      "options": [
+        {
+          "name": "user",
+          "description": "The user to get the game UIDs for",
+          "type": 6,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": "gameuid",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/gameuid_get.ts"
+    },
+    {
+      "kind": "command",
+      "name": "spotifyplaylist",
+      "description": "Get a random song",
+      "options": [],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/spotifyPlaylist.ts"
+    },
+    {
+      "kind": "command",
+      "name": "poopboard",
+      "description": "See who has pooped the most 💩",
+      "options": [
+        {
+          "name": "period",
+          "description": "Time period for the leaderboard",
+          "type": 3,
+          "required": false,
+          "choices": [
+            {
+              "name": "All Time",
+              "value": "all-time"
+            },
+            {
+              "name": "This Week",
+              "value": "weekly"
+            },
+            {
+              "name": "This Month",
+              "value": "monthly"
+            }
+          ]
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/poopboard.ts"
+    },
+    {
+      "kind": "command",
+      "name": "divorce",
+      "description": "Divorce your spouse",
+      "options": [],
+      "isSubcommandOf": "marriage",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/marriage_divorce.ts"
+    },
+    {
+      "kind": "command",
+      "name": "set",
+      "description": "Set a game UID for a user",
+      "options": [
+        {
+          "name": "game",
+          "description": "The name of the game",
+          "type": 3,
+          "required": true,
+          "choices": [
+            {
+              "name": "Minecraft",
+              "value": "Minecraft"
+            },
+            {
+              "name": "Genshin Impact",
+              "value": "Genshin Impact"
+            },
+            {
+              "name": "Honkai: Star Rail",
+              "value": "Honkai: Star Rail"
+            },
+            {
+              "name": "Honkai Impact 3rd",
+              "value": "Honkai Impact 3rd"
+            },
+            {
+              "name": "Zenless Zone Zero",
+              "value": "Zenless Zone Zero"
+            },
+            {
+              "name": "Wuthering Waves",
+              "value": "Wuthering Waves"
+            },
+            {
+              "name": "Valorant",
+              "value": "Valorant"
+            },
+            {
+              "name": "Fate/Grand Order",
+              "value": "Fate/Grand Order"
+            },
+            {
+              "name": "Reverse: 1999",
+              "value": "Reverse: 1999"
+            },
+            {
+              "name": "Arknights",
+              "value": "Arknights"
+            },
+            {
+              "name": "Azur Lane",
+              "value": "Azur Lane"
+            },
+            {
+              "name": "Punishing: Gray Raven",
+              "value": "Punishing: Gray Raven"
+            },
+            {
+              "name": "Blue Archive",
+              "value": "Blue Archive"
+            }
+          ]
+        },
+        {
+          "name": "uid",
+          "description": "The game UID to set",
+          "type": 3,
+          "required": true
+        },
+        {
+          "name": "region",
+          "description": "The region for the game UID",
+          "type": 3,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": "gameuid",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/gameuid_set.ts"
+    },
+    {
+      "kind": "command",
+      "name": "murderboard",
+      "description": "criminal records",
+      "options": [],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/murderboard.ts"
+    },
+    {
+      "kind": "command",
+      "name": "say",
+      "description": "Send a message to one or more channels",
+      "options": [
+        {
+          "name": "message",
+          "description": "The message to send, use \\n for newlines",
+          "type": 3,
+          "required": true
+        },
+        {
+          "name": "channels",
+          "description": "Comma-separated list of channel mentions (e.g., <#12345>,<#67890>)",
+          "type": 3,
+          "required": false
+        },
+        {
+          "name": "attachment",
+          "description": "Optional attachment to send with the message",
+          "type": 11,
+          "required": false
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": true,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/say.ts"
+    },
+    {
+      "kind": "command",
+      "name": "testreminder",
+      "description": "Immediately fires all your pending birthday reminders as DMs",
+      "options": [],
+      "isSubcommandOf": "birthday",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/birthday_testreminder.ts"
+    },
+    {
+      "kind": "command",
+      "name": "profile",
+      "description": "check profile",
+      "options": [
+        {
+          "name": "user",
+          "description": "the user to check",
+          "type": 6,
+          "required": false
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/profile.ts"
+    },
+    {
+      "kind": "command",
+      "name": "thrust",
+      "description": "In... and out",
+      "options": [],
+      "isSubcommandOf": "sex",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/sex_thrust.ts"
+    },
+    {
+      "kind": "command",
+      "name": "execute",
+      "description": "execute as someone",
+      "options": [
+        {
+          "name": "as",
+          "description": "the user to execute as",
+          "type": 6,
+          "required": true
+        },
+        {
+          "name": "command",
+          "description": "the command to execute",
+          "type": 3,
+          "required": true
+        },
+        {
+          "name": "subcommand",
+          "description": "the subcommand to execute",
+          "type": 3,
+          "required": false
+        },
+        {
+          "name": "intoptionname",
+          "description": "the name of the integer option",
+          "type": 3,
+          "required": false
+        },
+        {
+          "name": "intoptionvalue",
+          "description": "the value of the integer option",
+          "type": 4,
+          "required": false
+        },
+        {
+          "name": "stringoptionname",
+          "description": "the name of the string option",
+          "type": 3,
+          "required": false
+        },
+        {
+          "name": "stringoptionvalue",
+          "description": "the value of the string option",
+          "type": 3,
+          "required": false
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/execute.ts"
+    },
+    {
+      "kind": "command",
+      "name": "convert",
+      "description": "Convert units",
+      "options": [
+        {
+          "name": "from",
+          "type": 3,
+          "description": "The unit to convert from",
+          "required": true,
+          "choices": [
+            {
+              "name": "Celsius",
+              "value": "celsius"
+            },
+            {
+              "name": "Fahrenheit",
+              "value": "fahrenheit"
+            },
+            {
+              "name": "Kelvin",
+              "value": "kelvin"
+            },
+            {
+              "name": "Gram",
+              "value": "gram"
+            },
+            {
+              "name": "Kilogram",
+              "value": "kilogram"
+            },
+            {
+              "name": "Pound",
+              "value": "pound"
+            },
+            {
+              "name": "Meter",
+              "value": "meter"
+            },
+            {
+              "name": "Foot",
+              "value": "foot"
+            },
+            {
+              "name": "Inch",
+              "value": "inch"
+            }
+          ]
+        },
+        {
+          "name": "to",
+          "type": 3,
+          "description": "The unit to convert to",
+          "required": true,
+          "choices": [
+            {
+              "name": "Celsius",
+              "value": "celsius"
+            },
+            {
+              "name": "Fahrenheit",
+              "value": "fahrenheit"
+            },
+            {
+              "name": "Kelvin",
+              "value": "kelvin"
+            },
+            {
+              "name": "Gram",
+              "value": "gram"
+            },
+            {
+              "name": "Kilogram",
+              "value": "kilogram"
+            },
+            {
+              "name": "Pound",
+              "value": "pound"
+            },
+            {
+              "name": "Meter",
+              "value": "meter"
+            },
+            {
+              "name": "Foot",
+              "value": "foot"
+            },
+            {
+              "name": "Inch",
+              "value": "inch"
+            }
+          ]
+        },
+        {
+          "name": "input",
+          "type": 3,
+          "description": "The value to convert (e.g. 100, 3.14, 1/2)",
+          "required": true
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/convert.ts"
+    },
+    {
+      "kind": "command",
+      "name": "gamblerboard",
+      "description": "gambler leaderboard",
+      "options": [
+        {
+          "name": "leaderboard",
+          "description": "The leaderboard to display",
+          "type": 3,
+          "required": true,
+          "choices": [
+            {
+              "name": "Slots",
+              "value": "slots"
+            },
+            {
+              "name": "Roulette",
+              "value": "roulette"
+            },
+            {
+              "name": "Blackjack",
+              "value": "blackjack"
+            },
+            {
+              "name": "ALL",
+              "value": "all"
+            }
+          ]
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/gamblerboard.ts"
+    },
+    {
+      "kind": "command",
+      "name": "start",
+      "description": "Start a sex session with a user",
+      "options": [
+        {
+          "name": "user",
+          "description": "The user to fuck",
+          "type": 6,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": "sex",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/sex_start.ts"
+    },
+    {
+      "kind": "command",
+      "name": "cat",
+      "description": "Fetch a random cat fact, picture, or both",
+      "options": [
+        {
+          "name": "option",
+          "description": "Choose what you want: fact, img, or both",
+          "type": 3,
+          "required": true,
+          "choices": [
+            {
+              "name": "fact",
+              "value": "fact"
+            },
+            {
+              "name": "img",
+              "value": "img"
+            },
+            {
+              "name": "both",
+              "value": "both"
+            }
+          ]
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/cat.ts"
+    },
+    {
+      "kind": "command",
+      "name": "name",
+      "description": "name your baby",
+      "options": [
+        {
+          "name": "id",
+          "description": "The id of the baby",
+          "type": 4,
+          "required": true
+        },
+        {
+          "name": "name",
+          "description": "The name of the baby",
+          "type": 3,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": "baby",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/baby_name.ts"
+    },
+    {
+      "kind": "command",
+      "name": "view",
+      "description": "View all your AI chat sessions",
+      "options": [],
+      "isSubcommandOf": "ai",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/ai_view.ts"
+    },
+    {
+      "kind": "command",
+      "name": "trade",
+      "description": "trade pokemon",
+      "options": [
+        {
+          "name": "user",
+          "description": "the user to trade with",
+          "type": 6,
+          "required": true
+        },
+        {
+          "name": "sending",
+          "description": "the pokemon you are sending",
+          "type": 3,
+          "required": true
+        },
+        {
+          "name": "requesting",
+          "description": "the pokemon you are requesting",
+          "type": 3,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/trade.ts"
+    },
+    {
+      "kind": "command",
+      "name": "slots",
+      "description": "lose all your mystic credits",
+      "options": [
+        {
+          "name": "amount",
+          "description": "the amount of mystic credits to bet",
+          "type": 3,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/slots.ts"
+    },
+    {
+      "kind": "command",
+      "name": "awdangit",
+      "description": "99% chance to earn $1M, 1% chance to become a girl",
+      "options": [],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/awdangit.ts"
+    },
+    {
+      "kind": "command",
+      "name": "fortune",
+      "description": "how desperate are you to munch virtual fortune cookies ?",
+      "options": [],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/fortune.ts"
+    },
+    {
+      "kind": "command",
+      "name": "genshinprofile",
+      "description": "Get Genshin Impact player data. stolen from collei-bot",
+      "options": [
+        {
+          "name": "uid",
+          "description": "The UID of the Genshin Impact player",
+          "type": 3,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/genshinProfile.ts"
+    },
+    {
+      "kind": "command",
+      "name": "gamebang",
+      "description": "send an embed of peak",
+      "options": [],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/gamebang.ts"
+    },
+    {
+      "kind": "command",
+      "name": "eat",
+      "description": "Eat one or more dinonuggies",
+      "options": [
+        {
+          "name": "amount",
+          "description": "The amount of dinonuggies to eat",
+          "type": 4,
+          "required": false
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/eat.ts"
+    },
+    {
+      "kind": "command",
+      "name": "gacha",
+      "description": "TECHNICAL TEST, WORK IN PROGRESS",
+      "options": [
+        {
+          "name": "amount",
+          "description": "Number of rolls (1 or 10)",
+          "type": 4,
+          "required": true,
+          "choices": [
+            {
+              "name": "1",
+              "value": 1
+            },
+            {
+              "name": "10",
+              "value": 10
+            }
+          ]
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/gacha.ts"
+    },
+    {
+      "kind": "command",
+      "name": "unregister",
+      "description": "Unregister this server from bot commands",
+      "options": [],
+      "isSubcommandOf": "server",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/server_unregister.ts"
+    },
+    {
+      "kind": "command",
+      "name": "love-calculator",
+      "description": "Calculate love compatibility between two members",
+      "options": [
+        {
+          "name": "input1",
+          "description": "The first input (user mention or string)",
+          "type": 3,
+          "required": true
+        },
+        {
+          "name": "input2",
+          "description": "The second input (user mention or string)",
+          "type": 3,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/loveCalulator.ts"
+    },
+    {
+      "kind": "command",
+      "name": "birth",
+      "description": "give birth to your baby",
+      "options": [
+        {
+          "name": "id",
+          "description": "The id of the baby",
+          "type": 4,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": "baby",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/baby_birth.ts"
+    },
+    {
+      "kind": "command",
+      "name": "count",
+      "description": "Summarize the last n messages",
+      "options": [
+        {
+          "name": "n",
+          "description": "The number of past messages to summarize",
+          "type": 4,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": "summary",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/summary_count.ts"
+    },
+    {
+      "kind": "command",
+      "name": "grab-emoji",
+      "description": "Converts an emoji to a selected file format",
+      "options": [
+        {
+          "name": "emoji",
+          "description": "The emoji to be converted, for example \"<:1silverwolf_thumb:1217078357129302048>\"",
+          "type": 3,
+          "required": true
+        },
+        {
+          "name": "format",
+          "description": "The file format to download",
+          "type": 3,
+          "required": false,
+          "choices": [
+            {
+              "name": "PNG",
+              "value": "png"
+            },
+            {
+              "name": "JPEG",
+              "value": "jpeg"
+            },
+            {
+              "name": "WEBP",
+              "value": "webp"
+            }
+          ]
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": false,
+      "file": "commands/grabEmoji.ts"
+    },
+    {
+      "kind": "command",
+      "name": "f1-standings",
+      "description": "Fetch F1 standings (drivers or constructors)",
+      "options": [
+        {
+          "name": "type",
+          "description": "Choose between driver or constructor standings",
+          "type": 3,
+          "required": true,
+          "choices": [
+            {
+              "name": "Drivers",
+              "value": "drivers"
+            },
+            {
+              "name": "Teams",
+              "value": "teams"
+            }
+          ]
+        },
+        {
+          "name": "year",
+          "description": "Select a year (default: current year)",
+          "type": 4,
+          "required": false
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/f1Standings.ts"
+    },
+    {
+      "kind": "command",
+      "name": "gacha",
+      "description": "Pull a random poop... from the members...",
+      "options": [],
+      "isSubcommandOf": "poop",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/poop_gacha.ts"
+    },
+    {
+      "kind": "command",
+      "name": "2022",
+      "description": "2022 flashbacks",
+      "options": [],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/2022.ts"
+    },
+    {
+      "kind": "command",
+      "name": "snipe",
+      "description": "Snipe a message (edited or deleted)",
+      "options": [
+        {
+          "name": "type",
+          "description": "The type of snipe: edited or deleted",
+          "type": 3,
+          "required": true,
+          "choices": [
+            {
+              "name": "Edited",
+              "value": "edited"
+            },
+            {
+              "name": "Deleted",
+              "value": "deleted"
+            }
+          ]
+        },
+        {
+          "name": "id",
+          "description": "The nth message to snipe",
+          "type": 4,
+          "required": false
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/snipe.ts"
+    },
+    {
+      "kind": "command",
+      "name": "unnotify",
+      "description": "Remove a birthday reminder for a user",
+      "options": [
+        {
+          "name": "user",
+          "description": "The user whose birthday reminder you want to remove",
+          "type": 6,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": "birthday",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/birthday_unnotify.ts"
+    },
+    {
+      "kind": "command",
+      "name": "fakequote",
+      "description": "fake make it a quote",
+      "options": [
+        {
+          "name": "person",
+          "description": "person to quote",
+          "type": 6,
+          "required": true
+        },
+        {
+          "name": "message",
+          "description": "message to put in the quote",
+          "type": 3,
+          "required": true
+        },
+        {
+          "name": "nickname",
+          "description": "override the display name shown below the quote",
+          "type": 3,
+          "required": false
+        },
+        {
+          "name": "background",
+          "description": "background colour (default: black)",
+          "type": 3,
+          "required": false,
+          "choices": [
+            {
+              "name": "Black",
+              "value": "black"
+            },
+            {
+              "name": "White",
+              "value": "white"
+            }
+          ]
+        },
+        {
+          "name": "font_style",
+          "description": "font style for the quote text (default: sans-serif)",
+          "type": 3,
+          "required": false,
+          "choices": [
+            {
+              "name": "Default (Sans-serif)",
+              "value": "sans-serif"
+            },
+            {
+              "name": "Playfair Display (Elegant Serif)",
+              "value": "playfair"
+            },
+            {
+              "name": "Caveat (Handwritten)",
+              "value": "caveat"
+            },
+            {
+              "name": "Cinzel (Dramatic Classic)",
+              "value": "cinzel"
+            },
+            {
+              "name": "Righteous (Bold Display)",
+              "value": "righteous"
+            },
+            {
+              "name": "Special Elite (Typewriter)",
+              "value": "special-elite"
+            },
+            {
+              "name": "Minecraft (Pixel)",
+              "value": "minecraft"
+            },
+            {
+              "name": "Harry Potter (Wizarding)",
+              "value": "harrypotter"
+            },
+            {
+              "name": "Genshin Impact",
+              "value": "genshin"
+            },
+            {
+              "name": "Comic Sans (Comic Neue)",
+              "value": "comic-sans"
+            },
+            {
+              "name": "Bebas Neue (Condensed)",
+              "value": "bebas-neue"
+            }
+          ]
+        },
+        {
+          "name": "text_color",
+          "description": "hex colour for quote text, e.g. #FF00AA (default: white on black, black on white)",
+          "type": 3,
+          "required": false
+        },
+        {
+          "name": "profile_color",
+          "description": "profile picture colour filter",
+          "type": 3,
+          "required": false,
+          "choices": [
+            {
+              "name": "Normal",
+              "value": "normal"
+            },
+            {
+              "name": "Black and White",
+              "value": "bw"
+            },
+            {
+              "name": "Inverted",
+              "value": "inverted"
+            },
+            {
+              "name": "Sepia",
+              "value": "sepia"
+            },
+            {
+              "name": "Nightmare Fuel",
+              "value": "nightmare"
+            }
+          ]
+        },
+        {
+          "name": "avatar_source",
+          "description": "choose between the server avatar or global avatar",
+          "type": 3,
+          "required": false,
+          "choices": [
+            {
+              "name": "Server Avatar",
+              "value": "server"
+            },
+            {
+              "name": "Global Avatar",
+              "value": "global"
+            }
+          ]
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/fakequote.ts"
+    },
+    {
+      "kind": "command",
+      "name": "set",
+      "description": "set data of a user",
+      "options": [
+        {
+          "name": "user",
+          "description": "the user to set something of",
+          "type": 6,
+          "required": true
+        },
+        {
+          "name": "attr",
+          "description": "the thing to set",
+          "type": 3,
+          "required": true
+        },
+        {
+          "name": "value",
+          "description": "the value to set",
+          "type": 3,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": "dev",
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/dev_set.ts"
+    },
+    {
+      "kind": "command",
+      "name": "guide",
+      "description": "Sends a guide on how to play Dinonuggies",
+      "options": [],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/guide.ts"
+    },
+    {
+      "kind": "command",
+      "name": "hsrprofile",
+      "description": "Get Honkai Star Rail player data.",
+      "options": [
+        {
+          "name": "uid",
+          "description": "The UID of the Honkai Star Rail player",
+          "type": 3,
+          "required": true
+        }
+      ],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/hsrProfile.ts"
+    },
+    {
+      "kind": "command",
+      "name": "hello",
+      "description": "hello",
+      "options": [],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/hello.ts"
+    },
+    {
+      "kind": "command",
+      "name": "click",
+      "description": "send the link to the daily click thing",
+      "options": [],
+      "isSubcommandOf": null,
+      "ephemeral": false,
+      "skipDefer": false,
+      "isInteractive": true,
+      "file": "commands/click.ts"
+    },
+    {
+      "kind": "group",
+      "name": "ping",
+      "description": "pong",
+      "isSubcommandOf": null,
+      "subcommands": [
+        "regular",
+        "dev"
+      ],
+      "file": "commands/commandgroups/ping.ts"
+    },
+    {
+      "kind": "group",
+      "name": "shop",
+      "description": "shop commands",
+      "isSubcommandOf": null,
+      "subcommands": [
+        "ascension",
+        "upgrades",
+        "upgradesdata",
+        "donation"
+      ],
+      "file": "commands/commandgroups/shop.ts"
+    },
+    {
+      "kind": "group",
+      "name": "blacklist",
+      "description": "Blacklist commands",
+      "isSubcommandOf": null,
+      "subcommands": [
+        "configure",
+        "view"
+      ],
+      "file": "commands/commandgroups/blacklist.ts"
+    },
+    {
+      "kind": "group",
+      "name": "buy",
+      "description": "Buy commands",
+      "isSubcommandOf": null,
+      "subcommands": [
+        "upgrades",
+        "ascension",
+        "donation"
+      ],
+      "file": "commands/commandgroups/buy.ts"
+    },
+    {
+      "kind": "group",
+      "name": "baby",
+      "description": "Baby commands",
+      "isSubcommandOf": null,
+      "subcommands": [
+        "get",
+        "name",
+        "birth",
+        "enslave",
+        "murder"
+      ],
+      "file": "commands/commandgroups/baby.ts"
+    },
+    {
+      "kind": "group",
+      "name": "dev",
+      "description": "Developer commands",
+      "isSubcommandOf": null,
+      "subcommands": [
+        "add",
+        "set",
+        "forcesummon",
+        "testsummon",
+        "forceclaim",
+        "forceautomation",
+        "ramstats"
+      ],
+      "file": "commands/commandgroups/dev.ts"
+    },
+    {
+      "kind": "group",
+      "name": "poop",
+      "description": "April Fools poop tracker 💩",
+      "isSubcommandOf": null,
+      "subcommands": [
+        "profile-create",
+        "log",
+        "stats",
+        "gacha"
+      ],
+      "file": "commands/commandgroups/poop.ts"
+    },
+    {
+      "kind": "group",
+      "name": "birthday",
+      "description": "Birthday commands",
+      "isSubcommandOf": null,
+      "subcommands": [
+        "get",
+        "set",
+        "test",
+        "notify",
+        "unnotify",
+        "testreminder",
+        "channel"
+      ],
+      "file": "commands/commandgroups/birthday.ts"
+    },
+    {
+      "kind": "group",
+      "name": "gameuid",
+      "description": "Game UID commands",
+      "isSubcommandOf": null,
+      "subcommands": [
+        "set",
+        "get",
+        "delete"
+      ],
+      "file": "commands/commandgroups/gameuid.ts"
+    },
+    {
+      "kind": "group",
+      "name": "summary",
+      "description": "Summary commands",
+      "isSubcommandOf": null,
+      "subcommands": [
+        "count",
+        "time"
+      ],
+      "file": "commands/commandgroups/summary.ts"
+    },
+    {
+      "kind": "group",
+      "name": "russianroulette",
+      "description": "Russian Roulette commands",
+      "isSubcommandOf": null,
+      "subcommands": [
+        "regular",
+        "singleplayer"
+      ],
+      "file": "commands/commandgroups/russianroulette.ts"
+    },
+    {
+      "kind": "group",
+      "name": "sex",
+      "description": "Sex commands",
+      "isSubcommandOf": null,
+      "subcommands": [
+        "start",
+        "thrust",
+        "status"
+      ],
+      "file": "commands/commandgroups/sex.ts"
+    },
+    {
+      "kind": "group",
+      "name": "ai",
+      "description": "Manage your AI chat sessions",
+      "isSubcommandOf": null,
+      "subcommands": [
+        "view",
+        "chatnew",
+        "chatswitch",
+        "chatdelete"
+      ],
+      "file": "commands/commandgroups/ai.ts"
+    },
+    {
+      "kind": "group",
+      "name": "globalconfig",
+      "description": "Global config commands",
+      "isSubcommandOf": null,
+      "subcommands": [
+        "get",
+        "set"
+      ],
+      "file": "commands/commandgroups/globalconfig.ts"
+    },
+    {
+      "kind": "group",
+      "name": "marriage",
+      "description": "Marriage commands",
+      "isSubcommandOf": null,
+      "subcommands": [
+        "divorce",
+        "propose",
+        "status"
+      ],
+      "file": "commands/commandgroups/marriage.ts"
+    },
+    {
+      "kind": "group",
+      "name": "server",
+      "description": "Server management commands",
+      "isSubcommandOf": null,
+      "subcommands": [
+        "register",
+        "unregister"
+      ],
+      "file": "commands/commandgroups/server.ts"
+    }
+  ]
+}

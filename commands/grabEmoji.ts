@@ -23,7 +23,7 @@ class GrabEmoji extends Command {
           { name: 'WEBP', value: 'webp' },
         ],
       },
-    ], { blame: 'xei' });
+    ], { blame: 'xei', isInteractive: false });
   }
 
   async run(interaction: any): Promise<void> {

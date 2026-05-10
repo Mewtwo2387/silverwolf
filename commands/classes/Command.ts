@@ -7,6 +7,7 @@ export interface CommandArgs {
   skipDefer?: boolean;
   isSubcommandOf?: string | null;
   blame?: string;
+  isInteractive?: boolean;
 }
 
 class Command {
@@ -18,6 +19,7 @@ class Command {
   skipDefer: boolean;
   isSubcommandOf: string | null;
   blame: string;
+  isInteractive: boolean;
 
   constructor(
     client: any,
@@ -36,6 +38,7 @@ class Command {
     this.skipDefer = args.skipDefer || false;
     this.isSubcommandOf = args.isSubcommandOf || null;
     this.blame = args.blame || '';
+    this.isInteractive = args.isInteractive ?? true;
   }
 
   async execute(interaction: any): Promise<void> {

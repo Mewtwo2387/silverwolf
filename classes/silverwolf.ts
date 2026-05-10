@@ -6,14 +6,14 @@ import { createRequire } from 'node:module';
 import Database from '../database/Database';
 import BirthdayScheduler from './birthdayScheduler';
 import BabyScheduler from './babyScheduler';
+import fs from 'fs';
 import { log, logError } from '../utils/log';
+import { startIdleSampler, recordInvocation } from '../utils/ramstats';
+import { createCommandStub } from '../utils/commandStub';
 // Note: Bun automatically reads .env files
 import seasonConfig from '../data/config/skin/pokemon.json';
 import keywordsJson from '../data/keywords.json';
 import statusJson from '../data/status.json';
-import {
-  ChristmasHandler, NormalHandler, HalloweenHandler, AprilFoolsHandler,
-} from './handlers/index';
 import scriptHandlers from './handlers/keywordsBehaviorHandler';
 import quoteDefault from '../utils/quote';
 import { loadAllowedServers } from '../utils/accessControl';
@@ -21,11 +21,13 @@ import { loadAllowedServers } from '../utils/accessControl';
 const FONT_INDEX: string[] = (quoteDefault as any).FONT_INDEX;
 const MAX_MESSAGE_HISTORY = 100;
 
-const handlers: Record<string, any> = {
-  ChristmasHandler,
-  NormalHandler,
-  HalloweenHandler,
-  AprilFoolsHandler,
+// Each entry is dynamic-imported the first time getHandler() picks it.
+// Pulls canvas (~30 MB) only on first invocation of the active handler.
+const handlerLoaders: Record<string, () => Promise<any>> = {
+  ChristmasHandler: () => import('./handlers/christmasHandler'),
+  NormalHandler: () => import('./handlers/normalHandler'),
+  HalloweenHandler: () => import('./handlers/halloweenHandler'),
+  AprilFoolsHandler: () => import('./handlers/aprilFoolsHandler'),
 };
 
 const SERIOUS_CHANNELS = ['1262239871758766221'];
@@ -89,6 +91,8 @@ class Silverwolf extends Client {
     this.babyScheduler.start();
     log('Baby scheduler started.');
 
+    startIdleSampler();
+
     log(`Silverwolf initialized.
 ----------------------------------------------
 ____  _ _                              _  __
@@ -103,45 +107,33 @@ All wrongs reserved.
   }
 
   async loadCommands(): Promise<void> {
-    log('--------------------\nLoading commands...\n--------------------');
-    const commandDir = path.join(import.meta.dir, '../commands');
-    // Prefer .ts files; only fall back to .js if no .ts version exists
-    const allFiles = [...new Bun.Glob('*.{ts,js}').scanSync(commandDir)];
-    const commandFiles = preferTsOverJs(allFiles);
-    // Use createRequire so CJS command files load correctly (avoids ESM circular-dep issues with some deps)
+    log('--------------------\nLoading commands from manifest...\n--------------------');
+    const manifestPath = path.join(import.meta.dir, '../commands/manifest.json');
+    if (!fs.existsSync(manifestPath)) {
+      logError(`Manifest not found at ${manifestPath}. Run \`bun run build:manifest\`.`);
+      throw new Error('commands/manifest.json missing — run `bun run build:manifest`.');
+    }
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     const _require = createRequire(import.meta.url);
+    const repoRoot = path.resolve(import.meta.dir, '..');
 
     let commandCount = 0;
-    for (const file of commandFiles) {
-      const mod = _require(path.join(commandDir, file));
-      const CommandClass = mod.default ?? mod;
-      const command = new CommandClass(this);
-      if (command.isSubcommandOf === null) {
-        this.commands.set(command.name, command);
-        log(`Command ${command.name} loaded. ${command.ephemeral ? 'ephemeral' : ''} ${command.skipDefer ? 'skipDefer' : ''} ${command.isSubcommand ? 'isSubcommand' : ''}`);
-      } else {
-        this.commands.set(`${command.isSubcommandOf}.${command.name}`, command);
-        log(`Command ${command.isSubcommandOf}.${command.name} loaded. ${command.ephemeral ? 'ephemeral' : ''} ${command.skipDefer ? 'skipDefer' : ''} ${command.isSubcommand ? 'isSubcommand' : ''}`);
+    let groupCount = 0;
+    for (const entry of manifest.entries) {
+      if (entry.kind === 'command') {
+        const stub = createCommandStub(this, entry);
+        const key = stub.isSubcommandOf === null ? stub.name : `${stub.isSubcommandOf}.${stub.name}`;
+        this.commands.set(key, stub);
+        commandCount += 1;
+      } else if (entry.kind === 'group') {
+        const mod = _require(path.join(repoRoot, entry.file));
+        const CommandGroupClass = mod.default ?? mod;
+        const commandGroup = new CommandGroupClass(this);
+        this.commands.set(commandGroup.name, commandGroup);
+        groupCount += 1;
       }
-      commandCount += 1;
     }
-    log(`${commandCount} commands loaded.`);
-
-    log('--------------------\nLoading command groups...\n--------------------');
-    const commandGroupDir = path.join(import.meta.dir, '../commands/commandgroups');
-    const allGroupFiles = [...new Bun.Glob('*.{ts,js}').scanSync(commandGroupDir)];
-    const commandGroupFiles = preferTsOverJs(allGroupFiles);
-
-    let commandGroupCount = 0;
-    for (const file of commandGroupFiles) {
-      const mod = _require(path.join(commandGroupDir, file));
-      const CommandGroupClass = mod.default ?? mod;
-      const commandGroup = new CommandGroupClass(this);
-      this.commands.set(commandGroup.name, commandGroup);
-      log(`Command group ${commandGroup.name} loaded.`);
-      commandGroupCount += 1;
-    }
-    log(`${commandGroupCount} command groups loaded.`);
+    log(`Manifest loaded: ${commandCount} command stubs, ${groupCount} groups.`);
   }
 
   async loadKeywords(): Promise<void> {
@@ -205,10 +197,20 @@ All wrongs reserved.
       const command = this.commands.get(interaction.commandName);
       if (!command) return;
       log(`> Command ${command.name} executed by ${interaction.user.username} (${interaction.user.id}) in ${interaction.channel.name} (${interaction.channel.id}) in ${interaction.guild.name} (${interaction.guild.id})`);
+      const preRssBytes = process.memoryUsage().rss;
+      const startedAt = Date.now();
       try {
         await command.execute(interaction);
       } catch (error) {
         logError('Error processing interaction:', error);
+      } finally {
+        const postRssBytes = process.memoryUsage().rss;
+        const durationMs = Date.now() - startedAt;
+        const deltaBytes = postRssBytes - preRssBytes;
+        recordInvocation({
+          command: command.name, preRssBytes, postRssBytes, deltaBytes, durationMs, startedAt,
+        });
+        log(`[ramstats][cmd] name=${command.name} pre=${preRssBytes} post=${postRssBytes} delta=${deltaBytes} ms=${durationMs}`);
       }
     } else if (interaction.isButton()) {
       if (interaction.customId.startsWith('del_girlcockx_')) {
@@ -555,7 +557,11 @@ All wrongs reserved.
     const currentSeason = await this.db.globalConfig.getGlobalConfig('season') || 'normal';
     const seasons = (seasonConfig as any).seasons;
     const resolvedSeason = seasons[currentSeason] ? currentSeason : 'normal';
-    const HandlerClass = handlers[seasons[resolvedSeason].handler];
+    const handlerName: string = seasons[resolvedSeason].handler;
+    const loader = handlerLoaders[handlerName];
+    if (!loader) throw new Error(`Unknown handler: ${handlerName}`);
+    const mod = await loader();
+    const HandlerClass = mod.default ?? mod;
     const settings = seasons[resolvedSeason].settings || {};
     return new HandlerClass(settings);
   }

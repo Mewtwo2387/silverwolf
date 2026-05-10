@@ -3,9 +3,16 @@ import {
   type TextChannel,
 } from 'discord.js';
 import { log, logError } from '../../utils/log';
-import { resolvePersona, generateContent, generateSessionTitle } from '../../utils/ai';
 import { trimHistoryToFit } from '../../utils/tokenizer';
 import { extractPdfsFromMessage } from '../../utils/pdf';
+
+// utils/ai pulls Gemini + OpenAI SDKs on import. Lazy-load it so the bot can
+// boot without paying that cost; the cache makes subsequent calls free.
+let _ai: typeof import('../../utils/ai') | null = null;
+async function getAi(): Promise<typeof import('../../utils/ai')> {
+  if (!_ai) _ai = await import('../../utils/ai');
+  return _ai;
+}
 
 const WEBHOOK_NAME = process.env.WEBHOOK_NAME || 'grok-webhook';
 
@@ -83,7 +90,8 @@ const scriptHandlers = {
         .catch(() => null)
       : null;
 
-    const persona = await resolvePersona(query);
+    const ai = await getAi();
+    const persona = await ai.resolvePersona(query);
     const displayName = persona.name;
 
     const NO_MEMORY_PERSONAS = ['Summarizer'];
@@ -178,7 +186,7 @@ const scriptHandlers = {
       const webhooks = await (message.channel as TextChannel).fetchWebhooks();
       let webhook = webhooks.find((wh: any) => wh.name === WEBHOOK_NAME && wh.token);
 
-      const { text, images, toolCalls } = await generateContent({
+      const { text, images, toolCalls } = await ai.generateContent({
         provider: persona.provider,
         model: persona.model,
         systemPrompt: persona.systemPrompt ?? '',
@@ -326,7 +334,7 @@ const scriptHandlers = {
           }
 
           if (historyLoaded && !hadRawHistory && text) {
-            generateSessionTitle(prompt, text)
+            ai.generateSessionTitle(prompt, text)
               .then((title) => {
                 if (title) {
                   return (message.client as any).db.aiChat.updateTitle(aiSession.sessionId, title);
