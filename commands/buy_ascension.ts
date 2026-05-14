@@ -31,7 +31,7 @@ class BuyAscension extends Command {
 
   async run(interaction: any): Promise<void> {
     const upgradeId = interaction.options.getInteger('upgrade');
-    const amount = interaction.options.getInteger('amount') || 1;
+    const amount = interaction.options.getInteger('amount') ?? 1;
 
     const result = await processBuyAscensionUpgrade(
       this.client,

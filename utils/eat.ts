@@ -9,6 +9,7 @@ export type EatItem =
   | { type: 'nom' };
 
 export type EatResult =
+  | { status: 'invalid_amount'; amount: number }
   | { status: 'not_enough'; dinonuggies: number; amount: number }
   | { status: 'cheat'; amount: number; dinonuggies: number }
   | {
@@ -60,14 +61,18 @@ export function formatEatItemLine(item: EatItem): string {
 }
 
 async function processEatInner(client: any, userId: string, amount: number): Promise<EatResult> {
-  const dinonuggies = await client.db.user.getUserAttr(userId, 'dinonuggies');
-
-  if (dinonuggies < amount) {
-    return { status: 'not_enough', dinonuggies, amount };
+  if (!Number.isInteger(amount) || amount === 0) {
+    return { status: 'invalid_amount', amount };
   }
+
+  const dinonuggies = await client.db.user.getUserAttr(userId, 'dinonuggies');
 
   if (amount < 0) {
     return { status: 'cheat', amount, dinonuggies };
+  }
+
+  if (dinonuggies < amount) {
+    return { status: 'not_enough', dinonuggies, amount };
   }
 
   await client.db.user.addUserAttr(userId, 'dinonuggies', -amount);

@@ -42,7 +42,11 @@ const silverwolf = new Silverwolf(TOKEN, {
 });
 
 silverwolf.login().then(() => silverwolf.registerCommands(CLIENT_ID));
-startWebsite(silverwolf);
+try {
+  startWebsite(silverwolf);
+} catch (err) {
+  logError('startWebsite failed; continuing without the website', err);
+}
 
 const gracefulShutdown = async (signal: string) => {
   log(`Received ${signal}; shutting down`);

@@ -251,6 +251,7 @@ const birthdayModalScript = (nonce: string) => raw(`
     modal.style.transform  = 'scale(0.94) translateY(8px)';
     modal.style.opacity    = '0';
     backdrop.style.display = 'flex';
+    backdrop.classList.add('open');
 
     requestAnimationFrame(function() {
       requestAnimationFrame(function() {
@@ -266,6 +267,8 @@ const birthdayModalScript = (nonce: string) => raw(`
 
   function closeModal() {
     if (closeTimer) return;
+    if (!backdrop.classList.contains('open')) return;
+    backdrop.classList.remove('open');
     modal.style.transition = 'transform 0.15s cubic-bezier(0.4,0,1,1), opacity 0.15s ease';
     modal.style.transform  = 'scale(0.94) translateY(6px)';
     modal.style.opacity    = '0';
@@ -289,7 +292,7 @@ const birthdayModalScript = (nonce: string) => raw(`
   closeBtn.addEventListener('click', closeModal);
 
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape' && backdrop.style.display !== 'none') { closeModal(); return; }
+    if (e.key === 'Escape' && backdrop.classList.contains('open')) { closeModal(); return; }
     if (e.key === 'Enter' || e.key === ' ') {
       var pill = document.activeElement && document.activeElement.closest('.bday-user');
       if (pill) { e.preventDefault(); openModal(pill); }

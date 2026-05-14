@@ -11,7 +11,11 @@
 // of helper that must already be in place before any user-controlled value
 // gets near a <script> body.
 export function inlineJSON(value: unknown): string {
-  return JSON.stringify(value)
+  const s = JSON.stringify(value);
+  // JSON.stringify returns undefined for undefined / functions / symbols;
+  // fall back to a safe JS literal so callers can interpolate without crashing.
+  if (s === undefined) return 'null';
+  return s
     .replace(/</g, '\\u003c')
     .replace(/\u2028/g, '\\u2028')
     .replace(/\u2029/g, '\\u2029');

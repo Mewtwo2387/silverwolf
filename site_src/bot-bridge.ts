@@ -482,6 +482,13 @@ export async function startBlackjack(
   if (err) return err;
   const amount = code;
 
+  // A finalized-or-expired entry may still have a pending setTimeout queued. If it
+  // fires after we install the new game it would delete that fresh entry and
+  // record a spurious loss, so cancel the old timer before overwriting.
+  if (existing && existing.timeoutHandle) {
+    clearTimeout(existing.timeoutHandle);
+  }
+
   const deck = createDeck();
   const playerHand = [drawCard(deck), drawCard(deck)];
   const dealerHand = [drawCard(deck), drawCard(deck)];
@@ -639,7 +646,7 @@ export async function playRouletteWeb(
     return { error: 'invalid_bet_value' };
   }
   if (betType === 'number') {
-    if (betValueRaw === null || Number.isNaN(betValueRaw) || betValueRaw < 0 || betValueRaw > 36) {
+    if (betValueRaw === null || !Number.isInteger(betValueRaw) || betValueRaw < 0 || betValueRaw > 36) {
       return { error: 'invalid_bet_value' };
     }
   }

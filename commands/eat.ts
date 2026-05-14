@@ -19,6 +19,11 @@ class Eat extends Command {
     const amount = interaction.options.getInteger('amount') || 1;
     const result = await processEat(this.client, interaction.user.id, amount);
 
+    if (result.status === 'invalid_amount') {
+      await interaction.editReply('Please provide a positive integer amount.');
+      return;
+    }
+
     if (result.status === 'not_enough') {
       await interaction.editReply("smh you don't have enough dinonuggies to eat.");
       return;

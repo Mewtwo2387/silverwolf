@@ -232,11 +232,15 @@ async function processClaimInner(client: any, uid: string): Promise<ClaimResult>
 }
 
 async function processClaim(client: any, uid: string): Promise<ClaimResult> {
-  const existing = claimLocks.get(uid);
-  if (existing) {
-    await existing.catch(() => {});
-  }
-  const run = processClaimInner(client, uid);
+  // Chain each call after the previous one for the same uid. Awaiting an
+  // existing in-flight promise before kicking off a new one would let multiple
+  // callers resume in parallel as soon as the predecessor settles, racing each
+  // other through processClaimInner.
+  const previous = claimLocks.get(uid);
+  const run: Promise<ClaimResult> = (async () => {
+    if (previous) await previous.catch(() => undefined);
+    return processClaimInner(client, uid);
+  })();
   claimLocks.set(uid, run);
   try {
     return await run;

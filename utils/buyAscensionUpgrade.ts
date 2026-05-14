@@ -26,6 +26,8 @@ export const ASCENSION_LEVEL_REQ: Record<AscensionUpgradeKey, number> = {
   nuggieNuggieMultiplier: 6,
 };
 
+export const MAX_ASCENSION_PURCHASE = 10_000;
+
 export type BuyAscensionResult =
   | { status: 'invalid_upgrade' }
   | { status: 'invalid_amount' }
@@ -62,7 +64,7 @@ async function processBuyAscensionUpgradeInner(
   if (!Number.isInteger(upgradeId) || upgradeId < 1 || upgradeId > ASCENSION_UPGRADES.length) {
     return { status: 'invalid_upgrade' };
   }
-  if (!Number.isInteger(amount) || amount < 1) {
+  if (!Number.isInteger(amount) || amount < 1 || amount > MAX_ASCENSION_PURCHASE) {
     return { status: 'invalid_amount' };
   }
 
