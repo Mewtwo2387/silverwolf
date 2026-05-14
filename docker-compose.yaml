@@ -5,6 +5,8 @@ services:
     container_name: silverwolf-bot
     restart: unless-stopped
     env_file: .env
+    ports:
+      -"8080:6769
     volumes:
       - ./persistence:/app/persistence
     mem_limit: 1g
