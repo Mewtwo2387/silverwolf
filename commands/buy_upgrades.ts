@@ -34,10 +34,11 @@ class BuyUpgrades extends Command {
     const result = await processBuyUpgrade(this.client, interaction.user.id, upgradeId, amount);
 
     if (result.status === 'invalid_upgrade' || result.status === 'invalid_amount') {
+      const title = result.status === 'invalid_amount' ? 'Invalid amount' : 'Invalid upgrade';
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')
-          .setTitle('Invalid upgrade')
+          .setTitle(title)
           .setFooter({ text: 'dinonuggie' }),
         ],
       });
@@ -72,7 +73,7 @@ class BuyUpgrades extends Command {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')
-          .setTitle('You dont have enough mystic credits')
+          .setTitle("You don't have enough mystic credits")
           .setDescription(`You have ${format(result.credits)} mystic credits, but you need ${format(result.cost)} to buy the upgrade`)
           .setFooter({ text: 'Credits can sometimes be found when you /eat nuggies. You can also gamble them with /slots or invest them with /buybitcoin' }),
         ],

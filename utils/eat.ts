@@ -30,6 +30,8 @@ export type EatResult =
     previousDinonuggies: number;
   };
 
+export const MAX_EAT = 10_000;
+
 const eatLocks = new Map<string, Promise<EatResult>>();
 
 function rollOne(): EatItem {
@@ -61,7 +63,7 @@ export function formatEatItemLine(item: EatItem): string {
 }
 
 async function processEatInner(client: any, userId: string, amount: number): Promise<EatResult> {
-  if (!Number.isInteger(amount) || amount === 0) {
+  if (!Number.isInteger(amount) || amount === 0 || amount > MAX_EAT) {
     return { status: 'invalid_amount', amount };
   }
 
