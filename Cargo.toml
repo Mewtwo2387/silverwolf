@@ -1,0 +1,46 @@
+[package]
+name = "silverwolf"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+# Discord
+serenity = { version = "0.12", default-features = false, features = ["client", "gateway", "rustls_backend", "model", "cache"] }
+poise = "0.6"
+
+# Async & HTTP
+tokio = { version = "1", features = ["full"] }
+axum = { version = "0.7", features = ["macros"] }
+reqwest = { version = "0.11", features = ["json", "multipart", "stream"] }
+tower-http = { version = "0.5", features = ["fs", "cors"] }
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite", "chrono", "macros"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# AI
+async-openai = "0.20"
+
+# Utilities
+rand = "0.8"
+md5 = "0.7"
+regex = "1.10"
+dotenvy = "0.15"
+chrono = { version = "0.4", features = ["serde"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow = "1.0"
+async-trait = "0.1"
+futures = "0.3"
+scraper = "0.19"
+mime = "0.3"
+
+[profile.release]
+opt-level = "z"  # Optimize for size
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

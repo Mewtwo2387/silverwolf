@@ -1,0 +1,9 @@
+{
+  "name": "silverwolf-canvas-worker",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "dependencies": {
+    "canvas": "^3.2.3",
+    "hono": "^4.12.14"
+  }
+}

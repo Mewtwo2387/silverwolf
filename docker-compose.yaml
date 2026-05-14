@@ -1,11 +1,27 @@
 services:
   bot:
-    image: mewtwo2387/silverwolf-bot:latest
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile.rust
     container_name: silverwolf-bot
     restart: unless-stopped
     env_file: .env
+    depends_on:
+      - canvas-worker
     volumes:
       - ./persistence:/app/persistence
-    mem_limit: 1g
-    memswap_limit: 1g
+      - ./data:/app/data
+    environment:
+      - CANVAS_WORKER_URL=http://canvas-worker:3000
+    mem_limit: 512m
+    memswap_limit: 512m
+
+  canvas-worker:
+    build:
+      context: ./canvas_worker
+    container_name: silverwolf-canvas
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+    mem_limit: 512m
+    memswap_limit: 512m

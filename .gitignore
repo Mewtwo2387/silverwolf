@@ -10,6 +10,10 @@ _*.js
 persistence/
 .claude
 
+# Rust build artifacts
+target/
+Cargo.lock
+
 *.db-wal
 *.db-shm
 
