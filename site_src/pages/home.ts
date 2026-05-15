@@ -209,19 +209,25 @@ export function HomePage(opts: {
   const bjTimesLost = stats.blackjackTimesLost ?? 0;
 
   // Poop
-  const poopTimezone = poopProfile?.timezone ?? 0;
+  const poopTimezoneRaw = Number(poopProfile?.timezone ?? 0);
+  const poopTimezone = Number.isFinite(poopTimezoneRaw) ? poopTimezoneRaw : 0;
   const poopSign = poopTimezone >= 0 ? '+' : '';
   const poopTimezoneLabel = `UTC${poopSign}${poopTimezone}`;
   const totalPoops = poopStats?.totalPoops ?? 0;
-  const avgDailyPoops = poopStats?.avgDaily != null
-    ? format(parseFloat(poopStats.avgDaily), true)
+  const avgDailyRaw = parseFloat(poopStats?.avgDaily);
+  const avgDailyPoops = Number.isFinite(avgDailyRaw)
+    ? format(avgDailyRaw, true)
     : 'N/A';
-  const avgPoopDuration = poopStats?.avgDuration != null
-    ? `${Math.round(poopStats.avgDuration)} min`
+  const avgDurationRaw = Number(poopStats?.avgDuration);
+  const avgPoopDuration = Number.isFinite(avgDurationRaw)
+    ? `${Math.round(avgDurationRaw)} min`
     : 'N/A';
-  const lastPoopAt = poopStats?.lastLoggedAt
-    ? `${new Date(poopStats.lastLoggedAt * 1000 + poopTimezone * 60 * 60 * 1000)
-      .toUTCString().replace(' GMT', '')} (${poopTimezoneLabel})`
+  const lastLoggedAtRaw = Number(poopStats?.lastLoggedAt);
+  const lastPoopDate = Number.isFinite(lastLoggedAtRaw)
+    ? new Date(lastLoggedAtRaw * 1000 + poopTimezone * 60 * 60 * 1000)
+    : null;
+  const lastPoopAt = lastPoopDate && !Number.isNaN(lastPoopDate.getTime())
+    ? `${lastPoopDate.toUTCString().replace(' GMT', '')} (${poopTimezoneLabel})`
     : 'N/A';
   const commonPoopType = poopStats?.commonType ?? 'N/A';
   const commonPoopColour = poopStats?.commonColour ?? 'N/A';
