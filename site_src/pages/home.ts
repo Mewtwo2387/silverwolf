@@ -29,6 +29,8 @@ export interface DashboardProfile {
   stats: Record<string, any>;
   pokemonCount: number;
   marriageBenefits: number;
+  poopStats: Record<string, any> | null;
+  poopProfile: Record<string, any> | null;
 }
 
 const styles = raw(`
@@ -170,7 +172,9 @@ export function HomePage(opts: {
   lv999?: boolean;
 }) {
   const { profile } = opts;
-  const { stats, pokemonCount, marriageBenefits } = profile;
+  const {
+    stats, pokemonCount, marriageBenefits, poopStats, poopProfile,
+  } = profile;
 
   const credits = stats.credits ?? 0;
   const log2Credits = credits > 1 ? Math.log2(credits) : 0;
@@ -203,6 +207,24 @@ export function HomePage(opts: {
   const bjTimesPlayed = stats.blackjackTimesPlayed ?? 0;
   const bjTimesWon = stats.blackjackTimesWon ?? 0;
   const bjTimesLost = stats.blackjackTimesLost ?? 0;
+
+  // Poop
+  const poopTimezone = poopProfile?.timezone ?? 0;
+  const poopSign = poopTimezone >= 0 ? '+' : '';
+  const poopTimezoneLabel = `UTC${poopSign}${poopTimezone}`;
+  const totalPoops = poopStats?.totalPoops ?? 0;
+  const avgDailyPoops = poopStats?.avgDaily != null
+    ? format(parseFloat(poopStats.avgDaily), true)
+    : 'N/A';
+  const avgPoopDuration = poopStats?.avgDuration != null
+    ? `${Math.round(poopStats.avgDuration)} min`
+    : 'N/A';
+  const lastPoopAt = poopStats?.lastLoggedAt
+    ? `${new Date(poopStats.lastLoggedAt * 1000 + poopTimezone * 60 * 60 * 1000)
+      .toUTCString().replace(' GMT', '')} (${poopTimezoneLabel})`
+    : 'N/A';
+  const commonPoopType = poopStats?.commonType ?? 'N/A';
+  const commonPoopColour = poopStats?.commonColour ?? 'N/A';
 
   const body = html`
     ${styles}
@@ -310,12 +332,19 @@ export function HomePage(opts: {
     </details>
 
     <details>
-      <summary>Others</summary>
+      <summary>Poop</summary>
       <div class="details-content">
+        ${totalPoops > 0 ? html`
         <div class="me-grid">
-          <div class="me-card"><div class="label">Pity</div><div class="value">${stats.pity ?? 0}</div></div>
-          <div class="me-card"><div class="label">Birthday</div><div class="value" style="font-size: 1.1rem">${stats.birthdays ? stats.birthdays : 'No birthday set'}</div></div>
+          <div class="me-card"><div class="label">Total Poops</div><div class="value">${format(totalPoops)}</div></div>
+          <div class="me-card"><div class="label">Avg Daily Poops</div><div class="value">${avgDailyPoops}</div></div>
+          <div class="me-card"><div class="label">Avg Duration</div><div class="value">${avgPoopDuration}</div></div>
+          <div class="me-card"><div class="label">Most Common Type</div><div class="value" style="font-size: 1.1rem">${commonPoopType}</div></div>
+          <div class="me-card"><div class="label">Most Common Colour</div><div class="value" style="font-size: 1.1rem">${commonPoopColour}</div></div>
+          <div class="me-card"><div class="label">Last Poop</div><div class="value" style="font-size: 0.95rem">${lastPoopAt}</div></div>
+          <div class="me-card"><div class="label">Timezone</div><div class="value">${poopTimezoneLabel}</div></div>
         </div>
+        ` : html`<p>No poop data logged yet.</p>`}
       </div>
     </details>
 
@@ -324,6 +353,16 @@ export function HomePage(opts: {
       <div class="details-content">
         <div class="me-grid">
           <div class="me-card"><div class="label">Unique Pokemons Caught</div><div class="value">${pokemonCount}</div></div>
+        </div>
+      </div>
+    </details>
+
+    <details>
+      <summary>Others</summary>
+      <div class="details-content">
+        <div class="me-grid">
+          <div class="me-card"><div class="label">Pity</div><div class="value">${stats.pity ?? 0}</div></div>
+          <div class="me-card"><div class="label">Birthday</div><div class="value" style="font-size: 1.1rem">${stats.birthdays ? stats.birthdays : 'No birthday set'}</div></div>
         </div>
       </div>
     </details>
