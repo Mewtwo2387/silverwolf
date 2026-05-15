@@ -126,7 +126,7 @@ class Blackjack extends Command {
 
     collector.on('collect', async (i: any) => {
       if (i.user.id !== interaction.user.id) {
-        await i.reply({ content: "These buttons aren't for you smh", ephemeral: true });
+        await i.reply({ content: "These buttons aren't for you smh", flags: Discord.MessageFlags.Ephemeral });
         return;
       }
 

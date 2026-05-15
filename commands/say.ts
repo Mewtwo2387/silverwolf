@@ -95,7 +95,7 @@ class Say extends AdminCommand {
       });
     }
 
-    await interaction.editReply({ embeds: [embed], ephemeral: true });
+    await interaction.editReply({ embeds: [embed] });
   }
 }
 

@@ -62,7 +62,7 @@ class Execute extends DevCommand {
     const commandName = subcommand ? `${command}.${subcommand}` : command;
 
     if (command.toLowerCase() === 'execute') {
-      interaction.editReply({ content: "Cannot execute the 'execute' command as it would cause an infinite loop!", ephemeral: true });
+      interaction.editReply({ content: "Cannot execute the 'execute' command as it would cause an infinite loop!" });
       return;
     }
 

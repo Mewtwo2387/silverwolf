@@ -21,7 +21,7 @@ class Joke extends Command {
       }, 2000);
     } catch (error) {
       logError('Failed to retrieve joke:', error);
-      await interaction.editReply({ content: 'Failed to retrieve joke. Please try again later.', ephemeral: true });
+      await interaction.editReply({ content: 'Failed to retrieve joke. Please try again later.' });
     }
   }
 }

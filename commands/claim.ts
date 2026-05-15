@@ -64,7 +64,7 @@ Please continue to claim, gamble, and catch!`);
       }
     } catch (error) {
       logError('Error claiming dinonuggies:', error);
-      await interaction.editReply({ content: 'Failed to claim dinonuggies.', ephemeral: true });
+      await interaction.editReply({ content: 'Failed to claim dinonuggies.' });
     }
   }
 }

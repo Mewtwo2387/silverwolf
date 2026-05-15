@@ -45,7 +45,7 @@ class Profile extends Command {
 
       if (timeSinceLastUse < COOLDOWN_DURATION) {
         const timeLeft = ((COOLDOWN_DURATION - timeSinceLastUse) / 1000).toFixed(1);
-        await interaction.editReply({ content: `Please wait ${timeLeft} seconds before using this command again.`, ephemeral: true });
+        await interaction.editReply({ content: `Please wait ${timeLeft} seconds before using this command again.` });
         return;
       }
     }

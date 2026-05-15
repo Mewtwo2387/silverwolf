@@ -115,7 +115,7 @@ class GamblerBoard extends Command {
       });
     } catch (error) {
       logError('Failed to fetch leaderboard:', error);
-      await interaction.editReply({ content: 'Failed to retrieve leaderboard', ephemeral: true });
+      await interaction.editReply({ content: 'Failed to retrieve leaderboard' });
     }
   }
 

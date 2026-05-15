@@ -1,5 +1,5 @@
 import {
-  Client, REST, Routes, type ClientOptions, type Message, type Interaction,
+  Client, REST, Routes, MessageFlags, type ClientOptions, type Message, type Interaction,
 } from 'discord.js';
 import path from 'path';
 import { createRequire } from 'node:module';
@@ -214,14 +214,14 @@ All wrongs reserved.
       if (interaction.customId.startsWith('del_girlcockx_')) {
         const targetUserId = interaction.customId.replace('del_girlcockx_', '');
         if (interaction.user.id !== targetUserId) {
-          await interaction.reply({ content: 'You can only delete your own messages.', ephemeral: true });
+          await interaction.reply({ content: 'You can only delete your own messages.', flags: MessageFlags.Ephemeral });
           return;
         }
         try {
           await interaction.message.delete();
         } catch (err) {
           logError('Error deleting girlcockx webhook message:', err);
-          await interaction.reply({ content: 'Failed to delete message.', ephemeral: true });
+          await interaction.reply({ content: 'Failed to delete message.', flags: MessageFlags.Ephemeral });
         }
       }
     }

@@ -69,7 +69,7 @@ class PoopBoard extends (LeaderboardMixin(Command) as any) {
 
       collector.on('collect', async (i: any) => {
         if (i.user.id !== interaction.user.id) {
-          await i.reply({ content: 'You cannot control this pagination.', ephemeral: true });
+          await i.reply({ content: 'You cannot control this pagination.', flags: Discord.MessageFlags.Ephemeral });
           return;
         }
 
@@ -118,7 +118,7 @@ class PoopBoard extends (LeaderboardMixin(Command) as any) {
       });
     } catch (error) {
       logError('Failed to fetch poop leaderboard:', error);
-      await interaction.editReply({ content: 'Failed to retrieve the leaderboard. Please try again.', ephemeral: true });
+      await interaction.editReply({ content: 'Failed to retrieve the leaderboard. Please try again.' });
     }
   }
 }
