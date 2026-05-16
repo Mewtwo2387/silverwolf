@@ -123,10 +123,10 @@ export function FlipPage(opts: { nonce: string; lv999?: boolean; user?: import('
     let animClass = '';
 
     if (rand < 0.49) {
-      result = 'Silver';
+      result = 'Head';
       animClass = 'flipping-heads';
     } else if (rand < 0.98) {
-      result = 'Wolf';
+      result = 'Tail';
       animClass = 'flipping-tails';
     } else {
       result = 'SIDE?!';
@@ -150,8 +150,8 @@ export function FlipPage(opts: { nonce: string; lv999?: boolean; user?: import('
     <div class="flip-container">
       <div id="result-text" class="result-text"></div>
       <div id="coin" class="coin">
-        <div class="heads">Silver</div>
-        <div class="tails">Wolf</div>
+        <div class="heads">Heads</div>
+        <div class="tails">Tails</div>
         <div class="side"></div>
       </div>
       <button id="flip-btn" class="flip-btn">FLIP COIN</button>
