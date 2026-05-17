@@ -45,7 +45,11 @@ class Profile extends Command {
 
       if (timeSinceLastUse < COOLDOWN_DURATION) {
         const timeLeft = ((COOLDOWN_DURATION - timeSinceLastUse) / 1000).toFixed(1);
-        await interaction.editReply({ content: `Please wait ${timeLeft} seconds before using this command again.` });
+        await interaction.deleteReply();
+        await interaction.followUp({
+          content: `Please wait ${timeLeft} seconds before using this command again.`,
+          flags: Discord.MessageFlags.Ephemeral,
+        });
         return;
       }
     }

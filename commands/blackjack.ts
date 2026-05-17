@@ -58,40 +58,54 @@ function formatHand(hand: Card[]): string {
 export interface BlackjackWinResult { multi: number; streak: number; winnings: number; }
 
 export async function recordBlackjackWin(client: any, userId: string, amount: number): Promise<BlackjackWinResult> {
-  let streak = await client.db.user.getUserAttr(userId, 'blackjackStreak');
-  await client.db.user.addUserAttr(userId, 'blackjackTimesPlayed', 1);
-  await client.db.user.addUserAttr(userId, 'blackjackAmountGambled', amount);
-  await client.db.user.addUserAttr(userId, 'blackjackTimesWon', 1);
+  const currentStreak = await client.db.user.getUserAttr(userId, 'blackjackStreak');
+  const currentMaxStreak = await client.db.user.getUserAttr(userId, 'blackjackMaxStreak');
+  const marriageBenefits = await client.db.marriage.getMarriageBenefits(userId);
 
-  const multi = await client.db.marriage.getMarriageBenefits(userId) * 2.1 * 1.08 ** streak;
-  streak += 1;
-  if (streak > await client.db.user.getUserAttr(userId, 'blackjackMaxStreak')) {
-    await client.db.user.setUserAttr(userId, 'blackjackMaxStreak', streak);
-  }
-
+  const multi = marriageBenefits * 2.1 * 1.08 ** currentStreak;
+  const streak = currentStreak + 1;
   const winnings = amount * multi;
-  await client.db.user.addUserAttr(userId, 'blackjackAmountWon', winnings);
-  await client.db.user.addUserAttr(userId, 'blackjackRelativeWon', multi);
-  await client.db.user.addUserAttr(userId, 'credits', winnings - amount);
-  await client.db.user.setUserAttr(userId, 'blackjackStreak', streak);
+
+  const sets: Record<string, any> = { blackjackStreak: streak };
+  if (streak > currentMaxStreak) sets.blackjackMaxStreak = streak;
+
+  await client.db.user.updateUserAttrs(userId, {
+    adds: {
+      blackjackTimesPlayed: 1,
+      blackjackAmountGambled: amount,
+      blackjackTimesWon: 1,
+      blackjackAmountWon: winnings,
+      blackjackRelativeWon: multi,
+      credits: winnings - amount,
+    },
+    sets,
+  });
 
   return { multi, streak, winnings };
 }
 
 export async function recordBlackjackLoss(client: any, userId: string, amount: number): Promise<void> {
-  await client.db.user.addUserAttr(userId, 'blackjackTimesPlayed', 1);
-  await client.db.user.addUserAttr(userId, 'blackjackAmountGambled', amount);
-  await client.db.user.addUserAttr(userId, 'blackjackTimesLost', 1);
-  await client.db.user.addUserAttr(userId, 'credits', -amount);
-  await client.db.user.setUserAttr(userId, 'blackjackStreak', 0);
+  await client.db.user.updateUserAttrs(userId, {
+    adds: {
+      blackjackTimesPlayed: 1,
+      blackjackAmountGambled: amount,
+      blackjackTimesLost: 1,
+      credits: -amount,
+    },
+    sets: { blackjackStreak: 0 },
+  });
 }
 
 export async function recordBlackjackTie(client: any, userId: string, amount: number): Promise<void> {
-  await client.db.user.addUserAttr(userId, 'blackjackTimesPlayed', 1);
-  await client.db.user.addUserAttr(userId, 'blackjackAmountGambled', amount);
-  await client.db.user.addUserAttr(userId, 'blackjackTimesDrawn', 1);
-  await client.db.user.addUserAttr(userId, 'blackjackAmountWon', amount);
-  await client.db.user.addUserAttr(userId, 'blackjackRelativeWon', 1);
+  await client.db.user.updateUserAttrs(userId, {
+    adds: {
+      blackjackTimesPlayed: 1,
+      blackjackAmountGambled: amount,
+      blackjackTimesDrawn: 1,
+      blackjackAmountWon: amount,
+      blackjackRelativeWon: 1,
+    },
+  });
 }
 
 class Blackjack extends Command {
