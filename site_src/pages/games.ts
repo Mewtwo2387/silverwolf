@@ -86,6 +86,12 @@ const GAMES = [
     imageType: 'img' as const,
     imageSrc: '/static/game-fakequote.webp',
   },
+  {
+    name: 'ai slop',
+    href: '/games/ai-slop',
+    info: 'chat with ai slop or something idk',
+    imageType: 'ai-slop' as const,
+  },
 ];
 
 const styles = raw(`
@@ -327,6 +333,98 @@ const styles = raw(`
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
   }
 
+  /* AI Slop card: thin-stroke node graph rotating over a morphing gradient blob.
+     The graph rotates as a whole (so the connecting lines stay connected to
+     their nodes), and each outer node also wiggles within a tiny orbit for an
+     "alive" / data-flow feel. The blob behind uses theme-aware gradient
+     colours so it adapts to flashbang/blackout themes. */
+  /* Width comes from the parent .card-image, height from aspect-ratio — using
+     percentage height instead breaks in browsers that don't resolve % height
+     against an aspect-ratio'd parent (Safari, some Chromium configs), which
+     was collapsing the wrap to 0 and hiding the SVG entirely. */
+  .ai-slop-wrap {
+    width: 78%;
+    aspect-ratio: 1 / 1;
+    position: relative;
+    display: block;
+  }
+  .ai-slop-wrap::before {
+    content: '';
+    position: absolute;
+    inset: 6%;
+    background: radial-gradient(circle at 32% 28%, var(--accent) 0%, var(--accent-pale) 45%, transparent 75%);
+    filter: blur(14px);
+    opacity: 0.55;
+    border-radius: 50% 60% 45% 55% / 55% 45% 60% 50%;
+    animation: ai-slop-blob 9s ease-in-out infinite;
+    z-index: 0;
+    pointer-events: none;
+  }
+  @keyframes ai-slop-blob {
+    0%, 100% { border-radius: 50% 60% 45% 55% / 55% 45% 60% 50%; transform: scale(1) rotate(0deg); }
+    33%      { border-radius: 65% 40% 55% 45% / 45% 60% 40% 60%; transform: scale(1.06) rotate(45deg); }
+    66%      { border-radius: 45% 55% 65% 40% / 60% 50% 45% 55%; transform: scale(0.96) rotate(-30deg); }
+  }
+  .ai-slop-svg {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    z-index: 1;
+    animation: ai-slop-spin 16s linear infinite;
+    overflow: visible;
+  }
+  @keyframes ai-slop-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  .ai-slop-svg .ln {
+    stroke: var(--accent-light);
+    stroke-width: 1.2;
+    fill: none;
+    opacity: 0.55;
+  }
+  .ai-slop-svg .node {
+    stroke: var(--accent-light);
+    stroke-width: 1.4;
+    fill: var(--ink-900);
+  }
+  .ai-slop-svg .core {
+    fill: var(--accent-light);
+    stroke: var(--accent);
+    stroke-width: 1.2;
+    animation: ai-slop-pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes ai-slop-pulse {
+    0%, 100% { r: 4.6; opacity: 0.9; }
+    50%      { r: 5.6; opacity: 1; }
+  }
+  /* Per-node orbit wiggle — each node has a different phase + path so they
+     drift independently. transform-origin uses the node centre so the
+     rotation pivots locally. */
+  .ai-slop-svg .n1 { transform-origin: 34.52px 11.43px; animation: ai-slop-orbit-a 3.6s ease-in-out infinite; }
+  .ai-slop-svg .n2 { transform-origin: 53.63px 31.6px;  animation: ai-slop-orbit-b 4.2s ease-in-out infinite; }
+  .ai-slop-svg .n3 { transform-origin: 34.52px 50.57px; animation: ai-slop-orbit-a 3.9s ease-in-out infinite reverse; }
+  .ai-slop-svg .n4 { transform-origin: 15.16px 42.03px; animation: ai-slop-orbit-b 4.5s ease-in-out infinite reverse; }
+  .ai-slop-svg .n5 { transform-origin: 15.16px 19.27px; animation: ai-slop-orbit-a 4.1s ease-in-out infinite; }
+  @keyframes ai-slop-orbit-a {
+    0%, 100% { transform: translate(0, 0); }
+    25%      { transform: translate(2.4px, -1.6px); }
+    50%      { transform: translate(0, -2.6px); }
+    75%      { transform: translate(-2.4px, -1.6px); }
+  }
+  @keyframes ai-slop-orbit-b {
+    0%, 100% { transform: translate(0, 0); }
+    25%      { transform: translate(-2px, 1.8px); }
+    50%      { transform: translate(0, 2.8px); }
+    75%      { transform: translate(2px, 1.8px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ai-slop-svg,
+    .ai-slop-svg .core,
+    .ai-slop-svg .n1, .ai-slop-svg .n2, .ai-slop-svg .n3, .ai-slop-svg .n4, .ai-slop-svg .n5,
+    .ai-slop-wrap::before { animation: none; }
+  }
+
   /* Mini spinning coin for the flip card */
   .mini-coin-wrap {
     width: 120px;
@@ -381,6 +479,33 @@ function CoinImage() {
       </div>
     </div>
   `;
+}
+
+// AI Slop card thumbnail — see the .ai-slop-* CSS block above. Strokes use
+// var(--accent-light), the blob behind uses var(--accent) / var(--accent-pale)
+// gradient, so the whole thing adapts to dark/flashbang/blackout themes.
+function AiSlopImage() {
+  return raw(`
+    <div class="ai-slop-wrap" aria-hidden="true">
+      <svg class="ai-slop-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" fill="none">
+        <line class="ln" x1="20.17" y1="16.3"  x2="28.9"  y2="12.93" />
+        <line class="ln" x1="38.6"  y1="15.59" x2="49.48" y2="27.52" />
+        <line class="ln" x1="50.07" y1="36.2"  x2="38.67" y2="46.49" />
+        <line class="ln" x1="18.36" y1="24.13" x2="30.91" y2="46.01" />
+        <line class="ln" x1="20.31" y1="44.74" x2="28.7"  y2="48.63" />
+        <line class="ln" x1="17.34" y1="36.63" x2="31.37" y2="16.32" />
+        <line class="ln" x1="20.52" y1="21.55" x2="30.34" y2="27.1"  />
+        <line class="ln" x1="39.22" y1="29.8"  x2="47.81" y2="30.45" />
+        <line class="ln" x1="34.51" y1="33.98" x2="34.52" y2="44.74" />
+        <circle class="node n1" cx="34.52" cy="11.43" r="5.4" />
+        <circle class="node n2" cx="53.63" cy="31.6"  r="5.4" />
+        <circle class="node n3" cx="34.52" cy="50.57" r="5.4" />
+        <circle class="node n4" cx="15.16" cy="42.03" r="5.4" />
+        <circle class="node n5" cx="15.16" cy="19.27" r="5.4" />
+        <circle class="core"     cx="34.51" cy="29.27" r="4.6" />
+      </svg>
+    </div>
+  `);
 }
 
 const layoutScript = (nonce: string) => raw(`
@@ -471,6 +596,7 @@ export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import(
             <div class="card-image">
               ${(() => {
     if (game.imageType === 'coin') return CoinImage();
+    if (game.imageType === 'ai-slop') return AiSlopImage();
     if (game.imageType === 'composite') {
       return html`<div class="composite-icon">
               <img class="base" src="${(game as any).imageSrc}" alt="${game.name}" />

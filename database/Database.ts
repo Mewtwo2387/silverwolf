@@ -105,6 +105,12 @@ class Database {
       WHERE active = 1
     `);
 
+    // Speed up the website sidebar query (user's web-only chat list).
+    this.db.run(`
+      CREATE INDEX IF NOT EXISTS idx_aichatsession_user_source
+      ON AiChatSession (user_id, source)
+    `);
+
     // SQLite can't ALTER a CHECK constraint — rebuild AiChatHistory if the
     // 'tool' role isn't allowed yet. Idempotent: skipped on subsequent boots.
     const aiChatSchema = this.db
