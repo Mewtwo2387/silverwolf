@@ -79,6 +79,13 @@ const GAMES = [
     imageType: 'img' as const,
     imageSrc: '/static/game-awdangit.jpeg',
   },
+  {
+    name: 'fakequote',
+    href: '/games/fakequote',
+    info: 'create your very real totally accurate quotes!',
+    imageType: 'img' as const,
+    imageSrc: '/static/game-fakequote.webp',
+  },
 ];
 
 const styles = raw(`

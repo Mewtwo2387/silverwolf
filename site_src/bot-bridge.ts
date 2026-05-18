@@ -33,6 +33,7 @@ import {
 } from '../utils/ascend';
 import { getMaxLevel, getNextUpgradeCost } from '../utils/upgrades';
 import { getNextAscensionUpgradeCost } from '../utils/ascensionupgrades';
+import quote, { FONT_MAP } from '../utils/quote';
 
 export type LeaderboardKind = 'gambler' | 'murder' | 'nuggie' | 'poop';
 
@@ -855,4 +856,122 @@ export async function logPoopWeb(
   const dbAny = silverwolf as unknown as PoopDb;
   const count = await dbAny.db.poop.logPoop(userId, colour, size, type, duration);
   return { count };
+}
+
+// ─── Fake quote ────────────────────────────────────────────────────────────
+
+export type FakeQuoteErrorCode =
+  | 'rate_limited'
+  | 'invalid_uid'
+  | 'user_not_found'
+  | 'invalid_message'
+  | 'invalid_options'
+  | 'render_failed';
+
+export interface FakeQuoteSuccess { ok: true; image: string; }
+export interface FakeQuoteError { ok: false; error: FakeQuoteErrorCode; message?: string; retryAfter?: number; }
+export type FakeQuoteResult = FakeQuoteSuccess | FakeQuoteError;
+
+export const FAKEQUOTE_VALID_BACKGROUNDS = ['black', 'white'] as const;
+export const FAKEQUOTE_VALID_PROFILE_COLORS = ['normal', 'bw', 'inverted', 'sepia', 'nightmare'] as const;
+export const FAKEQUOTE_VALID_FONTS = Object.keys(FONT_MAP);
+
+const FAKEQUOTE_RATE_WINDOW_MS = 60_000;
+const FAKEQUOTE_RATE_MAX = 3;
+const fakeQuoteHits = new Map<string, number[]>();
+
+function rateLimitCheck(userId: string): { ok: true } | { ok: false; retryAfter: number } {
+  const now = Date.now();
+  const window = fakeQuoteHits.get(userId)?.filter((t) => now - t < FAKEQUOTE_RATE_WINDOW_MS) ?? [];
+  if (window.length >= FAKEQUOTE_RATE_MAX) {
+    const oldest = window[0];
+    const retryAfter = Math.max(1, Math.ceil((FAKEQUOTE_RATE_WINDOW_MS - (now - oldest)) / 1000));
+    fakeQuoteHits.set(userId, window);
+    return { ok: false, retryAfter };
+  }
+  window.push(now);
+  fakeQuoteHits.set(userId, window);
+  return { ok: true };
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, hits] of fakeQuoteHits.entries()) {
+    const fresh = hits.filter((t) => now - t < FAKEQUOTE_RATE_WINDOW_MS);
+    if (fresh.length === 0) fakeQuoteHits.delete(id);
+    else fakeQuoteHits.set(id, fresh);
+  }
+}, 5 * 60 * 1000).unref();
+
+// Discord snowflake: 17–20 digits.
+const SNOWFLAKE_RE = /^\d{17,20}$/;
+
+export interface FakeQuoteParams {
+  uid: string;
+  message: string;
+  nickname?: string | null;
+  background?: string | null;
+  textColor?: string | null;
+  profileColor?: string | null;
+  fontStyle?: string | null;
+}
+
+export async function generateFakeQuoteWeb(
+  silverwolf: Silverwolf,
+  requesterId: string,
+  params: FakeQuoteParams,
+): Promise<FakeQuoteResult> {
+  const limit = rateLimitCheck(requesterId);
+  if (!limit.ok) return { ok: false, error: 'rate_limited', retryAfter: limit.retryAfter };
+
+  const uid = params.uid.trim();
+  if (!SNOWFLAKE_RE.test(uid)) return { ok: false, error: 'invalid_uid' };
+
+  const message = params.message.trim();
+  if (!message || message.length > 1000) return { ok: false, error: 'invalid_message' };
+
+  const background = params.background ?? 'black';
+  const profileColor = params.profileColor ?? 'normal';
+  const fontStyle = params.fontStyle ?? 'sans-serif';
+  if (!(FAKEQUOTE_VALID_BACKGROUNDS as readonly string[]).includes(background)) {
+    return { ok: false, error: 'invalid_options' };
+  }
+  if (!(FAKEQUOTE_VALID_PROFILE_COLORS as readonly string[]).includes(profileColor)) {
+    return { ok: false, error: 'invalid_options' };
+  }
+  if (!FAKEQUOTE_VALID_FONTS.includes(fontStyle)) {
+    return { ok: false, error: 'invalid_options' };
+  }
+
+  let person;
+  try {
+    person = await silverwolf.users.fetch(uid);
+  } catch {
+    return { ok: false, error: 'user_not_found' };
+  }
+  if (!person) return { ok: false, error: 'user_not_found' };
+
+  // No guild context on the website — pick any shared guild (lets <@mention>
+  // resolution work for users the bot can see); fall back gracefully if none.
+  const guild = silverwolf.guilds.cache.first() ?? null;
+
+  try {
+    const buffer = await quote(
+      guild,
+      person,
+      params.nickname?.trim() || null,
+      message,
+      background,
+      params.textColor?.trim() || null,
+      profileColor,
+      'global',
+      fontStyle,
+    );
+    const base64 = buffer.toString('base64');
+    return { ok: true, image: `data:image/png;base64,${base64}` };
+  } catch (err) {
+    logError('fakequote render failed:', err);
+    const msg = err instanceof Error ? err.message : 'Render failed.';
+    return { ok: false, error: 'render_failed', message: msg };
+  }
 }

@@ -14,6 +14,7 @@ import {
   buyAscensionUpgradeWeb,
   ascendWeb,
   getDinoUpgradesStateWeb,
+  generateFakeQuoteWeb,
 } from '../bot-bridge';
 import { type AppEnv, authedGameRequest, readGameBody } from '../shared';
 
@@ -204,6 +205,41 @@ export function registerGameApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf)
     } catch (err) {
       logError('ascend failed:', err);
       return c.json({ error: 'server' }, 500);
+    }
+  });
+
+  app.post('/games/fakequote/generate', async (c) => {
+    const body = await readGameBody(c);
+    const auth = authedGameRequest(c, body);
+    if (auth instanceof Response) return auth;
+
+    const get = (k: string): string | null => {
+      const v = body![k];
+      return typeof v === 'string' ? v : null;
+    };
+    const uid = get('uid');
+    const message = get('message');
+    if (!uid || !message) return c.json({ ok: false, error: 'invalid_options' }, 400);
+
+    try {
+      const result = await generateFakeQuoteWeb(silverwolf, auth.discordId, {
+        uid,
+        message,
+        nickname: get('nickname'),
+        background: get('background'),
+        textColor: get('textColor'),
+        profileColor: get('profileColor'),
+        fontStyle: get('fontStyle'),
+      });
+      if (!result.ok && result.error === 'rate_limited') {
+        const headers: Record<string, string> = {};
+        if (result.retryAfter) headers['retry-after'] = String(result.retryAfter);
+        return c.json(result, 429, headers);
+      }
+      return c.json(result);
+    } catch (err) {
+      logError('fakequote generate failed:', err);
+      return c.json({ ok: false, error: 'server' }, 500);
     }
   });
 

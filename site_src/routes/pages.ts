@@ -16,6 +16,7 @@ import { SlotsPage } from '../pages/games/slots';
 import { ClaimPage } from '../pages/games/claim';
 import { DinonuggieUpgradesPage } from '../pages/games/dinonuggie_upgrades';
 import { AwdangitPage } from '../pages/games/awdangit';
+import { FakeQuotePage } from '../pages/games/fakequote';
 import { HomePage, type DashboardProfile } from '../pages/home';
 import {
   getLeaderboard,
@@ -164,6 +165,10 @@ export function registerPageRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
   }).toString()));
 
   app.get('/games/awdangit', (c) => c.html(AwdangitPage({
+    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+  }).toString()));
+
+  app.get('/games/fakequote', (c) => c.html(FakeQuotePage({
     nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
   }).toString()));
 }

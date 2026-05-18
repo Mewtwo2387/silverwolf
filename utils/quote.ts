@@ -491,7 +491,7 @@ function resolveAvatarUrl(person: User | APIUser): string {
 // ─── Main Quote Function ──────────────────────────────────────────────────────
 
 async function quote(
-  guild: Guild,
+  guild: Guild | null,
   _person: User | APIUser,
   _nickname: string | null,
   _message: string,
@@ -523,7 +523,7 @@ async function quote(
 
   // ── Avatar ────────────────────────────────────────────────────────────────
   let pfp: string;
-  if (avatarSource === 'server') {
+  if (avatarSource === 'server' && guild) {
     try {
       const member = guild.members.cache.get(_person.id);
       if (member && member.avatar) {
