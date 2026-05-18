@@ -17,6 +17,7 @@ import { ClaimPage } from '../pages/games/claim';
 import { DinonuggieUpgradesPage } from '../pages/games/dinonuggie_upgrades';
 import { AwdangitPage } from '../pages/games/awdangit';
 import { FakeQuotePage } from '../pages/games/fakequote';
+import { AiSlopPage } from '../pages/games/ai-slop';
 import { HomePage, type DashboardProfile } from '../pages/home';
 import {
   getLeaderboard,
@@ -171,4 +172,28 @@ export function registerPageRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
   app.get('/games/fakequote', (c) => c.html(FakeQuotePage({
     nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
   }).toString()));
+
+  app.get('/games/ai-slop', async (c) => {
+    const user = c.get('user');
+    const nonce = c.get('nonce');
+    const lv999 = c.req.query('lv') === '999';
+
+    if (!user) {
+      return c.html(AiSlopPage({
+        nonce, lv999, user: null, sessions: [],
+      }).toString());
+    }
+
+    try {
+      const sessions = await silverwolf.db.aiChat.getUserWebSessions(user.discordId);
+      return c.html(AiSlopPage({
+        nonce, lv999, user: user.nav, sessions,
+      }).toString());
+    } catch (err) {
+      logError('website /games/ai-slop failed:', err);
+      return c.html(AiSlopPage({
+        nonce, lv999, user: user.nav, sessions: [],
+      }).toString(), 500);
+    }
+  });
 }

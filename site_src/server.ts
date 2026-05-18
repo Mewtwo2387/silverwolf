@@ -9,6 +9,7 @@ import { registerStaticRoutes } from './routes/static';
 import { registerAuthRoutes } from './routes/auth';
 import { registerPageRoutes } from './routes/pages';
 import { registerGameApiRoutes } from './routes/games-api';
+import { registerAiSlopApiRoutes } from './routes/ai-slop-api';
 import type { AppEnv } from './shared';
 
 const PORT = 6769;
@@ -26,6 +27,7 @@ export function startWebsite(silverwolf: Silverwolf) {
   registerAuthRoutes(app, silverwolf);
   registerPageRoutes(app, silverwolf);
   registerGameApiRoutes(app, silverwolf);
+  registerAiSlopApiRoutes(app, silverwolf);
 
   app.notFound((c) => c.text('not found', 404));
 
