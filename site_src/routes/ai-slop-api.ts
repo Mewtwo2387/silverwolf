@@ -9,19 +9,11 @@ import {
 } from '../../utils/ai';
 import { trimHistoryToFit } from '../../utils/tokenizer';
 import { type AppEnv, authedGameRequest, readGameBody } from '../shared';
-
-// Personas the website chat surface is allowed to use. Discord-only utilities
-// like Summarizer and TitleGen are intentionally hidden.
-const ALLOWED_PERSONAS = ['Grok', 'Jarvis', 'GPT', 'Silverwolf'] as const;
-type AllowedPersona = typeof ALLOWED_PERSONAS[number];
+import { isAllowedPersona } from './ai-slop-personas';
 
 const MAX_MESSAGE_CHARS = 8000;
 const MAX_TITLE_CHARS = 80;
 const HISTORY_FETCH_LIMIT = 100;
-
-function isAllowedPersona(name: unknown): name is AllowedPersona {
-  return typeof name === 'string' && (ALLOWED_PERSONAS as readonly string[]).includes(name);
-}
 
 function isValidSessionId(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value > 0;

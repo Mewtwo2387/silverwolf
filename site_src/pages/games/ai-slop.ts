@@ -2,14 +2,10 @@ import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import type { NavUser } from '../../components/navbar';
 import { inlineJSON } from '../../inline';
+import { AI_SLOP_PERSONAS } from '../../routes/ai-slop-personas';
 
-// Personas the user can pick from. Order = grouping order in the sidebar.
-const PERSONAS: { name: string; blurb: string }[] = [
-  { name: 'Grok', blurb: 'Snark with web search' },
-  { name: 'Jarvis', blurb: 'Tony Stark butler vibes' },
-  { name: 'GPT', blurb: 'Concise + neutral' },
-  { name: 'Silverwolf', blurb: 'The mascot herself' },
-];
+// Sidebar grouping order = order in AI_SLOP_PERSONAS.
+const PERSONAS = AI_SLOP_PERSONAS;
 
 export interface AiSlopSession {
   sessionId: number;
