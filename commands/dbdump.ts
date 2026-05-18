@@ -1,5 +1,6 @@
 import path from 'path';
 import { unlinkSync } from 'fs';
+import { MessageFlags } from 'discord.js';
 import { DevCommand } from './classes/DevCommand';
 import { logError } from '../utils/log';
 
@@ -176,7 +177,7 @@ class DBDump extends DevCommand {
       }
     } catch (error) {
       logError('Error dumping database:', error);
-      await interaction.followUp({ content: 'An error occurred while executing the command.', ephemeral: true });
+      await interaction.followUp({ content: 'An error occurred while executing the command.', flags: MessageFlags.Ephemeral });
     } finally {
       filesToDump.forEach((file) => {
         this.cleanupFile(file.attachment);

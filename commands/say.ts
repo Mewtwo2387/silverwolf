@@ -62,13 +62,22 @@ class Say extends AdminCommand {
 
     let successCount = 0;
     const failedChannels: string[] = [];
-    targetChannels.forEach(async (channel) => {
-      try {
-        await channel.send(messageOptions);
+    const sendResults = await Promise.all(
+      targetChannels.map(async (channel) => {
+        try {
+          await channel.send(messageOptions);
+          return { ok: true as const };
+        } catch (error) {
+          return { ok: false as const, channelId: channel.id, error };
+        }
+      }),
+    );
+    sendResults.forEach((result) => {
+      if (result.ok) {
         successCount += 1;
-      } catch (error) {
-        logError(`Failed to send message to channel ${channel.id}:`, error);
-        failedChannels.push(`<#${channel.id}>`);
+      } else {
+        logError(`Failed to send message to channel ${result.channelId}:`, result.error);
+        failedChannels.push(`<#${result.channelId}>`);
       }
     });
 
@@ -95,7 +104,7 @@ class Say extends AdminCommand {
       });
     }
 
-    await interaction.editReply({ embeds: [embed], ephemeral: true });
+    await interaction.editReply({ embeds: [embed] });
   }
 }
 

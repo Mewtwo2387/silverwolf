@@ -14,7 +14,7 @@ class Arlecchino extends Command {
       await interaction.followUp({ content: '<@993614772354416673>' });
     } catch (error) {
       logError('Error fetching arlecchino GIF:', error);
-      await interaction.editReply({ content: 'Sorry, I couldn\'t fetch a arlecchino GIF. Please try again later.', ephemeral: true });
+      await interaction.editReply({ content: 'Sorry, I couldn\'t fetch a arlecchino GIF. Please try again later.' });
     }
   }
 }

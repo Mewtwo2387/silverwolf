@@ -87,7 +87,7 @@ class AskSilverwolfAI extends Command {
       await this.client.db.chat.addChatHistory(session.sessionId, 'model', processedText);
     } catch (error) {
       logError('Error generating text:', error);
-      await interaction.editReply({ content: 'Failed to retrieve response from Gemini AI. Please try again later.', ephemeral: true });
+      await interaction.editReply({ content: 'Failed to retrieve response from Gemini AI. Please try again later.' });
     }
   }
 }

@@ -102,7 +102,7 @@ class Pokemon extends Command {
       });
     } catch (error) {
       logError('Failed to retrieve Pokémon list:', error);
-      await interaction.editReply({ content: 'Failed to retrieve Pokémon list', ephemeral: true });
+      await interaction.editReply({ content: 'Failed to retrieve Pokémon list' });
     }
   }
 }

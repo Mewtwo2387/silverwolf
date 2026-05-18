@@ -14,7 +14,7 @@ class BitcoinPrice extends Command {
       const data = await bitcoin.getData();
 
       if (!data) {
-        await interaction.editReply({ content: 'Failed to retrieve Bitcoin price - Empty response from API', ephemeral: true });
+        await interaction.editReply({ content: 'Failed to retrieve Bitcoin price - Empty response from API' });
         return;
       }
 
@@ -43,7 +43,7 @@ class BitcoinPrice extends Command {
     } catch (error) {
       logError('Error fetching Bitcoin price:', error);
       if (!interaction.replied) {
-        await interaction.editReply({ content: 'Failed to retrieve Bitcoin price. Please try again later.', ephemeral: true });
+        await interaction.editReply({ content: 'Failed to retrieve Bitcoin price. Please try again later.' });
       }
     }
   }

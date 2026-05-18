@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'Italianno';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/static/fonts/italianno.woff2') format('woff2');
+}
+
+:root {
+  --ink-900:#06080f; --ink-800:#0a0e1c; --ink-700:#111729; --ink-600:#1a2138; --ink-500:#232b46;
+  --fog-100:#e8efff; --fog-200:#b4c2e0; --fog-300:#8290b8; --fog-400:#606e94; --fog-500:#4a5578;
+  --accent:#22d3ff; --accent-light:#7cdcff; --accent-pale:#a78bff;
+  --danger:#ff6b8a;
+  --heading-top:#ffffff; --heading-bottom:#22d3ff;
+  --glow-faint:rgba(34,211,255,0.32); --glow-bright:rgba(34,211,255,0.55);
+  --danger-glow:rgba(255,107,138,0.4);
+}
+[data-theme="flashbang"] {
+  --ink-900:#eef3ff; --ink-800:#e0e8f7; --ink-700:#cfd9ee; --ink-600:#b8c4dc; --ink-500:#a0aecb;
+  --fog-100:#0a1428; --fog-200:#1e2a44; --fog-300:#3a4866; --fog-400:#5a6886; --fog-500:#7a88a6;
+  --accent:#0891b2; --accent-light:#0e7490; --accent-pale:#7c3aed;
+  --danger:#be3a5b;
+  --heading-top:#0a1428; --heading-bottom:#0891b2;
+  --glow-faint:rgba(8,145,178,0.28); --glow-bright:rgba(8,145,178,0.5);
+  --danger-glow:rgba(190,58,91,0.35);
+}
+[data-theme="blackout"] {
+  --ink-900:#020308; --ink-800:#04060d; --ink-700:#070912; --ink-600:#0c0f1c; --ink-500:#121628;
+  --fog-100:#6c7a9a; --fog-200:#566382; --fog-300:#42506b; --fog-400:#323f56; --fog-500:#252f44;
+  --accent:#1a8aa8; --accent-light:#2298b8; --accent-pale:#5d4a9a;
+  --danger:#8a3f55;
+  --heading-top:#6c7a9a; --heading-bottom:#1a8aa8;
+  --glow-faint:rgba(26,138,168,0.18); --glow-bright:rgba(26,138,168,0.32);
+  --danger-glow:rgba(138,63,85,0.22);
+}
+
+@layer base {
+  h1, h2, h3 { margin: 0 0 0.5em; }
+  a { color: var(--accent-light); }
+  table { @apply border-collapse mx-auto; }
+  th, td { @apply py-[0.4rem] px-[0.9rem] border-b border-ink-600 text-left; }
+  th { @apply text-fog-200 font-semibold text-[0.85rem] uppercase tracking-[0.04em]; }
+  code { @apply font-mono bg-ink-700 rounded-[3px]; padding: 0.1em 0.35em; }
+}

@@ -1,4 +1,4 @@
-import { EmbedBuilder } from 'discord.js';
+import { EmbedBuilder, MessageFlags } from 'discord.js';
 import { DevCommand } from './classes/DevCommand';
 import { logError } from '../utils/log';
 import { parseChannelIds } from '../utils/parseChannelIds';
@@ -43,7 +43,7 @@ class BirthdayTest extends DevCommand {
       resultMessage += `❌ Failed to send messages to the following channels:\n${failedChannels.join('\n')}\n`;
     }
 
-    await interaction.reply({ content: resultMessage, ephemeral: true });
+    await interaction.reply({ content: resultMessage, flags: MessageFlags.Ephemeral });
   }
 }
 

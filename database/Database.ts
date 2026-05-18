@@ -16,6 +16,7 @@ import type GlobalConfigModel from './models/GlobalConfigModel';
 import type ServerRolesModel from './models/ServerRolesModel';
 import type BirthdayReminderModel from './models/BirthdayReminderModel';
 import type PoopModel from './models/PoopModel';
+import type WebSessionModel from './models/WebSessionModel';
 
 class Database {
   db!: BunDatabase;
@@ -102,6 +103,12 @@ class Database {
       CREATE UNIQUE INDEX IF NOT EXISTS idx_aichatsession_user_persona_active
       ON AiChatSession (user_id, persona_name)
       WHERE active = 1
+    `);
+
+    // Speed up the website sidebar query (user's web-only chat list).
+    this.db.run(`
+      CREATE INDEX IF NOT EXISTS idx_aichatsession_user_source
+      ON AiChatSession (user_id, source)
     `);
 
     // SQLite can't ALTER a CHECK constraint — rebuild AiChatHistory if the
@@ -263,6 +270,7 @@ class Database {
   get poop(): PoopModel { return this.models.PoopModel; }
   get serverRoles(): ServerRolesModel { return this.models.ServerRolesModel; }
   get user(): UserModel { return this.models.UserModel; }
+  get webSession(): WebSessionModel { return this.models.WebSessionModel; }
 }
 
 export default Database;

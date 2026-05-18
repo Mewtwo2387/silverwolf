@@ -87,6 +87,54 @@ class AiChatModel {
   }
 
   /**
+   * Returns only the user's web-created sessions (source='web'), newest first.
+   * Used by the /games/ai-slop sidebar — keeps Discord-bot sessions hidden.
+   */
+  async getUserWebSessions(userId: string): Promise<Record<string, any>[]> {
+    return this.db.executeSelectAllQuery(aiChatQueries.GET_USER_WEB_SESSIONS, [userId]);
+  }
+
+  /**
+   * Returns only the user's Discord-created sessions (source='discord'),
+   * newest first. Used by /ai view so Discord users don't see (and can't
+   * manipulate) the web-created sessions that live in the same table.
+   */
+  async getUserDiscordSessions(userId: string): Promise<Record<string, any>[]> {
+    return this.db.executeSelectAllQuery(aiChatQueries.GET_USER_DISCORD_SESSIONS, [userId]);
+  }
+
+  /**
+   * Creates a new web-source session for the given user/persona. Web sessions
+   * are inserted with active=0 so they never collide with the bot's
+   * per-persona active-session uniqueness invariant.
+   */
+  async createWebSession(userId: string, personaName: string): Promise<Record<string, any> | null> {
+    await this.db.user.getUser(userId);
+    const result = await this.db.executeQuery(
+      aiChatQueries.START_WEB_SESSION,
+      [userId, personaName],
+    );
+    if (!result.lastID) return null;
+    const session = await this.getSessionById(result.lastID);
+    if (session) {
+      log(`AiChat (web): Created session ${session.sessionId} for user ${userId} with persona ${personaName}`);
+    }
+    return session;
+  }
+
+  /**
+   * Renames a session after verifying it belongs to the requesting user.
+   * Unlike updateTitle (which only fires once on auto-title), this overwrites
+   * an existing title.
+   */
+  async renameSession(userId: string, sessionId: number, title: string): Promise<boolean> {
+    const session = await this.getSessionById(sessionId);
+    if (!session || session.userId !== userId) return false;
+    await this.db.executeQuery(aiChatQueries.RENAME_SESSION, [title, sessionId]);
+    return true;
+  }
+
+  /**
    * Marks a session as inactive.
    */
   async endSession(sessionId: number): Promise<void> {

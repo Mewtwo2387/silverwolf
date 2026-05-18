@@ -66,7 +66,7 @@ class Cat extends Command {
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       logError('Error fetching cat data:', error);
-      await interaction.editReply({ content: 'Sorry, I couldn\'t fetch the cat data. Please try again later.', ephemeral: true });
+      await interaction.editReply({ content: 'Sorry, I couldn\'t fetch the cat data. Please try again later.' });
     }
   }
 }

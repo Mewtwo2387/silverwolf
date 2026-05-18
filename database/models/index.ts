@@ -10,6 +10,7 @@ import PokemonModel from './PokemonModel';
 import PoopModel from './PoopModel';
 import ServerRolesModel from './ServerRolesModel';
 import UserModel from './UserModel';
+import WebSessionModel from './WebSessionModel';
 
 export {
   AiChatModel,
@@ -24,4 +25,5 @@ export {
   PoopModel,
   ServerRolesModel,
   UserModel,
+  WebSessionModel,
 };

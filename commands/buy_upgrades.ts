@@ -2,21 +2,12 @@ import * as Discord from 'discord.js';
 import { format } from '../utils/math';
 import { Command } from './classes/Command';
 import {
-  getNextUpgradeCost,
-  getMaxLevel,
-} from '../utils/upgrades';
-import {
   getMultiplierChanceInfo,
   getBekiCooldownInfo,
   getMultiplierAmountInfo,
   INFO_LEVEL,
 } from '../utils/upgradesInfo';
-
-const UPGRADES = [
-  'multiplierAmount',
-  'multiplierRarity',
-  'beki',
-];
+import { processBuyUpgrade } from '../utils/buyUpgrade';
 
 class BuyUpgrades extends Command {
   constructor(client: any) {
@@ -37,27 +28,24 @@ class BuyUpgrades extends Command {
   }
 
   async run(interaction: any): Promise<void> {
-    const ascensionLevel = await this.client.db.user.getUserAttr(interaction.user.id, 'ascensionLevel');
-    const maxLevel = getMaxLevel(ascensionLevel);
-
     const upgradeId = interaction.options.getInteger('upgrade');
-    const amount = interaction.options.getInteger('amount') || 1;
+    const amount = interaction.options.getInteger('amount') ?? 1;
 
-    if (upgradeId < 1 || upgradeId > UPGRADES.length) {
+    const result = await processBuyUpgrade(this.client, interaction.user.id, upgradeId, amount);
+
+    if (result.status === 'invalid_upgrade' || result.status === 'invalid_amount') {
+      const title = result.status === 'invalid_amount' ? 'Invalid amount' : 'Invalid upgrade';
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')
-          .setTitle('Invalid upgrade')
+          .setTitle(title)
           .setFooter({ text: 'dinonuggie' }),
         ],
       });
       return;
     }
 
-    const upgrade = UPGRADES[upgradeId - 1];
-    const level = await this.client.db.user.getUserAttr(interaction.user.id, `${upgrade}Level`);
-
-    if (level >= maxLevel) {
+    if (result.status === 'maxed') {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')
@@ -69,88 +57,71 @@ class BuyUpgrades extends Command {
       return;
     }
 
-    if (level + amount > maxLevel) {
+    if (result.status === 'too_many') {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')
           .setTitle('You cannot buy this much')
-          .setDescription(`The cap is ${maxLevel}, and you are at ${level}. You cannot buy more than ${maxLevel - level} upgrades.`)
+          .setDescription(`The cap is ${result.maxLevel}, and you are at ${result.level}. You cannot buy more than ${result.maxLevel - result.level} upgrades.`)
           .setFooter({ text: 'increase the cap by ascending' }),
         ],
       });
       return;
     }
 
-    let cost = 0;
-    for (let i = 0; i < amount; i += 1) {
-      cost += getNextUpgradeCost(level + i);
-    }
-    const credits = await this.client.db.user.getUserAttr(interaction.user.id, 'credits');
-
-    if (credits < cost) {
+    if (result.status === 'poor') {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')
-          .setTitle('You dont have enough mystic credits')
-          .setDescription(`You have ${format(credits)} mystic credits, but you need ${format(cost)} to buy the upgrade`)
+          .setTitle("You don't have enough mystic credits")
+          .setDescription(`You have ${format(result.credits)} mystic credits, but you need ${format(result.cost)} to buy the upgrade`)
           .setFooter({ text: 'Credits can sometimes be found when you /eat nuggies. You can also gamble them with /slots or invest them with /buybitcoin' }),
         ],
       });
       return;
     }
 
-    await this.client.db.user.addUserAttr(interaction.user.id, 'credits', -cost);
-    await this.client.db.user.addUserAttr(interaction.user.id, `${upgrade}Level`, amount);
+    const {
+      upgrade, level, cost, credits,
+    } = result;
 
     switch (upgrade) {
       case 'multiplierAmount':
-        await this.handleBuyMultiplierAmount(interaction, level, cost, credits, amount);
+        await interaction.editReply({
+          embeds: [new Discord.EmbedBuilder()
+            .setColor('#00AA00')
+            .setTitle('Multiplier Amount Upgrade Bought')
+            .setDescription(`${getMultiplierAmountInfo(level, INFO_LEVEL.NEXT_LEVEL, amount)}
+Mystic Credits: ${format(credits)} -> ${format(credits - cost)}`)
+            .setFooter({ text: 'dinonuggie' }),
+          ],
+        });
         break;
       case 'multiplierRarity':
-        await this.handleBuyMultiplierRarity(interaction, level, cost, credits, amount);
+        await interaction.editReply({
+          embeds: [new Discord.EmbedBuilder()
+            .setColor('#00AA00')
+            .setTitle('Multiplier Rarity Upgrade Bought')
+            .setDescription(`${getMultiplierChanceInfo(level, INFO_LEVEL.NEXT_LEVEL, amount)}
+Mystic Credits: ${format(credits)} -> ${format(credits - cost)}`)
+            .setFooter({ text: 'dinonuggie' }),
+          ],
+        });
         break;
       case 'beki':
-        await this.handleBuyBeki(interaction, level, cost, credits, amount);
+        await interaction.editReply({
+          embeds: [new Discord.EmbedBuilder()
+            .setColor('#00AA00')
+            .setTitle('Beki Upgrade Bought')
+            .setDescription(`${getBekiCooldownInfo(level, INFO_LEVEL.NEXT_LEVEL, amount)}
+Mystic Credits: ${format(credits)} -> ${format(credits - cost)}`)
+            .setFooter({ text: 'dinonuggie' }),
+          ],
+        });
         break;
       default:
         throw new Error('Unreachable code');
     }
-  }
-
-  async handleBuyMultiplierAmount(interaction: any, level: number, cost: number, credits: number, amount: number) {
-    await interaction.editReply({
-      embeds: [new Discord.EmbedBuilder()
-        .setColor('#00AA00')
-        .setTitle('Multiplier Amount Upgrade Bought')
-        .setDescription(`${getMultiplierAmountInfo(level, INFO_LEVEL.NEXT_LEVEL, amount)}
-Mystic Credits: ${format(credits)} -> ${format(credits - cost)}`)
-        .setFooter({ text: 'dinonuggie' }),
-      ],
-    });
-  }
-
-  async handleBuyMultiplierRarity(interaction: any, level: number, cost: number, credits: number, amount: number) {
-    await interaction.editReply({
-      embeds: [new Discord.EmbedBuilder()
-        .setColor('#00AA00')
-        .setTitle('Multiplier Rarity Upgrade Bought')
-        .setDescription(`${getMultiplierChanceInfo(level, INFO_LEVEL.NEXT_LEVEL, amount)}
-Mystic Credits: ${format(credits)} -> ${format(credits - cost)}`)
-        .setFooter({ text: 'dinonuggie' }),
-      ],
-    });
-  }
-
-  async handleBuyBeki(interaction: any, level: number, cost: number, credits: number, amount: number) {
-    await interaction.editReply({
-      embeds: [new Discord.EmbedBuilder()
-        .setColor('#00AA00')
-        .setTitle('Beki Upgrade Bought')
-        .setDescription(`${getBekiCooldownInfo(level, INFO_LEVEL.NEXT_LEVEL, amount)}
-Mystic Credits: ${format(credits)} -> ${format(credits - cost)}`)
-        .setFooter({ text: 'dinonuggie' }),
-      ],
-    });
   }
 }
 

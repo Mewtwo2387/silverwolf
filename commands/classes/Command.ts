@@ -1,4 +1,4 @@
-import { EmbedBuilder } from 'discord.js';
+import { EmbedBuilder, MessageFlags } from 'discord.js';
 import { logError, log } from '../../utils/log';
 import { isDev } from '../../utils/accessControl';
 
@@ -63,14 +63,13 @@ class Command {
         // Check if deferReply should be skipped
         if (!this.skipDefer && !interaction.deferred) {
           await interaction.deferReply({
-            ephemeral: this.ephemeral,
+            flags: this.ephemeral ? MessageFlags.Ephemeral : undefined,
           });
         }
         await this.run(interaction); // Run the command logic
       } else {
         await interaction.editReply({
           content: 'Not implemented',
-          ephemeral: true,
         });
         logError(`Command ${this.name} not implemented`);
       }
@@ -83,7 +82,6 @@ class Command {
         content: 'An error occurred while executing the command.\n'
         + 'Please try again later or modify the inputs.\n'
         + 'If the issue persists, run /blame command_name and spam ping whoever made the command.',
-        ephemeral: true,
       });
     }
   }

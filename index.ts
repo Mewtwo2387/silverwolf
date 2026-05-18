@@ -1,6 +1,7 @@
 import { GatewayIntentBits, Options, Sweepers } from 'discord.js';
 import { log, logError } from './utils/log';
 import { Silverwolf } from './classes/silverwolf';
+import { startWebsite } from './site_src/server';
 import { shutdownMcp } from './utils/mcp';
 
 // Note: Bun automatically reads .env files, no dotenv needed
@@ -41,6 +42,11 @@ const silverwolf = new Silverwolf(TOKEN, {
 });
 
 silverwolf.login().then(() => silverwolf.registerCommands(CLIENT_ID));
+try {
+  startWebsite(silverwolf);
+} catch (err) {
+  logError('startWebsite failed; continuing without the website', err);
+}
 
 const gracefulShutdown = async (signal: string) => {
   log(`Received ${signal}; shutting down`);
