@@ -1,7 +1,7 @@
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import type { NavUser } from '../../components/navbar';
-import { inlineJSON } from '../../inline';
+import { inlineJSON, NORMALIZE_AMOUNT_JS } from '../../inline';
 
 export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser | null }) {
   const { nonce, lv999, user } = opts;
@@ -73,6 +73,28 @@ export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
     line-height: 1;
   }
   .symbol img { width: 48px; height: 48px; object-fit: contain; }
+  /* Aura around symbols sitting on a matched payline. Box-shadow is clipped by
+     the reel's overflow:hidden, which is fine — it reads as a contained glow. */
+  .symbol.winning {
+    border-radius: 8px;
+    animation: slot-aura-pulse 1.1s ease-in-out infinite;
+    position: relative;
+    z-index: 1;
+  }
+  @keyframes slot-aura-pulse {
+    0%, 100% {
+      box-shadow:
+        0 0 8px 1px rgba(255, 204, 77, 0.55),
+        inset 0 0 6px rgba(255, 204, 77, 0.28);
+      background: rgba(255, 204, 77, 0.06);
+    }
+    50% {
+      box-shadow:
+        0 0 16px 3px rgba(255, 204, 77, 0.85),
+        inset 0 0 10px rgba(255, 204, 77, 0.4);
+      background: rgba(255, 204, 77, 0.12);
+    }
+  }
 
   .slots-form {
     display: flex;
@@ -157,6 +179,7 @@ export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
   const script = raw(`
 <script nonce="${nonce}">
 (() => {
+  ${NORMALIZE_AMOUNT_JS}
   const csrf = ${csrfJSON};
   const rollBtn = document.getElementById('roll-btn');
   const amountInput = document.getElementById('amount-input');
@@ -169,6 +192,39 @@ export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
   // strips show the same Discord emotes the result will land on (no unicode
   // fallback emojis — those don't match the season's skin).
   let fillerPool = [];
+
+  // Paylines mirror commands/slots.ts. Each entry picks a row index (0/1/2)
+  // for each of the 5 columns. A line "wins" when ≥3 consecutive columns from
+  // the left land on the same emote — same rule the server uses to score.
+  const PAYLINES = [
+    [0, 0, 0, 0, 0],
+    [1, 1, 1, 1, 1],
+    [2, 2, 2, 2, 2],
+    [0, 1, 2, 1, 0],
+    [2, 1, 0, 1, 2],
+    [0, 1, 2, 2, 2],
+    [2, 1, 0, 0, 0],
+    [0, 0, 0, 1, 2],
+    [2, 2, 2, 1, 0],
+  ];
+
+  function computeWinningCells(results) {
+    const winners = new Map();
+    for (const line of PAYLINES) {
+      const e0 = results[line[0]][0].emote;
+      let matchCount = 1;
+      for (let col = 1; col < 5; col += 1) {
+        if (results[line[col]][col].emote === e0) matchCount += 1;
+        else break;
+      }
+      if (matchCount >= 3) {
+        for (let col = 0; col < matchCount; col += 1) {
+          winners.set(line[col] + ',' + col, { row: line[col], col });
+        }
+      }
+    }
+    return Array.from(winners.values());
+  }
 
   function symbolHTML(emote) {
     if (!emote) return '<div class="symbol"></div>';
@@ -247,14 +303,16 @@ export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
     rollBtn.disabled = true;
     clearBanner();
 
-    const amount = amountInput.value.trim();
+    const amount = normalizeAmount(amountInput.value);
     if (!amount) { setBanner('loss', '<h2>Enter a bet amount.</h2>'); spinning = false; rollBtn.disabled = false; return; }
 
     // Kick off a quick "pre-spin" so reels start moving immediately while
     // the network round-trip happens. We restart the animation properly
-    // once the server result is in.
+    // once the server result is in. Also strip any winning glow left over
+    // from the previous spin so the new roll starts clean.
     reels.forEach((r) => {
       const strip = r.querySelector('.strip');
+      strip.querySelectorAll('.symbol.winning').forEach((s) => s.classList.remove('winning'));
       strip.style.transition = 'none';
       strip.style.transform = 'translateY(0)';
     });
@@ -294,6 +352,10 @@ export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
       const stopCol = [d.results[0][j], d.results[1][j], d.results[2][j]];
       const built = buildStrip(j, stopCol);
       strip.innerHTML = built.html;
+      // Tag the 3 visible stop cells (always the last 3 children) so the
+      // winning-cell highlighter can target them after the reel lands.
+      const stopCells = Array.from(strip.children).slice(-3);
+      stopCells.forEach((el, row) => { el.dataset.row = String(row); });
       // Total strip height in px:
       const stripHeight = built.totalCount * SYMBOL_HEIGHT;
       // We want the 3 stop symbols (last 3 in strip) centered around the middle symbol
@@ -324,6 +386,17 @@ export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
         ? 'You won ' + Number(d.winnings).toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' mystic credits'
         : 'You lost ' + Number(d.amount).toLocaleString() + ' mystic credits';
       setBanner(d.isWin ? 'win' : 'loss', '<h2>' + headline + '</h2><div class="sub">' + inline + '</div>');
+
+      // Light up every cell that participated in a matched payline. Run this
+      // regardless of d.isWin — natural 3-in-a-rows are worth showing even
+      // during seasons that override the multiplier (e.g. aprilFools).
+      const winners = computeWinningCells(d.results);
+      winners.forEach(({ row, col }) => {
+        const strip = reels[col].querySelector('.strip');
+        const cell = strip.querySelector('.symbol[data-row="' + row + '"]');
+        if (cell) cell.classList.add('winning');
+      });
+
       spinning = false;
       rollBtn.disabled = false;
     }, totalWait);

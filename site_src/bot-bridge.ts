@@ -34,6 +34,7 @@ import {
 import { getMaxLevel, getNextUpgradeCost } from '../utils/upgrades';
 import { getNextAscensionUpgradeCost } from '../utils/ascensionupgrades';
 import quote, { FONT_MAP } from '../utils/quote';
+import { format } from '../utils/math';
 
 export type LeaderboardKind = 'gambler' | 'murder' | 'nuggie' | 'poop';
 
@@ -193,7 +194,7 @@ async function getLeaderboardUncached(
           username: u.username,
           avatarURL: u.avatarURL,
           value,
-          valueLabel: `${value} ${counter}`,
+          valueLabel: `${format(value)} ${counter}`,
         };
       })),
     };
@@ -215,7 +216,7 @@ async function getLeaderboardUncached(
           username: u.username,
           avatarURL: u.avatarURL,
           value: row.relativeWon,
-          valueLabel: `${row.relativeWon > 0 ? '+' : ''}${row.relativeWon} bets`,
+          valueLabel: `${row.relativeWon > 0 ? '+' : ''}${format(row.relativeWon)} bets`,
         };
       })),
     };
@@ -234,7 +235,7 @@ async function getLeaderboardUncached(
           username: u.username,
           avatarURL: u.avatarURL,
           value: row.poopCount,
-          valueLabel: `${row.poopCount} Poops`,
+          valueLabel: `${format(row.poopCount)} Poops`,
         };
       })),
     };

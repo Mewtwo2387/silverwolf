@@ -45,13 +45,13 @@ const ICON_GAMES = raw(
 );
 
 const ICONS: Record<string, ReturnType<typeof raw>> = {
-  home: ICON_HOME,
+  about: ICON_HOME,
   leaderboards: ICON_LEADERBOARD,
   birthdays: ICON_BIRTHDAY,
   games: ICON_GAMES,
 };
 
-export type NavActive = 'home' | 'leaderboards' | 'birthdays' | 'games';
+export type NavActive = 'about' | 'leaderboards' | 'birthdays' | 'games';
 
 export interface NavUser {
   username: string;
@@ -91,8 +91,12 @@ const navbarExtras = (nonce: string) => raw(`
   /* Desktop auth chip (right side of navbar, logged-in only) */
   #nav-auth-desktop { display: flex; align-items: center; }
   .nav-auth { display: flex; align-items: center; gap: 0.6rem; color: var(--fog-200); font-size: 0.9rem; }
-  .nav-avatar { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--accent); }
-  .nav-username { font-weight: 500; color: var(--fog-100); max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Avatar + username are wrapped in <a href="/me"> — the link itself stays unstyled. */
+  .nav-profile-link { display: inline-flex; align-items: center; gap: 0.6rem; text-decoration: none; color: inherit; }
+  .nav-avatar { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--accent); transition: box-shadow 0.2s; }
+  .nav-username { font-weight: 500; color: var(--fog-100); max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; }
+  .nav-profile-link:hover .nav-username { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--accent); }
+  .nav-profile-link:hover .nav-avatar { box-shadow: 0 0 6px var(--glow-faint, rgba(255,255,255,0.2)); }
   .nav-auth-link { color: var(--fog-300); text-decoration: none; font-size: 0.85rem; padding: 0.3rem 0.6rem; border-radius: 0.4rem; border: 1px solid transparent; transition: color 0.2s, border-color 0.2s; }
   .nav-auth-link:hover { color: var(--fog-100); border-color: var(--ink-600); }
   /* Hide desktop auth chip on touch devices — auth lives in /home there */
@@ -422,7 +426,9 @@ export function Navbar(active: NavActive | undefined, nonce: string, lv999?: boo
     return html`<a href="${href}" class="${cls}" aria-label="${label}"${isActive ? raw(' aria-current="page"') : ''}>${ICONS[key]}<span class="label">${label}</span></a>`;
   };
 
-  const homeHref = user ? '/me' : '/about';
+  // The "Home" tab was retired — the public tab now goes to /about for everyone,
+  // and /me is reached by clicking the profile chip on the right.
+  const aboutHref = '/about';
   const pool = lv999 ? STICKER_IMAGES_LV999 : STICKER_IMAGES;
   const sticker = pool[Math.floor(Math.random() * pool.length)];
 
@@ -432,7 +438,7 @@ export function Navbar(active: NavActive | undefined, nonce: string, lv999?: boo
 
       <!-- Desktop nav — display controlled by CSS above, not Tailwind classes -->
       <div class="nav-links relative" id="nav-links">
-        ${link(homeHref, 'Home', 'home')}
+        ${link(aboutHref, 'About', 'about')}
         ${link('/leaderboards', 'Leaderboards', 'leaderboards')}
         ${link('/birthdays', 'Birthdays', 'birthdays')}
         ${link('/games', 'Games', 'games')}
@@ -443,8 +449,10 @@ export function Navbar(active: NavActive | undefined, nonce: string, lv999?: boo
     ? html`
         <div id="nav-auth-desktop">
           <div class="nav-auth">
-            ${user.avatarURL ? html`<img class="nav-avatar" src="${user.avatarURL}" alt="${user.username}" width="32" height="32" />` : ''}
-            <span class="nav-username">@${user.username}</span>
+            <a href="/me" class="nav-profile-link" aria-label="Open your dashboard">
+              ${user.avatarURL ? html`<img class="nav-avatar" src="${user.avatarURL}" alt="${user.username}" width="32" height="32" />` : ''}
+              <span class="nav-username">@${user.username}</span>
+            </a>
             <form action="/auth/logout" method="POST" style="display:inline;margin:0;">
               <input type="hidden" name="csrf" value="${user.csrf}" />
               <button type="submit" class="nav-auth-link" style="background:none;cursor:pointer;font-family:inherit;">Logout</button>
@@ -457,7 +465,7 @@ export function Navbar(active: NavActive | undefined, nonce: string, lv999?: boo
     <!-- Mobile bottom dock — visible only on touch devices via CSS media query -->
     <div id="nav-mobile" role="navigation" aria-label="Mobile navigation">
       <span class="dock-pill" aria-hidden="true"></span>
-      ${dockLink(homeHref, 'Home', 'home')}
+      ${dockLink(aboutHref, 'About', 'about')}
       ${dockLink('/leaderboards', 'Leaderboard', 'leaderboards')}
       ${dockLink('/birthdays', 'Birthdays', 'birthdays')}
       ${dockLink('/games', 'Games', 'games')}

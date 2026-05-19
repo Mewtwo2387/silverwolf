@@ -1,7 +1,7 @@
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import type { NavUser } from '../../components/navbar';
-import { inlineJSON } from '../../inline';
+import { inlineJSON, NORMALIZE_AMOUNT_JS } from '../../inline';
 
 export function RoulettePage(opts: { nonce: string; lv999?: boolean; user?: NavUser | null }) {
   const { nonce, lv999, user } = opts;
@@ -175,6 +175,7 @@ export function RoulettePage(opts: { nonce: string; lv999?: boolean; user?: NavU
   const script = raw(`
 <script nonce="${nonce}">
 (() => {
+  ${NORMALIZE_AMOUNT_JS}
   const csrf = ${csrfJSON};
   const wheel = document.getElementById('wheel');
   const spinBtn = document.getElementById('spin-btn');
@@ -225,7 +226,7 @@ export function RoulettePage(opts: { nonce: string; lv999?: boolean; user?: NavU
     spinBtn.disabled = true;
     clearBanner();
 
-    const amount = amountInput.value.trim();
+    const amount = normalizeAmount(amountInput.value);
     const betType = betTypeSel.value;
     let betValue = null;
     if (betType === 'number') {

@@ -376,7 +376,8 @@ export function HomePage(opts: {
 
   return Layout({
     title: `Silverwolf — @${profile.username}`,
-    active: 'home',
+    // /me lives behind the profile chip, not the nav tabs, so no tab is active here.
+    active: undefined,
     body: body as unknown as HtmlEscapedString,
     nonce: opts.nonce,
     lv999: opts.lv999,
