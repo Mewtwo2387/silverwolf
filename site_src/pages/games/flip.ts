@@ -69,26 +69,6 @@ export function FlipPage(opts: { nonce: string; lv999?: boolean; user?: import('
   .flipping-tails { animation: flip-tails 3s cubic-bezier(0.1, 0, 0.3, 1) forwards; }
   .flipping-side { animation: flip-side 3s cubic-bezier(0.1, 0, 0.3, 1) forwards; }
 
-  .flip-btn {
-    background: var(--accent);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 1rem 2.5rem;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 1.1rem;
-    box-shadow: 0 4px 0px #4a58e8;
-    transition: all 0.1s;
-  }
-  .flip-btn:active {
-    transform: translateY(2px);
-    box-shadow: 0 2px 0px #4a58e8;
-  }
-  .flip-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
   .result-text {
     font-size: 1.5rem;
     font-weight: bold;
@@ -154,7 +134,7 @@ export function FlipPage(opts: { nonce: string; lv999?: boolean; user?: import('
         <div class="tails">Tails</div>
         <div class="side"></div>
       </div>
-      <button id="flip-btn" class="flip-btn">FLIP COIN</button>
+      <button id="flip-btn" class="btn-accent btn-lg">FLIP COIN</button>
       <p class="text-fog-400 text-sm mt-4">50/50 for Silverwolf to give you head.</p>
     </div>
     ${extras}

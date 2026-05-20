@@ -101,19 +101,6 @@ export function FortunePage(opts: { fortunes: string[]; nonce: string; lv999?: b
     font-size: 0.9rem;
   }
 
-  .btn-primary {
-    background: var(--accent);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 0.8rem 2rem;
-    cursor: pointer;
-    font-weight: bold;
-  }
-  .btn-primary:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
 </style>
 <script nonce="${nonce}">
 (() => {
@@ -238,7 +225,7 @@ export function FortunePage(opts: { fortunes: string[]; nonce: string; lv999?: b
         </div>
       </div>
       <p class="fortune-hint text-fog-300">Click the cookie to crack it open and reveal your fortune.</p>
-      <button id="reset-btn" class="btn-primary">Get Another</button>
+      <button id="reset-btn" class="btn-accent">Get Another</button>
     </div>
     ${extras}
   `;

@@ -120,23 +120,8 @@ export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
     outline: none;
     border-color: var(--accent);
   }
-  .slots-form .roll-btn {
-    width: 100%;
-  }
-  .roll-btn {
-    background: var(--accent);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 0.7rem 2rem;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 1rem;
-    box-shadow: 0 4px 0 #4a58e8;
-    transition: transform 0.1s, box-shadow 0.1s, opacity 0.1s;
-  }
-  .roll-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #4a58e8; }
-  .roll-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .slots-form .roll-btn { width: 100%; }
+  .roll-btn { padding: 0.7rem 2rem; }
 
   .result-banner {
     text-align: center;
@@ -423,7 +408,7 @@ export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
             <form class="slots-form" onsubmit="return false">
               <label for="amount-input">Bet amount</label>
               <input id="amount-input" type="text" placeholder="amount (e.g. 1000 or 1k)" autocomplete="off" aria-label="Bet amount" />
-              <button id="roll-btn" type="button" class="roll-btn">Roll</button>
+              <button id="roll-btn" type="button" class="btn-accent roll-btn">Roll</button>
             </form>
           `}
       <div id="result-banner" class="result-banner"></div>

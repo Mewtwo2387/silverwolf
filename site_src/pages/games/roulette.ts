@@ -128,20 +128,6 @@ export function RoulettePage(opts: { nonce: string; lv999?: boolean; user?: NavU
     outline: none;
     border-color: var(--accent);
   }
-  .spin-btn {
-    background: var(--accent);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 0.7rem 2rem;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 1rem;
-    box-shadow: 0 4px 0 #4a58e8;
-    transition: transform 0.1s, box-shadow 0.1s, opacity 0.1s;
-  }
-  .spin-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #4a58e8; }
-  .spin-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .result-banner {
     text-align: center;
@@ -321,7 +307,7 @@ export function RoulettePage(opts: { nonce: string; lv999?: boolean; user?: NavU
                 <input id="bet-value" type="number" min="0" max="36" placeholder="0" />
               </label>
             </form>
-            <button id="spin-btn" class="spin-btn">Spin</button>
+            <button id="spin-btn" class="btn-accent">Spin</button>
           `}
       <div id="result-banner" class="result-banner"></div>
     </div>

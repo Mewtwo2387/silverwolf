@@ -1,7 +1,30 @@
 import { html, raw } from 'hono/html';
+import { statSync, readFileSync } from 'fs';
+import path from 'path';
 import type { HtmlEscapedString } from 'hono/utils/html';
 import { Navbar, type NavActive, type NavUser } from './navbar';
 import { Footer } from './footer';
+
+// styles.css is served with `immutable, max-age=1y`, so without a cache buster
+// the browser never re-fetches after a CSS rebuild. Hash the contents and
+// append `?v=<hash>` — same contents → same URL → still cached; changed
+// contents → new URL → fresh fetch. stat() each request is microseconds;
+// re-hash only when mtime moves.
+const STYLES_PATH = path.resolve(import.meta.dir, '..', 'Assets', 'styles.css');
+let stylesCache = { mtime: 0, hash: 'dev' };
+function getStylesVersion(): string {
+  try {
+    const mtime = statSync(STYLES_PATH).mtimeMs;
+    if (mtime !== stylesCache.mtime) {
+      const bytes = readFileSync(STYLES_PATH);
+      stylesCache = {
+        mtime,
+        hash: new Bun.CryptoHasher('md5').update(bytes).digest('hex').slice(0, 8),
+      };
+    }
+  } catch { /* keep last good (or "dev") if the file vanishes mid-build */ }
+  return stylesCache.hash;
+}
 
 const FAVICON_STICKERS = [
   '/static/stickers/Sticker_PPG_04_Silver_Wolf_01.webp',
@@ -24,7 +47,7 @@ const faviconLink = (lv999: boolean) => {
 };
 
 const pageHead = (nonce: string) => raw(`
-<link rel="stylesheet" href="/static/styles.css" />
+<link rel="stylesheet" href="/static/styles.css?v=${getStylesVersion()}" />
 <style>
   /* Guard against any descendant (entrance-animation transforms, full-bleed
      images, etc.) accidentally pushing the page wider than the viewport.

@@ -39,19 +39,6 @@ export function ClaimPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
   .claim-display.bronze { border-color: #CD7F32; box-shadow: 0 0 24px rgba(205, 127, 50, 0.45); }
   .claim-display.regular { border-color: #83F28F; box-shadow: 0 0 18px rgba(131, 242, 143, 0.4); }
   .claim-display.cooldown { border-color: #FF0000; box-shadow: 0 0 24px rgba(255, 0, 0, 0.45); }
-  .claim-btn {
-    background: var(--accent);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 0.7rem 1.6rem;
-    cursor: pointer;
-    font-weight: bold;
-    box-shadow: 0 4px 0 #4a58e8;
-    transition: transform 0.1s, box-shadow 0.1s, opacity 0.1s;
-  }
-  .claim-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #4a58e8; }
-  .claim-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .claim-message {
     width: 100%;
     max-width: 520px;
@@ -194,7 +181,7 @@ export function ClaimPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
             <div id="claim-display" class="claim-display">
               <img id="claim-img" src="/static/game-dinonuggie.webp" alt="dinonuggie" />
             </div>
-            <button id="claim-btn" class="claim-btn">claim</button>
+            <button id="claim-btn" class="btn-accent">claim</button>
             <div id="claim-message" class="claim-message">
               <h2>Press claim to receive your daily dinonuggies.</h2>
             </div>

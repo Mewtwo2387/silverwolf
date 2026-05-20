@@ -187,27 +187,16 @@ export function FakeQuotePage(opts: { nonce: string; lv999?: boolean; user?: Nav
   }
   .fq-generate {
     position: relative;
-    background: var(--accent);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 0.8rem 2rem;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 1rem;
     overflow: hidden;
-    box-shadow: 0 4px 0 #4a58e8;
-    transition: transform 0.1s, box-shadow 0.1s, opacity 0.1s;
+    padding: 0.8rem 2rem;
   }
-  .fq-generate:not(:disabled):active { transform: translateY(2px); box-shadow: 0 2px 0 #4a58e8; }
-  .fq-generate:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: 0 4px 0 #4a58e8; }
   .fq-generate .label-text { position: relative; z-index: 2; }
   /* Cooldown progress bar: a coloured layer that grows from 0% back to 100% width */
   .fq-generate .cooldown-fill {
     position: absolute;
     inset: 0;
     width: 0%;
-    background: var(--accent);
+    background: linear-gradient(135deg, var(--accent), var(--accent-pale));
     transition: width linear;
     z-index: 1;
   }
@@ -501,7 +490,7 @@ export function FakeQuotePage(opts: { nonce: string; lv999?: boolean; user?: Nav
     : html`
             ${form}
             <div class="fq-actions">
-              <button id="fq-generate" class="fq-generate" type="button" disabled>
+              <button id="fq-generate" class="btn-accent fq-generate" type="button" disabled>
                 <span class="cooldown-fill"></span>
                 <span class="label-text">Generate Quote</span>
               </button>

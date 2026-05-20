@@ -129,21 +129,9 @@ export function BlackjackPage(opts: { nonce: string; lv999?: boolean; user?: Nav
     justify-content: center;
     flex-wrap: wrap;
   }
-  .bj-btn {
-    background: var(--accent);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 0.65rem 1.4rem;
-    cursor: pointer;
-    font-weight: bold;
-    box-shadow: 0 4px 0 #4a58e8;
-    transition: transform 0.1s, box-shadow 0.1s, opacity 0.1s;
-  }
+  .bj-btn { padding: 0.65rem 1.4rem; }
   .bj-btn.secondary { background: var(--fog-500); box-shadow: 0 4px 0 #2a3155; }
-  .bj-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #4a58e8; }
   .bj-btn.secondary:active { box-shadow: 0 2px 0 #2a3155; }
-  .bj-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .bet-row {
     display: flex;
@@ -474,7 +462,7 @@ export function BlackjackPage(opts: { nonce: string; lv999?: boolean; user?: Nav
       sub = 'Push. Nothing happened to your bet.';
     }
     banner.innerHTML = '<h2>' + title + '</h2><div class="sub">' + sub + '</div>'
-      + '<div style="margin-top:0.75rem"><button class="bj-btn" id="play-again">Play again</button></div>';
+      + '<div style="margin-top:0.75rem"><button class="btn-accent bj-btn" id="play-again">Play again</button></div>';
     document.getElementById('play-again').addEventListener('click', showSetup);
   }
 
@@ -497,7 +485,7 @@ export function BlackjackPage(opts: { nonce: string; lv999?: boolean; user?: Nav
             <div id="bj-setup" class="bet-row">
               <label for="amount-input">Bet amount</label>
               <input id="amount-input" type="text" placeholder="amount (e.g. 1000 or 1k)" autocomplete="off" aria-label="Bet amount" />
-              <button id="deal-btn" class="bj-btn">Deal</button>
+              <button id="deal-btn" class="btn-accent bj-btn">Deal</button>
             </div>
             <div id="bj-table" class="bj-table" style="display:none">
               <div class="bj-side">
@@ -510,8 +498,8 @@ export function BlackjackPage(opts: { nonce: string; lv999?: boolean; user?: Nav
                 <div id="player-hand" class="bj-hand"></div>
               </div>
               <div class="bj-controls">
-                <button id="hit-btn" class="bj-btn">Hit</button>
-                <button id="stand-btn" class="bj-btn secondary">Stand</button>
+                <button id="hit-btn" class="btn-accent bj-btn">Hit</button>
+                <button id="stand-btn" class="btn-accent bj-btn secondary">Stand</button>
               </div>
             </div>
             <div id="bj-banner" class="result-banner" style="display:none"></div>

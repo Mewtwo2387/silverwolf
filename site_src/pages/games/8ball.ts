@@ -61,19 +61,6 @@ export function EightBallPage(opts: { normal: string[]; savage: string[]; nonce:
     padding: 0.6rem 1rem;
     color: var(--fog-100);
   }
-  .input-group button {
-    background: var(--accent);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 0.6rem 1.2rem;
-    cursor: pointer;
-    font-weight: bold;
-  }
-  .input-group button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
   @keyframes shake {
     0% { transform: translate(0, 0); }
     10% { transform: translate(-5px, -5px); }
@@ -151,7 +138,7 @@ export function EightBallPage(opts: { normal: string[]; savage: string[]; nonce:
       </div>
       <div class="input-group">
         <input type="text" id="question-input" aria-label="Ask a yes or no question" placeholder="Will I ever touch grass?" />
-        <button id="ask-btn">Ask</button>
+        <button id="ask-btn" class="btn-accent btn-sm">Ask</button>
       </div>
       <p class="text-fog-400 text-sm mt-4">The combined magic 8-ball sees all.</p>
     </div>

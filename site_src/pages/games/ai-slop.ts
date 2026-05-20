@@ -101,7 +101,7 @@ export function AiSlopPage(opts: {
 
   .aislop-new {
     width: 100%;
-    background: var(--accent);
+    background: linear-gradient(135deg, var(--accent), var(--accent-pale));
     color: var(--ink-900);
     border: none;
     border-radius: 0.5rem;
@@ -397,7 +397,7 @@ export function AiSlopPage(opts: {
   .aislop-input select:focus { outline: none; border-color: var(--accent); }
   .aislop-input select:disabled { opacity: 0.6; cursor: not-allowed; }
   .aislop-input button.send {
-    background: var(--accent);
+    background: linear-gradient(135deg, var(--accent), var(--accent-pale));
     color: var(--ink-900);
     font-weight: bold;
     border: none;

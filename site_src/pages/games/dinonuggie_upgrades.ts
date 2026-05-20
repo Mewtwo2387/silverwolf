@@ -57,19 +57,6 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
     width: 8rem;
     font-family: inherit;
   }
-  .eat-row button, .dnu-btn {
-    background: var(--accent);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 0.5rem 1.1rem;
-    cursor: pointer;
-    font-weight: bold;
-    box-shadow: 0 4px 0 #4a58e8;
-    transition: transform 0.1s, box-shadow 0.1s, opacity 0.1s;
-  }
-  .eat-row button:active, .dnu-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #4a58e8; }
-  .eat-row button:disabled, .dnu-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .eat-status {
     margin-top: 1rem;
     padding: 0.8rem 1rem;
@@ -387,7 +374,7 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
                 '<button type="button" data-qstep="1">+</button>' +
               '</span>' +
               '<span class="total-line">Total: <span class="amt" data-total>' + format(getNextUpgradeCost(u.level)) + '</span> credits</span>' +
-              '<button class="dnu-btn" data-buy="' + u.upgradeId + '">Buy</button>' +
+              '<button class="btn-accent btn-sm" data-buy="' + u.upgradeId + '">Buy</button>' +
             '</div>')) +
         '<div class="toast" data-toast></div>';
       container.appendChild(card);
@@ -477,7 +464,7 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
                 '<button type="button" data-qstep="1">+</button>' +
               '</span>' +
               '<span class="total-line">Total: <span class="amt" data-total>' + format(row.nextCost) + '</span> heavenly nuggies</span>' +
-              '<button class="dnu-btn" data-buy="' + row.upgradeId + '">Buy</button>' +
+              '<button class="btn-accent btn-sm" data-buy="' + row.upgradeId + '">Buy</button>' +
             '</div>')
           : '') +
         '<div class="toast" data-toast></div>';
@@ -660,7 +647,7 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
           <div class="eat-row">
             <img class="dino" src="/static/game-dinonuggie.webp" alt="dinonuggie" />
             <input id="eat-amount" type="number" min="1" value="1" />
-            <button id="eat-btn" type="button">Eat</button>
+            <button id="eat-btn" class="btn-accent btn-sm" type="button">Eat</button>
           </div>
           <div id="eat-status" class="eat-status">Press eat to munch on a dinonuggie.</div>
         </div>
@@ -692,7 +679,7 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
             <div>Multiplier rarity: <span id="ascend-mrm">…</span></div>
             <div>Beki cooldown: <span id="ascend-bk">…</span></div>
             <div id="ascend-status" class="status"></div>
-            <button id="ascend-btn" class="dnu-btn" type="button" disabled>Ascend</button>
+            <button id="ascend-btn" class="btn-accent btn-sm" type="button" disabled>Ascend</button>
             <div id="ascend-toast" class="toast"></div>
           </div>
         </div>

@@ -92,20 +92,7 @@ export function PoopPage(opts: { nonce: string; lv999?: boolean; user?: NavUser 
     border-color: var(--accent);
   }
 
-  .log-btn {
-    background: var(--accent);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 0.7rem 2rem;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 1rem;
-    box-shadow: 0 4px 0 #4a58e8;
-    transition: transform 0.1s, box-shadow 0.1s, opacity 0.1s;
-  }
-  .log-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #4a58e8; }
-  .log-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .log-btn { padding: 0.7rem 2rem; }
 
   .poop-message {
     min-height: 1.5rem;
@@ -277,7 +264,7 @@ export function PoopPage(opts: { nonce: string; lv999?: boolean; user?: NavUser 
                 <input type="number" name="duration" min="1" max="120" placeholder="optional" />
               </label>
             </form>
-            <button id="log-btn" class="log-btn">Log 💩</button>
+            <button id="log-btn" class="btn-accent log-btn">Log 💩</button>
           `}
       <div id="poop-message" class="poop-message"></div>
     </div>
