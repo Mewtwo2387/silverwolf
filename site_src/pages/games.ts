@@ -1,7 +1,7 @@
 import { html, raw } from 'hono/html';
 import { Layout } from '../components/layout';
 
-const GAMES = [
+export const GAMES = [
   {
     name: '8ball',
     href: '/games/8ball',

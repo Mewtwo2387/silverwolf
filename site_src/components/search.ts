@@ -1,9 +1,12 @@
 import { html, raw } from 'hono/html';
+import { GAMES } from '../pages/games';
 
-// Static prototype index — every entry the search palette will match against.
-// Real implementations should generate this from page metadata or a registry,
-// but for the prototype we hand-author it so it ships in one file.
-const INDEX: Array<{ title: string; href: string; group: string; desc?: string; keywords?: string }> = [
+type IndexEntry = { title: string; href: string; group: string; desc?: string; keywords?: string };
+
+// Top-level pages: navbar destinations + the logged-in dashboard. Small and
+// stable enough to keep inline — extracting from routes/pages.ts would create
+// a circular import (routes → layout → search).
+const PAGES: IndexEntry[] = [
   {
     title: 'About', href: '/about', group: 'Pages', desc: 'About Silverwolf', keywords: 'home info silverwolf',
   },
@@ -19,60 +22,55 @@ const INDEX: Array<{ title: string; href: string; group: string; desc?: string; 
   {
     title: 'Dashboard', href: '/me', group: 'Pages', desc: 'Your profile and stats', keywords: 'profile me account',
   },
-
-  {
-    title: 'Gambler Leaderboard', href: '/leaderboards?board=gambler', group: 'Leaderboards', keywords: 'casino chips',
-  },
-  {
-    title: 'Murder Leaderboard', href: '/leaderboards?board=murder', group: 'Leaderboards', keywords: 'kills',
-  },
-  {
-    title: 'Nuggie Leaderboard', href: '/leaderboards?board=nuggie', group: 'Leaderboards', keywords: 'dinonuggie',
-  },
-  {
-    title: 'Poop Leaderboard', href: '/leaderboards?board=poop', group: 'Leaderboards', keywords: 'bathroom',
-  },
-
-  {
-    title: '8ball', href: '/games/8ball', group: 'Games', desc: 'Ask the magic 8-ball', keywords: 'magic eight ball oracle',
-  },
-  {
-    title: 'Flip', href: '/games/flip', group: 'Games', desc: 'Flip a coin', keywords: 'coin heads tails',
-  },
-  {
-    title: 'Fortune', href: '/games/fortune', group: 'Games', desc: 'Virtual fortune cookie', keywords: 'cookie luck',
-  },
-  {
-    title: 'Love', href: '/games/love', group: 'Games', desc: 'Love compatibility', keywords: 'compat match',
-  },
-  {
-    title: 'Blackjack', href: '/games/blackjack', group: 'Games', desc: 'Classic 21', keywords: 'cards 21 casino',
-  },
-  {
-    title: 'Roulette', href: '/games/roulette', group: 'Games', desc: 'Spin the wheel', keywords: 'casino wheel bet',
-  },
-  {
-    title: 'Slots', href: '/games/slots', group: 'Games', desc: 'Pull the lever', keywords: 'casino lever bet',
-  },
-  {
-    title: 'Poop', href: '/games/poop', group: 'Games', desc: 'Log a bathroom visit', keywords: 'bathroom toilet',
-  },
-  {
-    title: 'Claim', href: '/games/claim', group: 'Games', desc: 'Claim your dinonuggies', keywords: 'nuggie daily',
-  },
-  {
-    title: 'Dinonuggie Upgrades', href: '/games/dinonuggie-upgrades', group: 'Games', desc: 'Eat and upgrade', keywords: 'nuggie upgrade',
-  },
-  {
-    title: 'AwDangIt', href: '/games/awdangit', group: 'Games', desc: '99% chance $1M, 1% chance girl', keywords: 'gamble',
-  },
-  {
-    title: 'FakeQuote', href: '/games/fakequote', group: 'Games', desc: 'Create fake quotes', keywords: 'quote meme',
-  },
-  {
-    title: 'AI Slop', href: '/games/ai-slop', group: 'Games', desc: 'Chat with AI personas', keywords: 'chatbot llm gpt',
-  },
 ];
+
+// Mirror of LeaderboardKind in routes/pages.ts. Two short arrays in two files
+// is cheaper than the import refactor needed to share them.
+const LEADERBOARDS: Array<{ kind: string; keywords: string }> = [
+  { kind: 'gambler', keywords: 'casino chips' },
+  { kind: 'murder', keywords: 'kills' },
+  { kind: 'nuggie', keywords: 'dinonuggie' },
+  { kind: 'poop', keywords: 'bathroom' },
+];
+
+// GAMES uses lowercase names (matches the game-card display); for search
+// results we want title-cased labels. A few names need overrides because their
+// canonical casing isn't recoverable from "awdangit" / "fakequote" / "ai slop".
+const GAME_TITLE_OVERRIDES: Record<string, string> = {
+  awdangit: 'AwDangIt',
+  fakequote: 'FakeQuote',
+  'ai slop': 'AI Slop',
+};
+
+function prettifyGameName(name: string): string {
+  if (GAME_TITLE_OVERRIDES[name]) return GAME_TITLE_OVERRIDES[name];
+  return name
+    .split(/[_\s]+/)
+    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+    .join(' ');
+}
+
+// Built lazily because `search.ts` is imported by `components/layout.ts`,
+// which is in turn imported by `pages/games.ts` (where GAMES lives). Building
+// at module load would dereference GAMES mid-cycle; building at render time
+// runs after every module has finished evaluating.
+function buildIndex(): IndexEntry[] {
+  return [
+    ...PAGES,
+    ...LEADERBOARDS.map((b) => ({
+      title: `${b.kind[0].toUpperCase()}${b.kind.slice(1)} Leaderboard`,
+      href: `/leaderboards?board=${b.kind}`,
+      group: 'Leaderboards',
+      keywords: b.keywords,
+    })),
+    ...GAMES.map((g) => ({
+      title: prettifyGameName(g.name),
+      href: g.href,
+      group: 'Games',
+      desc: g.info,
+    })),
+  ];
+}
 
 const styles = raw(`
 <style>
@@ -247,7 +245,7 @@ const styles = raw(`
 </style>
 `);
 
-const searchScript = (nonce: string, index: typeof INDEX) => raw(`
+const searchScript = (nonce: string, index: IndexEntry[]) => raw(`
 <script nonce="${nonce}">
 (function(){
   var INDEX = ${JSON.stringify(index)};
@@ -479,6 +477,6 @@ export function Search(nonce: string) {
         </div>
       </div>
     </div>
-    ${searchScript(nonce, INDEX)}
+    ${searchScript(nonce, buildIndex())}
   `;
 }
