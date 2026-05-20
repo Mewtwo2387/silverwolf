@@ -4,6 +4,7 @@ import path from 'path';
 import type { HtmlEscapedString } from 'hono/utils/html';
 import { Navbar, type NavActive, type NavUser } from './navbar';
 import { Footer } from './footer';
+import { Search } from './search';
 
 // styles.css is served with `immutable, max-age=1y`, so without a cache buster
 // the browser never re-fetches after a CSS rebuild. Hash the contents and
@@ -126,6 +127,7 @@ export function Layout(opts: {
         ${Navbar(opts.active, opts.nonce, opts.lv999, opts.user)}
         <main class="flex-1 w-full max-w-[1100px] mx-auto py-8 px-[clamp(1rem,4vw,3rem)]">${opts.body}</main>
         ${Footer(opts.nonce)}
+        ${Search(opts.nonce)}
       </body>
     </html>`;
 }
