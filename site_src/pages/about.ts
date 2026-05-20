@@ -23,6 +23,8 @@ const aboutExtras = (nonce: string) => raw(`
     -webkit-background-clip: text;
             background-clip: text;
     color: transparent;
+    line-height: 1.15;
+    padding-bottom: 0.15em;
   }
   .about-image img {
     -webkit-mask-image: radial-gradient(ellipse 110% 110% at 100% 50%, #000 35%, transparent 90%);
@@ -67,6 +69,8 @@ const aboutExtras = (nonce: string) => raw(`
     -webkit-background-clip: text;
             background-clip: text;
     color: transparent;
+    line-height: 1.15;
+    padding-bottom: 0.15em;
   }
   .eid-txt, .eid-img { opacity: 0; }
   .eid-from-left.is-visible  { animation: about-slide-left  1.8s cubic-bezier(0.22, 1, 0.36, 1) both; }
