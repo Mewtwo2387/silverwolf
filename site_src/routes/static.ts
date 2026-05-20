@@ -56,6 +56,12 @@ STATIC_ASSETS['/static/svg/wrench-screwdriver-svgrepo-com.svg'] = { path: path.j
 STATIC_ASSETS['/static/game-dinonuggie.webp'] = { path: path.join(IMAGES_DIR, 'game-dinonuggie.webp'), contentType: 'image/webp' };
 STATIC_ASSETS['/static/game-awdangit.jpeg'] = { path: path.join(IMAGES_DIR, 'game-awdangit.jpeg'), contentType: 'image/jpeg' };
 STATIC_ASSETS['/static/game-fakequote.webp'] = { path: path.join(IMAGES_DIR, 'game-fakequote.webp'), contentType: 'image/webp' };
+for (const rarity of ['gold', 'silver', 'bronze']) {
+  STATIC_ASSETS[`/static/dinonuggie-${rarity}.png`] = {
+    path: path.join(ROOT_DIR, 'data', 'images', `dinonuggie-${rarity}.png`),
+    contentType: 'image/png',
+  };
+}
 
 async function serveStatic(entry: StaticEntry) {
   const file = Bun.file(entry.path);

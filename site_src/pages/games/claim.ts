@@ -154,7 +154,7 @@ export function ClaimPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
         + '<div class="sub">You now have ' + format(d.previousDinonuggies + d.amount)
         + ' dinonuggies. You broke your streak of ' + d.previousStreak + ' days.</div>';
     } else if (d.status === 'success') {
-      displayImg.src = d.imageUrl || DEFAULT_IMG;
+      displayImg.src = d.webImageUrl || d.imageUrl || DEFAULT_IMG;
       const rarity = inferRarity(d.title);
       setRarityClass(display, rarity);
       setRarityClass(msg, rarity);

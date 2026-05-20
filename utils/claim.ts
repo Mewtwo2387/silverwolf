@@ -45,6 +45,7 @@ interface RewardResult {
   amount: number;
   title: string;
   imageUrl: string;
+  webImageUrl?: string;
   colour: string;
   footer: string;
   thumbnail: string;
@@ -121,6 +122,7 @@ async function formatReward(
     amount,
     title: skin.title.replace('{amount}', format(amount)).replace('{multiplier}', format(currentMultiplier, true)),
     imageUrl: skin.imageUrl,
+    webImageUrl: skin.webImageUrl,
     colour: skin.colour,
     footer: formattedFooter,
     thumbnail: skin.thumbnail,
@@ -170,6 +172,7 @@ type ClaimResult =
     amount: number;
     title: string;
     imageUrl: string;
+    webImageUrl?: string;
     colour: string;
     footer: string;
     thumbnail: string;
@@ -223,6 +226,7 @@ async function processClaimInner(client: any, uid: string): Promise<ClaimResult>
     amount: reward.amount,
     title: reward.title,
     imageUrl: reward.imageUrl,
+    webImageUrl: reward.webImageUrl,
     colour: reward.colour,
     footer: reward.footer,
     thumbnail: reward.thumbnail,
