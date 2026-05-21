@@ -26,6 +26,35 @@ const aboutExtras = (nonce: string) => raw(`
     line-height: 1.15;
     padding-bottom: 0.15em;
   }
+  /* Easter egg: ?theme=goof swaps the cursive heading for a hand-drawn
+     toddler-tier signature that draws itself stroke by stroke. */
+  .about-title--goof { padding-bottom: 0.1em; }
+  .about-svg {
+    display: block;
+    width: 100%;
+    max-width: 6.5em;
+    height: auto;
+    overflow: visible;
+  }
+  .about-svg .about-grad-top { stop-color: var(--heading-top); }
+  .about-svg .about-grad-bot { stop-color: var(--heading-bottom); }
+  .about-stroke {
+    fill: none;
+    stroke: url(#about-svg-grad);
+    stroke-width: 13;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    animation: about-draw 0.2s cubic-bezier(0.45, 0, 0.55, 1) forwards;
+    animation-delay: calc(var(--i) * 0.145s + 0.1s);
+  }
+  @keyframes about-draw {
+    to { stroke-dashoffset: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .about-stroke { animation: none; stroke-dashoffset: 0; }
+  }
   .about-image img {
     -webkit-mask-image: radial-gradient(ellipse 110% 110% at 100% 50%, #000 35%, transparent 90%);
             mask-image: radial-gradient(ellipse 110% 110% at 100% 50%, #000 35%, transparent 90%);
@@ -80,6 +109,7 @@ const aboutExtras = (nonce: string) => raw(`
   <style>
     .about-text, .about-image { opacity: 1 !important; transform: none !important; }
     .eid-txt, .eid-img { opacity: 1 !important; transform: none !important; }
+    .about-stroke { animation: none !important; stroke-dashoffset: 0 !important; }
   </style>
 </noscript>
 <script nonce="${nonce}">
@@ -112,8 +142,33 @@ const aboutExtras = (nonce: string) => raw(`
 </script>
 `);
 
-export function AboutPage(opts: { nonce: string; lv999?: boolean; user?: NavUser | null }) {
-  const { lv999, user } = opts;
+export function AboutPage(opts: { nonce: string; lv999?: boolean; goof?: boolean; user?: NavUser | null }) {
+  const { lv999, goof, user } = opts;
+  const titleBlock = goof
+    ? html`
+        <h1 class="about-title about-title--goof font-script font-normal tracking-[0.01em] leading-[0.95] mb-4" style="font-size: clamp(5rem, 12vw, 9rem);">
+          <span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">Silverwolf</span>
+          <svg class="about-svg" viewBox="0 0 780 200" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="about-svg-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" class="about-grad-top" />
+                <stop offset="100%" class="about-grad-bot" />
+              </linearGradient>
+            </defs>
+            <path class="about-stroke" pathLength="100" style="--i:0"   d="M 80,55 C 65,30 25,30 20,55 C 18,80 50,85 70,100 C 95,115 95,148 65,150 C 40,150 20,142 18,138" />
+            <path class="about-stroke" pathLength="100" style="--i:1"   d="M 130,85 C 138,110 148,138 155,148" />
+            <path class="about-stroke" pathLength="100" style="--i:1.5" d="M 150,65 L 156,65" />
+            <path class="about-stroke" pathLength="100" style="--i:2"   d="M 175,148 C 180,120 195,80 195,55 C 195,35 215,35 212,55 C 210,75 208,110 220,148" />
+            <path class="about-stroke" pathLength="100" style="--i:3"   d="M 240,80 C 245,108 258,140 268,148 C 280,138 292,108 300,82 C 302,78 306,80 310,84" />
+            <path class="about-stroke" pathLength="100" style="--i:4"   d="M 325,118 C 335,98 365,98 367,118 C 367,138 340,148 330,138 C 325,132 323,123 328,118" />
+            <path class="about-stroke" pathLength="100" style="--i:5"   d="M 380,148 C 387,125 393,100 400,90 C 405,85 408,92 410,100 C 412,108 420,105 425,100" />
+            <path class="about-stroke" pathLength="100" style="--i:6"   d="M 445,82 C 450,108 460,140 470,148 C 478,138 485,115 490,98 C 498,115 505,140 515,148 C 525,138 532,115 540,90 C 542,85 546,88 550,92" />
+            <path class="about-stroke" pathLength="100" style="--i:7"   d="M 580,105 C 568,115 565,140 585,145 C 605,148 620,128 615,110 C 610,92 588,88 580,98 C 590,100 600,105 600,112" />
+            <path class="about-stroke" pathLength="100" style="--i:8"   d="M 620,148 C 633,118 640,85 633,60 C 627,38 650,38 655,62 C 658,90 658,120 668,148" />
+            <path class="about-stroke" pathLength="100" style="--i:9"   d="M 695,80 C 700,55 708,30 715,28 C 725,26 728,42 720,70 C 712,100 695,158 685,182 C 678,195 660,193 660,180 C 662,170 675,170 685,175" />
+          </svg>
+        </h1>`
+    : html`<h1 class="about-title font-script font-normal tracking-[0.01em] leading-[0.95] mb-4" style="font-size: clamp(5rem, 12vw, 9rem);">Silverwolf</h1>`;
   const ctaBlock = user
     ? html`
       <div class="about-cta-row">
@@ -183,7 +238,7 @@ export function AboutPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
   const body = html`
     <section class="about-wrap grid grid-cols-2 gap-12 items-center min-h-[calc(100vh-180px)] max-[800px]:grid-cols-1 max-[800px]:text-left">
       <div class="about-text max-w-[38rem] justify-self-start">
-        <h1 class="font-script font-normal tracking-[0.01em] leading-[0.95] mb-4" style="font-size: clamp(5rem, 12vw, 9rem);">Silverwolf</h1>
+        ${titleBlock}
         <p class="text-[1.1rem] leading-[1.6] text-fog-200">
           Silverwolf-bot is a multipurpose bot made by Ei, and XeIris.
           Mostly inside jokes, parodies and tech stack exploration,
