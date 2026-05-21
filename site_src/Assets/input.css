@@ -2,14 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@font-face {
-  font-family: 'Italianno';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('/static/fonts/italianno.woff2') format('woff2');
-}
-
 body {
   font-family: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif;
 }

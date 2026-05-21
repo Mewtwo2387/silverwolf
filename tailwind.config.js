@@ -28,7 +28,6 @@ module.exports = {
       fontFamily: {
         sans: ['ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
-        script: ['Italianno', 'cursive'],
       },
     },
   },

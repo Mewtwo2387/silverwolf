@@ -264,7 +264,7 @@ export function AboutPage(opts: { nonce: string; lv999?: boolean; goof?: boolean
   const { lv999, goof, user } = opts;
   const titleBlock = goof
     ? html`
-        <h1 class="about-title about-title--goof font-script font-normal tracking-[0.01em] leading-[0.95] mb-4" style="font-size: clamp(5rem, 12vw, 9rem);">
+        <h1 class="about-title about-title--goof font-mono italic font-bold tracking-[0.01em] leading-[0.95] mb-4" style="font-size: clamp(3.5rem, 9vw, 5.5rem);">
           <span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">Silverwolf</span>
           <svg class="about-svg" viewBox="0 0 780 200" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
             <defs>
@@ -286,7 +286,7 @@ export function AboutPage(opts: { nonce: string; lv999?: boolean; goof?: boolean
             <path class="about-stroke" pathLength="100" style="--i:9"   d="M 695,80 C 700,55 708,30 715,28 C 725,26 728,42 720,70 C 712,100 695,158 685,182 C 678,195 660,193 660,180 C 662,170 675,170 685,175" />
           </svg>
         </h1>`
-    : html`<h1 class="about-title font-script font-normal tracking-[0.01em] leading-[0.95] mb-4" style="font-size: clamp(5rem, 12vw, 9rem);">Silverwolf</h1>`;
+    : html`<h1 class="about-title font-mono italic font-bold tracking-tight mb-4" style="font-size: clamp(2.25rem, 6vw, 4.25rem);">Silverwolf</h1>`;
   const ctaBlock = user
     ? html`
       <div class="about-cta-row">
@@ -343,8 +343,8 @@ export function AboutPage(opts: { nonce: string; lv999?: boolean; goof?: boolean
         </picture>
       </div>`;
     const txtEl = html`
-      <div class="eid-txt ${imgLeft ? 'eid-from-right' : 'eid-from-left'} max-w-[38rem] ${imgLeft ? 'justify-self-end' : 'justify-self-start'}" data-index="${n}">
-        <h2 class="font-script font-normal tracking-[0.01em] leading-[0.95] mb-4" style="font-size: clamp(3rem, 8vw, 6rem);">${title}</h2>
+      <div class="eid-txt font-mono ${imgLeft ? 'eid-from-right' : 'eid-from-left'} max-w-[38rem] ${imgLeft ? 'justify-self-end' : 'justify-self-start'}" data-index="${n}">
+        <h2 class="font-mono italic font-bold tracking-tight mb-4" style="font-size: clamp(2rem, 5.5vw, 3.75rem);">${title}</h2>
         <p class="text-[1.1rem] leading-[1.6] text-fog-200">${text}</p>
       </div>`;
     return html`
@@ -355,7 +355,7 @@ export function AboutPage(opts: { nonce: string; lv999?: boolean; goof?: boolean
 
   const body = html`
     <section class="about-wrap grid grid-cols-2 gap-12 items-center min-h-[calc(100vh-180px)] max-[800px]:grid-cols-1 max-[800px]:text-left">
-      <div class="about-text max-w-[38rem] justify-self-start">
+      <div class="about-text font-mono max-w-[38rem] justify-self-start">
         ${titleBlock}
         <p class="text-[1.1rem] leading-[1.6] text-fog-200">
           Silverwolf-bot is a multipurpose bot made by Ei, and XeIris.
