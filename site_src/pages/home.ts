@@ -40,7 +40,7 @@ const styles = raw(`
     align-items: center;
     gap: 1.5rem;
     padding: 1.5rem;
-    background: rgba(10, 14, 28, 0.7);
+    background: color-mix(in oklab, var(--ink-800) 70%, transparent);
     border: 1px solid rgba(34, 211, 255, 0.25);
     border-radius: 0.75rem;
     margin-bottom: 1.75rem;
@@ -99,12 +99,34 @@ const styles = raw(`
     margin-top: 1rem;
   }
   .me-card {
-    background: rgba(10, 14, 28, 0.55);
+    background: color-mix(in oklab, var(--ink-800) 55%, transparent);
     border: 1px solid rgba(34, 211, 255, 0.12);
     border-radius: 0.6rem;
     padding: 1.1rem;
     backdrop-filter: blur(8px);
     transition: all 0.25s ease;
+  }
+  
+  .lvl-progress-container {
+    height: 5px;
+    background: rgba(6, 8, 15, 0.6);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: 0.65rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  .lvl-progress-bar {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.3s ease;
+  }
+  .lvl-progress-bar.cyan {
+    background: linear-gradient(90deg, var(--accent), var(--accent-pale));
+    box-shadow: 0 0 8px rgba(34, 211, 255, 0.4);
+  }
+  .lvl-progress-bar.purple {
+    background: linear-gradient(90deg, #a78bfa, #c084fc);
+    box-shadow: 0 0 8px rgba(167, 139, 250, 0.4);
   }
   .me-card:hover {
     border-color: rgba(34, 211, 255, 0.35);
@@ -172,6 +194,15 @@ function renderUpgradeInfo(str: string): any {
     .map((l) => escapeHtml(l).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>'))
     .join('<br/>');
   return raw(rendered);
+}
+
+function renderLvlProgressBar(level: number, maxLevel: number, colorClass = 'cyan'): any {
+  const percent = maxLevel > 0 ? Math.min(100, Math.max(0, (level / maxLevel) * 100)) : 0;
+  return html`
+    <div class="lvl-progress-container" title="Level ${level} / ${maxLevel} (${percent.toFixed(0)}%)">
+      <div class="lvl-progress-bar ${colorClass}" style="width: ${percent}%"></div>
+    </div>
+  `;
 }
 
 export function HomePage(opts: {
@@ -258,23 +289,14 @@ export function HomePage(opts: {
           <div class="me-card">
             <div class="label">Mystic Credits</div>
             <div class="value">${format(credits, true)}</div>
-            <div class="hud-progress-container">
-              <div class="hud-progress-bar hud-progress-bar-cyan" style="width: ${Math.min(100, Math.max(10, (log2Credits / 30) * 100))}%"></div>
-            </div>
           </div>
           <div class="me-card">
             <div class="label">Dinonuggies</div>
             <div class="value">${format(dinonuggies)}</div>
-            <div class="hud-progress-container">
-              <div class="hud-progress-bar hud-progress-bar-purple" style="width: ${Math.min(100, Math.max(10, (log2Nuggies / 30) * 100))}%"></div>
-            </div>
           </div>
           <div class="me-card">
             <div class="label">Heavenly Nuggies</div>
             <div class="value">${format(stats.heavenlyNuggies ?? 0)}</div>
-            <div class="hud-progress-container">
-              <div class="hud-progress-bar hud-progress-bar-pink" style="width: ${Math.min(100, Math.max(10, ((stats.heavenlyNuggies ?? 0) / 1000) * 100))}%"></div>
-            </div>
           </div>
         </div>
       </div>
@@ -288,14 +310,46 @@ export function HomePage(opts: {
           <div class="me-card"><div class="label">Max Upgrade Level</div><div class="value">${maxLevel}</div></div>
         </div>
         <div class="me-grid">
-          <div class="me-card"><div class="label">Multiplier Amount</div><div class="upgrade-info">${renderUpgradeInfo(getMultiplierAmountInfo(stats.multiplierAmountLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
-          <div class="me-card"><div class="label">Multiplier Rarity</div><div class="upgrade-info">${renderUpgradeInfo(getMultiplierChanceInfo(stats.multiplierRarityLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
-          <div class="me-card"><div class="label">Beki Cooldown</div><div class="upgrade-info">${renderUpgradeInfo(getBekiCooldownInfo(stats.bekiLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
-          <div class="me-card"><div class="label">Nuggie Flat Multiplier</div><div class="upgrade-info">${renderUpgradeInfo(getNuggieFlatMultiplierInfo(stats.nuggieFlatMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
-          <div class="me-card"><div class="label">Nuggie Streak Multiplier</div><div class="upgrade-info">${renderUpgradeInfo(getNuggieStreakMultiplierInfo(stats.nuggieStreakMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
-          <div class="me-card"><div class="label">Nuggie Credits Multiplier</div><div class="upgrade-info">${renderUpgradeInfo(getNuggieCreditsMultiplierInfo(stats.nuggieCreditsMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
-          <div class="me-card"><div class="label">Nuggie Pokemon Multiplier</div><div class="upgrade-info">${renderUpgradeInfo(getNuggiePokeMultiplierInfo(stats.nuggiePokemonMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
-          <div class="me-card"><div class="label">Nuggie Nuggie Multiplier</div><div class="upgrade-info">${renderUpgradeInfo(getNuggieNuggieMultiplierInfo(stats.nuggieNuggieMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div></div>
+          <div class="me-card">
+            <div class="label">Multiplier Amount</div>
+            <div class="upgrade-info">${renderUpgradeInfo(getMultiplierAmountInfo(stats.multiplierAmountLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div>
+            ${renderLvlProgressBar(stats.multiplierAmountLevel ?? 0, maxLevel, 'cyan')}
+          </div>
+          <div class="me-card">
+            <div class="label">Multiplier Rarity</div>
+            <div class="upgrade-info">${renderUpgradeInfo(getMultiplierChanceInfo(stats.multiplierRarityLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div>
+            ${renderLvlProgressBar(stats.multiplierRarityLevel ?? 0, maxLevel, 'cyan')}
+          </div>
+          <div class="me-card">
+            <div class="label">Beki Cooldown</div>
+            <div class="upgrade-info">${renderUpgradeInfo(getBekiCooldownInfo(stats.bekiLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div>
+            ${renderLvlProgressBar(stats.bekiLevel ?? 0, maxLevel, 'cyan')}
+          </div>
+          <div class="me-card">
+            <div class="label">Nuggie Flat Multiplier</div>
+            <div class="upgrade-info">${renderUpgradeInfo(getNuggieFlatMultiplierInfo(stats.nuggieFlatMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div>
+            ${renderLvlProgressBar(stats.nuggieFlatMultiplierLevel ?? 0, maxLevel, 'purple')}
+          </div>
+          <div class="me-card">
+            <div class="label">Nuggie Streak Multiplier</div>
+            <div class="upgrade-info">${renderUpgradeInfo(getNuggieStreakMultiplierInfo(stats.nuggieStreakMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div>
+            ${renderLvlProgressBar(stats.nuggieStreakMultiplierLevel ?? 0, maxLevel, 'purple')}
+          </div>
+          <div class="me-card">
+            <div class="label">Nuggie Credits Multiplier</div>
+            <div class="upgrade-info">${renderUpgradeInfo(getNuggieCreditsMultiplierInfo(stats.nuggieCreditsMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div>
+            ${renderLvlProgressBar(stats.nuggieCreditsMultiplierLevel ?? 0, maxLevel, 'purple')}
+          </div>
+          <div class="me-card">
+            <div class="label">Nuggie Pokemon Multiplier</div>
+            <div class="upgrade-info">${renderUpgradeInfo(getNuggiePokeMultiplierInfo(stats.nuggiePokemonMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div>
+            ${renderLvlProgressBar(stats.nuggiePokemonMultiplierLevel ?? 0, maxLevel, 'purple')}
+          </div>
+          <div class="me-card">
+            <div class="label">Nuggie Nuggie Multiplier</div>
+            <div class="upgrade-info">${renderUpgradeInfo(getNuggieNuggieMultiplierInfo(stats.nuggieNuggieMultiplierLevel ?? 0, INFO_LEVEL.THIS_LEVEL))}</div>
+            ${renderLvlProgressBar(stats.nuggieNuggieMultiplierLevel ?? 0, maxLevel, 'purple')}
+          </div>
         </div>
       </div>
     </details>

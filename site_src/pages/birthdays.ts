@@ -12,7 +12,7 @@ const birthdayExtras = raw(`
   
   .month-card {
     position: relative;
-    background: rgba(10, 14, 28, 0.45);
+    background: color-mix(in oklab, var(--ink-800) 75%, transparent);
     border: 1px solid var(--ink-600);
     border-radius: 0.75rem;
     padding: 1.25rem;
@@ -131,7 +131,7 @@ const birthdayExtras = raw(`
     position: relative;
     width: 100%;
     max-width: 24rem;
-    background: rgba(10, 14, 28, 0.75);
+    background: color-mix(in oklab, var(--ink-800) 75%, transparent);
     border: 1px solid var(--accent);
     border-radius: 1rem;
     padding: 1.75rem;
@@ -147,9 +147,12 @@ const birthdayExtras = raw(`
     content: '// HOLO_TRANSMITTER_ACTIVE';
     position: absolute;
     top: 0; left: 0; right: 0;
+    height: 2.75rem;
+    display: flex;
+    align-items: center;
     background: linear-gradient(90deg, rgba(34, 211, 255, 0.1), transparent);
     border-bottom: 1px solid rgba(34, 211, 255, 0.2);
-    padding: 6px 1.75rem;
+    padding: 0 1.75rem;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 0.65rem;
     font-weight: bold;
@@ -160,6 +163,7 @@ const birthdayExtras = raw(`
     position: absolute;
     top: 0.5rem;
     right: 0.75rem;
+    z-index: 10;
     width: 1.75rem;
     height: 1.75rem;
     display: flex;
@@ -186,7 +190,7 @@ const birthdayExtras = raw(`
     align-items: center;
     text-align: center;
     gap: 1.25rem;
-    padding-top: 1.2rem;
+    padding-top: 3.25rem;
   }
   #bday-modal-avatar {
     flex-shrink: 0;

@@ -56,8 +56,25 @@ const aboutExtras = (nonce: string) => raw(`
     .about-stroke { animation: none; stroke-dashoffset: 0; }
   }
   .about-image img {
-    -webkit-mask-image: radial-gradient(ellipse 110% 110% at 100% 50%, #000 35%, transparent 90%);
-            mask-image: radial-gradient(ellipse 110% 110% at 100% 50%, #000 35%, transparent 90%);
+    border-radius: 1.5rem;
+    border: 1px solid rgba(34, 211, 255, 0.25);
+    padding: 0.5rem;
+    background: radial-gradient(circle, rgba(167, 139, 250, 0.15) 0%, transparent 70%);
+    box-shadow: 
+      0 0 0 4px var(--ink-900),
+      0 0 0 5px rgba(167, 139, 250, 0.35),
+      0 12px 36px rgba(0, 0, 0, 0.5),
+      0 0 25px rgba(34, 211, 255, 0.12);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s;
+  }
+  .about-image img:hover {
+    transform: scale(1.04) rotate(1deg);
+    border-color: rgba(34, 211, 255, 0.6);
+    box-shadow: 
+      0 0 0 4px var(--ink-900),
+      0 0 0 5px rgba(34, 211, 255, 0.6),
+      0 16px 40px rgba(0, 0, 0, 0.6),
+      0 0 30px rgba(34, 211, 255, 0.25);
   }
   .about-cta-row {
     display: flex;
@@ -70,25 +87,28 @@ const aboutExtras = (nonce: string) => raw(`
     display: inline-flex;
     align-items: center;
     gap: 0.6rem;
-    padding: 0.8rem 1.6rem;
-    border-radius: 0.5rem;
-    background: linear-gradient(135deg, #5865F2 0%, #404eed 100%);
-    color: #fff;
+    padding: 0.7rem 1.6rem;
+    border-radius: 4px;
+    background: linear-gradient(135deg, color-mix(in oklab, #5865F2 8%, transparent) 0%, color-mix(in oklab, #404eed 8%, transparent) 100%);
+    color: #5865F2;
     font-weight: 700;
     text-decoration: none;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    box-shadow: 
-      0 4px 15px rgba(88, 101, 242, 0.35),
-      inset 0 1px 0 rgba(255, 255, 255, 0.15);
-    transition: all 0.2s ease;
+    border: 1px solid #5865F2;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 0 8px rgba(88, 101, 242, 0.25);
+    transition: transform 0.1s, box-shadow 0.15s, background-color 0.15s, border-color 0.15s, color 0.15s;
   }
   .about-login-cta:hover {
-    transform: translateY(-2px);
-    filter: brightness(1.08);
-    box-shadow: 
-      0 6px 20px rgba(88, 101, 242, 0.45),
-      0 0 15px rgba(88, 101, 242, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+    background: linear-gradient(135deg, color-mix(in oklab, #5865F2 25%, transparent) 0%, color-mix(in oklab, #404eed 25%, transparent) 100%);
+    color: #ffffff;
+    border-color: #7289da;
+    box-shadow: 0 0 16px rgba(88, 101, 242, 0.55), 0 0 4px #5865F2;
+  }
+  .about-login-cta:active {
+    transform: translateY(1px);
+    box-shadow: 0 0 6px rgba(88, 101, 242, 0.2);
   }
   @keyframes about-slide-left {
     0%   { opacity: 0; transform: translate3d(-5rem, 0, 0); }
@@ -98,13 +118,47 @@ const aboutExtras = (nonce: string) => raw(`
     0%   { opacity: 0; transform: translate3d(5rem, 0, 0); }
     100% { opacity: 1; transform: translate3d(0, 0, 0); }
   }
-  .about-text  { animation: about-slide-left  1.8s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both !important; }
+  .about-text {
+    animation: about-slide-left 1.8s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both !important;
+    background: color-mix(in oklab, var(--ink-800) 65%, transparent);
+    border: 1px solid rgba(34, 211, 255, 0.2);
+    border-radius: 0.75rem;
+    padding: 3rem 2.5rem 2.5rem;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 
+      0 10px 30px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 0 15px rgba(34, 211, 255, 0.05);
+    position: relative;
+    overflow: hidden;
+  }
+  .about-text::before {
+    content: 'SYS.ABOUT.LOG_00';
+    position: absolute;
+    top: 0.8rem;
+    left: 1.2rem;
+    font-family: monospace;
+    font-size: 0.7rem;
+    color: rgba(34, 211, 255, 0.4);
+    letter-spacing: 0.08em;
+  }
+  .about-text::after {
+    content: '[ONLINE]';
+    position: absolute;
+    top: 0.8rem;
+    right: 1.2rem;
+    font-family: monospace;
+    font-size: 0.7rem;
+    color: #10b981;
+    letter-spacing: 0.08em;
+  }
   .about-image { animation: about-slide-right 1.8s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both !important; }
 
   /* eidolon sections */
   .eidolon-section { padding-top: clamp(4rem, 8vw, 7rem); padding-bottom: clamp(4rem, 8vw, 7rem); padding-left: clamp(1rem, 4vw, 3rem); padding-right: clamp(1rem, 4vw, 3rem); }
   .eid-txt {
-    background: rgba(10, 14, 28, 0.65);
+    background: color-mix(in oklab, var(--ink-800) 65%, transparent);
     border: 1px solid rgba(34, 211, 255, 0.2);
     border-radius: 0.75rem;
     padding: 2.25rem 2rem 2rem;
@@ -150,7 +204,7 @@ const aboutExtras = (nonce: string) => raw(`
     padding: 0.5rem;
     background: radial-gradient(circle, rgba(167, 139, 250, 0.15) 0%, transparent 70%);
     box-shadow: 
-      0 0 0 4px rgba(6, 8, 15, 0.95),
+      0 0 0 4px var(--ink-900),
       0 0 0 5px rgba(167, 139, 250, 0.35),
       0 12px 36px rgba(0, 0, 0, 0.5),
       0 0 25px rgba(34, 211, 255, 0.12);
@@ -160,7 +214,7 @@ const aboutExtras = (nonce: string) => raw(`
     transform: scale(1.04) rotate(1deg);
     border-color: rgba(34, 211, 255, 0.6);
     box-shadow: 
-      0 0 0 4px rgba(6, 8, 15, 0.95),
+      0 0 0 4px var(--ink-900),
       0 0 0 5px rgba(34, 211, 255, 0.6),
       0 16px 40px rgba(0, 0, 0, 0.6),
       0 0 30px rgba(34, 211, 255, 0.25);
@@ -310,8 +364,8 @@ export function AboutPage(opts: { nonce: string; lv999?: boolean; goof?: boolean
         </p>
         ${ctaBlock}
       </div>
-      <div class="about-image flex justify-start items-center max-[800px]:order-[-1]">
-        <picture class="block w-full">
+      <div class="about-image flex justify-center items-center max-[800px]:order-[-1]">
+        <picture class="block w-full max-w-[48rem]">
           <source type="image/avif" srcset="${lv999 ? '/static/silverwolfLv.999.avif' : '/static/silverwolf.avif'}" />
           <img src="${lv999 ? '/static/silverwolfLv.999.webp' : '/static/silverwolf.webp'}" alt="Silverwolf" width="${lv999 ? '1800' : '2000'}" height="${lv999 ? '1800' : '2000'}" decoding="async" fetchpriority="high" class="w-full h-auto" />
         </picture>

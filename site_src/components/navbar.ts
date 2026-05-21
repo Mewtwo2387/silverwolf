@@ -73,12 +73,12 @@ const navbarExtras = (nonce: string) => raw(`
 
   /* Caisena gradient nav surfaces — theme-aware via CSS vars */
   .nav-surface {
-    background: rgba(10, 14, 28, 0.75);
+    background: color-mix(in oklab, var(--ink-800) 75%, transparent);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border-bottom: 1px solid transparent;
     border-image: linear-gradient(90deg, transparent 0%, var(--accent) 30%, var(--accent-pale) 70%, transparent 100%) 1;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
   .nav-underline-grad {
     background: linear-gradient(90deg, var(--accent) 0%, var(--accent-pale) 100%);
@@ -131,10 +131,10 @@ const navbarExtras = (nonce: string) => raw(`
       width: min(92vw, 26rem);
       padding: 0.45rem 0.5rem;
       border-radius: 9999px;
-      background: rgba(6, 8, 15, 0.72) !important;
+      background: color-mix(in oklab, var(--ink-900) 72%, transparent) !important;
       -webkit-backdrop-filter: blur(25px) saturate(190%);
       backdrop-filter: blur(25px) saturate(190%);
-      border: 1px solid rgba(34, 211, 255, 0.35) !important;
+      border: 1px solid color-mix(in oklab, var(--accent) 35%, transparent) !important;
       border-image: none !important;
       box-shadow:
         0 12px 32px rgba(0, 0, 0, 0.6),
@@ -156,11 +156,11 @@ const navbarExtras = (nonce: string) => raw(`
       left: 0;
       width: 0;
       border-radius: 9999px;
-      background: linear-gradient(90deg, rgba(34, 211, 255, 0.25), rgba(167, 139, 250, 0.25));
-      border: 1px solid rgba(34, 211, 255, 0.45);
+      background: linear-gradient(90deg, color-mix(in oklab, var(--accent) 25%, transparent), color-mix(in oklab, var(--accent-pale) 25%, transparent));
+      border: 1px solid color-mix(in oklab, var(--accent) 45%, transparent);
       box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.2),
-        0 0 12px rgba(34, 211, 255, 0.35);
+        inset 0 1px 0 rgba(255, 255, 255, 0.15),
+        0 0 12px rgba(34, 211, 255, 0.25);
       pointer-events: auto;
       touch-action: none;
       cursor: grab;

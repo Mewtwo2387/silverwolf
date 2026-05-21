@@ -130,8 +130,25 @@ export function BlackjackPage(opts: { nonce: string; lv999?: boolean; user?: Nav
     flex-wrap: wrap;
   }
   .bj-btn { padding: 0.65rem 1.4rem; }
-  .bj-btn.secondary { background: var(--fog-500); box-shadow: 0 4px 0 #2a3155; }
-  .bj-btn.secondary:active { box-shadow: 0 2px 0 #2a3155; }
+  .bj-btn.secondary {
+    background: color-mix(in oklab, var(--ink-500) 10%, transparent);
+    color: var(--fog-300);
+    border: 1px solid var(--ink-500);
+    box-shadow: none;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: transform 0.1s, box-shadow 0.15s, background-color 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .bj-btn.secondary:not(:disabled):hover {
+    background: color-mix(in oklab, var(--ink-500) 25%, transparent);
+    color: var(--fog-100);
+    border-color: var(--ink-400);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+  }
+  .bj-btn.secondary:not(:disabled):active {
+    transform: translateY(1px);
+    box-shadow: none;
+  }
 
   .bet-row {
     display: flex;
