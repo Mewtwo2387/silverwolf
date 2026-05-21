@@ -222,22 +222,106 @@ const aboutExtras = (nonce: string) => raw(`
   .eid-txt, .eid-img { opacity: 0; }
   .eid-from-left.is-visible  { animation: about-slide-left  1.8s cubic-bezier(0.22, 1, 0.36, 1) both; }
   .eid-from-right.is-visible { animation: about-slide-right 1.8s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+  /* Typing text animations and terminal cursor */
+  .typing-text {
+    visibility: hidden;
+  }
+  .typing-text.is-typing,
+  .typing-text.is-typed {
+    visibility: visible;
+  }
+  .terminal-cursor {
+    display: inline-block;
+    color: rgba(34, 211, 255, 0.95);
+    margin-left: 2px;
+    font-weight: bold;
+    vertical-align: middle;
+  }
+  .terminal-cursor.blink {
+    animation: terminal-blink 1s step-end infinite;
+  }
+  @keyframes terminal-blink {
+    from, to { opacity: 0; }
+    50% { opacity: 1; }
+  }
 </style>
 <noscript>
   <style>
     .about-text, .about-image { opacity: 1 !important; transform: none !important; }
     .eid-txt, .eid-img { opacity: 1 !important; transform: none !important; }
     .about-stroke { animation: none !important; stroke-dashoffset: 0 !important; }
+    .typing-text { visibility: visible !important; }
   </style>
 </noscript>
 <script nonce="${nonce}">
 (() => {
+  const animateTyping = (el) => {
+    if (el.classList.contains('is-typed')) return;
+    el.classList.add('is-typing');
+
+    const originalText = el.getAttribute('data-text') || el.textContent.trim();
+    let textToType = originalText;
+
+    if (textToType.endsWith('.')) {
+      textToType = textToType.slice(0, -1);
+    }
+
+    const words = originalText.split(/\\s+/).filter(w => w.length > 0);
+    const wordCount = words.length || 1;
+    const wps = 5;
+    const totalDuration = (wordCount / wps) * 1000;
+    const charCount = textToType.length || 1;
+    const baseInterval = totalDuration / charCount;
+
+    el.textContent = '';
+
+    const textSpan = document.createElement('span');
+    el.appendChild(textSpan);
+
+    const cursorSpan = document.createElement('span');
+    cursorSpan.className = 'terminal-cursor';
+    cursorSpan.textContent = '.';
+    el.appendChild(cursorSpan);
+
+    let charIndex = 0;
+
+    const typeChar = () => {
+      if (charIndex < textToType.length) {
+        textSpan.textContent += textToType[charIndex];
+        charIndex++;
+        const randomDelay = baseInterval * (0.8 + Math.random() * 0.4);
+        setTimeout(typeChar, randomDelay);
+      } else {
+        cursorSpan.classList.add('blink');
+        el.classList.remove('is-typing');
+        el.classList.add('is-typed');
+      }
+    };
+
+    typeChar();
+  };
+
   const run = () => {
+    const typingEls = document.querySelectorAll('.typing-text');
+    typingEls.forEach((el) => {
+      const text = el.textContent.trim().replace(/\\s+/g, ' ');
+      el.setAttribute('data-text', text);
+      el.textContent = '';
+    });
+
     const els = document.querySelectorAll('.about-text, .about-image');
     els.forEach((el) => { void el.getBoundingClientRect(); });
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         els.forEach((el) => el.classList.add('is-in'));
+
+        const mainTypingEl = document.querySelector('.about-text .typing-text');
+        if (mainTypingEl) {
+          setTimeout(() => {
+            animateTyping(mainTypingEl);
+          }, 350);
+        }
       });
     });
 
@@ -245,12 +329,22 @@ const aboutExtras = (nonce: string) => raw(`
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
           entry.target.classList.add('is-visible');
+          
+          if (entry.target.classList.contains('eid-txt')) {
+            const typingEl = entry.target.querySelector('.typing-text');
+            if (typingEl) {
+              animateTyping(typingEl);
+            }
+          }
+
           observer.unobserve(entry.target);
         }
       });
     }, { threshold: 0.12 });
+
     document.querySelectorAll('.eid-txt, .eid-img').forEach((el) => observer.observe(el));
   };
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', run);
   } else {
@@ -345,7 +439,7 @@ export function AboutPage(opts: { nonce: string; lv999?: boolean; goof?: boolean
     const txtEl = html`
       <div class="eid-txt font-mono ${imgLeft ? 'eid-from-right' : 'eid-from-left'} max-w-[38rem] ${imgLeft ? 'justify-self-end' : 'justify-self-start'}" data-index="${n}">
         <h2 class="font-mono italic font-bold tracking-tight mb-4" style="font-size: clamp(2rem, 5.5vw, 3.75rem);">${title}</h2>
-        <p class="text-[1.1rem] leading-[1.6] text-fog-200">${text}</p>
+        <p class="typing-text text-[1.1rem] leading-[1.6] text-fog-200">${text}</p>
       </div>`;
     return html`
       <section class="eidolon-section grid grid-cols-2 gap-12 items-center max-[800px]:grid-cols-1 max-[800px]:text-left">
@@ -357,7 +451,7 @@ export function AboutPage(opts: { nonce: string; lv999?: boolean; goof?: boolean
     <section class="about-wrap grid grid-cols-2 gap-12 items-center min-h-[calc(100vh-180px)] max-[800px]:grid-cols-1 max-[800px]:text-left">
       <div class="about-text font-mono max-w-[38rem] justify-self-start">
         ${titleBlock}
-        <p class="text-[1.1rem] leading-[1.6] text-fog-200">
+        <p class="typing-text text-[1.1rem] leading-[1.6] text-fog-200">
           Silverwolf-bot is a multipurpose bot made by Ei, and XeIris.
           Mostly inside jokes, parodies and tech stack exploration,
           it runs on Bun using Typescript.
