@@ -48,6 +48,9 @@ const faviconLink = (lv999: boolean) => {
 };
 
 const pageHead = (nonce: string) => raw(`
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/styles.css?v=${getStylesVersion()}" />
 <style>
   /* Guard against any descendant (entrance-animation transforms, full-bleed
@@ -123,7 +126,7 @@ export function Layout(opts: {
         ${pageHead(opts.nonce)}
         ${opts.extraHead ?? ''}
       </head>
-      <body class="font-sans bg-ink-900 text-fog-100 min-h-screen flex flex-col">
+      <body class="font-sans bg-ink-900 text-fog-100 min-h-screen flex flex-col scanlines cyber-grid">
         ${Navbar(opts.active, opts.nonce, opts.lv999, opts.user)}
         <main class="flex-1 w-full max-w-[1100px] mx-auto py-8 px-[clamp(1rem,4vw,3rem)]">${opts.body}</main>
         ${Footer(opts.nonce)}

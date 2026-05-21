@@ -70,16 +70,26 @@ const aboutExtras = (nonce: string) => raw(`
     display: inline-flex;
     align-items: center;
     gap: 0.6rem;
-    padding: 0.8rem 1.4rem;
+    padding: 0.8rem 1.6rem;
     border-radius: 0.5rem;
-    background: #5865F2;
+    background: linear-gradient(135deg, #5865F2 0%, #404eed 100%);
     color: #fff;
-    font-weight: 600;
+    font-weight: 700;
     text-decoration: none;
-    border: 1px solid #4752C4;
-    transition: filter 0.2s;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 
+      0 4px 15px rgba(88, 101, 242, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    transition: all 0.2s ease;
   }
-  .about-login-cta:hover { filter: brightness(1.1); }
+  .about-login-cta:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.08);
+    box-shadow: 
+      0 6px 20px rgba(88, 101, 242, 0.45),
+      0 0 15px rgba(88, 101, 242, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  }
   @keyframes about-slide-left {
     0%   { opacity: 0; transform: translate3d(-5rem, 0, 0); }
     100% { opacity: 1; transform: translate3d(0, 0, 0); }
@@ -93,6 +103,39 @@ const aboutExtras = (nonce: string) => raw(`
 
   /* eidolon sections */
   .eidolon-section { padding-top: clamp(4rem, 8vw, 7rem); padding-bottom: clamp(4rem, 8vw, 7rem); padding-left: clamp(1rem, 4vw, 3rem); padding-right: clamp(1rem, 4vw, 3rem); }
+  .eid-txt {
+    background: rgba(10, 14, 28, 0.65);
+    border: 1px solid rgba(34, 211, 255, 0.2);
+    border-radius: 0.75rem;
+    padding: 2.25rem 2rem 2rem;
+    backdrop-filter: blur(12px);
+    box-shadow: 
+      0 10px 30px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 0 15px rgba(34, 211, 255, 0.05);
+    position: relative;
+    overflow: hidden;
+  }
+  .eid-txt::before {
+    content: 'SYS.EIDOLON.LOG_0' attr(data-index);
+    position: absolute;
+    top: 0.6rem;
+    left: 1rem;
+    font-family: monospace;
+    font-size: 0.62rem;
+    color: rgba(34, 211, 255, 0.4);
+    letter-spacing: 0.08em;
+  }
+  .eid-txt::after {
+    content: '[ONLINE]';
+    position: absolute;
+    top: 0.6rem;
+    right: 1rem;
+    font-family: monospace;
+    font-size: 0.62rem;
+    color: #10b981;
+    letter-spacing: 0.08em;
+  }
   .eid-txt h2 {
     background: linear-gradient(180deg, var(--heading-top) 0%, var(--heading-bottom) 100%);
     -webkit-background-clip: text;
@@ -100,6 +143,27 @@ const aboutExtras = (nonce: string) => raw(`
     color: transparent;
     line-height: 1.15;
     padding-bottom: 0.15em;
+  }
+  .eid-img img {
+    border-radius: 1.5rem;
+    border: 1px solid rgba(34, 211, 255, 0.25);
+    padding: 0.5rem;
+    background: radial-gradient(circle, rgba(167, 139, 250, 0.15) 0%, transparent 70%);
+    box-shadow: 
+      0 0 0 4px rgba(6, 8, 15, 0.95),
+      0 0 0 5px rgba(167, 139, 250, 0.35),
+      0 12px 36px rgba(0, 0, 0, 0.5),
+      0 0 25px rgba(34, 211, 255, 0.12);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s;
+  }
+  .eid-img img:hover {
+    transform: scale(1.04) rotate(1deg);
+    border-color: rgba(34, 211, 255, 0.6);
+    box-shadow: 
+      0 0 0 4px rgba(6, 8, 15, 0.95),
+      0 0 0 5px rgba(34, 211, 255, 0.6),
+      0 16px 40px rgba(0, 0, 0, 0.6),
+      0 0 30px rgba(34, 211, 255, 0.25);
   }
   .eid-txt, .eid-img { opacity: 0; }
   .eid-from-left.is-visible  { animation: about-slide-left  1.8s cubic-bezier(0.22, 1, 0.36, 1) both; }
@@ -225,7 +289,7 @@ export function AboutPage(opts: { nonce: string; lv999?: boolean; goof?: boolean
         </picture>
       </div>`;
     const txtEl = html`
-      <div class="eid-txt ${imgLeft ? 'eid-from-right' : 'eid-from-left'} max-w-[38rem] ${imgLeft ? 'justify-self-end' : 'justify-self-start'}">
+      <div class="eid-txt ${imgLeft ? 'eid-from-right' : 'eid-from-left'} max-w-[38rem] ${imgLeft ? 'justify-self-end' : 'justify-self-start'}" data-index="${n}">
         <h2 class="font-script font-normal tracking-[0.01em] leading-[0.95] mb-4" style="font-size: clamp(3rem, 8vw, 6rem);">${title}</h2>
         <p class="text-[1.1rem] leading-[1.6] text-fog-200">${text}</p>
       </div>`;

@@ -73,13 +73,16 @@ const navbarExtras = (nonce: string) => raw(`
 
   /* Caisena gradient nav surfaces — theme-aware via CSS vars */
   .nav-surface {
-    background: linear-gradient(180deg, var(--ink-800) 0%, var(--ink-900) 100%);
+    background: rgba(10, 14, 28, 0.75);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border-bottom: 1px solid transparent;
     border-image: linear-gradient(90deg, transparent 0%, var(--accent) 30%, var(--accent-pale) 70%, transparent 100%) 1;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
   .nav-underline-grad {
     background: linear-gradient(90deg, var(--accent) 0%, var(--accent-pale) 100%);
-    box-shadow: 0 0 6px var(--glow-bright);
+    box-shadow: 0 0 14px var(--glow-bright), 0 0 4px var(--accent);
   }
 
   /* Desktop nav link spacing */
@@ -128,14 +131,15 @@ const navbarExtras = (nonce: string) => raw(`
       width: min(92vw, 26rem);
       padding: 0.45rem 0.5rem;
       border-radius: 9999px;
-      background: rgba(255, 255, 255, 0.08) !important;
-      -webkit-backdrop-filter: blur(20px) saturate(180%);
-      backdrop-filter: blur(20px) saturate(180%);
-      border: 1px solid rgba(255, 255, 255, 0.18) !important;
+      background: rgba(6, 8, 15, 0.72) !important;
+      -webkit-backdrop-filter: blur(25px) saturate(190%);
+      backdrop-filter: blur(25px) saturate(190%);
+      border: 1px solid rgba(34, 211, 255, 0.35) !important;
       border-image: none !important;
       box-shadow:
-        0 8px 28px rgba(0, 0, 0, 0.28),
-        inset 0 1px 0 rgba(255, 255, 255, 0.22);
+        0 12px 32px rgba(0, 0, 0, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        0 0 15px rgba(34, 211, 255, 0.15);
       flex-direction: row;
       justify-content: space-around;
       align-items: stretch;
@@ -152,11 +156,11 @@ const navbarExtras = (nonce: string) => raw(`
       left: 0;
       width: 0;
       border-radius: 9999px;
-      background: color-mix(in oklab, var(--accent) 30%, transparent);
+      background: linear-gradient(90deg, rgba(34, 211, 255, 0.25), rgba(167, 139, 250, 0.25));
+      border: 1px solid rgba(34, 211, 255, 0.45);
       box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.4),
-        inset 0 -1px 0 rgba(0, 0, 0, 0.08),
-        0 2px 10px color-mix(in oklab, var(--accent) 25%, transparent);
+        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+        0 0 12px rgba(34, 211, 255, 0.35);
       pointer-events: auto;
       touch-action: none;
       cursor: grab;

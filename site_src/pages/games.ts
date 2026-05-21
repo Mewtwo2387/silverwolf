@@ -98,91 +98,66 @@ const styles = raw(`
 <style>
   .games-header {
     position: relative;
-    margin-bottom: 1.5rem;
+    margin-bottom: 2rem;
   }
   .games-header h1 { margin: 0 0 0.25rem 0; }
   .games-header p { margin: 0; }
 
-  .layout-switcher {
+  /* Segmented control layout switcher */
+  .layout-switcher.segmented-control {
+    display: flex;
+    background: rgba(6, 8, 15, 0.85);
+    border: 1px solid var(--ink-600);
+    padding: 2px;
+    border-radius: 0.75rem;
+    gap: 2px;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.8);
     position: absolute;
     top: 0;
     right: 0;
   }
   @media (max-width: 700px) {
-    .layout-switcher {
+    .layout-switcher.segmented-control {
       position: static;
-      display: flex;
-      justify-content: flex-end;
+      display: inline-flex;
       margin-top: 0.75rem;
+      margin-left: auto;
+      margin-right: auto;
     }
   }
-
-  .layout-switcher-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    background: var(--ink-800);
-    border: 1px solid var(--ink-600);
-    border-radius: 0.5rem;
-    color: var(--fog-200);
-    cursor: pointer;
-    font: inherit;
-    font-size: 0.9rem;
-    transition: border-color 0.2s, color 0.2s;
-  }
-  .layout-switcher-btn:hover {
-    border-color: var(--accent);
-    color: var(--accent-light);
-  }
-  .layout-switcher-btn svg { width: 18px; height: 18px; }
-  .layout-switcher-btn .chevron {
-    width: 12px;
-    height: 12px;
-    transition: transform 0.2s;
-  }
-  .layout-switcher.open .layout-switcher-btn .chevron {
-    transform: rotate(180deg);
-  }
-
-  .layout-switcher-menu {
-    position: absolute;
-    top: calc(100% + 0.25rem);
-    right: 0;
-    background: var(--ink-800);
-    border: 1px solid var(--ink-600);
-    border-radius: 0.5rem;
-    padding: 0.25rem;
-    display: none;
-    flex-direction: column;
-    min-width: 170px;
-    z-index: 10;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-  }
-  .layout-switcher.open .layout-switcher-menu { display: flex; }
-  .layout-switcher-menu button {
+  .layout-switcher.segmented-control button {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    padding: 0.5rem 0.75rem;
+    gap: 0.4rem;
+    padding: 0.45rem 0.9rem;
     background: transparent;
     border: none;
-    border-radius: 0.35rem;
-    color: var(--fog-200);
+    border-radius: 0.6rem;
+    color: var(--fog-300);
     cursor: pointer;
     font: inherit;
-    font-size: 0.9rem;
-    text-align: left;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
   }
-  .layout-switcher-menu button:hover {
-    background: var(--ink-700, #1e2030);
+  .layout-switcher.segmented-control button:hover {
     color: var(--accent-light);
+    background: rgba(34, 211, 255, 0.05);
   }
-  .layout-switcher-menu button.active {
-    background: var(--ink-700, #1e2030);
-    color: var(--accent);
+  .layout-switcher.segmented-control button.active {
+    background: linear-gradient(135deg, var(--accent), var(--accent-pale));
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(34, 211, 255, 0.3);
   }
-  .layout-switcher-menu button svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .layout-switcher.segmented-control button svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+  @media (max-width: 480px) {
+    .layout-switcher.segmented-control button .label {
+      display: none;
+    }
+  }
 
   .games-grid {
     display: grid;
@@ -210,6 +185,7 @@ const styles = raw(`
     .games-grid.grid-4 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   }
 
+  /* Cartridge Design Aesthetics */
   .game-card {
     display: flex;
     flex-direction: column;
@@ -221,12 +197,54 @@ const styles = raw(`
     text-decoration: none;
     color: inherit;
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    position: relative;
   }
   .game-card:hover {
     transform: translateY(-6px);
-    box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+    box-shadow: 
+      0 12px 32px rgba(0,0,0,0.45),
+      0 0 20px var(--glow-faint);
     border-color: var(--accent);
     background: var(--ink-700, #1e2030);
+  }
+
+  .cartridge-grip {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    padding: 5px 0;
+    background: var(--ink-900);
+    border-bottom: 1px solid var(--ink-700);
+    transition: background-color 0.2s;
+  }
+  .cartridge-grip span {
+    width: 16px;
+    height: 3px;
+    background: var(--ink-600);
+    border-radius: 1px;
+    transition: background-color 0.2s;
+  }
+  .game-card:hover .cartridge-grip span {
+    background: var(--accent-pale);
+  }
+  
+  .cartridge-pins {
+    height: 8px;
+    background: repeating-linear-gradient(90deg, #d4af37 0px, #d4af37 4px, transparent 4px, transparent 8px);
+    border-top: 1px solid var(--ink-600);
+    opacity: 0.8;
+    margin-top: auto;
+    transition: background 0.2s, opacity 0.2s;
+  }
+  .game-card:hover .cartridge-pins {
+    background: repeating-linear-gradient(90deg, var(--accent) 0px, var(--accent) 4px, transparent 4px, transparent 8px);
+    opacity: 1;
+  }
+
+  /* Compact List view cartridge overrides (hides these components for lists) */
+  .games-grid.list-view .cartridge-grip,
+  .games-grid.list-view .cartridge-pins {
+    display: none;
   }
 
   .card-image {
@@ -237,11 +255,39 @@ const styles = raw(`
     justify-content: center;
     background: var(--ink-900);
     overflow: hidden;
+    position: relative;
   }
   .card-image img {
     width: 70%;
     height: 70%;
     object-fit: contain;
+    transition: transform 0.3s ease;
+    z-index: 1;
+  }
+  .game-card:hover .card-image img {
+    transform: scale(1.05);
+  }
+
+  /* Diagonal linear-gradient holographic shine sweep effect */
+  .card-image::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -150%;
+    width: 100%; height: 100%;
+    background: linear-gradient(
+      120deg,
+      transparent 30%,
+      rgba(34, 211, 255, 0.2) 40%,
+      rgba(167, 139, 250, 0.35) 50%,
+      rgba(34, 211, 255, 0.2) 60%,
+      transparent 70%
+    );
+    transition: left 0.6s ease;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .game-card:hover .card-image::after {
+    left: 150%;
   }
 
   .card-body {
@@ -333,15 +379,7 @@ const styles = raw(`
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
   }
 
-  /* AI Slop card: thin-stroke node graph rotating over a morphing gradient blob.
-     The graph rotates as a whole (so the connecting lines stay connected to
-     their nodes), and each outer node also wiggles within a tiny orbit for an
-     "alive" / data-flow feel. The blob behind uses theme-aware gradient
-     colours so it adapts to flashbang/blackout themes. */
-  /* Width comes from the parent .card-image, height from aspect-ratio — using
-     percentage height instead breaks in browsers that don't resolve % height
-     against an aspect-ratio'd parent (Safari, some Chromium configs), which
-     was collapsing the wrap to 0 and hiding the SVG entirely. */
+  /* AI Slop card: thin-stroke node graph rotating over a morphing gradient blob. */
   .ai-slop-wrap {
     width: 78%;
     aspect-ratio: 1 / 1;
@@ -398,9 +436,6 @@ const styles = raw(`
     0%, 100% { r: 4.6; opacity: 0.9; }
     50%      { r: 5.6; opacity: 1; }
   }
-  /* Per-node orbit wiggle — each node has a different phase + path so they
-     drift independently. transform-origin uses the node centre so the
-     rotation pivots locally. */
   .ai-slop-svg .n1 { transform-origin: 34.52px 11.43px; animation: ai-slop-orbit-a 3.6s ease-in-out infinite; }
   .ai-slop-svg .n2 { transform-origin: 53.63px 31.6px;  animation: ai-slop-orbit-b 4.2s ease-in-out infinite; }
   .ai-slop-svg .n3 { transform-origin: 34.52px 50.57px; animation: ai-slop-orbit-a 3.9s ease-in-out infinite reverse; }
@@ -468,7 +503,6 @@ const styles = raw(`
 const ICON_GRID_3 = raw('<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="9.5" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="9.5" width="5" height="5" rx="1"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><rect x="16" y="9.5" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><rect x="9.5" y="16" width="5" height="5" rx="1"/><rect x="16" y="16" width="5" height="5" rx="1"/></svg>');
 const ICON_GRID_4 = raw('<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="3"  y="3"  width="3.5" height="3.5" rx="0.6"/><rect x="8"  y="3"  width="3.5" height="3.5" rx="0.6"/><rect x="13" y="3"  width="3.5" height="3.5" rx="0.6"/><rect x="18" y="3"  width="3.5" height="3.5" rx="0.6"/><rect x="3"  y="8"  width="3.5" height="3.5" rx="0.6"/><rect x="8"  y="8"  width="3.5" height="3.5" rx="0.6"/><rect x="13" y="8"  width="3.5" height="3.5" rx="0.6"/><rect x="18" y="8"  width="3.5" height="3.5" rx="0.6"/><rect x="3"  y="13" width="3.5" height="3.5" rx="0.6"/><rect x="8"  y="13" width="3.5" height="3.5" rx="0.6"/><rect x="13" y="13" width="3.5" height="3.5" rx="0.6"/><rect x="18" y="13" width="3.5" height="3.5" rx="0.6"/><rect x="3"  y="18" width="3.5" height="3.5" rx="0.6"/><rect x="8"  y="18" width="3.5" height="3.5" rx="0.6"/><rect x="13" y="18" width="3.5" height="3.5" rx="0.6"/><rect x="18" y="18" width="3.5" height="3.5" rx="0.6"/></svg>');
 const ICON_LIST = raw('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="4.5" cy="6" r="0.6" fill="currentColor"/><circle cx="4.5" cy="12" r="0.6" fill="currentColor"/><circle cx="4.5" cy="18" r="0.6" fill="currentColor"/></svg>');
-const ICON_CHEVRON = raw('<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>');
 
 function CoinImage() {
   return html`
@@ -481,9 +515,7 @@ function CoinImage() {
   `;
 }
 
-// AI Slop card thumbnail — see the .ai-slop-* CSS block above. Strokes use
-// var(--accent-light), the blob behind uses var(--accent) / var(--accent-pale)
-// gradient, so the whole thing adapts to dark/flashbang/blackout themes.
+// AI Slop card thumbnail
 function AiSlopImage() {
   return raw(`
     <div class="ai-slop-wrap" aria-hidden="true">
@@ -514,13 +546,9 @@ const layoutScript = (nonce: string) => raw(`
   var KEY = 'games-layout';
   var VALID = ['grid-3', 'grid-4', 'list-view'];
   var grid = document.querySelector('.games-grid');
-  var switcher = document.querySelector('.layout-switcher');
+  var switcher = document.querySelector('.layout-switcher.segmented-control');
   if (!grid || !switcher) return;
-  var btn = switcher.querySelector('.layout-switcher-btn');
-  var menu = switcher.querySelector('.layout-switcher-menu');
-  var btnIcon = btn.querySelector('.btn-icon');
-  var btnLabel = btn.querySelector('.btn-label');
-  var options = menu.querySelectorAll('button[data-layout]');
+  var options = switcher.querySelectorAll('button[data-layout]');
 
   function apply(layout) {
     grid.classList.remove('grid-3', 'grid-4', 'list-view');
@@ -528,13 +556,6 @@ const layoutScript = (nonce: string) => raw(`
     options.forEach(function(o) {
       o.classList.toggle('active', o.dataset.layout === layout);
     });
-    var active = menu.querySelector('button[data-layout="' + layout + '"]');
-    if (active && btnIcon && btnLabel) {
-      var srcIcon = active.querySelector('svg');
-      var srcLabel = active.querySelector('.label');
-      if (srcIcon) btnIcon.innerHTML = srcIcon.outerHTML;
-      if (srcLabel) btnLabel.textContent = srcLabel.textContent;
-    }
   }
 
   var saved;
@@ -542,23 +563,12 @@ const layoutScript = (nonce: string) => raw(`
   if (VALID.indexOf(saved) === -1) saved = 'grid-3';
   apply(saved);
 
-  btn.addEventListener('click', function(e) {
-    e.stopPropagation();
-    switcher.classList.toggle('open');
-  });
   options.forEach(function(o) {
     o.addEventListener('click', function() {
       var layout = o.dataset.layout;
       try { localStorage.setItem(KEY, layout); } catch (e) {}
       apply(layout);
-      switcher.classList.remove('open');
     });
-  });
-  document.addEventListener('click', function(e) {
-    if (!switcher.contains(e.target)) switcher.classList.remove('open');
-  });
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') switcher.classList.remove('open');
   });
 })();
 </script>
@@ -570,29 +580,28 @@ export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import(
     <div class="games-header">
       <h1 class="text-center">Games</h1>
       <p class="text-center text-fog-300">Choose a game to play!</p>
-      <div class="layout-switcher">
-        <button class="layout-switcher-btn" type="button" aria-haspopup="true" aria-label="Change layout">
-          <span class="btn-icon">${ICON_GRID_3}</span>
-          <span class="btn-label">Grid 3×3</span>
-          ${ICON_CHEVRON}
+      <div class="layout-switcher segmented-control">
+        <button type="button" data-layout="grid-3" title="Grid 3×3" aria-label="Grid 3×3">
+          ${ICON_GRID_3}
+          <span class="label">Grid 3×3</span>
         </button>
-        <div class="layout-switcher-menu" role="menu">
-          <button type="button" data-layout="grid-3" role="menuitem">
-            ${ICON_GRID_3}<span class="label">Grid 3×3</span>
-          </button>
-          <button type="button" data-layout="grid-4" role="menuitem">
-            ${ICON_GRID_4}<span class="label">Grid 4×4</span>
-          </button>
-          <button type="button" data-layout="list-view" role="menuitem">
-            ${ICON_LIST}<span class="label">List</span>
-          </button>
-        </div>
+        <button type="button" data-layout="grid-4" title="Grid 4×4" aria-label="Grid 4×4">
+          ${ICON_GRID_4}
+          <span class="label">Grid 4×4</span>
+        </button>
+        <button type="button" data-layout="list-view" title="List View" aria-label="List View">
+          ${ICON_LIST}
+          <span class="label">List</span>
+        </button>
       </div>
     </div>
     <div class="games-grid">
       ${GAMES.map(
     (game) => html`
           <a href="${game.href}" class="game-card">
+            <div class="cartridge-grip">
+              <span></span><span></span><span></span><span></span><span></span>
+            </div>
             <div class="card-image">
               ${(() => {
     if (game.imageType === 'coin') return CoinImage();
@@ -610,6 +619,7 @@ export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import(
               <h2>${game.name}</h2>
               <p>${game.info}</p>
             </div>
+            <div class="cartridge-pins"></div>
           </a>
         `,
   )}

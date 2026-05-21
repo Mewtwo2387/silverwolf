@@ -38,28 +38,59 @@ const styles = raw(`
   .me-header {
     display: flex;
     align-items: center;
-    gap: 1.25rem;
-    padding: 1.25rem 1.5rem;
-    background: var(--ink-800);
-    border: 1px solid var(--ink-600);
+    gap: 1.5rem;
+    padding: 1.5rem;
+    background: rgba(10, 14, 28, 0.7);
+    border: 1px solid rgba(34, 211, 255, 0.25);
     border-radius: 0.75rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.75rem;
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 0 15px rgba(34, 211, 255, 0.08);
+    position: relative;
+    overflow: hidden;
+  }
+  .me-header::after {
+    content: 'USER PROFILE HUD v1.2';
+    position: absolute;
+    top: 0.5rem;
+    right: 0.75rem;
+    font-size: 0.6rem;
+    font-family: monospace;
+    color: rgba(34, 211, 255, 0.35);
+    letter-spacing: 0.1em;
   }
   .me-header img {
-    width: 72px;
-    height: 72px;
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
     border: 2px solid var(--accent);
+    box-shadow: 0 0 15px rgba(34, 211, 255, 0.4);
+    transition: transform 0.3s;
+  }
+  .me-header img:hover {
+    transform: scale(1.08) rotate(4deg);
   }
   .me-header h1 {
-    font-size: 1.4rem;
-    margin: 0;
+    font-size: 1.6rem;
+    margin: 0 0 0.25rem 0;
     color: var(--fog-100);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-shadow: 0 0 10px rgba(34, 211, 255, 0.2);
   }
   .me-header .me-id {
     font-size: 0.8rem;
-    color: var(--fog-300);
+    color: var(--accent-light);
     font-family: monospace;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(34, 211, 255, 0.08);
+    padding: 0.15rem 0.6rem;
+    border-radius: 4px;
+    border: 1px solid rgba(34, 211, 255, 0.15);
   }
   .me-grid {
     display: grid;
@@ -68,10 +99,19 @@ const styles = raw(`
     margin-top: 1rem;
   }
   .me-card {
-    background: var(--ink-800);
-    border: 1px solid var(--ink-600);
-    border-radius: 0.5rem;
-    padding: 1rem 1.1rem;
+    background: rgba(10, 14, 28, 0.55);
+    border: 1px solid rgba(34, 211, 255, 0.12);
+    border-radius: 0.6rem;
+    padding: 1.1rem;
+    backdrop-filter: blur(8px);
+    transition: all 0.25s ease;
+  }
+  .me-card:hover {
+    border-color: rgba(34, 211, 255, 0.35);
+    transform: translateY(-2px);
+    box-shadow: 
+      0 6px 20px rgba(0, 0, 0, 0.3),
+      0 0 12px rgba(34, 211, 255, 0.04);
   }
   .me-card .label {
     font-size: 0.75rem;
@@ -97,39 +137,8 @@ const styles = raw(`
     font-weight: 600;
   }
   
-  details {
-    background: var(--ink-800);
-    border: 1px solid var(--ink-600);
-    border-radius: 0.5rem;
-    margin-bottom: 1rem;
-    padding: 1rem;
-  }
-  summary {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--fog-100);
-    cursor: pointer;
-    list-style: none;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  summary::-webkit-details-marker {
-    display: none;
-  }
-  summary::after {
-    content: '+';
-    font-size: 1.5rem;
-    line-height: 1;
-    color: var(--fog-300);
-  }
-  details[open] summary::after {
-    content: '-';
-  }
   .details-content {
     margin-top: 1rem;
-    border-top: 1px solid var(--ink-600);
-    padding-top: 1rem;
     color: var(--fog-200);
     line-height: 1.5;
   }
@@ -238,7 +247,7 @@ export function HomePage(opts: {
       ${profile.avatarURL ? html`<img src="${profile.avatarURL}" alt="${profile.username}" />` : ''}
       <div>
         <h1>@${profile.username}</h1>
-        <div class="me-id">${profile.discordId}</div>
+        <div class="me-id"><span class="status-led status-led-green" style="width:6px;height:6px;margin-bottom:1px;"></span> ${profile.discordId}</div>
       </div>
     </div>
 
@@ -246,9 +255,27 @@ export function HomePage(opts: {
       <summary>Currency</summary>
       <div class="details-content">
         <div class="me-grid">
-          <div class="me-card"><div class="label">Mystic Credits</div><div class="value">${format(credits, true)}</div></div>
-          <div class="me-card"><div class="label">Dinonuggies</div><div class="value">${format(dinonuggies)}</div></div>
-          <div class="me-card"><div class="label">Heavenly Nuggies</div><div class="value">${format(stats.heavenlyNuggies ?? 0)}</div></div>
+          <div class="me-card">
+            <div class="label">Mystic Credits</div>
+            <div class="value">${format(credits, true)}</div>
+            <div class="hud-progress-container">
+              <div class="hud-progress-bar hud-progress-bar-cyan" style="width: ${Math.min(100, Math.max(10, (log2Credits / 30) * 100))}%"></div>
+            </div>
+          </div>
+          <div class="me-card">
+            <div class="label">Dinonuggies</div>
+            <div class="value">${format(dinonuggies)}</div>
+            <div class="hud-progress-container">
+              <div class="hud-progress-bar hud-progress-bar-purple" style="width: ${Math.min(100, Math.max(10, (log2Nuggies / 30) * 100))}%"></div>
+            </div>
+          </div>
+          <div class="me-card">
+            <div class="label">Heavenly Nuggies</div>
+            <div class="value">${format(stats.heavenlyNuggies ?? 0)}</div>
+            <div class="hud-progress-container">
+              <div class="hud-progress-bar hud-progress-bar-pink" style="width: ${Math.min(100, Math.max(10, ((stats.heavenlyNuggies ?? 0) / 1000) * 100))}%"></div>
+            </div>
+          </div>
         </div>
       </div>
     </details>

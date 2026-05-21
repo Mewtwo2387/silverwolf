@@ -9,10 +9,65 @@ const birthdayExtras = raw(`
     from { box-shadow: 0 0 6px 1px var(--glow-faint), 0 0 0 1px var(--accent); }
     to   { box-shadow: 0 0 18px 4px var(--glow-bright), 0 0 0 1px var(--accent-light); }
   }
-  .month-current {
+  
+  .month-card {
+    position: relative;
+    background: rgba(10, 14, 28, 0.45);
+    border: 1px solid var(--ink-600);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: border-color 0.3s, box-shadow 0.3s;
+    overflow: hidden;
+  }
+  .month-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 4px; height: 100%;
+    background: var(--ink-600);
+  }
+  .month-card:hover {
+    border-color: rgba(34, 211, 255, 0.3);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), 0 0 10px rgba(34, 211, 255, 0.05);
+  }
+  .month-card.month-current {
     border-color: var(--accent) !important;
     animation: month-glow 2s ease-in-out infinite alternate;
   }
+  .month-card.month-current::before {
+    background: var(--accent);
+  }
+  
+  /* Circuit Nodes aesthetic on the month card */
+  .month-node-dot {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background: var(--ink-600);
+    border-radius: 50%;
+    z-index: 2;
+  }
+  .month-card.month-current .month-node-dot {
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+  }
+  .month-node-dot.top-left { top: 8px; left: -1px; }
+  .month-node-dot.bottom-left { bottom: 8px; left: -1px; }
+
+  .bday-user {
+    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+  .bday-user:hover {
+    transform: translateY(-1px);
+    border-color: var(--accent) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), 0 0 8px var(--glow-faint);
+  }
+  .bday-user:active {
+    transform: translateY(0);
+  }
+
   .bday-user-upcoming {
     border-color: var(--danger) !important;
     box-shadow: 0 0 8px 2px var(--danger-glow);
@@ -36,9 +91,6 @@ const birthdayExtras = raw(`
   }
 
   /* ── Hover tooltip ─────────────────────────────────────────────────────── */
-  .bday-user {
-    position: relative;
-  }
   .bday-user::after {
     content: attr(data-next);
     position: absolute;
@@ -62,8 +114,7 @@ const birthdayExtras = raw(`
     opacity: 1;
   }
 
-  /* ── Birthday modal ────────────────────────────────────────────────────── */
-  /* All positioning here — never rely on Tailwind for fixed/inset/z-index   */
+  /* ── Birthday modal (Holographic Transmitter Theme) ────────────────────── */
   #bday-modal-backdrop {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -72,23 +123,42 @@ const birthdayExtras = raw(`
     align-items: center;
     justify-content: center;
     padding: 1rem;
-    background: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(3px);
-    -webkit-backdrop-filter: blur(3px);
+    background: rgba(4, 6, 13, 0.75);
+    backdrop-filter: blur(8px) saturate(180%);
+    -webkit-backdrop-filter: blur(8px) saturate(180%);
   }
   #bday-modal {
     position: relative;
     width: 100%;
     max-width: 24rem;
-    background: var(--ink-800);
-    border: 1px solid var(--ink-600);
-    border-radius: 0.75rem;
-    padding: 1.25rem;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+    background: rgba(10, 14, 28, 0.75);
+    border: 1px solid var(--accent);
+    border-radius: 1rem;
+    padding: 1.75rem;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 
+      0 24px 64px rgba(0, 0, 0, 0.7),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 0 30px var(--glow-faint);
+    overflow: hidden;
+  }
+  #bday-modal::before {
+    content: '// HOLO_TRANSMITTER_ACTIVE';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    background: linear-gradient(90deg, rgba(34, 211, 255, 0.1), transparent);
+    border-bottom: 1px solid rgba(34, 211, 255, 0.2);
+    padding: 6px 1.75rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.65rem;
+    font-weight: bold;
+    color: var(--accent);
+    letter-spacing: 0.08em;
   }
   #bday-modal-close {
     position: absolute;
-    top: 0.75rem;
+    top: 0.5rem;
     right: 0.75rem;
     width: 1.75rem;
     height: 1.75rem;
@@ -98,46 +168,81 @@ const birthdayExtras = raw(`
     border-radius: 0.375rem;
     background: transparent;
     border: none;
-    color: var(--fog-400);
+    color: var(--danger);
     cursor: pointer;
-    transition: color 0.15s, background 0.15s;
+    transition: all 0.2s;
+    border: 1px solid rgba(255, 107, 138, 0.2);
+    background: rgba(255, 107, 138, 0.05);
   }
-  #bday-modal-close:hover { color: var(--fog-100); background: var(--ink-700); }
+  #bday-modal-close:hover { 
+    color: #ffffff; 
+    background: var(--danger); 
+    border-color: var(--danger);
+    box-shadow: 0 0 10px rgba(255, 107, 138, 0.5);
+  }
   #bday-modal-body {
     display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-    padding-right: 1.5rem;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1.25rem;
+    padding-top: 1.2rem;
   }
   #bday-modal-avatar {
     flex-shrink: 0;
-    width: 3.5rem;
-    height: 3.5rem;
+    width: 5.5rem;
+    height: 5.5rem;
     border-radius: 50%;
     overflow: hidden;
-    background: var(--ink-600);
+    background: var(--ink-900);
+    border: 3px solid var(--accent);
+    box-shadow: 
+      0 0 20px var(--glow-bright),
+      inset 0 0 8px rgba(0,0,0,0.8);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  #bday-modal:hover #bday-modal-avatar {
+    transform: scale(1.05) rotate(5deg);
   }
   #bday-modal-avatar img { width: 100%; height: 100%; object-fit: cover; }
-  #bday-modal-text { min-width: 0; padding-top: 2px; }
+  #bday-modal-text { 
+    width: 100%; 
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
   #bday-modal-name {
-    color: var(--fog-100);
-    font-weight: 600;
-    font-size: 1rem;
-    line-height: 1.3;
-    margin: 0 0 0.3rem;
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 1.5rem;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    margin: 0;
   }
   #bday-modal-when {
     color: var(--accent-light);
-    font-size: 0.88rem;
-    margin: 0 0 0.25rem;
+    font-size: 1rem;
+    font-weight: 500;
+    margin: 0;
     line-height: 1.3;
+    text-transform: uppercase;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: 0.02em;
   }
   #bday-modal-date {
     color: var(--fog-300);
-    font-size: 0.78rem;
+    font-size: 0.8rem;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     margin: 0;
     line-height: 1.5;
+    background: rgba(6, 8, 15, 0.55);
+    border: 1px solid var(--ink-600);
+    padding: 4px 10px;
+    border-radius: 6px;
+    display: inline-block;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
   }
 </style>
 `);
@@ -178,7 +283,7 @@ const birthdayModal = raw(`
   <div id="bday-modal" role="dialog" aria-modal="true" aria-labelledby="bday-modal-name">
     <button id="bday-modal-close" aria-label="Close">
       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14"
-           fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+           fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <line x1="1" y1="1" x2="13" y2="13"/><line x1="13" y1="1" x2="1" y2="13"/>
       </svg>
     </button>
@@ -331,23 +436,25 @@ export function BirthdaysPage(opts: {
   const body = error
     ? html`
         <h1 class="text-center">Birthdays</h1>
-        <p class="text-danger text-center">${error}</p>
+        <p class="text-danger text-center font-mono my-8">${error}</p>
       `
     : html`
         <h1 class="text-center">Birthdays</h1>
         <div class="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-6 mt-6">
           ${MONTHS.map((month) => {
-    const users = grouped[month] ?? [];
-    const isCurrent = month === currentMonth;
-    return html`
-              <section class="${`bg-ink-800 border border-ink-600 rounded-md py-[0.9rem] px-4${isCurrent ? ' month-current' : ''}`}">
-                <h3 class="text-accent-light">${month}</h3>
+            const users = grouped[month] ?? [];
+            const isCurrent = month === currentMonth;
+            return html`
+              <section class="${`month-card ${isCurrent ? 'month-current' : ''}`}">
+                <div class="month-node-dot top-left"></div>
+                <div class="month-node-dot bottom-left"></div>
+                <h3 class="text-accent-light font-mono text-sm tracking-wider uppercase mb-1">// ${month}</h3>
                 ${users.length === 0
-    ? html`<div class="text-fog-500 text-[0.85rem]">no birthdays</div>`
-    : html`<div class="flex flex-wrap gap-[0.45rem] pt-[1.2rem]">${users.map((u) => renderUser(u, upcomingIds.has(u.id)))}</div>`}
+                  ? html`<div class="text-fog-500 text-[0.85rem] font-mono mt-2">&gt; NO RECORDED BIRTHDAYS</div>`
+                  : html`<div class="flex flex-wrap gap-[0.45rem] pt-3">${users.map((u) => renderUser(u, upcomingIds.has(u.id)))}</div>`}
               </section>
             `;
-  })}
+          })}
         </div>
         ${birthdayModal}
         ${birthdayModalScript(nonce)}
