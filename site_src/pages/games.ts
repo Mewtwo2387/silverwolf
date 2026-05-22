@@ -217,66 +217,37 @@ const styles = raw(`
     .games-grid.grid-4 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   }
 
-  /* Cartridge Design Aesthetics */
+  /* Sci-Fi Glassmorphic TCG Card Design */
   .game-card {
     display: flex;
     flex-direction: column;
     min-width: 0;
-    background: var(--ink-800);
-    border: 1px solid var(--ink-600);
+    background: color-mix(in oklab, var(--ink-800) 45%, transparent);
+    border: 1px solid color-mix(in oklab, var(--accent) 18%, var(--ink-600));
     border-radius: 0.75rem;
     overflow: hidden;
     text-decoration: none;
     color: inherit;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    font-family: 'JetBrains Mono', monospace;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 
+      0 8px 24px rgba(0, 0, 0, 0.35),
+      0 0 12px rgba(34, 211, 255, 0.03);
+    transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), 
+                box-shadow 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), 
+                border-color 0.2s, 
+                background 0.2s;
     position: relative;
   }
   .game-card:hover {
     transform: translateY(-6px);
     box-shadow: 
-      0 12px 32px rgba(0,0,0,0.45),
-      0 0 20px var(--glow-faint);
+      0 16px 36px rgba(0,0,0,0.55),
+      0 0 20px var(--glow-bright),
+      inset 0 0 12px rgba(34, 211, 255, 0.1);
     border-color: var(--accent);
-    background: var(--ink-700, #1e2030);
-  }
-
-  .cartridge-grip {
-    display: flex;
-    justify-content: center;
-    gap: 4px;
-    padding: 5px 0;
-    background: var(--ink-900);
-    border-bottom: 1px solid var(--ink-700);
-    transition: background-color 0.2s;
-  }
-  .cartridge-grip span {
-    width: 16px;
-    height: 3px;
-    background: var(--ink-600);
-    border-radius: 1px;
-    transition: background-color 0.2s;
-  }
-  .game-card:hover .cartridge-grip span {
-    background: var(--accent-pale);
-  }
-  
-  .cartridge-pins {
-    height: 8px;
-    background: repeating-linear-gradient(90deg, #d4af37 0px, #d4af37 4px, transparent 4px, transparent 8px);
-    border-top: 1px solid var(--ink-600);
-    opacity: 0.8;
-    margin-top: auto;
-    transition: background 0.2s, opacity 0.2s;
-  }
-  .game-card:hover .cartridge-pins {
-    background: repeating-linear-gradient(90deg, var(--accent) 0px, var(--accent) 4px, transparent 4px, transparent 8px);
-    opacity: 1;
-  }
-
-  /* Compact List view cartridge overrides (hides these components for lists) */
-  .games-grid.list-view .cartridge-grip,
-  .games-grid.list-view .cartridge-pins {
-    display: none;
+    background: color-mix(in oklab, var(--ink-700) 60%, transparent);
   }
 
   .card-image {
@@ -285,9 +256,10 @@ const styles = raw(`
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--ink-900);
+    background: color-mix(in oklab, var(--ink-900) 65%, transparent);
     overflow: hidden;
     position: relative;
+    border-bottom: 1px solid color-mix(in oklab, var(--accent) 15%, transparent);
   }
   .card-image img {
     width: 70%;
@@ -322,31 +294,77 @@ const styles = raw(`
     left: 150%;
   }
 
-  .card-body {
-    padding: 1.25rem;
+  .card-content {
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    flex: 1;
+    min-width: 0;
   }
-  .card-body h2 {
-    font-size: 1.1rem;
+  .card-header-bar {
+    position: relative;
+    display: flex;
+    width: 100%;
+    border-bottom: 1px solid color-mix(in oklab, var(--accent) 15%, transparent);
+    background: transparent;
+  }
+  .card-title-tab {
+    position: relative;
+    padding: 0.35rem 1.5rem 0.35rem 0.75rem;
+    background: color-mix(in oklab, var(--accent) 8%, transparent);
+    border-top: 1px solid color-mix(in oklab, var(--accent) 25%, transparent);
+    border-right: 1px solid color-mix(in oklab, var(--accent) 25%, transparent);
+    clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 100%, 0 100%);
+    display: flex;
+    align-items: center;
+    transition: background-color 0.2s, border-color 0.2s;
+  }
+  .game-card:hover .card-title-tab {
+    background: color-mix(in oklab, var(--accent) 15%, transparent);
+    border-color: var(--accent);
+  }
+  .card-title-tab h2 {
+    font-size: 1rem;
     font-weight: bold;
     color: var(--accent-light);
     margin: 0;
+    font-family: 'JetBrains Mono', monospace;
     transition: color 0.2s;
   }
-  .game-card:hover .card-body h2 {
+  .game-card:hover .card-title-tab h2 {
     color: var(--accent);
+  }
+  .card-title-tab h2::before {
+    content: '> ';
+    color: var(--accent);
+    opacity: 0.75;
+    margin-right: 0.3rem;
+    transition: opacity 0.2s;
+  }
+  .game-card:hover .card-title-tab h2::before {
+    opacity: 1;
+    text-shadow: 0 0 6px var(--accent);
+  }
+
+  .card-body {
+    padding: 1rem 1.25rem 1.25rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
   }
   .card-body p {
     font-size: 0.85rem;
     color: var(--fog-200);
     margin: 0;
+    line-height: 1.4;
   }
 
   /* 4x4 grid: tighter padding so smaller cards don't feel cramped */
-  .games-grid.grid-4 .card-body { padding: 0.9rem; }
-  .games-grid.grid-4 .card-body h2 { font-size: 1rem; }
+  .games-grid.grid-4 .card-body { padding: 0.75rem 0.9rem 0.9rem 0.9rem; }
+  .games-grid.grid-4 .card-title-tab {
+    padding: 0.25rem 1.2rem 0.25rem 0.6rem;
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 100%, 0 100%);
+  }
+  .games-grid.grid-4 .card-title-tab h2 { font-size: 0.9rem; }
   .games-grid.grid-4 .card-body p { font-size: 0.8rem; }
 
   /* List view: horizontal layout with small icon and truncated description */
@@ -362,19 +380,32 @@ const styles = raw(`
     height: 88px;
     flex-shrink: 0;
     aspect-ratio: 1 / 1;
+    border-bottom: none;
+    border-right: 1px solid color-mix(in oklab, var(--accent) 15%, transparent);
   }
   .games-grid.list-view .card-image img {
     width: 70%;
     height: 70%;
   }
-  .games-grid.list-view .card-body {
+  .games-grid.list-view .card-content {
     flex: 1;
     min-width: 0;
-    padding: 0.75rem 1rem;
+    display: flex;
+    flex-direction: column;
     justify-content: center;
-    gap: 0.2rem;
   }
-  .games-grid.list-view .card-body h2 { font-size: 1rem; }
+  .games-grid.list-view .card-header-bar {
+    border-bottom: 1px solid color-mix(in oklab, var(--accent) 15%, transparent);
+  }
+  .games-grid.list-view .card-title-tab {
+    padding: 0.2rem 1rem 0.2rem 0.75rem;
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 100%, 0 100%);
+  }
+  .games-grid.list-view .card-title-tab h2 { font-size: 0.95rem; }
+  .games-grid.list-view .card-body {
+    padding: 0.5rem 0.75rem;
+    justify-content: center;
+  }
   .games-grid.list-view .card-body p {
     font-size: 0.85rem;
     white-space: nowrap;
@@ -658,9 +689,6 @@ export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import(
       ${GAMES.map(
     (game) => html`
           <a href="${game.href}" class="game-card">
-            <div class="cartridge-grip">
-              <span></span><span></span><span></span><span></span><span></span>
-            </div>
             <div class="card-image">
               ${(() => {
     if (game.imageType === 'coin') return CoinImage();
@@ -674,11 +702,16 @@ export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import(
     return html`<img src="${(game as any).imageSrc}" alt="${game.name}" />`;
   })()}
             </div>
-            <div class="card-body">
-              <h2>${game.name}</h2>
-              <p>${game.info}</p>
+            <div class="card-content">
+              <div class="card-header-bar">
+                <div class="card-title-tab">
+                  <h2>${game.name}</h2>
+                </div>
+              </div>
+              <div class="card-body">
+                <p>${game.info}</p>
+              </div>
             </div>
-            <div class="cartridge-pins"></div>
           </a>
         `,
   )}
