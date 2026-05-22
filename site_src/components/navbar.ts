@@ -131,8 +131,8 @@ const navbarExtras = (nonce: string) => raw(`
   .nav-username { font-weight: 500; color: var(--fog-100); max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; }
   .nav-profile-link:hover .nav-username { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--accent); }
   .nav-profile-link:hover .nav-avatar { box-shadow: 0 0 6px var(--glow-faint, rgba(255,255,255,0.2)); }
-  .nav-auth-link { color: var(--fog-300); text-decoration: none; font-size: 0.85rem; padding: 0.3rem 0.6rem; border-radius: 0.4rem; border: 1px solid transparent; transition: color 0.2s, border-color 0.2s; }
-  .nav-auth-link:hover { color: var(--fog-100); border-color: var(--ink-600); }
+  .nav-auth-link { color: color-mix(in oklab, var(--danger) 65%, #000); text-decoration: none; font-size: 0.85rem; padding: 0.3rem 0.6rem; border-radius: 0.4rem; border: 1px solid transparent; transition: color 0.2s, text-shadow 0.2s; }
+  .nav-auth-link:hover { color: var(--danger); text-shadow: 0 0 8px var(--danger-glow); }
   /* Hide desktop auth chip on touch devices — auth lives in /home there */
   @media (max-width: 1024px), (hover: none) and (pointer: coarse) {
     #nav-auth-desktop { display: none; }
@@ -506,7 +506,7 @@ export function Navbar(active: NavActive | undefined, nonce: string, lv999?: boo
             </a>
             <form action="/auth/logout" method="POST" style="display:inline;margin:0;">
               <input type="hidden" name="csrf" value="${user.csrf}" />
-              <button type="submit" class="nav-auth-link font-mono" style="background:none;cursor:pointer;font-family:inherit;">Logout</button>
+              <button type="submit" class="nav-auth-link font-mono" style="background:none;cursor:pointer;font-family:inherit;">[logout]</button>
             </form>
           </div>
         </div>`

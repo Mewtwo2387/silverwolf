@@ -138,7 +138,7 @@ const aboutExtras = (nonce: string) => raw(`
     position: absolute;
     top: 0.8rem;
     left: 1.2rem;
-    font-family: monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 0.7rem;
     color: rgba(34, 211, 255, 0.4);
     letter-spacing: 0.08em;
@@ -148,7 +148,7 @@ const aboutExtras = (nonce: string) => raw(`
     position: absolute;
     top: 0.8rem;
     right: 1.2rem;
-    font-family: monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 0.7rem;
     color: #10b981;
     letter-spacing: 0.08em;
@@ -175,7 +175,7 @@ const aboutExtras = (nonce: string) => raw(`
     position: absolute;
     top: 0.6rem;
     left: 1rem;
-    font-family: monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 0.62rem;
     color: rgba(34, 211, 255, 0.4);
     letter-spacing: 0.08em;
@@ -185,7 +185,7 @@ const aboutExtras = (nonce: string) => raw(`
     position: absolute;
     top: 0.6rem;
     right: 1rem;
-    font-family: monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 0.62rem;
     color: #10b981;
     letter-spacing: 0.08em;

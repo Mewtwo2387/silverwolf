@@ -69,7 +69,7 @@ export function FortunePage(opts: { fortunes: string[]; nonce: string; lv999?: b
     border-radius: 4px;
     padding: 0.9rem 1rem;
     box-sizing: border-box;
-    font-family: 'Courier New', Courier, monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 0.85rem;
     color: #2a1a08;
     text-align: center;

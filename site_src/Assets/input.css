@@ -126,7 +126,7 @@ code, pre, kbd, .font-mono {
   summary::after {
     content: '[ OPEN ]';
     font-size: 0.72rem;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: 'JetBrains Mono', monospace;
     color: var(--accent-light);
     border: 1px solid rgba(34, 211, 255, 0.25);
     padding: 0.15rem 0.5rem;

@@ -57,7 +57,7 @@ const styles = raw(`
     top: 0.5rem;
     right: 0.75rem;
     font-size: 0.6rem;
-    font-family: monospace;
+    font-family: 'JetBrains Mono', monospace;
     color: rgba(34, 211, 255, 0.35);
     letter-spacing: 0.1em;
   }
@@ -83,7 +83,7 @@ const styles = raw(`
   .me-header .me-id {
     font-size: 0.8rem;
     color: var(--accent-light);
-    font-family: monospace;
+    font-family: 'JetBrains Mono', monospace;
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;

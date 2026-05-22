@@ -144,7 +144,7 @@ const styles = raw(`
     border: 1px solid var(--ink-600);
     border-radius: 0.3rem;
     padding: 0.1rem 0.4rem;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: 'JetBrains Mono', monospace;
   }
 
   /* Results list — cap height at ~10 rows; scroll past that. */
@@ -236,7 +236,7 @@ const styles = raw(`
     gap: 0.5rem;
   }
   .search-footer kbd {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: 'JetBrains Mono', monospace;
     border: 1px solid var(--ink-600);
     border-radius: 0.25rem;
     padding: 0.05rem 0.35rem;

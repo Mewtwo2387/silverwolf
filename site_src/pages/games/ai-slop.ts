@@ -64,6 +64,15 @@ export function AiSlopPage(opts: {
 
   const styles = raw(`
 <style>
+  @media (min-width: 1025px) {
+    main:has(.aislop-page-wrap) {
+      max-width: 1100px;
+      width: calc(100% - 2rem);
+      padding-left: 0;
+      padding-right: 0;
+    }
+  }
+
   .aislop-shell {
     display: flex;
     gap: 1rem;
@@ -101,18 +110,37 @@ export function AiSlopPage(opts: {
 
   .aislop-new {
     width: 100%;
-    background: linear-gradient(135deg, var(--accent), var(--accent-pale));
-    color: var(--ink-900);
-    border: none;
+    background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 8%, transparent), color-mix(in oklab, var(--accent-pale) 8%, transparent));
+    color: var(--accent);
+    border: 1px solid var(--accent);
     border-radius: 0.5rem;
     padding: 0.6rem;
     font: inherit;
-    font-weight: bold;
+    font-weight: 700;
     cursor: pointer;
-    transition: transform 0.1s, filter 0.15s;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 0 8px var(--glow-faint);
+    transition: transform 0.1s, box-shadow 0.15s, opacity 0.1s, background-color 0.15s, border-color 0.15s, color 0.15s;
   }
-  .aislop-new:hover { filter: brightness(1.1); }
-  .aislop-new:active { transform: translateY(1px); }
+  .aislop-new:hover:not(:disabled) {
+    background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 25%, transparent), color-mix(in oklab, var(--accent-pale) 25%, transparent));
+    color: #fff;
+    border-color: var(--accent-light);
+    box-shadow: 0 0 16px var(--glow-bright), 0 0 4px var(--accent);
+  }
+  .aislop-new:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: 0 0 6px var(--glow-faint);
+  }
+  .aislop-new:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    border-color: var(--ink-500);
+    background: transparent;
+    color: var(--ink-500);
+    box-shadow: none;
+  }
 
   .aislop-group {
     border: 1px solid var(--ink-600);
@@ -397,18 +425,37 @@ export function AiSlopPage(opts: {
   .aislop-input select:focus { outline: none; border-color: var(--accent); }
   .aislop-input select:disabled { opacity: 0.6; cursor: not-allowed; }
   .aislop-input button.send {
-    background: linear-gradient(135deg, var(--accent), var(--accent-pale));
-    color: var(--ink-900);
-    font-weight: bold;
-    border: none;
+    background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 8%, transparent), color-mix(in oklab, var(--accent-pale) 8%, transparent));
+    color: var(--accent);
+    border: 1px solid var(--accent);
     border-radius: 0.5rem;
     padding: 0 1.1rem;
     height: 44px;
+    font-weight: 700;
     cursor: pointer;
-    transition: filter 0.15s;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 0 8px var(--glow-faint);
+    transition: transform 0.1s, box-shadow 0.15s, opacity 0.1s, background-color 0.15s, border-color 0.15s, color 0.15s;
   }
-  .aislop-input button.send:hover { filter: brightness(1.1); }
-  .aislop-input button.send:disabled { opacity: 0.5; cursor: not-allowed; filter: none; }
+  .aislop-input button.send:hover:not(:disabled) {
+    background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 25%, transparent), color-mix(in oklab, var(--accent-pale) 25%, transparent));
+    color: #fff;
+    border-color: var(--accent-light);
+    box-shadow: 0 0 16px var(--glow-bright), 0 0 4px var(--accent);
+  }
+  .aislop-input button.send:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: 0 0 6px var(--glow-faint);
+  }
+  .aislop-input button.send:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    border-color: var(--ink-500);
+    background: transparent;
+    color: var(--ink-500);
+    box-shadow: none;
+  }
 
   .login-cta {
     background: var(--ink-800);
@@ -954,33 +1001,35 @@ export function AiSlopPage(opts: {
 `);
 
   const body = html`
-    <h1 class="text-center">AI Slop</h1>
-    <p class="text-center text-fog-300 mb-4">chat with ai slop or something idk</p>
-    ${loggedOut
-    ? html`<div class="login-cta">Log in with <a href="/auth/discord/login">Discord</a> to chat.</div>`
-    : html`
-        <div class="aislop-shell">
-          <aside class="aislop-side">
-            <button type="button" id="aislop-new" class="aislop-new">+ New chat</button>
-            ${sidebarBody()}
-          </aside>
-          <section class="aislop-main">
-            <div class="aislop-head">
-              <h2 id="aislop-title">New chat</h2>
-              <span id="aislop-persona-pill" class="pill">${PERSONAS[0].name}</span>
-            </div>
-            <div id="aislop-error" class="aislop-error" style="display:none"></div>
-            <div id="aislop-msgs" class="aislop-msgs"></div>
-            <form id="aislop-form" class="aislop-input">
-              <textarea id="aislop-text" rows="1" placeholder="Talk to AI Slop..." aria-label="Message" autocomplete="off"></textarea>
-              <select id="aislop-model" aria-label="Model">
-                ${modelOptions}
-              </select>
-              <button type="submit" class="send" id="aislop-send">Send</button>
-            </form>
-          </section>
-        </div>
-      `}
+    <div class="aislop-page-wrap">
+      <h1 class="text-center">AI Slop</h1>
+      <p class="text-center text-fog-300 mb-4">chat with ai slop or something idk</p>
+      ${loggedOut
+      ? html`<div class="login-cta">Log in with <a href="/auth/discord/login">Discord</a> to chat.</div>`
+      : html`
+          <div class="aislop-shell">
+            <aside class="aislop-side">
+              <button type="button" id="aislop-new" class="aislop-new">+ New chat</button>
+              ${sidebarBody()}
+            </aside>
+            <section class="aislop-main">
+              <div class="aislop-head">
+                <h2 id="aislop-title">New chat</h2>
+                <span id="aislop-persona-pill" class="pill">${PERSONAS[0].name}</span>
+              </div>
+              <div id="aislop-error" class="aislop-error" style="display:none"></div>
+              <div id="aislop-msgs" class="aislop-msgs"></div>
+              <form id="aislop-form" class="aislop-input">
+                <textarea id="aislop-text" rows="1" placeholder="Talk to AI Slop..." aria-label="Message" autocomplete="off"></textarea>
+                <select id="aislop-model" aria-label="Model">
+                  ${modelOptions}
+                </select>
+                <button type="submit" class="send" id="aislop-send">Send</button>
+              </form>
+            </section>
+          </div>
+        `}
+    </div>
     ${styles}
     ${loggedOut ? '' : script}
   `;

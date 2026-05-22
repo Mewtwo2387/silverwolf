@@ -97,19 +97,43 @@ export function AwdangitPage(opts: { nonce: string; lv999?: boolean; user?: NavU
   .symbol img { width: 64px; height: 64px; object-fit: contain; }
 
   .gamble-btn {
-    background: linear-gradient(135deg, #FFCC4D, #F4900C);
-    color: #4a0d12;
-    border: none;
+    --btn-color: #FFCC4D;
+    --btn-color-pale: #F4900C;
+    --btn-color-light: #FFE8B6;
+    --btn-glow-faint: rgba(255, 204, 77, 0.25);
+    --btn-glow-bright: rgba(255, 204, 77, 0.55);
+
+    background: linear-gradient(135deg, color-mix(in oklab, var(--btn-color) 8%, transparent), color-mix(in oklab, var(--btn-color-pale) 8%, transparent));
+    color: var(--btn-color);
+    border: 1px solid var(--btn-color);
     border-radius: 4px;
-    padding: 0.85rem 2.4rem;
+    padding: 0.7rem 1.6rem;
+    font-size: 1rem;
+    font-weight: 700;
     cursor: pointer;
-    font-weight: bold;
-    font-size: 1.05rem;
-    box-shadow: 0 4px 0 #c47800;
-    transition: transform 0.1s, box-shadow 0.1s, opacity 0.1s;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 0 8px var(--btn-glow-faint);
+    transition: transform 0.1s, box-shadow 0.15s, opacity 0.1s, background-color 0.15s, border-color 0.15s, color 0.15s;
   }
-  .gamble-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #c47800; }
-  .gamble-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .gamble-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, color-mix(in oklab, var(--btn-color) 25%, transparent), color-mix(in oklab, var(--btn-color-pale) 25%, transparent));
+    color: #fff;
+    border-color: var(--btn-color-light);
+    box-shadow: 0 0 16px var(--btn-glow-bright), 0 0 4px var(--btn-color);
+  }
+  .gamble-btn:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: 0 0 6px var(--btn-glow-faint);
+  }
+  .gamble-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    border-color: var(--ink-500);
+    background: transparent;
+    color: var(--ink-500);
+    box-shadow: none;
+  }
 
   .result-banner {
     text-align: center;

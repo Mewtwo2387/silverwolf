@@ -19,7 +19,6 @@ const birthdayExtras = raw(`
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     transition: border-color 0.3s, box-shadow 0.3s;
-    overflow: hidden;
   }
   .month-card::before {
     content: '';
@@ -27,10 +26,13 @@ const birthdayExtras = raw(`
     top: 0; left: 0;
     width: 4px; height: 100%;
     background: var(--ink-600);
+    border-top-left-radius: 0.75rem;
+    border-bottom-left-radius: 0.75rem;
   }
   .month-card:hover {
     border-color: rgba(34, 211, 255, 0.3);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), 0 0 10px rgba(34, 211, 255, 0.05);
+    z-index: 10;
   }
   .month-card.month-current {
     border-color: var(--accent) !important;
@@ -63,6 +65,7 @@ const birthdayExtras = raw(`
     transform: translateY(-1px);
     border-color: var(--accent) !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), 0 0 8px var(--glow-faint);
+    z-index: 20;
   }
   .bday-user:active {
     transform: translateY(0);
@@ -110,6 +113,9 @@ const birthdayExtras = raw(`
     z-index: 10;
     box-shadow: 0 4px 12px rgba(0,0,0,0.4);
   }
+  .bday-user-upcoming::after {
+    bottom: calc(100% + 28px);
+  }
   .bday-user:hover::after {
     opacity: 1;
   }
@@ -153,7 +159,7 @@ const birthdayExtras = raw(`
     background: linear-gradient(90deg, rgba(34, 211, 255, 0.1), transparent);
     border-bottom: 1px solid rgba(34, 211, 255, 0.2);
     padding: 0 1.75rem;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 0.65rem;
     font-weight: bold;
     color: var(--accent);
@@ -230,13 +236,13 @@ const birthdayExtras = raw(`
     margin: 0;
     line-height: 1.3;
     text-transform: uppercase;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: 'JetBrains Mono', monospace;
     letter-spacing: 0.02em;
   }
   #bday-modal-date {
     color: var(--fog-300);
     font-size: 0.8rem;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: 'JetBrains Mono', monospace;
     margin: 0;
     line-height: 1.5;
     background: rgba(6, 8, 15, 0.55);

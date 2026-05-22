@@ -161,24 +161,42 @@ export function LovePage(opts: { nonce: string; lv999?: boolean; user?: import('
   }
 
   .love-btn {
-    background: linear-gradient(135deg, #f76976, #f5888e);
-    color: white;
-    border: none;
+    --btn-color: #f76976;
+    --btn-color-pale: #f5888e;
+    --btn-color-light: #ffd2dc;
+    --btn-glow-faint: rgba(247, 105, 118, 0.25);
+    --btn-glow-bright: rgba(247, 105, 118, 0.55);
+
+    background: linear-gradient(135deg, color-mix(in oklab, var(--btn-color) 8%, transparent), color-mix(in oklab, var(--btn-color-pale) 8%, transparent));
+    color: var(--btn-color);
+    border: 1px solid var(--btn-color);
     border-radius: 4px;
-    padding: 0.8rem 2.4rem;
-    cursor: pointer;
-    font-weight: bold;
+    padding: 0.7rem 1.6rem;
     font-size: 1rem;
-    box-shadow: 0 4px 0 #c44851;
-    transition: transform 0.1s, box-shadow 0.1s;
+    font-weight: 700;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 0 8px var(--btn-glow-faint);
+    transition: transform 0.1s, box-shadow 0.15s, opacity 0.1s, background-color 0.15s, border-color 0.15s, color 0.15s;
   }
-  .love-btn:active {
-    transform: translateY(2px);
-    box-shadow: 0 2px 0 #c44851;
+  .love-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, color-mix(in oklab, var(--btn-color) 25%, transparent), color-mix(in oklab, var(--btn-color-pale) 25%, transparent));
+    color: #fff;
+    border-color: var(--btn-color-light);
+    box-shadow: 0 0 16px var(--btn-glow-bright), 0 0 4px var(--btn-color);
+  }
+  .love-btn:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: 0 0 6px var(--btn-glow-faint);
   }
   .love-btn:disabled {
-    opacity: 0.6;
+    opacity: 0.4;
     cursor: not-allowed;
+    border-color: var(--ink-500);
+    background: transparent;
+    color: var(--ink-500);
+    box-shadow: none;
   }
 
   /* ----- >=80% : full-page magical heart trace ----- */
