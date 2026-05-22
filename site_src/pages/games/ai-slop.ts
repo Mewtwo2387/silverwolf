@@ -696,7 +696,7 @@ export function AiSlopPage(opts: {
     setError('');
     setSending(true);
     // Optimistic: push user bubble + thinking placeholder
-    pushMessage('user', text);
+    const userNode = pushMessage('user', text);
     const thinkingNode = pushMessage('ai', '', { thinking: true });
 
     const payload = {
@@ -716,6 +716,7 @@ export function AiSlopPage(opts: {
       data = await r.json();
     } catch (e) {
       thinkingNode.remove();
+      userNode.remove();
       setError('Network error.');
       setSending(false);
       return;
@@ -723,6 +724,7 @@ export function AiSlopPage(opts: {
 
     thinkingNode.remove();
     if (!data.ok) {
+      userNode.remove();
       const map = {
         unauthenticated: 'You must log in.',
         csrf: 'Session expired. Refresh the page.',

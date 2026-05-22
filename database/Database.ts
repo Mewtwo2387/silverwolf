@@ -98,11 +98,15 @@ class Database {
         )
     `);
 
-    // Enforce at most one active AI session per user+persona
+    // Enforce at most one active AI session per user+persona on Discord. Scoped
+    // to source='discord' so an accidental active=1 web row can't collide with
+    // the bot's active session. The legacy source-agnostic index is dropped
+    // first so older databases pick up the new predicate.
+    this.db.run('DROP INDEX IF EXISTS idx_aichatsession_user_persona_active');
     this.db.run(`
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_aichatsession_user_persona_active
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_aichatsession_user_discord_active
       ON AiChatSession (user_id, persona_name)
-      WHERE active = 1
+      WHERE active = 1 AND source = 'discord'
     `);
 
     // Speed up the website sidebar query (user's web-only chat list).

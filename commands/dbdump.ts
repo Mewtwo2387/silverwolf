@@ -133,7 +133,7 @@ class DBDump extends DevCommand {
           { name: 'All Data', value: 'all' },
         ],
       },
-    ], { blame: 'both' });
+    ], { blame: 'both', ephemeral: true });
   }
 
   async run(interaction: any): Promise<void> {
@@ -162,7 +162,7 @@ class DBDump extends DevCommand {
           if (i === 0) {
             await interaction.editReply({ content, files: chunk });
           } else {
-            await interaction.followUp({ content, files: chunk });
+            await interaction.followUp({ content, files: chunk, flags: MessageFlags.Ephemeral });
           }
         }
       }
@@ -173,6 +173,7 @@ class DBDump extends DevCommand {
         await interaction.followUp({
           content: 'database:',
           files: [{ attachment: databasePath, name: 'database.db' }],
+          flags: MessageFlags.Ephemeral,
         });
       }
     } catch (error) {

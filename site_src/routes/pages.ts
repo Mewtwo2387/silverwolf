@@ -69,7 +69,12 @@ export function registerPageRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
     return c.redirect(user ? '/me' : '/about');
   });
 
-  app.get('/about', (c) => c.html(AboutPage({ nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', goof: c.req.query('theme') === 'goof', user: navUser(c) }).toString()));
+  app.get('/about', (c) => c.html(AboutPage({
+    nonce: c.get('nonce'),
+    lv999: c.req.query('lv') === '999',
+    goof: c.req.query('theme') === 'goof',
+    user: navUser(c),
+  }).toString()));
 
   app.get('/leaderboards', async (c) => {
     const raw = c.req.query('board');

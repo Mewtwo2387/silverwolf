@@ -63,9 +63,15 @@ class UserModel {
     userId: string,
     mutations: { adds?: Record<string, number>; sets?: Record<string, any> },
   ): Promise<void> {
+    const NULLABLE_SET_FIELDS = new Set(['birthdays', 'dinonuggies_last_claimed']);
     const isValid = (v: any) => !Number.isNaN(v) && v !== null && v !== undefined;
+    const isValidSet = (field: string, v: any) => {
+      if (Number.isNaN(v)) return false;
+      if (v === null || v === undefined) return NULLABLE_SET_FIELDS.has(camelToSnake(field));
+      return true;
+    };
     const adds = Object.entries(mutations.adds || {}).filter(([, v]) => isValid(v));
-    const sets = Object.entries(mutations.sets || {}).filter(([, v]) => isValid(v));
+    const sets = Object.entries(mutations.sets || {}).filter(([f, v]) => isValidSet(f, v));
     if (adds.length === 0 && sets.length === 0) return;
     await this.getUser(userId);
     await this.db.executeTransaction((rawDb) => {
