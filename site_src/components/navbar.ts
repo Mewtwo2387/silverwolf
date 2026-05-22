@@ -85,6 +85,37 @@ const navbarExtras = (nonce: string) => raw(`
     box-shadow: 0 0 14px var(--glow-bright), 0 0 4px var(--accent);
   }
 
+  /* Desktop window header is hidden by default (mobile/narrow) */
+  .nav-window-header {
+    display: none;
+  }
+  @media (min-width: 1025px) {
+    .nav-window-header {
+      display: flex;
+    }
+  }
+
+  /* Desktop window styles override */
+  @media (min-width: 1025px) {
+    .nav-surface {
+      max-width: 1100px;
+      width: calc(100% - 2rem);
+      margin: 1.5rem auto 0 auto;
+      border-radius: 0.75rem;
+      border: 1px solid color-mix(in oklab, var(--accent) 20%, transparent);
+      border-image: none;
+      background: color-mix(in oklab, var(--ink-800) 65%, transparent);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 
+        0 10px 30px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05),
+        0 0 15px rgba(34, 211, 255, 0.05);
+      position: relative;
+      overflow: hidden;
+    }
+  }
+
   /* Desktop nav link spacing */
   #nav-links { gap: 1.75rem; }
 
@@ -93,7 +124,7 @@ const navbarExtras = (nonce: string) => raw(`
 
   /* Desktop auth chip (right side of navbar, logged-in only) */
   #nav-auth-desktop { display: flex; align-items: center; }
-  .nav-auth { display: flex; align-items: center; gap: 0.6rem; color: var(--fog-200); font-size: 0.9rem; }
+  .nav-auth { display: flex; align-items: center; gap: 0.6rem; color: var(--fog-200); font-size: 0.9rem; font-family: 'JetBrains Mono', monospace !important; }
   /* Avatar + username are wrapped in <a href="/me"> — the link itself stays unstyled. */
   .nav-profile-link { display: inline-flex; align-items: center; gap: 0.6rem; text-decoration: none; color: inherit; }
   .nav-avatar { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--accent); transition: box-shadow 0.2s; }
@@ -416,7 +447,7 @@ const navbarExtras = (nonce: string) => raw(`
 `);
 
 export function Navbar(active: NavActive | undefined, nonce: string, lv999?: boolean, user?: NavUser | null) {
-  const base = 'nav-link text-[0.95rem] px-[0.1rem] py-1 border-b-2 border-transparent transition-colors no-underline';
+  const base = 'nav-link text-[0.95rem] px-[0.1rem] py-1 border-b-2 border-transparent transition-colors no-underline font-mono';
   const link = (href: string, label: string, key: string) => {
     const isActive = active === key;
     const state = isActive ? 'text-fog-100 active' : 'text-fog-200 hover:text-fog-100';
@@ -437,33 +468,50 @@ export function Navbar(active: NavActive | undefined, nonce: string, lv999?: boo
   const sticker = pool[Math.floor(Math.random() * pool.length)];
 
   return html`
-    <nav id="site-nav" class="nav-surface flex items-center justify-between py-[0.9rem] px-[clamp(1rem,4vw,3rem)]">
-      <img src="${sticker}" alt="Silverwolf" width="48" height="48" style="height:3rem;width:auto;" decoding="async" />
-
-      <!-- Desktop nav — display controlled by CSS above, not Tailwind classes -->
-      <div class="nav-links relative" id="nav-links">
-        ${link(aboutHref, 'About', 'about')}
-        ${link('/leaderboards', 'Leaderboards', 'leaderboards')}
-        ${link('/birthdays', 'Birthdays', 'birthdays')}
-        ${link('/games', 'Games', 'games')}
-        <span class="nav-underline nav-underline-grad absolute left-0 h-[2px] w-0 rounded-sm opacity-0 pointer-events-none" style="bottom:-2px;" aria-hidden="true"></span>
+    <nav id="site-nav" class="nav-surface font-mono">
+      <!-- Desktop window header: only visible on desktop -->
+      <div class="nav-window-header flex items-center justify-between px-[1.5rem] py-2 border-b border-[rgba(34,211,255,0.12)] select-none">
+        <div class="flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-[#ff6b8a] opacity-60"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-[#f59e0b] opacity-60"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-[#10b981] opacity-60"></span>
+          <span class="ml-2 text-[0.7rem] font-semibold text-accent opacity-75 tracking-widest font-mono">SYS.NAVBAR.EXE</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="status-led status-led-green w-1.5 h-1.5"></span>
+          <span class="text-[#10b981] text-[0.7rem] font-bold tracking-widest font-mono">[ONLINE]</span>
+        </div>
       </div>
 
-      ${user
+      <!-- Window content (main flex layout) -->
+      <div class="nav-window-content flex items-center justify-between py-[0.9rem] px-[clamp(1rem,4vw,3rem)]">
+        <img src="${sticker}" alt="Silverwolf" width="48" height="48" style="height:3rem;width:auto;" decoding="async" />
+
+        <!-- Desktop nav — display controlled by CSS above, not Tailwind classes -->
+        <div class="nav-links relative font-mono" id="nav-links">
+          ${link(aboutHref, 'About', 'about')}
+          ${link('/leaderboards', 'Leaderboards', 'leaderboards')}
+          ${link('/birthdays', 'Birthdays', 'birthdays')}
+          ${link('/games', 'Games', 'games')}
+          <span class="nav-underline nav-underline-grad absolute left-0 h-[2px] w-0 rounded-sm opacity-0 pointer-events-none" style="bottom:-2px;" aria-hidden="true"></span>
+        </div>
+
+        ${user
     ? html`
         <div id="nav-auth-desktop">
-          <div class="nav-auth">
-            <a href="/me" class="nav-profile-link" aria-label="Open your dashboard">
+          <div class="nav-auth font-mono">
+            <a href="/me" class="nav-profile-link font-mono" aria-label="Open your dashboard">
               ${user.avatarURL ? html`<img class="nav-avatar" src="${user.avatarURL}" alt="${user.username}" width="32" height="32" />` : ''}
-              <span class="nav-username">@${user.username}</span>
+              <span class="nav-username font-mono">@${user.username}</span>
             </a>
             <form action="/auth/logout" method="POST" style="display:inline;margin:0;">
               <input type="hidden" name="csrf" value="${user.csrf}" />
-              <button type="submit" class="nav-auth-link" style="background:none;cursor:pointer;font-family:inherit;">Logout</button>
+              <button type="submit" class="nav-auth-link font-mono" style="background:none;cursor:pointer;font-family:inherit;">Logout</button>
             </form>
           </div>
         </div>`
     : html`<span class="nav-spacer" aria-hidden="true"></span>`}
+      </div>
     </nav>
 
     <!-- Mobile bottom dock — visible only on touch devices via CSS media query -->
