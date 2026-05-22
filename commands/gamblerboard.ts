@@ -2,6 +2,7 @@ import * as Discord from 'discord.js';
 import { Command } from './classes/Command';
 import { format } from '../utils/math';
 import { logError } from '../utils/log';
+import { gamblerBoardTitle } from '../utils/leaderboards';
 
 class GamblerBoard extends Command {
   itemsPerPage: number;
@@ -125,15 +126,8 @@ class GamblerBoard extends Command {
       result += `${i + 1 + (page * this.itemsPerPage)}. <@${winnings[i].id}>: ${winnings[i].relativeWon > 0 ? '+' : ''}${format(winnings[i].relativeWon, true)} bets\n`;
     }
 
-    let title;
-    if (leaderboardType === 'all') {
-      title = 'The Ultimate Gambler Leaderboard';
-    } else {
-      title = `${leaderboardType.charAt(0).toUpperCase() + leaderboardType.slice(1)} Leaderboard`;
-    }
-
     return new Discord.EmbedBuilder()
-      .setTitle(title)
+      .setTitle(gamblerBoardTitle(leaderboardType))
       .setDescription(result)
       .setFooter({ text: `Page ${page + 1}` });
   }

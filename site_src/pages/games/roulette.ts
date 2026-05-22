@@ -1,7 +1,8 @@
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import type { NavUser } from '../../components/navbar';
-import { inlineJSON, NORMALIZE_AMOUNT_JS } from '../../inline';
+import { inlineJSON } from '../../inline';
+import { getColor } from '../../../utils/roulette';
 
 export function RoulettePage(opts: { nonce: string; lv999?: boolean; user?: NavUser | null }) {
   const { nonce, lv999, user } = opts;
@@ -11,7 +12,8 @@ export function RoulettePage(opts: { nonce: string; lv999?: boolean; user?: NavU
   // Build the wheel server-side. 37 numbers, drawn around a circle. Colors
   // are baked into a conic-gradient so each segment forms a thick wedge from
   // the hub outward (matches the casino-wheel look in the games tile SVG).
-  const RED = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
+  // Colors come from the shared `utils/roulette.ts` `getColor()` so the wheel
+  // matches whatever the bot uses for payout resolution.
   const SEG_DEG = 360 / 37;
   const HALF_SEG = SEG_DEG / 2;
   const COLOR_HEX = { red: '#c0252e', black: '#1a1a1a', green: '#2ecc71' } as const;
@@ -19,9 +21,7 @@ export function RoulettePage(opts: { nonce: string; lv999?: boolean; user?: NavU
   const stops: string[] = [];
   for (let i = 0; i < 37; i += 1) {
     const angle = i * SEG_DEG;
-    let color: 'green' | 'red' | 'black' = 'black';
-    if (i === 0) color = 'green';
-    else if (RED.has(i)) color = 'red';
+    const color = getColor(i);
     labels.push({ n: i, angle, color });
     const start = (i * SEG_DEG).toFixed(4);
     const end = ((i + 1) * SEG_DEG).toFixed(4);
@@ -161,7 +161,6 @@ export function RoulettePage(opts: { nonce: string; lv999?: boolean; user?: NavU
   const script = raw(`
 <script nonce="${nonce}">
 (() => {
-  ${NORMALIZE_AMOUNT_JS}
   const csrf = ${csrfJSON};
   const wheel = document.getElementById('wheel');
   const spinBtn = document.getElementById('spin-btn');
@@ -212,7 +211,7 @@ export function RoulettePage(opts: { nonce: string; lv999?: boolean; user?: NavU
     spinBtn.disabled = true;
     clearBanner();
 
-    const amount = normalizeAmount(amountInput.value);
+    const amount = amountInput.value.trim();
     const betType = betTypeSel.value;
     let betValue = null;
     if (betType === 'number') {

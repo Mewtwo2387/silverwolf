@@ -17,10 +17,14 @@ import {
   generateFakeQuoteWeb,
 } from '../bot-bridge';
 import { type AppEnv, authedGameRequest, readGameBody } from '../shared';
-
-const POOP_COLOURS = ['brown', 'dark-brown', 'yellow', 'green', 'black', 'red', 'holy'];
-const POOP_SIZES = ['small', 'medium', 'large', 'omnipresent'];
-const POOP_TYPES = ['liquid', 'soft', 'normal', 'hard', 'pellet', 'divine'];
+import { computeLoveCompatibility, lovePhraseFor } from '../../utils/loveCalculator';
+import {
+  POOP_COLOUR_VALUES,
+  POOP_SIZE_VALUES,
+  POOP_TYPE_VALUES,
+  POOP_DURATION_MIN,
+  POOP_DURATION_MAX,
+} from '../../utils/poop';
 
 // All endpoints require an authenticated session and a matching CSRF token in
 // the JSON body. Return JSON.
@@ -109,13 +113,13 @@ export function registerGameApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf)
     const body = await readGameBody(c);
     const auth = authedGameRequest(c, body);
     if (auth instanceof Response) return auth;
-    const colour = typeof body!.colour === 'string' && POOP_COLOURS.includes(body!.colour) ? body!.colour : null;
-    const size = typeof body!.size === 'string' && POOP_SIZES.includes(body!.size) ? body!.size : null;
-    const type = typeof body!.type === 'string' && POOP_TYPES.includes(body!.type) ? body!.type : null;
+    const colour = typeof body!.colour === 'string' && POOP_COLOUR_VALUES.includes(body!.colour) ? body!.colour : null;
+    const size = typeof body!.size === 'string' && POOP_SIZE_VALUES.includes(body!.size) ? body!.size : null;
+    const type = typeof body!.type === 'string' && POOP_TYPE_VALUES.includes(body!.type) ? body!.type : null;
     let duration: number | null = null;
     if (typeof body!.duration === 'number' && Number.isFinite(body!.duration)) {
       const d = Math.trunc(body!.duration);
-      if (d >= 1 && d <= 120) duration = d;
+      if (d >= POOP_DURATION_MIN && d <= POOP_DURATION_MAX) duration = d;
     }
     try {
       const result = await logPoopWeb(silverwolf, auth.discordId, colour, size, type, duration);
@@ -243,6 +247,19 @@ export function registerGameApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf)
       logError('fakequote generate failed:', err);
       return c.json({ ok: false, error: 'server' }, 500);
     }
+  });
+
+  // Public (no auth, no CSRF) — pure hash, no DB writes. Both surfaces share
+  // utils/loveCalculator.ts so the Discord command and the web page always
+  // agree on the percentage for any given (input1, input2) pair.
+  app.post('/games/love/calculate', async (c) => {
+    const body = await readGameBody(c);
+    if (!body) return c.json({ error: 'invalid_body' }, 400);
+    const a = typeof body.input1 === 'string' ? body.input1 : '';
+    const b = typeof body.input2 === 'string' ? body.input2 : '';
+    if (!a.trim() || !b.trim()) return c.json({ error: 'invalid' }, 400);
+    const percentage = computeLoveCompatibility(a, b);
+    return c.json({ percentage, phrase: lovePhraseFor(percentage) });
   });
 
   app.post('/games/claim/claim', async (c) => {

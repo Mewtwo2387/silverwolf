@@ -2,22 +2,21 @@ import type { Silverwolf } from '../classes/silverwolf';
 import { logError } from '../utils/log';
 import {
   checkValidBetRaw,
-  INVALID_AMOUNT,
-  NEGATIVE_AMOUNT,
-  POOR_AMOUNT,
-  INFINITY_AMOUNT,
+  mapBetCode,
+  type BetErrorCode as BetingErrorCode,
 } from '../utils/betting';
 import {
   type Card,
   createDeck,
   drawCard,
   calculateHand,
+  resolveBlackjackStand,
   recordBlackjackWin,
   recordBlackjackLoss,
   recordBlackjackTie,
-} from '../commands/blackjack';
-import { playRoulette, type RouletteBetType, type RouletteResult } from '../commands/roulette';
-import { spinSlots, type SlotsResult } from '../commands/slots';
+} from '../utils/blackjack';
+import { playRoulette, type RouletteBetType, type RouletteResult } from '../utils/roulette';
+import { spinSlots, type SlotsResult } from '../utils/slots';
 import { processClaim, type ClaimResult } from '../utils/claim';
 import { processEat, type EatResult, formatEatItemLine } from '../utils/eat';
 import { processBuyUpgrade, type BuyUpgradeResult } from '../utils/buyUpgrade';
@@ -46,25 +45,23 @@ import {
   getNuggiePokeMultiplier,
   getNuggieNuggieMultiplier,
 } from '../utils/ascensionupgrades';
-import quote, { FONT_MAP } from '../utils/quote';
+import quote, {
+  FAKEQUOTE_BACKGROUND_VALUES,
+  FAKEQUOTE_PROFILE_COLOR_VALUES,
+  FAKEQUOTE_FONT_VALUES,
+} from '../utils/quote';
+import { gamblerBoardTitle } from '../utils/leaderboards';
+import { getNextBirthdayInfo } from '../utils/birthdays';
 import { format } from '../utils/math';
 
 export type LeaderboardKind = 'gambler' | 'murder' | 'nuggie' | 'poop';
 
-export type BetErrorCode = 'invalid' | 'negative' | 'poor' | 'infinity' | 'in_progress' | 'no_game' | 'expired' | 'invalid_bet_value';
+// Web-only extension of the shared bet error codes — adds states that only
+// matter for stateful HTTP games (blackjack rounds in flight, expired games).
+export type BetErrorCode = BetingErrorCode | 'in_progress' | 'no_game' | 'expired' | 'invalid_bet_value';
 export interface BetError { error: BetErrorCode; }
 export interface BetSuccess<T> { ok: true; data: T; }
 export type BetResult<T> = BetSuccess<T> | BetError;
-
-function mapBetCode(code: number): BetError | null {
-  switch (code) {
-    case INVALID_AMOUNT: return { error: 'invalid' };
-    case NEGATIVE_AMOUNT: return { error: 'negative' };
-    case POOR_AMOUNT: return { error: 'poor' };
-    case INFINITY_AMOUNT: return { error: 'infinity' };
-    default: return null;
-  }
-}
 
 export interface LeaderboardRow {
   rank: number;
@@ -217,11 +214,8 @@ async function getLeaderboardUncached(
     const command = getCommand<GamblerBoardCommand>(silverwolf, 'gamblerboard');
     const type = opts?.gamblerType ?? 'all';
     const { winnings } = await command.fetchData(type, 0);
-    const title = type === 'all'
-      ? 'The Ultimate Gambler Leaderboard'
-      : `${type.charAt(0).toUpperCase() + type.slice(1)} Leaderboard`;
     return {
-      title,
+      title: gamblerBoardTitle(type),
       rows: await Promise.all(winnings.map(async (row, i) => {
         const u = await resolveUser(silverwolf, row.id);
         return {
@@ -258,22 +252,9 @@ async function getLeaderboardUncached(
 }
 
 function formatNextBirthday(birthdayISO: string): string {
-  const d = new Date(birthdayISO);
-  if (Number.isNaN(d.getTime())) return '';
-  const now = new Date();
-  const month = d.getUTCMonth();
-  const day = d.getUTCDate();
-  const hour = d.getUTCHours();
-  const minute = d.getUTCMinutes();
-
-  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  let candidate = new Date(Date.UTC(now.getUTCFullYear(), month, day, hour, minute));
-  const candidateDay = new Date(Date.UTC(candidate.getUTCFullYear(), candidate.getUTCMonth(), candidate.getUTCDate()));
-  if (candidateDay.getTime() < today.getTime()) {
-    candidate = new Date(Date.UTC(now.getUTCFullYear() + 1, month, day, hour, minute));
-  }
-
-  const dateStr = candidate.toLocaleString('en-US', {
+  const info = getNextBirthdayInfo(birthdayISO);
+  if (!info) return '';
+  const dateStr = info.nextDate.toLocaleString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -282,13 +263,9 @@ function formatNextBirthday(birthdayISO: string): string {
     timeZone: 'UTC',
     timeZoneName: 'short',
   });
-  const diffDays = Math.round(
-    (new Date(Date.UTC(candidate.getUTCFullYear(), candidate.getUTCMonth(), candidate.getUTCDate())).getTime()
-      - today.getTime()) / 86400000,
-  );
-  if (diffDays === 0) return `Today — ${dateStr}`;
-  if (diffDays === 1) return `Tomorrow — ${dateStr}`;
-  return `${dateStr} (in ${diffDays} days)`;
+  if (info.daysUntil === 0) return `Today — ${dateStr}`;
+  if (info.daysUntil === 1) return `Tomorrow — ${dateStr}`;
+  return `${dateStr} (in ${info.daysUntil} days)`;
 }
 
 export async function getLeaderboard(
@@ -595,16 +572,14 @@ export async function standBlackjack(
   game.finalized = true;
   blackjackGames.delete(userId);
 
-  while (calculateHand(game.dealerHand) < 17) {
-    game.dealerHand.push(drawCard(game.deck));
-  }
-
-  const playerTotal = calculateHand(game.playerHand);
-  const dealerTotal = calculateHand(game.dealerHand);
-
+  const { outcome, playerTotal, dealerTotal } = resolveBlackjackStand(
+    game.deck,
+    game.playerHand,
+    game.dealerHand,
+  );
   const amountLabel = format(game.amount);
 
-  if (dealerTotal > 21 || playerTotal > dealerTotal) {
+  if (outcome === 'win') {
     const win = await recordBlackjackWin(silverwolf, userId, game.amount);
     return {
       ok: true,
@@ -625,7 +600,7 @@ export async function standBlackjack(
     };
   }
 
-  if (playerTotal < dealerTotal) {
+  if (outcome === 'loss') {
     await recordBlackjackLoss(silverwolf, userId, game.amount);
     return {
       ok: true,
@@ -1115,10 +1090,6 @@ export interface FakeQuoteSuccess { ok: true; image: string; }
 export interface FakeQuoteError { ok: false; error: FakeQuoteErrorCode; message?: string; retryAfter?: number; }
 export type FakeQuoteResult = FakeQuoteSuccess | FakeQuoteError;
 
-export const FAKEQUOTE_VALID_BACKGROUNDS = ['black', 'white'] as const;
-export const FAKEQUOTE_VALID_PROFILE_COLORS = ['normal', 'bw', 'inverted', 'sepia', 'nightmare'] as const;
-export const FAKEQUOTE_VALID_FONTS = Object.keys(FONT_MAP);
-
 const FAKEQUOTE_RATE_WINDOW_MS = 60_000;
 const FAKEQUOTE_RATE_MAX = 3;
 const fakeQuoteHits = new Map<string, number[]>();
@@ -1176,13 +1147,13 @@ export async function generateFakeQuoteWeb(
   const background = params.background ?? 'black';
   const profileColor = params.profileColor ?? 'normal';
   const fontStyle = params.fontStyle ?? 'sans-serif';
-  if (!(FAKEQUOTE_VALID_BACKGROUNDS as readonly string[]).includes(background)) {
+  if (!FAKEQUOTE_BACKGROUND_VALUES.includes(background)) {
     return { ok: false, error: 'invalid_options' };
   }
-  if (!(FAKEQUOTE_VALID_PROFILE_COLORS as readonly string[]).includes(profileColor)) {
+  if (!FAKEQUOTE_PROFILE_COLOR_VALUES.includes(profileColor)) {
     return { ok: false, error: 'invalid_options' };
   }
-  if (!FAKEQUOTE_VALID_FONTS.includes(fontStyle)) {
+  if (!FAKEQUOTE_FONT_VALUES.includes(fontStyle)) {
     return { ok: false, error: 'invalid_options' };
   }
 

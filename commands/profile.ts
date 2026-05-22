@@ -19,6 +19,7 @@ import {
   getNuggiePokeMultiplierInfo,
   getNuggieNuggieMultiplierInfo,
 } from '../utils/ascensionupgradesInfo';
+import { formatPokemonList, sortPokemons } from '../utils/pokemon';
 
 const cooldowns = new Map<string, number>();
 const COOLDOWN_DURATION = 60000;
@@ -84,9 +85,8 @@ class Profile extends Command {
     const pokemonCount = await this.client.db.pokemon.getUniquePokemonCount(interaction.options.getMember('user') ? interaction.options.getMember('user').id : interaction.user.id);
     const log2Nuggies = user.dinonuggies > 1 ? Math.log2(user.dinonuggies) : 0;
     const nextClaim = bekiCooldown - (Date.now() - user.dinonuggiesLastClaimed) / 1000;
-    pokemons.sort((a: any, b: any) => a.pokemonName.localeCompare(b.pokemonName));
-    const maxNameLength = Math.max(...pokemons.map((pokemon: any) => pokemon.pokemonName.length));
-    const pokemonList = pokemons.map((pokemon: any) => `${pokemon.pokemonName.padEnd(maxNameLength + 2)} ${pokemon.pokemonCount}`).join('\n');
+    sortPokemons(pokemons);
+    const pokemonList = formatPokemonList(pokemons);
     const { ascensionLevel } = user;
     const maxLevel = getMaxLevel(ascensionLevel);
 

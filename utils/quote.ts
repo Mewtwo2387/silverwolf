@@ -726,5 +726,56 @@ async function quote(
   return canvas.toBuffer();
 }
 
+// ─── Shared option lists for the fakequote command + web page ────────────────
+
+export interface FakeQuoteOption { value: string; label: string }
+
+// Source of truth for the font picker; order matches what the Discord slash
+// command displays. The web page builds <select> options from this list, and
+// `bot-bridge.ts` validates incoming `fontStyle` values against it.
+export const FAKEQUOTE_FONTS: FakeQuoteOption[] = [
+  { value: 'sans-serif', label: 'Default (Sans-serif)' },
+  { value: 'playfair', label: 'Playfair Display (Elegant Serif)' },
+  { value: 'caveat', label: 'Caveat (Handwritten)' },
+  { value: 'cinzel', label: 'Cinzel (Dramatic Classic)' },
+  { value: 'righteous', label: 'Righteous (Bold Display)' },
+  { value: 'special-elite', label: 'Special Elite (Typewriter)' },
+  { value: 'minecraft', label: 'Minecraft (Pixel)' },
+  { value: 'harrypotter', label: 'Harry Potter (Wizarding)' },
+  { value: 'genshin', label: 'Genshin Impact' },
+  { value: 'comic-sans', label: 'Comic Sans (Comic Neue)' },
+  { value: 'bebas-neue', label: 'Bebas Neue (Condensed)' },
+];
+
+export const FAKEQUOTE_BACKGROUNDS: FakeQuoteOption[] = [
+  { value: 'black', label: 'Black' },
+  { value: 'white', label: 'White' },
+];
+
+export const FAKEQUOTE_PROFILE_COLORS: FakeQuoteOption[] = [
+  { value: 'normal', label: 'Normal' },
+  { value: 'bw', label: 'Black and White' },
+  { value: 'inverted', label: 'Inverted' },
+  { value: 'sepia', label: 'Sepia' },
+  { value: 'nightmare', label: 'Nightmare Fuel' },
+];
+
+export const FAKEQUOTE_AVATAR_SOURCES: FakeQuoteOption[] = [
+  { value: 'server', label: 'Server Avatar' },
+  { value: 'global', label: 'Global Avatar' },
+];
+
+const valuesOf = (opts: FakeQuoteOption[]) => opts.map((o) => o.value);
+
+export const FAKEQUOTE_FONT_VALUES = valuesOf(FAKEQUOTE_FONTS);
+export const FAKEQUOTE_BACKGROUND_VALUES = valuesOf(FAKEQUOTE_BACKGROUNDS);
+export const FAKEQUOTE_PROFILE_COLOR_VALUES = valuesOf(FAKEQUOTE_PROFILE_COLORS);
+export const FAKEQUOTE_AVATAR_SOURCE_VALUES = valuesOf(FAKEQUOTE_AVATAR_SOURCES);
+
+// Discord slash-command `choices` shape ({ name, value }).
+export const fakeQuoteChoices = (
+  opts: FakeQuoteOption[],
+): { name: string; value: string }[] => opts.map(({ label, value }) => ({ name: label, value }));
+
 export default quote;
 export { FONT_MAP, FONT_INDEX };

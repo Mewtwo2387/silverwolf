@@ -248,26 +248,17 @@ export function LovePage(opts: { nonce: string; lv999?: boolean; user?: import('
   let activeOverlay = null;
   let runId = 0;
 
-  function fnv1a(str) {
-    let h = 2166136261 >>> 0;
-    for (let i = 0; i < str.length; i++) {
-      h ^= str.charCodeAt(i);
-      h = Math.imul(h, 16777619);
-    }
-    return h >>> 0;
-  }
-
-  function compute(a, b) {
-    const sorted = [a.toLowerCase(), b.toLowerCase()].sort().join('');
-    return fnv1a(sorted) % 101;
-  }
-
-  function phraseFor(p) {
-    if (p <= 20) return 'Chances are low, but never zero!';
-    if (p <= 40) return 'You might be better off as friends.';
-    if (p <= 60) return "There's something there... maybe!";
-    if (p <= 80) return "Looks like there's some potential!";
-    return 'True love! Get ready for the wedding bells!';
+  // Percentage + phrase live in utils/loveCalculator.ts — both the Discord
+  // command and this page POST to /games/love/calculate so identical inputs
+  // always produce identical outputs across surfaces.
+  async function compute(a, b) {
+    const res = await fetch('/games/love/calculate', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ input1: a, input2: b }),
+    });
+    if (!res.ok) throw new Error('compute failed');
+    return res.json();
   }
 
   function escapeHTML(s) {
@@ -393,7 +384,7 @@ export function LovePage(opts: { nonce: string; lv999?: boolean; user?: import('
     }, duration + 700);
   }
 
-  function calculate() {
+  async function calculate() {
     const a = input1.value.trim();
     const b = input2.value.trim();
     if (!a || !b) {
@@ -401,10 +392,18 @@ export function LovePage(opts: { nonce: string; lv999?: boolean; user?: import('
       return;
     }
     clearAnimations();
-    const p = compute(a, b);
+    let p, phrase;
+    try {
+      const res = await compute(a, b);
+      p = res.percentage;
+      phrase = res.phrase;
+    } catch (err) {
+      messageEl.innerHTML = 'Something went wrong calculating compatibility.';
+      return;
+    }
     messageEl.innerHTML =
       '<strong>' + escapeHTML(a) + ' ❤️ ' + escapeHTML(b) + ' — ' + p + '%</strong>'
-      + escapeHTML(phraseFor(p));
+      + escapeHTML(phrase);
 
     if (p < 20)      shatter();
     else if (p < 40) showCracks(3);

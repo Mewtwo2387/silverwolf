@@ -1,7 +1,7 @@
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import type { NavUser } from '../../components/navbar';
-import { inlineJSON, NORMALIZE_AMOUNT_JS } from '../../inline';
+import { inlineJSON } from '../../inline';
 
 export function BlackjackPage(opts: { nonce: string; lv999?: boolean; user?: NavUser | null }) {
   const { nonce, lv999, user } = opts;
@@ -208,7 +208,6 @@ export function BlackjackPage(opts: { nonce: string; lv999?: boolean; user?: Nav
   const script = raw(`
 <script nonce="${nonce}">
 (() => {
-  ${NORMALIZE_AMOUNT_JS}
   const csrf = ${csrfJSON};
   const setupEl = document.getElementById('bj-setup');
   const tableEl = document.getElementById('bj-table');
@@ -337,7 +336,7 @@ export function BlackjackPage(opts: { nonce: string; lv999?: boolean; user?: Nav
 
   async function deal() {
     setError('');
-    const amount = normalizeAmount(amountInput.value);
+    const amount = amountInput.value.trim();
     if (!amount) { setError('Enter a bet amount.'); return; }
     dealBtn.disabled = true;
 

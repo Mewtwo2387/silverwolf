@@ -2,6 +2,18 @@ import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import type { NavUser } from '../../components/navbar';
 import { inlineJSON } from '../../inline';
+import {
+  POOP_COLOURS,
+  POOP_SIZES,
+  POOP_TYPES,
+  POOP_DURATION_MIN,
+  POOP_DURATION_MAX,
+  type PoopOption,
+} from '../../../utils/poop';
+
+const renderOptions = (opts: PoopOption[]) => html`${opts.map(
+  (o) => html`<option value="${o.value}">${o.label}</option>`,
+)}`;
 
 export function PoopPage(opts: { nonce: string; lv999?: boolean; user?: NavUser | null }) {
   const { nonce, lv999, user } = opts;
@@ -228,40 +240,26 @@ export function PoopPage(opts: { nonce: string; lv999?: boolean; user?: NavUser 
                 Colour
                 <select name="colour">
                   <option value="">—</option>
-                  <option value="brown">Brown</option>
-                  <option value="dark-brown">Dark Brown</option>
-                  <option value="yellow">Yellow</option>
-                  <option value="green">Green</option>
-                  <option value="black">Black</option>
-                  <option value="red">Red</option>
-                  <option value="holy">Holy</option>
+                  ${renderOptions(POOP_COLOURS)}
                 </select>
               </label>
               <label>
                 Size
                 <select name="size">
                   <option value="">—</option>
-                  <option value="small">Small</option>
-                  <option value="medium">Medium</option>
-                  <option value="large">Large</option>
-                  <option value="omnipresent">Omnipresent</option>
+                  ${renderOptions(POOP_SIZES)}
                 </select>
               </label>
               <label>
                 Type
                 <select name="type">
                   <option value="">—</option>
-                  <option value="liquid">Liquid</option>
-                  <option value="soft">Soft</option>
-                  <option value="normal">Normal</option>
-                  <option value="hard">Hard</option>
-                  <option value="pellet">Pellet</option>
-                  <option value="divine">Divine</option>
+                  ${renderOptions(POOP_TYPES)}
                 </select>
               </label>
               <label>
                 Duration (minutes)
-                <input type="number" name="duration" min="1" max="120" placeholder="optional" />
+                <input type="number" name="duration" min="${POOP_DURATION_MIN}" max="${POOP_DURATION_MAX}" placeholder="optional" />
               </label>
             </form>
             <button id="log-btn" class="btn-accent log-btn">Log 💩</button>

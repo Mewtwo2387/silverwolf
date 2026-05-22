@@ -2,111 +2,17 @@ import * as Discord from 'discord.js';
 import { Command } from './classes/Command';
 import { format } from '../utils/math';
 import { checkValidBet } from '../utils/betting';
-
-export interface Card { suit: string; value: string; }
-
-export function createDeck(): Card[] {
-  const suits = ['♠', '♣', '♥', '♦'];
-  const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
-  const deck: Card[] = [];
-
-  suits.forEach((suit) => {
-    values.forEach((value) => {
-      deck.push({ suit, value });
-    });
-  });
-
-  for (let i = deck.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [deck[i], deck[j]] = [deck[j], deck[i]];
-  }
-
-  return deck;
-}
-
-export function drawCard(deck: Card[]): Card {
-  return deck.pop() as Card;
-}
-
-export function calculateHand(hand: Card[]): number {
-  let total = 0;
-  let aces = 0;
-
-  hand.forEach((card) => {
-    if (card.value === 'A') {
-      aces += 1;
-      total += 11;
-    } else if (['K', 'Q', 'J'].includes(card.value)) {
-      total += 10;
-    } else {
-      total += parseInt(card.value, 10);
-    }
-  });
-
-  while (total > 21 && aces > 0) {
-    total -= 10;
-    aces -= 1;
-  }
-
-  return total;
-}
-
-function formatHand(hand: Card[]): string {
-  return hand.map((card) => `${card.suit}${card.value}`).join(', ');
-}
-
-export interface BlackjackWinResult { multi: number; streak: number; winnings: number; }
-
-export async function recordBlackjackWin(client: any, userId: string, amount: number): Promise<BlackjackWinResult> {
-  const currentStreak = await client.db.user.getUserAttr(userId, 'blackjackStreak');
-  const currentMaxStreak = await client.db.user.getUserAttr(userId, 'blackjackMaxStreak');
-  const marriageBenefits = await client.db.marriage.getMarriageBenefits(userId);
-
-  const multi = marriageBenefits * 2.1 * 1.08 ** currentStreak;
-  const streak = currentStreak + 1;
-  const winnings = amount * multi;
-
-  const sets: Record<string, any> = { blackjackStreak: streak };
-  if (streak > currentMaxStreak) sets.blackjackMaxStreak = streak;
-
-  await client.db.user.updateUserAttrs(userId, {
-    adds: {
-      blackjackTimesPlayed: 1,
-      blackjackAmountGambled: amount,
-      blackjackTimesWon: 1,
-      blackjackAmountWon: winnings,
-      blackjackRelativeWon: multi,
-      credits: winnings - amount,
-    },
-    sets,
-  });
-
-  return { multi, streak, winnings };
-}
-
-export async function recordBlackjackLoss(client: any, userId: string, amount: number): Promise<void> {
-  await client.db.user.updateUserAttrs(userId, {
-    adds: {
-      blackjackTimesPlayed: 1,
-      blackjackAmountGambled: amount,
-      blackjackTimesLost: 1,
-      credits: -amount,
-    },
-    sets: { blackjackStreak: 0 },
-  });
-}
-
-export async function recordBlackjackTie(client: any, userId: string, amount: number): Promise<void> {
-  await client.db.user.updateUserAttrs(userId, {
-    adds: {
-      blackjackTimesPlayed: 1,
-      blackjackAmountGambled: amount,
-      blackjackTimesDrawn: 1,
-      blackjackAmountWon: amount,
-      blackjackRelativeWon: 1,
-    },
-  });
-}
+import {
+  type Card,
+  createDeck,
+  drawCard,
+  calculateHand,
+  formatHand,
+  resolveBlackjackStand,
+  recordBlackjackWin,
+  recordBlackjackLoss,
+  recordBlackjackTie,
+} from '../utils/blackjack';
 
 class Blackjack extends Command {
   constructor(client: any) {
@@ -164,28 +70,18 @@ class Blackjack extends Command {
         return;
       }
 
-      let resultMessage;
       if (reason === 'busted') {
         await this.handleLoss(interaction, amount, playerHand, dealerHand, 'You busted!');
         return;
       }
 
-      while (calculateHand(dealerHand) < 17) {
-        dealerHand.push(drawCard(deck));
-      }
-
-      const playerTotal = calculateHand(playerHand);
-      const dealerTotal = calculateHand(dealerHand);
-
-      if (dealerTotal > 21 || playerTotal > dealerTotal) {
-        resultMessage = 'You win!';
-        await this.handleWin(interaction, amount, playerHand, dealerHand, resultMessage);
-      } else if (playerTotal < dealerTotal) {
-        resultMessage = 'Silverwolf wins!';
-        await this.handleLoss(interaction, amount, playerHand, dealerHand, resultMessage);
+      const { outcome } = resolveBlackjackStand(deck, playerHand, dealerHand);
+      if (outcome === 'win') {
+        await this.handleWin(interaction, amount, playerHand, dealerHand, 'You win!');
+      } else if (outcome === 'loss') {
+        await this.handleLoss(interaction, amount, playerHand, dealerHand, 'Silverwolf wins!');
       } else {
-        resultMessage = 'No one wins!';
-        await this.handleTie(interaction, amount, playerHand, dealerHand, resultMessage);
+        await this.handleTie(interaction, amount, playerHand, dealerHand, 'No one wins!');
       }
     });
   }

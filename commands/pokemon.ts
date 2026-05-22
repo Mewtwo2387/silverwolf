@@ -3,6 +3,7 @@ import {
 } from 'discord.js';
 import { Command } from './classes/Command';
 import { logError } from '../utils/log';
+import { formatPokemonList } from '../utils/pokemon';
 
 class Pokemon extends Command {
   itemsPerPage: number;
@@ -23,12 +24,7 @@ class Pokemon extends Command {
 
       const generateEmbed = (page: number) => {
         const pagePokemons = allPokemons.slice(page * this.itemsPerPage, (page + 1) * this.itemsPerPage);
-        const maxNameLength = Math.max(...pagePokemons.map(
-          (pokemon: any) => pokemon.pokemonName.length,
-        ));
-        const description = pagePokemons.map(
-          (pokemon: any) => `${pokemon.pokemonName.padEnd(maxNameLength + 2)} ${pokemon.pokemonCount}`,
-        ).join('\n');
+        const description = formatPokemonList(pagePokemons);
 
         return new EmbedBuilder()
           .setColor('#00AA00')

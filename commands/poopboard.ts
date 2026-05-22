@@ -2,6 +2,7 @@ import * as Discord from 'discord.js';
 import { Command } from './classes/Command';
 import LeaderboardMixin from './mixins/leaderboardMixin';
 import { logError } from '../utils/log';
+import { poopPeriodLabel } from '../utils/leaderboards';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 class PoopBoard extends (LeaderboardMixin(Command) as any) {
@@ -33,8 +34,7 @@ class PoopBoard extends (LeaderboardMixin(Command) as any) {
   async fetchData(period: string = 'all-time', page: number = 0): Promise<{ attrs: any[]; totalCount: number; periodLabel: string }> {
     const totalCount = await this.client.db.poop.getLeaderboardCount(period);
     const attrs = await this.client.db.poop.getLeaderboard(period, this.itemsPerPage, page * this.itemsPerPage);
-    const labels: Record<string, string> = { 'all-time': 'All Time', weekly: 'This Week', monthly: 'This Month' };
-    return { attrs, totalCount, periodLabel: labels[period] ?? 'All Time' };
+    return { attrs, totalCount, periodLabel: poopPeriodLabel(period) };
   }
 
   async run(interaction: any): Promise<void> {
@@ -46,7 +46,6 @@ class PoopBoard extends (LeaderboardMixin(Command) as any) {
       const maxPage = Math.max(Math.ceil(totalCount / this.itemsPerPage) - 1, 0);
       const leaderboard = await this.generateLeaderboard(attrs, currentPage);
 
-      const periodLabel: Record<string, string> = { 'all-time': 'All Time', weekly: 'This Week', monthly: 'This Month' };
       leaderboard.setTitle(`Poop Leaderboard 💩 — ${label}`);
 
       const row = new Discord.ActionRowBuilder()
@@ -81,7 +80,7 @@ class PoopBoard extends (LeaderboardMixin(Command) as any) {
 
         const { attrs: newAttrs } = await this.fetchData(period, currentPage);
         const newLeaderboard = await this.generateLeaderboard(newAttrs, currentPage);
-        newLeaderboard.setTitle(`Poop Leaderboard 💩 — ${periodLabel[period]}`);
+        newLeaderboard.setTitle(`Poop Leaderboard 💩 — ${poopPeriodLabel(period)}`);
 
         const newRow = new Discord.ActionRowBuilder()
           .addComponents(

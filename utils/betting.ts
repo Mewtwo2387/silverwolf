@@ -6,6 +6,24 @@ export const NEGATIVE_AMOUNT = -2;
 export const POOR_AMOUNT = -3;
 export const INFINITY_AMOUNT = -4;
 
+// Shared string codes used by both the Discord command error embeds and the
+// web JSON responses. Lives here so the JSON-mapping helper and the embed
+// switch can't drift apart.
+export type BetErrorCode = 'invalid' | 'negative' | 'poor' | 'infinity';
+
+// Convert a `checkValidBetRaw` return code into a `{ error }` object, or null
+// when the code is actually a parsed amount (positive number). Used by the
+// web bet routes which want JSON instead of Discord embeds.
+export function mapBetCode(code: number): { error: BetErrorCode } | null {
+  switch (code) {
+    case INVALID_AMOUNT: return { error: 'invalid' };
+    case NEGATIVE_AMOUNT: return { error: 'negative' };
+    case POOR_AMOUNT: return { error: 'poor' };
+    case INFINITY_AMOUNT: return { error: 'infinity' };
+    default: return null;
+  }
+}
+
 const INFINITY_KEYWORDS = [
   'infinity', 'inf', '∞', 'unlimited', 'forever',
   'endless', 'neverending', 'boundless', 'limitless',

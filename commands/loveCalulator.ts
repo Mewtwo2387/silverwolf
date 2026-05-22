@@ -1,4 +1,5 @@
 import { Command } from './classes/Command';
+import { computeLoveCompatibility, lovePhraseFor } from '../utils/loveCalculator';
 
 class LoveCalculator extends Command {
   constructor(client: any) {
@@ -40,22 +41,8 @@ class LoveCalculator extends Command {
     input1 = await replaceMentionWithUsername(input1);
     input2 = await replaceMentionWithUsername(input2);
 
-    const sortedInputs = [input1.toLowerCase(), input2.toLowerCase()].sort().join('');
-    const hash = new Bun.CryptoHasher('md5').update(sortedInputs).digest('hex');
-    const percentage = parseInt(hash.slice(0, 4), 16) % 101;
-
-    let phrase = '';
-    if (percentage <= 20) {
-      phrase = 'Chances are low, but never zero!';
-    } else if (percentage <= 40) {
-      phrase = 'You might be better off as friends.';
-    } else if (percentage <= 60) {
-      phrase = "There's something there... maybe!";
-    } else if (percentage <= 80) {
-      phrase = "Looks like there's some potential!";
-    } else {
-      phrase = 'True love! Get ready for the wedding bells!';
-    }
+    const percentage = computeLoveCompatibility(input1, input2);
+    const phrase = lovePhraseFor(percentage);
 
     await interaction.editReply({
       content: `${input1} ❤️ ${input2}: ${percentage}% compatibility\n${phrase}`,

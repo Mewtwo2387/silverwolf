@@ -10,26 +10,6 @@
 // Inputs today are all developer-controlled JSON files, but this is the kind
 // of helper that must already be in place before any user-controlled value
 // gets near a <script> body.
-// Client-side bet-amount normalizer.
-//
-// Server-side `antiFormat` (utils/math.ts) is case-sensitive: it accepts "K",
-// "M", "Qa", "Dc"… but rejects "k", "m", "qa". Rather than loosen the parser,
-// we Title-case the alphabetic suffix in the browser before sending so common
-// typos like "1k" or "5.5m" still resolve. Anything that doesn't match
-// digits + letters is passed through untouched — the server will reject it.
-//
-// Embed via raw(NORMALIZE_AMOUNT_JS) inside a <script>, then call
-// `normalizeAmount(input)` to produce the string to POST.
-export const NORMALIZE_AMOUNT_JS = `
-function normalizeAmount(s) {
-  if (typeof s !== 'string') return s;
-  const t = s.trim();
-  const m = t.match(/^([0-9.,]+)([A-Za-z]+)$/);
-  if (!m) return t;
-  const suf = m[2];
-  return m[1] + suf.charAt(0).toUpperCase() + suf.slice(1).toLowerCase();
-}
-`;
 
 export function inlineJSON(value: unknown): string {
   const s = JSON.stringify(value);

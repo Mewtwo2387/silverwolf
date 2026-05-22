@@ -2,28 +2,10 @@ import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import type { NavUser } from '../../components/navbar';
 import { inlineJSON } from '../../inline';
-
-const FONTS = [
-  { value: 'sans-serif', label: 'Default (Sans-serif)' },
-  { value: 'playfair', label: 'Playfair Display (Elegant Serif)' },
-  { value: 'caveat', label: 'Caveat (Handwritten)' },
-  { value: 'cinzel', label: 'Cinzel (Dramatic Classic)' },
-  { value: 'righteous', label: 'Righteous (Bold Display)' },
-  { value: 'special-elite', label: 'Special Elite (Typewriter)' },
-  { value: 'minecraft', label: 'Minecraft (Pixel)' },
-  { value: 'harrypotter', label: 'Harry Potter (Wizarding)' },
-  { value: 'genshin', label: 'Genshin Impact' },
-  { value: 'comic-sans', label: 'Comic Sans (Comic Neue)' },
-  { value: 'bebas-neue', label: 'Bebas Neue (Condensed)' },
-];
-
-const PROFILE_COLOURS = [
-  { value: 'normal', label: 'Normal' },
-  { value: 'bw', label: 'Black and White' },
-  { value: 'inverted', label: 'Inverted' },
-  { value: 'sepia', label: 'Sepia' },
-  { value: 'nightmare', label: 'Nightmare Fuel' },
-];
+import {
+  FAKEQUOTE_FONTS as FONTS,
+  FAKEQUOTE_PROFILE_COLORS as PROFILE_COLOURS,
+} from '../../../utils/quote';
 
 export function FakeQuotePage(opts: { nonce: string; lv999?: boolean; user?: NavUser | null }) {
   const { nonce, lv999, user } = opts;
