@@ -135,11 +135,12 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
         try {
           const generated = await generateSessionTitle(messageRaw, assistantText);
           const fallback = messageRaw.slice(0, 50).trim();
-          title = (generated || fallback) || undefined;
+          const chosen = (generated || fallback) || '';
+          title = chosen ? chosen.slice(0, MAX_TITLE_CHARS).trim() : undefined;
           if (title) await silverwolf.db.aiChat.updateTitle(session.sessionId, title);
         } catch (titleErr) {
           logError('[ai-slop] title generation failed:', titleErr);
-          const fallback = messageRaw.slice(0, 50).trim();
+          const fallback = messageRaw.slice(0, 50).trim().slice(0, MAX_TITLE_CHARS).trim();
           if (fallback) {
             title = fallback;
             await silverwolf.db.aiChat.updateTitle(session.sessionId, fallback);
@@ -181,6 +182,11 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
     const title = titleRaw.slice(0, MAX_TITLE_CHARS);
 
     try {
+      const resolved = await resolveSessionForUser(silverwolf, sessionIdRaw, auth.discordId);
+      if ('error' in resolved) {
+        const status = resolved.error === 'forbidden' || resolved.error === 'not_web' ? 403 : 404;
+        return c.json({ ok: false, error: resolved.error }, status);
+      }
       const ok = await silverwolf.db.aiChat.renameSession(auth.discordId, sessionIdRaw, title);
       if (!ok) return c.json({ ok: false, error: 'forbidden' }, 403);
       return c.json({ ok: true, data: { sessionId: sessionIdRaw, title } });
@@ -201,6 +207,11 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
     }
 
     try {
+      const resolved = await resolveSessionForUser(silverwolf, sessionIdRaw, auth.discordId);
+      if ('error' in resolved) {
+        const status = resolved.error === 'forbidden' || resolved.error === 'not_web' ? 403 : 404;
+        return c.json({ ok: false, error: resolved.error }, status);
+      }
       const ok = await silverwolf.db.aiChat.deleteSession(auth.discordId, sessionIdRaw);
       if (!ok) return c.json({ ok: false, error: 'forbidden' }, 403);
       return c.json({ ok: true, data: { sessionId: sessionIdRaw } });

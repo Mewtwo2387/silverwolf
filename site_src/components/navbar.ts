@@ -133,10 +133,6 @@ const navbarExtras = (nonce: string) => raw(`
   .nav-profile-link:hover .nav-avatar { box-shadow: 0 0 6px var(--glow-faint, rgba(255,255,255,0.2)); }
   .nav-auth-link { color: color-mix(in oklab, var(--danger) 65%, #000); text-decoration: none; font-size: 0.85rem; padding: 0.3rem 0.6rem; border-radius: 0.4rem; border: 1px solid transparent; transition: color 0.2s, text-shadow 0.2s; }
   .nav-auth-link:hover { color: var(--danger); text-shadow: 0 0 8px var(--danger-glow); }
-  /* Hide desktop auth chip on touch devices — auth lives in /home there */
-  @media (max-width: 1024px), (hover: none) and (pointer: coarse) {
-    #nav-auth-desktop { display: none; }
-  }
 
   /* ── Touch / narrow-viewport dock ───────────────────────────────────────
      Floating glass tab bar pinned to the bottom. Triggered by either a

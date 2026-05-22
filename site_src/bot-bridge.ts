@@ -1214,7 +1214,6 @@ export async function generateFakeQuoteWeb(
     return { ok: true, image: `data:image/png;base64,${base64}` };
   } catch (err) {
     logError('fakequote render failed:', err);
-    const msg = err instanceof Error ? err.message : 'Render failed.';
-    return { ok: false, error: 'render_failed', message: msg };
+    return { ok: false, error: 'render_failed', message: 'Render failed.' };
   }
 }

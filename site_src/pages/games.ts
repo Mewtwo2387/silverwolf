@@ -638,23 +638,30 @@ const layoutScript = (nonce: string) => raw(`
   if (VALID.indexOf(saved) === -1) saved = 'grid-3';
   apply(saved);
 
+  var closeMenu = function() {
+    switcher.classList.remove('open');
+    btn.setAttribute('aria-expanded', 'false');
+  };
+
+  btn.setAttribute('aria-expanded', 'false');
   btn.addEventListener('click', function(e) {
     e.stopPropagation();
-    switcher.classList.toggle('open');
+    var opened = switcher.classList.toggle('open');
+    btn.setAttribute('aria-expanded', String(opened));
   });
   options.forEach(function(o) {
     o.addEventListener('click', function() {
       var layout = o.dataset.layout;
       try { localStorage.setItem(KEY, layout); } catch (e) {}
       apply(layout);
-      switcher.classList.remove('open');
+      closeMenu();
     });
   });
   document.addEventListener('click', function(e) {
-    if (!switcher.contains(e.target)) switcher.classList.remove('open');
+    if (!switcher.contains(e.target)) closeMenu();
   });
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') switcher.classList.remove('open');
+    if (e.key === 'Escape') closeMenu();
   });
 })();
 </script>

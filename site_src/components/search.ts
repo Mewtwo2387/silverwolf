@@ -283,7 +283,7 @@ const searchScript = (nonce: string, index: IndexEntry[]) => raw(`
     var t = item.title.toLowerCase();
     var d = (item.desc || '').toLowerCase();
     var k = (item.keywords || '').toLowerCase();
-    if (t.startsWith(q)) return 0;
+    if (t === q) return 0;
     var ti = t.indexOf(q);
     if (ti === 0) return 1;
     if (ti > 0) return 10 + ti;

@@ -215,7 +215,9 @@ export function registerGameApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf)
 
     const get = (k: string): string | null => {
       const v = body![k];
-      return typeof v === 'string' ? v : null;
+      if (typeof v !== 'string') return null;
+      const trimmed = v.trim();
+      return trimmed === '' ? null : trimmed;
     };
     const uid = get('uid');
     const message = get('message');

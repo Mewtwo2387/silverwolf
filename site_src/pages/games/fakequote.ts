@@ -494,7 +494,7 @@ export function FakeQuotePage(opts: { nonce: string; lv999?: boolean; user?: Nav
                 <span class="cooldown-fill"></span>
                 <span class="label-text">Generate Quote</span>
               </button>
-              <div id="fq-message" class="fq-message"></div>
+              <div id="fq-message" class="fq-message" role="status" aria-live="polite" aria-atomic="true"></div>
               <p class="text-fog-400 text-sm text-center">Limit: 3 quotes per minute.</p>
             </div>
           `}
