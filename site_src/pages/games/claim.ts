@@ -1,7 +1,7 @@
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import type { NavUser } from '../../components/navbar';
-import { inlineJSON, FORMAT_NUMBER_JS } from '../../inline';
+import { inlineJSON } from '../../inline';
 
 export function ClaimPage(opts: { nonce: string; lv999?: boolean; user?: NavUser | null }) {
   const { nonce, lv999, user } = opts;
@@ -83,7 +83,6 @@ export function ClaimPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
   const script = raw(`
 <script nonce="${nonce}">
 (() => {
-  ${FORMAT_NUMBER_JS}
   const csrf = ${csrfJSON};
   const display = document.getElementById('claim-display');
   const displayImg = document.getElementById('claim-img');
@@ -146,8 +145,8 @@ export function ClaimPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
       displayImg.src = DEFAULT_IMG;
       setRarityClass(display, 'regular');
       setRarityClass(msg, 'regular');
-      msg.innerHTML = '<h2>' + format(d.amount) + ' dinonuggies claimed!</h2>'
-        + '<div class="sub">You now have ' + format(d.previousDinonuggies + d.amount)
+      msg.innerHTML = '<h2>' + d.amountLabel + ' dinonuggies claimed!</h2>'
+        + '<div class="sub">You now have ' + d.newDinonuggiesLabel
         + ' dinonuggies. You broke your streak of ' + d.previousStreak + ' days.</div>';
     } else if (d.status === 'success') {
       displayImg.src = d.webImageUrl || d.imageUrl || DEFAULT_IMG;
@@ -155,7 +154,7 @@ export function ClaimPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
       setRarityClass(display, rarity);
       setRarityClass(msg, rarity);
       msg.innerHTML = '<h2>' + d.title + '</h2>'
-        + '<div class="sub">You now have ' + format(d.previousDinonuggies + d.amount)
+        + '<div class="sub">You now have ' + d.newDinonuggiesLabel
         + ' dinonuggies. You are on a streak of ' + (d.previousStreak + 1) + ' days.</div>'
         + '<div class="footer">' + d.footer + '</div>';
     }

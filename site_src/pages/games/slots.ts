@@ -1,7 +1,7 @@
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import type { NavUser } from '../../components/navbar';
-import { inlineJSON, NORMALIZE_AMOUNT_JS, FORMAT_NUMBER_JS } from '../../inline';
+import { inlineJSON, NORMALIZE_AMOUNT_JS } from '../../inline';
 
 export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser | null }) {
   const { nonce, lv999, user } = opts;
@@ -165,7 +165,6 @@ export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
 <script nonce="${nonce}">
 (() => {
   ${NORMALIZE_AMOUNT_JS}
-  ${FORMAT_NUMBER_JS}
   const csrf = ${csrfJSON};
   const rollBtn = document.getElementById('roll-btn');
   const amountInput = document.getElementById('amount-input');
@@ -369,8 +368,8 @@ export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
       // Render the final message; preserve Discord emoji rendering.
       const inline = renderResultMessage(d.isWin ? d.winMessage : d.loseMessage, d.results);
       const headline = d.isWin
-        ? 'You won ' + format(d.winnings) + ' mystic credits'
-        : 'You lost ' + format(d.amount) + ' mystic credits';
+        ? 'You won ' + d.winningsLabel + ' mystic credits'
+        : 'You lost ' + d.amountLabel + ' mystic credits';
       setBanner(d.isWin ? 'win' : 'loss', '<h2>' + headline + '</h2><div class="sub">' + inline + '</div>');
 
       // Light up every cell that participated in a matched payline. Run this

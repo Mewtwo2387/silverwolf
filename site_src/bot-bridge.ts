@@ -19,7 +19,7 @@ import {
 import { playRoulette, type RouletteBetType, type RouletteResult } from '../commands/roulette';
 import { spinSlots, type SlotsResult } from '../commands/slots';
 import { processClaim, type ClaimResult } from '../utils/claim';
-import { processEat, type EatResult } from '../utils/eat';
+import { processEat, type EatResult, formatEatItemLine } from '../utils/eat';
 import { processBuyUpgrade, type BuyUpgradeResult } from '../utils/buyUpgrade';
 import {
   processBuyAscensionUpgrade, type BuyAscensionResult,
@@ -31,8 +31,21 @@ import {
 import {
   getAscensionState, processAscend, type AscensionState, type AscendResult,
 } from '../utils/ascend';
-import { getMaxLevel, getNextUpgradeCost } from '../utils/upgrades';
-import { getNextAscensionUpgradeCost } from '../utils/ascensionupgrades';
+import {
+  getMaxLevel,
+  getNextUpgradeCost,
+  getMultiplierAmount,
+  getMultiplierChance,
+  getBekiCooldown,
+} from '../utils/upgrades';
+import {
+  getNextAscensionUpgradeCost,
+  getNuggieFlatMultiplier,
+  getNuggieStreakMultiplier,
+  getNuggieCreditsMultiplier,
+  getNuggiePokeMultiplier,
+  getNuggieNuggieMultiplier,
+} from '../utils/ascensionupgrades';
 import quote, { FONT_MAP } from '../utils/quote';
 import { format } from '../utils/math';
 
@@ -441,6 +454,7 @@ export interface BlackjackStartData {
   dealerUpCard: SerializableCard;
   playerTotal: number;
   amount: number;
+  amountLabel: string;
   expiresAt: number;
 }
 
@@ -454,6 +468,7 @@ export interface BlackjackHitData {
   result?: 'loss';
   message?: string;
   amount?: number;
+  amountLabel?: string;
 }
 
 export interface BlackjackStandData {
@@ -465,8 +480,10 @@ export interface BlackjackStandData {
   message: string;
   multi?: number;
   winnings?: number;
+  winningsLabel?: string;
   streak?: number;
   amount: number;
+  amountLabel: string;
 }
 
 export async function startBlackjack(
@@ -510,6 +527,7 @@ export async function startBlackjack(
       dealerUpCard: dealerHand[0],
       playerTotal: calculateHand(playerHand),
       amount,
+      amountLabel: format(amount),
       expiresAt,
     },
   };
@@ -546,6 +564,7 @@ export async function hitBlackjack(
         result: 'loss',
         message: 'You busted!',
         amount: game.amount,
+        amountLabel: format(game.amount),
       },
     };
   }
@@ -583,6 +602,8 @@ export async function standBlackjack(
   const playerTotal = calculateHand(game.playerHand);
   const dealerTotal = calculateHand(game.dealerHand);
 
+  const amountLabel = format(game.amount);
+
   if (dealerTotal > 21 || playerTotal > dealerTotal) {
     const win = await recordBlackjackWin(silverwolf, userId, game.amount);
     return {
@@ -596,8 +617,10 @@ export async function standBlackjack(
         message: 'You win!',
         multi: win.multi,
         winnings: win.winnings,
+        winningsLabel: format(win.winnings),
         streak: win.streak,
         amount: game.amount,
+        amountLabel,
       },
     };
   }
@@ -614,6 +637,7 @@ export async function standBlackjack(
         result: 'loss',
         message: 'Silverwolf wins!',
         amount: game.amount,
+        amountLabel,
       },
     };
   }
@@ -629,6 +653,7 @@ export async function standBlackjack(
       result: 'tie',
       message: 'No one wins!',
       amount: game.amount,
+      amountLabel,
     },
   };
 }
@@ -637,13 +662,19 @@ export async function standBlackjack(
 
 const VALID_BET_TYPES: RouletteBetType[] = ['number', 'red', 'black', 'green', 'even', 'odd'];
 
+export type WebRouletteData = RouletteResult & {
+  amount: number;
+  amountLabel: string;
+  winningsLabel: string;
+};
+
 export async function playRouletteWeb(
   silverwolf: Silverwolf,
   userId: string,
   amountString: string,
   betType: string,
   betValueRaw: number | null,
-): Promise<BetResult<RouletteResult & { amount: number }>> {
+): Promise<BetResult<WebRouletteData>> {
   if (!(VALID_BET_TYPES as string[]).includes(betType)) {
     return { error: 'invalid_bet_value' };
   }
@@ -665,63 +696,213 @@ export async function playRouletteWeb(
     betType as RouletteBetType,
     betType === 'number' ? betValueRaw : null,
   );
-  return { ok: true, data: { ...result, amount } };
+  return {
+    ok: true,
+    data: {
+      ...result,
+      amount,
+      amountLabel: format(amount),
+      winningsLabel: format(result.winnings),
+    },
+  };
 }
 
 // ─── Slots ─────────────────────────────────────────────────────────────────
+
+export type WebSlotsData = SlotsResult & {
+  amount: number;
+  amountLabel: string;
+  winningsLabel: string;
+};
 
 export async function playSlotsWeb(
   silverwolf: Silverwolf,
   userId: string,
   amountString: string,
-): Promise<BetResult<SlotsResult & { amount: number }>> {
+): Promise<BetResult<WebSlotsData>> {
   const code = await checkValidBetRaw(silverwolf as any, { id: userId }, amountString);
   const err = mapBetCode(code);
   if (err) return err;
   const amount = code;
 
   const result = await spinSlots(silverwolf, userId, amount);
-  return { ok: true, data: { ...result, amount } };
+  return {
+    ok: true,
+    data: {
+      ...result,
+      amount,
+      amountLabel: format(amount),
+      winningsLabel: format(result.winnings),
+    },
+  };
 }
 
 // ─── Claim ─────────────────────────────────────────────────────────────────
 
+// Status-discriminated label bundle so the page never has to format numbers
+// — every counter shown post-claim is rendered server-side via utils/math.ts.
+export type WebClaimResult = ClaimResult & {
+  amountLabel?: string;
+  newDinonuggiesLabel?: string;
+};
+
 export async function claimWeb(
   silverwolf: Silverwolf,
   userId: string,
-): Promise<ClaimResult> {
-  return processClaim(silverwolf, userId);
+): Promise<WebClaimResult> {
+  const result = await processClaim(silverwolf, userId);
+  if (result.status === 'broken_streak' || result.status === 'success') {
+    return {
+      ...result,
+      amountLabel: format(result.amount),
+      newDinonuggiesLabel: format(result.previousDinonuggies + result.amount),
+    };
+  }
+  return result;
 }
 
 // ─── Dinonuggie upgrades hub ───────────────────────────────────────────────
 
+export type UpgradeRowKey = 'multiplierAmount' | 'multiplierRarity' | 'beki';
+
+const UPGRADE_TITLES: Record<UpgradeRowKey, string> = {
+  multiplierAmount: 'Multiplier Amount Upgrade',
+  multiplierRarity: 'Multiplier Rarity Upgrade',
+  beki: 'Beki Cooldown Upgrade',
+};
+
+const ASCENSION_TITLES: Record<AscensionUpgradeKey, string> = {
+  nuggieFlatMultiplier: 'Nuggie Flat Multiplier',
+  nuggieStreakMultiplier: 'Nuggie Streak Multiplier',
+  nuggieCreditsMultiplier: 'Nuggie Credits Multiplier',
+  nuggiePokeMultiplier: 'Nuggie Poke Multiplier',
+  nuggieNuggieMultiplier: 'Nuggie Nuggie Multiplier',
+};
+
+const ASCENSION_DESCS: Record<AscensionUpgradeKey, string> = {
+  nuggieFlatMultiplier: 'Applies a flat multiplier to all claims.',
+  nuggieStreakMultiplier: 'Multiplier per day of your streak.',
+  nuggieCreditsMultiplier: 'Multiplier scaling with log2(credits).',
+  nuggiePokeMultiplier: 'Multiplier per unique pokemon you own.',
+  nuggieNuggieMultiplier: 'Multiplier scaling with log2(dinonuggies).',
+};
+
+// Hard cap on how many cumulative cost previews we precompute per ascension row.
+// Ascension upgrades have no in-game purchase ceiling, but the UI's qty stepper
+// realistically targets small batches — sending an array per click is plenty for
+// the live total preview. Server still validates the real purchase amount.
+const ASCENSION_QTY_PREVIEW = 100;
+
+function ascensionEffectLabel(key: AscensionUpgradeKey, level: number): string {
+  switch (key) {
+    case 'nuggieFlatMultiplier':
+      return `${format(getNuggieFlatMultiplier(level))}x flat`;
+    case 'nuggieStreakMultiplier':
+      return `${format(getNuggieStreakMultiplier(level) * 100)}%/day`;
+    case 'nuggieCreditsMultiplier':
+      return `+${format(getNuggieCreditsMultiplier(level) * 100)}% * log2(credits)`;
+    case 'nuggiePokeMultiplier':
+      return `+${format(getNuggiePokeMultiplier(level) * 100)}%/pokemon`;
+    case 'nuggieNuggieMultiplier':
+      return `+${format(getNuggieNuggieMultiplier(level) * 100)}% * log2(nuggies)`;
+    default:
+      return '';
+  }
+}
+
+function upgradeDisplayLines(
+  key: UpgradeRowKey,
+  level: number,
+  maxLevel: number,
+): { k: string; v: string }[] {
+  const next = Math.min(level + 1, maxLevel);
+  if (key === 'multiplierAmount') {
+    const cur = getMultiplierAmount(level);
+    const nxt = getMultiplierAmount(next);
+    return [
+      { k: 'Gold', v: `${format(cur.gold)}x → ${format(nxt.gold)}x` },
+      { k: 'Silver', v: `${format(cur.silver)}x → ${format(nxt.silver)}x` },
+      { k: 'Bronze', v: `${format(cur.bronze)}x → ${format(nxt.bronze)}x` },
+    ];
+  }
+  if (key === 'multiplierRarity') {
+    const cur = getMultiplierChance(level);
+    const nxt = getMultiplierChance(next);
+    return [
+      { k: 'Gold', v: `${format(cur.gold * 100)}% → ${format(nxt.gold * 100)}%` },
+      { k: 'Silver', v: `${format(cur.silver * 100)}% → ${format(nxt.silver * 100)}%` },
+      { k: 'Bronze', v: `${format(cur.bronze * 100)}% → ${format(nxt.bronze * 100)}%` },
+    ];
+  }
+  return [
+    {
+      k: 'Cooldown',
+      v: `${format(getBekiCooldown(level))}h → ${format(getBekiCooldown(next))}h`,
+    },
+  ];
+}
+
+function cumulativeUpgradeCosts(level: number, maxLevel: number): string[] {
+  const cap = Math.max(0, maxLevel - level);
+  const out: string[] = [];
+  let running = 0;
+  for (let i = 0; i < cap; i += 1) {
+    running += getNextUpgradeCost(level + i);
+    out.push(format(running));
+  }
+  return out;
+}
+
+function cumulativeAscensionCosts(level: number, amplifier: number): string[] {
+  const out: string[] = [];
+  let running = 0;
+  for (let i = 0; i < ASCENSION_QTY_PREVIEW; i += 1) {
+    running += getNextAscensionUpgradeCost(level + i, amplifier);
+    out.push(format(running));
+  }
+  return out;
+}
+
 export interface UpgradeRowState {
-  key: 'multiplierAmount' | 'multiplierRarity' | 'beki';
+  key: UpgradeRowKey;
   upgradeId: number;
+  title: string;
   level: number;
   maxLevel: number;
-  nextCost: number; // cost to go level -> level+1; 0 if maxed
+  // displayLines[i] = { k: 'Gold', v: '2.0x → 2.2x' } etc. Ready to render as-is.
+  displayLines: { k: string; v: string }[];
+  // costsByQty[i] = formatted cumulative credit cost for buying (i+1) levels.
+  // Empty when already maxed. The client clamps the qty input to this length.
+  costsByQty: string[];
 }
 
 export interface AscensionUpgradeRowState {
   key: AscensionUpgradeKey;
   upgradeId: number;
+  title: string;
+  desc: string;
   level: number;
-  amplifier: number;
   required: number;
   unlocked: boolean;
-  nextCost: number;
+  effectLabel: string; // "current → next"
+  // costsByQty[i] = formatted cumulative heavenly-nuggie cost for (i+1) levels.
+  // Capped at ASCENSION_QTY_PREVIEW; UI clamps the qty input to that length.
+  costsByQty: string[];
 }
 
+export type WebAscensionState = AscensionState & {
+  dinonuggiesLabel: string;
+};
+
 export interface DinoUpgradesState {
-  dinonuggies: number;
-  credits: number;
-  heavenlyNuggies: number;
+  creditsLabel: string;
+  dinonuggiesLabel: string;
+  heavenlyNuggiesLabel: string;
   ascensionLevel: number;
   maxLevel: number;
   upgrades: UpgradeRowState[];
   ascension: {
-    state: AscensionState;
+    state: WebAscensionState;
     rows: AscensionUpgradeRowState[];
   };
 }
@@ -746,91 +927,152 @@ export async function getDinoUpgradesStateWeb(
     client.db.user.getUserAttr(userId, 'bekiLevel'),
   ]);
 
+  const buildRow = (key: UpgradeRowKey, upgradeId: number, level: number): UpgradeRowState => ({
+    key,
+    upgradeId,
+    title: UPGRADE_TITLES[key],
+    level,
+    maxLevel,
+    displayLines: upgradeDisplayLines(key, level, maxLevel),
+    costsByQty: cumulativeUpgradeCosts(level, maxLevel),
+  });
+
   const upgrades: UpgradeRowState[] = [
-    {
-      key: 'multiplierAmount',
-      upgradeId: 1,
-      level: multiplierAmountLevel,
-      maxLevel,
-      nextCost: multiplierAmountLevel >= maxLevel ? 0 : getNextUpgradeCost(multiplierAmountLevel),
-    },
-    {
-      key: 'multiplierRarity',
-      upgradeId: 2,
-      level: multiplierRarityLevel,
-      maxLevel,
-      nextCost: multiplierRarityLevel >= maxLevel ? 0 : getNextUpgradeCost(multiplierRarityLevel),
-    },
-    {
-      key: 'beki',
-      upgradeId: 3,
-      level: bekiLevel,
-      maxLevel,
-      nextCost: bekiLevel >= maxLevel ? 0 : getNextUpgradeCost(bekiLevel),
-    },
+    buildRow('multiplierAmount', 1, multiplierAmountLevel),
+    buildRow('multiplierRarity', 2, multiplierRarityLevel),
+    buildRow('beki', 3, bekiLevel),
   ];
 
   const ascensionState = await getAscensionState(client, userId);
 
   const ascensionRows: AscensionUpgradeRowState[] = await Promise.all(
-    ASCENSION_UPGRADES.map(async (key, i) => {
+    ASCENSION_UPGRADES.map(async (key, i): Promise<AscensionUpgradeRowState> => {
       const lvl = await client.db.user.getUserAttr(userId, `${key}Level`);
       const amplifier = ASCENSION_AMPLIFIERS[key];
       const required = ASCENSION_LEVEL_REQ[key];
       return {
         key,
         upgradeId: i + 1,
+        title: ASCENSION_TITLES[key],
+        desc: ASCENSION_DESCS[key],
         level: lvl,
-        amplifier,
         required,
         unlocked: ascensionLevel >= required,
-        nextCost: getNextAscensionUpgradeCost(lvl, amplifier),
+        effectLabel: `${ascensionEffectLabel(key, lvl)} → ${ascensionEffectLabel(key, lvl + 1)}`,
+        costsByQty: cumulativeAscensionCosts(lvl, amplifier),
       };
     }),
   );
 
   return {
-    dinonuggies,
-    credits,
-    heavenlyNuggies,
+    creditsLabel: format(credits),
+    dinonuggiesLabel: format(dinonuggies),
+    heavenlyNuggiesLabel: format(heavenlyNuggies),
     ascensionLevel,
     maxLevel,
     upgrades,
-    ascension: { state: ascensionState, rows: ascensionRows },
+    ascension: {
+      state: { ...ascensionState, dinonuggiesLabel: format(ascensionState.dinonuggies) },
+      rows: ascensionRows,
+    },
   };
 }
+
+export type WebEatResult = EatResult & {
+  amountLabel?: string;
+  dinonuggiesLabel?: string;
+  totalEarnedLabel?: string;
+  // Single-eat narrative line (e.g. "You found a hidden mystichunterzium…").
+  itemLine?: string;
+  // Batch-eat narrative lines, one per swallowed nugget.
+  itemLines?: string[];
+};
 
 export async function eatWeb(
   silverwolf: Silverwolf,
   userId: string,
   amount: number,
-): Promise<EatResult> {
-  return processEat(silverwolf as any, userId, amount);
+): Promise<WebEatResult> {
+  const result = await processEat(silverwolf as any, userId, amount);
+  switch (result.status) {
+    case 'not_enough':
+    case 'cheat':
+      return {
+        ...result,
+        dinonuggiesLabel: format(result.dinonuggies),
+        amountLabel: format(result.amount),
+      };
+    case 'single':
+      return { ...result, itemLine: formatEatItemLine(result.item) };
+    case 'batch':
+      return {
+        ...result,
+        itemLines: result.items.map(formatEatItemLine),
+        totalEarnedLabel: format(result.totalEarned),
+      };
+    default:
+      return result;
+  }
 }
+
+export type WebBuyUpgradeResult = BuyUpgradeResult & {
+  costLabel?: string;
+  creditsLabel?: string;
+};
 
 export async function buyUpgradeWeb(
   silverwolf: Silverwolf,
   userId: string,
   upgradeId: number,
   amount: number,
-): Promise<BuyUpgradeResult> {
-  return processBuyUpgrade(silverwolf as any, userId, upgradeId, amount);
+): Promise<WebBuyUpgradeResult> {
+  const result = await processBuyUpgrade(silverwolf as any, userId, upgradeId, amount);
+  if (result.status === 'success' || result.status === 'poor') {
+    return {
+      ...result,
+      costLabel: format(result.cost),
+      ...(result.status === 'poor' ? { creditsLabel: format(result.credits) } : {}),
+    };
+  }
+  return result;
 }
+
+export type WebBuyAscensionResult = BuyAscensionResult & {
+  costLabel?: string;
+  heavenlyNuggiesLabel?: string;
+};
 
 export async function buyAscensionUpgradeWeb(
   silverwolf: Silverwolf,
   userId: string,
   upgradeId: number,
   amount: number,
-): Promise<BuyAscensionResult> {
-  return processBuyAscensionUpgrade(silverwolf as any, userId, upgradeId, amount);
+): Promise<WebBuyAscensionResult> {
+  const result = await processBuyAscensionUpgrade(silverwolf as any, userId, upgradeId, amount);
+  if (result.status === 'success' || result.status === 'poor') {
+    return {
+      ...result,
+      costLabel: format(result.cost),
+      ...(result.status === 'poor' ? { heavenlyNuggiesLabel: format(result.heavenlyNuggies) } : {}),
+    };
+  }
+  return result;
 }
+
+export type WebAscendResult = AscendResult & {
+  gainedLabel?: string;
+  dinonuggiesLabel?: string;
+};
 
 export async function ascendWeb(
   silverwolf: Silverwolf,
   userId: string,
-): Promise<AscendResult> {
-  return processAscend(silverwolf as any, userId);
+): Promise<WebAscendResult> {
+  const result = await processAscend(silverwolf as any, userId);
+  if (result.status === 'too_few') {
+    return { ...result, dinonuggiesLabel: format(result.dinonuggies) };
+  }
+  return { ...result, gainedLabel: format(result.gained) };
 }
 
 // ─── Poop log ──────────────────────────────────────────────────────────────
