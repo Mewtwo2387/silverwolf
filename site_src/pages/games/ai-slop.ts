@@ -142,11 +142,30 @@ export function AiSlopPage(opts: {
     box-shadow: none;
   }
 
+  /* Reset the global <details> styling (input.css "Holo-Windows" block).
+     Critical: the global rule sets backdrop-filter: blur(12px), which creates
+     a containing block for position:fixed descendants — that breaks the
+     overflow menu (it ends up positioned relative to this <details> instead
+     of the viewport, landing off-screen). We also flatten the inherited
+     padding/margin/box-shadow so the sidebar group looks like a plain card. */
   .aislop-group {
     border: 1px solid var(--ink-600);
     border-radius: 0.5rem;
     background: var(--ink-900);
+    padding: 0;
+    margin-bottom: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
+  .aislop-group:hover,
+  .aislop-group[open] {
+    border-color: var(--ink-600);
+    box-shadow: none;
+  }
+  /* The global summary::after injects "[ OPEN ]" / "[ CLOSE ]" badges —
+     unwanted in the compact sidebar groups. */
+  .aislop-group > summary::after { content: none; }
   .aislop-group > summary {
     cursor: pointer;
     padding: 0.45rem 0.65rem;
