@@ -1,7 +1,7 @@
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import type { NavUser } from '../../components/navbar';
-import { inlineJSON } from '../../inline';
+import { inlineJSON, FORMAT_NUMBER_JS } from '../../inline';
 
 export function ClaimPage(opts: { nonce: string; lv999?: boolean; user?: NavUser | null }) {
   const { nonce, lv999, user } = opts;
@@ -83,6 +83,7 @@ export function ClaimPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
   const script = raw(`
 <script nonce="${nonce}">
 (() => {
+  ${FORMAT_NUMBER_JS}
   const csrf = ${csrfJSON};
   const display = document.getElementById('claim-display');
   const displayImg = document.getElementById('claim-img');
@@ -90,11 +91,6 @@ export function ClaimPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
   const msg = document.getElementById('claim-message');
 
   const DEFAULT_IMG = '/static/game-dinonuggie.webp';
-
-  function format(n) {
-    if (typeof n !== 'number' || !Number.isFinite(n)) return String(n);
-    return Math.round(n).toLocaleString();
-  }
 
   function setRarityClass(el, rarity) {
     el.classList.remove('gold', 'silver', 'bronze', 'regular', 'cooldown');

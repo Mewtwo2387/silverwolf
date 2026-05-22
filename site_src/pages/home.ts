@@ -288,7 +288,7 @@ export function HomePage(opts: {
         <div class="me-grid">
           <div class="me-card">
             <div class="label">Mystic Credits</div>
-            <div class="value">${format(credits, true)}</div>
+            <div class="value">${format(credits)}</div>
           </div>
           <div class="me-card">
             <div class="label">Dinonuggies</div>

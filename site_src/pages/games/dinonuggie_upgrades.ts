@@ -1,7 +1,7 @@
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import type { NavUser } from '../../components/navbar';
-import { inlineJSON } from '../../inline';
+import { inlineJSON, FORMAT_NUMBER_JS } from '../../inline';
 
 export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; user?: NavUser | null }) {
   const { nonce, lv999, user } = opts;
@@ -190,21 +190,9 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
   const script = loggedOut ? '' : raw(`
 <script nonce="${nonce}">
 (() => {
+  ${FORMAT_NUMBER_JS}
   const csrf = ${csrfJSON};
 
-  function format(n) {
-    if (typeof n !== 'number' || !Number.isFinite(n)) return String(n);
-    if (Math.abs(n) >= 1e6) {
-      const units = ['K','M','B','T','Qa','Qi','Sx','Sp','Oc','No'];
-      const mag = Math.floor(Math.log10(Math.abs(n)));
-      const idx = Math.floor(mag / 3) - 1;
-      const u = units[idx] || 'e' + (idx*3+3);
-      return (n / Math.pow(10, (idx+1)*3)).toFixed(3) + u;
-    }
-    return Math.round(n * 100) / 100 === Math.round(n)
-      ? Math.round(n).toLocaleString()
-      : Number(n.toFixed(2)).toLocaleString();
-  }
   function pct(n) { return format(n * 100) + '%'; }
 
   function getMultiplierAmount(level) {
