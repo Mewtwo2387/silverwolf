@@ -77,16 +77,19 @@ export async function playRoulette(
 
   multi *= await client.db.marriage.getMarriageBenefits(userId);
   const winnings = multi * amount;
-  await client.db.user.addUserAttr(userId, 'rouletteTimesPlayed', 1);
-  await client.db.user.addUserAttr(userId, 'rouletteAmountGambled', amount);
-  await client.db.user.addUserAttr(userId, 'rouletteTimesWon', multi > 0 ? 1 : 0);
-  await client.db.user.addUserAttr(userId, 'rouletteAmountWon', winnings);
-  await client.db.user.addUserAttr(userId, 'rouletteRelativeWon', multi);
-  await client.db.user.addUserAttr(userId, 'credits', winnings - amount);
-  await client.db.user.setUserAttr(userId, 'rouletteStreak', streak);
-  if (streak > maxStreak) {
-    await client.db.user.setUserAttr(userId, 'rouletteMaxStreak', streak);
-  }
+  const sets: Record<string, number> = { rouletteStreak: streak };
+  if (streak > maxStreak) sets.rouletteMaxStreak = streak;
+  await client.db.user.updateUserAttrs(userId, {
+    adds: {
+      rouletteTimesPlayed: 1,
+      rouletteAmountGambled: amount,
+      rouletteTimesWon: multi > 0 ? 1 : 0,
+      rouletteAmountWon: winnings,
+      rouletteRelativeWon: multi,
+      credits: winnings - amount,
+    },
+    sets,
+  });
 
   return {
     wheelResult,

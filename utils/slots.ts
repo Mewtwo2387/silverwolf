@@ -2,6 +2,7 @@
 // `/slots` command and the web slots page (via bot-bridge).
 
 import { format } from './math';
+import { assertPositiveFiniteBet } from './betting';
 import skins from '../data/config/skin/slots.json';
 
 export interface SlotsEmote { emote: string; value: number; }
@@ -39,6 +40,8 @@ export interface SlotsResult {
 }
 
 export async function spinSlots(client: any, userId: string, amount: number): Promise<SlotsResult> {
+  assertPositiveFiniteBet(amount);
+
   const season = await client.db.globalConfig.getGlobalConfig('season') || 'normal';
   const skinsAny = skins as any;
   const resolvedSeason = Object.hasOwn(skinsAny, season) ? season : 'normal';
@@ -81,12 +84,14 @@ export async function spinSlots(client: any, userId: string, amount: number): Pr
   multi *= await client.db.marriage.getMarriageBenefits(userId);
   const winnings = multi * amount;
   const netProfit = winnings - amount;
-  await client.db.user.addUserAttr(userId, 'slotsTimesPlayed', 1);
-  await client.db.user.addUserAttr(userId, 'slotsAmountGambled', amount);
-  await client.db.user.addUserAttr(userId, 'slotsTimesWon', netProfit > 0 ? 1 : 0);
-  await client.db.user.addUserAttr(userId, 'slotsAmountWon', winnings);
-  await client.db.user.addUserAttr(userId, 'slotsRelativeWon', multi);
-  await client.db.user.addUserAttr(userId, 'credits', winnings - amount);
+  await client.db.user.addUserAttrs(userId, {
+    slotsTimesPlayed: 1,
+    slotsAmountGambled: amount,
+    slotsTimesWon: netProfit > 0 ? 1 : 0,
+    slotsAmountWon: winnings,
+    slotsRelativeWon: multi,
+    credits: winnings - amount,
+  });
 
   const winMessage = skin.winMessage.replace('{amount}', format(amount)).replace('{winnings}', format(winnings));
   const loseMessage = skin.loseMessage.replace('{amount}', format(amount));

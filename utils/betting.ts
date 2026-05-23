@@ -24,6 +24,18 @@ export function mapBetCode(code: number): { error: BetErrorCode } | null {
   }
 }
 
+/** True when `amount` is a finite number strictly greater than zero. */
+export function isValidBetAmount(amount: number): boolean {
+  return Number.isFinite(amount) && amount > 0;
+}
+
+/** Guard for game helpers that accept a pre-parsed bet (e.g. spinSlots). */
+export function assertPositiveFiniteBet(amount: number): void {
+  if (!isValidBetAmount(amount)) {
+    throw new Error('Invalid bet amount');
+  }
+}
+
 const INFINITY_KEYWORDS = [
   'infinity', 'inf', '∞', 'unlimited', 'forever',
   'endless', 'neverending', 'boundless', 'limitless',
@@ -35,14 +47,11 @@ export async function checkValidBetRaw(client: any, user: { id: string }, amount
     return INFINITY_AMOUNT;
   }
   const amount = antiFormat(amountString);
-  if (Number.isNaN(amount)) {
+  if (Number.isNaN(amount) || !Number.isFinite(amount)) {
     return INVALID_AMOUNT;
   }
-  if (amount < 0) {
-    return NEGATIVE_AMOUNT;
-  }
-  if (amount === 0) {
-    return INVALID_AMOUNT;
+  if (amount <= 0) {
+    return amount < 0 ? NEGATIVE_AMOUNT : INVALID_AMOUNT;
   }
 
   const credits = await client.db.user.getUserAttr(user.id, 'credits');
