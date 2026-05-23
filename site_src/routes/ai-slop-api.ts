@@ -15,6 +15,38 @@ const MAX_MESSAGE_CHARS = 8000;
 const MAX_TITLE_CHARS = 80;
 const HISTORY_FETCH_LIMIT = 100;
 
+// Per-user send quota. The global IP-bucketed limiter catches bursts, but
+// every accepted /send fires a paid AI call (plus title-gen on first turn),
+// so a single authenticated user — or a stolen session — could otherwise
+// burn ~120 calls/min from one IP. Window is sliding so it self-clears.
+const AI_SLOP_RATE_WINDOW_MS = 10 * 60_000;
+const AI_SLOP_RATE_MAX = 60;
+const aiSlopHits = new Map<string, number[]>();
+
+function aiSlopRateLimitCheck(userId: string): { ok: true } | { ok: false; retryAfter: number } {
+  const now = Date.now();
+  const fresh = aiSlopHits.get(userId)?.filter((t) => now - t < AI_SLOP_RATE_WINDOW_MS) ?? [];
+  if (fresh.length >= AI_SLOP_RATE_MAX) {
+    const oldest = fresh[0];
+    const retryAfter = Math.max(1, Math.ceil((AI_SLOP_RATE_WINDOW_MS - (now - oldest)) / 1000));
+    aiSlopHits.set(userId, fresh);
+    return { ok: false, retryAfter };
+  }
+  fresh.push(now);
+  aiSlopHits.set(userId, fresh);
+  return { ok: true };
+}
+
+// .unref() so the interval doesn't keep the process alive on its own.
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, hits] of aiSlopHits.entries()) {
+    const fresh = hits.filter((t) => now - t < AI_SLOP_RATE_WINDOW_MS);
+    if (fresh.length === 0) aiSlopHits.delete(id);
+    else aiSlopHits.set(id, fresh);
+  }
+}, 5 * 60_000).unref();
+
 function isValidSessionId(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value > 0;
 }
@@ -44,6 +76,18 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
     if (!messageRaw) return c.json({ ok: false, error: 'empty_message' }, 400);
     if (messageRaw.length > MAX_MESSAGE_CHARS) {
       return c.json({ ok: false, error: 'message_too_long' }, 400);
+    }
+
+    // Quota-check after cheap input validation but before any DB work or AI
+    // call. Empty/oversize bodies don't hit the model, so they shouldn't burn
+    // a slot.
+    const quota = aiSlopRateLimitCheck(auth.discordId);
+    if (!quota.ok) {
+      return c.json(
+        { ok: false, error: 'rate_limited' as const, retryAfter: quota.retryAfter },
+        429,
+        { 'retry-after': String(quota.retryAfter) },
+      );
     }
 
     const sessionIdRaw = body!.sessionId;
