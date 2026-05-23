@@ -744,6 +744,12 @@ export function AiSlopPage(opts: {
     thinkingNode.remove();
     if (!data.ok) {
       userNode.remove();
+      if (data.error === 'rate_limited') {
+        const after = data.retryAfter ? ' Try again in ' + data.retryAfter + 's.' : '';
+        setError('You\\'re sending messages too fast.' + after);
+        setSending(false);
+        return;
+      }
       const map = {
         unauthenticated: 'You must log in.',
         csrf: 'Session expired. Refresh the page.',
