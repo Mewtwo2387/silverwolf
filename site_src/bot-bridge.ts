@@ -24,6 +24,7 @@ import {
   processBuyAscensionUpgrade, type BuyAscensionResult,
   ASCENSION_UPGRADES,
   ASCENSION_AMPLIFIERS,
+  ASCENSION_LEVEL_ATTR,
   ASCENSION_LEVEL_REQ,
   type AscensionUpgradeKey,
 } from '../utils/buyAscensionUpgrade';
@@ -969,7 +970,7 @@ export async function getDinoUpgradesStateWeb(
 
   const ascensionRows: AscensionUpgradeRowState[] = await Promise.all(
     ASCENSION_UPGRADES.map(async (key, i): Promise<AscensionUpgradeRowState> => {
-      const lvl = await client.db.user.getUserAttr(userId, `${key}Level`);
+      const lvl = await client.db.user.getUserAttr(userId, ASCENSION_LEVEL_ATTR[key]);
       const amplifier = ASCENSION_AMPLIFIERS[key];
       const required = ASCENSION_LEVEL_REQ[key];
       const cur = ascensionEffectLine(key, lvl);

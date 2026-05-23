@@ -82,7 +82,7 @@ export async function spinSlots(client: any, userId: string, amount: number): Pr
   const winnings = multi * amount;
   const netProfit = winnings - amount;
   await client.db.user.addUserAttr(userId, 'slotsTimesPlayed', 1);
-  await client.db.user.addUserAttr(userId, 'slotsTimesGambled', amount);
+  await client.db.user.addUserAttr(userId, 'slotsAmountGambled', amount);
   await client.db.user.addUserAttr(userId, 'slotsTimesWon', netProfit > 0 ? 1 : 0);
   await client.db.user.addUserAttr(userId, 'slotsAmountWon', winnings);
   await client.db.user.addUserAttr(userId, 'slotsRelativeWon', multi);

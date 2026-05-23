@@ -166,6 +166,7 @@ export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
 (() => {
   ${NUM_FMT_JS}
   const csrf = ${csrfJSON};
+  const slotsForm = document.querySelector('.slots-form');
   const rollBtn = document.getElementById('roll-btn');
   const amountInput = document.getElementById('amount-input');
   const banner = document.getElementById('result-banner');
@@ -291,17 +292,6 @@ export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
     const amount = amountInput.value.trim();
     if (!amount) { setBanner('loss', '<h2>Enter a bet amount.</h2>'); spinning = false; rollBtn.disabled = false; return; }
 
-    // Kick off a quick "pre-spin" so reels start moving immediately while
-    // the network round-trip happens. We restart the animation properly
-    // once the server result is in. Also strip any winning glow left over
-    // from the previous spin so the new roll starts clean.
-    reels.forEach((r) => {
-      const strip = r.querySelector('.strip');
-      strip.querySelectorAll('.symbol.winning').forEach((s) => s.classList.remove('winning'));
-      strip.style.transition = 'none';
-      strip.style.transform = 'translateY(0)';
-    });
-
     let data;
     try {
       const r = await fetch('/games/slots/play', {
@@ -317,8 +307,8 @@ export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
       return;
     }
 
-    if (data.error) {
-      handleErrorCode(data.error);
+    if (data.error || !data.data) {
+      handleErrorCode(data.error || 'server');
       spinning = false;
       rollBtn.disabled = false;
       return;
@@ -334,6 +324,7 @@ export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
 
     reels.forEach((reelEl, j) => {
       const strip = reelEl.querySelector('.strip');
+      strip.querySelectorAll('.symbol.winning').forEach((s) => s.classList.remove('winning'));
       const stopCol = [d.results[0][j], d.results[1][j], d.results[2][j]];
       const built = buildStrip(j, stopCol);
       strip.innerHTML = built.html;
@@ -360,7 +351,14 @@ export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
       strip.style.transition = '';
       strip.style.setProperty('--spin-duration', (stopDelays[j] / 1000) + 's');
       strip.classList.add('spinning');
-      strip.style.transform = 'translateY(' + translate + 'px)';
+      // After await(fetch), the browser may batch style writes from Enter/submit
+      // in the same frame — double rAF ensures the parked position paints first.
+      const finalY = translate;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          strip.style.transform = 'translateY(' + finalY + 'px)';
+        });
+      });
     });
 
     const totalWait = Math.max(...stopDelays) + 200;
@@ -387,8 +385,16 @@ export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
     }, totalWait);
   }
 
-  rollBtn.addEventListener('click', roll);
-  amountInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') roll(); });
+  rollBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    roll();
+  });
+  // Enter in the bet field submits the form; keypress + implicit submit could
+  // invoke roll twice or skip CSS transitions — handle submit once instead.
+  slotsForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    roll();
+  });
 })();
 </script>
 `);

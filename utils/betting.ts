@@ -41,6 +41,9 @@ export async function checkValidBetRaw(client: any, user: { id: string }, amount
   if (amount < 0) {
     return NEGATIVE_AMOUNT;
   }
+  if (amount === 0) {
+    return INVALID_AMOUNT;
+  }
 
   const credits = await client.db.user.getUserAttr(user.id, 'credits');
   if (amount > credits) {

@@ -10,6 +10,15 @@ export const ASCENSION_UPGRADES = [
 
 export type AscensionUpgradeKey = typeof ASCENSION_UPGRADES[number];
 
+/** User column keys for ascension upgrade levels (camelCase, as returned by getUser). */
+export const ASCENSION_LEVEL_ATTR: Record<AscensionUpgradeKey, string> = {
+  nuggieFlatMultiplier: 'nuggieFlatMultiplierLevel',
+  nuggieStreakMultiplier: 'nuggieStreakMultiplierLevel',
+  nuggieCreditsMultiplier: 'nuggieCreditsMultiplierLevel',
+  nuggiePokeMultiplier: 'nuggiePokemonMultiplierLevel',
+  nuggieNuggieMultiplier: 'nuggieNuggieMultiplierLevel',
+};
+
 export const ASCENSION_AMPLIFIERS: Record<AscensionUpgradeKey, number> = {
   nuggieFlatMultiplier: 1,
   nuggieStreakMultiplier: 1,
@@ -69,7 +78,8 @@ async function processBuyAscensionUpgradeInner(
   }
 
   const upgrade = ASCENSION_UPGRADES[upgradeId - 1];
-  const level = await client.db.user.getUserAttr(userId, `${upgrade}Level`);
+  const levelAttr = ASCENSION_LEVEL_ATTR[upgrade];
+  const level = await client.db.user.getUserAttr(userId, levelAttr);
   const ascensionLevel = await client.db.user.getUserAttr(userId, 'ascensionLevel');
 
   if (ascensionLevel < ASCENSION_LEVEL_REQ[upgrade]) {
@@ -92,7 +102,7 @@ async function processBuyAscensionUpgradeInner(
 
   await client.db.user.addUserAttrs(userId, {
     heavenlyNuggies: -cost,
-    [`${upgrade}Level`]: amount,
+    [levelAttr]: amount,
   });
   return {
     status: 'success', upgrade, upgradeId, level, amount, cost, heavenlyNuggies,
