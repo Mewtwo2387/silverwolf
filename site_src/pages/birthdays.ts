@@ -452,19 +452,19 @@ export function BirthdaysPage(opts: {
         <h1 class="text-center">Birthdays</h1>
         <div class="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-6 mt-6">
           ${MONTHS.map((month) => {
-            const users = grouped[month] ?? [];
-            const isCurrent = month === currentMonth;
-            return html`
+    const users = grouped[month] ?? [];
+    const isCurrent = month === currentMonth;
+    return html`
               <section class="${`month-card ${isCurrent ? 'month-current' : ''}`}">
                 <div class="month-node-dot top-left"></div>
                 <div class="month-node-dot bottom-left"></div>
                 <h3 class="text-accent-light font-mono text-sm tracking-wider uppercase mb-1">// ${month}</h3>
                 ${users.length === 0
-                  ? html`<div class="text-fog-500 text-[0.85rem] font-mono mt-2">&gt; NO RECORDED BIRTHDAYS</div>`
-                  : html`<div class="flex flex-wrap gap-[0.45rem] pt-3">${users.map((u) => renderUser(u, upcomingIds.has(u.id)))}</div>`}
+    ? html`<div class="text-fog-500 text-[0.85rem] font-mono mt-2">&gt; NO RECORDED BIRTHDAYS</div>`
+    : html`<div class="flex flex-wrap gap-[0.45rem] pt-3">${users.map((u) => renderUser(u, upcomingIds.has(u.id)))}</div>`}
               </section>
             `;
-          })}
+  })}
         </div>
         ${birthdayModal}
         ${birthdayModalScript(nonce)}

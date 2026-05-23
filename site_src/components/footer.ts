@@ -48,4 +48,3 @@ export function Footer(nonce: string) {
     </footer>
   `;
 }
-

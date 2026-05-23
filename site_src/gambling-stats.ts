@@ -1,7 +1,7 @@
+import { html } from 'hono/html';
 import type { Silverwolf } from '../classes/silverwolf';
 import { formatDisplay } from '../utils/math';
 import { numSpan } from './format';
-import { html } from 'hono/html';
 
 export type GamblingPageStats = {
   credits: number;

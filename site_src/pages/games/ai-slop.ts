@@ -1032,8 +1032,8 @@ export function AiSlopPage(opts: {
       <h1 class="text-center">AI Slop</h1>
       <p class="text-center text-fog-300 mb-4">chat with ai slop or something idk</p>
       ${loggedOut
-      ? html`<div class="login-cta">Log in with <a href="/auth/discord/login">Discord</a> to chat.</div>`
-      : html`
+    ? html`<div class="login-cta">Log in with <a href="/auth/discord/login">Discord</a> to chat.</div>`
+    : html`
           <div class="aislop-shell">
             <aside class="aislop-side">
               <button type="button" id="aislop-new" class="aislop-new">+ New chat</button>
