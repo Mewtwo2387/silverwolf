@@ -1,7 +1,7 @@
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import type { NavUser } from '../../components/navbar';
-import { inlineJSON } from '../../inline';
+import { inlineJSON, NUM_FMT_JS } from '../../inline';
 
 export function ClaimPage(opts: { nonce: string; lv999?: boolean; user?: NavUser | null }) {
   const { nonce, lv999, user } = opts;
@@ -83,6 +83,7 @@ export function ClaimPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
   const script = raw(`
 <script nonce="${nonce}">
 (() => {
+  ${NUM_FMT_JS}
   const csrf = ${csrfJSON};
   const display = document.getElementById('claim-display');
   const displayImg = document.getElementById('claim-img');
@@ -145,8 +146,8 @@ export function ClaimPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
       displayImg.src = DEFAULT_IMG;
       setRarityClass(display, 'regular');
       setRarityClass(msg, 'regular');
-      msg.innerHTML = '<h2>' + d.amountLabel + ' dinonuggies claimed!</h2>'
-        + '<div class="sub">You now have ' + d.newDinonuggiesLabel
+      msg.innerHTML = '<h2>' + fmtNumSpan(d.amountLabel, d.amountTitle) + ' dinonuggies claimed!</h2>'
+        + '<div class="sub">You now have ' + fmtNumSpan(d.newDinonuggiesLabel, d.newDinonuggiesTitle)
         + ' dinonuggies. You broke your streak of ' + d.previousStreak + ' days.</div>';
     } else if (d.status === 'success') {
       displayImg.src = d.webImageUrl || d.imageUrl || DEFAULT_IMG;
@@ -154,7 +155,7 @@ export function ClaimPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
       setRarityClass(display, rarity);
       setRarityClass(msg, rarity);
       msg.innerHTML = '<h2>' + d.title + '</h2>'
-        + '<div class="sub">You now have ' + d.newDinonuggiesLabel
+        + '<div class="sub">You now have ' + fmtNumSpan(d.newDinonuggiesLabel, d.newDinonuggiesTitle)
         + ' dinonuggies. You are on a streak of ' + (d.previousStreak + 1) + ' days.</div>'
         + '<div class="footer">' + d.footer + '</div>';
     }

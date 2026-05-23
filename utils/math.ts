@@ -71,6 +71,63 @@ function format(num: number | null | undefined, alwaysFixed = false, shortenThre
   return formattedNum.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
+// Full comma-separated display without K/M/B shortening — used for hover titles.
+function formatFull(num: number | null | undefined, alwaysFixed = false): string {
+  if (num === null) {
+    return 'null';
+  }
+  if (typeof num === 'undefined') {
+    return 'undefined';
+  }
+
+  const normalizedNum = Number(num);
+  const safeNum = Number.isFinite(normalizedNum) ? normalizedNum : 0;
+  let formattedNum: string;
+
+  if (alwaysFixed) {
+    formattedNum = safeNum.toFixed(2);
+  } else {
+    const numStr = safeNum.toString();
+    const decimalIndex = numStr.indexOf('.');
+
+    if (decimalIndex === -1 || numStr.length - decimalIndex - 1 <= 2) {
+      formattedNum = safeNum.toString();
+    } else {
+      formattedNum = safeNum.toFixed(2);
+    }
+  }
+
+  return formattedNum.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+export interface FormattedNumber {
+  label: string;
+  title?: string;
+}
+
+function formatHoverTitle(
+  num: number | null | undefined,
+  alwaysFixed = false,
+  shortenThreshold = 6,
+): string | undefined {
+  if (num === null || typeof num === 'undefined') {
+    return undefined;
+  }
+  const label = format(num, alwaysFixed, shortenThreshold);
+  const full = formatFull(num, alwaysFixed);
+  return label !== full ? full : undefined;
+}
+
+function formatDisplay(
+  num: number | null | undefined,
+  alwaysFixed = false,
+  shortenThreshold = 6,
+): FormattedNumber {
+  const label = format(num, alwaysFixed, shortenThreshold);
+  const title = formatHoverTitle(num, alwaysFixed, shortenThreshold);
+  return title ? { label, title } : { label };
+}
+
 function antiFormat(input: string): number {
   const cleanInput = input.replace(/,/g, '').trim();
   // pure numerical
@@ -103,5 +160,11 @@ function antiFormat(input: string): number {
 }
 
 export {
-  format, antiFormat, getPrefix, getNumberFromPrefix,
+  format,
+  formatFull,
+  formatDisplay,
+  formatHoverTitle,
+  antiFormat,
+  getPrefix,
+  getNumberFromPrefix,
 };

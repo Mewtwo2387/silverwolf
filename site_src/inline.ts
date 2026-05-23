@@ -11,6 +11,8 @@
 // of helper that must already be in place before any user-controlled value
 // gets near a <script> body.
 
+export { NUM_FMT_JS } from './format';
+
 export function inlineJSON(value: unknown): string {
   const s = JSON.stringify(value);
   // JSON.stringify returns undefined for undefined / functions / symbols;

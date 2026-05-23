@@ -1,7 +1,7 @@
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import type { NavUser } from '../../components/navbar';
-import { inlineJSON } from '../../inline';
+import { inlineJSON, NUM_FMT_JS } from '../../inline';
 
 export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; user?: NavUser | null }) {
   const { nonce, lv999, user } = opts;
@@ -190,6 +190,7 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
   const script = loggedOut ? '' : raw(`
 <script nonce="${nonce}">
 (() => {
+  ${NUM_FMT_JS}
   const csrf = ${csrfJSON};
 
   function escapeHtml(s) {
@@ -247,7 +248,9 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
       if (!Number.isFinite(v) || v < 1) v = 1;
       if (v > maxQty) v = maxQty;
       qtyInput.value = String(v);
-      totalEl.textContent = costsByQty[v - 1];
+      const cost = costsByQty[v - 1];
+      if (cost && typeof cost === 'object') setFmtNum(totalEl, cost.label, cost.title);
+      else setFmtNum(totalEl, cost, undefined);
     }
     refresh();
     card.querySelectorAll('[data-qstep]').forEach(b => {
@@ -280,8 +283,8 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
     const el = document.getElementById('eat-stats');
     if (!el || !STATE) return;
     el.innerHTML =
-      '<div><span class="stat-label">Dinonuggies:</span><span class="stat-val">' + STATE.dinonuggiesLabel + '</span></div>' +
-      '<div><span class="stat-label">Mystic Credits:</span><span class="stat-val">' + STATE.creditsLabel + '</span></div>';
+      '<div><span class="stat-label">Dinonuggies:</span><span class="stat-val">' + fmtNumSpan(STATE.dinonuggiesLabel, STATE.dinonuggiesTitle) + '</span></div>' +
+      '<div><span class="stat-label">Mystic Credits:</span><span class="stat-val">' + fmtNumSpan(STATE.creditsLabel, STATE.creditsTitle) + '</span></div>';
   }
 
   function handleUpgradeBuy(d, toast) {
@@ -323,16 +326,17 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
 
   function renderUpgrades() {
     if (!STATE) return;
-    document.getElementById('upgrade-credits').textContent = STATE.creditsLabel;
+    setFmtNum(document.getElementById('upgrade-credits'), STATE.creditsLabel, STATE.creditsTitle);
     const container = document.getElementById('upgrades-list');
     container.innerHTML = '';
     for (const u of STATE.upgrades) {
       const card = document.createElement('div');
       card.className = 'upgrade-card';
       const maxed = u.costsByQty.length === 0;
-      const statsHTML = u.displayLines.map(l =>
-        '<div><span class="k">' + escapeHtml(l.k) + ':</span> <span class="v">' + escapeHtml(l.v) + '</span></div>'
-      ).join('');
+      const statsHTML = u.displayLines.map(l => {
+        const t = l.vTitle ? ' title="' + escapeHtml(l.vTitle) + '"' : '';
+        return '<div><span class="k">' + escapeHtml(l.k) + ':</span> <span class="v"' + t + '>' + escapeHtml(l.v) + '</span></div>';
+      }).join('');
       card.innerHTML =
         '<h3>' + escapeHtml(u.title) + ' (Lv ' + u.level + '/' + u.maxLevel + ')</h3>' +
         '<div class="stats-grid">' + statsHTML + '</div>' +
@@ -358,7 +362,7 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
   function renderAscension() {
     if (!STATE) return;
     const a = STATE.ascension;
-    document.getElementById('asc-heavenly').textContent = STATE.heavenlyNuggiesLabel;
+    setFmtNum(document.getElementById('asc-heavenly'), STATE.heavenlyNuggiesLabel, STATE.heavenlyNuggiesTitle);
     document.getElementById('asc-level').textContent = STATE.ascensionLevel;
     const list = document.getElementById('ascension-list');
     list.innerHTML = '';
@@ -369,7 +373,7 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
       card.innerHTML =
         '<h3>' + escapeHtml(row.title) + ' (Lv ' + row.level + ')</h3>' +
         '<div class="stats-grid">' +
-          '<div><span class="k">Effect:</span> <span class="v">' + escapeHtml(row.effectLabel) + '</span></div>' +
+          '<div><span class="k">Effect:</span> <span class="v"' + (row.effectTitle ? ' title="' + escapeHtml(row.effectTitle) + '"' : '') + '>' + escapeHtml(row.effectLabel) + '</span></div>' +
           '<div><span class="k">' + escapeHtml(row.desc) + '</span></div>' +
         '</div>' +
         lockedNote +
@@ -394,7 +398,7 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
     const ascState = a.state;
     const ascendBtn = document.getElementById('ascend-btn');
     const ascendStatus = document.getElementById('ascend-status');
-    document.getElementById('ascend-current-nuggies').textContent = ascState.dinonuggiesLabel;
+    setFmtNum(document.getElementById('ascend-current-nuggies'), ascState.dinonuggiesLabel, ascState.dinonuggiesTitle);
     document.getElementById('ascend-mam').textContent = ascState.multiplierAmountLevel + '/' + ascState.currentMaxLevel;
     document.getElementById('ascend-mrm').textContent = ascState.multiplierRarityLevel + '/' + ascState.currentMaxLevel;
     document.getElementById('ascend-bk').textContent = ascState.bekiLevel + '/' + ascState.currentMaxLevel;

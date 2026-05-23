@@ -52,7 +52,72 @@ import quote, {
 } from '../utils/quote';
 import { gamblerBoardTitle } from '../utils/leaderboards';
 import { getNextBirthdayInfo } from '../utils/birthdays';
-import { format } from '../utils/math';
+import { formatDisplay, type FormattedNumber } from '../utils/math';
+import { applyNumLabel } from './format';
+
+function valueLabelFields(
+  value: number,
+  suffix: string,
+  alwaysFixed = false,
+  prefix = '',
+): { valueLabel: string; valueTitle?: string } {
+  const { label, title } = formatDisplay(value, alwaysFixed);
+  const valueLabel = `${prefix}${label}${suffix}`;
+  const valueTitle = title ? `${prefix}${title}${suffix}` : undefined;
+  return valueTitle ? { valueLabel, valueTitle } : { valueLabel };
+}
+
+function displayArrow(
+  cur: number,
+  nxt: number,
+  suffix = '',
+  alwaysFixed = false,
+): { v: string; vTitle?: string } {
+  const a = formatDisplay(cur, alwaysFixed);
+  const b = formatDisplay(nxt, alwaysFixed);
+  const v = `${a.label}${suffix} → ${b.label}${suffix}`;
+  if (a.title || b.title) {
+    return { v, vTitle: `${a.title ?? a.label}${suffix} → ${b.title ?? b.label}${suffix}` };
+  }
+  return { v };
+}
+
+function ascensionEffectDisplay(key: AscensionUpgradeKey, level: number): FormattedNumber {
+  switch (key) {
+    case 'nuggieFlatMultiplier':
+      return formatDisplay(getNuggieFlatMultiplier(level));
+    case 'nuggieStreakMultiplier':
+      return formatDisplay(getNuggieStreakMultiplier(level) * 100);
+    case 'nuggieCreditsMultiplier':
+      return formatDisplay(getNuggieCreditsMultiplier(level) * 100);
+    case 'nuggiePokeMultiplier':
+      return formatDisplay(getNuggiePokeMultiplier(level) * 100);
+    case 'nuggieNuggieMultiplier':
+      return formatDisplay(getNuggieNuggieMultiplier(level) * 100);
+    default:
+      return { label: '' };
+  }
+}
+
+function ascensionEffectSuffix(key: AscensionUpgradeKey): string {
+  switch (key) {
+    case 'nuggieFlatMultiplier': return 'x flat';
+    case 'nuggieStreakMultiplier': return '%/day';
+    case 'nuggieCreditsMultiplier': return '% * log2(credits)';
+    case 'nuggiePokeMultiplier': return '%/pokemon';
+    case 'nuggieNuggieMultiplier': return '% * log2(nuggies)';
+    default: return '';
+  }
+}
+
+function ascensionEffectLine(key: AscensionUpgradeKey, level: number): FormattedNumber {
+  const core = ascensionEffectDisplay(key, level);
+  const suffix = ascensionEffectSuffix(key);
+  const prefix = key === 'nuggieFlatMultiplier' ? '' : '+';
+  const label = `${prefix}${core.label}${suffix}`;
+  const title = core.title ? `${prefix}${core.title}${suffix}` : undefined;
+  return title ? { label, title } : { label };
+}
 
 export type LeaderboardKind = 'gambler' | 'murder' | 'nuggie' | 'poop';
 
@@ -69,6 +134,7 @@ export interface LeaderboardRow {
   avatarURL: string | null;
   value: number;
   valueLabel: string;
+  valueTitle?: string;
 }
 
 export interface LeaderboardResult {
@@ -199,12 +265,13 @@ async function getLeaderboardUncached(
       rows: await Promise.all(attrs.map(async (row, i) => {
         const u = await resolveUser(silverwolf, row.id);
         const value = Number(row[attribute] ?? 0);
+        const labels = valueLabelFields(value, ` ${counter}`);
         return {
           rank: i + 1,
           username: u.username,
           avatarURL: u.avatarURL,
           value,
-          valueLabel: `${format(value)} ${counter}`,
+          ...labels,
         };
       })),
     };
@@ -218,12 +285,14 @@ async function getLeaderboardUncached(
       title: gamblerBoardTitle(type),
       rows: await Promise.all(winnings.map(async (row, i) => {
         const u = await resolveUser(silverwolf, row.id);
+        const prefix = row.relativeWon > 0 ? '+' : '';
+        const labels = valueLabelFields(row.relativeWon, ' bets', false, prefix);
         return {
           rank: i + 1,
           username: u.username,
           avatarURL: u.avatarURL,
           value: row.relativeWon,
-          valueLabel: `${row.relativeWon > 0 ? '+' : ''}${format(row.relativeWon)} bets`,
+          ...labels,
         };
       })),
     };
@@ -237,12 +306,13 @@ async function getLeaderboardUncached(
       title: `Poop Leaderboard — ${periodLabel}`,
       rows: await Promise.all(attrs.map(async (row, i) => {
         const u = await resolveUser(silverwolf, row.id);
+        const labels = valueLabelFields(row.poopCount, ' Poops');
         return {
           rank: i + 1,
           username: u.username,
           avatarURL: u.avatarURL,
           value: row.poopCount,
-          valueLabel: `${format(row.poopCount)} Poops`,
+          ...labels,
         };
       })),
     };
@@ -499,14 +569,13 @@ export async function startBlackjack(
 
   return {
     ok: true,
-    data: {
+    data: applyNumLabel({
       playerHand,
       dealerUpCard: dealerHand[0],
       playerTotal: calculateHand(playerHand),
       amount,
-      amountLabel: format(amount),
       expiresAt,
-    },
+    }, 'amount', amount),
   };
 }
 
@@ -531,7 +600,7 @@ export async function hitBlackjack(
     await recordBlackjackLoss(silverwolf, userId, game.amount);
     return {
       ok: true,
-      data: {
+      data: applyNumLabel({
         playerHand: game.playerHand,
         dealerHand: game.dealerHand,
         dealerTotal: calculateHand(game.dealerHand),
@@ -541,8 +610,7 @@ export async function hitBlackjack(
         result: 'loss',
         message: 'You busted!',
         amount: game.amount,
-        amountLabel: format(game.amount),
-      },
+      }, 'amount', game.amount),
     };
   }
 
@@ -577,13 +645,12 @@ export async function standBlackjack(
     game.playerHand,
     game.dealerHand,
   );
-  const amountLabel = format(game.amount);
 
   if (outcome === 'win') {
     const win = await recordBlackjackWin(silverwolf, userId, game.amount);
     return {
       ok: true,
-      data: {
+      data: applyNumLabel(applyNumLabel({
         playerHand: game.playerHand,
         dealerHand: game.dealerHand,
         playerTotal,
@@ -592,11 +659,9 @@ export async function standBlackjack(
         message: 'You win!',
         multi: win.multi,
         winnings: win.winnings,
-        winningsLabel: format(win.winnings),
         streak: win.streak,
         amount: game.amount,
-        amountLabel,
-      },
+      }, 'winnings', win.winnings), 'amount', game.amount),
     };
   }
 
@@ -604,7 +669,7 @@ export async function standBlackjack(
     await recordBlackjackLoss(silverwolf, userId, game.amount);
     return {
       ok: true,
-      data: {
+      data: applyNumLabel({
         playerHand: game.playerHand,
         dealerHand: game.dealerHand,
         playerTotal,
@@ -612,15 +677,14 @@ export async function standBlackjack(
         result: 'loss',
         message: 'Silverwolf wins!',
         amount: game.amount,
-        amountLabel,
-      },
+      }, 'amount', game.amount),
     };
   }
 
   await recordBlackjackTie(silverwolf, userId, game.amount);
   return {
     ok: true,
-    data: {
+    data: applyNumLabel({
       playerHand: game.playerHand,
       dealerHand: game.dealerHand,
       playerTotal,
@@ -628,8 +692,7 @@ export async function standBlackjack(
       result: 'tie',
       message: 'No one wins!',
       amount: game.amount,
-      amountLabel,
-    },
+    }, 'amount', game.amount),
   };
 }
 
@@ -673,12 +736,10 @@ export async function playRouletteWeb(
   );
   return {
     ok: true,
-    data: {
+    data: applyNumLabel(applyNumLabel({
       ...result,
       amount,
-      amountLabel: format(amount),
-      winningsLabel: format(result.winnings),
-    },
+    }, 'winnings', result.winnings), 'amount', amount),
   };
 }
 
@@ -703,12 +764,10 @@ export async function playSlotsWeb(
   const result = await spinSlots(silverwolf, userId, amount);
   return {
     ok: true,
-    data: {
+    data: applyNumLabel(applyNumLabel({
       ...result,
       amount,
-      amountLabel: format(amount),
-      winningsLabel: format(result.winnings),
-    },
+    }, 'winnings', result.winnings), 'amount', amount),
   };
 }
 
@@ -727,11 +786,11 @@ export async function claimWeb(
 ): Promise<WebClaimResult> {
   const result = await processClaim(silverwolf, userId);
   if (result.status === 'broken_streak' || result.status === 'success') {
-    return {
-      ...result,
-      amountLabel: format(result.amount),
-      newDinonuggiesLabel: format(result.previousDinonuggies + result.amount),
-    };
+    return applyNumLabel(
+      applyNumLabel(result, 'newDinonuggies', result.previousDinonuggies + result.amount),
+      'amount',
+      result.amount,
+    );
   }
   return result;
 }
@@ -768,72 +827,55 @@ const ASCENSION_DESCS: Record<AscensionUpgradeKey, string> = {
 // the live total preview. Server still validates the real purchase amount.
 const ASCENSION_QTY_PREVIEW = 100;
 
-function ascensionEffectLabel(key: AscensionUpgradeKey, level: number): string {
-  switch (key) {
-    case 'nuggieFlatMultiplier':
-      return `${format(getNuggieFlatMultiplier(level))}x flat`;
-    case 'nuggieStreakMultiplier':
-      return `${format(getNuggieStreakMultiplier(level) * 100)}%/day`;
-    case 'nuggieCreditsMultiplier':
-      return `+${format(getNuggieCreditsMultiplier(level) * 100)}% * log2(credits)`;
-    case 'nuggiePokeMultiplier':
-      return `+${format(getNuggiePokeMultiplier(level) * 100)}%/pokemon`;
-    case 'nuggieNuggieMultiplier':
-      return `+${format(getNuggieNuggieMultiplier(level) * 100)}% * log2(nuggies)`;
-    default:
-      return '';
-  }
-}
-
 function upgradeDisplayLines(
   key: UpgradeRowKey,
   level: number,
   maxLevel: number,
-): { k: string; v: string }[] {
+): { k: string; v: string; vTitle?: string }[] {
   const next = Math.min(level + 1, maxLevel);
   if (key === 'multiplierAmount') {
     const cur = getMultiplierAmount(level);
     const nxt = getMultiplierAmount(next);
     return [
-      { k: 'Gold', v: `${format(cur.gold)}x → ${format(nxt.gold)}x` },
-      { k: 'Silver', v: `${format(cur.silver)}x → ${format(nxt.silver)}x` },
-      { k: 'Bronze', v: `${format(cur.bronze)}x → ${format(nxt.bronze)}x` },
+      { k: 'Gold', ...displayArrow(cur.gold, nxt.gold, 'x') },
+      { k: 'Silver', ...displayArrow(cur.silver, nxt.silver, 'x') },
+      { k: 'Bronze', ...displayArrow(cur.bronze, nxt.bronze, 'x') },
     ];
   }
   if (key === 'multiplierRarity') {
     const cur = getMultiplierChance(level);
     const nxt = getMultiplierChance(next);
     return [
-      { k: 'Gold', v: `${format(cur.gold * 100)}% → ${format(nxt.gold * 100)}%` },
-      { k: 'Silver', v: `${format(cur.silver * 100)}% → ${format(nxt.silver * 100)}%` },
-      { k: 'Bronze', v: `${format(cur.bronze * 100)}% → ${format(nxt.bronze * 100)}%` },
+      { k: 'Gold', ...displayArrow(cur.gold * 100, nxt.gold * 100, '%') },
+      { k: 'Silver', ...displayArrow(cur.silver * 100, nxt.silver * 100, '%') },
+      { k: 'Bronze', ...displayArrow(cur.bronze * 100, nxt.bronze * 100, '%') },
     ];
   }
   return [
     {
       k: 'Cooldown',
-      v: `${format(getBekiCooldown(level))}h → ${format(getBekiCooldown(next))}h`,
+      ...displayArrow(getBekiCooldown(level), getBekiCooldown(next), 'h'),
     },
   ];
 }
 
-function cumulativeUpgradeCosts(level: number, maxLevel: number): string[] {
+function cumulativeUpgradeCosts(level: number, maxLevel: number): FormattedNumber[] {
   const cap = Math.max(0, maxLevel - level);
-  const out: string[] = [];
+  const out: FormattedNumber[] = [];
   let running = 0;
   for (let i = 0; i < cap; i += 1) {
     running += getNextUpgradeCost(level + i);
-    out.push(format(running));
+    out.push(formatDisplay(running));
   }
   return out;
 }
 
-function cumulativeAscensionCosts(level: number, amplifier: number): string[] {
-  const out: string[] = [];
+function cumulativeAscensionCosts(level: number, amplifier: number): FormattedNumber[] {
+  const out: FormattedNumber[] = [];
   let running = 0;
   for (let i = 0; i < ASCENSION_QTY_PREVIEW; i += 1) {
     running += getNextAscensionUpgradeCost(level + i, amplifier);
-    out.push(format(running));
+    out.push(formatDisplay(running));
   }
   return out;
 }
@@ -845,10 +887,10 @@ export interface UpgradeRowState {
   level: number;
   maxLevel: number;
   // displayLines[i] = { k: 'Gold', v: '2.0x → 2.2x' } etc. Ready to render as-is.
-  displayLines: { k: string; v: string }[];
+  displayLines: { k: string; v: string; vTitle?: string }[];
   // costsByQty[i] = formatted cumulative credit cost for buying (i+1) levels.
   // Empty when already maxed. The client clamps the qty input to this length.
-  costsByQty: string[];
+  costsByQty: FormattedNumber[];
 }
 
 export interface AscensionUpgradeRowState {
@@ -860,19 +902,24 @@ export interface AscensionUpgradeRowState {
   required: number;
   unlocked: boolean;
   effectLabel: string; // "current → next"
+  effectTitle?: string;
   // costsByQty[i] = formatted cumulative heavenly-nuggie cost for (i+1) levels.
   // Capped at ASCENSION_QTY_PREVIEW; UI clamps the qty input to that length.
-  costsByQty: string[];
+  costsByQty: FormattedNumber[];
 }
 
 export type WebAscensionState = AscensionState & {
   dinonuggiesLabel: string;
+  dinonuggiesTitle?: string;
 };
 
 export interface DinoUpgradesState {
   creditsLabel: string;
+  creditsTitle?: string;
   dinonuggiesLabel: string;
+  dinonuggiesTitle?: string;
   heavenlyNuggiesLabel: string;
+  heavenlyNuggiesTitle?: string;
   ascensionLevel: number;
   maxLevel: number;
   upgrades: UpgradeRowState[];
@@ -925,6 +972,12 @@ export async function getDinoUpgradesStateWeb(
       const lvl = await client.db.user.getUserAttr(userId, `${key}Level`);
       const amplifier = ASCENSION_AMPLIFIERS[key];
       const required = ASCENSION_LEVEL_REQ[key];
+      const cur = ascensionEffectLine(key, lvl);
+      const nxt = ascensionEffectLine(key, lvl + 1);
+      const effectLabel = `${cur.label} → ${nxt.label}`;
+      const effectTitle = (cur.title || nxt.title)
+        ? `${cur.title ?? cur.label} → ${nxt.title ?? nxt.label}`
+        : undefined;
       return {
         key,
         upgradeId: i + 1,
@@ -933,21 +986,34 @@ export async function getDinoUpgradesStateWeb(
         level: lvl,
         required,
         unlocked: ascensionLevel >= required,
-        effectLabel: `${ascensionEffectLabel(key, lvl)} → ${ascensionEffectLabel(key, lvl + 1)}`,
+        effectLabel,
+        ...(effectTitle ? { effectTitle } : {}),
         costsByQty: cumulativeAscensionCosts(lvl, amplifier),
       };
     }),
   );
 
+  const creditsFmt = formatDisplay(credits);
+  const dinonuggiesFmt = formatDisplay(dinonuggies);
+  const heavenlyFmt = formatDisplay(heavenlyNuggies);
+  const ascensionDinoFmt = formatDisplay(ascensionState.dinonuggies);
+
   return {
-    creditsLabel: format(credits),
-    dinonuggiesLabel: format(dinonuggies),
-    heavenlyNuggiesLabel: format(heavenlyNuggies),
+    creditsLabel: creditsFmt.label,
+    ...(creditsFmt.title ? { creditsTitle: creditsFmt.title } : {}),
+    dinonuggiesLabel: dinonuggiesFmt.label,
+    ...(dinonuggiesFmt.title ? { dinonuggiesTitle: dinonuggiesFmt.title } : {}),
+    heavenlyNuggiesLabel: heavenlyFmt.label,
+    ...(heavenlyFmt.title ? { heavenlyNuggiesTitle: heavenlyFmt.title } : {}),
     ascensionLevel,
     maxLevel,
     upgrades,
     ascension: {
-      state: { ...ascensionState, dinonuggiesLabel: format(ascensionState.dinonuggies) },
+      state: {
+        ...ascensionState,
+        dinonuggiesLabel: ascensionDinoFmt.label,
+        ...(ascensionDinoFmt.title ? { dinonuggiesTitle: ascensionDinoFmt.title } : {}),
+      },
       rows: ascensionRows,
     },
   };
@@ -972,19 +1038,18 @@ export async function eatWeb(
   switch (result.status) {
     case 'not_enough':
     case 'cheat':
-      return {
-        ...result,
-        dinonuggiesLabel: format(result.dinonuggies),
-        amountLabel: format(result.amount),
-      };
+      return applyNumLabel(
+        applyNumLabel(result, 'amount', result.amount),
+        'dinonuggies',
+        result.dinonuggies,
+      );
     case 'single':
       return { ...result, itemLine: formatEatItemLine(result.item) };
     case 'batch':
-      return {
+      return applyNumLabel({
         ...result,
         itemLines: result.items.map(formatEatItemLine),
-        totalEarnedLabel: format(result.totalEarned),
-      };
+      }, 'totalEarned', result.totalEarned);
     default:
       return result;
   }
@@ -992,7 +1057,9 @@ export async function eatWeb(
 
 export type WebBuyUpgradeResult = BuyUpgradeResult & {
   costLabel?: string;
+  costTitle?: string;
   creditsLabel?: string;
+  creditsTitle?: string;
 };
 
 export async function buyUpgradeWeb(
@@ -1003,18 +1070,22 @@ export async function buyUpgradeWeb(
 ): Promise<WebBuyUpgradeResult> {
   const result = await processBuyUpgrade(silverwolf as any, userId, upgradeId, amount);
   if (result.status === 'success' || result.status === 'poor') {
-    return {
-      ...result,
-      costLabel: format(result.cost),
-      ...(result.status === 'poor' ? { creditsLabel: format(result.credits) } : {}),
-    };
+    return result.status === 'poor'
+      ? applyNumLabel(
+        applyNumLabel(result, 'cost', result.cost),
+        'credits',
+        result.credits,
+      )
+      : applyNumLabel(result, 'cost', result.cost);
   }
   return result;
 }
 
 export type WebBuyAscensionResult = BuyAscensionResult & {
   costLabel?: string;
+  costTitle?: string;
   heavenlyNuggiesLabel?: string;
+  heavenlyNuggiesTitle?: string;
 };
 
 export async function buyAscensionUpgradeWeb(
@@ -1025,18 +1096,22 @@ export async function buyAscensionUpgradeWeb(
 ): Promise<WebBuyAscensionResult> {
   const result = await processBuyAscensionUpgrade(silverwolf as any, userId, upgradeId, amount);
   if (result.status === 'success' || result.status === 'poor') {
-    return {
-      ...result,
-      costLabel: format(result.cost),
-      ...(result.status === 'poor' ? { heavenlyNuggiesLabel: format(result.heavenlyNuggies) } : {}),
-    };
+    return result.status === 'poor'
+      ? applyNumLabel(
+        applyNumLabel(result, 'cost', result.cost),
+        'heavenlyNuggies',
+        result.heavenlyNuggies,
+      )
+      : applyNumLabel(result, 'cost', result.cost);
   }
   return result;
 }
 
 export type WebAscendResult = AscendResult & {
   gainedLabel?: string;
+  gainedTitle?: string;
   dinonuggiesLabel?: string;
+  dinonuggiesTitle?: string;
 };
 
 export async function ascendWeb(
@@ -1045,9 +1120,9 @@ export async function ascendWeb(
 ): Promise<WebAscendResult> {
   const result = await processAscend(silverwolf as any, userId);
   if (result.status === 'too_few') {
-    return { ...result, dinonuggiesLabel: format(result.dinonuggies) };
+    return applyNumLabel(result, 'dinonuggies', result.dinonuggies);
   }
-  return { ...result, gainedLabel: format(result.gained) };
+  return applyNumLabel(result, 'gained', result.gained);
 }
 
 // ─── Poop log ──────────────────────────────────────────────────────────────

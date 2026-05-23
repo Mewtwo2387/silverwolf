@@ -1,7 +1,7 @@
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import type { NavUser } from '../../components/navbar';
-import { inlineJSON } from '../../inline';
+import { inlineJSON, NUM_FMT_JS } from '../../inline';
 
 export function BlackjackPage(opts: { nonce: string; lv999?: boolean; user?: NavUser | null }) {
   const { nonce, lv999, user } = opts;
@@ -208,6 +208,7 @@ export function BlackjackPage(opts: { nonce: string; lv999?: boolean; user?: Nav
   const script = raw(`
 <script nonce="${nonce}">
 (() => {
+  ${NUM_FMT_JS}
   const csrf = ${csrfJSON};
   const setupEl = document.getElementById('bj-setup');
   const tableEl = document.getElementById('bj-table');
@@ -360,7 +361,7 @@ export function BlackjackPage(opts: { nonce: string; lv999?: boolean; user?: Nav
     }
 
     const d = data.data;
-    showTable(d.amountLabel);
+    showTable(fmtNumSpan(d.amountLabel, d.amountTitle));
     clearHands();
     // Player gets two face-up cards (dealt with stagger), dealer gets one face-up + one face-down.
     const p1 = renderCard(d.playerHand[0], { dealt: true });
@@ -470,10 +471,10 @@ export function BlackjackPage(opts: { nonce: string; lv999?: boolean; user?: Nav
     let title = d.message || 'Game over';
     let sub = '';
     if (d.result === 'win') {
-      sub = 'You won ' + (d.winningsLabel || '') + ' mystic credits';
+      sub = 'You won ' + fmtNumSpan(d.winningsLabel || '', d.winningsTitle) + ' mystic credits';
       if (d.streak) sub += ' • streak ' + d.streak;
     } else if (d.result === 'loss') {
-      sub = 'You lost ' + (d.amountLabel || '') + ' mystic credits';
+      sub = 'You lost ' + fmtNumSpan(d.amountLabel || '', d.amountTitle) + ' mystic credits';
     } else if (d.result === 'tie') {
       sub = 'Push. Nothing happened to your bet.';
     }

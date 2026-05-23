@@ -1,7 +1,7 @@
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import type { NavUser } from '../../components/navbar';
-import { inlineJSON } from '../../inline';
+import { inlineJSON, NUM_FMT_JS } from '../../inline';
 import { getColor } from '../../../utils/roulette';
 
 export function RoulettePage(opts: { nonce: string; lv999?: boolean; user?: NavUser | null }) {
@@ -161,6 +161,7 @@ export function RoulettePage(opts: { nonce: string; lv999?: boolean; user?: NavU
   const script = raw(`
 <script nonce="${nonce}">
 (() => {
+  ${NUM_FMT_JS}
   const csrf = ${csrfJSON};
   const wheel = document.getElementById('wheel');
   const spinBtn = document.getElementById('spin-btn');
@@ -257,8 +258,8 @@ export function RoulettePage(opts: { nonce: string; lv999?: boolean; user?: NavU
     setTimeout(() => {
       const colorWord = d.color.charAt(0).toUpperCase() + d.color.slice(1);
       const title = d.isWin
-        ? 'You won ' + d.winningsLabel + ' mystic credits'
-        : 'You lost ' + d.amountLabel + ' mystic credits';
+        ? 'You won ' + fmtNumSpan(d.winningsLabel, d.winningsTitle) + ' mystic credits'
+        : 'You lost ' + fmtNumSpan(d.amountLabel, d.amountTitle) + ' mystic credits';
       const sub = 'Wheel landed on ' + d.wheelResult + ' (' + colorWord + '). Streak: ' + d.streak;
       setBanner(d.isWin ? 'win' : 'loss', title, sub);
       spinning = false;

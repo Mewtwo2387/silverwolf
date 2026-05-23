@@ -70,21 +70,25 @@ export function LeaderboardsPage(opts: {
               <tr class="border-b border-ink-600/30 hover:bg-ink-700/20 transition-colors">
                 <td class="py-3 px-4">
                   ${(() => {
-                    if (row.rank === 1) return html`<span class="rank-podium rank-podium-1">1</span>`;
-                    if (row.rank === 2) return html`<span class="rank-podium rank-podium-2">2</span>`;
-                    if (row.rank === 3) return html`<span class="rank-podium rank-podium-3">3</span>`;
-                    return html`<span class="rank-podium rank-podium-normal">${row.rank}</span>`;
-                  })()}
+      if (row.rank === 1) return html`<span class="rank-podium rank-podium-1">1</span>`;
+      if (row.rank === 2) return html`<span class="rank-podium rank-podium-2">2</span>`;
+      if (row.rank === 3) return html`<span class="rank-podium rank-podium-3">3</span>`;
+      return html`<span class="rank-podium rank-podium-normal">${row.rank}</span>`;
+    })()}
                 </td>
                 <td class="py-3 px-4">
                   <div class="flex items-center gap-3">
                     ${row.avatarURL
-                      ? html`<img src="${row.avatarURL}" alt="" class="w-8 h-8 rounded-full border border-ink-500 object-cover" />`
-                      : html`<div class="w-8 h-8 rounded-full bg-ink-600 border border-ink-500 flex items-center justify-center font-mono text-xs text-fog-400">?</div>`}
+      ? html`<img src="${row.avatarURL}" alt="" class="w-8 h-8 rounded-full border border-ink-500 object-cover" />`
+      : html`<div class="w-8 h-8 rounded-full bg-ink-600 border border-ink-500 flex items-center justify-center font-mono text-xs text-fog-400">?</div>`}
                     <span class="font-medium text-fog-100 hover:text-accent transition-colors">${row.username}</span>
                   </div>
                 </td>
-                <td class="py-3 px-4 font-mono text-right text-accent-light font-semibold">${row.valueLabel}</td>
+                <td class="py-3 px-4 font-mono text-right text-accent-light font-semibold">
+                  ${row.valueTitle
+      ? html`<span title="${row.valueTitle}">${row.valueLabel}</span>`
+      : row.valueLabel}
+                </td>
               </tr>
             `)}
           </tbody>

@@ -2,7 +2,7 @@ import { html, raw } from 'hono/html';
 import type { HtmlEscapedString } from 'hono/utils/html';
 import { Layout } from '../components/layout';
 import type { NavUser } from '../components/navbar';
-import { format } from '../../utils/math';
+import { numSpan, numSpanSuffix } from '../format';
 import { getMaxLevel, getBekiCooldown } from '../../utils/upgrades';
 import {
   getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNuggieCreditsMultiplier,
@@ -173,9 +173,9 @@ const styles = raw(`
 </style>
 `);
 
-function pct(num: number, den: number): string {
-  if (den <= 0) return '0%';
-  return `${format((num / den) * 100, true)}%`;
+function pct(num: number, den: number) {
+  if (den <= 0) return html`0%`;
+  return numSpanSuffix((num / den) * 100, '%', true);
 }
 
 function escapeHtml(str: string): string {
@@ -256,7 +256,7 @@ export function HomePage(opts: {
   const totalPoops = poopStats?.totalPoops ?? 0;
   const avgDailyRaw = parseFloat(poopStats?.avgDaily);
   const avgDailyPoops = Number.isFinite(avgDailyRaw)
-    ? format(avgDailyRaw, true)
+    ? numSpan(avgDailyRaw, true)
     : 'N/A';
   const avgDurationRaw = Number(poopStats?.avgDuration);
   const avgPoopDuration = Number.isFinite(avgDurationRaw)
@@ -288,15 +288,15 @@ export function HomePage(opts: {
         <div class="me-grid">
           <div class="me-card">
             <div class="label">Mystic Credits</div>
-            <div class="value">${format(credits)}</div>
+            <div class="value">${numSpan(credits)}</div>
           </div>
           <div class="me-card">
             <div class="label">Dinonuggies</div>
-            <div class="value">${format(dinonuggies)}</div>
+            <div class="value">${numSpan(dinonuggies)}</div>
           </div>
           <div class="me-card">
             <div class="label">Heavenly Nuggies</div>
-            <div class="value">${format(stats.heavenlyNuggies ?? 0)}</div>
+            <div class="value">${numSpan(stats.heavenlyNuggies ?? 0)}</div>
           </div>
         </div>
       </div>
@@ -359,13 +359,13 @@ export function HomePage(opts: {
       <div class="details-content">
         <div class="me-grid">
           <div class="me-card"><div class="label">Current Streak</div><div class="value">${claimStreak}</div><div class="label" style="margin-top:0.25rem">days</div></div>
-          <div class="me-card"><div class="label">Base Claim Amount</div><div class="value">${format(5 + claimStreak)}</div><div class="label" style="margin-top:0.25rem">5 + ${format(claimStreak)}</div></div>
-          <div class="me-card"><div class="label">Streak Multiplier</div><div class="value">${format(1 + nuggieStreakMultiplier * claimStreak, true)}x</div><div class="label" style="margin-top:0.25rem">1 + ${format(nuggieStreakMultiplier, true)} * ${format(claimStreak)}</div></div>
-          <div class="me-card"><div class="label">Flat Multiplier</div><div class="value">${format(nuggieFlatMultiplier, true)}x</div></div>
-          <div class="me-card"><div class="label">Marriage Multiplier</div><div class="value">${format(marriageBenefits, true)}x</div></div>
-          <div class="me-card"><div class="label">Credits Multiplier</div><div class="value">${format(1 + nuggieCreditsMultiplier * log2Credits, true)}x</div><div class="label" style="margin-top:0.25rem">1 + ${format(nuggieCreditsMultiplier, true)} * ${format(log2Credits, true)}</div></div>
-          <div class="me-card"><div class="label">Pokemon Multiplier</div><div class="value">${format(1 + nuggiePokemonMultiplier * pokemonCount, true)}x</div><div class="label" style="margin-top:0.25rem">1 + ${format(nuggiePokemonMultiplier, true)} * ${format(pokemonCount, true)}</div></div>
-          <div class="me-card"><div class="label">Nuggie Multiplier</div><div class="value">${format(1 + nuggieNuggieMultiplier * log2Nuggies, true)}x</div><div class="label" style="margin-top:0.25rem">1 + ${format(nuggieNuggieMultiplier, true)} * ${format(log2Nuggies, true)}</div></div>
+          <div class="me-card"><div class="label">Base Claim Amount</div><div class="value">${numSpan(5 + claimStreak)}</div><div class="label" style="margin-top:0.25rem">5 + ${numSpan(claimStreak)}</div></div>
+          <div class="me-card"><div class="label">Streak Multiplier</div><div class="value">${numSpanSuffix(1 + nuggieStreakMultiplier * claimStreak, 'x', true)}</div><div class="label" style="margin-top:0.25rem">1 + ${numSpanSuffix(nuggieStreakMultiplier, 'x', true)} * ${numSpan(claimStreak)}</div></div>
+          <div class="me-card"><div class="label">Flat Multiplier</div><div class="value">${numSpanSuffix(nuggieFlatMultiplier, 'x', true)}</div></div>
+          <div class="me-card"><div class="label">Marriage Multiplier</div><div class="value">${numSpanSuffix(marriageBenefits, 'x', true)}</div></div>
+          <div class="me-card"><div class="label">Credits Multiplier</div><div class="value">${numSpanSuffix(1 + nuggieCreditsMultiplier * log2Credits, 'x', true)}</div><div class="label" style="margin-top:0.25rem">1 + ${numSpan(nuggieCreditsMultiplier, true)} * ${numSpan(log2Credits, true)}</div></div>
+          <div class="me-card"><div class="label">Pokemon Multiplier</div><div class="value">${numSpanSuffix(1 + nuggiePokemonMultiplier * pokemonCount, 'x', true)}</div><div class="label" style="margin-top:0.25rem">1 + ${numSpan(nuggiePokemonMultiplier, true)} * ${numSpan(pokemonCount, true)}</div></div>
+          <div class="me-card"><div class="label">Nuggie Multiplier</div><div class="value">${numSpanSuffix(1 + nuggieNuggieMultiplier * log2Nuggies, 'x', true)}</div><div class="label" style="margin-top:0.25rem">1 + ${numSpan(nuggieNuggieMultiplier, true)} * ${numSpan(log2Nuggies, true)}</div></div>
           <div class="me-card"><div class="label">Next Claim</div><div class="value" style="font-size: 1.1rem">${nextClaim}</div></div>
         </div>
       </div>
@@ -379,11 +379,11 @@ export function HomePage(opts: {
           <div class="me-card"><div class="label">Times Played</div><div class="value">${stats.slotsTimesPlayed ?? 0}</div></div>
           <div class="me-card"><div class="label">Times Won</div><div class="value">${stats.slotsTimesWon ?? 0}</div></div>
           <div class="me-card"><div class="label">Percentage Won</div><div class="value">${pct(stats.slotsTimesWon ?? 0, stats.slotsTimesPlayed ?? 0)}</div></div>
-          <div class="me-card"><div class="label">Amount Gambled</div><div class="value">${format(sGambled)}</div></div>
-          <div class="me-card"><div class="label">Amount Won</div><div class="value">${format(sWon)}</div></div>
-          <div class="me-card"><div class="label">Net Winnings</div><div class="value">${format(sWon - sGambled)}</div></div>
-          <div class="me-card"><div class="label">Relative Amount Won</div><div class="value">${format(stats.slotsRelativeWon ?? 0, true)}</div><div class="label" style="margin-top:0.25rem">bets</div></div>
-          <div class="me-card"><div class="label">Relative Net Winnings</div><div class="value">${format((stats.slotsRelativeWon ?? 0) - (stats.slotsTimesPlayed ?? 0), true)}</div><div class="label" style="margin-top:0.25rem">bets</div></div>
+          <div class="me-card"><div class="label">Amount Gambled</div><div class="value">${numSpan(sGambled)}</div></div>
+          <div class="me-card"><div class="label">Amount Won</div><div class="value">${numSpan(sWon)}</div></div>
+          <div class="me-card"><div class="label">Net Winnings</div><div class="value">${numSpan(sWon - sGambled)}</div></div>
+          <div class="me-card"><div class="label">Relative Amount Won</div><div class="value">${numSpan(stats.slotsRelativeWon ?? 0, true)}</div><div class="label" style="margin-top:0.25rem">bets</div></div>
+          <div class="me-card"><div class="label">Relative Net Winnings</div><div class="value">${numSpan((stats.slotsRelativeWon ?? 0) - (stats.slotsTimesPlayed ?? 0), true)}</div><div class="label" style="margin-top:0.25rem">bets</div></div>
         </div>
         
         <h3 style="color:var(--accent-light); margin-top: 1.5rem; margin-bottom: 0.5rem;">Blackjack</h3>
@@ -393,11 +393,11 @@ export function HomePage(opts: {
           <div class="me-card"><div class="label">Times Drew</div><div class="value">${stats.blackjackTimesDrawn ?? 0}</div></div>
           <div class="me-card"><div class="label">Times Lost</div><div class="value">${bjTimesLost}</div></div>
           <div class="me-card"><div class="label">Win Rate (Excl Draws)</div><div class="value">${pct(bjTimesWon, bjTimesWon + bjTimesLost)}</div></div>
-          <div class="me-card"><div class="label">Amount Gambled</div><div class="value">${format(bjGambled)}</div></div>
-          <div class="me-card"><div class="label">Amount Won</div><div class="value">${format(bjWon)}</div></div>
-          <div class="me-card"><div class="label">Net Winnings</div><div class="value">${format(bjWon - bjGambled)}</div></div>
-          <div class="me-card"><div class="label">Relative Amount Won</div><div class="value">${format(stats.blackjackRelativeWon ?? 0, true)}</div><div class="label" style="margin-top:0.25rem">bets</div></div>
-          <div class="me-card"><div class="label">Relative Net Winnings</div><div class="value">${format((stats.blackjackRelativeWon ?? 0) - bjTimesPlayed, true)}</div><div class="label" style="margin-top:0.25rem">bets</div></div>
+          <div class="me-card"><div class="label">Amount Gambled</div><div class="value">${numSpan(bjGambled)}</div></div>
+          <div class="me-card"><div class="label">Amount Won</div><div class="value">${numSpan(bjWon)}</div></div>
+          <div class="me-card"><div class="label">Net Winnings</div><div class="value">${numSpan(bjWon - bjGambled)}</div></div>
+          <div class="me-card"><div class="label">Relative Amount Won</div><div class="value">${numSpan(stats.blackjackRelativeWon ?? 0, true)}</div><div class="label" style="margin-top:0.25rem">bets</div></div>
+          <div class="me-card"><div class="label">Relative Net Winnings</div><div class="value">${numSpan((stats.blackjackRelativeWon ?? 0) - bjTimesPlayed, true)}</div><div class="label" style="margin-top:0.25rem">bets</div></div>
           <div class="me-card"><div class="label">Current Streak</div><div class="value">${stats.blackjackStreak ?? 0}</div></div>
           <div class="me-card"><div class="label">Max Streak</div><div class="value">${stats.blackjackMaxStreak ?? 0}</div></div>
         </div>
@@ -407,11 +407,11 @@ export function HomePage(opts: {
           <div class="me-card"><div class="label">Times Played</div><div class="value">${stats.rouletteTimesPlayed ?? 0}</div></div>
           <div class="me-card"><div class="label">Times Won</div><div class="value">${stats.rouletteTimesWon ?? 0}</div></div>
           <div class="me-card"><div class="label">Percentage Won</div><div class="value">${pct(stats.rouletteTimesWon ?? 0, stats.rouletteTimesPlayed ?? 0)}</div></div>
-          <div class="me-card"><div class="label">Amount Gambled</div><div class="value">${format(rGambled)}</div></div>
-          <div class="me-card"><div class="label">Amount Won</div><div class="value">${format(rWon)}</div></div>
-          <div class="me-card"><div class="label">Net Winnings</div><div class="value">${format(rWon - rGambled)}</div></div>
-          <div class="me-card"><div class="label">Relative Amount Won</div><div class="value">${format(stats.rouletteRelativeWon ?? 0, true)}</div><div class="label" style="margin-top:0.25rem">bets</div></div>
-          <div class="me-card"><div class="label">Relative Net Winnings</div><div class="value">${format((stats.rouletteRelativeWon ?? 0) - (stats.rouletteTimesPlayed ?? 0), true)}</div><div class="label" style="margin-top:0.25rem">bets</div></div>
+          <div class="me-card"><div class="label">Amount Gambled</div><div class="value">${numSpan(rGambled)}</div></div>
+          <div class="me-card"><div class="label">Amount Won</div><div class="value">${numSpan(rWon)}</div></div>
+          <div class="me-card"><div class="label">Net Winnings</div><div class="value">${numSpan(rWon - rGambled)}</div></div>
+          <div class="me-card"><div class="label">Relative Amount Won</div><div class="value">${numSpan(stats.rouletteRelativeWon ?? 0, true)}</div><div class="label" style="margin-top:0.25rem">bets</div></div>
+          <div class="me-card"><div class="label">Relative Net Winnings</div><div class="value">${numSpan((stats.rouletteRelativeWon ?? 0) - (stats.rouletteTimesPlayed ?? 0), true)}</div><div class="label" style="margin-top:0.25rem">bets</div></div>
           <div class="me-card"><div class="label">Current Streak</div><div class="value">${stats.rouletteStreak ?? 0}</div></div>
           <div class="me-card"><div class="label">Max Streak</div><div class="value">${stats.rouletteMaxStreak ?? 0}</div></div>
         </div>
@@ -423,7 +423,7 @@ export function HomePage(opts: {
       <div class="details-content">
         ${totalPoops > 0 ? html`
         <div class="me-grid">
-          <div class="me-card"><div class="label">Total Poops</div><div class="value">${format(totalPoops)}</div></div>
+          <div class="me-card"><div class="label">Total Poops</div><div class="value">${numSpan(totalPoops)}</div></div>
           <div class="me-card"><div class="label">Avg Daily Poops</div><div class="value">${avgDailyPoops}</div></div>
           <div class="me-card"><div class="label">Avg Duration</div><div class="value">${avgPoopDuration}</div></div>
           <div class="me-card"><div class="label">Most Common Type</div><div class="value" style="font-size: 1.1rem">${commonPoopType}</div></div>
