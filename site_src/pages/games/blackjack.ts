@@ -2,14 +2,28 @@ import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import type { NavUser } from '../../components/navbar';
 import { inlineJSON, NUM_FMT_JS } from '../../inline';
+import {
+  GAMBLING_STATS_CSS,
+  GAMBLING_STATS_JS,
+  renderGambleStatsBar,
+  type GamblingPageStats,
+} from '../../gambling-stats';
 
-export function BlackjackPage(opts: { nonce: string; lv999?: boolean; user?: NavUser | null }) {
-  const { nonce, lv999, user } = opts;
+export function BlackjackPage(opts: {
+  nonce: string;
+  lv999?: boolean;
+  user?: NavUser | null;
+  gambleStats?: GamblingPageStats | null;
+}) {
+  const {
+    nonce, lv999, user, gambleStats,
+  } = opts;
   const csrfJSON = inlineJSON(user?.csrf ?? '');
   const loggedOut = !user;
 
   const extras = raw(`
 <style>
+  ${GAMBLING_STATS_CSS}
   .bj-container {
     display: flex;
     flex-direction: column;
@@ -209,6 +223,8 @@ export function BlackjackPage(opts: { nonce: string; lv999?: boolean; user?: Nav
 <script nonce="${nonce}">
 (() => {
   ${NUM_FMT_JS}
+  ${GAMBLING_STATS_JS}
+  initGambleStats(${inlineJSON(gambleStats ?? null)});
   const csrf = ${csrfJSON};
   const setupEl = document.getElementById('bj-setup');
   const tableEl = document.getElementById('bj-table');
@@ -268,11 +284,11 @@ export function BlackjackPage(opts: { nonce: string; lv999?: boolean; user?: Nav
     if (timerHandle) { clearInterval(timerHandle); timerHandle = null; }
   }
 
-  function showTable(amount) {
+  function showTable(amountLabel, amountTitle) {
     setupEl.style.display = 'none';
     tableEl.style.display = '';
     banner.style.display = 'none';
-    betDisplayEl.textContent = amount;
+    setFmtNum(betDisplayEl, amountLabel, amountTitle);
     hitBtn.disabled = false;
     standBtn.disabled = false;
   }
@@ -361,7 +377,7 @@ export function BlackjackPage(opts: { nonce: string; lv999?: boolean; user?: Nav
     }
 
     const d = data.data;
-    showTable(fmtNumSpan(d.amountLabel, d.amountTitle));
+    showTable(d.amountLabel, d.amountTitle);
     clearHands();
     // Player gets two face-up cards (dealt with stagger), dealer gets one face-up + one face-down.
     const p1 = renderCard(d.playerHand[0], { dealt: true });
@@ -464,6 +480,7 @@ export function BlackjackPage(opts: { nonce: string; lv999?: boolean; user?: Nav
   }
 
   function showResult(d) {
+    updateGambleStats(d);
     if (timerHandle) { clearInterval(timerHandle); timerHandle = null; }
     banner.style.display = '';
     banner.classList.remove('win', 'loss', 'tie');
@@ -494,6 +511,7 @@ export function BlackjackPage(opts: { nonce: string; lv999?: boolean; user?: Nav
   const body = html`
     <h1 class="text-center">Blackjack</h1>
     <p class="text-center text-fog-300 mb-4">Try to beat Silverwolf without going over 21.</p>
+    ${gambleStats ? renderGambleStatsBar(gambleStats) : ''}
     <div class="bj-container">
       ${loggedOut
     ? html`<div class="login-cta">Log in with <a href="/auth/discord/login">Discord</a> to play.</div>`

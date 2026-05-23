@@ -1,6 +1,11 @@
 import type { Silverwolf } from '../classes/silverwolf';
 import { logError } from '../utils/log';
 import {
+  fetchGamblingPageStats,
+  type GamblingStreakAttr,
+  type GamblingPageStats,
+} from './gambling-stats';
+import {
   checkValidBetRaw,
   mapBetCode,
   type BetErrorCode as BetingErrorCode,
@@ -128,6 +133,16 @@ export type BetErrorCode = BetingErrorCode | 'in_progress' | 'no_game' | 'expire
 export interface BetError { error: BetErrorCode; }
 export interface BetSuccess<T> { ok: true; data: T; }
 export type BetResult<T> = BetSuccess<T> | BetError;
+
+async function appendGamblingPageStats<T extends object>(
+  silverwolf: Silverwolf,
+  userId: string,
+  streakAttr: GamblingStreakAttr | undefined,
+  data: T,
+): Promise<T & GamblingPageStats> {
+  const stats = await fetchGamblingPageStats(silverwolf, userId, streakAttr);
+  return { ...data, ...stats };
+}
 
 export interface LeaderboardRow {
   rank: number;
@@ -532,6 +547,8 @@ export interface BlackjackStandData {
   streak?: number;
   amount: number;
   amountLabel: string;
+  creditsLabel?: string;
+  creditsTitle?: string;
 }
 
 export async function startBlackjack(
@@ -601,7 +618,7 @@ export async function hitBlackjack(
     await recordBlackjackLoss(silverwolf, userId, game.amount);
     return {
       ok: true,
-      data: applyNumLabel({
+      data: await appendGamblingPageStats(silverwolf, userId, 'blackjackStreak', applyNumLabel({
         playerHand: game.playerHand,
         dealerHand: game.dealerHand,
         dealerTotal: calculateHand(game.dealerHand),
@@ -611,7 +628,7 @@ export async function hitBlackjack(
         result: 'loss',
         message: 'You busted!',
         amount: game.amount,
-      }, 'amount', game.amount),
+      }, 'amount', game.amount)),
     };
   }
 
@@ -651,7 +668,7 @@ export async function standBlackjack(
     const win = await recordBlackjackWin(silverwolf, userId, game.amount);
     return {
       ok: true,
-      data: applyNumLabel(applyNumLabel({
+      data: await appendGamblingPageStats(silverwolf, userId, 'blackjackStreak', applyNumLabel(applyNumLabel({
         playerHand: game.playerHand,
         dealerHand: game.dealerHand,
         playerTotal,
@@ -662,7 +679,7 @@ export async function standBlackjack(
         winnings: win.winnings,
         streak: win.streak,
         amount: game.amount,
-      }, 'winnings', win.winnings), 'amount', game.amount),
+      }, 'winnings', win.winnings), 'amount', game.amount)),
     };
   }
 
@@ -670,7 +687,7 @@ export async function standBlackjack(
     await recordBlackjackLoss(silverwolf, userId, game.amount);
     return {
       ok: true,
-      data: applyNumLabel({
+      data: await appendGamblingPageStats(silverwolf, userId, 'blackjackStreak', applyNumLabel({
         playerHand: game.playerHand,
         dealerHand: game.dealerHand,
         playerTotal,
@@ -678,14 +695,14 @@ export async function standBlackjack(
         result: 'loss',
         message: 'Silverwolf wins!',
         amount: game.amount,
-      }, 'amount', game.amount),
+      }, 'amount', game.amount)),
     };
   }
 
   await recordBlackjackTie(silverwolf, userId, game.amount);
   return {
     ok: true,
-    data: applyNumLabel({
+    data: await appendGamblingPageStats(silverwolf, userId, 'blackjackStreak', applyNumLabel({
       playerHand: game.playerHand,
       dealerHand: game.dealerHand,
       playerTotal,
@@ -693,7 +710,7 @@ export async function standBlackjack(
       result: 'tie',
       message: 'No one wins!',
       amount: game.amount,
-    }, 'amount', game.amount),
+    }, 'amount', game.amount)),
   };
 }
 
@@ -705,7 +722,13 @@ export type WebRouletteData = RouletteResult & {
   amount: number;
   amountLabel: string;
   winningsLabel: string;
-};
+} & GamblingPageStats;
+
+export type WebSlotsData = SlotsResult & {
+  amount: number;
+  amountLabel: string;
+  winningsLabel: string;
+} & GamblingPageStats;
 
 export async function playRouletteWeb(
   silverwolf: Silverwolf,
@@ -737,20 +760,14 @@ export async function playRouletteWeb(
   );
   return {
     ok: true,
-    data: applyNumLabel(applyNumLabel({
+    data: await appendGamblingPageStats(silverwolf, userId, 'rouletteStreak', applyNumLabel(applyNumLabel({
       ...result,
       amount,
-    }, 'winnings', result.winnings), 'amount', amount),
+    }, 'winnings', result.winnings), 'amount', amount)),
   };
 }
 
 // ─── Slots ─────────────────────────────────────────────────────────────────
-
-export type WebSlotsData = SlotsResult & {
-  amount: number;
-  amountLabel: string;
-  winningsLabel: string;
-};
 
 export async function playSlotsWeb(
   silverwolf: Silverwolf,
@@ -765,10 +782,10 @@ export async function playSlotsWeb(
   const result = await spinSlots(silverwolf, userId, amount);
   return {
     ok: true,
-    data: applyNumLabel(applyNumLabel({
+    data: await appendGamblingPageStats(silverwolf, userId, undefined, applyNumLabel(applyNumLabel({
       ...result,
       amount,
-    }, 'winnings', result.winnings), 'amount', amount),
+    }, 'winnings', result.winnings), 'amount', amount)),
   };
 }
 

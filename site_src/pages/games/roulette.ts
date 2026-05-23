@@ -3,9 +3,22 @@ import { Layout } from '../../components/layout';
 import type { NavUser } from '../../components/navbar';
 import { inlineJSON, NUM_FMT_JS } from '../../inline';
 import { getColor } from '../../../utils/roulette';
+import {
+  GAMBLING_STATS_CSS,
+  GAMBLING_STATS_JS,
+  renderGambleStatsBar,
+  type GamblingPageStats,
+} from '../../gambling-stats';
 
-export function RoulettePage(opts: { nonce: string; lv999?: boolean; user?: NavUser | null }) {
-  const { nonce, lv999, user } = opts;
+export function RoulettePage(opts: {
+  nonce: string;
+  lv999?: boolean;
+  user?: NavUser | null;
+  gambleStats?: GamblingPageStats | null;
+}) {
+  const {
+    nonce, lv999, user, gambleStats,
+  } = opts;
   const csrfJSON = inlineJSON(user?.csrf ?? '');
   const loggedOut = !user;
 
@@ -41,6 +54,7 @@ export function RoulettePage(opts: { nonce: string; lv999?: boolean; user?: NavU
 
   const extras = raw(`
 <style>
+  ${GAMBLING_STATS_CSS}
   .roul-container {
     display: flex;
     flex-direction: column;
@@ -162,6 +176,8 @@ export function RoulettePage(opts: { nonce: string; lv999?: boolean; user?: NavU
 <script nonce="${nonce}">
 (() => {
   ${NUM_FMT_JS}
+  ${GAMBLING_STATS_JS}
+  initGambleStats(${inlineJSON(gambleStats ?? null)});
   const csrf = ${csrfJSON};
   const wheel = document.getElementById('wheel');
   const spinBtn = document.getElementById('spin-btn');
@@ -262,6 +278,7 @@ export function RoulettePage(opts: { nonce: string; lv999?: boolean; user?: NavU
         : 'You lost ' + fmtNumSpan(d.amountLabel, d.amountTitle) + ' mystic credits';
       const sub = 'Wheel landed on ' + d.wheelResult + ' (' + colorWord + '). Streak: ' + d.streak;
       setBanner(d.isWin ? 'win' : 'loss', title, sub);
+      updateGambleStats(d);
       spinning = false;
       spinBtn.disabled = false;
     }, 4300);
@@ -275,6 +292,7 @@ export function RoulettePage(opts: { nonce: string; lv999?: boolean; user?: NavU
   const body = html`
     <h1 class="text-center">Roulette</h1>
     <p class="text-center text-fog-300 mb-4">Bet on a number, color, or parity. Pray.</p>
+    ${gambleStats ? renderGambleStatsBar(gambleStats) : ''}
     <div class="roul-container">
       <div class="wheel-stage">
         <div class="wheel-pointer"></div>

@@ -27,6 +27,7 @@ import {
   type LeaderboardKind,
 } from '../bot-bridge';
 import { type AppEnv, navUser } from '../shared';
+import { fetchGamblingPageStats } from '../gambling-stats';
 
 const VALID_BOARDS: LeaderboardKind[] = ['gambler', 'murder', 'nuggie', 'poop'];
 
@@ -146,21 +147,48 @@ export function registerPageRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
     nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
   }).toString()));
 
-  app.get('/games/blackjack', (c) => c.html(BlackjackPage({
-    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
-  }).toString()));
+  app.get('/games/blackjack', async (c) => {
+    const user = c.get('user');
+    const gambleStats = user
+      ? await fetchGamblingPageStats(silverwolf, user.discordId, 'blackjackStreak')
+      : null;
+    return c.html(BlackjackPage({
+      nonce: c.get('nonce'),
+      lv999: c.req.query('lv') === '999',
+      user: navUser(c),
+      gambleStats,
+    }).toString());
+  });
 
   app.get('/games/poop', (c) => c.html(PoopPage({
     nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
   }).toString()));
 
-  app.get('/games/roulette', (c) => c.html(RoulettePage({
-    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
-  }).toString()));
+  app.get('/games/roulette', async (c) => {
+    const user = c.get('user');
+    const gambleStats = user
+      ? await fetchGamblingPageStats(silverwolf, user.discordId, 'rouletteStreak')
+      : null;
+    return c.html(RoulettePage({
+      nonce: c.get('nonce'),
+      lv999: c.req.query('lv') === '999',
+      user: navUser(c),
+      gambleStats,
+    }).toString());
+  });
 
-  app.get('/games/slots', (c) => c.html(SlotsPage({
-    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
-  }).toString()));
+  app.get('/games/slots', async (c) => {
+    const user = c.get('user');
+    const gambleStats = user
+      ? await fetchGamblingPageStats(silverwolf, user.discordId)
+      : null;
+    return c.html(SlotsPage({
+      nonce: c.get('nonce'),
+      lv999: c.req.query('lv') === '999',
+      user: navUser(c),
+      gambleStats,
+    }).toString());
+  });
 
   app.get('/games/claim', (c) => c.html(ClaimPage({
     nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),

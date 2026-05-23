@@ -2,14 +2,28 @@ import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import type { NavUser } from '../../components/navbar';
 import { inlineJSON, NUM_FMT_JS } from '../../inline';
+import {
+  GAMBLING_STATS_CSS,
+  GAMBLING_STATS_JS,
+  renderGambleStatsBar,
+  type GamblingPageStats,
+} from '../../gambling-stats';
 
-export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser | null }) {
-  const { nonce, lv999, user } = opts;
+export function SlotsPage(opts: {
+  nonce: string;
+  lv999?: boolean;
+  user?: NavUser | null;
+  gambleStats?: GamblingPageStats | null;
+}) {
+  const {
+    nonce, lv999, user, gambleStats,
+  } = opts;
   const csrfJSON = inlineJSON(user?.csrf ?? '');
   const loggedOut = !user;
 
   const extras = raw(`
 <style>
+  ${GAMBLING_STATS_CSS}
   .slots-container {
     display: flex;
     flex-direction: column;
@@ -165,6 +179,8 @@ export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
 <script nonce="${nonce}">
 (() => {
   ${NUM_FMT_JS}
+  ${GAMBLING_STATS_JS}
+  initGambleStats(${inlineJSON(gambleStats ?? null)});
   const csrf = ${csrfJSON};
   const slotsForm = document.querySelector('.slots-form');
   const rollBtn = document.getElementById('roll-btn');
@@ -369,6 +385,7 @@ export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
         ? 'You won ' + fmtNumSpan(d.winningsLabel, d.winningsTitle) + ' mystic credits'
         : 'You lost ' + fmtNumSpan(d.amountLabel, d.amountTitle) + ' mystic credits';
       setBanner(d.isWin ? 'win' : 'loss', '<h2>' + headline + '</h2><div class="sub">' + inline + '</div>');
+      updateGambleStats(d);
 
       // Light up every cell that participated in a matched payline. Run this
       // regardless of d.isWin — natural 3-in-a-rows are worth showing even
@@ -402,6 +419,7 @@ export function SlotsPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
   const body = html`
     <h1 class="text-center">Slots</h1>
     <p class="text-center text-fog-300 mb-4">Pull the lever and watch your mystic credits disappear in style.</p>
+    ${gambleStats ? renderGambleStatsBar(gambleStats) : ''}
     <div class="slots-container">
       <div class="slots-machine">
         <div class="reels">
