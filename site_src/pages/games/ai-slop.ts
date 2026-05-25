@@ -381,6 +381,54 @@ export function AiSlopPage(opts: {
     border-bottom-left-radius: 0.2rem;
   }
   .msg.ai .who { color: var(--accent-light); }
+  .msg .bubble.md { white-space: normal; }
+  .msg .bubble.md > *:first-child { margin-top: 0; }
+  .msg .bubble.md > *:last-child { margin-bottom: 0; }
+  .msg .bubble.md p { margin: 0 0 0.6em; }
+  .msg .bubble.md h1, .msg .bubble.md h2, .msg .bubble.md h3,
+  .msg .bubble.md h4, .msg .bubble.md h5, .msg .bubble.md h6 {
+    margin: 0.6em 0 0.3em;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+  .msg .bubble.md h1 { font-size: 1.15rem; }
+  .msg .bubble.md h2 { font-size: 1.08rem; }
+  .msg .bubble.md h3 { font-size: 1rem; }
+  .msg .bubble.md h4, .msg .bubble.md h5, .msg .bubble.md h6 { font-size: 0.95rem; }
+  .msg .bubble.md ul, .msg .bubble.md ol {
+    margin: 0 0 0.6em;
+    padding-left: 1.4em;
+  }
+  .msg .bubble.md ul { list-style: disc; }
+  .msg .bubble.md ol { list-style: decimal; }
+  .msg .bubble.md li { margin: 0.15em 0; }
+  .msg .bubble.md code {
+    background: rgba(34, 211, 255, 0.08);
+    border: 1px solid var(--ink-600);
+    border-radius: 3px;
+    padding: 0.05em 0.3em;
+    font-size: 0.88em;
+    color: var(--accent-light);
+  }
+  .msg .bubble.md pre {
+    margin: 0.4em 0 0.7em;
+    padding: 0.7rem 0.85rem;
+    background: var(--ink-900);
+    border: 1px solid var(--ink-600);
+    border-radius: 0.5rem;
+    overflow-x: auto;
+  }
+  .msg .bubble.md pre code {
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: var(--fog-100);
+    font-size: 0.85rem;
+    white-space: pre;
+  }
+  .msg .bubble.md a { color: var(--accent); text-decoration: underline; }
+  .msg .bubble.md strong { font-weight: 700; color: var(--fog-100); }
+  .msg .bubble.md em { font-style: italic; }
   .msg .tool-note {
     font-size: 0.72rem;
     color: var(--fog-300);
@@ -604,6 +652,100 @@ export function AiSlopPage(opts: {
     msgsEl.innerHTML = '';
   }
 
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function renderInline(s) {
+    // inline code first so its contents aren't re-processed
+    var codes = [];
+    s = s.replace(/\`([^\`\\n]+)\`/g, function(_, c) {
+      codes.push('<code>' + c + '</code>');
+      return '\\u0000C' + (codes.length - 1) + '\\u0000';
+    });
+    // links [text](url) — only http(s) urls
+    s = s.replace(/\\[([^\\]]+)\\]\\((https?:\\/\\/[^\\s)]+)\\)/g, function(_, t, u) {
+      return '<a href="' + u + '" target="_blank" rel="noopener noreferrer">' + t + '</a>';
+    });
+    // bold **x** and italic *x* / _x_
+    s = s.replace(/\\*\\*([^*]+)\\*\\*/g, '<strong>$1</strong>');
+    s = s.replace(/(^|[^*])\\*([^*\\n]+)\\*/g, '$1<em>$2</em>');
+    s = s.replace(/(^|[^_])_([^_\\n]+)_(?!\\w)/g, '$1<em>$2</em>');
+    // restore inline code
+    s = s.replace(/\\u0000C(\\d+)\\u0000/g, function(_, i) { return codes[+i]; });
+    return s;
+  }
+
+  function renderMarkdown(text) {
+    // Extract fenced code blocks first
+    var blocks = [];
+    text = text.replace(/\`\`\`([a-zA-Z0-9_+-]*)\\n?([\\s\\S]*?)\`\`\`/g, function(_, lang, code) {
+      var cls = lang ? ' class="lang-' + escapeHtml(lang) + '"' : '';
+      blocks.push('<pre><code' + cls + '>' + escapeHtml(code.replace(/\\n$/, '')) + '</code></pre>');
+      return '\\u0000B' + (blocks.length - 1) + '\\u0000';
+    });
+
+    text = escapeHtml(text);
+
+    var lines = text.split(/\\n/);
+    var out = [];
+    var i = 0;
+    while (i < lines.length) {
+      var line = lines[i];
+      // code block placeholder line — emit as-is
+      var ph = line.match(/^\\u0000B(\\d+)\\u0000$/);
+      if (ph) { out.push(blocks[+ph[1]]); i++; continue; }
+      // heading
+      var h = line.match(/^(#{1,6})\\s+(.*)$/);
+      if (h) { out.push('<h' + h[1].length + '>' + renderInline(h[2]) + '</h' + h[1].length + '>'); i++; continue; }
+      // unordered list
+      if (/^\\s*[-*+]\\s+/.test(line)) {
+        var ul = '<ul>';
+        while (i < lines.length && /^\\s*[-*+]\\s+/.test(lines[i])) {
+          ul += '<li>' + renderInline(lines[i].replace(/^\\s*[-*+]\\s+/, '')) + '</li>';
+          i++;
+        }
+        ul += '</ul>';
+        out.push(ul);
+        continue;
+      }
+      // ordered list
+      if (/^\\s*\\d+\\.\\s+/.test(line)) {
+        var ol = '<ol>';
+        while (i < lines.length && /^\\s*\\d+\\.\\s+/.test(lines[i])) {
+          ol += '<li>' + renderInline(lines[i].replace(/^\\s*\\d+\\.\\s+/, '')) + '</li>';
+          i++;
+        }
+        ol += '</ol>';
+        out.push(ol);
+        continue;
+      }
+      // blank line
+      if (/^\\s*$/.test(line)) { i++; continue; }
+      // paragraph: gather contiguous non-blank, non-block lines
+      var para = [line];
+      i++;
+      while (
+        i < lines.length
+        && !/^\\s*$/.test(lines[i])
+        && !/^\\u0000B\\d+\\u0000$/.test(lines[i])
+        && !/^#{1,6}\\s+/.test(lines[i])
+        && !/^\\s*[-*+]\\s+/.test(lines[i])
+        && !/^\\s*\\d+\\.\\s+/.test(lines[i])
+      ) {
+        para.push(lines[i]);
+        i++;
+      }
+      out.push('<p>' + renderInline(para.join('\\n')).replace(/\\n/g, '<br>') + '</p>');
+    }
+    return out.join('');
+  }
+
   function renderEmptyState() {
     clearMessages();
     const div = document.createElement('div');
@@ -627,8 +769,11 @@ export function AiSlopPage(opts: {
     bubble.className = 'bubble';
     if (opts && opts.thinking) {
       bubble.innerHTML = '<span class="thinking"><span></span><span></span><span></span></span>';
-    } else {
+    } else if (isYou) {
       bubble.textContent = text || '';
+    } else {
+      bubble.classList.add('md');
+      bubble.innerHTML = renderMarkdown(text || '');
     }
     wrap.appendChild(bubble);
     if (opts && opts.toolCallCount) {

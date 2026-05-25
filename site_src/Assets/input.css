@@ -38,7 +38,11 @@ code, pre, kbd, .font-mono {
 }
 
 @layer base {
-  h1, h2, h3 { margin: 0 0 0.5em; }
+  h1, h2, h3 {
+    margin: 0 0 0.5em;
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .bday-user { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; }
   a { color: var(--accent-light); transition: color 0.15s ease; }
   a:hover { color: var(--accent); text-shadow: 0 0 6px var(--glow-faint); }
   table { @apply border-collapse mx-auto w-full; }
