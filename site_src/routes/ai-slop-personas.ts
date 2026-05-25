@@ -6,6 +6,7 @@ export const AI_SLOP_PERSONAS = [
   { name: 'Jarvis', blurb: 'Tony Stark butler vibes' },
   { name: 'GPT', blurb: 'Concise + neutral' },
   { name: 'Silverwolf', blurb: 'The mascot herself' },
+  { name: 'Deepseek', blurb: 'Social credits +1000000' },
 ] as const;
 
 export type AllowedPersona = typeof AI_SLOP_PERSONAS[number]['name'];
