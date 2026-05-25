@@ -312,7 +312,6 @@ const styles = raw(`
     padding: 0.35rem 1.5rem 0.35rem 0.75rem;
     background: color-mix(in oklab, var(--accent) 8%, transparent);
     border-top: 1px solid color-mix(in oklab, var(--accent) 25%, transparent);
-    border-right: 1px solid color-mix(in oklab, var(--accent) 25%, transparent);
     clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 100%, 0 100%);
     display: flex;
     align-items: center;

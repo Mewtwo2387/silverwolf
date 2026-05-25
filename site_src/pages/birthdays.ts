@@ -20,15 +20,6 @@ const birthdayExtras = raw(`
     -webkit-backdrop-filter: blur(8px);
     transition: border-color 0.3s, box-shadow 0.3s;
   }
-  .month-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0;
-    width: 4px; height: 100%;
-    background: var(--ink-600);
-    border-top-left-radius: 0.75rem;
-    border-bottom-left-radius: 0.75rem;
-  }
   .month-card:hover {
     border-color: rgba(34, 211, 255, 0.3);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), 0 0 10px rgba(34, 211, 255, 0.05);
@@ -38,25 +29,6 @@ const birthdayExtras = raw(`
     border-color: var(--accent) !important;
     animation: month-glow 2s ease-in-out infinite alternate;
   }
-  .month-card.month-current::before {
-    background: var(--accent);
-  }
-  
-  /* Circuit Nodes aesthetic on the month card */
-  .month-node-dot {
-    position: absolute;
-    width: 6px;
-    height: 6px;
-    background: var(--ink-600);
-    border-radius: 50%;
-    z-index: 2;
-  }
-  .month-card.month-current .month-node-dot {
-    background: var(--accent);
-    box-shadow: 0 0 6px var(--accent);
-  }
-  .month-node-dot.top-left { top: 8px; left: -1px; }
-  .month-node-dot.bottom-left { bottom: 8px; left: -1px; }
 
   .bday-user {
     transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
@@ -456,8 +428,6 @@ export function BirthdaysPage(opts: {
     const isCurrent = month === currentMonth;
     return html`
               <section class="${`month-card ${isCurrent ? 'month-current' : ''}`}">
-                <div class="month-node-dot top-left"></div>
-                <div class="month-node-dot bottom-left"></div>
                 <h3 class="text-accent-light font-mono text-sm tracking-wider uppercase mb-1">// ${month}</h3>
                 ${users.length === 0
     ? html`<div class="text-fog-500 text-[0.85rem] font-mono mt-2">&gt; NO RECORDED BIRTHDAYS</div>`
