@@ -31,6 +31,7 @@ import {
   ASCENSION_AMPLIFIERS,
   ASCENSION_LEVEL_ATTR,
   ASCENSION_LEVEL_REQ,
+  MAX_ASCENSION_PURCHASE,
   type AscensionUpgradeKey,
 } from '../utils/buyAscensionUpgrade';
 import {
@@ -839,11 +840,8 @@ const ASCENSION_DESCS: Record<AscensionUpgradeKey, string> = {
   nuggieNuggieMultiplier: 'Multiplier scaling with log2(dinonuggies).',
 };
 
-// Hard cap on how many cumulative cost previews we precompute per ascension row.
-// Ascension upgrades have no in-game purchase ceiling, but the UI's qty stepper
-// realistically targets small batches — sending an array per click is plenty for
-// the live total preview. Server still validates the real purchase amount.
-const ASCENSION_QTY_PREVIEW = 100;
+// Cumulative cost previews for the ascension qty stepper (matches MAX_ASCENSION_PURCHASE).
+const ASCENSION_QTY_PREVIEW = MAX_ASCENSION_PURCHASE;
 
 function upgradeDisplayLines(
   key: UpgradeRowKey,
@@ -877,25 +875,35 @@ function upgradeDisplayLines(
   ];
 }
 
-function cumulativeUpgradeCosts(level: number, maxLevel: number): FormattedNumber[] {
+function cumulativeUpgradeCosts(level: number, maxLevel: number): {
+  costsByQty: FormattedNumber[];
+  costValuesByQty: number[];
+} {
   const cap = Math.max(0, maxLevel - level);
-  const out: FormattedNumber[] = [];
+  const costsByQty: FormattedNumber[] = [];
+  const costValuesByQty: number[] = [];
   let running = 0;
   for (let i = 0; i < cap; i += 1) {
     running += getNextUpgradeCost(level + i);
-    out.push(formatDisplay(running));
+    costsByQty.push(formatDisplay(running));
+    costValuesByQty.push(running);
   }
-  return out;
+  return { costsByQty, costValuesByQty };
 }
 
-function cumulativeAscensionCosts(level: number, amplifier: number): FormattedNumber[] {
-  const out: FormattedNumber[] = [];
+function cumulativeAscensionCosts(level: number, amplifier: number): {
+  costsByQty: FormattedNumber[];
+  costValuesByQty: number[];
+} {
+  const costsByQty: FormattedNumber[] = [];
+  const costValuesByQty: number[] = [];
   let running = 0;
   for (let i = 0; i < ASCENSION_QTY_PREVIEW; i += 1) {
     running += getNextAscensionUpgradeCost(level + i, amplifier);
-    out.push(formatDisplay(running));
+    costsByQty.push(formatDisplay(running));
+    costValuesByQty.push(running);
   }
-  return out;
+  return { costsByQty, costValuesByQty };
 }
 
 export interface UpgradeRowState {
@@ -909,6 +917,7 @@ export interface UpgradeRowState {
   // costsByQty[i] = formatted cumulative credit cost for buying (i+1) levels.
   // Empty when already maxed. The client clamps the qty input to this length.
   costsByQty: FormattedNumber[];
+  costValuesByQty: number[];
 }
 
 export interface AscensionUpgradeRowState {
@@ -924,6 +933,7 @@ export interface AscensionUpgradeRowState {
   // costsByQty[i] = formatted cumulative heavenly-nuggie cost for (i+1) levels.
   // Capped at ASCENSION_QTY_PREVIEW; UI clamps the qty input to that length.
   costsByQty: FormattedNumber[];
+  costValuesByQty: number[];
 }
 
 export type WebAscensionState = AscensionState & {
@@ -932,10 +942,13 @@ export type WebAscensionState = AscensionState & {
 };
 
 export interface DinoUpgradesState {
+  credits: number;
   creditsLabel: string;
   creditsTitle?: string;
+  dinonuggies: number;
   dinonuggiesLabel: string;
   dinonuggiesTitle?: string;
+  heavenlyNuggies: number;
   heavenlyNuggiesLabel: string;
   heavenlyNuggiesTitle?: string;
   ascensionLevel: number;
@@ -967,15 +980,18 @@ export async function getDinoUpgradesStateWeb(
     client.db.user.getUserAttr(userId, 'bekiLevel'),
   ]);
 
-  const buildRow = (key: UpgradeRowKey, upgradeId: number, level: number): UpgradeRowState => ({
-    key,
-    upgradeId,
-    title: UPGRADE_TITLES[key],
-    level,
-    maxLevel,
-    displayLines: upgradeDisplayLines(key, level, maxLevel),
-    costsByQty: cumulativeUpgradeCosts(level, maxLevel),
-  });
+  const buildRow = (key: UpgradeRowKey, upgradeId: number, level: number): UpgradeRowState => {
+    const costs = cumulativeUpgradeCosts(level, maxLevel);
+    return {
+      key,
+      upgradeId,
+      title: UPGRADE_TITLES[key],
+      level,
+      maxLevel,
+      displayLines: upgradeDisplayLines(key, level, maxLevel),
+      ...costs,
+    };
+  };
 
   const upgrades: UpgradeRowState[] = [
     buildRow('multiplierAmount', 1, multiplierAmountLevel),
@@ -1006,7 +1022,7 @@ export async function getDinoUpgradesStateWeb(
         unlocked: ascensionLevel >= required,
         effectLabel,
         ...(effectTitle ? { effectTitle } : {}),
-        costsByQty: cumulativeAscensionCosts(lvl, amplifier),
+        ...cumulativeAscensionCosts(lvl, amplifier),
       };
     }),
   );
@@ -1017,10 +1033,13 @@ export async function getDinoUpgradesStateWeb(
   const ascensionDinoFmt = formatDisplay(ascensionState.dinonuggies);
 
   return {
+    credits,
     creditsLabel: creditsFmt.label,
     ...(creditsFmt.title ? { creditsTitle: creditsFmt.title } : {}),
+    dinonuggies,
     dinonuggiesLabel: dinonuggiesFmt.label,
     ...(dinonuggiesFmt.title ? { dinonuggiesTitle: dinonuggiesFmt.title } : {}),
+    heavenlyNuggies,
     heavenlyNuggiesLabel: heavenlyFmt.label,
     ...(heavenlyFmt.title ? { heavenlyNuggiesTitle: heavenlyFmt.title } : {}),
     ascensionLevel,

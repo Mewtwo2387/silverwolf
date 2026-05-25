@@ -66,7 +66,48 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
     color: var(--fog-200);
     min-height: 2.5rem;
     font-size: 0.9rem;
-    white-space: pre-wrap;
+  }
+  .eat-status.eat-error {
+    border-color: #803030;
+    color: #FF8888;
+    background: rgba(128, 48, 48, 0.12);
+  }
+  .eat-log {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .eat-line {
+    padding: 0.45rem 0.65rem;
+    border-radius: 0.35rem;
+    border-left: 3px solid var(--ink-500);
+    background: var(--ink-800);
+    line-height: 1.35;
+  }
+  .eat-line.eat-credits {
+    border-left-color: #83F28F;
+    background: rgba(44, 108, 58, 0.14);
+    color: #a8f0b4;
+  }
+  .eat-line.eat-nuggies {
+    border-left-color: var(--accent-light);
+    background: rgba(120, 80, 200, 0.12);
+    color: #c9b8ff;
+  }
+  .eat-line.eat-bad {
+    border-left-color: #FF6666;
+    background: rgba(128, 48, 48, 0.18);
+    color: #ffaaaa;
+  }
+  .eat-line.eat-nom {
+    border-left-color: var(--ink-500);
+    color: var(--fog-300);
+  }
+  .eat-line.eat-summary {
+    border-left-color: var(--fog-400);
+    color: var(--fog-200);
+    font-size: 0.85rem;
+    margin-top: 0.15rem;
   }
 
   /* Upgrades */
@@ -77,7 +118,7 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
     padding: 1rem;
     margin-bottom: 0.9rem;
   }
-  .upgrade-card.locked { opacity: 0.55; }
+  .upgrade-card.locked { opacity: 0.55; border-style: dashed; border-color: var(--ink-500); }
   .upgrade-card h3 {
     margin: 0 0 0.5rem 0;
     color: var(--accent-light);
@@ -133,6 +174,9 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
     font-size: 0.9rem;
   }
   .total-line .amt { color: var(--accent-light); font-weight: bold; }
+  .total-line .amt.affordable { color: #83F28F; }
+  .total-line .amt.unaffordable { color: #FF8888; }
+  .total-line .amt.maxed { color: var(--fog-400); }
 
   .ascend-box {
     background: var(--ink-900);
@@ -235,22 +279,59 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
 
   let STATE = null;
 
+  function eatItemClass(type) {
+    switch (type) {
+      case 'mystic_small':
+      case 'mystic_huge': return 'eat-credits';
+      case 'choke': return 'eat-bad';
+      case 'extra2':
+      case 'extra5': return 'eat-nuggies';
+      default: return 'eat-nom';
+    }
+  }
+
+  function renderEatLine(type, text) {
+    return '<div class="eat-line ' + eatItemClass(type) + '">' + escapeHtml(text) + '</div>';
+  }
+
+  function setEatStatus(html, isError) {
+    const out = document.getElementById('eat-status');
+    out.className = 'eat-status' + (isError ? ' eat-error' : '');
+    out.innerHTML = html;
+  }
+
+  function applyCostColor(totalEl, costValue, balance, maxed) {
+    totalEl.classList.remove('affordable', 'unaffordable', 'maxed');
+    if (maxed || costValue === undefined) {
+      totalEl.classList.add('maxed');
+      return;
+    }
+    totalEl.classList.add(balance >= costValue ? 'affordable' : 'unaffordable');
+  }
+
   // Wire up qty stepper + buy button on a freshly-created upgrade card. The
   // page never recomputes costs — it indexes into the server-provided
   // costsByQty array, which is the only authoritative source.
-  function wireCheckout(card, costsByQty, buyEndpoint, upgradeId, currencyLabel, onBuyResult) {
+  function wireCheckout(card, costsByQty, costValuesByQty, balance, buyEndpoint, upgradeId, currencyLabel, onBuyResult) {
     const qtyInput = card.querySelector('[data-qty]');
     const totalEl = card.querySelector('[data-total]');
     const maxQty = costsByQty.length;
+    const maxed = maxQty === 0;
     qtyInput.setAttribute('max', String(maxQty));
     function refresh() {
+      if (maxed) {
+        applyCostColor(totalEl, undefined, balance, true);
+        return;
+      }
       let v = parseInt(qtyInput.value, 10);
       if (!Number.isFinite(v) || v < 1) v = 1;
       if (v > maxQty) v = maxQty;
       qtyInput.value = String(v);
       const cost = costsByQty[v - 1];
+      const costValue = costValuesByQty[v - 1];
       if (cost && typeof cost === 'object') setFmtNum(totalEl, cost.label, cost.title);
       else setFmtNum(totalEl, cost, undefined);
+      applyCostColor(totalEl, costValue, balance, false);
     }
     refresh();
     card.querySelectorAll('[data-qstep]').forEach(b => {
@@ -341,7 +422,7 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
         '<h3>' + escapeHtml(u.title) + ' (Lv ' + u.level + '/' + u.maxLevel + ')</h3>' +
         '<div class="stats-grid">' + statsHTML + '</div>' +
         (maxed
-          ? '<div class="status warn">Maxed at this ascension level.</div>'
+          ? ''
           : ('<div class="checkout-row">' +
               '<span class="qty">' +
                 '<button type="button" data-qstep="-1">−</button>' +
@@ -354,7 +435,16 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
         '<div class="toast" data-toast></div>';
       container.appendChild(card);
       if (!maxed) {
-        wireCheckout(card, u.costsByQty, '/games/dinonuggie-upgrades/buy-upgrade', u.upgradeId, 'credits', handleUpgradeBuy);
+        wireCheckout(
+          card,
+          u.costsByQty,
+          u.costValuesByQty,
+          STATE.credits,
+          '/games/dinonuggie-upgrades/buy-upgrade',
+          u.upgradeId,
+          'credits',
+          handleUpgradeBuy,
+        );
       }
     }
   }
@@ -391,7 +481,16 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
         '<div class="toast" data-toast></div>';
       list.appendChild(card);
       if (row.unlocked) {
-        wireCheckout(card, row.costsByQty, '/games/dinonuggie-upgrades/buy-ascension', row.upgradeId, 'heavenly nuggies', handleAscensionBuy);
+        wireCheckout(
+          card,
+          row.costsByQty,
+          row.costValuesByQty,
+          STATE.heavenlyNuggies,
+          '/games/dinonuggie-upgrades/buy-ascension',
+          row.upgradeId,
+          'heavenly nuggies',
+          handleAscensionBuy,
+        );
       }
     }
 
@@ -429,31 +528,45 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
   function bindEat() {
     const btn = document.getElementById('eat-btn');
     const input = document.getElementById('eat-amount');
-    const out = document.getElementById('eat-status');
     btn.addEventListener('click', async () => {
       const amt = parseInt(input.value, 10) || 1;
       btn.disabled = true;
-      out.textContent = 'Eating...';
-      out.className = 'eat-status';
+      setEatStatus('<div class="eat-line eat-nom">Eating...</div>', false);
       const res = await api('/games/dinonuggie-upgrades/eat', { amount: amt });
       if (res.error) {
-        out.textContent = errMsg(res.error);
+        setEatStatus(escapeHtml(errMsg(res.error)), true);
         btn.disabled = false;
         return;
       }
       const d = res.data;
       if (d.status === 'not_enough') {
-        out.textContent = "smh you don't have enough dinonuggies to eat. (have " + d.dinonuggiesLabel + ", need " + d.amountLabel + ")";
+        setEatStatus(
+          "smh you don't have enough dinonuggies to eat. (have " + escapeHtml(d.dinonuggiesLabel) + ", need " + escapeHtml(d.amountLabel) + ")",
+          true,
+        );
       } else if (d.status === 'cheat') {
-        out.textContent = "Nice try, cheater. Negative amounts are not allowed.";
+        setEatStatus('Nice try, cheater. Negative amounts are not allowed.', true);
+      } else if (d.status === 'invalid_amount') {
+        setEatStatus('Invalid amount. Enter 1–' + (d.amount > 0 ? d.amount : '10000') + '.', true);
       } else if (d.status === 'single') {
-        out.textContent = d.itemLine;
+        setEatStatus('<div class="eat-log">' + renderEatLine(d.item.type, d.itemLine) + '</div>', false);
       } else if (d.status === 'batch') {
-        let lines = d.itemLines.map(line => '• ' + line).join('\\n');
-        if (d.remainingLost > 0) lines += '\\n\\nYou lost the remaining ' + d.remainingLost + ' dinonuggies.';
-        if (d.totalEarned > 0) lines += '\\nTotal mystic credits earned: ' + d.totalEarnedLabel + '.';
-        if (d.totalNuggiesEarned > 0) lines += '\\nTotal extra dinonuggies: ' + d.totalNuggiesEarned + '.';
-        out.textContent = lines;
+        let html = '<div class="eat-log">';
+        for (let i = 0; i < d.items.length; i += 1) {
+          const text = d.itemLines[i] || '';
+          html += renderEatLine(d.items[i].type, text);
+        }
+        if (d.remainingLost > 0) {
+          html += '<div class="eat-line eat-summary">You lost the remaining ' + escapeHtml(String(d.remainingLost)) + ' dinonuggies.</div>';
+        }
+        if (d.totalEarned > 0) {
+          html += '<div class="eat-line eat-summary">Total mystic credits earned: ' + escapeHtml(d.totalEarnedLabel) + '.</div>';
+        }
+        if (d.totalNuggiesEarned > 0) {
+          html += '<div class="eat-line eat-summary">Total extra dinonuggies: ' + escapeHtml(String(d.totalNuggiesEarned)) + '.</div>';
+        }
+        html += '</div>';
+        setEatStatus(html, false);
       }
       await refreshState();
       btn.disabled = false;
@@ -511,7 +624,7 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
             <input id="eat-amount" type="number" min="1" value="1" />
             <button id="eat-btn" class="btn-accent btn-sm" type="button">Eat</button>
           </div>
-          <div id="eat-status" class="eat-status">Press eat to munch on a dinonuggie.</div>
+          <div id="eat-status" class="eat-status"><div class="eat-line eat-nom">Press eat to munch on a dinonuggie.</div></div>
         </div>
 
         <div class="dnu-section">
