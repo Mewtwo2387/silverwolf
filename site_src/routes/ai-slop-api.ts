@@ -1,6 +1,7 @@
-import type { Hono } from 'hono';
+import type { Context, Hono } from 'hono';
 import { logError, logWarning } from '../../utils/log';
 import type { Silverwolf } from '../../classes/silverwolf';
+import { canUseAiSlop } from '../guild-access';
 import {
   generateContent,
   generateSessionTitle,
@@ -63,6 +64,15 @@ async function resolveSessionForUser(
   return { session };
 }
 
+async function requireAiSlopGuildAccess(
+  c: Context<AppEnv>,
+  silverwolf: Silverwolf,
+  discordId: string,
+): Promise<Response | null> {
+  if (await canUseAiSlop(silverwolf, discordId)) return null;
+  return c.json({ ok: false, error: 'guild_required' }, 403);
+}
+
 export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
   // Sends a user message and returns the assistant reply. Creates the session
   // on first send (deferred-row pattern) so empty drafts don't clutter the
@@ -71,6 +81,9 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
     const body = await readGameBody(c);
     const auth = authedGameRequest(c, body);
     if (auth instanceof Response) return auth;
+
+    const guildGate = await requireAiSlopGuildAccess(c, silverwolf, auth.discordId);
+    if (guildGate) return guildGate;
 
     const messageRaw = typeof body!.message === 'string' ? body!.message.trim() : '';
     if (!messageRaw) return c.json({ ok: false, error: 'empty_message' }, 400);
@@ -217,6 +230,9 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
     const auth = authedGameRequest(c, body);
     if (auth instanceof Response) return auth;
 
+    const guildGate = await requireAiSlopGuildAccess(c, silverwolf, auth.discordId);
+    if (guildGate) return guildGate;
+
     const sessionIdRaw = body!.sessionId;
     if (!isValidSessionId(sessionIdRaw)) {
       return c.json({ ok: false, error: 'invalid_session' }, 400);
@@ -245,6 +261,9 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
     const auth = authedGameRequest(c, body);
     if (auth instanceof Response) return auth;
 
+    const guildGate = await requireAiSlopGuildAccess(c, silverwolf, auth.discordId);
+    if (guildGate) return guildGate;
+
     const sessionIdRaw = body!.sessionId;
     if (!isValidSessionId(sessionIdRaw)) {
       return c.json({ ok: false, error: 'invalid_session' }, 400);
@@ -270,6 +289,9 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
   app.get('/games/ai-slop/session/:id/messages', async (c) => {
     const user = c.get('user');
     if (!user) return c.json({ ok: false, error: 'unauthenticated' }, 401);
+
+    const guildGate = await requireAiSlopGuildAccess(c, silverwolf, user.discordId);
+    if (guildGate) return guildGate;
 
     const idParam = parseInt(c.req.param('id'), 10);
     if (!Number.isInteger(idParam) || idParam <= 0) {

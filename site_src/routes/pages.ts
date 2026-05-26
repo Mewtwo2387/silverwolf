@@ -18,6 +18,7 @@ import { DinonuggieUpgradesPage } from '../pages/games/dinonuggie_upgrades';
 import { AwdangitPage } from '../pages/games/awdangit';
 import { FakeQuotePage } from '../pages/games/fakequote';
 import { AiSlopPage } from '../pages/games/ai-slop';
+import { canUseAiSlop } from '../guild-access';
 import { HomePage, type DashboardProfile } from '../pages/home';
 import {
   getLeaderboard,
@@ -213,19 +214,23 @@ export function registerPageRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
 
     if (!user) {
       return c.html(AiSlopPage({
-        nonce, lv999, user: null, sessions: [],
+        nonce, lv999, user: null, sessions: [], guildAccess: false,
       }).toString());
     }
 
+    const guildAccess = await canUseAiSlop(silverwolf, user.discordId);
+
     try {
-      const sessions = await silverwolf.db.aiChat.getUserWebSessions(user.discordId);
+      const sessions = guildAccess
+        ? await silverwolf.db.aiChat.getUserWebSessions(user.discordId)
+        : [];
       return c.html(AiSlopPage({
-        nonce, lv999, user: user.nav, sessions,
+        nonce, lv999, user: user.nav, sessions, guildAccess,
       }).toString());
     } catch (err) {
       logError('website /games/ai-slop failed:', err);
       return c.html(AiSlopPage({
-        nonce, lv999, user: user.nav, sessions: [],
+        nonce, lv999, user: user.nav, sessions: [], guildAccess,
       }).toString(), 500);
     }
   });

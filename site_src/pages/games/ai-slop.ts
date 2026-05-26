@@ -52,15 +52,19 @@ export function AiSlopPage(opts: {
   lv999?: boolean;
   user: NavUser | null;
   sessions: AiSlopSession[];
+  guildAccess?: boolean;
 }) {
   const {
-    nonce, lv999, user, sessions,
+    nonce, lv999, user, sessions, guildAccess = false,
   } = opts;
   const loggedOut = !user;
+  const guildBlocked = !loggedOut && !guildAccess;
 
   const csrfJSON = inlineJSON(user?.csrf ?? '');
   const personasJSON = inlineJSON(PERSONAS.map((p) => p.name));
-  const groups = loggedOut ? new Map<string, SidebarSession[]>() : groupSessions(sessions);
+  const groups = loggedOut || guildBlocked
+    ? new Map<string, SidebarSession[]>()
+    : groupSessions(sessions);
 
   const styles = raw(`
 <style>
@@ -903,6 +907,7 @@ export function AiSlopPage(opts: {
         persona_not_found: 'That model isn\\'t available.',
         invalid_session: 'Invalid chat session.',
         forbidden: 'You can\\'t access that chat.',
+        guild_required: 'You must be in a server where Silverwolf is installed to use AI chat.',
         not_web: 'That chat can only be used in Discord.',
         not_found: 'Chat not found.',
         empty_message: 'Type a message first.',
@@ -1178,6 +1183,8 @@ export function AiSlopPage(opts: {
       <p class="text-center text-fog-300 mb-4">chat with ai slop or something idk</p>
       ${loggedOut
     ? html`<div class="login-cta">Log in with <a href="/auth/discord/login">Discord</a> to chat.</div>`
+    : guildBlocked
+    ? html`<div class="login-cta">You need to be in a Discord server where Silverwolf is installed to use AI chat. Join that server, then refresh this page.</div>`
     : html`
           <div class="aislop-shell">
             <aside class="aislop-side">
@@ -1203,7 +1210,7 @@ export function AiSlopPage(opts: {
         `}
     </div>
     ${styles}
-    ${loggedOut ? '' : script}
+    ${loggedOut || guildBlocked ? '' : script}
   `;
 
   return Layout({
