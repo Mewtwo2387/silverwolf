@@ -1,6 +1,7 @@
 import { EmbedBuilder } from 'discord.js';
 import { log, logError } from '../utils/log';
 import { parseChannelIds } from '../utils/parseChannelIds';
+import { getNextBirthdayInfo } from '../utils/birthdays';
 // Note: Bun automatically reads .env files
 
 class BirthdayScheduler {
@@ -78,18 +79,11 @@ class BirthdayScheduler {
         log(`Found ${pending.length} pending reminder(s) to evaluate`);
 
         for (const entry of pending) {
-          const birthday = new Date(entry.birthdays);
-
-          // Calculate next occurrence of this birthday, preserving stored UTC time
-          const thisYear = new Date(birthday);
-          thisYear.setUTCFullYear(currentYear);
-          const nextBirthday = thisYear < now
-            ? new Date(new Date(birthday).setUTCFullYear(currentYear + 1))
-            : thisYear;
-
-          const daysUntil = Math.ceil((nextBirthday.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-          if (daysUntil !== entry.daysBefore) continue;
+          // Use the shared util so a /birthday get and the reminder evaluator
+          // always agree on what "the next birthday" is for a given stored ISO.
+          const info = getNextBirthdayInfo(entry.birthdays, now);
+          if (!info) continue;
+          if (info.daysUntil !== entry.daysBefore) continue;
 
           // Fetch users
           const trackedUser = await this.client.users.fetch(entry.trackedUserId).catch(() => null);

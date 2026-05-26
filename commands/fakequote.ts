@@ -1,6 +1,12 @@
 import { Command } from './classes/Command';
 import { logError } from '../utils/log';
-import quote from '../utils/quote';
+import quote, {
+  FAKEQUOTE_FONTS,
+  FAKEQUOTE_BACKGROUNDS,
+  FAKEQUOTE_PROFILE_COLORS,
+  FAKEQUOTE_AVATAR_SOURCES,
+  fakeQuoteChoices,
+} from '../utils/quote';
 
 class FakeQuote extends Command {
   constructor(client: any) {
@@ -28,29 +34,14 @@ class FakeQuote extends Command {
         description: 'background colour (default: black)',
         type: 3,
         required: false,
-        choices: [
-          { name: 'Black', value: 'black' },
-          { name: 'White', value: 'white' },
-        ],
+        choices: fakeQuoteChoices(FAKEQUOTE_BACKGROUNDS),
       },
       {
         name: 'font_style',
         description: 'font style for the quote text (default: sans-serif)',
         type: 3,
         required: false,
-        choices: [
-          { name: 'Default (Sans-serif)', value: 'sans-serif' },
-          { name: 'Playfair Display (Elegant Serif)', value: 'playfair' },
-          { name: 'Caveat (Handwritten)', value: 'caveat' },
-          { name: 'Cinzel (Dramatic Classic)', value: 'cinzel' },
-          { name: 'Righteous (Bold Display)', value: 'righteous' },
-          { name: 'Special Elite (Typewriter)', value: 'special-elite' },
-          { name: 'Minecraft (Pixel)', value: 'minecraft' },
-          { name: 'Harry Potter (Wizarding)', value: 'harrypotter' },
-          { name: 'Genshin Impact', value: 'genshin' },
-          { name: 'Comic Sans (Comic Neue)', value: 'comic-sans' },
-          { name: 'Bebas Neue (Condensed)', value: 'bebas-neue' },
-        ],
+        choices: fakeQuoteChoices(FAKEQUOTE_FONTS),
       },
       {
         name: 'text_color',
@@ -63,23 +54,14 @@ class FakeQuote extends Command {
         description: 'profile picture colour filter',
         type: 3,
         required: false,
-        choices: [
-          { name: 'Normal', value: 'normal' },
-          { name: 'Black and White', value: 'bw' },
-          { name: 'Inverted', value: 'inverted' },
-          { name: 'Sepia', value: 'sepia' },
-          { name: 'Nightmare Fuel', value: 'nightmare' },
-        ],
+        choices: fakeQuoteChoices(FAKEQUOTE_PROFILE_COLORS),
       },
       {
         name: 'avatar_source',
         description: 'choose between the server avatar or global avatar',
         type: 3,
         required: false,
-        choices: [
-          { name: 'Server Avatar', value: 'server' },
-          { name: 'Global Avatar', value: 'global' },
-        ],
+        choices: fakeQuoteChoices(FAKEQUOTE_AVATAR_SOURCES),
       },
     ], { blame: 'both' });
   }

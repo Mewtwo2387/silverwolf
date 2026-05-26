@@ -1,6 +1,7 @@
 import { EmbedBuilder } from 'discord.js';
 import { Command } from './classes/Command';
 import { logError } from '../utils/log';
+import { getNextBirthdayInfo } from '../utils/birthdays';
 
 class BirthdayGet extends Command {
   constructor(client: any) {
@@ -26,22 +27,17 @@ class BirthdayGet extends Command {
       }
 
       const birthday = new Date(birthdayData);
-      const now = new Date();
-
-      const lastBirthday = new Date(now.getFullYear(), birthday.getMonth(), birthday.getDate());
-      if (lastBirthday > now) {
-        lastBirthday.setFullYear(lastBirthday.getFullYear() - 1);
+      const info = getNextBirthdayInfo(birthdayData);
+      if (!info) {
+        await interaction.editReply(`${user.username}'s birthday could not be parsed.`);
+        return;
       }
-      const yearsAgo = now.getFullYear() - birthday.getFullYear() - (now < lastBirthday ? 1 : 0);
 
-      const nextBirthday = new Date(now.getFullYear(), birthday.getMonth(), birthday.getDate());
-      if (nextBirthday < now) {
-        nextBirthday.setFullYear(nextBirthday.getFullYear() + 1);
-      }
-      const daysUntilNext = Math.ceil((nextBirthday.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      const yearsAgo = info.lastDate.getUTCFullYear() - birthday.getUTCFullYear();
+      const daysUntilNext = info.daysUntil;
 
       const birthdayTimestamp = Math.floor(birthday.getTime() / 1000);
-      const nextBirthdayTimestamp = Math.floor(nextBirthday.getTime() / 1000);
+      const nextBirthdayTimestamp = Math.floor(info.nextDate.getTime() / 1000);
 
       const embed = new EmbedBuilder()
         .setTitle(`${user.username}'s Birthday`)

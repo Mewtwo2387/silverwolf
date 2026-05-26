@@ -46,6 +46,49 @@ class UserModel {
     log(`Updated user ${userId}: ${attribute} increased by ${value}.`);
   }
 
+  async addUserAttrs(userId: string, deltas: Record<string, number>): Promise<void> {
+    await this.getUser(userId);
+    const entries = Object.entries(deltas).filter(([, v]) => !Number.isNaN(v) && v !== null && v !== undefined);
+    if (entries.length === 0) return;
+    await this.db.executeTransaction((rawDb) => {
+      for (const [field, value] of entries) {
+        const attribute = camelToSnake(field);
+        rawDb.query(userQueries.ADD_USER_ATTR(attribute)).run(value, userId);
+      }
+    });
+    log(`Updated user ${userId}: ${entries.map(([f, v]) => `${f}+=${v}`).join(', ')}`);
+  }
+
+  async updateUserAttrs(
+    userId: string,
+    mutations: { adds?: Record<string, number>; sets?: Record<string, any> },
+  ): Promise<void> {
+    const NULLABLE_SET_FIELDS = new Set(['birthdays', 'dinonuggies_last_claimed']);
+    const isValid = (v: any) => !Number.isNaN(v) && v !== null && v !== undefined;
+    const isValidSet = (field: string, v: any) => {
+      if (Number.isNaN(v)) return false;
+      if (v === null || v === undefined) return NULLABLE_SET_FIELDS.has(camelToSnake(field));
+      return true;
+    };
+    const adds = Object.entries(mutations.adds || {}).filter(([, v]) => isValid(v));
+    const sets = Object.entries(mutations.sets || {}).filter(([f, v]) => isValidSet(f, v));
+    if (adds.length === 0 && sets.length === 0) return;
+    await this.getUser(userId);
+    await this.db.executeTransaction((rawDb) => {
+      for (const [field, value] of adds) {
+        const attribute = camelToSnake(field);
+        rawDb.query(userQueries.ADD_USER_ATTR(attribute)).run(value, userId);
+      }
+      for (const [field, value] of sets) {
+        const attribute = camelToSnake(field);
+        rawDb.query(userQueries.SET_USER_ATTR(attribute)).run(value, userId);
+      }
+    });
+    const addsLog = adds.map(([f, v]) => `${f}+=${v}`).join(', ');
+    const setsLog = sets.map(([f, v]) => `${f}=${v}`).join(', ');
+    log(`Updated user ${userId}: ${[addsLog, setsLog].filter(Boolean).join('; ')}`);
+  }
+
   async setUserAttr(userId: string, field: string, value: any): Promise<void> {
     const attribute = camelToSnake(field);
     if (Number.isNaN(value)) {
@@ -131,6 +174,12 @@ class UserModel {
     const query = userQueries.GET_USERS_WITH_BIRTHDAY;
     const rows = await this.db.executeSelectAllQuery(query, [todayHour]);
     return rows;
+  }
+
+  async getAllBirthdays(): Promise<{ id: string; birthdays: string }[]> {
+    const query = userQueries.GET_ALL_BIRTHDAYS;
+    const rows = await this.db.executeSelectAllQuery(query);
+    return rows as { id: string; birthdays: string }[];
   }
 }
 

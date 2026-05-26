@@ -1,5 +1,12 @@
 import * as Discord from 'discord.js';
 import { Command } from './classes/Command';
+import { flipCoin } from '../utils/flip';
+
+const DESCRIPTIONS: Record<ReturnType<typeof flipCoin>, string> = {
+  head: 'Silverwolf gave you head.',
+  tail: 'Silverwolf gave you tail.',
+  side: 'Silverwolf gave you side.',
+};
 
 class Flip extends Command {
   constructor(client: any) {
@@ -7,23 +14,10 @@ class Flip extends Command {
   }
 
   async run(interaction: any): Promise<void> {
-    let embed;
-    if (Math.random() < 0.49) {
-      embed = new Discord.EmbedBuilder()
-        .setColor('#00AA00')
-        .setTitle('You flipped a coin.')
-        .setDescription('Silverwolf gave you head.');
-    } else if (Math.random() < 0.98) {
-      embed = new Discord.EmbedBuilder()
-        .setColor('#00AA00')
-        .setTitle('You flipped a coin.')
-        .setDescription('Silverwolf gave you tail.');
-    } else {
-      embed = new Discord.EmbedBuilder()
-        .setColor('#00AA00')
-        .setTitle('You flipped a coin.')
-        .setDescription('Silverwolf gave you side.');
-    }
+    const embed = new Discord.EmbedBuilder()
+      .setColor('#00AA00')
+      .setTitle('You flipped a coin.')
+      .setDescription(DESCRIPTIONS[flipCoin()]);
     interaction.editReply({ embeds: [embed] });
   }
 }

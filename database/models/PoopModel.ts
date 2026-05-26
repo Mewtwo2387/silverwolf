@@ -46,11 +46,13 @@ class PoopModel {
     const dayEnd = dayStart + 86400;
 
     const inserted = await this.db.executeTransaction((rawDb) => {
-      const todayRow = rawDb.query(poopQueries.GET_TODAY_COUNT).get(userId, dayStart, dayEnd) as Record<string, any> | null;
+      const todayRow = rawDb.query(poopQueries.GET_TODAY_COUNT)
+        .get(userId, dayStart, dayEnd) as Record<string, any> | null;
       if ((todayRow?.today_count ?? 0) >= DAILY_POOP_LIMIT) return false;
 
       const loggedAt = Math.floor(Date.now() / 1000);
-      rawDb.query(poopQueries.LOG_POOP).run(userId, loggedAt, colour ?? null, size ?? null, type ?? null, duration ?? null);
+      rawDb.query(poopQueries.LOG_POOP)
+        .run(userId, loggedAt, colour ?? null, size ?? null, type ?? null, duration ?? null);
       return true;
     });
 

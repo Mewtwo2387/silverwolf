@@ -71,21 +71,82 @@ function format(num: number | null | undefined, alwaysFixed = false, shortenThre
   return formattedNum.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
+// Full comma-separated display without K/M/B shortening — used for hover titles.
+function formatFull(num: number | null | undefined, alwaysFixed = false): string {
+  if (num === null) {
+    return 'null';
+  }
+  if (typeof num === 'undefined') {
+    return 'undefined';
+  }
+
+  const normalizedNum = Number(num);
+  const safeNum = Number.isFinite(normalizedNum) ? normalizedNum : 0;
+  let formattedNum: string;
+
+  if (alwaysFixed) {
+    formattedNum = safeNum.toFixed(2);
+  } else {
+    const numStr = safeNum.toString();
+    const decimalIndex = numStr.indexOf('.');
+
+    if (decimalIndex === -1 || numStr.length - decimalIndex - 1 <= 2) {
+      formattedNum = safeNum.toString();
+    } else {
+      formattedNum = safeNum.toFixed(2);
+    }
+  }
+
+  return formattedNum.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+export interface FormattedNumber {
+  label: string;
+  title?: string;
+}
+
+function formatHoverTitle(
+  num: number | null | undefined,
+  alwaysFixed = false,
+  shortenThreshold = 6,
+): string | undefined {
+  if (num === null || typeof num === 'undefined') {
+    return undefined;
+  }
+  const label = format(num, alwaysFixed, shortenThreshold);
+  const full = formatFull(num, alwaysFixed);
+  return label !== full ? full : undefined;
+}
+
+function formatDisplay(
+  num: number | null | undefined,
+  alwaysFixed = false,
+  shortenThreshold = 6,
+): FormattedNumber {
+  const label = format(num, alwaysFixed, shortenThreshold);
+  const title = formatHoverTitle(num, alwaysFixed, shortenThreshold);
+  return title ? { label, title } : { label };
+}
+
 function antiFormat(input: string): number {
-  const cleanInput = input.replace(/,/g, '');
+  const cleanInput = input.replace(/,/g, '').trim();
   // pure numerical
   // eslint-disable-next-line no-restricted-globals
   if (!isNaN(cleanInput as any)) { // Number.isNan does not work here
     return parseFloat(cleanInput);
   }
   // Extract the numeric part and the prefix
-  const match = input.match(/^([0-9.]+)([a-zA-Z]+)$/);
+  const match = cleanInput.match(/^([0-9.]+)([a-zA-Z]+)$/);
   if (!match) {
     return NaN; // Invalid input format
   }
 
   const number = parseFloat(match[1]);
-  const prefix = match[2];
+  // Accept any casing for the suffix ("1k", "1K", "1qA" all valid) by
+  // normalizing to the canonical Title-case form used by the prefix tables.
+  // This is what NORMALIZE_AMOUNT_JS used to do client-side before POSTing.
+  const rawSuf = match[2];
+  const prefix = rawSuf.charAt(0).toUpperCase() + rawSuf.slice(1).toLowerCase();
 
   // Get the corresponding n using getNumberFromPrefix
   const n = getNumberFromPrefix(prefix);
@@ -99,5 +160,11 @@ function antiFormat(input: string): number {
 }
 
 export {
-  format, antiFormat, getPrefix, getNumberFromPrefix,
+  format,
+  formatFull,
+  formatDisplay,
+  formatHoverTitle,
+  antiFormat,
+  getPrefix,
+  getNumberFromPrefix,
 };

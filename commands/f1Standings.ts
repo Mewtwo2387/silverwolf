@@ -117,7 +117,6 @@ class F1Standings extends Command {
     if (year > currentYear || year < minYear) {
       await interaction.editReply({
         content: `Invalid year for ${type} standings. Must be between ${minYear} and ${currentYear}.`,
-        ephemeral: true,
       });
       return;
     }
@@ -136,7 +135,6 @@ class F1Standings extends Command {
       logError('Error fetching F1 standings:', error);
       await interaction.editReply({
         content: 'Failed to fetch the F1 standings. Please try again later.',
-        ephemeral: true,
       });
     }
   }

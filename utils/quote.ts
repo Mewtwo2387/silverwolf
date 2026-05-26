@@ -7,8 +7,7 @@ Credits:
 
 import path from 'path';
 import Canvas, { type CanvasRenderingContext2D as CanvasCtx } from 'canvas';
-import type { APIUser } from 'discord-api-types/v10';
-import type { Guild, User } from 'discord.js';
+import type { APIUser, Guild, User } from 'discord.js';
 import { log, logError } from './log';
 
 // ─── Font Registration ────────────────────────────────────────────────────────
@@ -484,6 +483,7 @@ function resolveAvatarUrl(person: User | APIUser): string {
   if (person.avatar) {
     return `https://cdn.discordapp.com/avatars/${person.id}/${person.avatar}.png?size=512`;
   }
+  // eslint-disable-next-line no-bitwise, node/no-unsupported-features/es-builtins
   const defaultIndex = (BigInt(person.id) >> 22n) % 6n;
   return `https://cdn.discordapp.com/embed/avatars/${defaultIndex}.png`;
 }
@@ -491,7 +491,7 @@ function resolveAvatarUrl(person: User | APIUser): string {
 // ─── Main Quote Function ──────────────────────────────────────────────────────
 
 async function quote(
-  guild: Guild,
+  guild: Guild | null,
   _person: User | APIUser,
   _nickname: string | null,
   _message: string,
@@ -523,7 +523,7 @@ async function quote(
 
   // ── Avatar ────────────────────────────────────────────────────────────────
   let pfp: string;
-  if (avatarSource === 'server') {
+  if (avatarSource === 'server' && guild) {
     try {
       const member = guild.members.cache.get(_person.id);
       if (member && member.avatar) {
@@ -725,6 +725,57 @@ async function quote(
 
   return canvas.toBuffer();
 }
+
+// ─── Shared option lists for the fakequote command + web page ────────────────
+
+export interface FakeQuoteOption { value: string; label: string }
+
+// Source of truth for the font picker; order matches what the Discord slash
+// command displays. The web page builds <select> options from this list, and
+// `bot-bridge.ts` validates incoming `fontStyle` values against it.
+export const FAKEQUOTE_FONTS: FakeQuoteOption[] = [
+  { value: 'sans-serif', label: 'Default (Sans-serif)' },
+  { value: 'playfair', label: 'Playfair Display (Elegant Serif)' },
+  { value: 'caveat', label: 'Caveat (Handwritten)' },
+  { value: 'cinzel', label: 'Cinzel (Dramatic Classic)' },
+  { value: 'righteous', label: 'Righteous (Bold Display)' },
+  { value: 'special-elite', label: 'Special Elite (Typewriter)' },
+  { value: 'minecraft', label: 'Minecraft (Pixel)' },
+  { value: 'harrypotter', label: 'Harry Potter (Wizarding)' },
+  { value: 'genshin', label: 'Genshin Impact' },
+  { value: 'comic-sans', label: 'Comic Sans (Comic Neue)' },
+  { value: 'bebas-neue', label: 'Bebas Neue (Condensed)' },
+];
+
+export const FAKEQUOTE_BACKGROUNDS: FakeQuoteOption[] = [
+  { value: 'black', label: 'Black' },
+  { value: 'white', label: 'White' },
+];
+
+export const FAKEQUOTE_PROFILE_COLORS: FakeQuoteOption[] = [
+  { value: 'normal', label: 'Normal' },
+  { value: 'bw', label: 'Black and White' },
+  { value: 'inverted', label: 'Inverted' },
+  { value: 'sepia', label: 'Sepia' },
+  { value: 'nightmare', label: 'Nightmare Fuel' },
+];
+
+export const FAKEQUOTE_AVATAR_SOURCES: FakeQuoteOption[] = [
+  { value: 'server', label: 'Server Avatar' },
+  { value: 'global', label: 'Global Avatar' },
+];
+
+const valuesOf = (opts: FakeQuoteOption[]) => opts.map((o) => o.value);
+
+export const FAKEQUOTE_FONT_VALUES = valuesOf(FAKEQUOTE_FONTS);
+export const FAKEQUOTE_BACKGROUND_VALUES = valuesOf(FAKEQUOTE_BACKGROUNDS);
+export const FAKEQUOTE_PROFILE_COLOR_VALUES = valuesOf(FAKEQUOTE_PROFILE_COLORS);
+export const FAKEQUOTE_AVATAR_SOURCE_VALUES = valuesOf(FAKEQUOTE_AVATAR_SOURCES);
+
+// Discord slash-command `choices` shape ({ name, value }).
+export const fakeQuoteChoices = (
+  opts: FakeQuoteOption[],
+): { name: string; value: string }[] => opts.map(({ label, value }) => ({ name: label, value }));
 
 export default quote;
 export { FONT_MAP, FONT_INDEX };

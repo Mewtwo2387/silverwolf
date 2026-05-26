@@ -10,7 +10,10 @@
     "test:watch": "bun test --watch --preload ./tests/setup.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:css": "tailwindcss -i ./site_src/Assets/input.css -o ./site_src/Assets/styles.css --minify",
+    "build:css:watch": "tailwindcss -i ./site_src/Assets/input.css -o ./site_src/Assets/styles.css --watch --minify",
+    "build:images": "bun scripts/build-images.ts"
   },
   "keywords": [],
   "author": "",
@@ -21,6 +24,7 @@
     "canvas": "^3.2.3",
     "cheerio": "^1.2.0",
     "discord.js": "^14.26.0",
+    "hono": "^4.12.14",
     "mime": "^2.5.2",
     "openai": "^5.12.2",
     "unpdf": "^1.6.2"
@@ -36,6 +40,7 @@
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^6.1.1",
+    "tailwindcss": "^3",
     "typescript": "^6.0.2"
   },
   "trustedDependencies": [

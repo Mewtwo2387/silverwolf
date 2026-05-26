@@ -1,5 +1,6 @@
 import path from 'path';
 import { unlinkSync } from 'fs';
+import { MessageFlags } from 'discord.js';
 import { DevCommand } from './classes/DevCommand';
 import { logError } from '../utils/log';
 
@@ -132,7 +133,7 @@ class DBDump extends DevCommand {
           { name: 'All Data', value: 'all' },
         ],
       },
-    ], { blame: 'both' });
+    ], { blame: 'both', ephemeral: true });
   }
 
   async run(interaction: any): Promise<void> {
@@ -161,7 +162,7 @@ class DBDump extends DevCommand {
           if (i === 0) {
             await interaction.editReply({ content, files: chunk });
           } else {
-            await interaction.followUp({ content, files: chunk });
+            await interaction.followUp({ content, files: chunk, flags: MessageFlags.Ephemeral });
           }
         }
       }
@@ -172,11 +173,12 @@ class DBDump extends DevCommand {
         await interaction.followUp({
           content: 'database:',
           files: [{ attachment: databasePath, name: 'database.db' }],
+          flags: MessageFlags.Ephemeral,
         });
       }
     } catch (error) {
       logError('Error dumping database:', error);
-      await interaction.followUp({ content: 'An error occurred while executing the command.', ephemeral: true });
+      await interaction.followUp({ content: 'An error occurred while executing the command.', flags: MessageFlags.Ephemeral });
     } finally {
       filesToDump.forEach((file) => {
         this.cleanupFile(file.attachment);

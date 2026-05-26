@@ -1,5 +1,13 @@
 import { Command } from './classes/Command';
 import { logError } from '../utils/log';
+import {
+  POOP_COLOURS,
+  POOP_SIZES,
+  POOP_TYPES,
+  POOP_DURATION_MIN,
+  POOP_DURATION_MAX,
+  poopChoices,
+} from '../utils/poop';
 
 class PoopLog extends Command {
   constructor(client: any) {
@@ -13,49 +21,29 @@ class PoopLog extends Command {
           description: 'The colour of your poop',
           type: 3,
           required: false,
-          choices: [
-            { name: 'Brown', value: 'brown' },
-            { name: 'Dark Brown', value: 'dark-brown' },
-            { name: 'Yellow', value: 'yellow' },
-            { name: 'Green', value: 'green' },
-            { name: 'Black', value: 'black' },
-            { name: 'Red', value: 'red' },
-            { name: 'Holy', value: 'holy' },
-          ],
+          choices: poopChoices(POOP_COLOURS),
         },
         {
           name: 'size',
           description: 'The size of your poop',
           type: 3,
           required: false,
-          choices: [
-            { name: 'Small', value: 'small' },
-            { name: 'Medium', value: 'medium' },
-            { name: 'Large', value: 'large' },
-            { name: 'Omnipresent', value: 'omnipresent' },
-          ],
+          choices: poopChoices(POOP_SIZES),
         },
         {
           name: 'type',
           description: 'The consistency of your poop',
           type: 3,
           required: false,
-          choices: [
-            { name: 'Liquid', value: 'liquid' },
-            { name: 'Soft', value: 'soft' },
-            { name: 'Normal', value: 'normal' },
-            { name: 'Hard', value: 'hard' },
-            { name: 'Pellet', value: 'pellet' },
-            { name: 'Divine', value: 'divine' },
-          ],
+          choices: poopChoices(POOP_TYPES),
         },
         {
           name: 'duration',
           description: 'How long you were on the throne (minutes)',
           type: 4,
           required: false,
-          min_value: 1,
-          max_value: 120,
+          min_value: POOP_DURATION_MIN,
+          max_value: POOP_DURATION_MAX,
         },
       ],
       { isSubcommandOf: 'poop', blame: 'ei' },

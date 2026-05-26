@@ -12,8 +12,22 @@ import {
 import {
   getMultiplierAmount,
   getMultiplierChance,
+  getBekiCooldown,
 } from './upgrades';
 import { format } from './math';
+
+const DAY_LENGTH = 24 * 60 * 60 * 1000;
+const HOUR_LENGTH = 60 * 60 * 1000;
+
+const BEKI_COOLDOWN_RESPONSES: { title: string; gifUrl: string }[] = [
+  { title: 'Beki is currently cooking the next batch of dinonuggies please wait', gifUrl: 'https://c.tenor.com/i6sOwD66MAEAAAAC/tenor.gif' },
+  { title: 'Beki is having a little bit of an issue. Please hold', gifUrl: 'https://c.tenor.com/h6XlgMwYBnkAAAAd/tenor.gif' },
+  { title: 'Ah shit i forgottt, hang on a momentt-', gifUrl: 'https://c.tenor.com/TYW-RNzp6hEAAAAC/tenor.gif' },
+  { title: 'uhhh what is beki doing ?', gifUrl: 'https://media.tenor.com/RYGLfSXNIRIAAAAi/frieren.gif' },
+  { title: 'Beki fucking dies of exhaustion', gifUrl: 'https://c.tenor.com/kU_EwdsrkLkAAAAC/tenor.gif' },
+  { title: 'Beki Spins', gifUrl: 'https://media.tenor.com/WKPXrrxUvEgAAAAi/frieren-kuru-kuru.gif' },
+  { title: 'Beki is trying out new hobbies', gifUrl: 'https://c.tenor.com/_33fqJ2mxQUAAAAd/tenor.gif' },
+];
 
 interface MultiplierAmount {
   gold: number;
@@ -31,6 +45,7 @@ interface RewardResult {
   amount: number;
   title: string;
   imageUrl: string;
+  webImageUrl?: string;
   colour: string;
   footer: string;
   thumbnail: string;
@@ -107,6 +122,7 @@ async function formatReward(
     amount,
     title: skin.title.replace('{amount}', format(amount)).replace('{multiplier}', format(currentMultiplier, true)),
     imageUrl: skin.imageUrl,
+    webImageUrl: skin.webImageUrl,
     colour: skin.colour,
     footer: formattedFooter,
     thumbnail: skin.thumbnail,
@@ -135,6 +151,106 @@ async function getAmount(client: any, uid: string, streak: number): Promise<Rewa
   }
   const amount = Math.ceil(await getBaseAmount(client, uid, streak));
   return formatReward(client, 'regular', amount, multiplier, percentage);
+}
+
+type ClaimResult =
+  | {
+    status: 'cooldown';
+    title: string;
+    gifUrl: string;
+    hoursRemaining: number;
+    cooldown: number;
+  }
+  | {
+    status: 'broken_streak';
+    amount: number;
+    previousDinonuggies: number;
+    previousStreak: number;
+  }
+  | {
+    status: 'success';
+    amount: number;
+    title: string;
+    imageUrl: string;
+    webImageUrl?: string;
+    colour: string;
+    footer: string;
+    thumbnail: string;
+    previousDinonuggies: number;
+    previousStreak: number;
+  };
+
+const claimLocks = new Map<string, Promise<ClaimResult>>();
+
+async function processClaimInner(client: any, uid: string): Promise<ClaimResult> {
+  const now = Date.now();
+  const lastClaimedInt = await client.db.user.getUserAttr(uid, 'dinonuggiesLastClaimed');
+  const lastClaimed = lastClaimedInt || null;
+  const diff = lastClaimed ? now - lastClaimed : DAY_LENGTH;
+
+  const streak = await client.db.user.getUserAttr(uid, 'dinonuggiesClaimStreak');
+  const dinonuggies = await client.db.user.getUserAttr(uid, 'dinonuggies');
+  const bekiLevel = await client.db.user.getUserAttr(uid, 'bekiLevel');
+  const cooldown = getBekiCooldown(bekiLevel);
+
+  if (diff < cooldown * HOUR_LENGTH) {
+    const selected = BEKI_COOLDOWN_RESPONSES[Math.floor(Math.random() * BEKI_COOLDOWN_RESPONSES.length)];
+    return {
+      status: 'cooldown',
+      title: selected.title,
+      gifUrl: selected.gifUrl,
+      hoursRemaining: cooldown - diff / HOUR_LENGTH,
+      cooldown,
+    };
+  }
+
+  if (diff > 2 * DAY_LENGTH) {
+    const amount = Math.ceil(await getBaseAmount(client, uid, 0));
+    await client.db.user.addUserAttr(uid, 'dinonuggies', amount);
+    await client.db.user.setUserAttr(uid, 'dinonuggiesLastClaimed', now);
+    await client.db.user.setUserAttr(uid, 'dinonuggiesClaimStreak', 1);
+    return {
+      status: 'broken_streak',
+      amount,
+      previousDinonuggies: dinonuggies,
+      previousStreak: streak,
+    };
+  }
+
+  const reward = await getAmount(client, uid, streak);
+  await client.db.user.addUserAttr(uid, 'dinonuggies', reward.amount);
+  await client.db.user.setUserAttr(uid, 'dinonuggiesLastClaimed', now);
+  await client.db.user.addUserAttr(uid, 'dinonuggiesClaimStreak', 1);
+  return {
+    status: 'success',
+    amount: reward.amount,
+    title: reward.title,
+    imageUrl: reward.imageUrl,
+    webImageUrl: reward.webImageUrl,
+    colour: reward.colour,
+    footer: reward.footer,
+    thumbnail: reward.thumbnail,
+    previousDinonuggies: dinonuggies,
+    previousStreak: streak,
+  };
+}
+
+async function processClaim(client: any, uid: string): Promise<ClaimResult> {
+  // Chain each call after the previous one for the same uid. Awaiting an
+  // existing in-flight promise before kicking off a new one would let multiple
+  // callers resume in parallel as soon as the predecessor settles, racing each
+  // other through processClaimInner.
+  const previous = claimLocks.get(uid);
+  const run: Promise<ClaimResult> = (async () => {
+    if (previous) await previous.catch(() => undefined);
+    return processClaimInner(client, uid);
+  })();
+  claimLocks.set(uid, run);
+  try {
+    return await run;
+  } finally {
+    if (claimLocks.get(uid) === run) claimLocks.delete(uid);
+  }
 }
 
 // eslint-disable-next-line max-len
@@ -169,4 +285,9 @@ export {
   getAmount,
   formatReward,
   handleSuccessfulClaim,
+  processClaim,
+  BEKI_COOLDOWN_RESPONSES,
+  HOUR_LENGTH,
+  DAY_LENGTH,
 };
+export type { ClaimResult };

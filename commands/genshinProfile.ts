@@ -45,13 +45,13 @@ class GenshinProfile extends Command {
       const response = await fetch(url, { headers });
       if (!response.ok) {
         logError(`HTTP Error Response: Status ${response.status} ${response.statusText}`);
-        await interaction.editReply({ content: `Failed to fetch data: HTTP status ${response.status}. Please contact mystichunterz for assistance.`, ephemeral: true });
+        await interaction.editReply({ content: `Failed to fetch data: HTTP status ${response.status}. Please contact mystichunterz for assistance.` });
         return;
       }
       const data = await response.json();
 
       if (!data.playerInfo) {
-        await interaction.editReply({ content: 'No data found for the given UID. Please check the UID and try again.', ephemeral: true });
+        await interaction.editReply({ content: 'No data found for the given UID. Please check the UID and try again.' });
         return;
       }
 
@@ -91,7 +91,7 @@ class GenshinProfile extends Command {
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       logError('Error fetching data from Genshin Impact API:', error);
-      await interaction.editReply({ content: 'Failed to fetch data from Genshin Impact API. Please contact mystichunterz for assistance.', ephemeral: true });
+      await interaction.editReply({ content: 'Failed to fetch data from Genshin Impact API. Please contact mystichunterz for assistance.' });
     }
   }
 }

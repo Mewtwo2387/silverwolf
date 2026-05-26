@@ -71,6 +71,16 @@ interface GenerateContentResult {
   toolCalls: ToolCallRecord[];
 }
 
+async function loadPersonaSystemPrompt(persona: Persona): Promise<void> {
+  if (!persona.systemPromptFile) return;
+  try {
+    persona.systemPrompt = await Bun.file(persona.systemPromptFile).text();
+  } catch (error) {
+    logError(`Failed to read system prompt file ${persona.systemPromptFile}:`, error);
+    persona.systemPrompt = '';
+  }
+}
+
 /**
  * Resolves the appropriate AI persona based on message content
  */
@@ -83,14 +93,7 @@ async function resolvePersona(messageContent = ''): Promise<Persona> {
   );
 
   if (foundPersona) {
-    if (foundPersona.systemPromptFile) {
-      try {
-        foundPersona.systemPrompt = await Bun.file(foundPersona.systemPromptFile).text();
-      } catch (error) {
-        logError(`Failed to read system prompt file ${foundPersona.systemPromptFile}:`, error);
-        foundPersona.systemPrompt = '';
-      }
-    }
+    await loadPersonaSystemPrompt(foundPersona);
     return foundPersona;
   }
 
@@ -106,7 +109,10 @@ async function resolvePersona(messageContent = ''): Promise<Persona> {
 
 async function getPersonaByName(name: string): Promise<Persona | undefined> {
   const personas: Persona[] = personasConfig.personas || [];
-  return personas.find((p) => p.name.toLowerCase() === name.toLowerCase());
+  const found = personas.find((p) => p.name.toLowerCase() === name.toLowerCase());
+  if (!found) return undefined;
+  await loadPersonaSystemPrompt(found);
+  return found;
 }
 
 /**

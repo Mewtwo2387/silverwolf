@@ -4,6 +4,21 @@ import { generateContent, getPersonaByName } from '../utils/ai';
 import { log, logError } from '../utils/log';
 import { fetchMessagesByTime } from '../utils/fetch';
 
+function splitForEmbed(text: string, max = 4096): string[] {
+  if (text.length <= max) return [text];
+  const chunks: string[] = [];
+  let remaining = text;
+  while (remaining.length > max) {
+    let end = remaining.lastIndexOf('\n', max);
+    if (end <= 0) end = remaining.lastIndexOf(' ', max);
+    if (end <= 0) end = max;
+    chunks.push(remaining.slice(0, end));
+    remaining = remaining.slice(end).replace(/^\s+/, '');
+  }
+  if (remaining.length > 0) chunks.push(remaining);
+  return chunks;
+}
+
 class Summary extends Command {
   constructor(client: any) {
     super(client, 'time', 'Summarize messages from the last n hours/minutes', [
@@ -87,21 +102,6 @@ class Summary extends Command {
       });
     }
   }
-}
-
-function splitForEmbed(text: string, max = 4096): string[] {
-  if (text.length <= max) return [text];
-  const chunks: string[] = [];
-  let remaining = text;
-  while (remaining.length > max) {
-    let end = remaining.lastIndexOf('\n', max);
-    if (end <= 0) end = remaining.lastIndexOf(' ', max);
-    if (end <= 0) end = max;
-    chunks.push(remaining.slice(0, end));
-    remaining = remaining.slice(end).replace(/^\s+/, '');
-  }
-  if (remaining.length > 0) chunks.push(remaining);
-  return chunks;
 }
 
 export default Summary;

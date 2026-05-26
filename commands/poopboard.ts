@@ -2,6 +2,7 @@ import * as Discord from 'discord.js';
 import { Command } from './classes/Command';
 import LeaderboardMixin from './mixins/leaderboardMixin';
 import { logError } from '../utils/log';
+import { poopPeriodLabel } from '../utils/leaderboards';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 class PoopBoard extends (LeaderboardMixin(Command) as any) {
@@ -30,19 +31,22 @@ class PoopBoard extends (LeaderboardMixin(Command) as any) {
     ];
   }
 
+  async fetchData(period: string = 'all-time', page: number = 0): Promise<{ attrs: any[]; totalCount: number; periodLabel: string }> {
+    const totalCount = await this.client.db.poop.getLeaderboardCount(period);
+    const attrs = await this.client.db.poop.getLeaderboard(period, this.itemsPerPage, page * this.itemsPerPage);
+    return { attrs, totalCount, periodLabel: poopPeriodLabel(period) };
+  }
+
   async run(interaction: any): Promise<void> {
     try {
       const period = interaction.options.getString('period') ?? 'all-time';
       let currentPage = 0;
 
-      const totalCount = await this.client.db.poop.getLeaderboardCount(period);
+      const { attrs, totalCount, periodLabel: label } = await this.fetchData(period, currentPage);
       const maxPage = Math.max(Math.ceil(totalCount / this.itemsPerPage) - 1, 0);
-
-      const attrs = await this.client.db.poop.getLeaderboard(period, this.itemsPerPage, 0);
       const leaderboard = await this.generateLeaderboard(attrs, currentPage);
 
-      const periodLabel: Record<string, string> = { 'all-time': 'All Time', weekly: 'This Week', monthly: 'This Month' };
-      leaderboard.setTitle(`Poop Leaderboard 💩 — ${periodLabel[period]}`);
+      leaderboard.setTitle(`Poop Leaderboard 💩 — ${label}`);
 
       const row = new Discord.ActionRowBuilder()
         .addComponents(
@@ -64,7 +68,7 @@ class PoopBoard extends (LeaderboardMixin(Command) as any) {
 
       collector.on('collect', async (i: any) => {
         if (i.user.id !== interaction.user.id) {
-          await i.reply({ content: 'You cannot control this pagination.', ephemeral: true });
+          await i.reply({ content: 'You cannot control this pagination.', flags: Discord.MessageFlags.Ephemeral });
           return;
         }
 
@@ -74,10 +78,9 @@ class PoopBoard extends (LeaderboardMixin(Command) as any) {
           currentPage += 1;
         }
 
-        // eslint-disable-next-line max-len
-        const newAttrs = await this.client.db.poop.getLeaderboard(period, this.itemsPerPage, currentPage * this.itemsPerPage);
+        const { attrs: newAttrs } = await this.fetchData(period, currentPage);
         const newLeaderboard = await this.generateLeaderboard(newAttrs, currentPage);
-        newLeaderboard.setTitle(`Poop Leaderboard 💩 — ${periodLabel[period]}`);
+        newLeaderboard.setTitle(`Poop Leaderboard 💩 — ${poopPeriodLabel(period)}`);
 
         const newRow = new Discord.ActionRowBuilder()
           .addComponents(
@@ -114,7 +117,7 @@ class PoopBoard extends (LeaderboardMixin(Command) as any) {
       });
     } catch (error) {
       logError('Failed to fetch poop leaderboard:', error);
-      await interaction.editReply({ content: 'Failed to retrieve the leaderboard. Please try again.', ephemeral: true });
+      await interaction.editReply({ content: 'Failed to retrieve the leaderboard. Please try again.' });
     }
   }
 }

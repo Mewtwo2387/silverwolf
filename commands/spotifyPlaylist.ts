@@ -23,7 +23,7 @@ class SpotifyPlaylist extends Command {
       await interaction.editReply(`${randomLink}`);
     } catch (error) {
       logError('Failed to fetch activity:', error);
-      await interaction.editReply({ content: 'Failed to retrieve activity. Please try again later.', ephemeral: true });
+      await interaction.editReply({ content: 'Failed to retrieve activity. Please try again later.' });
     }
   }
 }
