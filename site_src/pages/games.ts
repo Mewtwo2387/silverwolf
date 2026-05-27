@@ -675,6 +675,53 @@ const styles = raw(`
 
   .games-grid.list-view .holo-icon { width: 70%; height: 70%; }
 
+  /* Raster icons (webp/jpeg) can't be hollowed or outlined like the SVGs, so we
+     match the *feel* instead: ghost them to the same translucency as the holo
+     fills so the dark card shows through, then bring them fully forward (with a
+     soft glow) on hover so the actual art is still legible on focus. */
+  /* --raster-glow (tint) and --raster-bright (dark-lift) are set per-card by
+     holoScript from a pixel sample of the art; these are the no-JS fallbacks.
+     isolation keeps the screen blend (below) compositing only against this
+     card's own backdrop (its bg + the glow backplate), not the page behind. */
+  .card-image:has(.holo-raster) {
+    --raster-glow: var(--fog-500);
+    isolation: isolate;
+  }
+  .card-image .holo-raster {
+    /* position:relative activates the z-index:1 from the .card-image img rule
+       so the image paints above the backplate glow below, not behind it. */
+    position: relative;
+    z-index: 1;
+    opacity: 0.8;
+    filter: brightness(var(--raster-bright, 1.05)) saturate(1.06);
+    transition: opacity 0.3s ease, filter 0.3s ease, transform 0.3s ease;
+  }
+  /* Dark-dominant art (dino, fakequote): screen-blend so dark pixels drop out
+     (translucent) while light pixels stay vivid (bright) — "translucent AND
+     bright", which opacity-over-dark can't be. holoScript adds .blend-screen to
+     images whose average is dark; light art (awdangit) keeps plain opacity. */
+  .card-image .holo-raster.blend-screen {
+    mix-blend-mode: screen;
+    opacity: 1;
+  }
+  .game-card:hover .card-image .holo-raster { opacity: 1; }
+  /* Ambient glow backplate: a blurred, tinted disc behind the image so even
+     opaque rectangular rasters (awdangit, fakequote) sit in a pool of light
+     instead of reading as a dark sticker on the black card. */
+  .card-image:has(.holo-raster)::before {
+    content: '';
+    position: absolute;
+    inset: 14%;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--raster-glow) 0%, transparent 68%);
+    filter: blur(18px);
+    opacity: 0.5;
+    z-index: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .game-card:hover .card-image:has(.holo-raster)::before { opacity: 0.85; }
+
 </style>
 `);
 
@@ -878,6 +925,11 @@ const holoScript = (nonce: string) => raw(`
       if(el.closest('defs,mask,clipPath,symbol')) return; // not drawn directly
       var c = parseRGB(getComputedStyle(el).fill);
       if(!c) return; // none / gradient: leave the neutral CSS fallback outline
+      // Equalise perceived brightness: lighter source colours (the pink heart,
+      // white panels, the light half of the duotone slots art) get MORE
+      // transparent, dark ones less — so every icon reads as the same faint
+      // hologram instead of some looking solid and bright.
+      el.style.fillOpacity = Math.max(0.18, Math.min(0.6, 55 / (lum(c) || 1))).toFixed(3);
       el.style.stroke = css(brighten(c));
       var a = 1;
       try { var bb = el.getBBox(); a = Math.max(1, bb.width * bb.height); } catch(e){}
@@ -888,6 +940,40 @@ const holoScript = (nonce: string) => raw(`
     });
     var wrap = svg.closest('.holo-icon');
     if(best && wrap) wrap.style.setProperty('--holo-glow', css(val[best]));
+  });
+
+  // Raster icons (webp/jpeg) can't be recoloured, but we can still tint their
+  // glow: average the image's opaque pixels on a tiny offscreen canvas and use
+  // that (brightened if dark) as the glow colour — same idea as the SVG glow.
+  document.querySelectorAll('.holo-raster').forEach(function(img){
+    function tint(){
+      try {
+        var n = 16, cv = document.createElement('canvas');
+        cv.width = n; cv.height = n;
+        var ctx = cv.getContext('2d');
+        ctx.drawImage(img, 0, 0, n, n);
+        var d = ctx.getImageData(0, 0, n, n).data, r = 0, g = 0, b = 0, k = 0;
+        for(var i = 0; i < d.length; i += 4){
+          if(d[i + 3] < 32) continue; // skip transparent pixels
+          r += d[i]; g += d[i + 1]; b += d[i + 2]; k++;
+        }
+        if(!k) return;
+        var avg = [r / k, g / k, b / k];
+        // Set the tint + brightness on the card so the backplate glow (a
+        // ::before on .card-image) and the <img> both pick them up.
+        var host = img.closest('.card-image') || img;
+        host.style.setProperty('--raster-glow', css(brighten(avg)));
+        // Lift dark images (fakequote) toward visibility; leave light art alone.
+        var L = lum(avg), bright = L < 120 ? Math.min(1.8, 120 / Math.max(L, 30)) : 1;
+        host.style.setProperty('--raster-bright', bright.toFixed(2));
+        // Dark-dominant art (dino, fakequote) screen-blends to read bright AND
+        // translucent; light art (awdangit) would blow out, so keep it opacity.
+        if (L < 165) img.classList.add('blend-screen');
+        else img.classList.remove('blend-screen');
+      } catch(e){ /* tainted (cross-origin) canvas: keep the fallback glow */ }
+    }
+    if(img.complete && img.naturalWidth) tint();
+    else img.addEventListener('load', tint);
   });
 })();
 </script>
@@ -933,7 +1019,7 @@ export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import(
         ? HoloIcon(svgFileName(overlaySrc), 'holo-overlay')
         : null;
       return html`<div class="composite-icon">
-              <img class="base" src="${(game as any).imageSrc}" alt="${game.name}" />
+              <img class="base holo-raster" src="${(game as any).imageSrc}" alt="${game.name}" />
               ${overlay ?? html`<img class="overlay" src="${overlaySrc}" alt="" />`}
             </div>`;
     }
@@ -942,7 +1028,7 @@ export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import(
       const holo = HoloIcon(svgFileName(src));
       if (holo) return holo;
     }
-    return html`<img src="${src}" alt="${game.name}" />`;
+    return html`<img class="holo-raster" src="${src}" alt="${game.name}" />`;
   })()}
             </div>
             <div class="card-content">
