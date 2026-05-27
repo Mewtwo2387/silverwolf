@@ -52,7 +52,7 @@ export interface NavUser {
   csrf: string;
 }
 
-const navbarExtras = (nonce: string) => raw(`
+const navbarStyles = raw(`
 <style>
   /* Default (desktop / non-touch): top links visible, mobile dock hidden. */
   #nav-links  { display: flex; }
@@ -226,6 +226,9 @@ const navbarExtras = (nonce: string) => raw(`
     #nav-mobile .nav-link.active { color: var(--fog-100); }
   }
 </style>
+`);
+
+const navbarScript = (nonce: string) => raw(`
 <script nonce="${nonce}">
 (() => {
   // ── Desktop sliding underline ──────────────────────────────────────────────
@@ -456,6 +459,7 @@ export function Navbar(active: NavActive | undefined, nonce: string, lv999?: boo
   const sticker = pool[Math.floor(Math.random() * pool.length)];
 
   return html`
+    ${navbarStyles}
     <nav id="site-nav" class="nav-surface font-mono">
       <!-- Desktop window header: only visible on desktop -->
       <div class="nav-window-header flex items-center justify-between px-[1.5rem] py-2 border-b border-[rgba(34,211,255,0.12)] select-none">
@@ -516,6 +520,6 @@ export function Navbar(active: NavActive | undefined, nonce: string, lv999?: boo
       ${dockLink('/games', 'Games', 'games')}
     </div>
 
-    ${navbarExtras(nonce)}
+    ${navbarScript(nonce)}
   `;
 }
