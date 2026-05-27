@@ -1,6 +1,7 @@
 import path from 'path';
 import type { Hono } from 'hono';
 import type { AppEnv } from '../shared';
+import { ALL_STICKER_STEMS } from '../stickers';
 
 const ROOT_DIR = path.resolve(import.meta.dir, '..', '..');
 const ASSETS_DIR = path.join(import.meta.dir, '..', 'Assets');
@@ -21,18 +22,12 @@ const STATIC_ASSETS: Record<string, StaticEntry> = {
   '/static/silverwolfLv.999.avif': { path: path.join(ROOT_DIR, 'silverwolfLv.999.avif'), contentType: 'image/avif' },
   '/static/styles.css': { path: path.join(ASSETS_DIR, 'styles.css'), contentType: 'text/css; charset=utf-8' },
 };
-// Stickers: WebP only — they're tiny (~30 KB) and AVIF savings don't justify the decode overhead.
-for (const name of [
-  'Sticker_PPG_04_Silver_Wolf_01.webp',
-  'Sticker_PPG_19_Silver_Wolf_01.webp',
-  'Sticker_PPG_02_Silver_Wolf_01.webp',
-  'Sticker_PPG_04_Silver_Wolf_02.webp',
-  'Sticker_PPG_27_Silver_Wolf_LV.999_01.webp',
-  'Sticker_PPG_27_Silver_Wolf_LV.999_02.webp',
-  'Sticker_PPG_27_Silver_Wolf_LV.999_03.webp',
-  'Sticker_PPG_27_Silver_Wolf_LV.999_04.webp',
-]) {
-  STATIC_ASSETS[`/static/stickers/${name}`] = { path: path.join(IMAGES_DIR, name), contentType: 'image/webp' };
+// Stickers power the favicon (WebP) and the social-embed thumbnail. The PNG
+// twin of each is served as a universally-decodable fallback for link-preview
+// scrapers that won't fetch WebP (see site_src/embed-meta.ts).
+for (const stem of ALL_STICKER_STEMS) {
+  STATIC_ASSETS[`/static/stickers/${stem}.webp`] = { path: path.join(IMAGES_DIR, `${stem}.webp`), contentType: 'image/webp' };
+  STATIC_ASSETS[`/static/stickers/${stem}.png`] = { path: path.join(IMAGES_DIR, `${stem}.png`), contentType: 'image/png' };
 }
 // Eidolons: serve both WebP and AVIF; <picture> in pages/about.ts picks the best.
 for (let i = 1; i <= 6; i += 1) {

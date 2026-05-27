@@ -5,6 +5,7 @@ import { startWebsiteCachePrewarm } from './bot-bridge';
 import { rateLimiter } from './middleware/rate-limit';
 import { securityHeadersMiddleware } from './middleware/security';
 import { sessionMiddleware } from './middleware/session';
+import { embedMetaMiddleware } from './middleware/embed';
 import { registerStaticRoutes } from './routes/static';
 import { registerAuthRoutes } from './routes/auth';
 import { registerPageRoutes } from './routes/pages';
@@ -19,6 +20,9 @@ const HOSTNAME = '0.0.0.0';
 export function startWebsite(silverwolf: Silverwolf) {
   const app = new Hono<AppEnv>();
 
+  // Outermost: runs last on the way out, so it rewrites the fully-headered HTML
+  // body to add social-embed <meta> tags (no-op for non-HTML responses).
+  app.use('*', embedMetaMiddleware);
   app.use('*', rateLimiter(120, 60_000)); // 120 reqs per minute per IP
   app.use('*', securityHeadersMiddleware);
   app.use('*', sessionMiddleware(silverwolf));

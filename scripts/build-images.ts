@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs/promises';
+import { ALL_STICKER_STEMS } from '../site_src/stickers';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const IMAGES_DIR = path.join(ROOT, 'site_src/Assets/Images');
@@ -14,6 +15,12 @@ for (let i = 1; i <= 6; i += 1) {
 }
 
 const AVIF_TARGETS = [HERO_LV1, HERO_LV999, ...EIDOLONS];
+
+// Favicon stickers ship as WebP, but a few link-preview scrapers (older
+// WhatsApp/Telegram, some SEO tools) won't fetch WebP — so the social embed
+// points at a PNG fallback derived from each sticker. The stem list is the
+// shared source of truth in site_src/stickers.ts.
+const STICKER_PNG_TARGETS = ALL_STICKER_STEMS.map((stem) => path.join(IMAGES_DIR, `${stem}.webp`));
 
 // LV999 is the only file we recompress in place. Threshold guards against
 // re-encoding an already-optimized copy on subsequent runs.
@@ -97,6 +104,24 @@ async function encodeAvif(src: string): Promise<void> {
   console.log(`         ${(srcStat.size / 1024).toFixed(0)} KB → ${(dstStat.size / 1024).toFixed(0)} KB (-${pct}%)`);
 }
 
+async function encodePng(src: string): Promise<void> {
+  const dst = src.replace(/\.webp$/i, '.png');
+  if (await fileExists(dst)) {
+    const [srcM, dstM] = await Promise.all([mtime(src), mtime(dst)]);
+    if (dstM >= srcM) {
+      console.log(`[skip] ${path.basename(dst)} up to date`);
+      return;
+    }
+  }
+  if (checkOnly) {
+    console.error(`[stale] ${path.basename(dst)} missing or older than source`);
+    process.exitCode = 1;
+    return;
+  }
+  console.log(`[encode] ${path.basename(dst)}`);
+  await run(['magick', src, dst]);
+}
+
 async function main(): Promise<void> {
   const lv999Pending = await recompressLv999();
   for (const src of AVIF_TARGETS) {
@@ -109,6 +134,9 @@ async function main(): Promise<void> {
       continue;
     }
     await encodeAvif(src);
+  }
+  for (const src of STICKER_PNG_TARGETS) {
+    await encodePng(src);
   }
   if (checkOnly && process.exitCode === 1) {
     console.error('\nbuild:images --check failed: run `bun run build:images` and commit the result');

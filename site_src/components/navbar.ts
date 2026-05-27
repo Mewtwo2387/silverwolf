@@ -1,18 +1,8 @@
 import { html, raw } from 'hono/html';
+import { STICKER_STEMS, STICKER_STEMS_LV999, stickerWebpUrl } from '../stickers';
 
-const STICKER_IMAGES = [
-  '/static/stickers/Sticker_PPG_04_Silver_Wolf_01.webp',
-  '/static/stickers/Sticker_PPG_19_Silver_Wolf_01.webp',
-  '/static/stickers/Sticker_PPG_02_Silver_Wolf_01.webp',
-  '/static/stickers/Sticker_PPG_04_Silver_Wolf_02.webp',
-];
-
-const STICKER_IMAGES_LV999 = [
-  '/static/stickers/Sticker_PPG_27_Silver_Wolf_LV.999_01.webp',
-  '/static/stickers/Sticker_PPG_27_Silver_Wolf_LV.999_02.webp',
-  '/static/stickers/Sticker_PPG_27_Silver_Wolf_LV.999_03.webp',
-  '/static/stickers/Sticker_PPG_27_Silver_Wolf_LV.999_04.webp',
-];
+const STICKER_IMAGES = STICKER_STEMS.map(stickerWebpUrl);
+const STICKER_IMAGES_LV999 = STICKER_STEMS_LV999.map(stickerWebpUrl);
 
 // Inline SVG icons — fill/stroke set to currentColor so they inherit the
 // link's themed text color via CSS variables.

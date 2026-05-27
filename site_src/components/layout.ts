@@ -5,6 +5,7 @@ import type { HtmlEscapedString } from 'hono/utils/html';
 import { Navbar, type NavActive, type NavUser } from './navbar';
 import { Footer } from './footer';
 import { Search } from './search';
+import { STICKER_STEMS, STICKER_STEMS_LV999, stickerWebpUrl } from '../stickers';
 
 // styles.css is served with `immutable, max-age=1y`, so without a cache buster
 // the browser never re-fetches after a CSS rebuild. Hash the contents and
@@ -27,19 +28,10 @@ function getStylesVersion(): string {
   return stylesCache.hash;
 }
 
-const FAVICON_STICKERS = [
-  '/static/stickers/Sticker_PPG_04_Silver_Wolf_01.webp',
-  '/static/stickers/Sticker_PPG_19_Silver_Wolf_01.webp',
-  '/static/stickers/Sticker_PPG_02_Silver_Wolf_01.webp',
-  '/static/stickers/Sticker_PPG_04_Silver_Wolf_02.webp',
-];
-
-const FAVICON_STICKERS_LV999 = [
-  '/static/stickers/Sticker_PPG_27_Silver_Wolf_LV.999_01.webp',
-  '/static/stickers/Sticker_PPG_27_Silver_Wolf_LV.999_02.webp',
-  '/static/stickers/Sticker_PPG_27_Silver_Wolf_LV.999_03.webp',
-  '/static/stickers/Sticker_PPG_27_Silver_Wolf_LV.999_04.webp',
-];
+// Exported so the embed-meta middleware can reuse the same pool for the social
+// thumbnail — the link preview shows a random favicon sticker, matching the tab.
+export const FAVICON_STICKERS = STICKER_STEMS.map(stickerWebpUrl);
+export const FAVICON_STICKERS_LV999 = STICKER_STEMS_LV999.map(stickerWebpUrl);
 
 const faviconLink = (lv999: boolean) => {
   const pool = lv999 ? FAVICON_STICKERS_LV999 : FAVICON_STICKERS;

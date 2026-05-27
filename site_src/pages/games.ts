@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import path from 'path';
 import { html, raw } from 'hono/html';
 import { Layout } from '../components/layout';
 
@@ -91,6 +93,12 @@ export const GAMES = [
     href: '/games/ai-slop',
     info: 'chat with ai slop or something idk',
     imageType: 'ai-slop' as const,
+  },
+  {
+    name: 'cyclic ttt',
+    href: '/games/cyclic-tictactoe',
+    info: 'Tic-tac-toe where your oldest marks expire. Outlast the bot.',
+    imageType: 'cyclic' as const,
   },
 ];
 
@@ -522,6 +530,41 @@ const styles = raw(`
     .ai-slop-wrap::before { animation: none; }
   }
 
+  /* Cyclic tic-tac-toe card: 3x3 grid with marks, the oldest one fading out */
+  .cyc-thumb {
+    width: 72%;
+    aspect-ratio: 1 / 1;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    padding: 5px;
+    background: color-mix(in oklab, var(--accent) 14%, var(--ink-700));
+    border-radius: 0.5rem;
+    border: 1px solid color-mix(in oklab, var(--accent) 25%, transparent);
+  }
+  .cyc-thumb span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ink-900);
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 800;
+    font-size: 1.1rem;
+    line-height: 1;
+  }
+  .cyc-thumb .x { color: var(--accent-light); text-shadow: 0 0 8px var(--glow-bright); }
+  .cyc-thumb .o { color: var(--danger); text-shadow: 0 0 8px var(--danger-glow); }
+  .cyc-thumb .fade { animation: cyc-thumb-fade 2.4s ease-in-out infinite; }
+  @keyframes cyc-thumb-fade {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.12; }
+  }
+  .games-grid.list-view .cyc-thumb { font-size: 0.7rem; gap: 2px; padding: 3px; }
+  @media (prefers-reduced-motion: reduce) {
+    .cyc-thumb .fade { animation: none; opacity: 0.4; }
+  }
+
   /* Mini spinning coin for the flip card */
   .mini-coin-wrap {
     width: 120px;
@@ -558,6 +601,126 @@ const styles = raw(`
   .mini-face.tails {
     transform: rotateY(180deg);
   }
+
+  /* ---- Holographic SVG treatment ---------------------------------------
+     The flat svgrepo icons are inlined (see HoloIcon) and restyled here into
+     translucent, accent-outlined schematics so they read as sci-fi HUD glyphs
+     rather than cartoon stickers. Original fill colours are kept (faint) so
+     each icon is still recognisable; the outline + glow use the live --accent,
+     so the treatment tracks whatever theme (default / flashbang / blackout)
+     is active. PNG/JPEG/WebP icons and the bespoke cards are untouched. */
+  .holo-icon {
+    /* Per-icon glow colour. The inline script (holoScript) sets it to each
+       icon's dominant source colour; --fog-400 is a neutral pre-JS fallback so
+       the glow never defaults to the UI accent blue. */
+    --holo-glow: var(--fog-400);
+    width: 70%;
+    height: 70%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    filter:
+      drop-shadow(0 0 5px var(--holo-glow))
+      drop-shadow(0 0 1.5px var(--holo-glow));
+    transition: filter 0.3s ease, transform 0.3s ease;
+  }
+  .holo-svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible; /* let the stroke glow spill past the viewBox edge */
+  }
+  /* Every painted node: hollow the fill to a translucent tint of its original
+     colour, then trace it with a constant-width accent outline.
+     non-scaling-stroke keeps that outline the same visual weight whether the
+     source viewBox is 24 or 512 units across. */
+  .holo-svg * {
+    /* Fill keeps each shape's ORIGINAL colour, just translucent. holoScript
+       sets each shape's stroke to its own (brightened-if-too-dark) colour;
+       --fog-200 is the neutral no-JS fallback so outlines never default to the
+       UI accent — that's what made every icon read as blue. */
+    fill-opacity: 0.4;
+    stroke: var(--fog-200);
+    stroke-width: 1.4;
+    stroke-opacity: 1;
+    vector-effect: non-scaling-stroke;
+  }
+  /* Shapes inside <defs>/<mask>/<clipPath> aren't drawn directly — they define
+     masks/clips. Restyling them (e.g. fading a white mask fill) would erase the
+     artwork they gate, so leave those subtrees alone. */
+  .holo-svg defs *,
+  .holo-svg mask *,
+  .holo-svg clipPath *,
+  .holo-svg symbol * {
+    fill-opacity: 1;
+    stroke: none;
+  }
+  .game-card:hover .holo-icon {
+    transform: scale(1.05);
+    filter:
+      drop-shadow(0 0 9px var(--holo-glow))
+      drop-shadow(0 0 3px var(--holo-glow));
+  }
+
+  /* Composite card (dinonuggie upgrades): keep the WebP base, holo only the
+     svg wrench badge and pin it to the bottom-left corner. */
+  .composite-icon .holo-overlay {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 38%;
+    height: 38%;
+  }
+  .game-card:hover .composite-icon .holo-overlay { transform: none; }
+
+  .games-grid.list-view .holo-icon { width: 70%; height: 70%; }
+
+  /* Raster icons (webp/jpeg) can't be hollowed or outlined like the SVGs, so we
+     match the *feel* instead: ghost them to the same translucency as the holo
+     fills so the dark card shows through, then bring them fully forward (with a
+     soft glow) on hover so the actual art is still legible on focus. */
+  /* --raster-glow (tint) and --raster-bright (dark-lift) are set per-card by
+     holoScript from a pixel sample of the art; these are the no-JS fallbacks.
+     isolation keeps the screen blend (below) compositing only against this
+     card's own backdrop (its bg + the glow backplate), not the page behind. */
+  .card-image:has(.holo-raster) {
+    --raster-glow: var(--fog-500);
+    isolation: isolate;
+  }
+  .card-image .holo-raster {
+    /* position:relative activates the z-index:1 from the .card-image img rule
+       so the image paints above the backplate glow below, not behind it. */
+    position: relative;
+    z-index: 1;
+    opacity: 0.8;
+    filter: brightness(var(--raster-bright, 1.05)) saturate(1.06);
+    transition: opacity 0.3s ease, filter 0.3s ease, transform 0.3s ease;
+  }
+  /* Dark-dominant art (dino, fakequote): screen-blend so dark pixels drop out
+     (translucent) while light pixels stay vivid (bright) — "translucent AND
+     bright", which opacity-over-dark can't be. holoScript adds .blend-screen to
+     images whose average is dark; light art (awdangit) keeps plain opacity. */
+  .card-image .holo-raster.blend-screen {
+    mix-blend-mode: screen;
+    opacity: 1;
+  }
+  .game-card:hover .card-image .holo-raster { opacity: 1; }
+  /* Ambient glow backplate: a blurred, tinted disc behind the image so even
+     opaque rectangular rasters (awdangit, fakequote) sit in a pool of light
+     instead of reading as a dark sticker on the black card. */
+  .card-image:has(.holo-raster)::before {
+    content: '';
+    position: absolute;
+    inset: 14%;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--raster-glow) 0%, transparent 68%);
+    filter: blur(18px);
+    opacity: 0.5;
+    z-index: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .game-card:hover .card-image:has(.holo-raster)::before { opacity: 0.85; }
 
 </style>
 `);
@@ -602,6 +765,64 @@ function AiSlopImage() {
     </div>
   `);
 }
+
+// Cyclic tic-tac-toe card thumbnail: a frozen mid-game 3x3 board where the
+// oldest mark (the X bottom-right) blinks to hint at the expiry mechanic.
+function CyclicImage() {
+  return raw(`
+    <div class="cyc-thumb" aria-hidden="true">
+      <span class="x">X</span><span class="o">O</span><span></span>
+      <span></span><span class="x">X</span><span class="o">O</span>
+      <span class="o">O</span><span></span><span class="x fade">X</span>
+    </div>
+  `);
+}
+
+const SVG_DIR = path.join(import.meta.dir, '..', 'Assets', 'svg');
+
+// Game icons ship as flat, multi-colour svgrepo art that reads too "comical"
+// for the sci-fi UI. Rather than show them as <img>, we inline the source SVG
+// so the stylesheet can reach inside (see the .holo-svg rules) and turn every
+// shape into a translucent, accent-outlined "schematic" with a glow. Each file
+// is read + sanitized once and cached for the lifetime of the process.
+const holoSvgCache = new Map<string, string | null>();
+function getHoloSvg(fileName: string): string | null {
+  if (!holoSvgCache.has(fileName)) {
+    try {
+      let svg = readFileSync(path.join(SVG_DIR, fileName), 'utf8')
+        .replace(/<\?xml[\s\S]*?\?>/g, '')
+        .replace(/<!DOCTYPE[\s\S]*?>/gi, '')
+        .replace(/<script[\s\S]*?<\/script>/gi, '');
+      // On the opening <svg> tag only: drop the file's hard-coded width/height
+      // (CSS sizes it) and its own class, then tag it so .holo-svg rules apply.
+      const openTag = svg.match(/<svg\b[^>]*>/i);
+      if (openTag) {
+        const styled = `${openTag[0]
+          .replace(/\s(?:width|height)\s*=\s*"[^"]*"/gi, '')
+          .replace(/\sclass\s*=\s*"[^"]*"/i, '')
+          .replace(/\s*>$/, '')} class="holo-svg" focusable="false">`;
+        svg = svg.replace(openTag[0], styled);
+      }
+      holoSvgCache.set(fileName, svg);
+    } catch {
+      holoSvgCache.set(fileName, null);
+    }
+  }
+  return holoSvgCache.get(fileName) ?? null;
+}
+
+// Inlined, theme-styled SVG markup, or null if the file can't be read (callers
+// fall back to a plain <img>). `extraClass` lets the composite card pin the
+// icon as a corner badge.
+function HoloIcon(fileName: string, extraClass = '') {
+  const svg = getHoloSvg(fileName);
+  if (svg == null) return null;
+  const cls = extraClass ? `holo-icon ${extraClass}` : 'holo-icon';
+  return raw(`<span class="${cls}" aria-hidden="true">${svg}</span>`);
+}
+
+// Map a public /static/svg/... URL back to its source filename.
+const svgFileName = (src: string): string => src.split('/').pop() ?? '';
 
 const layoutScript = (nonce: string) => raw(`
 <script nonce="${nonce}">
@@ -666,6 +887,98 @@ const layoutScript = (nonce: string) => raw(`
 </script>
 `);
 
+// Recolour the inlined holo SVGs from their source art. CSS can't copy a
+// shape's own fill onto its stroke, so we do it here: for every painted shape
+// we read its computed fill and use that (lifted toward visibility if it's very
+// dark, e.g. the black 8-ball, so the outline doesn't vanish on the dark UI) as
+// its stroke. We also pick each icon's dominant colour (by painted area) to
+// drive --holo-glow, so the glow matches the art instead of the accent blue.
+const holoScript = (nonce: string) => raw(`
+<script nonce="${nonce}">
+(function(){
+  var SHAPES = 'path,circle,rect,ellipse,polygon,polyline,line';
+  function parseRGB(s){
+    var m = s && s.match(/rgba?\\(([^)]+)\\)/);
+    if(!m) return null;
+    var p = m[1].split(',');
+    var r = parseFloat(p[0]), g = parseFloat(p[1]), b = parseFloat(p[2]);
+    if(isNaN(r) || isNaN(g) || isNaN(b)) return null;
+    if(p.length > 3 && parseFloat(p[3]) === 0) return null; // fully transparent
+    return [r, g, b];
+  }
+  function lum(c){ return 0.2126*c[0] + 0.7152*c[1] + 0.0722*c[2]; }
+  // Lift only very dark colours up to a luminance floor, scaling channels so
+  // the hue is preserved; pure black becomes neutral grey.
+  function brighten(c){
+    var floor = 105, L = lum(c);
+    if(L >= floor) return c;
+    var mx = Math.max(c[0], c[1], c[2]);
+    if(mx < 2) return [floor, floor, floor];
+    var k = Math.min(floor / L, 255 / mx);
+    return [c[0]*k, c[1]*k, c[2]*k];
+  }
+  function css(c){ return 'rgb(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ')'; }
+
+  document.querySelectorAll('.holo-svg').forEach(function(svg){
+    var area = {}, val = {}, best = null, bestArea = -1;
+    svg.querySelectorAll(SHAPES).forEach(function(el){
+      if(el.closest('defs,mask,clipPath,symbol')) return; // not drawn directly
+      var c = parseRGB(getComputedStyle(el).fill);
+      if(!c) return; // none / gradient: leave the neutral CSS fallback outline
+      // Equalise perceived brightness: lighter source colours (the pink heart,
+      // white panels, the light half of the duotone slots art) get MORE
+      // transparent, dark ones less — so every icon reads as the same faint
+      // hologram instead of some looking solid and bright.
+      el.style.fillOpacity = Math.max(0.18, Math.min(0.6, 55 / (lum(c) || 1))).toFixed(3);
+      el.style.stroke = css(brighten(c));
+      var a = 1;
+      try { var bb = el.getBBox(); a = Math.max(1, bb.width * bb.height); } catch(e){}
+      var key = Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]);
+      area[key] = (area[key] || 0) + a;
+      val[key] = brighten(c);
+      if(area[key] > bestArea){ bestArea = area[key]; best = key; }
+    });
+    var wrap = svg.closest('.holo-icon');
+    if(best && wrap) wrap.style.setProperty('--holo-glow', css(val[best]));
+  });
+
+  // Raster icons (webp/jpeg) can't be recoloured, but we can still tint their
+  // glow: average the image's opaque pixels on a tiny offscreen canvas and use
+  // that (brightened if dark) as the glow colour — same idea as the SVG glow.
+  document.querySelectorAll('.holo-raster').forEach(function(img){
+    function tint(){
+      try {
+        var n = 16, cv = document.createElement('canvas');
+        cv.width = n; cv.height = n;
+        var ctx = cv.getContext('2d');
+        ctx.drawImage(img, 0, 0, n, n);
+        var d = ctx.getImageData(0, 0, n, n).data, r = 0, g = 0, b = 0, k = 0;
+        for(var i = 0; i < d.length; i += 4){
+          if(d[i + 3] < 32) continue; // skip transparent pixels
+          r += d[i]; g += d[i + 1]; b += d[i + 2]; k++;
+        }
+        if(!k) return;
+        var avg = [r / k, g / k, b / k];
+        // Set the tint + brightness on the card so the backplate glow (a
+        // ::before on .card-image) and the <img> both pick them up.
+        var host = img.closest('.card-image') || img;
+        host.style.setProperty('--raster-glow', css(brighten(avg)));
+        // Lift dark images (fakequote) toward visibility; leave light art alone.
+        var L = lum(avg), bright = L < 120 ? Math.min(1.8, 120 / Math.max(L, 30)) : 1;
+        host.style.setProperty('--raster-bright', bright.toFixed(2));
+        // Dark-dominant art (dino, fakequote) screen-blends to read bright AND
+        // translucent; light art (awdangit) would blow out, so keep it opacity.
+        if (L < 165) img.classList.add('blend-screen');
+        else img.classList.remove('blend-screen');
+      } catch(e){ /* tainted (cross-origin) canvas: keep the fallback glow */ }
+    }
+    if(img.complete && img.naturalWidth) tint();
+    else img.addEventListener('load', tint);
+  });
+})();
+</script>
+`);
+
 export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import('../components/navbar').NavUser | null }) {
   const body = html`
     ${styles}
@@ -699,13 +1012,23 @@ export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import(
               ${(() => {
     if (game.imageType === 'coin') return CoinImage();
     if (game.imageType === 'ai-slop') return AiSlopImage();
+    if (game.imageType === 'cyclic') return CyclicImage();
     if (game.imageType === 'composite') {
+      const overlaySrc = (game as any).overlaySrc as string;
+      const overlay = overlaySrc.endsWith('.svg')
+        ? HoloIcon(svgFileName(overlaySrc), 'holo-overlay')
+        : null;
       return html`<div class="composite-icon">
-              <img class="base" src="${(game as any).imageSrc}" alt="${game.name}" />
-              <img class="overlay" src="${(game as any).overlaySrc}" alt="" />
+              <img class="base holo-raster" src="${(game as any).imageSrc}" alt="${game.name}" />
+              ${overlay ?? html`<img class="overlay" src="${overlaySrc}" alt="" />`}
             </div>`;
     }
-    return html`<img src="${(game as any).imageSrc}" alt="${game.name}" />`;
+    const src = (game as any).imageSrc as string;
+    if (src?.endsWith('.svg')) {
+      const holo = HoloIcon(svgFileName(src));
+      if (holo) return holo;
+    }
+    return html`<img class="holo-raster" src="${src}" alt="${game.name}" />`;
   })()}
             </div>
             <div class="card-content">
@@ -723,6 +1046,7 @@ export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import(
   )}
     </div>
     ${layoutScript(opts.nonce)}
+    ${holoScript(opts.nonce)}
   `;
 
   return Layout({
