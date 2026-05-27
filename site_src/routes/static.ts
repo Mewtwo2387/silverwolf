@@ -1,6 +1,7 @@
 import path from 'path';
 import type { Hono } from 'hono';
 import type { AppEnv } from '../shared';
+import { ALL_STICKER_STEMS } from '../stickers';
 
 const ROOT_DIR = path.resolve(import.meta.dir, '..', '..');
 const ASSETS_DIR = path.join(import.meta.dir, '..', 'Assets');
@@ -24,16 +25,7 @@ const STATIC_ASSETS: Record<string, StaticEntry> = {
 // Stickers power the favicon (WebP) and the social-embed thumbnail. The PNG
 // twin of each is served as a universally-decodable fallback for link-preview
 // scrapers that won't fetch WebP (see site_src/embed-meta.ts).
-for (const stem of [
-  'Sticker_PPG_04_Silver_Wolf_01',
-  'Sticker_PPG_19_Silver_Wolf_01',
-  'Sticker_PPG_02_Silver_Wolf_01',
-  'Sticker_PPG_04_Silver_Wolf_02',
-  'Sticker_PPG_27_Silver_Wolf_LV.999_01',
-  'Sticker_PPG_27_Silver_Wolf_LV.999_02',
-  'Sticker_PPG_27_Silver_Wolf_LV.999_03',
-  'Sticker_PPG_27_Silver_Wolf_LV.999_04',
-]) {
+for (const stem of ALL_STICKER_STEMS) {
   STATIC_ASSETS[`/static/stickers/${stem}.webp`] = { path: path.join(IMAGES_DIR, `${stem}.webp`), contentType: 'image/webp' };
   STATIC_ASSETS[`/static/stickers/${stem}.png`] = { path: path.join(IMAGES_DIR, `${stem}.png`), contentType: 'image/png' };
 }

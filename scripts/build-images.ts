@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs/promises';
+import { ALL_STICKER_STEMS } from '../site_src/stickers';
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const IMAGES_DIR = path.join(ROOT, 'site_src/Assets/Images');
@@ -17,18 +18,9 @@ const AVIF_TARGETS = [HERO_LV1, HERO_LV999, ...EIDOLONS];
 
 // Favicon stickers ship as WebP, but a few link-preview scrapers (older
 // WhatsApp/Telegram, some SEO tools) won't fetch WebP — so the social embed
-// points at a PNG fallback derived from each sticker. Keep this list in sync
-// with FAVICON_STICKERS(_LV999) in site_src/components/layout.ts.
-const STICKER_PNG_TARGETS = [
-  'Sticker_PPG_04_Silver_Wolf_01',
-  'Sticker_PPG_19_Silver_Wolf_01',
-  'Sticker_PPG_02_Silver_Wolf_01',
-  'Sticker_PPG_04_Silver_Wolf_02',
-  'Sticker_PPG_27_Silver_Wolf_LV.999_01',
-  'Sticker_PPG_27_Silver_Wolf_LV.999_02',
-  'Sticker_PPG_27_Silver_Wolf_LV.999_03',
-  'Sticker_PPG_27_Silver_Wolf_LV.999_04',
-].map((stem) => path.join(IMAGES_DIR, `${stem}.webp`));
+// points at a PNG fallback derived from each sticker. The stem list is the
+// shared source of truth in site_src/stickers.ts.
+const STICKER_PNG_TARGETS = ALL_STICKER_STEMS.map((stem) => path.join(IMAGES_DIR, `${stem}.webp`));
 
 // LV999 is the only file we recompress in place. Threshold guards against
 // re-encoding an already-optimized copy on subsequent runs.

@@ -17,13 +17,30 @@ function pageTitle(html: string): string {
   return decoded || 'Silverwolf';
 }
 
-// Public origin. Behind Cloudflare the origin server sees plain http on an
-// internal port, so trust x-forwarded-proto/-host (CF sets both) and only fall
-// back to the request URL for local dev.
+// x-forwarded-* are attacker-controllable on any request that doesn't actually
+// transit our proxy, so validate before trusting: proto must be exactly http(s),
+// and host must look like host[:port] with no scheme, path, userinfo or control
+// chars. These embed URLs (og:image/og:url) are absolute, so a spoofed host
+// would point a shared link's preview at an attacker domain.
+const FWD_PROTO_RE = /^https?$/;
+const FWD_HOST_RE = /^[A-Za-z0-9.-]+(:\d{1,5})?$/;
+
+// Public origin for absolute embed URLs, resolved fail-closed:
+//   1. PUBLIC_ORIGIN env — explicit and authoritative; set this in production
+//      (behind Cloudflare the origin server sees plain http on an internal
+//      port) so spoofed forwarded headers can never take effect.
+//   2. x-forwarded-proto/-host — only when each passes validation above.
+//   3. The request URL — local dev, where there is no proxy.
+// Untrusted or malformed forwarded headers are ignored, not trusted.
 function publicOrigin(c: Context<AppEnv>): string {
+  const configured = process.env.PUBLIC_ORIGIN?.trim();
+  if (configured) return configured.replace(/\/+$/, '');
+
   const url = new URL(c.req.url);
-  const proto = c.req.header('x-forwarded-proto') ?? url.protocol.replace(':', '');
-  const host = c.req.header('x-forwarded-host') ?? url.host;
+  const fwdProto = c.req.header('x-forwarded-proto');
+  const fwdHost = c.req.header('x-forwarded-host');
+  const proto = fwdProto && FWD_PROTO_RE.test(fwdProto) ? fwdProto : url.protocol.replace(':', '');
+  const host = fwdHost && FWD_HOST_RE.test(fwdHost) ? fwdHost : url.host;
   return `${proto}://${host}`;
 }
 
