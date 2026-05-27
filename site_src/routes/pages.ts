@@ -18,6 +18,7 @@ import { DinonuggieUpgradesPage } from '../pages/games/dinonuggie_upgrades';
 import { AwdangitPage } from '../pages/games/awdangit';
 import { FakeQuotePage } from '../pages/games/fakequote';
 import { AiSlopPage } from '../pages/games/ai-slop';
+import { CyclicTicTacToePage } from '../pages/games/cyclic_tictactoe';
 import { canUseAiSlop } from '../guild-access';
 import { HomePage, type DashboardProfile } from '../pages/home';
 import {
@@ -145,6 +146,10 @@ export function registerPageRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
   });
 
   app.get('/games/love', (c) => c.html(LovePage({
+    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+  }).toString()));
+
+  app.get('/games/cyclic-tictactoe', (c) => c.html(CyclicTicTacToePage({
     nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
   }).toString()));
 

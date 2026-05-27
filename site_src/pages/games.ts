@@ -92,6 +92,12 @@ export const GAMES = [
     info: 'chat with ai slop or something idk',
     imageType: 'ai-slop' as const,
   },
+  {
+    name: 'cyclic ttt',
+    href: '/games/cyclic-tictactoe',
+    info: 'Tic-tac-toe where your oldest marks expire. Outlast the bot.',
+    imageType: 'cyclic' as const,
+  },
 ];
 
 const styles = raw(`
@@ -522,6 +528,41 @@ const styles = raw(`
     .ai-slop-wrap::before { animation: none; }
   }
 
+  /* Cyclic tic-tac-toe card: 3x3 grid with marks, the oldest one fading out */
+  .cyc-thumb {
+    width: 72%;
+    aspect-ratio: 1 / 1;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    padding: 5px;
+    background: color-mix(in oklab, var(--accent) 14%, var(--ink-700));
+    border-radius: 0.5rem;
+    border: 1px solid color-mix(in oklab, var(--accent) 25%, transparent);
+  }
+  .cyc-thumb span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ink-900);
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 800;
+    font-size: 1.1rem;
+    line-height: 1;
+  }
+  .cyc-thumb .x { color: var(--accent-light); text-shadow: 0 0 8px var(--glow-bright); }
+  .cyc-thumb .o { color: var(--danger); text-shadow: 0 0 8px var(--danger-glow); }
+  .cyc-thumb .fade { animation: cyc-thumb-fade 2.4s ease-in-out infinite; }
+  @keyframes cyc-thumb-fade {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.12; }
+  }
+  .games-grid.list-view .cyc-thumb { font-size: 0.7rem; gap: 2px; padding: 3px; }
+  @media (prefers-reduced-motion: reduce) {
+    .cyc-thumb .fade { animation: none; opacity: 0.4; }
+  }
+
   /* Mini spinning coin for the flip card */
   .mini-coin-wrap {
     width: 120px;
@@ -599,6 +640,18 @@ function AiSlopImage() {
         <circle class="node n5" cx="15.16" cy="19.27" r="5.4" />
         <circle class="core"     cx="34.51" cy="29.27" r="4.6" />
       </svg>
+    </div>
+  `);
+}
+
+// Cyclic tic-tac-toe card thumbnail: a frozen mid-game 3x3 board where the
+// oldest mark (the X bottom-right) blinks to hint at the expiry mechanic.
+function CyclicImage() {
+  return raw(`
+    <div class="cyc-thumb" aria-hidden="true">
+      <span class="x">X</span><span class="o">O</span><span></span>
+      <span></span><span class="x">X</span><span class="o">O</span>
+      <span class="o">O</span><span></span><span class="x fade">X</span>
     </div>
   `);
 }
@@ -699,6 +752,7 @@ export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import(
               ${(() => {
     if (game.imageType === 'coin') return CoinImage();
     if (game.imageType === 'ai-slop') return AiSlopImage();
+    if (game.imageType === 'cyclic') return CyclicImage();
     if (game.imageType === 'composite') {
       return html`<div class="composite-icon">
               <img class="base" src="${(game as any).imageSrc}" alt="${game.name}" />
