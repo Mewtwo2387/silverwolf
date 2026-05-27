@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import path from 'path';
 import { html, raw } from 'hono/html';
 import { Layout } from '../components/layout';
 
@@ -600,6 +602,79 @@ const styles = raw(`
     transform: rotateY(180deg);
   }
 
+  /* ---- Holographic SVG treatment ---------------------------------------
+     The flat svgrepo icons are inlined (see HoloIcon) and restyled here into
+     translucent, accent-outlined schematics so they read as sci-fi HUD glyphs
+     rather than cartoon stickers. Original fill colours are kept (faint) so
+     each icon is still recognisable; the outline + glow use the live --accent,
+     so the treatment tracks whatever theme (default / flashbang / blackout)
+     is active. PNG/JPEG/WebP icons and the bespoke cards are untouched. */
+  .holo-icon {
+    /* Per-icon glow colour. The inline script (holoScript) sets it to each
+       icon's dominant source colour; --fog-400 is a neutral pre-JS fallback so
+       the glow never defaults to the UI accent blue. */
+    --holo-glow: var(--fog-400);
+    width: 70%;
+    height: 70%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    filter:
+      drop-shadow(0 0 5px var(--holo-glow))
+      drop-shadow(0 0 1.5px var(--holo-glow));
+    transition: filter 0.3s ease, transform 0.3s ease;
+  }
+  .holo-svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible; /* let the stroke glow spill past the viewBox edge */
+  }
+  /* Every painted node: hollow the fill to a translucent tint of its original
+     colour, then trace it with a constant-width accent outline.
+     non-scaling-stroke keeps that outline the same visual weight whether the
+     source viewBox is 24 or 512 units across. */
+  .holo-svg * {
+    /* Fill keeps each shape's ORIGINAL colour, just translucent. holoScript
+       sets each shape's stroke to its own (brightened-if-too-dark) colour;
+       --fog-200 is the neutral no-JS fallback so outlines never default to the
+       UI accent — that's what made every icon read as blue. */
+    fill-opacity: 0.4;
+    stroke: var(--fog-200);
+    stroke-width: 1.4;
+    stroke-opacity: 1;
+    vector-effect: non-scaling-stroke;
+  }
+  /* Shapes inside <defs>/<mask>/<clipPath> aren't drawn directly — they define
+     masks/clips. Restyling them (e.g. fading a white mask fill) would erase the
+     artwork they gate, so leave those subtrees alone. */
+  .holo-svg defs *,
+  .holo-svg mask *,
+  .holo-svg clipPath *,
+  .holo-svg symbol * {
+    fill-opacity: 1;
+    stroke: none;
+  }
+  .game-card:hover .holo-icon {
+    transform: scale(1.05);
+    filter:
+      drop-shadow(0 0 9px var(--holo-glow))
+      drop-shadow(0 0 3px var(--holo-glow));
+  }
+
+  /* Composite card (dinonuggie upgrades): keep the WebP base, holo only the
+     svg wrench badge and pin it to the bottom-left corner. */
+  .composite-icon .holo-overlay {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 38%;
+    height: 38%;
+  }
+  .game-card:hover .composite-icon .holo-overlay { transform: none; }
+
+  .games-grid.list-view .holo-icon { width: 70%; height: 70%; }
+
 </style>
 `);
 
@@ -655,6 +730,52 @@ function CyclicImage() {
     </div>
   `);
 }
+
+const SVG_DIR = path.join(import.meta.dir, '..', 'Assets', 'svg');
+
+// Game icons ship as flat, multi-colour svgrepo art that reads too "comical"
+// for the sci-fi UI. Rather than show them as <img>, we inline the source SVG
+// so the stylesheet can reach inside (see the .holo-svg rules) and turn every
+// shape into a translucent, accent-outlined "schematic" with a glow. Each file
+// is read + sanitized once and cached for the lifetime of the process.
+const holoSvgCache = new Map<string, string | null>();
+function getHoloSvg(fileName: string): string | null {
+  if (!holoSvgCache.has(fileName)) {
+    try {
+      let svg = readFileSync(path.join(SVG_DIR, fileName), 'utf8')
+        .replace(/<\?xml[\s\S]*?\?>/g, '')
+        .replace(/<!DOCTYPE[\s\S]*?>/gi, '')
+        .replace(/<script[\s\S]*?<\/script>/gi, '');
+      // On the opening <svg> tag only: drop the file's hard-coded width/height
+      // (CSS sizes it) and its own class, then tag it so .holo-svg rules apply.
+      const openTag = svg.match(/<svg\b[^>]*>/i);
+      if (openTag) {
+        const styled = `${openTag[0]
+          .replace(/\s(?:width|height)\s*=\s*"[^"]*"/gi, '')
+          .replace(/\sclass\s*=\s*"[^"]*"/i, '')
+          .replace(/\s*>$/, '')} class="holo-svg" focusable="false">`;
+        svg = svg.replace(openTag[0], styled);
+      }
+      holoSvgCache.set(fileName, svg);
+    } catch {
+      holoSvgCache.set(fileName, null);
+    }
+  }
+  return holoSvgCache.get(fileName) ?? null;
+}
+
+// Inlined, theme-styled SVG markup, or null if the file can't be read (callers
+// fall back to a plain <img>). `extraClass` lets the composite card pin the
+// icon as a corner badge.
+function HoloIcon(fileName: string, extraClass = '') {
+  const svg = getHoloSvg(fileName);
+  if (svg == null) return null;
+  const cls = extraClass ? `holo-icon ${extraClass}` : 'holo-icon';
+  return raw(`<span class="${cls}" aria-hidden="true">${svg}</span>`);
+}
+
+// Map a public /static/svg/... URL back to its source filename.
+const svgFileName = (src: string): string => src.split('/').pop() ?? '';
 
 const layoutScript = (nonce: string) => raw(`
 <script nonce="${nonce}">
@@ -719,6 +840,59 @@ const layoutScript = (nonce: string) => raw(`
 </script>
 `);
 
+// Recolour the inlined holo SVGs from their source art. CSS can't copy a
+// shape's own fill onto its stroke, so we do it here: for every painted shape
+// we read its computed fill and use that (lifted toward visibility if it's very
+// dark, e.g. the black 8-ball, so the outline doesn't vanish on the dark UI) as
+// its stroke. We also pick each icon's dominant colour (by painted area) to
+// drive --holo-glow, so the glow matches the art instead of the accent blue.
+const holoScript = (nonce: string) => raw(`
+<script nonce="${nonce}">
+(function(){
+  var SHAPES = 'path,circle,rect,ellipse,polygon,polyline,line';
+  function parseRGB(s){
+    var m = s && s.match(/rgba?\\(([^)]+)\\)/);
+    if(!m) return null;
+    var p = m[1].split(',');
+    var r = parseFloat(p[0]), g = parseFloat(p[1]), b = parseFloat(p[2]);
+    if(isNaN(r) || isNaN(g) || isNaN(b)) return null;
+    if(p.length > 3 && parseFloat(p[3]) === 0) return null; // fully transparent
+    return [r, g, b];
+  }
+  function lum(c){ return 0.2126*c[0] + 0.7152*c[1] + 0.0722*c[2]; }
+  // Lift only very dark colours up to a luminance floor, scaling channels so
+  // the hue is preserved; pure black becomes neutral grey.
+  function brighten(c){
+    var floor = 105, L = lum(c);
+    if(L >= floor) return c;
+    var mx = Math.max(c[0], c[1], c[2]);
+    if(mx < 2) return [floor, floor, floor];
+    var k = Math.min(floor / L, 255 / mx);
+    return [c[0]*k, c[1]*k, c[2]*k];
+  }
+  function css(c){ return 'rgb(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ')'; }
+
+  document.querySelectorAll('.holo-svg').forEach(function(svg){
+    var area = {}, val = {}, best = null, bestArea = -1;
+    svg.querySelectorAll(SHAPES).forEach(function(el){
+      if(el.closest('defs,mask,clipPath,symbol')) return; // not drawn directly
+      var c = parseRGB(getComputedStyle(el).fill);
+      if(!c) return; // none / gradient: leave the neutral CSS fallback outline
+      el.style.stroke = css(brighten(c));
+      var a = 1;
+      try { var bb = el.getBBox(); a = Math.max(1, bb.width * bb.height); } catch(e){}
+      var key = Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]);
+      area[key] = (area[key] || 0) + a;
+      val[key] = brighten(c);
+      if(area[key] > bestArea){ bestArea = area[key]; best = key; }
+    });
+    var wrap = svg.closest('.holo-icon');
+    if(best && wrap) wrap.style.setProperty('--holo-glow', css(val[best]));
+  });
+})();
+</script>
+`);
+
 export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import('../components/navbar').NavUser | null }) {
   const body = html`
     ${styles}
@@ -754,12 +928,21 @@ export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import(
     if (game.imageType === 'ai-slop') return AiSlopImage();
     if (game.imageType === 'cyclic') return CyclicImage();
     if (game.imageType === 'composite') {
+      const overlaySrc = (game as any).overlaySrc as string;
+      const overlay = overlaySrc.endsWith('.svg')
+        ? HoloIcon(svgFileName(overlaySrc), 'holo-overlay')
+        : null;
       return html`<div class="composite-icon">
               <img class="base" src="${(game as any).imageSrc}" alt="${game.name}" />
-              <img class="overlay" src="${(game as any).overlaySrc}" alt="" />
+              ${overlay ?? html`<img class="overlay" src="${overlaySrc}" alt="" />`}
             </div>`;
     }
-    return html`<img src="${(game as any).imageSrc}" alt="${game.name}" />`;
+    const src = (game as any).imageSrc as string;
+    if (src?.endsWith('.svg')) {
+      const holo = HoloIcon(svgFileName(src));
+      if (holo) return holo;
+    }
+    return html`<img src="${src}" alt="${game.name}" />`;
   })()}
             </div>
             <div class="card-content">
@@ -777,6 +960,7 @@ export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import(
   )}
     </div>
     ${layoutScript(opts.nonce)}
+    ${holoScript(opts.nonce)}
   `;
 
   return Layout({
