@@ -27,14 +27,16 @@ function getStylesVersion(): string {
   return stylesCache.hash;
 }
 
-const FAVICON_STICKERS = [
+// Exported so the embed-meta middleware can reuse the same pool for the social
+// thumbnail — the link preview shows a random favicon sticker, matching the tab.
+export const FAVICON_STICKERS = [
   '/static/stickers/Sticker_PPG_04_Silver_Wolf_01.webp',
   '/static/stickers/Sticker_PPG_19_Silver_Wolf_01.webp',
   '/static/stickers/Sticker_PPG_02_Silver_Wolf_01.webp',
   '/static/stickers/Sticker_PPG_04_Silver_Wolf_02.webp',
 ];
 
-const FAVICON_STICKERS_LV999 = [
+export const FAVICON_STICKERS_LV999 = [
   '/static/stickers/Sticker_PPG_27_Silver_Wolf_LV.999_01.webp',
   '/static/stickers/Sticker_PPG_27_Silver_Wolf_LV.999_02.webp',
   '/static/stickers/Sticker_PPG_27_Silver_Wolf_LV.999_03.webp',

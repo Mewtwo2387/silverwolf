@@ -15,6 +15,21 @@ for (let i = 1; i <= 6; i += 1) {
 
 const AVIF_TARGETS = [HERO_LV1, HERO_LV999, ...EIDOLONS];
 
+// Favicon stickers ship as WebP, but a few link-preview scrapers (older
+// WhatsApp/Telegram, some SEO tools) won't fetch WebP — so the social embed
+// points at a PNG fallback derived from each sticker. Keep this list in sync
+// with FAVICON_STICKERS(_LV999) in site_src/components/layout.ts.
+const STICKER_PNG_TARGETS = [
+  'Sticker_PPG_04_Silver_Wolf_01',
+  'Sticker_PPG_19_Silver_Wolf_01',
+  'Sticker_PPG_02_Silver_Wolf_01',
+  'Sticker_PPG_04_Silver_Wolf_02',
+  'Sticker_PPG_27_Silver_Wolf_LV.999_01',
+  'Sticker_PPG_27_Silver_Wolf_LV.999_02',
+  'Sticker_PPG_27_Silver_Wolf_LV.999_03',
+  'Sticker_PPG_27_Silver_Wolf_LV.999_04',
+].map((stem) => path.join(IMAGES_DIR, `${stem}.webp`));
+
 // LV999 is the only file we recompress in place. Threshold guards against
 // re-encoding an already-optimized copy on subsequent runs.
 const LV999_RECOMPRESS_THRESHOLD = 2_500_000; // 2.5 MB
@@ -97,6 +112,24 @@ async function encodeAvif(src: string): Promise<void> {
   console.log(`         ${(srcStat.size / 1024).toFixed(0)} KB → ${(dstStat.size / 1024).toFixed(0)} KB (-${pct}%)`);
 }
 
+async function encodePng(src: string): Promise<void> {
+  const dst = src.replace(/\.webp$/i, '.png');
+  if (await fileExists(dst)) {
+    const [srcM, dstM] = await Promise.all([mtime(src), mtime(dst)]);
+    if (dstM >= srcM) {
+      console.log(`[skip] ${path.basename(dst)} up to date`);
+      return;
+    }
+  }
+  if (checkOnly) {
+    console.error(`[stale] ${path.basename(dst)} missing or older than source`);
+    process.exitCode = 1;
+    return;
+  }
+  console.log(`[encode] ${path.basename(dst)}`);
+  await run(['magick', src, dst]);
+}
+
 async function main(): Promise<void> {
   const lv999Pending = await recompressLv999();
   for (const src of AVIF_TARGETS) {
@@ -109,6 +142,9 @@ async function main(): Promise<void> {
       continue;
     }
     await encodeAvif(src);
+  }
+  for (const src of STICKER_PNG_TARGETS) {
+    await encodePng(src);
   }
   if (checkOnly && process.exitCode === 1) {
     console.error('\nbuild:images --check failed: run `bun run build:images` and commit the result');
