@@ -142,7 +142,7 @@ const navbarExtras = (nonce: string) => raw(`
     }
 
     #nav-mobile {
-      display: flex;
+      display: flex !important;
       position: fixed;
       bottom: calc(0.9rem + env(safe-area-inset-bottom));
       left: 50%;
@@ -508,7 +508,7 @@ export function Navbar(active: NavActive | undefined, nonce: string, lv999?: boo
     </nav>
 
     <!-- Mobile bottom dock — visible only on touch devices via CSS media query -->
-    <div id="nav-mobile" role="navigation" aria-label="Mobile navigation">
+    <div id="nav-mobile" role="navigation" aria-label="Mobile navigation" style="display:none">
       <span class="dock-pill" aria-hidden="true"></span>
       ${dockLink(aboutHref, 'About', 'about')}
       ${dockLink('/leaderboards', 'Leaderboard', 'leaderboards')}
