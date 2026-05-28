@@ -1,16 +1,13 @@
-import songs from '../data/songs.json';
+import songsData from '../data/songs.json';
 import { Command } from './classes/Command';
 
-const songChoices = Object.keys(songs).map((key) => {
-  const name = key
-    .replace(/([A-Z])/g, ' $1')
-    .replace(/^./, (c) => c.toUpperCase())
-    .trim();
-  return {
-    name,
-    value: key,
-  };
-});
+type Song = { name: string; lyrics: string[] };
+const songs = songsData as Record<string, Song>;
+
+const songChoices = Object.entries(songs).map(([key, song]) => ({
+  name: song.name,
+  value: key,
+}));
 
 class Sing extends Command {
   constructor(client: any) {
@@ -37,7 +34,7 @@ class Sing extends Command {
     }
     this.client.singing = true;
     const song = interaction.options.getString('song');
-    const lyrics = (songs as any)[song] as string[];
+    const lyrics = songs[song].lyrics;
     await interaction.editReply(lyrics[0]);
     const delay = (ms: number) => new Promise((resolve) => {
       setTimeout(resolve, ms);
