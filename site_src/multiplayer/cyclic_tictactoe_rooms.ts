@@ -121,8 +121,11 @@ class RoomManager {
 
   createRoom(creator: UserInfo, boardSize: number): CreateResult {
     if (this.rooms.size >= MAX_ACTIVE_ROOMS_GLOBAL) return { ok: false, reason: 'server_full' };
+    // Count all of the creator's rooms, including 'ended' ones still pending GC.
+    // Excluding ended rooms here would let one creator cycle through unlimited
+    // ended rooms that linger for ENDED_TTL_MS and exhaust the global ceiling.
     const active = [...this.rooms.values()].filter(
-      (r) => r.creatorDiscordId === creator.discordId && r.status !== 'ended',
+      (r) => r.creatorDiscordId === creator.discordId,
     );
     if (active.length >= ROOMS_PER_USER_CAP) return { ok: false, reason: 'too_many_rooms' };
 
