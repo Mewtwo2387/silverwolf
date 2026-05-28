@@ -78,11 +78,14 @@ export function registerCyclicTttMpRoutes(
       size,
     );
     if (!result.ok) {
-      const status = result.reason === 'too_many_rooms' ? 429 : 400;
-      const error = result.reason === 'too_many_rooms'
-        ? `You already have ${ROOMS_PER_USER_CAP} active rooms. Finish or leave one before creating another.`
-        : result.reason;
-      return c.json({ ok: false, error }, status);
+      if (result.reason === 'too_many_rooms') {
+        return c.json({
+          ok: false,
+          error: `You already have ${ROOMS_PER_USER_CAP} active rooms. Finish or leave one before creating another.`,
+        }, 429);
+      }
+      // server_full
+      return c.json({ ok: false, error: 'Server is at capacity. Try again later.' }, 503);
     }
     return c.json({ ok: true, id: result.room.id });
   });
@@ -140,14 +143,25 @@ export function registerCyclicTttMpRoutes(
     );
   });
 
-  // WebSocket upgrade. The pre-check rejects unauthenticated requests with 401
-  // before Bun's upgrade is attempted, so cross-origin probes never reach the
-  // game protocol.
+  // WebSocket upgrade. The pre-check rejects unauthenticated and
+  // cross-origin requests with 401/403 before Bun's upgrade is attempted, so
+  // cross-origin probes never reach the game protocol. The CSRF token in the
+  // first `join` message is still the load-bearing defense; the Origin check
+  // is belt-and-suspenders against browsers that ever send cookies on a
+  // cross-origin WS handshake.
   app.get(
     '/games/cyclic-tictactoe/multiplayer/ws/:id',
     async (c, next) => {
       const user = c.get('user');
       if (!user) return c.text('login required', 401);
+      const origin = c.req.header('origin');
+      const host = c.req.header('host');
+      if (!origin || !host) return c.text('forbidden', 403);
+      try {
+        if (new URL(origin).host !== host) return c.text('forbidden origin', 403);
+      } catch {
+        return c.text('invalid origin', 400);
+      }
       return next();
     },
     upgradeWebSocket((c) => {

@@ -87,15 +87,18 @@ const ABANDONED_MS = 2 * 60_000;
 const WAITING_TTL_MS = 10 * 60_000;
 const ENDED_TTL_MS = 5 * 60_000;
 export const ROOMS_PER_USER_CAP = 5;
+// Coarse process-wide ceiling. Per-user cap is the load-bearing limit; this
+// just keeps a runaway/abusive situation from exhausting memory.
+export const MAX_ACTIVE_ROOMS_GLOBAL = 5_000;
 const GC_SWEEP_MS = 60_000;
 
 export type CreateResult =
   | { ok: true; room: MatchRoom }
-  | { ok: false; reason: 'too_many_rooms' };
+  | { ok: false; reason: 'too_many_rooms' | 'server_full' };
 
 export type AttachResult =
   | { ok: true; slot: PlayerSlot; firstSeat: boolean }
-  | { ok: false; reason: 'room_full' | 'self_play' | 'game_ended' };
+  | { ok: false; reason: 'room_full' | 'game_ended' };
 
 class RoomManager {
   private rooms = new Map<string, MatchRoom>();
@@ -117,6 +120,7 @@ class RoomManager {
   }
 
   createRoom(creator: UserInfo, boardSize: number): CreateResult {
+    if (this.rooms.size >= MAX_ACTIVE_ROOMS_GLOBAL) return { ok: false, reason: 'server_full' };
     const active = [...this.rooms.values()].filter(
       (r) => r.creatorDiscordId === creator.discordId && r.status !== 'ended',
     );
@@ -192,10 +196,8 @@ class RoomManager {
     if (room.status === 'ended') return { ok: false, reason: 'game_ended' };
     if (room.players.X && room.players.O) return { ok: false, reason: 'room_full' };
 
-    // Empty O seat. Refuse if the same Discord ID already owns X.
-    if (room.players.X && room.players.X.discordId === user.discordId) {
-      return { ok: false, reason: 'self_play' };
-    }
+    // Seat as O. Self-play is already ruled out above: if X belongs to this
+    // user the re-attach branch returns early.
     const newSlot: PlayerSlot = {
       discordId: user.discordId,
       username: user.username,
@@ -208,30 +210,6 @@ class RoomManager {
     this.startGame(room);
     room.lastActivityAt = Date.now();
     return { ok: true, slot: newSlot, firstSeat: true };
-  }
-
-  // HTTP /join — seat the second player before they open the WebSocket so the
-  // room page renders with the joiner already shown.
-  seatJoiner(room: MatchRoom, user: UserInfo):
-    { ok: true } | { ok: false; reason: 'room_full' | 'self_play' | 'game_ended' } {
-    if (room.players.X?.discordId === user.discordId) return { ok: true };
-    if (room.players.O?.discordId === user.discordId) return { ok: true };
-    if (room.status === 'ended') return { ok: false, reason: 'game_ended' };
-    if (room.players.X && room.players.O) return { ok: false, reason: 'room_full' };
-    if (room.players.X && room.players.X.discordId === user.discordId) {
-      return { ok: false, reason: 'self_play' };
-    }
-    room.players.O = {
-      discordId: user.discordId,
-      username: user.username,
-      avatarURL: user.avatarURL,
-      symbol: 'O',
-      sockets: new Set(),
-      rematchAccepted: false,
-    };
-    this.startGame(room);
-    room.lastActivityAt = Date.now();
-    return { ok: true };
   }
 
   applyMoveFromUser(room: MatchRoom, user: UserInfo, index: number):
@@ -318,6 +296,8 @@ class RoomManager {
 
   // Called from WS onClose.
   detachSocket(room: MatchRoom, ws: WSContext, discordId: string) {
+    // Room may have been swept between the close fire and this handler.
+    if (!this.rooms.has(room.id)) return;
     const slot = this.slotFor(room, discordId);
     if (!slot) return;
     slot.sockets.delete(ws);

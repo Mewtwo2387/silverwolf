@@ -659,7 +659,7 @@ function roomScript(nonce: string, ctx: {
       }
     }
     const newRoom = el('a', {
-      href: '/games/cyclic-tictactoe/multiplayer?size=' + (state.boardSize),
+      href: '/games/cyclic-tictactoe/multiplayer',
       class: 'cyc-mp-btn',
     }, '[ new room ]');
     wrap.appendChild(newRoom);

@@ -100,6 +100,10 @@ export function isSafeReturnPath(p: string | null | undefined): p is string {
   if (typeof p !== 'string' || p.length === 0 || p.length > 512) return false;
   if (!p.startsWith('/')) return false;
   if (p.startsWith('//') || p.startsWith('/\\')) return false;
+  // Reject ASCII control chars (CR/LF/NUL/etc.) — defense in depth against
+  // any downstream code that ever passes this into a header without escaping.
+  // eslint-disable-next-line no-control-regex
+  if (/[\x00-\x1F\x7F]/.test(p)) return false;
   return true;
 }
 
