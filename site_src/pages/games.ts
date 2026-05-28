@@ -97,7 +97,7 @@ export const GAMES = [
   {
     name: 'cyclic ttt',
     href: '/games/cyclic-tictactoe',
-    info: 'Tic-tac-toe where your oldest marks expire. Outlast the bot.',
+    info: 'Tic-tac-toe where your oldest marks expire. Outlast the bot — or a friend.',
     imageType: 'cyclic' as const,
   },
 ];

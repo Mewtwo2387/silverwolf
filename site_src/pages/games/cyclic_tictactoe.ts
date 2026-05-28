@@ -491,7 +491,11 @@ export function CyclicTicTacToePage(opts: { nonce: string; lv999?: boolean; user
 
   const body = html`
     <h1 class="text-center">Cyclic Tic-Tac-Toe</h1>
-    <p class="text-center text-fog-300">Win while your old pieces expire.</p>
+    <p class="text-center text-fog-300">
+      Win while your old pieces expire.
+      &nbsp;·&nbsp;
+      <a href="/games/cyclic-tictactoe/multiplayer" style="color: var(--accent-light); text-decoration: none; border-bottom: 1px dashed currentColor;">play a friend →</a>
+    </p>
     <div class="cyc-wrap">
       <div class="cyc-panel">
         <p class="cyc-subtitle">Old marks fade away</p>

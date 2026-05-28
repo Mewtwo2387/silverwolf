@@ -5,6 +5,7 @@ import birthdayReminderTable from './birthdayReminderTable';
 import chatHistoryTable from './chatHistoryTable';
 import chatSessionTable from './chatSessionTable';
 import commandConfigTable from './commandConfigTable';
+import cyclicTttMatchTable from './cyclicTttMatchTable';
 import gameUIDTable from './gameUIDTable';
 import globalConfigTable from './globalConfigTable';
 import marriageTable from './marriageTable';
@@ -23,6 +24,7 @@ export {
   chatHistoryTable,
   chatSessionTable,
   commandConfigTable,
+  cyclicTttMatchTable,
   gameUIDTable,
   globalConfigTable,
   marriageTable,
@@ -41,6 +43,7 @@ export type { BirthdayReminderRow } from './birthdayReminderTable';
 export type { ChatHistoryRow } from './chatHistoryTable';
 export type { ChatSessionRow } from './chatSessionTable';
 export type { CommandConfigRow } from './commandConfigTable';
+export type { CyclicTttMatchRow } from './cyclicTttMatchTable';
 export type { GameUIDRow } from './gameUIDTable';
 export type { GlobalConfigRow } from './globalConfigTable';
 export type { MarriageRow } from './marriageTable';

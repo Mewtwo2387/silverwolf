@@ -3,6 +3,7 @@ import BabyModel from './BabyModel';
 import BirthdayReminderModel from './BirthdayReminderModel';
 import ChatModel from './ChatModel';
 import CommandConfigModel from './CommandConfigModel';
+import CyclicTttMatchModel from './CyclicTttMatchModel';
 import GameUIDModel from './GameUIDModel';
 import GlobalConfigModel from './GlobalConfigModel';
 import MarriageModel from './MarriageModel';
@@ -18,6 +19,7 @@ export {
   BirthdayReminderModel,
   ChatModel,
   CommandConfigModel,
+  CyclicTttMatchModel,
   GameUIDModel,
   GlobalConfigModel,
   MarriageModel,

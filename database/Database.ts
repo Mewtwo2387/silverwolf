@@ -11,6 +11,7 @@ import type ChatModel from './models/ChatModel';
 import type PokemonModel from './models/PokemonModel';
 import type MarriageModel from './models/MarriageModel';
 import type CommandConfigModel from './models/CommandConfigModel';
+import type CyclicTttMatchModel from './models/CyclicTttMatchModel';
 import type GameUIDModel from './models/GameUIDModel';
 import type GlobalConfigModel from './models/GlobalConfigModel';
 import type ServerRolesModel from './models/ServerRolesModel';
@@ -267,6 +268,7 @@ class Database {
   get baby(): BabyModel { return this.models.BabyModel; }
   get chat(): ChatModel { return this.models.ChatModel; }
   get commandConfig(): CommandConfigModel { return this.models.CommandConfigModel; }
+  get cyclicTttMatch(): CyclicTttMatchModel { return this.models.CyclicTttMatchModel; }
   get gameUID(): GameUIDModel { return this.models.GameUIDModel; }
   get globalConfig(): GlobalConfigModel { return this.models.GlobalConfigModel; }
   get marriage(): MarriageModel { return this.models.MarriageModel; }

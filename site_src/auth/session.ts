@@ -11,6 +11,7 @@ const USE_HOST_PREFIX = process.env.NODE_ENV === 'production';
 const HOST_PREFIX = USE_HOST_PREFIX ? '__Host-' : '';
 export const SESSION_COOKIE = `${HOST_PREFIX}sw_session`;
 export const OAUTH_STATE_COOKIE = `${HOST_PREFIX}sw_oauth_state`;
+export const OAUTH_RETURN_COOKIE = `${HOST_PREFIX}sw_oauth_return`;
 export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 // Absolute ceiling on session age regardless of activity. A leaked cookie kept
 // alive by sliding TTL is invalidated once the underlying row crosses this.
@@ -90,6 +91,32 @@ export function readOAuthStateCookie(c: Context): string | null {
 
 export function clearOAuthStateCookie(c: Context) {
   deleteCookie(c, OAUTH_STATE_COOKIE, { path: '/' });
+}
+
+// Whitelist for the `?return=` redirect on /auth/discord/login. Only same-origin
+// absolute paths — rejects protocol-relative ("//evil"), full URLs, and missing
+// slashes so the OAuth callback can't be coerced into an open redirect.
+export function isSafeReturnPath(p: string | null | undefined): p is string {
+  if (typeof p !== 'string' || p.length === 0 || p.length > 512) return false;
+  if (!p.startsWith('/')) return false;
+  if (p.startsWith('//') || p.startsWith('/\\')) return false;
+  return true;
+}
+
+export function setReturnCookie(c: Context, path: string) {
+  setCookie(c, OAUTH_RETURN_COOKIE, signedToken(path), {
+    ...baseCookieOpts(),
+    maxAge: OAUTH_STATE_TTL_S,
+  });
+}
+
+export function readReturnCookie(c: Context): string | null {
+  const v = verifySigned(getCookie(c, OAUTH_RETURN_COOKIE));
+  return isSafeReturnPath(v) ? v : null;
+}
+
+export function clearReturnCookie(c: Context) {
+  deleteCookie(c, OAUTH_RETURN_COOKIE, { path: '/' });
 }
 
 export async function loadSession(
