@@ -3,7 +3,7 @@ import {
   type TextChannel,
 } from 'discord.js';
 import { log, logError } from '../../utils/log';
-import { resolvePersona, generateContent, generateSessionTitle } from '../../utils/ai';
+import { resolvePersona, generateContent, generateTitleForHistory } from '../../utils/ai';
 import { trimHistoryToFit } from '../../utils/tokenizer';
 import { extractPdfsFromMessage } from '../../utils/pdf';
 
@@ -326,14 +326,15 @@ const scriptHandlers = {
           }
 
           if (historyLoaded && !hadRawHistory && text) {
-            generateSessionTitle(prompt, text)
-              .then((title) => {
+            (message.client as any).db.aiChat.getHistory(aiSession.sessionId, 100)
+              .then((history: { role: string; message: string }[]) => generateTitleForHistory(history))
+              .then((title: string | null) => {
                 if (title) {
                   return (message.client as any).db.aiChat.updateTitle(aiSession.sessionId, title);
                 }
                 return undefined;
               })
-              .catch((titleErr) => {
+              .catch((titleErr: unknown) => {
                 logError('AiChat: Failed to generate session title:', titleErr);
               });
           }

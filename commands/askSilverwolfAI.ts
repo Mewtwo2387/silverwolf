@@ -1,7 +1,7 @@
 import { EmbedBuilder } from 'discord.js';
 import { Command } from './classes/Command';
 import { log, logError } from '../utils/log';
-import { getPersonaByName, generateContent, generateSessionTitle } from '../utils/ai';
+import { getPersonaByName, generateContent, generateTitleForHistory } from '../utils/ai';
 import { trimHistoryToFit } from '../utils/tokenizer';
 
 const PERSONA_NAME = 'Silverwolf';
@@ -107,14 +107,15 @@ class AskSilverwolfAI extends Command {
       }
 
       if (!hadRawHistory && text) {
-        generateSessionTitle(prompt, text)
-          .then((title) => {
+        this.client.db.aiChat.getHistory(aiSession.sessionId, 100)
+          .then((history: { role: string; message: string }[]) => generateTitleForHistory(history))
+          .then((title: string | null) => {
             if (title) {
               return this.client.db.aiChat.updateTitle(aiSession.sessionId, title);
             }
             return undefined;
           })
-          .catch((titleErr) => {
+          .catch((titleErr: unknown) => {
             logError('AiChat: Failed to generate session title:', titleErr);
           });
       }

@@ -45,6 +45,7 @@ export interface ToolCallRecord {
 }
 
 const MAX_TOOL_ITERATIONS = 3;
+const MAX_TITLE_CHARS = 80;
 
 interface HistoryEntry {
   role: string;
@@ -425,43 +426,157 @@ function getOpenRouterClient(): OpenAI {
 }
 
 /**
- * Generates a short title for a conversation using OpenRouter.
- * Returns the title string on success, or null on failure.
+ * Discord bot history stores prompts like "User foo said: @grok hello".
+ * Strip that wrapper and persona triggers before titling.
  */
-async function generateSessionTitle(userMessage: string, aiResponse: string): Promise<string | null> {
+function stripPersonaTriggers(text: string): string {
+  const personas: Persona[] = personasConfig.personas || [];
+  let result = text;
+  for (const persona of personas) {
+    if (!Array.isArray(persona.triggers)) continue;
+    for (const trigger of persona.triggers) {
+      if (!trigger) continue;
+      const escaped = String(trigger).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      result = result.replace(new RegExp(escaped, 'gi'), '');
+    }
+  }
+  return result.replace(/\s+/g, ' ').trim();
+}
+
+function unwrapDiscordUserMessage(message: string): string {
+  const match = message.match(/(?:^|\n\n)User\s+\S+\s+said:\s*([\s\S]*)$/i);
+  if (match) return match[1].trim();
+  return message.trim();
+}
+
+function cleanUserMessageForTitle(message: string): string {
+  return stripPersonaTriggers(unwrapDiscordUserMessage(message));
+}
+
+function parseGeneratedTitle(raw: string): string | null {
+  const cleaned = raw.replace(/^(title:\s*)/i, '').replace(/^["']+|["']+$/g, '').replace(/[.!?]+$/, '');
+  const normalized = cleaned.replace(/\s+/g, ' ').trim();
+  if (!normalized) return null;
+  const words = normalized.split(' ');
+  const clamped = words.length > 10 ? words.slice(0, 10).join(' ') : normalized;
+  return clamped.length > MAX_TITLE_CHARS ? clamped.slice(0, MAX_TITLE_CHARS).trimEnd() : clamped;
+}
+
+/**
+ * Formats all non-tool messages in a session for title generation.
+ */
+function formatHistoryForTitle(history: HistoryEntry[]): string | null {
+  const lines: string[] = [];
+  for (const entry of history) {
+    if (entry.role === 'tool') continue;
+    if (entry.role === 'user') {
+      const cleaned = cleanUserMessageForTitle(entry.message);
+      if (cleaned) lines.push(`User: ${cleaned}`);
+    } else if (entry.role === 'model' || entry.role === 'assistant') {
+      lines.push(`Assistant: ${entry.message}`);
+    }
+  }
+  if (lines.length === 0) return null;
+
+  const MAX_TITLE_INPUT_CHARS = 12000;
+  let transcript = lines.join('\n\n');
+  if (transcript.length > MAX_TITLE_INPUT_CHARS) {
+    transcript = transcript.slice(-MAX_TITLE_INPUT_CHARS);
+  }
+  return transcript;
+}
+
+function getFallbackTitle(history: HistoryEntry[]): string | null {
+  const firstUser = history.find((entry) => entry.role === 'user');
+  if (firstUser) {
+    const cleaned = cleanUserMessageForTitle(firstUser.message);
+    if (cleaned) {
+      const fallback = cleaned.slice(0, 50).trim().slice(0, MAX_TITLE_CHARS).trim();
+      if (fallback) return fallback;
+    }
+  }
+
+  const firstAssistant = history.find(
+    (entry) => entry.role === 'model' || entry.role === 'assistant',
+  );
+  if (firstAssistant) {
+    const fallback = firstAssistant.message.slice(0, 50).trim().slice(0, MAX_TITLE_CHARS).trim();
+    if (fallback) return fallback;
+  }
+
+  return null;
+}
+
+/**
+ * Generates a session title from the full conversation history.
+ */
+async function generateTitleForHistory(history: HistoryEntry[]): Promise<string | null> {
+  const conversation = formatHistoryForTitle(history);
+  if (!conversation) return null;
+
+  try {
+    const generated = await generateSessionTitle(conversation);
+    const chosen = (generated || getFallbackTitle(history)) || '';
+    const title = chosen ? chosen.slice(0, MAX_TITLE_CHARS).trim() : '';
+    return title || null;
+  } catch (error) {
+    logError('Failed to generate session title from history:', error);
+    return getFallbackTitle(history);
+  }
+}
+
+async function generateSessionTitle(conversation: string): Promise<string | null> {
   const personas: Persona[] = personasConfig.personas || [];
   const persona = personas.find((p) => p.name === 'TitleGen');
   if (!persona) return null;
 
-  try {
-    const completion = await openrouter.chat.completions.create({
-      model: persona.model,
-      messages: [
-        { role: 'system', content: persona.systemPrompt ?? '' },
-        { role: 'user', content: `User: ${userMessage}\n\nAssistant: ${aiResponse}` },
-        { role: 'assistant', content: 'Title: ' },
-      ],
-      max_tokens: 512,
-      reasoning: { enabled: false },
-    } as any);
-    const raw = completion.choices?.[0]?.message?.content;
-    if (!raw) return null;
-    // Strip any "Title:" prefix the model may echo, quotes, and trailing punctuation
-    const cleaned = raw.replace(/^(title:\s*)/i, '').replace(/^["']+|["']+$/g, '').replace(/[.!?]+$/, '');
-    const normalized = cleaned.replace(/\s+/g, ' ').trim();
-    if (!normalized) return null;
-    const words = normalized.split(' ');
-    const clamped = words.length > 10 ? words.slice(0, 10).join(' ') : normalized;
-    return clamped.length > 80 ? clamped.slice(0, 80).trimEnd() : clamped;
-  } catch {
-    return null;
+  const userContent = `Conversation:\n${conversation}\n\nTitle:`;
+
+  if (process.env.OPENROUTER_API_KEY) {
+    try {
+      const completion = await openrouter.chat.completions.create({
+        model: persona.model,
+        messages: [
+          { role: 'system', content: persona.systemPrompt ?? '' },
+          { role: 'user', content: userContent },
+          { role: 'assistant', content: 'Title: ' },
+        ],
+        max_tokens: 512,
+        reasoning: { enabled: false },
+      } as any);
+      const raw = completion.choices?.[0]?.message?.content;
+      if (raw) {
+        const parsed = parseGeneratedTitle(raw);
+        if (parsed) return parsed;
+      }
+    } catch (err) {
+      logError('TitleGen OpenRouter request failed:', err);
+    }
   }
+
+  try {
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-3.1-flash-lite',
+      systemInstruction: persona.systemPrompt ?? '',
+    });
+    const result = await model.generateContent(userContent);
+    const raw = result.response.text();
+    if (raw) {
+      const parsed = parseGeneratedTitle(raw);
+      if (parsed) return parsed;
+    }
+  } catch (err) {
+    logError('TitleGen Gemini request failed:', err);
+  }
+
+  return null;
 }
 
 export {
   resolvePersona,
   generateContent,
   generateSessionTitle,
+  generateTitleForHistory,
   getGeminiAI,
   getOpenRouterClient,
   getPersonaByName,
