@@ -3,6 +3,7 @@ import { unlinkSync } from 'fs';
 import { MessageFlags } from 'discord.js';
 import { DevCommand } from './classes/DevCommand';
 import { logError } from '../utils/log';
+import { timestampedFileName } from '../utils/dumpFileName';
 
 interface DumpDefinition {
   choiceName: string;
@@ -126,6 +127,7 @@ class DBDump extends DevCommand {
     const table = interaction.options.getString('table');
 
     const filesToDump: { attachment: string; name: string }[] = [];
+    const dumpTime = new Date();
     try {
       const selectedDefinitions = table === 'all'
         ? DUMP_DEFINITIONS
@@ -133,8 +135,9 @@ class DBDump extends DevCommand {
 
       for (const definition of selectedDefinitions) {
         const tableData = await this.client.db.dumpTable(definition.tableName, definition.formatUserIds);
-        const filePath = await this.createCSVFile(definition.fileName, tableData);
-        filesToDump.push({ attachment: filePath, name: definition.fileName });
+        const fileName = timestampedFileName(definition.fileName, dumpTime);
+        const filePath = await this.createCSVFile(fileName, tableData);
+        filesToDump.push({ attachment: filePath, name: fileName });
       }
 
       if (filesToDump.length === 0) {
@@ -156,9 +159,10 @@ class DBDump extends DevCommand {
       const databasePath = path.join(import.meta.dir, '../persistence/database.db');
 
       if (await Bun.file(databasePath).exists()) {
+        const dbFileName = timestampedFileName('database.db', dumpTime);
         await interaction.followUp({
           content: 'database:',
-          files: [{ attachment: databasePath, name: 'database.db' }],
+          files: [{ attachment: databasePath, name: dbFileName }],
           flags: MessageFlags.Ephemeral,
         });
       }
