@@ -291,6 +291,9 @@ class RoomManager {
       room.history = { X: [], O: [] };
       room.result = null;
       room.endedAt = null;
+      // Reset so the next match record's createdAt..endedAt window measures
+      // the rematch itself, not the original lobby creation.
+      room.createdAt = Date.now();
       this.startGame(room);
     }
     room.lastActivityAt = Date.now();
@@ -396,8 +399,10 @@ class RoomManager {
       let winnerDiscordId: string | null = null;
       if (result.winner === 'X') winnerDiscordId = x.discordId;
       else if (result.winner === 'O') winnerDiscordId = o.discordId;
+      // The match record id must be unique per *game*; room.id is reused across
+      // rematches, so we generate a fresh id here.
       this.silverwolf.db.cyclicTttMatch.recordMatch({
-        id: room.id,
+        id: randomBytes(16).toString('base64url'),
         xDiscordId: x.discordId,
         oDiscordId: o.discordId,
         winnerDiscordId,
