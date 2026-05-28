@@ -1,7 +1,6 @@
 import AiChatModel from './AiChatModel';
 import BabyModel from './BabyModel';
 import BirthdayReminderModel from './BirthdayReminderModel';
-import ChatModel from './ChatModel';
 import CommandConfigModel from './CommandConfigModel';
 import GameUIDModel from './GameUIDModel';
 import GlobalConfigModel from './GlobalConfigModel';
@@ -16,7 +15,6 @@ export {
   AiChatModel,
   BabyModel,
   BirthdayReminderModel,
-  ChatModel,
   CommandConfigModel,
   GameUIDModel,
   GlobalConfigModel,

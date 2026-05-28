@@ -7,7 +7,6 @@ import type { TableDefinition, QueryResult } from './types';
 import type UserModel from './models/UserModel';
 import type BabyModel from './models/BabyModel';
 import type AiChatModel from './models/AiChatModel';
-import type ChatModel from './models/ChatModel';
 import type PokemonModel from './models/PokemonModel';
 import type MarriageModel from './models/MarriageModel';
 import type CommandConfigModel from './models/CommandConfigModel';
@@ -257,15 +256,12 @@ class Database {
   async dumpBaby(): Promise<string> { return this.dumpTable('Baby', ['mother_id', 'father_id']); }
   async dumpCommandConfig(): Promise<string> { return this.dumpTable('CommandConfig', []); }
   async dumpServerRoles(): Promise<string> { return this.dumpTable('ServerRoles', []); }
-  async dumpChatHistory(): Promise<string> { return this.dumpTable('ChatHistory', []); }
-  async dumpChatSession(): Promise<string> { return this.dumpTable('ChatSession', ['started_by']); }
   async dumpGlobalConfig(): Promise<string> { return this.dumpTable('GlobalConfig', []); }
   async dumpGameUID(): Promise<string> { return this.dumpTable('GameUID', ['user_id']); }
 
   get aiChat(): AiChatModel { return this.models.AiChatModel; }
   get birthdayReminder(): BirthdayReminderModel { return this.models.BirthdayReminderModel; }
   get baby(): BabyModel { return this.models.BabyModel; }
-  get chat(): ChatModel { return this.models.ChatModel; }
   get commandConfig(): CommandConfigModel { return this.models.CommandConfigModel; }
   get gameUID(): GameUIDModel { return this.models.GameUIDModel; }
   get globalConfig(): GlobalConfigModel { return this.models.GlobalConfigModel; }

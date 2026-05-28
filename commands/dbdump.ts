@@ -56,20 +56,6 @@ const DUMP_DEFINITIONS: DumpDefinition[] = [
     formatUserIds: [],
   },
   {
-    choiceName: 'Chat History Data',
-    value: 'chatHistory',
-    tableName: 'ChatHistory',
-    fileName: 'Chat_History_Data.csv',
-    formatUserIds: [],
-  },
-  {
-    choiceName: 'Chat Session Data',
-    value: 'chatSession',
-    tableName: 'ChatSession',
-    fileName: 'Chat_Session_Data.csv',
-    formatUserIds: ['started_by'],
-  },
-  {
     choiceName: 'Global Config Data',
     value: 'globalConfig',
     tableName: 'GlobalConfig',

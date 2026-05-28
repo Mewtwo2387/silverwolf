@@ -2,10 +2,7 @@ import { log } from '../../utils/log';
 import aiChatQueries from '../queries/aiChatQueries';
 import type Database from '../Database';
 
-/**
- * Model for managing per-user, per-persona AI chat sessions and history.
- * Completely separate from ChatModel (which is used by /ask-silverwolf-ai).
- */
+/** Model for managing per-user, per-persona AI chat sessions and history. */
 class AiChatModel {
   private db: Database;
 
