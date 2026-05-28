@@ -213,7 +213,7 @@ class RoomManager {
   // HTTP /join — seat the second player before they open the WebSocket so the
   // room page renders with the joiner already shown.
   seatJoiner(room: MatchRoom, user: UserInfo):
-    { ok: true } | { ok: false; reason: 'room_full' | 'self_play' | 'game_ended' | 'already_seated' } {
+    { ok: true } | { ok: false; reason: 'room_full' | 'self_play' | 'game_ended' } {
     if (room.players.X?.discordId === user.discordId) return { ok: true };
     if (room.players.O?.discordId === user.discordId) return { ok: true };
     if (room.status === 'ended') return { ok: false, reason: 'game_ended' };

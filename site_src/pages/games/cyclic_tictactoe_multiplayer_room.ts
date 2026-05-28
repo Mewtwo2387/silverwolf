@@ -519,15 +519,9 @@ function roomScript(nonce: string, ctx: {
     const myTurn = state.status === 'active' && me && state.currentPlayer === me;
     const shell = el('div', { class: 'cyc-mp-board-shell' });
     const board = el('div', { class: 'cyc-mp-board' });
-    // Size cells to fit
-    const avail = Math.min((shell.clientWidth || 520) - 32, 520);
-    const cellSize = Math.max(28, Math.floor(avail / n) - 4);
-    board.style.gridTemplateColumns = 'repeat(' + n + ', ' + cellSize + 'px)';
+    const cells = [];
     for (let i = 0; i < n * n; i++) {
       const cell = el('div', { class: 'cyc-mp-cell' + (myTurn ? '' : ' disabled') });
-      cell.style.width = cellSize + 'px';
-      cell.style.height = cellSize + 'px';
-      cell.style.fontSize = Math.floor(cellSize * 0.55) + 'px';
       const owner = state.board[i];
       if (owner) {
         const isFading = state.history[owner].length >= state.markLimit && state.history[owner][0] === i;
@@ -541,8 +535,21 @@ function roomScript(nonce: string, ctx: {
         cell.addEventListener('click', () => send({ type: 'move', index: i }));
       }
       board.appendChild(cell);
+      cells.push(cell);
     }
     shell.appendChild(board);
+    // Size cells once the shell is attached; clientWidth is 0 before mount.
+    requestAnimationFrame(() => {
+      const avail = Math.min((shell.clientWidth || 520) - 32, 520);
+      const cellSize = Math.max(28, Math.floor(avail / n) - 4);
+      board.style.gridTemplateColumns = 'repeat(' + n + ', ' + cellSize + 'px)';
+      const fontPx = Math.floor(cellSize * 0.55) + 'px';
+      for (const c of cells) {
+        c.style.width = cellSize + 'px';
+        c.style.height = cellSize + 'px';
+        c.style.fontSize = fontPx;
+      }
+    });
     return shell;
   }
 

@@ -153,6 +153,16 @@ class Database {
       ON PoopEntry (user_id, logged_at)
     `);
 
+    // Back the per-user recent-match lookup (GET_RECENT_FOR_USER).
+    this.db.run(`
+      CREATE INDEX IF NOT EXISTS idx_cyclic_ttt_x_id_ended_at
+      ON CyclicTttMatch (x_discord_id, ended_at DESC)
+    `);
+    this.db.run(`
+      CREATE INDEX IF NOT EXISTS idx_cyclic_ttt_o_id_ended_at
+      ON CyclicTttMatch (o_discord_id, ended_at DESC)
+    `);
+
     // Initialize models
     Object.entries(modelClasses).forEach(([modelName, ModelClass]) => {
       this.models[modelName] = new (ModelClass as any)(this);
