@@ -325,6 +325,52 @@ export function CyclicTicTacToePage(opts: { nonce: string; lv999?: boolean; user
     color: var(--fog-400);
   }
 
+  /* Opponent panel (left side): active enemy effects + usage log */
+  .cyc-wrap.skills-on { max-width: 1040px; }
+  .cyc-foe-panel {
+    flex: 0 0 190px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    background: color-mix(in oklab, var(--ink-800) 50%, transparent);
+    border: 1px solid color-mix(in oklab, var(--danger) 22%, var(--ink-600));
+    border-radius: 0.75rem;
+    padding: 0.9rem;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .cyc-foe-panel.hidden { display: none; }
+  .cyc-foe-title {
+    text-align: center;
+    color: var(--danger);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    margin: 0 0 0.2rem;
+  }
+  .cyc-foe-label {
+    font-size: 0.58rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--fog-400);
+  }
+  .cyc-foe-active { display: flex; flex-direction: column; gap: 0.3rem; }
+  .cyc-foe-badge {
+    font-size: 0.66rem;
+    color: var(--danger);
+    background: color-mix(in oklab, var(--danger) 14%, transparent);
+    border: 1px solid color-mix(in oklab, var(--danger) 30%, transparent);
+    border-radius: 0.4rem;
+    padding: 0.2rem 0.4rem;
+  }
+  .cyc-foe-none { font-size: 0.64rem; color: var(--fog-400); font-style: italic; }
+  .cyc-foe-log { display: flex; flex-direction: column; gap: 0.22rem; max-height: 240px; overflow: auto; }
+  .cyc-foe-entry { font-size: 0.64rem; color: var(--fog-300); line-height: 1.3; }
+  .cyc-foe-entry.hit { color: var(--accent-light); font-style: italic; }
+  @media (max-width: 720px) { .cyc-foe-panel { flex-basis: auto; } }
+
   /* Targeting mode: empty cells invite a click */
   .cyc-board.targeting .cyc-cell:hover {
     background: color-mix(in oklab, var(--danger) 35%, var(--ink-900));
@@ -402,7 +448,12 @@ export function CyclicTicTacToePage(opts: { nonce: string; lv999?: boolean; user
   const energyValEl  = document.getElementById('cyc-energy-val');
   const energyCapEl  = document.getElementById('cyc-energy-cap');
   const energyFillEl = document.getElementById('cyc-energy-fill');
+  const wrapEl       = document.querySelector('.cyc-wrap');
+  const foePanelEl   = document.getElementById('cyc-foe-panel');
+  const foeActiveEl  = document.getElementById('cyc-foe-active');
+  const foeLogEl     = document.getElementById('cyc-foe-log');
   const skillBtns = {};
+  let foeLog = [];   // [{ text, hit }] — opponent skill usage / effects on you
   if (energyCapEl) energyCapEl.textContent = ENERGY_CAP;
 
   function setStatus(text, cls) {
@@ -427,7 +478,10 @@ export function CyclicTicTacToePage(opts: { nonce: string; lv999?: boolean; user
     skillsEnabled = !skillsToggle.disabled && skillsToggle.checked;
     skillState = { X: freshSkillSide(), O: freshSkillSide() };
     armedSkill = null;
+    foeLog = [];
     skillPanelEl.classList.toggle('hidden', !skillsEnabled);
+    foePanelEl.classList.toggle('hidden', !skillsEnabled);
+    if (wrapEl) wrapEl.classList.toggle('skills-on', skillsEnabled);
     skillsRule.style.display = skillsEnabled ? '' : 'none';
 
     gameActive = true;
@@ -436,6 +490,50 @@ export function CyclicTicTacToePage(opts: { nonce: string; lv999?: boolean; user
     setStatus('Your turn (X)');
     buildBoard();
     if (skillsEnabled) { buildSkillPanel(); renderSkillPanel(); }
+  }
+
+  // Opponent activity feed (left panel).
+  function logFoe(text, hit) {
+    foeLog.push({ text, hit: !!hit });
+    if (foeLog.length > 30) foeLog.shift();
+    renderFoePanel();
+  }
+
+  function renderFoePanel() {
+    if (!skillsEnabled || !foeActiveEl) return;
+    const active = [];
+    if (skillState.O.shieldTurns > 0) active.push('Iron Dome (' + skillState.O.shieldTurns + ' left)');
+    if (skillState.O.airTurns > 0) active.push('Air Support (' + skillState.O.airTurns + ' left)');
+    if (skillState.X.dissonanceTurns > 0) active.push('Dissonance on you (' + skillState.X.dissonanceTurns + ' left)');
+    foeActiveEl.innerHTML = '';
+    if (active.length === 0) {
+      const none = document.createElement('div');
+      none.className = 'cyc-foe-none';
+      none.textContent = '— nothing active —';
+      foeActiveEl.appendChild(none);
+    } else {
+      for (const a of active) {
+        const b = document.createElement('div');
+        b.className = 'cyc-foe-badge';
+        b.textContent = a;
+        foeActiveEl.appendChild(b);
+      }
+    }
+    foeLogEl.innerHTML = '';
+    if (foeLog.length === 0) {
+      const none = document.createElement('div');
+      none.className = 'cyc-foe-none';
+      none.textContent = 'no skills used yet';
+      foeLogEl.appendChild(none);
+    } else {
+      // newest first
+      for (let i = foeLog.length - 1; i >= 0; i--) {
+        const e = document.createElement('div');
+        e.className = 'cyc-foe-entry' + (foeLog[i].hit ? ' hit' : '');
+        e.textContent = foeLog[i].text;
+        foeLogEl.appendChild(e);
+      }
+    }
   }
 
   // Enable the skills toggle only on grids big enough to be balanced.
@@ -547,7 +645,10 @@ export function CyclicTicTacToePage(opts: { nonce: string; lv999?: boolean; user
         const empties = board
           .map((v, i) => (v === null && i !== index ? i : -1))
           .filter((i) => i !== -1);
-        if (empties.length) return empties[Math.floor(Math.random() * empties.length)];
+        if (empties.length) {
+          if (player === 'X') logFoe('Dissonance scrambled your move', true);
+          return empties[Math.floor(Math.random() * empties.length)];
+        }
       }
     }
     return index;
@@ -813,18 +914,28 @@ export function CyclicTicTacToePage(opts: { nonce: string; lv999?: boolean; user
     spendSkill(player, id);
     const opp = player === 'X' ? 'O' : 'X';
     const who = player === 'X' ? 'You' : 'Bot';
+    const fromBot = player === 'O';
     if (id === 'dome') {
       skillState[player].shieldTurns = 10;
       setStatus(who + ': Iron Dome up');
+      if (fromBot) logFoe('Raised Iron Dome');
     } else if (id === 'air') {
       skillState[player].airTurns = 5;
       setStatus(who + ': Air support inbound');
+      if (fromBot) logFoe('Called Air Support');
     } else if (id === 'dissonance') {
-      if (tryBlock(opp)) setStatus('Dissonance deflected by Iron Dome');
-      else { skillState[opp].dissonanceTurns = 5; setStatus(who + ': Dissonance cast'); }
+      if (tryBlock(opp)) {
+        setStatus('Dissonance deflected by Iron Dome');
+        if (fromBot) logFoe('Dissonance — your Iron Dome deflected it', true);
+      } else {
+        skillState[opp].dissonanceTurns = 5;
+        setStatus(who + ': Dissonance cast');
+        if (fromBot) logFoe('Cast Dissonance on you');
+      }
     } else if (id === 'collapse') {
       resolveCollapse(player);
       setStatus(who + ': Collapse!');
+      if (fromBot) logFoe('Triggered Collapse');
     }
   }
 
@@ -865,6 +976,7 @@ export function CyclicTicTacToePage(opts: { nonce: string; lv999?: boolean; user
       if (t.idx !== -1 && t.gain >= 6) {
         spendSkill('O', 'bomb');
         busy = false;
+        logFoe('Dropped a Bomb');
         resolveBomb(t.idx, 'O');
         renderSkillPanel();
         if (gameActive) setStatus('Your turn (X)');
@@ -921,6 +1033,7 @@ export function CyclicTicTacToePage(opts: { nonce: string; lv999?: boolean; user
       btn.disabled = !(canCast('X', id) && myTurn);
       btn.classList.toggle('armed', armedSkill === id);
     }
+    renderFoePanel();
   }
 
   function onSkillClick(id) {
@@ -1024,6 +1137,13 @@ export function CyclicTicTacToePage(opts: { nonce: string; lv999?: boolean; user
       <div id="cyc-status" class="cyc-status">Your turn (X)</div>
 
       <div class="cyc-arena">
+        <div id="cyc-foe-panel" class="cyc-foe-panel hidden" aria-label="Opponent skills">
+          <p class="cyc-foe-title">Opponent</p>
+          <div class="cyc-foe-label">Active vs you</div>
+          <div id="cyc-foe-active" class="cyc-foe-active"></div>
+          <div class="cyc-foe-label" style="margin-top:0.3rem;">History</div>
+          <div id="cyc-foe-log" class="cyc-foe-log"></div>
+        </div>
         <div id="cyc-board-shell" class="cyc-board-shell">
           <div id="cyc-board" class="cyc-board"></div>
         </div>
