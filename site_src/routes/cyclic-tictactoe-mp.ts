@@ -54,6 +54,7 @@ export function registerCyclicTttMpRoutes(
         status: r.status,
         opponentUsername: opp,
         youAreCreator,
+        skillsEnabled: r.skillsEnabled,
       };
     });
     return c.html(
@@ -69,6 +70,7 @@ export function registerCyclicTttMpRoutes(
     if (auth instanceof Response) return auth;
     const sizeRaw = body!.boardSize;
     const size = clampBoardSize(typeof sizeRaw === 'number' ? sizeRaw : Number(sizeRaw));
+    const skillsEnabled = body!.skills === true || body!.skills === 'true';
     const result = roomManager.createRoom(
       {
         discordId: auth.discordId,
@@ -76,6 +78,7 @@ export function registerCyclicTttMpRoutes(
         avatarURL: auth.nav.avatarURL,
       },
       size,
+      skillsEnabled,
     );
     if (!result.ok) {
       if (result.reason === 'too_many_rooms') {

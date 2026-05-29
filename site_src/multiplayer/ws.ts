@@ -105,6 +105,23 @@ export function createCyclicTttWsEvents(matchId: string, user: AuthedUser): WSEv
             return;
           }
           roomManager.broadcast(r);
+        } else if (type === 'skill') {
+          const skillId = typeof parsed.skillId === 'string' ? parsed.skillId : '';
+          let targetIndex: number | undefined;
+          if (parsed.targetIndex !== undefined) {
+            const t = typeof parsed.targetIndex === 'number' ? Math.trunc(parsed.targetIndex) : NaN;
+            if (!Number.isInteger(t)) {
+              send(ws, { type: 'error', code: 'invalid_index' });
+              return;
+            }
+            targetIndex = t;
+          }
+          const res = roomManager.applySkillFromUser(r, user, skillId, targetIndex);
+          if (!res.ok) {
+            send(ws, { type: 'error', code: res.reason });
+            return;
+          }
+          roomManager.broadcast(r);
         } else if (type === 'rematch_request') {
           const res = roomManager.requestRematch(r, user);
           if (!res.ok) {

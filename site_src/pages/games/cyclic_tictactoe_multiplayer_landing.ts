@@ -1,6 +1,7 @@
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import type { NavUser } from '../../components/navbar';
+import { SKILL_MIN_SIZE } from '../../multiplayer/cyclicTttSkills';
 
 export interface ActiveRoomBrief {
   id: string;
@@ -8,6 +9,7 @@ export interface ActiveRoomBrief {
   status: 'waiting' | 'active' | 'ended';
   opponentUsername: string | null;
   youAreCreator: boolean;
+  skillsEnabled: boolean;
 }
 
 export function CyclicTicTacToeMultiplayerLandingPage(opts: {
@@ -184,6 +186,38 @@ export function CyclicTicTacToeMultiplayerLandingPage(opts: {
     display: block;
     width: fit-content;
   }
+  .cyc-mp-skills-field { margin-top: 1rem; gap: 0.3rem; }
+  .cyc-mp-skill-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--fog-200);
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 600;
+  }
+  .cyc-mp-skill-toggle input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+  .cyc-mp-skill-toggle input:disabled { cursor: not-allowed; }
+  .cyc-mp-skill-toggle:has(input:disabled) { opacity: 0.5; cursor: not-allowed; }
+  .cyc-mp-skill-hint {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--fog-400);
+    font-style: italic;
+  }
+  .room-skills {
+    color: var(--accent-light);
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border: 1px solid color-mix(in oklab, var(--accent) 45%, transparent);
+    border-radius: 4px;
+    padding: 0.05rem 0.35rem;
+    margin-left: 0.4rem;
+  }
 </style>
 `);
 
@@ -207,6 +241,13 @@ export function CyclicTicTacToeMultiplayerLandingPage(opts: {
           <span id="cyc-mp-size-val" class="cyc-mp-range-val">3</span>
         </div>
       </div>
+      <div class="cyc-mp-field cyc-mp-skills-field">
+        <label class="cyc-mp-skill-toggle" for="cyc-mp-skills">
+          <input type="checkbox" id="cyc-mp-skills" disabled />
+          <span>Enable Skills</span>
+        </label>
+        <span id="cyc-mp-skills-hint" class="cyc-mp-skill-hint">Skills unlock at ${String(SKILL_MIN_SIZE)}×${String(SKILL_MIN_SIZE)}+</span>
+      </div>
       <div class="cyc-mp-create-row">
         <button id="cyc-mp-create" type="button" class="cyc-mp-btn">[ Create Room ]</button>
       </div>
@@ -223,7 +264,7 @@ export function CyclicTicTacToeMultiplayerLandingPage(opts: {
           <li class="cyc-mp-room" data-room-id="${r.id}">
             <div class="cyc-mp-room-meta">
               <span class="room-status">${r.status}</span>
-              n=${String(r.boardSize)} ·
+              n=${String(r.boardSize)}${r.skillsEnabled ? html`<span class="room-skills">skills</span>` : ''} ·
               ${r.opponentUsername
     ? html`vs @${r.opponentUsername}`
     : html`<span style="color: var(--fog-400)">waiting for opponent</span>`}
@@ -239,6 +280,7 @@ export function CyclicTicTacToeMultiplayerLandingPage(opts: {
     <div class="cyc-mp-rules">
       Standard cyclic rules — you keep up to <span class="accent">⌈1.5n⌉</span> marks; placing past the limit expires your oldest.
       Turns are limited to <span class="accent">25 seconds</span>. If your opponent disconnects, they have 30 seconds to reconnect before forfeiting.
+      On <span class="accent">${String(SKILL_MIN_SIZE)}×${String(SKILL_MIN_SIZE)}+</span> boards you can enable <span class="accent">Skills</span> — an energy-fuelled deck of board-warping abilities to break stalemates.
     </div>
   `;
 
@@ -249,10 +291,27 @@ export function CyclicTicTacToeMultiplayerLandingPage(opts: {
   const sizeVal   = document.getElementById('cyc-mp-size-val');
   const createBtn = document.getElementById('cyc-mp-create');
   const errEl     = document.getElementById('cyc-mp-err');
+  const skillsBox = document.getElementById('cyc-mp-skills');
+  const skillsHint = document.getElementById('cyc-mp-skills-hint');
   if (!sizeRange || !sizeVal || !createBtn) return;
   const CSRF = ${JSON.stringify(csrf ?? '')};
+  const SKILL_MIN = ${String(SKILL_MIN_SIZE)};
 
-  sizeRange.addEventListener('input', () => { sizeVal.textContent = sizeRange.value; });
+  function syncSkillGate() {
+    if (!skillsBox) return;
+    const ok = parseInt(sizeRange.value, 10) >= SKILL_MIN;
+    skillsBox.disabled = !ok;
+    if (!ok) skillsBox.checked = false;
+    if (skillsHint) {
+      skillsHint.textContent = ok
+        ? (skillsBox.checked ? 'Board-warping abilities are on' : 'Optional — break defensive stalemates')
+        : ('Skills unlock at ' + SKILL_MIN + '×' + SKILL_MIN + '+');
+    }
+  }
+
+  sizeRange.addEventListener('input', () => { sizeVal.textContent = sizeRange.value; syncSkillGate(); });
+  if (skillsBox) skillsBox.addEventListener('change', syncSkillGate);
+  syncSkillGate();
 
   createBtn.addEventListener('click', async () => {
     errEl.textContent = '';
@@ -261,7 +320,7 @@ export function CyclicTicTacToeMultiplayerLandingPage(opts: {
       const res = await fetch('/games/cyclic-tictactoe/multiplayer/create', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ csrf: CSRF, boardSize: parseInt(sizeRange.value, 10) }),
+        body: JSON.stringify({ csrf: CSRF, boardSize: parseInt(sizeRange.value, 10), skills: !!(skillsBox && skillsBox.checked && !skillsBox.disabled) }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data || !data.ok) {

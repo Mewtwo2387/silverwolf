@@ -18,6 +18,11 @@ import {
   applyMove, checkWin, clampBoardSize, emptyBoard, markLimitFor,
   type Cell, type PlayerSymbol,
 } from './cyclicTicTacToe';
+import {
+  castSkill, canCast, freshSkillSide, maybeDisrupt, applyAirBonus, turnUpkeep,
+  SKILL_MIN_SIZE, SKILL_LOG_CAP, SKILLS,
+  type SkillCtx, type SkillId, type SkillSide, type SkillLogEntry,
+} from './cyclicTttSkills';
 
 export type RoomStatus = 'waiting' | 'active' | 'ended';
 export type EndReason = 'win' | 'draw' | 'timeout' | 'disconnect' | 'forfeit';
@@ -39,6 +44,9 @@ export interface MatchRoom {
   history: { X: number[]; O: number[] };
   currentPlayer: PlayerSymbol;
   status: RoomStatus;
+  skillsEnabled: boolean;
+  skills: { X: SkillSide; O: SkillSide };
+  skillLog: SkillLogEntry[];
   players: { X?: PlayerSlot; O?: PlayerSlot };
   creatorDiscordId: string;
   creatorUsername: string;
@@ -69,6 +77,9 @@ export interface RoomSnapshot {
   history: { X: number[]; O: number[] };
   currentPlayer: PlayerSymbol;
   status: RoomStatus;
+  skillsEnabled: boolean;
+  skills: { X: SkillSide; O: SkillSide };
+  skillLog: SkillLogEntry[];
   turnDeadline: number | null;
   result: { winner: PlayerSymbol | null; line?: number[]; reason: EndReason } | null;
   players: { X: PublicPlayer | null; O: PublicPlayer | null };
@@ -119,7 +130,7 @@ class RoomManager {
     }
   }
 
-  createRoom(creator: UserInfo, boardSize: number): CreateResult {
+  createRoom(creator: UserInfo, boardSize: number, skillsEnabled = false): CreateResult {
     if (this.rooms.size >= MAX_ACTIVE_ROOMS_GLOBAL) return { ok: false, reason: 'server_full' };
     // Count all of the creator's rooms, including 'ended' ones still pending GC.
     // Excluding ended rooms here would let one creator cycle through unlimited
@@ -130,6 +141,9 @@ class RoomManager {
     if (active.length >= ROOMS_PER_USER_CAP) return { ok: false, reason: 'too_many_rooms' };
 
     const n = clampBoardSize(boardSize);
+    // Skills are a higher-grid mode; the gate is enforced here so a crafted
+    // create request can't enable them on a tiny board.
+    const skillsOn = skillsEnabled && n >= SKILL_MIN_SIZE;
     const id = randomBytes(16).toString('base64url');
     const now = Date.now();
     const room: MatchRoom = {
@@ -140,6 +154,9 @@ class RoomManager {
       history: { X: [], O: [] },
       currentPlayer: 'X',
       status: 'waiting',
+      skillsEnabled: skillsOn,
+      skills: { X: freshSkillSide(), O: freshSkillSide() },
+      skillLog: [],
       players: {
         X: {
           discordId: creator.discordId,
@@ -215,27 +232,102 @@ class RoomManager {
     return { ok: true, slot: newSlot, firstSeat: true };
   }
 
+  // Live view onto the room's mutable skill-relevant state.
+  private skillCtx(room: MatchRoom): SkillCtx {
+    return {
+      board: room.board,
+      history: room.history,
+      size: room.boardSize,
+      markLimit: room.markLimit,
+      skills: room.skills,
+    };
+  }
+
+  private logSkill(room: MatchRoom, entry: Omit<SkillLogEntry, 'at'>) {
+    room.skillLog.push({ ...entry, at: Date.now() });
+    if (room.skillLog.length > SKILL_LOG_CAP) room.skillLog.shift();
+  }
+
+  // True if the move/skill resolved into a win or a full board; ends the room.
+  private settleAfterMove(room: MatchRoom): boolean {
+    const win = checkWin(room.board, room.boardSize);
+    if (win) {
+      this.endRoom(room, { winner: win.winner, line: win.line, reason: 'win' });
+      return true;
+    }
+    if (!room.board.includes(null)) {
+      this.endRoom(room, { winner: null, reason: 'draw' });
+      return true;
+    }
+    return false;
+  }
+
   applyMoveFromUser(room: MatchRoom, user: UserInfo, index: number):
     { ok: true } | { ok: false; reason: string } {
     if (room.status !== 'active') return { ok: false, reason: 'game_not_active' };
     const slot = room.players[room.currentPlayer];
     if (!slot || slot.discordId !== user.discordId) return { ok: false, reason: 'not_your_turn' };
+    const player = room.currentPlayer;
+
+    // Dissonance may redirect the chosen cell to a random empty one.
+    let target = index;
+    if (room.skillsEnabled) {
+      const disrupt = maybeDisrupt(this.skillCtx(room), player, index);
+      target = disrupt.index;
+      if (disrupt.scrambled) {
+        this.logSkill(room, { by: player === 'X' ? 'O' : 'X', event: 'scramble' });
+      }
+    }
+
     const res = applyMove(
       {
         board: room.board, history: room.history, size: room.boardSize, markLimit: room.markLimit,
       },
-      room.currentPlayer,
-      index,
+      player,
+      target,
     );
     if (!res.ok) return { ok: false, reason: res.reason };
-    const win = checkWin(room.board, room.boardSize);
-    if (win) {
-      this.endRoom(room, { winner: win.winner, line: win.line, reason: 'win' });
-    } else if (!room.board.includes(null)) {
-      this.endRoom(room, { winner: null, reason: 'draw' });
-    } else {
-      room.currentPlayer = room.currentPlayer === 'X' ? 'O' : 'X';
+
+    let ended = this.settleAfterMove(room);
+    // Air Support: a bonus heuristic mark after the manual placement resolves.
+    if (!ended && room.skillsEnabled && room.skills[player].airTurns > 0) {
+      applyAirBonus(this.skillCtx(room), player);
+      ended = this.settleAfterMove(room);
+    }
+
+    if (!ended) {
+      if (room.skillsEnabled) turnUpkeep(room.skills[player]);
+      room.currentPlayer = player === 'X' ? 'O' : 'X';
       this.setTurnTimer(room);
+    }
+    room.lastActivityAt = Date.now();
+    return { ok: true };
+  }
+
+  // A skill cast by the player whose turn it is. Instant skills keep the turn
+  // (the caster still places a mark afterward); Bomb consumes the turn.
+  applySkillFromUser(room: MatchRoom, user: UserInfo, skillId: string, targetIndex?: number):
+    { ok: true } | { ok: false; reason: string } {
+    if (!room.skillsEnabled) return { ok: false, reason: 'skills_disabled' };
+    if (room.status !== 'active') return { ok: false, reason: 'game_not_active' };
+    const slot = room.players[room.currentPlayer];
+    if (!slot || slot.discordId !== user.discordId) return { ok: false, reason: 'not_your_turn' };
+    if (!(skillId in SKILLS)) return { ok: false, reason: 'unknown_skill' };
+    const player = room.currentPlayer;
+    const id = skillId as SkillId;
+    if (!canCast(this.skillCtx(room), player, id)) return { ok: false, reason: 'cannot_cast' };
+
+    const out = castSkill(this.skillCtx(room), player, id, targetIndex);
+    if (!out.ok) return { ok: false, reason: out.reason };
+    for (const ev of out.events) this.logSkill(room, { by: player, event: ev });
+
+    if (out.consumesTurn) {
+      const ended = this.settleAfterMove(room);
+      if (!ended) {
+        turnUpkeep(room.skills[player]);
+        room.currentPlayer = player === 'X' ? 'O' : 'X';
+        this.setTurnTimer(room);
+      }
     }
     room.lastActivityAt = Date.now();
     return { ok: true };
@@ -270,6 +362,8 @@ class RoomManager {
       room.players.O = newO;
       room.board = emptyBoard(room.boardSize);
       room.history = { X: [], O: [] };
+      room.skills = { X: freshSkillSide(), O: freshSkillSide() };
+      room.skillLog = [];
       room.result = null;
       room.endedAt = null;
       // Reset so the next match record's createdAt..endedAt window measures
@@ -414,6 +508,12 @@ class RoomManager {
       history: { X: [...room.history.X], O: [...room.history.O] },
       currentPlayer: room.currentPlayer,
       status: room.status,
+      skillsEnabled: room.skillsEnabled,
+      skills: {
+        X: { ...room.skills.X, cd: { ...room.skills.X.cd } },
+        O: { ...room.skills.O, cd: { ...room.skills.O.cd } },
+      },
+      skillLog: room.skillLog.map((e) => ({ ...e })),
       turnDeadline: room.turnDeadline,
       result: room.result,
       players: { X: pub(room.players.X), O: pub(room.players.O) },

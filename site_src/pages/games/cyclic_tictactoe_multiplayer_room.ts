@@ -2,6 +2,7 @@ import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import type { NavUser } from '../../components/navbar';
 import type { RoomSnapshot } from '../../multiplayer/cyclic_tictactoe_rooms';
+import { SKILLS, SKILL_ORDER, ENERGY_CAP } from '../../multiplayer/cyclicTttSkills';
 
 // JSON.stringify escapes neither '<' nor '/', which would let a malicious
 // username close the surrounding <script> tag. Escape '<' to < so the
@@ -118,6 +119,7 @@ function roomStyles() {
     flex-direction: column;
     gap: 1.25rem;
   }
+  .cyc-mp-wrap.skills-on { max-width: 1000px; }
   .cyc-mp-panel {
     background: color-mix(in oklab, var(--ink-800) 50%, transparent);
     border: 1px solid color-mix(in oklab, var(--accent) 18%, var(--ink-600));
@@ -338,6 +340,103 @@ function roomStyles() {
   @media (prefers-reduced-motion: reduce) {
     .cyc-mp-cell .mark, .cyc-mp-cell .mark.fading, .cyc-mp-cell.win { animation: none; }
   }
+
+  /* ── Skills ─────────────────────────────────────────────────────────── */
+  .cyc-mp-arena {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0.9rem;
+    flex-wrap: nowrap;
+  }
+  .cyc-mp-arena .cyc-mp-board-shell { flex: 0 1 auto; }
+  .cyc-mp-side {
+    flex: 0 0 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .cyc-mp-side.foe { flex-basis: 178px; }
+  .cyc-mp-side-title {
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--fog-400);
+    margin: 0 0 0.1rem;
+  }
+
+  .cyc-mp-energy { display: flex; flex-direction: column; gap: 0.3rem; }
+  .cyc-mp-energy-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 0.72rem; color: var(--fog-300);
+  }
+  .cyc-mp-energy-head .val { color: var(--accent-light); font-weight: 800; font-size: 0.9rem; }
+  .cyc-mp-energy-bar {
+    height: 7px; background: var(--ink-700);
+    border: 1px solid var(--ink-600); border-radius: 999px; overflow: hidden;
+  }
+  .cyc-mp-energy-fill {
+    height: 100%; width: 0;
+    background: linear-gradient(90deg, var(--accent), var(--accent-light));
+    box-shadow: 0 0 8px var(--glow-bright);
+    transition: width 0.25s ease;
+  }
+
+  .cyc-mp-skill-btn {
+    display: flex; flex-direction: column; gap: 0.15rem;
+    text-align: left;
+    background: color-mix(in oklab, var(--ink-900) 50%, transparent);
+    border: 1px solid var(--ink-600);
+    border-radius: 0.5rem;
+    padding: 0.45rem 0.55rem;
+    color: var(--fog-200);
+    font: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+  }
+  .cyc-mp-skill-btn:not(:disabled):hover { border-color: var(--accent); box-shadow: 0 0 10px var(--glow-faint); }
+  .cyc-mp-skill-btn:not(:disabled):active { transform: translateY(1px); }
+  .cyc-mp-skill-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .cyc-mp-skill-btn.armed { border-color: var(--accent); box-shadow: 0 0 14px var(--glow-bright); }
+  .cyc-mp-skill-btn .skill-name {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-weight: 700; font-size: 0.8rem; color: var(--fog-100);
+  }
+  .cyc-mp-skill-btn .skill-name .cost { color: var(--accent-light); font-size: 0.72rem; }
+  .cyc-mp-skill-btn .skill-cd { font-size: 0.66rem; color: var(--fog-400); }
+  .cyc-mp-skill-btn .skill-cd.ready { color: #4ade80; }
+  .cyc-mp-skill-btn .skill-desc { font-size: 0.64rem; color: var(--fog-400); line-height: 1.3; }
+
+  .cyc-mp-board.targeting .cyc-mp-cell:not(.disabled) { cursor: crosshair; }
+  .cyc-mp-board.targeting .cyc-mp-cell:not(.disabled):hover {
+    background: color-mix(in oklab, var(--danger) 35%, var(--ink-900));
+    box-shadow: inset 0 0 0 1px var(--danger);
+  }
+
+  .cyc-mp-foe-box {
+    background: color-mix(in oklab, var(--danger) 7%, transparent);
+    border: 1px solid color-mix(in oklab, var(--danger) 28%, var(--ink-600));
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    display: flex; flex-direction: column; gap: 0.35rem;
+  }
+  .cyc-mp-foe-badge {
+    font-size: 0.68rem; color: var(--danger);
+    background: color-mix(in oklab, var(--danger) 12%, transparent);
+    border: 1px solid color-mix(in oklab, var(--danger) 30%, transparent);
+    border-radius: 4px; padding: 0.15rem 0.4rem;
+  }
+  .cyc-mp-foe-none { font-size: 0.68rem; color: var(--fog-400); font-style: italic; }
+  .cyc-mp-foe-log { display: flex; flex-direction: column; gap: 0.2rem; max-height: 220px; overflow-y: auto; }
+  .cyc-mp-foe-entry { font-size: 0.66rem; color: var(--fog-300); line-height: 1.3; }
+  .cyc-mp-foe-entry.hit { color: var(--danger); font-weight: 600; }
+
+  @media (max-width: 760px) {
+    .cyc-mp-arena { flex-wrap: wrap; }
+    .cyc-mp-side { flex-basis: 100%; }
+    .cyc-mp-arena .cyc-mp-board-shell { order: -1; flex-basis: 100%; }
+  }
 </style>
 `);
 }
@@ -357,11 +456,16 @@ function roomScript(nonce: string, ctx: {
     selfId: ${inlineJson(ctx.selfDiscordId)},
     initialSnapshot: ${inlineJson(ctx.snapshot)},
   };
+  const SKILLS = ${inlineJson(SKILLS)};
+  const SKILL_ORDER = ${inlineJson(SKILL_ORDER)};
+  const ENERGY_CAP = ${String(ENERGY_CAP)};
 
   const viewEl = document.getElementById('cyc-mp-view');
+  const rootEl = document.getElementById('cyc-mp-root');
   if (!viewEl) return;
 
   let state = CTX.initialSnapshot; // RoomSnapshot | null
+  let armedSkill = null; // skill id awaiting a board target (bomb)
   let ws = null;
   let wsRetryDelayMs = 1500;
   let wsClosedByServer = false;
@@ -451,6 +555,155 @@ function roomScript(nonce: string, ctx: {
     return state.players[other];
   }
 
+  // ── Skills ────────────────────────────────────────────────────────────
+  function skillsLive() {
+    return !!(state && state.skillsEnabled && state.skills && youAre());
+  }
+
+  function myTurnNow() {
+    const me = youAre();
+    return !!(state && state.status === 'active' && me && state.currentPlayer === me);
+  }
+
+  function canCastClient(id) {
+    const me = youAre();
+    if (!me || !state || !state.skills) return false;
+    const meta = SKILLS[id];
+    const st = state.skills[me];
+    if (!meta || !st) return false;
+    if (st.energy < meta.cost) return false;
+    if (id === 'collapse') return !st.collapseUsed;
+    return st.cd[id] === 0;
+  }
+
+  function cancelArm() {
+    if (armedSkill) { armedSkill = null; render(); }
+  }
+
+  function onSkillClick(id) {
+    if (!myTurnNow() || !canCastClient(id)) return;
+    if (SKILLS[id].target) {
+      armedSkill = armedSkill === id ? null : id;
+      render();
+      return;
+    }
+    armedSkill = null;
+    send({ type: 'skill', skillId: id });
+  }
+
+  function energyBlock() {
+    const me = youAre();
+    const st = state.skills[me];
+    const wrap = el('div', { class: 'cyc-mp-energy' });
+    const head = el('div', { class: 'cyc-mp-energy-head' }, [
+      el('span', null, 'Energy'),
+      el('span', { class: 'val' }, st.energy + ' / ' + ENERGY_CAP),
+    ]);
+    const bar = el('div', { class: 'cyc-mp-energy-bar' });
+    const fill = el('div', { class: 'cyc-mp-energy-fill' });
+    fill.style.width = Math.round((100 * st.energy) / ENERGY_CAP) + '%';
+    bar.appendChild(fill);
+    wrap.appendChild(head);
+    wrap.appendChild(bar);
+    return wrap;
+  }
+
+  function skillPanel() {
+    const me = youAre();
+    const st = state.skills[me];
+    const side = el('div', { class: 'cyc-mp-side mine' });
+    side.appendChild(el('p', { class: 'cyc-mp-side-title' }, 'Your Skills'));
+    side.appendChild(energyBlock());
+    const turn = myTurnNow();
+    for (const id of SKILL_ORDER) {
+      const meta = SKILLS[id];
+      let label; let ready = true;
+      if (id === 'collapse' && st.collapseUsed) { label = 'used up'; ready = false; }
+      else if (id !== 'collapse' && st.cd[id] > 0) { label = 'cooldown ' + st.cd[id]; ready = false; }
+      else if (st.energy < meta.cost) { label = 'need ' + meta.cost + '\\u26a1'; ready = false; }
+      else label = 'ready';
+      const btn = el('button', {
+        type: 'button',
+        class: 'cyc-mp-skill-btn' + (armedSkill === id ? ' armed' : ''),
+      }, [
+        el('span', { class: 'skill-name' }, [
+          el('span', null, meta.name),
+          el('span', { class: 'cost' }, meta.cost > 0 ? (meta.cost + '\\u26a1') : 'free'),
+        ]),
+        el('span', { class: 'skill-cd' + (ready ? ' ready' : '') }, label),
+        el('span', { class: 'skill-desc' }, meta.desc),
+      ]);
+      btn.disabled = !(turn && canCastClient(id));
+      btn.addEventListener('click', () => onSkillClick(id));
+      side.appendChild(btn);
+    }
+    if (armedSkill) {
+      side.appendChild(el('div', { style: 'font-size:0.64rem; color: var(--danger); line-height:1.3;' },
+        'Pick a target cell for ' + SKILLS[armedSkill].name + ' (Esc to cancel).'));
+    }
+    return side;
+  }
+
+  function formatEvent(entry, me) {
+    const mine = entry.by === me;
+    const who = mine ? 'You' : 'Opponent';
+    switch (entry.event) {
+      case 'bomb': return { text: who + ' dropped a Bomb', hit: !mine };
+      case 'bomb_blocked':
+        return mine
+          ? { text: "Opponent's Iron Dome shielded your Bomb", hit: false }
+          : { text: 'Your Iron Dome shielded marks from their Bomb', hit: false };
+      case 'dome': return { text: who + ' raised Iron Dome', hit: false };
+      case 'air': return { text: who + ' called Air Support', hit: !mine };
+      case 'collapse': return { text: who + ' triggered Collapse', hit: false };
+      case 'dissonance': return { text: who + ' cast Dissonance', hit: !mine };
+      case 'dissonance_blocked':
+        return mine
+          ? { text: "Opponent's Iron Dome deflected your Dissonance", hit: false }
+          : { text: 'Your Iron Dome deflected their Dissonance', hit: false };
+      case 'scramble':
+        // entry.by is the caster; the victim is the other player.
+        return mine
+          ? { text: "Opponent's move was scrambled by your Dissonance", hit: false }
+          : { text: 'Dissonance scrambled your move', hit: true };
+      default: return { text: who + ' used a skill', hit: false };
+    }
+  }
+
+  function foeFeed() {
+    const me = youAre();
+    const opp = me === 'X' ? 'O' : 'X';
+    const side = el('div', { class: 'cyc-mp-side foe' });
+    side.appendChild(el('p', { class: 'cyc-mp-side-title' }, 'Opponent'));
+
+    const box = el('div', { class: 'cyc-mp-foe-box' });
+    const active = [];
+    const oppSt = state.skills[opp];
+    const mySt = state.skills[me];
+    if (oppSt.shieldTurns > 0) active.push('Iron Dome (' + oppSt.shieldTurns + ' left)');
+    if (oppSt.airTurns > 0) active.push('Air Support (' + oppSt.airTurns + ' left)');
+    if (mySt.dissonanceTurns > 0) active.push('Dissonance on you (' + mySt.dissonanceTurns + ' left)');
+    if (active.length === 0) {
+      box.appendChild(el('div', { class: 'cyc-mp-foe-none' }, '— nothing active —'));
+    } else {
+      for (const a of active) box.appendChild(el('div', { class: 'cyc-mp-foe-badge' }, a));
+    }
+    side.appendChild(box);
+
+    const log = el('div', { class: 'cyc-mp-foe-log' });
+    const entries = (state.skillLog || []).slice();
+    if (entries.length === 0) {
+      log.appendChild(el('div', { class: 'cyc-mp-foe-none' }, 'no skills used yet'));
+    } else {
+      for (let i = entries.length - 1; i >= 0; i--) {
+        const f = formatEvent(entries[i], me);
+        log.appendChild(el('div', { class: 'cyc-mp-foe-entry' + (f.hit ? ' hit' : '') }, f.text));
+      }
+    }
+    side.appendChild(log);
+    return side;
+  }
+
   // ── Sub-renderers ───────────────────────────────────────────────────────
   function renderError() {
     const codeMap = {
@@ -517,12 +770,15 @@ function roomScript(nonce: string, ctx: {
     const n = state.boardSize;
     const me = youAre();
     const myTurn = state.status === 'active' && me && state.currentPlayer === me;
+    const arming = !!armedSkill && myTurn;
     const shell = el('div', { class: 'cyc-mp-board-shell' });
-    const board = el('div', { class: 'cyc-mp-board' });
+    const board = el('div', { class: 'cyc-mp-board' + (arming ? ' targeting' : '') });
     const cells = [];
     for (let i = 0; i < n * n; i++) {
-      const cell = el('div', { class: 'cyc-mp-cell' + (myTurn ? '' : ' disabled') });
       const owner = state.board[i];
+      // While arming Bomb, every cell is a valid target (centre may be occupied).
+      const clickable = arming || (myTurn && !owner);
+      const cell = el('div', { class: 'cyc-mp-cell' + (clickable ? '' : ' disabled') });
       if (owner) {
         const isFading = state.history[owner].length >= state.markLimit && state.history[owner][0] === i;
         const span = el('span', { class: 'mark ' + owner.toLowerCase() + (isFading ? ' fading' : '') }, owner);
@@ -531,8 +787,17 @@ function roomScript(nonce: string, ctx: {
       if (state.result && state.result.line && state.result.line.indexOf(i) !== -1) {
         cell.classList.add('win');
       }
-      if (myTurn && !owner) {
-        cell.addEventListener('click', () => send({ type: 'move', index: i }));
+      if (clickable) {
+        const idx = i;
+        cell.addEventListener('click', () => {
+          if (armedSkill && myTurnNow()) {
+            const skillId = armedSkill;
+            armedSkill = null;
+            send({ type: 'skill', skillId, targetIndex: idx });
+          } else if (!owner) {
+            send({ type: 'move', index: idx });
+          }
+        });
       }
       board.appendChild(cell);
       cells.push(cell);
@@ -691,10 +956,19 @@ function roomScript(nonce: string, ctx: {
     const t = timerLine();
     if (t) viewEl.appendChild(t);
 
+    if (rootEl) rootEl.classList.toggle('skills-on', skillsLive() && state.status !== 'waiting');
+
     if (state.status === 'waiting') {
       // Only the seated player(s) see the invite. Visitors who haven't been
       // seated yet will auto-seat on WS join via the server.
       viewEl.appendChild(inviteBlock());
+    } else if (skillsLive()) {
+      // Board flanked by opponent activity (left) and your skill deck (right).
+      viewEl.appendChild(el('div', { class: 'cyc-mp-arena' }, [
+        foeFeed(),
+        boardEl(),
+        skillPanel(),
+      ]));
     } else {
       viewEl.appendChild(boardEl());
     }
@@ -711,6 +985,10 @@ function roomScript(nonce: string, ctx: {
   // First paint from server snapshot (or "connecting" if absent).
   render();
   openWS();
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') cancelArm();
+  });
 
   // Re-layout the board on resize so cells fit.
   let resizeRaf;
