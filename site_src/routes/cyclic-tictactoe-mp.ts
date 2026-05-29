@@ -84,7 +84,7 @@ export function registerCyclicTttMpRoutes(
       if (result.reason === 'too_many_rooms') {
         return c.json({
           ok: false,
-          error: `You already have ${ROOMS_PER_USER_CAP} active rooms. Finish or leave one before creating another.`,
+          error: `You're at the limit of ${ROOMS_PER_USER_CAP} rooms. Recently finished rooms still count for a few minutes — wait for them to clear, or leave one.`,
         }, 429);
       }
       // server_full

@@ -708,7 +708,6 @@ function roomScript(nonce: string, ctx: {
   function renderError() {
     const codeMap = {
       room_full: 'This room is already full.',
-      self_play: 'You can\\'t play yourself — open the link from a different account.',
       bad_csrf: 'Session expired. Reload the page.',
       auth_required: 'Authentication required. Reload the page.',
       room_not_found: 'This room no longer exists.',

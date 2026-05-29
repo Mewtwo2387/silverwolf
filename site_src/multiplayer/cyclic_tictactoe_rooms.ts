@@ -269,6 +269,13 @@ class RoomManager {
     if (!slot || slot.discordId !== user.discordId) return { ok: false, reason: 'not_your_turn' };
     const player = room.currentPlayer;
 
+    // Reject an invalid placement up front so it can't burn a Dissonance turn
+    // off the debuff before applyMove would have failed anyway.
+    if (!Number.isInteger(index) || index < 0 || index >= room.board.length) {
+      return { ok: false, reason: 'out_of_range' };
+    }
+    if (room.board[index] !== null) return { ok: false, reason: 'cell_taken' };
+
     // Dissonance may redirect the chosen cell to a random empty one.
     let target = index;
     if (room.skillsEnabled) {
