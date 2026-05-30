@@ -1,3 +1,4 @@
+import { stripModelTimestampPrefix } from '../../utils/ai';
 import { log } from '../../utils/log';
 import aiChatQueries from '../queries/aiChatQueries';
 import type Database from '../Database';
@@ -182,7 +183,10 @@ class AiChatModel {
    * Appends a message to the session's history.
    */
   async addHistory(sessionId: number, role: 'user' | 'model' | 'assistant' | 'tool', message: string): Promise<void> {
-    await this.db.executeQuery(aiChatQueries.ADD_HISTORY, [sessionId, role, message]);
+    const stored = role === 'model' || role === 'assistant'
+      ? stripModelTimestampPrefix(message)
+      : message;
+    await this.db.executeQuery(aiChatQueries.ADD_HISTORY, [sessionId, role, stored]);
   }
 
   /**
