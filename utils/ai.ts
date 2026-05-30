@@ -44,7 +44,24 @@ export interface ToolCallRecord {
   ok: boolean;
 }
 
-const MAX_TOOL_ITERATIONS = 3;
+const MAX_TOOL_ITERATIONS = 5;
+
+/**
+ * Some open models (Qwen/Hermes/DeepSeek lineage) emit tool calls as plain text
+ * — e.g. `<tool_call><function=web_search><parameter=query>…` — instead of via the
+ * structured tool_calls API. This leaks into the final message, most often on the
+ * forced-close turn where we strip `tools` from the request. Scrub those blocks so
+ * the user never sees a half-written call.
+ */
+function stripLeakedToolCalls(text: string): string {
+  if (!text) return text;
+  return text
+    .replace(/<tool_call>[\s\S]*?(?:<\/tool_call>|$)/gi, '')
+    .replace(/<function=[\s\S]*?(?:<\/function>|$)/gi, '')
+    .replace(/<parameter=[\s\S]*?(?:<\/parameter>|$)/gi, '')
+    .replace(/<\|(?:python_tag|tool▁calls▁begin|tool▁calls▁end|tool▁call▁begin|tool▁call▁end|tool▁sep|tool_calls?_begin|tool_calls?_end|tool_call_begin|tool_call_end|tool_sep)\|>/gi, '')
+    .trim();
+}
 
 interface HistoryEntry {
   role: string;
@@ -176,6 +193,14 @@ ${systemPrompt || ''}
       };
       if (toolsAvailable && !isLastForcedClose) {
         requestBody.tools = toolDefs;
+      } else if (toolsAvailable && isLastForcedClose
+        && requestMessages[requestMessages.length - 1]?.role !== 'system') {
+        // Tools are dropped this turn. Tell the model explicitly to stop and answer,
+        // otherwise it tends to hand-write a text-format tool call (which then leaks).
+        requestMessages.push({
+          role: 'system',
+          content: 'You have reached the search limit. Do NOT attempt any more tool or function calls. Answer the user now using the information already gathered.',
+        });
       }
 
       let completion: any;
@@ -254,7 +279,11 @@ ${systemPrompt || ''}
       break;
     }
 
-    return { text: finalText, images: [], toolCalls };
+    let cleanedText = stripLeakedToolCalls(finalText);
+    if (!cleanedText && finalText.trim()) {
+      cleanedText = 'I gathered search results but ran out of tool calls before I could finish. Try asking again or narrowing the question.';
+    }
+    return { text: cleanedText, images: [], toolCalls };
   }
 
   if (provider === 'gemini') {
