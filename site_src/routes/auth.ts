@@ -8,12 +8,16 @@ import {
 } from '../auth/discord-oauth';
 import {
   clearOAuthStateCookie,
+  clearReturnCookie,
   clearSessionCookie,
   constantTimeEqual,
   createSession,
+  isSafeReturnPath,
   newRandomId,
   readOAuthStateCookie,
+  readReturnCookie,
   setOAuthStateCookie,
+  setReturnCookie,
   setSessionCookie,
 } from '../auth/session';
 import type { AppEnv } from '../shared';
@@ -23,6 +27,15 @@ export function registerAuthRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
     try {
       const state = newRandomId(16);
       setOAuthStateCookie(c, state);
+      // Optional ?return=/some/path — restored after OAuth callback. Rejected
+      // unless it's a same-origin absolute path so we can't be turned into an
+      // open redirect.
+      const returnTo = c.req.query('return');
+      if (isSafeReturnPath(returnTo)) {
+        setReturnCookie(c, returnTo);
+      } else {
+        clearReturnCookie(c);
+      }
       return c.redirect(buildAuthorizeUrl(state));
     } catch (err) {
       logError('login init failed:', err);
@@ -47,7 +60,9 @@ export function registerAuthRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
       await silverwolf.db.user.getUser(me.id);
       const { id: sessionId } = await createSession(silverwolf, me.id);
       setSessionCookie(c, sessionId);
-      return c.redirect('/me');
+      const returnTo = readReturnCookie(c);
+      clearReturnCookie(c);
+      return c.redirect(returnTo ?? '/me');
     } catch (err) {
       logError('OAuth callback failed:', err);
       return c.text('Login failed', 500);

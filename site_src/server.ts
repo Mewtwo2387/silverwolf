@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { createBunWebSocket } from 'hono/bun';
 import { log } from '../utils/log';
 import type { Silverwolf } from '../classes/silverwolf';
 import { startWebsiteCachePrewarm } from './bot-bridge';
@@ -11,6 +12,7 @@ import { registerAuthRoutes } from './routes/auth';
 import { registerPageRoutes } from './routes/pages';
 import { registerGameApiRoutes } from './routes/games-api';
 import { registerAiSlopApiRoutes } from './routes/ai-slop-api';
+import { registerCyclicTttMpRoutes } from './routes/cyclic-tictactoe-mp';
 import type { AppEnv } from './shared';
 
 const PORT = 6769;
@@ -19,6 +21,11 @@ const HOSTNAME = '0.0.0.0';
 
 export function startWebsite(silverwolf: Silverwolf) {
   const app = new Hono<AppEnv>();
+
+  // hono/bun bridges Hono routes into Bun's native WebSocket upgrade — the
+  // `websocket` object below MUST be passed to Bun.serve, otherwise upgrade
+  // attempts fall through and clients see a hung request.
+  const { upgradeWebSocket, websocket } = createBunWebSocket();
 
   // Outermost: runs last on the way out, so it rewrites the fully-headered HTML
   // body to add social-embed <meta> tags (no-op for non-HTML responses).
@@ -32,6 +39,7 @@ export function startWebsite(silverwolf: Silverwolf) {
   registerPageRoutes(app, silverwolf);
   registerGameApiRoutes(app, silverwolf);
   registerAiSlopApiRoutes(app, silverwolf);
+  registerCyclicTttMpRoutes(app, silverwolf, upgradeWebSocket);
 
   app.notFound((c) => c.text('not found', 404));
 
@@ -39,6 +47,7 @@ export function startWebsite(silverwolf: Silverwolf) {
     port: PORT,
     hostname: HOSTNAME,
     fetch: app.fetch,
+    websocket,
   });
 
   log(`site_src listening on http://${server.hostname}:${server.port}`);
