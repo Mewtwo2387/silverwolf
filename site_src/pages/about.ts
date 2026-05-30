@@ -245,6 +245,146 @@ const aboutExtras = (nonce: string) => raw(`
     from, to { opacity: 0; }
     50% { opacity: 1; }
   }
+
+  /* ── Artist credit: clickable hero image ───────────────────────────────── */
+  .artist-trigger { cursor: pointer; }
+  .artist-trigger .artist-hint {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 9999px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    color: var(--accent-light);
+    background: color-mix(in oklab, var(--ink-900) 70%, transparent);
+    border: 1px solid color-mix(in oklab, var(--accent) 45%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 0 12px var(--glow-faint);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  .artist-trigger:hover .artist-hint,
+  .artist-trigger:focus-visible .artist-hint {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .artist-hint svg { width: 16px; height: 16px; }
+
+  /* ── Artist modal (Holographic Transmitter Theme — matches birthdays) ──── */
+  #artist-modal-backdrop {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(4, 6, 13, 0.75);
+    backdrop-filter: blur(8px) saturate(180%);
+    -webkit-backdrop-filter: blur(8px) saturate(180%);
+  }
+  #artist-modal {
+    position: relative;
+    width: 100%;
+    max-width: 22rem;
+    background: color-mix(in oklab, var(--ink-800) 75%, transparent);
+    border: 1px solid var(--accent);
+    border-radius: 1rem;
+    padding: 1.75rem;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow:
+      0 24px 64px rgba(0, 0, 0, 0.7),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 0 30px var(--glow-faint);
+    overflow: hidden;
+  }
+  #artist-modal::before {
+    content: '// ARTIST_CREDIT';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2.75rem;
+    display: flex;
+    align-items: center;
+    background: linear-gradient(90deg, rgba(34, 211, 255, 0.1), transparent);
+    border-bottom: 1px solid rgba(34, 211, 255, 0.2);
+    padding: 0 1.75rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: bold;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+  }
+  #artist-modal-close {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.75rem;
+    z-index: 10;
+    width: 1.75rem;
+    height: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.375rem;
+    color: var(--danger);
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid rgba(255, 107, 138, 0.2);
+    background: rgba(255, 107, 138, 0.05);
+  }
+  #artist-modal-close:hover {
+    color: #ffffff;
+    background: var(--danger);
+    border-color: var(--danger);
+    box-shadow: 0 0 10px rgba(255, 107, 138, 0.5);
+  }
+  #artist-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding-top: 3.25rem;
+  }
+  #artist-modal-body .artist-caption {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--fog-300);
+    margin: 0 0 0.25rem;
+    text-align: center;
+    letter-spacing: 0.02em;
+  }
+  .artist-link {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.7rem 0.9rem;
+    border-radius: 0.6rem;
+    text-decoration: none;
+    color: var(--fog-100);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+    background: color-mix(in oklab, var(--ink-900) 45%, transparent);
+    border: 1px solid var(--ink-600);
+    transition: border-color 0.2s, background-color 0.2s, transform 0.15s, box-shadow 0.2s;
+  }
+  .artist-link:hover {
+    transform: translateY(-1px);
+    border-color: color-mix(in oklab, var(--accent) 55%, transparent);
+    background: color-mix(in oklab, var(--accent) 10%, transparent);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35), 0 0 10px var(--glow-faint);
+  }
+  .artist-link svg { width: 20px; height: 20px; flex-shrink: 0; }
+  .artist-link .artist-link-label { display: flex; flex-direction: column; line-height: 1.25; }
+  .artist-link .artist-link-name { color: var(--fog-100); font-weight: 600; }
+  .artist-link .artist-link-sub { color: var(--fog-400); font-size: 0.72rem; }
+  .artist-link .artist-link-arrow { margin-left: auto; color: var(--accent-light); opacity: 0.7; }
 </style>
 <noscript>
   <style>
@@ -354,6 +494,102 @@ const aboutExtras = (nonce: string) => raw(`
 </script>
 `);
 
+// Artist-credit modal shell + driver. Rendered in the body (after the hero)
+// so the script runs once the trigger exists — mirrors the birthdays modal.
+const artistModal = raw(`
+<div id="artist-modal-backdrop" role="presentation">
+  <div id="artist-modal" role="dialog" aria-modal="true" aria-label="Artist credit">
+    <button id="artist-modal-close" aria-label="Close">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14"
+           fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="1" y1="1" x2="13" y2="13"/><line x1="13" y1="1" x2="1" y2="13"/>
+      </svg>
+    </button>
+    <div id="artist-modal-body">
+      <p class="artist-caption">Illustration by the artist — find more of their work:</p>
+      <a class="artist-link" href="https://www.pixiv.net/en/users/15611520" target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="color:#0096fa;"><path d="M4.935 0A4.924 4.924 0 0 0 0 4.935v14.13A4.924 4.924 0 0 0 4.935 24h14.13A4.924 4.924 0 0 0 24 19.065V4.935A4.924 4.924 0 0 0 19.065 0H4.935zm7.81 4.547c2.181 0 4.058.676 5.399 1.847a5.74 5.74 0 0 1 2.01 4.42c0 1.694-.636 3.244-1.794 4.366-1.183 1.148-2.804 1.78-4.566 1.78-1.844 0-3.55-.633-4.39-1.027v2.84c.43.123 1.029.31 1.029.953 0 .532-.426.96-.954.96H5.95a.957.957 0 0 1-.957-.96c0-.604.564-.823.954-.94V7.81c1.214-1.92 3.59-3.263 6.798-3.263zm.123 1.738c-2.51 0-4.434 1.276-5.276 2.524v5.494c.764.435 2.46 1.156 4.21 1.156 1.268 0 2.4-.45 3.212-1.234.81-.785 1.262-1.872 1.262-3.066 0-1.198-.45-2.288-1.262-3.072-.812-.785-1.946-1.236-3.216-1.236l-.13.013z"/></svg>
+        <span class="artist-link-label">
+          <span class="artist-link-name">Pixiv</span>
+          <span class="artist-link-sub">pixiv.net/en/users/15611520</span>
+        </span>
+        <span class="artist-link-arrow">→</span>
+      </a>
+      <a class="artist-link" href="https://x.com/CAISENA33" target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/></svg>
+        <span class="artist-link-label">
+          <span class="artist-link-name">X (Twitter)</span>
+          <span class="artist-link-sub">@CAISENA33</span>
+        </span>
+        <span class="artist-link-arrow">→</span>
+      </a>
+    </div>
+  </div>
+</div>
+`);
+
+const artistModalScript = (nonce: string) => raw(`
+<script nonce="${nonce}">
+(() => {
+  const backdrop = document.getElementById('artist-modal-backdrop');
+  const modal    = document.getElementById('artist-modal');
+  const closeBtn = document.getElementById('artist-modal-close');
+  const trigger  = document.querySelector('.artist-trigger');
+  if (!backdrop || !modal || !closeBtn || !trigger) return;
+
+  // Escape any stacking context inside <main>.
+  document.body.appendChild(backdrop);
+
+  let closeTimer = null;
+
+  function openModal() {
+    if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
+    modal.style.transition = 'none';
+    modal.style.transform  = 'scale(0.94) translateY(8px)';
+    modal.style.opacity    = '0';
+    backdrop.style.display = 'flex';
+    backdrop.classList.add('open');
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        modal.style.transition = 'transform 0.22s cubic-bezier(0.22,1,0.36,1), opacity 0.18s ease';
+        modal.style.transform  = 'scale(1) translateY(0)';
+        modal.style.opacity    = '1';
+      });
+    });
+    document.body.style.overflow = 'hidden';
+    closeBtn.focus();
+  }
+
+  function closeModal() {
+    if (closeTimer) return;
+    if (!backdrop.classList.contains('open')) return;
+    backdrop.classList.remove('open');
+    modal.style.transition = 'transform 0.15s cubic-bezier(0.4,0,1,1), opacity 0.15s ease';
+    modal.style.transform  = 'scale(0.94) translateY(6px)';
+    modal.style.opacity    = '0';
+    closeTimer = setTimeout(function() {
+      backdrop.style.display       = 'none';
+      modal.style.transition       = 'none';
+      modal.style.transform        = '';
+      modal.style.opacity          = '';
+      document.body.style.overflow = '';
+      closeTimer = null;
+    }, 160);
+  }
+
+  trigger.addEventListener('click', openModal);
+  trigger.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(); }
+  });
+  closeBtn.addEventListener('click', closeModal);
+  backdrop.addEventListener('click', function(e) { if (e.target === backdrop) closeModal(); });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && backdrop.classList.contains('open')) closeModal();
+  });
+})();
+</script>
+`);
+
 export function AboutPage(opts: { nonce: string; lv999?: boolean; goof?: boolean; user?: NavUser | null }) {
   const { lv999, goof, user } = opts;
   const titleBlock = goof
@@ -458,13 +694,19 @@ export function AboutPage(opts: { nonce: string; lv999?: boolean; goof?: boolean
         </p>
         ${ctaBlock}
       </div>
-      <div class="about-image flex justify-center items-center max-[800px]:order-[-1]">
+      <div class="about-image artist-trigger relative flex justify-center items-center max-[800px]:order-[-1]" role="button" tabindex="0" aria-haspopup="dialog" aria-label="View artist credit">
         <picture class="block w-full max-w-[48rem]">
           <source type="image/avif" srcset="${lv999 ? '/static/silverwolfLv.999.avif' : '/static/silverwolf.avif'}" />
           <img src="${lv999 ? '/static/silverwolfLv.999.webp' : '/static/silverwolf.webp'}" alt="Silverwolf" width="${lv999 ? '1800' : '2000'}" height="${lv999 ? '1800' : '2000'}" decoding="async" fetchpriority="high" class="w-full h-auto" />
         </picture>
+        <span class="artist-hint">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          artist credit
+        </span>
       </div>
     </section>
+    ${artistModal}
+    ${artistModalScript(opts.nonce)}
     ${eidolonSections}
   `;
 
