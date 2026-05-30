@@ -541,14 +541,19 @@ const artistModalScript = (nonce: string) => raw(`
   document.body.appendChild(backdrop);
 
   let closeTimer = null;
+  let previousActiveElement = null;
+  let previousBodyOverflow = '';
 
   function openModal() {
     if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
+    previousActiveElement = document.activeElement;
+    previousBodyOverflow = document.body.style.overflow;
     modal.style.transition = 'none';
     modal.style.transform  = 'scale(0.94) translateY(8px)';
     modal.style.opacity    = '0';
     backdrop.style.display = 'flex';
     backdrop.classList.add('open');
+    trigger.setAttribute('aria-expanded', 'true');
     requestAnimationFrame(function() {
       requestAnimationFrame(function() {
         modal.style.transition = 'transform 0.22s cubic-bezier(0.22,1,0.36,1), opacity 0.18s ease';
@@ -564,6 +569,7 @@ const artistModalScript = (nonce: string) => raw(`
     if (closeTimer) return;
     if (!backdrop.classList.contains('open')) return;
     backdrop.classList.remove('open');
+    trigger.setAttribute('aria-expanded', 'false');
     modal.style.transition = 'transform 0.15s cubic-bezier(0.4,0,1,1), opacity 0.15s ease';
     modal.style.transform  = 'scale(0.94) translateY(6px)';
     modal.style.opacity    = '0';
@@ -572,7 +578,12 @@ const artistModalScript = (nonce: string) => raw(`
       modal.style.transition       = 'none';
       modal.style.transform        = '';
       modal.style.opacity          = '';
-      document.body.style.overflow = '';
+      document.body.style.overflow = previousBodyOverflow || '';
+      if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
+        previousActiveElement.focus();
+      }
+      previousActiveElement = null;
+      previousBodyOverflow = '';
       closeTimer = null;
     }, 160);
   }
@@ -694,7 +705,7 @@ export function AboutPage(opts: { nonce: string; lv999?: boolean; goof?: boolean
         </p>
         ${ctaBlock}
       </div>
-      <div class="about-image artist-trigger relative flex justify-center items-center max-[800px]:order-[-1]" role="button" tabindex="0" aria-haspopup="dialog" aria-label="View artist credit">
+      <div class="about-image artist-trigger relative flex justify-center items-center max-[800px]:order-[-1]" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="artist-modal" aria-expanded="false" aria-label="View artist credit">
         <picture class="block w-full max-w-[48rem]">
           <source type="image/avif" srcset="${lv999 ? '/static/silverwolfLv.999.avif' : '/static/silverwolf.avif'}" />
           <img src="${lv999 ? '/static/silverwolfLv.999.webp' : '/static/silverwolf.webp'}" alt="Silverwolf" width="${lv999 ? '1800' : '2000'}" height="${lv999 ? '1800' : '2000'}" decoding="async" fetchpriority="high" class="w-full h-auto" />

@@ -113,6 +113,9 @@ export function Footer(nonce: string) {
   document.querySelectorAll('.theme-pick').forEach(function(a){
     if (a.getAttribute('data-theme') === t) {
       a.classList.add('is-active');
+      a.setAttribute('aria-current', 'true');
+    } else {
+      a.removeAttribute('aria-current');
     }
     a.addEventListener('click', function(e){
       e.preventDefault();
