@@ -3,6 +3,7 @@ import aiChatSessionTable from './aiChatSessionTable';
 import babyTable from './babyTable';
 import birthdayReminderTable from './birthdayReminderTable';
 import commandConfigTable from './commandConfigTable';
+import cyclicTttMatchTable from './cyclicTttMatchTable';
 import gameUIDTable from './gameUIDTable';
 import globalConfigTable from './globalConfigTable';
 import marriageTable from './marriageTable';
@@ -19,6 +20,7 @@ export {
   babyTable,
   birthdayReminderTable,
   commandConfigTable,
+  cyclicTttMatchTable,
   gameUIDTable,
   globalConfigTable,
   marriageTable,
@@ -35,6 +37,7 @@ export type { AiChatSessionRow } from './aiChatSessionTable';
 export type { BabyRow } from './babyTable';
 export type { BirthdayReminderRow } from './birthdayReminderTable';
 export type { CommandConfigRow } from './commandConfigTable';
+export type { CyclicTttMatchRow } from './cyclicTttMatchTable';
 export type { GameUIDRow } from './gameUIDTable';
 export type { GlobalConfigRow } from './globalConfigTable';
 export type { MarriageRow } from './marriageTable';

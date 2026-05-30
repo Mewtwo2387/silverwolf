@@ -10,6 +10,7 @@ import type AiChatModel from './models/AiChatModel';
 import type PokemonModel from './models/PokemonModel';
 import type MarriageModel from './models/MarriageModel';
 import type CommandConfigModel from './models/CommandConfigModel';
+import type CyclicTttMatchModel from './models/CyclicTttMatchModel';
 import type GameUIDModel from './models/GameUIDModel';
 import type GlobalConfigModel from './models/GlobalConfigModel';
 import type ServerRolesModel from './models/ServerRolesModel';
@@ -151,6 +152,16 @@ class Database {
       ON PoopEntry (user_id, logged_at)
     `);
 
+    // Back the per-user recent-match lookup (GET_RECENT_FOR_USER).
+    this.db.run(`
+      CREATE INDEX IF NOT EXISTS idx_cyclic_ttt_x_id_ended_at
+      ON CyclicTttMatch (x_discord_id, ended_at DESC)
+    `);
+    this.db.run(`
+      CREATE INDEX IF NOT EXISTS idx_cyclic_ttt_o_id_ended_at
+      ON CyclicTttMatch (o_discord_id, ended_at DESC)
+    `);
+
     // Initialize models
     Object.entries(modelClasses).forEach(([modelName, ModelClass]) => {
       this.models[modelName] = new (ModelClass as any)(this);
@@ -263,6 +274,7 @@ class Database {
   get birthdayReminder(): BirthdayReminderModel { return this.models.BirthdayReminderModel; }
   get baby(): BabyModel { return this.models.BabyModel; }
   get commandConfig(): CommandConfigModel { return this.models.CommandConfigModel; }
+  get cyclicTttMatch(): CyclicTttMatchModel { return this.models.CyclicTttMatchModel; }
   get gameUID(): GameUIDModel { return this.models.GameUIDModel; }
   get globalConfig(): GlobalConfigModel { return this.models.GlobalConfigModel; }
   get marriage(): MarriageModel { return this.models.MarriageModel; }
