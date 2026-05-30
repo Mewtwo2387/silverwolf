@@ -72,14 +72,20 @@ interface GenerateContentResult {
   toolCalls: ToolCallRecord[];
 }
 
-async function loadPersonaSystemPrompt(persona: Persona): Promise<void> {
-  if (!persona.systemPromptFile) return;
+async function resolvePersonaSystemPrompt(persona: Persona): Promise<string> {
+  if (persona.systemPrompt) return persona.systemPrompt;
+  if (!persona.systemPromptFile) return '';
   try {
-    persona.systemPrompt = await Bun.file(persona.systemPromptFile).text();
+    return await Bun.file(persona.systemPromptFile).text();
   } catch (error) {
     logError(`Failed to read system prompt file ${persona.systemPromptFile}:`, error);
-    persona.systemPrompt = '';
+    return '';
   }
+}
+
+async function hydratePersona(persona: Persona): Promise<Persona> {
+  const systemPrompt = await resolvePersonaSystemPrompt(persona);
+  return { ...persona, systemPrompt };
 }
 
 /**
@@ -94,8 +100,7 @@ async function resolvePersona(messageContent = ''): Promise<Persona> {
   );
 
   if (foundPersona) {
-    await loadPersonaSystemPrompt(foundPersona);
-    return foundPersona;
+    return hydratePersona(foundPersona);
   }
 
   const defaults = personasConfig.defaults || {};
@@ -112,8 +117,7 @@ async function getPersonaByName(name: string): Promise<Persona | undefined> {
   const personas: Persona[] = personasConfig.personas || [];
   const found = personas.find((p) => p.name.toLowerCase() === name.toLowerCase());
   if (!found) return undefined;
-  await loadPersonaSystemPrompt(found);
-  return found;
+  return hydratePersona(found);
 }
 
 /**
@@ -507,6 +511,56 @@ function getFallbackTitle(history: HistoryEntry[]): string | null {
   return null;
 }
 
+async function generateSessionTitle(conversation: string): Promise<string | null> {
+  const personas: Persona[] = personasConfig.personas || [];
+  const persona = personas.find((p) => p.name === 'TitleGen');
+  if (!persona) return null;
+
+  const userContent = `Conversation:\n${conversation}\n\nTitle:`;
+  const systemPrompt = persona.systemPrompt ?? '';
+
+  try {
+    let raw: string | null = null;
+
+    if (persona.provider === 'openrouter') {
+      if (!process.env.OPENROUTER_API_KEY) {
+        logError('TitleGen: OPENROUTER_API_KEY not set');
+        return null;
+      }
+      const completion = await openrouter.chat.completions.create({
+        model: persona.model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userContent },
+          { role: 'assistant', content: 'Title: ' },
+        ],
+        max_tokens: 512,
+        reasoning: { enabled: false },
+      } as any);
+      raw = completion.choices?.[0]?.message?.content ?? null;
+    } else if (persona.provider === 'gemini') {
+      const model = genAI.getGenerativeModel({
+        model: persona.model,
+        systemInstruction: systemPrompt,
+      });
+      const result = await model.generateContent(userContent);
+      raw = result.response.text();
+    } else {
+      logError(`TitleGen: unsupported provider "${persona.provider}"`);
+      return null;
+    }
+
+    if (raw) {
+      const parsed = parseGeneratedTitle(raw);
+      if (parsed) return parsed;
+    }
+  } catch (err) {
+    logError(`TitleGen request failed (${persona.provider}/${persona.model}):`, err);
+  }
+
+  return null;
+}
+
 /**
  * Generates a session title from the full conversation history.
  */
@@ -523,53 +577,6 @@ async function generateTitleForHistory(history: HistoryEntry[]): Promise<string 
     logError('Failed to generate session title from history:', error);
     return getFallbackTitle(history);
   }
-}
-
-async function generateSessionTitle(conversation: string): Promise<string | null> {
-  const personas: Persona[] = personasConfig.personas || [];
-  const persona = personas.find((p) => p.name === 'TitleGen');
-  if (!persona) return null;
-
-  const userContent = `Conversation:\n${conversation}\n\nTitle:`;
-
-  if (process.env.OPENROUTER_API_KEY) {
-    try {
-      const completion = await openrouter.chat.completions.create({
-        model: persona.model,
-        messages: [
-          { role: 'system', content: persona.systemPrompt ?? '' },
-          { role: 'user', content: userContent },
-          { role: 'assistant', content: 'Title: ' },
-        ],
-        max_tokens: 512,
-        reasoning: { enabled: false },
-      } as any);
-      const raw = completion.choices?.[0]?.message?.content;
-      if (raw) {
-        const parsed = parseGeneratedTitle(raw);
-        if (parsed) return parsed;
-      }
-    } catch (err) {
-      logError('TitleGen OpenRouter request failed:', err);
-    }
-  }
-
-  try {
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-3.1-flash-lite',
-      systemInstruction: persona.systemPrompt ?? '',
-    });
-    const result = await model.generateContent(userContent);
-    const raw = result.response.text();
-    if (raw) {
-      const parsed = parseGeneratedTitle(raw);
-      if (parsed) return parsed;
-    }
-  } catch (err) {
-    logError('TitleGen Gemini request failed:', err);
-  }
-
-  return null;
 }
 
 export {

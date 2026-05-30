@@ -1177,15 +1177,13 @@ export function AiSlopPage(opts: {
 </script>
 `);
 
-  const body = html`
-    <div class="aislop-page-wrap">
-      <h1 class="text-center">AI Slop</h1>
-      <p class="text-center text-fog-300 mb-4">chat with ai slop or something idk</p>
-      ${loggedOut
-    ? html`<div class="login-cta">Log in with <a href="/auth/discord/login">Discord</a> to chat.</div>`
-    : guildBlocked
-    ? html`<div class="login-cta">You need to be in a Discord server where Silverwolf is installed to use AI chat. Join that server, then refresh this page.</div>`
-    : html`
+  let chatArea: ReturnType<typeof html>;
+  if (loggedOut) {
+    chatArea = html`<div class="login-cta">Log in with <a href="/auth/discord/login">Discord</a> to chat.</div>`;
+  } else if (guildBlocked) {
+    chatArea = html`<div class="login-cta">You need to be in a Discord server where Silverwolf is installed to use AI chat. Join that server, then refresh this page.</div>`;
+  } else {
+    chatArea = html`
           <div class="aislop-shell">
             <aside class="aislop-side">
               <button type="button" id="aislop-new" class="aislop-new">+ New chat</button>
@@ -1207,7 +1205,14 @@ export function AiSlopPage(opts: {
               </form>
             </section>
           </div>
-        `}
+        `;
+  }
+
+  const body = html`
+    <div class="aislop-page-wrap">
+      <h1 class="text-center">AI Slop</h1>
+      <p class="text-center text-fog-300 mb-4">chat with ai slop or something idk</p>
+      ${chatArea}
     </div>
     ${styles}
     ${loggedOut || guildBlocked ? '' : script}

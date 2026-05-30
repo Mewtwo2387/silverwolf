@@ -327,7 +327,7 @@ const scriptHandlers = {
 
           if (historyLoaded && !hadRawHistory && text) {
             (message.client as any).db.aiChat.getHistory(aiSession.sessionId, 100)
-              .then((history: { role: string; message: string }[]) => generateTitleForHistory(history))
+              .then((savedHistory: { role: string; message: string }[]) => generateTitleForHistory(savedHistory))
               .then((title: string | null) => {
                 if (title) {
                   return (message.client as any).db.aiChat.updateTitle(aiSession.sessionId, title);
