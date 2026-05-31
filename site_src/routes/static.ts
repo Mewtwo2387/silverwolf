@@ -7,7 +7,6 @@ const ROOT_DIR = path.resolve(import.meta.dir, '..', '..');
 const ASSETS_DIR = path.join(import.meta.dir, '..', 'Assets');
 const IMAGES_DIR = path.join(ASSETS_DIR, 'Images');
 const SVG_DIR = path.join(ASSETS_DIR, 'svg');
-const FONTS_DIR = path.join(ASSETS_DIR, 'fonts');
 const IMMUTABLE_CACHE = 'public, max-age=31536000, immutable';
 
 interface StaticEntry {

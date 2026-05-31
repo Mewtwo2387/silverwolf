@@ -4,7 +4,7 @@ import type { Silverwolf } from '../../classes/silverwolf';
 import { canUseAiSlop } from '../guild-access';
 import {
   generateContent,
-  generateSessionTitle,
+  generateTitleForHistory,
   getPersonaByName,
   type Persona,
 } from '../../utils/ai';
@@ -190,10 +190,8 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
 
       if (isFirstTurn && assistantText) {
         try {
-          const generated = await generateSessionTitle(messageRaw, assistantText);
-          const fallback = messageRaw.slice(0, 50).trim();
-          const chosen = (generated || fallback) || '';
-          title = chosen ? chosen.slice(0, MAX_TITLE_CHARS).trim() : undefined;
+          const history = await silverwolf.db.aiChat.getHistory(session.sessionId, 100);
+          title = (await generateTitleForHistory(history)) ?? undefined;
           if (title) await silverwolf.db.aiChat.updateTitle(session.sessionId, title);
         } catch (titleErr) {
           logError('[ai-slop] title generation failed:', titleErr);
