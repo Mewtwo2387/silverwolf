@@ -593,7 +593,7 @@ async function generateSessionTitle(conversation: string): Promise<string | null
   if (!persona) return null;
 
   const userContent = `Conversation:\n${conversation}\n\nTitle:`;
-  const systemPrompt = persona.systemPrompt ?? '';
+  const systemPrompt = await resolvePersonaSystemPrompt(persona);
 
   try {
     let raw: string | null = null;
