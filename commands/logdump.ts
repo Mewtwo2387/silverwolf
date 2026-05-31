@@ -1,5 +1,6 @@
 import { DevCommand } from './classes/DevCommand';
 import { logError, logErrorFilePath, logFilePath } from '../utils/log';
+import { timestampedFileName } from '../utils/dumpFileName';
 
 class LogDump extends DevCommand {
   constructor(client: any) {
@@ -38,7 +39,7 @@ class LogDump extends DevCommand {
       const content = logLines.join('\n');
       if (content.length > 1990) {
         const buffer = Buffer.from(content);
-        await interaction.editReply({ files: [{ attachment: buffer, name: `${type}.txt` }] });
+        await interaction.editReply({ files: [{ attachment: buffer, name: timestampedFileName(`${type}.txt`) }] });
       } else {
         await interaction.editReply({ content: `\`\`\`${content}\`\`\`` });
       }

@@ -1,4 +1,4 @@
-import { getGeminiAI } from './ai';
+import { formatHistoryEntryForModel, formatMessageWithTimestamp, getGeminiAI } from './ai';
 import { getCalibrationMultiplier } from './tokenCalibration';
 
 // Cheap char-based estimate. ~10–20% off on English, worse on code/CJK, but
@@ -89,10 +89,12 @@ async function trimHistoryToFit(
   provider: string,
   model: string,
   systemPrompt: string,
-  history: { role: string; message: string }[],
+  history: { role: string; message: string; timestamp?: string }[],
   newPrompt: string,
   webSearchEnabled = false,
 ): Promise<{ trimmedHistory: typeof history; budget: TokenBudget; warnings: ContextWarning[] }> {
+  const requestTime = new Date();
+  const stampedNewPrompt = formatMessageWithTimestamp(newPrompt, requestTime);
   const contextLimit = getContextLimit(model);
   const reserved = computeReservedTokens(contextLimit, webSearchEnabled);
   const rawAvailable = contextLimit - reserved;
@@ -106,11 +108,11 @@ async function trimHistoryToFit(
   if (provider === 'gemini') {
     [systemTokens, promptTokens] = await Promise.all([
       countTokensGemini(model, systemPrompt),
-      countTokensGemini(model, newPrompt),
+      countTokensGemini(model, stampedNewPrompt),
     ]);
   } else {
     systemTokens = countTokensOpenRouter(systemPrompt) + 4;
-    promptTokens = countTokensOpenRouter(newPrompt) + 4;
+    promptTokens = countTokensOpenRouter(stampedNewPrompt) + 4;
   }
 
   const fixedTokens = systemTokens + promptTokens;
@@ -126,10 +128,12 @@ async function trimHistoryToFit(
   let messageCosts: number[];
   if (provider === 'gemini') {
     messageCosts = await Promise.all(
-      history.map((msg) => countTokensGemini(model, msg.message)),
+      history.map((msg) => countTokensGemini(model, formatHistoryEntryForModel(msg))),
     );
   } else {
-    messageCosts = history.map((msg) => countTokensOpenRouter(msg.message) + 4);
+    messageCosts = history.map(
+      (msg) => countTokensOpenRouter(formatHistoryEntryForModel(msg)) + 4,
+    );
   }
 
   // Trim from the start (oldest) until we fit
