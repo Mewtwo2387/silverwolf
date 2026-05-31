@@ -1,5 +1,6 @@
 import { html, raw } from 'hono/html';
 import { GAMES } from '../pages/games';
+import { inlineJSON } from '../inline';
 
 type IndexEntry = { title: string; href: string; group: string; desc?: string; keywords?: string };
 
@@ -98,6 +99,9 @@ const styles = raw(`
   .search-box {
     width: min(560px, 92vw);
     border-radius: 0.9rem;
+    /* Match the site chrome (navbar, badges, kbd hints) which is all
+       JetBrains Mono. Everything inside inherits this. */
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
     background: color-mix(in oklab, var(--ink-800) 70%, transparent);
     -webkit-backdrop-filter: blur(22px) saturate(180%);
     backdrop-filter: blur(22px) saturate(180%);
@@ -248,7 +252,7 @@ const styles = raw(`
 const searchScript = (nonce: string, index: IndexEntry[]) => raw(`
 <script nonce="${nonce}">
 (function(){
-  var INDEX = ${JSON.stringify(index)};
+  var INDEX = ${inlineJSON(index)};
   var overlay = document.getElementById('search-overlay');
   if (!overlay) return;
   var input = overlay.querySelector('.search-input');
