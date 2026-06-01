@@ -46,6 +46,7 @@ function elementalDamageEquipment(
   name: string,
   element: Element,
   description?: string,
+  footer?: string,
 ): Equipment {
   const typeLabel = Element[element].toLowerCase();
   return new Equipment(
@@ -67,6 +68,8 @@ function elementalDamageEquipment(
         true,
       ),
     ],
+    undefined,
+    footer,
   );
 }
 
@@ -74,19 +77,39 @@ function elementalDamageEquipment(
 // Equipment items
 // ---------------------------------------------------------------------------
 
-export const ANEMOCULUS = elementalDamageEquipment('anemoculus', 'Anemoculus', Element.Anemo);
+export const ANEMOCULUS = elementalDamageEquipment(
+  'anemoculus', 
+  'Anemoculus', 
+  Element.Anemo,
+  undefined,
+  'Mondstadt\'s oculus. Back when you can actually find them all by exploring, and not like, this area can only be unlocked during this questline which is a continuation of another questline triggered by entering this particular cave; or like, you need this funny tree to be level 10 before you can open this door.'
+);
 export const CRYOCULUS = elementalDamageEquipment('cryoculus', 'Cryoculus', Element.Cryo);
 export const DENDROCULUS = elementalDamageEquipment('dendroculus', 'Dendroculus', Element.Dendro);
 export const ELECTROCULUS = elementalDamageEquipment('electroculus', 'Electroculus', Element.Electro);
 export const GEOCULUS = elementalDamageEquipment('geoculus', 'Geoculus', Element.Geo);
 export const HYDROCULUS = elementalDamageEquipment('hydroculus', 'Hydroculus', Element.Hydro);
 export const PYROCULUS = elementalDamageEquipment('pyroculus', 'Pyroculus', Element.Pyro);
-export const MAID_OUTFIT = elementalDamageEquipment('maid_outfit', 'Maid Outfit', Element.Fairy);
-export const RUSTED_SWORD = elementalDamageEquipment('rusted_sword', 'Rusted Sword', Element.Physical);
+export const MAID_OUTFIT = elementalDamageEquipment(
+  'maid_outfit',
+  'Maid Outfit',
+  Element.Fairy,
+  undefined,
+  'uwu :3\nOnce worn by a certain someone that swears if Japan win against Germany in the 2022 World Cup.'
+);
+export const RUSTED_SWORD = elementalDamageEquipment(
+  'rusted_sword',
+  'Rusted Sword',
+  Element.Physical,
+  undefined,
+  'I don\'t know how this broken shit can increase damage but it\'s not like I know much about swordfight. At least not the straight type of swordfight.'
+);
 export const QUANTUM_COMPRESSOR = elementalDamageEquipment(
   'quantum_compressor',
   'Quantum Compressor',
   Element.Quantum,
+  undefined,
+  'Anyone playing modded Minecraft knows everyone loves this slop when we see it in a tech modpack. Can\'t think of an endgame goal? Just make the player obtain 10000 of every item and squeeze them into a singularity. Instantly triples playtime.',
 );
 
 export const STRANGE_QUARK = new Equipment(
@@ -108,6 +131,8 @@ export const STRANGE_QUARK = new Equipment(
       true,
     ),
   ],
+  undefined,
+  'Something something decay into strange matter',
 );
 
 export const PLATE_ARMOR = new Equipment(
@@ -137,7 +162,7 @@ const KAITLIN_FORM_SKILL_INDICES = [1, 2];
 export const ESTROGEN = new Equipment(
   'estrogen',
   'Estrogen',
-  'Converts all outgoing damage to Fairy type. Increases Fairy damage by 20%; if the holder is already Fairy, increases Fairy damage by an additional 20%. When held by Kaitlin, instantly transforms to Kaitlin form.',
+  'Converts all outgoing damage to Fairy type and increases Fairy damage by 20%. If the holder is already Fairy, increases Fairy damage by an additional 20%. When held by Kaitlin, instantly transforms to Kaitlin form.',
   new Rarity(5),
   itemImagePanel('estrogen', '#1a2536'),
   defaultEquipmentBackground(),
@@ -193,6 +218,7 @@ export const ESTROGEN = new Equipment(
       target.battle.logEvent(`${target.character.name} transformed into Kaitlin Form!`);
     }
   },
+  'You want this too, don\'t you? uwu :3'
 );
 
 // ---------------------------------------------------------------------------

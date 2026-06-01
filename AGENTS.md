@@ -502,8 +502,10 @@ To add a new event variant:
 `tcg/items.ts` is where items are declared:
 
 ```ts
-export const MAID_OUTFIT = elementalDamageEquipment('maid_outfit', 'Maid Outfit', Element.Fairy);
-// …other 3★ type boosters (Oculi, Rusted Sword, Quantum Compressor) use the same helper in items.ts
+export const MAID_OUTFIT = elementalDamageEquipment(
+  'maid_outfit', 'Maid Outfit', Element.Fairy, undefined, 'Optional lore footer text.',
+);
+// …other 3★ type boosters use the same helper; pass lore as the 5th `footer` arg when needed.
 
 export const HEALING_POTION = new Consumable(
   'healing_potion',
@@ -512,7 +514,8 @@ export const HEALING_POTION = new Consumable(
   new Rarity(2),
   itemImagePanel('healing_potion', '#1c2a22'),
   defaultConsumableBackground(),
-  (target, battle) => { target.heal(20); /* battle.logEvent('…') if useful */ },
+  (target, battle) => { target.heal(20); },
+  'Optional lore footer.',
 );
 ```
 
@@ -542,7 +545,8 @@ interface Card {
 ImagePanel → skills (Skill.draw) → abilities (Ability.draw)`.
 
 `Item.generateCard` is the simpler version: `Background → type emblem → name/rarity →
-ImagePanel → wrapped description`.
+ImagePanel → wrapped description → optional italic gray footer` (set via the last constructor
+arg on `Item` / `Equipment` / `Consumable`, or the 5th arg on `elementalDamageEquipment`).
 
 For Discord battle thumbnails, `tcg/renderDiscordBattleBoard.ts` scales each card down,
 overlays HP/effect rows, glows the active character, and arranges sides so the *current

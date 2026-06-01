@@ -29,12 +29,15 @@ const TOP_BAR_HEIGHT = 128;
  *  - No HP, no title/description above the image.
  *  - Image panel.
  *  - One paragraph of description below the image.
+ *  - Optional footer: smaller italic gray lore line(s) beneath the description.
  */
 export abstract class Item implements Card {
   /** Stable identifier used to persist decks (must be unique across all items). */
   id: string;
   name: string;
   description: string;
+  /** Optional flavor text rendered below the description (italic, light gray). */
+  footer?: string;
   rarity: Rarity;
   imagePanel: ImagePanel;
   background: Background;
@@ -46,10 +49,12 @@ export abstract class Item implements Card {
     rarity: Rarity,
     imagePanel: ImagePanel,
     background: Background,
+    footer?: string,
   ) {
     this.id = id;
     this.name = name;
     this.description = description;
+    this.footer = footer?.trim() ? footer.trim() : undefined;
     this.rarity = rarity;
     this.imagePanel = imagePanel;
     this.background = background;
@@ -150,24 +155,11 @@ export abstract class Item implements Card {
     });
   }
 
-  /**
-   * Wrap a description block beneath the image panel. Returns the y coordinate after the text.
-   */
-  protected drawDescription(
+  private static wrapLines(
     ctx: Canvas.CanvasRenderingContext2D,
-    startY: number,
     text: string,
-  ): number {
-    const left = 96;
-    const right = CARD_WIDTH - 96;
-    const maxWidth = right - left;
-    const fontSize = 44;
-    const lineHeight = Math.round(fontSize * 1.35);
-    ctx.save();
-    ctx.font = `500 ${fontSize}px "Bahnschrift"`;
-    ctx.textBaseline = 'alphabetic';
-    ctx.textAlign = 'left';
-
+    maxWidth: number,
+  ): string[] {
     const words = text.split(/\s+/);
     const lines: string[] = [];
     let line = '';
@@ -181,21 +173,81 @@ export abstract class Item implements Card {
       }
     });
     if (line.length > 0) lines.push(line);
+    return lines;
+  }
 
-    let y = startY + fontSize + 24;
+  /**
+   * Wrap a text block beneath the image panel. Returns the y coordinate after the text.
+   */
+  protected drawWrappedTextBlock(
+    ctx: Canvas.CanvasRenderingContext2D,
+    startY: number,
+    text: string,
+    style: {
+      fontSize: number;
+      font: string;
+      fillStyle: string;
+      strokeStyle?: string;
+      lineWidth?: number;
+      shadowBlur?: number;
+      topGap?: number;
+      /** When false, render fill only (used for subtle footer lore). Default true. */
+      outline?: boolean;
+    },
+  ): number {
+    const left = 96;
+    const maxWidth = CARD_WIDTH - 192;
+    const lineHeight = Math.round(style.fontSize * 1.35);
+    const topGap = style.topGap ?? 24;
+    const useOutline = style.outline !== false;
+    ctx.save();
+    ctx.font = style.font;
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = 'left';
+
+    const lines = Item.wrapLines(ctx, text, maxWidth);
+    let y = startY + style.fontSize + topGap;
     for (const ln of lines) {
-      drawTcgText(ctx, ln, left, y, {
-        font: `500 ${fontSize}px "Bahnschrift"`,
-        fillStyle: '#f7f4ec',
-        strokeStyle: 'rgba(0, 0, 0, 0.6)',
-        lineWidth: 4,
-        textAlign: 'left',
-        shadowBlur: 6,
-      });
+      if (useOutline) {
+        drawTcgText(ctx, ln, left, y, {
+          font: style.font,
+          fillStyle: style.fillStyle,
+          strokeStyle: style.strokeStyle,
+          lineWidth: style.lineWidth,
+          textAlign: 'left',
+          shadowBlur: style.shadowBlur,
+        });
+      } else {
+        ctx.fillStyle = style.fillStyle;
+        ctx.fillText(ln, left, y);
+      }
       y += lineHeight;
     }
     ctx.restore();
     return y;
+  }
+
+  /** Main rules text beneath the image panel. */
+  protected drawDescription(ctx: Canvas.CanvasRenderingContext2D, startY: number, text: string): number {
+    return this.drawWrappedTextBlock(ctx, startY, text, {
+      fontSize: 44,
+      font: '500 44px "Bahnschrift"',
+      fillStyle: '#f7f4ec',
+      strokeStyle: 'rgba(0, 0, 0, 0.6)',
+      lineWidth: 4,
+      shadowBlur: 6,
+    });
+  }
+
+  /** Optional lore footer — smaller, light gray, italic. Omitted when {@link Item.footer} is unset. */
+  protected drawFooter(ctx: Canvas.CanvasRenderingContext2D, startY: number, text: string): number {
+    return this.drawWrappedTextBlock(ctx, startY, text, {
+      fontSize: 36,
+      font: 'italic 500 36px "Bahnschrift"',
+      fillStyle: '#b4bac6',
+      topGap: 40,
+      outline: false,
+    });
   }
 
   async generateCard(): Promise<Canvas.Canvas> {
@@ -220,7 +272,10 @@ export abstract class Item implements Card {
     const imagePanelY = TOP_BAR_HEIGHT + 64;
     const afterImageY = await this.imagePanel.draw(ctx, imagePanelY);
 
-    this.drawDescription(ctx, afterImageY, this.description);
+    let textEndY = this.drawDescription(ctx, afterImageY, this.description);
+    if (this.footer) {
+      textEndY = this.drawFooter(ctx, textEndY, this.footer);
+    }
 
     return canvas;
   }
@@ -245,8 +300,9 @@ export class Equipment extends Item {
     background: Background,
     effects: Effect[],
     onEquipped?: (target: CharacterInBattle) => void,
+    footer?: string,
   ) {
-    super(id, name, description, rarity, imagePanel, background);
+    super(id, name, description, rarity, imagePanel, background, footer);
     this.effects = effects;
     this.onEquipped = onEquipped;
   }
@@ -283,8 +339,9 @@ export class Consumable extends Item {
     imagePanel: ImagePanel,
     background: Background,
     effect: (target: CharacterInBattle, battle: Battle) => void,
+    footer?: string,
   ) {
-    super(id, name, description, rarity, imagePanel, background);
+    super(id, name, description, rarity, imagePanel, background, footer);
     this.effect = effect;
   }
 
