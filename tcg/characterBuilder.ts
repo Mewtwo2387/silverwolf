@@ -128,15 +128,21 @@ export function createEffect(params: {
   /** True for buffs, false for debuffs. Drives log phrasing and future UI cues. */
   positive: boolean;
   duration?: number; // defaults to permanent (9999)
+  /** When true, additional copies of this effect coexist instead of refreshing/overwriting. */
+  stackable?: boolean;
   activeSkillIndices?: number[]; // for FormChange effects
   appliesToElement?: Element; // for damage effects: if specified, only applies to damage of this element type
+  overrideElement?: Element; // for DamageElementOverride: the element to convert outgoing damage to
 }): Effect {
-  const metadata: { activeSkillIndices?: number[]; appliesToElement?: Element } = {};
+  const metadata: { activeSkillIndices?: number[]; appliesToElement?: Element; overrideElement?: Element } = {};
   if (params.activeSkillIndices) {
     metadata.activeSkillIndices = params.activeSkillIndices;
   }
   if (params.appliesToElement !== undefined) {
     metadata.appliesToElement = params.appliesToElement;
+  }
+  if (params.overrideElement !== undefined) {
+    metadata.overrideElement = params.overrideElement;
   }
 
   return new Effect(
@@ -147,6 +153,7 @@ export function createEffect(params: {
     params.duration !== undefined ? params.duration : 9999,
     params.positive,
     Object.keys(metadata).length > 0 ? metadata : undefined,
+    params.stackable ?? false,
   );
 }
 

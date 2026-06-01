@@ -12,7 +12,8 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
     "card:battle": "bun tcg/tests/battleExample.ts",
-    "card:generate": "bun tcg/tests/testGenerateCard.ts"
+    "card:generate": "bun tcg/tests/testGenerateCard.ts",
+    "card:generate-items": "bun tcg/tests/testGenerateItemCard.ts"
   },
   "keywords": [],
   "author": "",

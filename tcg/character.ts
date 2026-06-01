@@ -10,6 +10,7 @@ import { Element } from './element';
 import { drawTcgText } from './utils/tcgTextStyle';
 import { CharacterTextColors, resolveCharacterTextColors } from './textTheme';
 import { ImagePanel } from './imagePanel';
+import { tcgAssetPaths } from './assetPaths';
 
 /**
  * A single character card and their stats
@@ -62,7 +63,7 @@ export class Character implements Card {
 
     try {
       const elementName = Element[this.element]?.toLowerCase();
-      const elementImagePath = `./tcg/assets/types/${elementName}.png`;
+      const elementImagePath = `${tcgAssetPaths.types}/${elementName}.png`;
       const elementImage = await Canvas.loadImage(elementImagePath);
       ctx.drawImage(elementImage, 0, 0, 128, 128);
     } catch (error) {

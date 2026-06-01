@@ -16,6 +16,7 @@ import {
   Ultimate,
 } from './characterBuilder';
 import { ImagePanelMode } from './imagePanel';
+import { characterImagePath } from './assetPaths';
 
 /**
  * A list of all characters in the game
@@ -111,7 +112,7 @@ export const KAITLIN = createCharacter({
   hp: 100,
   element: Element.Fairy,
   imagePanel: {
-    imagePath: './tcg/assets/characters/kaitlin.png',
+    imagePath: characterImagePath('kaitlin'),
     mode: ImagePanelMode.Crop,
   },
   background: createSimpleBackground('#D5ABB2', '#B76E79'),
@@ -199,7 +200,7 @@ export const VENFEI = createCharacter({
   imagePanel: {
     mode: ImagePanelMode.Background,
     backgroundColor: '#FFFFFF',
-    imagePath: './tcg/assets/characters/venfei.png',
+    imagePath: characterImagePath('venfei'),
   },
   background: createSimpleBackground('#D5ABB2', '#B76E79'),
   textColors: FAIRY_TEXT_COLORS,
@@ -262,7 +263,7 @@ export const EI = createCharacter({
   imagePanel: {
     mode: ImagePanelMode.Background,
     backgroundColor: '#49497d',
-    imagePath: './tcg/assets/characters/ei.png',
+    imagePath: characterImagePath('ei'),
   },
   background: createSimpleBackground('#5539CC', '#332266'),
   textColors: QUANTUM_TEXT_COLORS,
@@ -347,7 +348,7 @@ export const SILVERWOLF = createCharacter({
   hp: 80,
   element: Element.Quantum,
   imagePanel: {
-    imagePath: './tcg/assets/characters/silverwolf.jpg',
+    imagePath: characterImagePath('silverwolf', 'jpg'),
     mode: ImagePanelMode.Crop,
   },
   background: createSimpleBackground('#5539CC', '#332266'),
@@ -494,7 +495,7 @@ export const SPARKLE = createCharacter({
   imagePanel: {
     mode: ImagePanelMode.Background,
     backgroundColor: '#000000',
-    imagePath: './tcg/assets/characters/sparkle.jpg',
+    imagePath: characterImagePath('sparkle', 'jpg'),
   },
   background: createSimpleBackground('#5539CC', '#332266'),
   textColors: QUANTUM_TEXT_COLORS,
@@ -586,7 +587,7 @@ export const ELECTRO = createCharacter({
   imagePanel: {
     mode: ImagePanelMode.Background,
     backgroundColor: '#39AACC',
-    imagePath: './tcg/assets/characters/electro.jpg',
+    imagePath: characterImagePath('electro', 'jpg'),
   },
   background: createSimpleBackground('#39AACC', '#7ADDFF'),
   textColors: ELECTRO_TEXT_COLORS,

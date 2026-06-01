@@ -1,5 +1,6 @@
 import Canvas from 'canvas';
 import { DrawableFixed } from './interfaces/drawable';
+import { tcgAssetPaths } from './assetPaths';
 
 /**
  * The rarity of a card. Literally just an integer.
@@ -20,7 +21,7 @@ export class Rarity implements DrawableFixed {
     const topBarHeight = 128;
     const starSize = 42;
     const starSpacing = 6;
-    const star = await Canvas.loadImage('./tcg/assets/common/star.png');
+    const star = await Canvas.loadImage(`${tcgAssetPaths.common}/star.png`);
     let x = 1080 - 128 - starSize - starSpacing;
     const y = (topBarHeight - starSize) / 2;
 

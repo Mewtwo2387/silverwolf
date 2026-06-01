@@ -4,6 +4,8 @@ import { CHARACTERS } from './characters';
 import type { Skill } from './skill';
 import { RangeType } from './rangeType';
 import { SkillCategory } from './skillCategory';
+import { Item, Equipment, ItemKind } from './item';
+import { buildExampleDeck } from './items';
 
 export type BattleSide = 'p1' | 'p2';
 export type BattleTextStyle = 'cli' | 'markdown';
@@ -13,7 +15,11 @@ const MAX_DISCORD_BATTLE_LEN = 1800;
 /** Same teams as the interactive demo everywhere (CLI + Discord). */
 export function createDemoBattle(): Battle {
   const [kaitlin, venfei, ei, silverwolf, sparkle, electro] = CHARACTERS;
-  return new Battle([kaitlin, electro, venfei], [ei, silverwolf, sparkle]);
+  return new Battle(
+    [kaitlin, electro, venfei],
+    [ei, silverwolf, sparkle],
+    { p1Deck: buildExampleDeck(), p2Deck: buildExampleDeck() },
+  );
 }
 
 export function parseBattleSide(raw: string): BattleSide | null {
@@ -319,6 +325,121 @@ export function formatUseSkillFailureMessage(result: Extract<ExecuteUseSkillResu
   return `${result.error} ${result.hints.join(' ')}`;
 }
 
+// ---------------------------------------------------------------------------
+// Item / hand handling
+// ---------------------------------------------------------------------------
+
+export interface UseItemSuccessDetail {
+  itemName: string;
+  itemKind: ItemKind;
+  targetName: string;
+  /** Battle events produced during the item's resolution (equip lines, heals, etc.). */
+  logLines: string[];
+}
+
+export type ExecuteUseItemResult =
+  | { ok: true; detail: UseItemSuccessDetail }
+  | { ok: false; error: string; hints?: string[] };
+
+/**
+ * Attempt to play an item from `side`'s hand onto an own character.
+ * Shared by CLI and Discord.
+ *
+ * @param handSlotId stable slot id for the card (as in `/tcgbattle hand`); not a dense 0..n-1.
+ * @param targetCharIndex absolute character slot on the same side.
+ */
+export function executeUseItem(
+  battle: Battle,
+  side: BattleSide,
+  handSlotId: number,
+  targetCharIndex: number,
+): ExecuteUseItemResult {
+  if (side !== battle.currentPlayer) {
+    return { ok: false, error: `It's not ${side}'s turn. Current player: ${battle.currentPlayer}` };
+  }
+  const hand = battle.handForSide(side);
+  if (!hand.has(handSlotId)) {
+    return {
+      ok: false,
+      error: `No item in hand slot \`${handSlotId}\` (${hand.size} card${hand.size === 1 ? '' : 's'} held; slots keep stable ids, gaps are normal).`,
+    };
+  }
+  const allies = side === 'p1' ? battle.p1cards : battle.p2cards;
+  if (targetCharIndex < 0 || targetCharIndex >= allies.length) {
+    return { ok: false, error: `Invalid target slot: ${targetCharIndex}` };
+  }
+  const target = allies[targetCharIndex];
+  if (target.isKnockedOut) {
+    return { ok: false, error: `${target.character.name} (slot ${targetCharIndex}) is knocked out.` };
+  }
+  const item = hand.get(handSlotId)!;
+
+  if (item instanceof Equipment && target.equipments.length >= 3) {
+    return {
+      ok: false,
+      error: `${target.character.name} already has 3 equipments.`,
+      hints: ['Each character can hold up to 3 equipments.'],
+    };
+  }
+
+  const ok = battle.useItem(side, handSlotId, target);
+  if (!ok) {
+    return { ok: false, error: 'Failed to play item.' };
+  }
+  return {
+    ok: true,
+    detail: {
+      itemName: item.name,
+      itemKind: item.kind,
+      targetName: formatCharWithSlot(battle, target),
+      logLines: battle.getLastActionLog(),
+    },
+  };
+}
+
+export function formatUseItemMessage(detail: UseItemSuccessDetail, style: BattleTextStyle): string {
+  const header = style === 'markdown'
+    ? `Played **${detail.itemName}** on **${detail.targetName}**!`
+    : `Played ${detail.itemName} on ${detail.targetName}!`;
+  if (detail.logLines.length === 0) {
+    return header;
+  }
+  return [header, ...detail.logLines].join('\n');
+}
+
+export function formatUseItemFailureMessage(result: Extract<ExecuteUseItemResult, { ok: false }>): string {
+  if (!result.hints?.length) {
+    return result.error;
+  }
+  return `${result.error} ${result.hints.join(' ')}`;
+}
+
+function describeItem(item: Item): string {
+  const kindTag = item.kind === ItemKind.Equipment ? 'EQ' : 'CO';
+  return `[${kindTag}] ${item.name} — ${item.description}`;
+}
+
+/** One-line summary of the side's hand for status panels / Discord. */
+export function formatHandForSide(battle: Battle, side: BattleSide, style: BattleTextStyle): string {
+  const hand = battle.handForSide(side);
+  const deckSize = battle.deckForSide(side).length;
+  const header = style === 'markdown'
+    ? `**${side.toUpperCase()} hand** (${hand.size} card${hand.size === 1 ? '' : 's'}, ${deckSize} in deck):`
+    : `${side.toUpperCase()} hand (${hand.size} cards, ${deckSize} in deck):`;
+  if (hand.size === 0) {
+    return `${header}\n  (empty)`;
+  }
+  // Discord auto-renumbers any markdown numbered list ("0. foo / 1. bar" becomes "1. / 2."),
+  // which would silently desync the label from the id. Use backticks for markdown; literal "N." in CLI.
+  const lines = Array.from(hand.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([slotId, it]) => {
+      const idx = style === 'markdown' ? `\`${slotId}\`` : `${slotId}.`;
+      return `  ${idx} ${describeItem(it)}`;
+    });
+  return [header, ...lines].join('\n');
+}
+
 export function formatSkillsForSide(
   battle: Battle,
   side: BattleSide,
@@ -432,10 +553,12 @@ export function statusLine(battle: Battle, style: BattleTextStyle = 'markdown'):
   }
   const sp = battle.skillPointsForSide(battle.currentPlayer);
   const cap = battle.skillPointsCapForSide(battle.currentPlayer);
+  const hand = battle.handForSide(battle.currentPlayer).size;
+  const deck = battle.deckForSide(battle.currentPlayer).length;
   if (style === 'markdown') {
-    return `Round **${battle.currentTurn}** — **${battle.currentPlayer.toUpperCase()}** · Active **${formatActiveSlotLabel(battle)}** · team SP **${sp}/${cap}**`;
+    return `Round **${battle.currentTurn}** — **${battle.currentPlayer.toUpperCase()}** · Active **${formatActiveSlotLabel(battle)}** · team SP **${sp}/${cap}** · hand **${hand}** (deck ${deck})`;
   }
-  return `Round ${battle.currentTurn} — ${battle.currentPlayer.toUpperCase()} · Active ${formatActiveSlotLabel(battle)} · SP ${sp}/${cap}`;
+  return `Round ${battle.currentTurn} — ${battle.currentPlayer.toUpperCase()} · Active ${formatActiveSlotLabel(battle)} · SP ${sp}/${cap} · hand ${hand} (deck ${deck})`;
 }
 
 /** Discord: labels + battle snapshot in a code block, length-capped. */

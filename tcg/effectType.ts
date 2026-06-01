@@ -5,4 +5,6 @@ export enum EffectType {
   EnergyGain, // Increases or decreases energy gain per turn
   /** Adds `amount` to the team's maximum skill point pool (per character with the effect; sum on allies). */
   SkillPointsMaxBonus,
+  /** Overrides the elemental type of all outgoing damage from this character. metadata.overrideElement carries the new element. */
+  DamageElementOverride,
 }

@@ -13,6 +13,7 @@ import {
   formatTeamNames,
   CHARACTER_ROSTER_DISCORD_CHOICES,
 } from '../tcg/characterRoster';
+import { buildDeckForUser } from '../tcg/deckStorage';
 
 const teamSlot = (name: string, label: string) => ({
   name,
@@ -58,7 +59,11 @@ class TcgbattleAccept extends Command {
       return;
     }
 
-    const battle = new Battle(pending.p1Team, p2Team);
+    const [p1Deck, p2Deck] = await Promise.all([
+      buildDeckForUser(this.client.db, pending.p1UserId),
+      buildDeckForUser(this.client.db, pending.p2UserId),
+    ]);
+    const battle = new Battle(pending.p1Team, p2Team, { p1Deck, p2Deck });
     const session: DiscordBattleSession = {
       battle,
       p1UserId: pending.p1UserId,

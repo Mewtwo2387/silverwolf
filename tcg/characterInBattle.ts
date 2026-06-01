@@ -4,7 +4,10 @@ import { Battle } from './battle';
 import { Effect } from './effect';
 import { Skill } from './skill';
 import { Element } from './element';
+import type { Equipment } from './item';
 import { round2 } from '../utils/math';
+
+export const MAX_EQUIPMENTS_PER_CHARACTER = 3;
 
 /**
  * A single character and their status in a battle
@@ -32,6 +35,8 @@ export class CharacterInBattle {
   battle: Battle;
   side: string;
   energy: number;
+  /** Equipment items attached to this character (max {@link MAX_EQUIPMENTS_PER_CHARACTER}). */
+  equipments: Equipment[];
 
   constructor(character: Character, battle: Battle, side: string) {
     this.character = character;
@@ -48,6 +53,47 @@ export class CharacterInBattle {
     this.battle = battle;
     this.side = side;
     this.energy = 0;
+    this.equipments = [];
+  }
+
+  /**
+   * Element used for outgoing damage. Defaults to character.element, but a
+   * {@link EffectType.DamageElementOverride} effect can convert outgoing damage to another element.
+   */
+  get effectiveDamageElement(): Element {
+    const override = this.effects.find((e) => e.type === EffectType.DamageElementOverride);
+    if (override?.metadata?.overrideElement !== undefined) {
+      return override.metadata.overrideElement;
+    }
+    return this.character.element;
+  }
+
+  /**
+   * Attach an equipment to this character. Equipment effects are pushed to the regular
+   * effects list (with whatever duration the effect specifies; equipment effects should
+   * use 9999 to be permanent).
+   * @returns true if equipped, false if the character is already at the cap or KO'd.
+   */
+  equip(equipment: Equipment): boolean {
+    if (this.isKnockedOut) return false;
+    if (this.equipments.length >= MAX_EQUIPMENTS_PER_CHARACTER) return false;
+    this.equipments.push(equipment);
+    equipment.effects.forEach((effect) => {
+      this.addEffect(effect);
+    });
+    equipment.onEquipped?.(this);
+    this.battle.logEvent(`${this.character.name} equipped [${equipment.name}]`);
+    return true;
+  }
+
+  /**
+   * Remove all currently active debuff effects (positive=false). Used by the Cleanser consumable.
+   * @returns number of debuffs removed.
+   */
+  cleanseDebuffs(): number {
+    const before = this.effects.length;
+    this.effects = this.effects.filter((e) => e.positive);
+    return before - this.effects.length;
   }
 
   /**
@@ -131,8 +177,13 @@ export class CharacterInBattle {
 
   heal(amount: number) {
     if (this.isKnockedOut) return;
+    const before = this.currentHp;
     this.currentHp = round2(this.currentHp + amount);
     if (this.currentHp > this.character.hp) this.currentHp = this.character.hp;
+    const gained = round2(this.currentHp - before);
+    if (gained > 0) {
+      this.battle.logEvent(`${this.character.name} recovered ${gained} HP`);
+    }
   }
 
   /**
@@ -160,16 +211,32 @@ export class CharacterInBattle {
     return damage;
   }
 
+  /**
+   * Apply an effect. By default, an existing effect with the same name has its duration
+   * refreshed (longest-of) and no new instance is added. When the incoming effect has
+   * `stackable === true`, it is appended as a separate copy so multiple identical effects
+   * coexist (e.g. two of the same equipment each contribute their own multiplier).
+   */
+  /**
+   * Apply an effect. By default, an existing effect with the same name has its duration
+   * refreshed (longest-of) and no new instance is added. When the incoming effect has
+   * `stackable === true`, it is appended as a separate copy so multiple identical effects
+   * coexist (e.g. two of the same equipment each contribute their own multiplier).
+   *
+   * Effects are always cloned before being pushed so the per-instance state we mutate
+   * (duration ticks down, etc.) can't bleed back into the shared source definition.
+   */
   addEffect(effect: Effect) {
-    const existingEffect = this.effects.find((e) => e.name === effect.name);
-
-    if (existingEffect) {
-      if (effect.duration > existingEffect.duration) {
-        existingEffect.duration = effect.duration;
+    if (!effect.stackable) {
+      const existingEffect = this.effects.find((e) => e.name === effect.name && !e.stackable);
+      if (existingEffect) {
+        if (effect.duration > existingEffect.duration) {
+          existingEffect.duration = effect.duration;
+        }
+        return;
       }
-      return;
     }
-    this.effects.push(effect);
+    this.effects.push(effect.clone());
     const verb = effect.positive ? 'gained' : 'was inflicted with';
     this.battle.logEvent(`${this.character.name} ${verb} [${effect.name}]`);
   }
@@ -179,6 +246,7 @@ export class CharacterInBattle {
    */
   processEndOfTurn() {
     this.effects.forEach((effect) => {
+      // eslint-disable-next-line no-param-reassign
       effect.duration -= 1;
     });
 
@@ -259,6 +327,11 @@ export class CharacterInBattle {
 
     const status = statusParts.join(', ');
     const lines: string[] = [status];
+
+    if (this.equipments.length > 0) {
+      const equipStr = this.equipments.map((e) => e.name).join(', ');
+      lines.push(`  Equipped: ${equipStr}`);
+    }
 
     if (this.effects.length > 0) {
       const effectsStr = this.effects.map((e) => e.toString()).join('\n  ');

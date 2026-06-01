@@ -11,8 +11,9 @@ import { CharacterTextColors, DEFAULT_CHARACTER_TEXT_COLORS } from './textTheme'
 import { SkillCategory } from './skillCategory';
 import type { SkillBattleCost } from './skillBattleCost';
 import { Normal } from './skillBattleCost';
+import { tcgAssetPaths } from './assetPaths';
 
-const SKILL_POINT_ICON_PATH = './tcg/assets/common/skillPoint.png';
+const SKILL_POINT_ICON_PATH = `${tcgAssetPaths.common}/skillPoint.png`;
 let skillPointIconPromise: Promise<Canvas.Image> | null = null;
 
 /**
@@ -418,7 +419,7 @@ export class Skill implements DrawableBlock {
       }
     });
 
-    const damageElement = character.character.element;
+    const damageElement = character.effectiveDamageElement;
 
     if (this.damage > 0) {
       switch (this.damageRange) {

@@ -10,6 +10,9 @@ import { Element } from './element';
  * @param duration - The number of turns remaining until the effect wears off
  * @param positive - True for buffs (applied to self/allies), false for debuffs (applied to enemies).
  *   Used for log phrasing ("gained" vs "was inflicted with") and future UI cues.
+ * @param stackable - When true, additional copies of this effect coexist as separate
+ *   instances rather than refreshing/replacing each other. Each copy contributes its own
+ *   amount to multiplicative stacks (e.g. two +25% Fairy charms multiply to +56% damage).
  * @param metadata - Optional metadata for the effect
  */
 export class Effect {
@@ -19,9 +22,11 @@ export class Effect {
   amount: number;
   duration: number;
   positive: boolean;
+  stackable: boolean;
   metadata?: {
     activeSkillIndices?: number[]; // For FormChange: which skill indices should be active in this form
     appliesToElement?: Element; // For damage effects: if specified, only applies to damage of this element type
+    overrideElement?: Element; // For DamageElementOverride: the element to convert outgoing damage to
   };
 
   constructor(
@@ -31,7 +36,8 @@ export class Effect {
     amount: number,
     duration: number,
     positive: boolean,
-    metadata?: { activeSkillIndices?: number[]; appliesToElement?: Element }
+    metadata?: { activeSkillIndices?: number[]; appliesToElement?: Element; overrideElement?: Element },
+    stackable: boolean = false,
   ) {
     this.name = name;
     this.description = description;
@@ -40,6 +46,7 @@ export class Effect {
     this.duration = duration;
     this.positive = positive;
     this.metadata = metadata;
+    this.stackable = stackable;
   }
 
   /**
@@ -53,19 +60,37 @@ export class Effect {
     return this.metadata.appliesToElement === damageElement;
   }
 
+  /**
+   * Returns a shallow copy of this effect. Used when applying effects from shared sources
+   * (cards, abilities) so that per-instance state like {@link duration} can't be mutated
+   * across the many references that point at the original definition.
+   */
+  clone(): Effect {
+    return new Effect(
+      this.name,
+      this.description,
+      this.type,
+      this.amount,
+      this.duration,
+      this.positive,
+      this.metadata ? { ...this.metadata } : undefined,
+      this.stackable,
+    );
+  }
+
   toString(): string {
     const parts: string[] = [this.name];
-    
+
     if (this.description) {
       parts.push(`- ${this.description}`);
     }
-    
+
     if (this.duration < 999) {
       parts.push(`[${this.duration} turns left]`);
     } else {
       parts.push('[permanent]');
     }
-    
+
     return parts.join(' ');
   }
 }
