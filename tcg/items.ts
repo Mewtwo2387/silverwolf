@@ -51,28 +51,33 @@ function itemImagePanel(itemId: string, backgroundColor: string): ImagePanel {
   });
 }
 
-/** 3★ equipment that boosts outgoing damage of a single element by 25% (stackable). */
+/** Equipment that boosts outgoing damage of a single element (stackable). */
 function elementalDamageEquipment(
   id: string,
   name: string,
   element: Element,
-  description?: string,
-  footer?: string,
+  options: {
+    rarity: Rarity;
+    damageMultiplier: number;
+    description?: string;
+    footer?: string;
+  },
 ): Equipment {
   const typeLabel = Element[element].toLowerCase();
+  const bonusPct = Math.round((options.damageMultiplier - 1) * 100);
   return new Equipment(
     id,
     name,
-    description ?? `The wearer deals 25% more ${typeLabel} damage.`,
-    new Rarity(3),
+    options.description ?? `The wearer deals ${bonusPct}% more ${typeLabel} damage.`,
+    options.rarity,
     itemImagePanel(id, '#1a2536'),
     defaultEquipmentBackground(),
     [
       new Effect(
         name,
-        `+25% ${typeLabel} damage.`,
+        `+${bonusPct}% ${typeLabel} damage.`,
         EffectType.OutgoingDamage,
-        1.25,
+        options.damageMultiplier,
         9999,
         true,
         { appliesToElement: element },
@@ -80,47 +85,94 @@ function elementalDamageEquipment(
       ),
     ],
     undefined,
-    footer,
+    options.footer,
   );
 }
+
+const ELEMENTAL_25 = { rarity: new Rarity(3), damageMultiplier: 1.25 } as const;
+const ELEMENTAL_50 = { rarity: new Rarity(5), damageMultiplier: 1.5 } as const;
 
 // ---------------------------------------------------------------------------
 // Equipment items
 // ---------------------------------------------------------------------------
 
 export const ANEMOCULUS = elementalDamageEquipment(
-  'anemoculus', 
-  'Anemoculus', 
+  'anemoculus',
+  'Anemoculus',
   Element.Anemo,
-  undefined,
-  'Mondstadt\'s oculus. Back when you can actually find them all by exploring, and not like, this area can only be unlocked during this questline which is a continuation of another questline triggered by entering this particular cave; or like, you need this funny tree to be level 10 before you can open this door.'
+  {
+    ...ELEMENTAL_25,
+    footer: 'Mondstadt\'s oculus. Back when you can actually find them all by exploring, and not like, this area can only be unlocked during this questline which is a continuation of another questline triggered by entering this particular cave; or like, you need this funny tree to be level 10 before you can open this door.',
+  },
 );
-export const CRYOCULUS = elementalDamageEquipment('cryoculus', 'Cryoculus', Element.Cryo);
-export const DENDROCULUS = elementalDamageEquipment('dendroculus', 'Dendroculus', Element.Dendro);
-export const ELECTROCULUS = elementalDamageEquipment('electroculus', 'Electroculus', Element.Electro);
-export const GEOCULUS = elementalDamageEquipment('geoculus', 'Geoculus', Element.Geo);
-export const HYDROCULUS = elementalDamageEquipment('hydroculus', 'Hydroculus', Element.Hydro);
-export const PYROCULUS = elementalDamageEquipment('pyroculus', 'Pyroculus', Element.Pyro);
+export const CRYOCULUS = elementalDamageEquipment('cryoculus', 'Cryoculus', Element.Cryo, ELEMENTAL_25);
+export const DENDROCULUS = elementalDamageEquipment('dendroculus', 'Dendroculus', Element.Dendro, ELEMENTAL_25);
+export const ELECTROCULUS = elementalDamageEquipment('electroculus', 'Electroculus', Element.Electro, ELEMENTAL_25);
+export const GEOCULUS = elementalDamageEquipment('geoculus', 'Geoculus', Element.Geo, ELEMENTAL_25);
+export const HYDROCULUS = elementalDamageEquipment('hydroculus', 'Hydroculus', Element.Hydro, ELEMENTAL_25);
+export const PYROCULUS = elementalDamageEquipment('pyroculus', 'Pyroculus', Element.Pyro, ELEMENTAL_25);
 export const MAID_OUTFIT = elementalDamageEquipment(
   'maid_outfit',
   'Maid Outfit',
   Element.Fairy,
-  undefined,
-  'uwu :3\nOnce worn by a certain someone that swears if Japan win against Germany in the 2022 World Cup.'
+  {
+    ...ELEMENTAL_25,
+    footer: 'uwu :3\nOnce worn by a certain someone that swears if Japan win against Germany in the 2022 World Cup.',
+  },
 );
 export const RUSTED_SWORD = elementalDamageEquipment(
   'rusted_sword',
   'Rusted Sword',
   Element.Physical,
-  undefined,
-  'I don\'t know how this broken shit can increase damage but it\'s not like I know much about swordfight. At least not the straight type of swordfight.'
+  {
+    ...ELEMENTAL_25,
+    footer: 'I don\'t know how this broken shit can increase damage but it\'s not like I know much about swordfight. At least not the straight type of swordfight.',
+  },
 );
 export const QUANTUM_COMPRESSOR = elementalDamageEquipment(
   'quantum_compressor',
   'Quantum Compressor',
   Element.Quantum,
-  undefined,
-  'Anyone playing modded Minecraft knows everyone loves this slop when we see it in a tech modpack. Can\'t think of an endgame goal? Just make the player obtain 10000 of every item and squeeze them into a singularity. Instantly triples playtime.',
+  {
+    ...ELEMENTAL_25,
+    footer: 'Anyone playing modded Minecraft knows everyone loves this slop when we see it in a tech modpack. Can\'t think of an endgame goal? Just make the player obtain 10000 of every item and squeeze them into a singularity. Instantly triples playtime.',
+  },
+);
+
+// 5★ elemental damage equipment (+50% for one element)
+export const ANEMO_GNOSIS = elementalDamageEquipment(
+  'anemo_gnosis',
+  'Anemo Gnosis',
+  Element.Anemo,
+  {
+    ...ELEMENTAL_50,
+    footer: 'Someone kicked Venti in the balls. Fortunately, his balls are so humongous that it\'s barely a tickle.',
+  },
+);
+export const GEO_GNOSIS = elementalDamageEquipment('geo_gnosis', 'Geo Gnosis', Element.Geo, ELEMENTAL_50);
+export const PYRO_GNOSIS = elementalDamageEquipment('pyro_gnosis', 'Pyro Gnosis', Element.Pyro, ELEMENTAL_50);
+export const DENDRO_GNOSIS = elementalDamageEquipment('dendro_gnosis', 'Dendro Gnosis', Element.Dendro, ELEMENTAL_50);
+export const ELECTRO_GNOSIS = elementalDamageEquipment('electro_gnosis', 'Electro Gnosis', Element.Electro, ELEMENTAL_50);
+export const CRYO_GNOSIS = elementalDamageEquipment('cryo_gnosis', 'Cryo Gnosis', Element.Cryo, ELEMENTAL_50);
+export const HYDRO_GNOSIS = elementalDamageEquipment('hydro_gnosis', 'Hydro Gnosis', Element.Hydro, ELEMENTAL_50);
+export const PINK_FOR_SLUG = elementalDamageEquipment('pink_for_slug', 'Pink for Slug!', Element.Fairy, ELEMENTAL_50);
+export const AK_47 = elementalDamageEquipment(
+  'ak_47',
+  'AK-47',
+  Element.Physical,
+  {
+    ...ELEMENTAL_50,
+    footer: 'Enemies die to a severe allergic reaction to metal',
+  },
+);
+export const BLACK_HOLE = elementalDamageEquipment(
+  'black_hole',
+  'Black hole',
+  Element.Quantum,
+  {
+    ...ELEMENTAL_50,
+    footer: 'massive and dark like your mom\'s hole',
+  },
 );
 
 export const STRANGE_QUARK = new Equipment(
@@ -392,6 +444,16 @@ export const ALL_ITEMS: Item[] = [
   QUANTUM_COMPRESSOR,
   STRANGE_QUARK,
   PLATE_ARMOR,
+  ANEMO_GNOSIS,
+  GEO_GNOSIS,
+  PYRO_GNOSIS,
+  DENDRO_GNOSIS,
+  ELECTRO_GNOSIS,
+  CRYO_GNOSIS,
+  HYDRO_GNOSIS,
+  PINK_FOR_SLUG,
+  AK_47,
+  BLACK_HOLE,
   ESTROGEN,
   SILVERWOLF_KEYCHAIN,
   CREDIT_CARD,
@@ -415,16 +477,47 @@ export const ITEM_DISCORD_CHOICES = ALL_ITEMS.map((it) => ({
 /** Per-card cap to keep decks varied. */
 export const PER_CARD_MAX = 10;
 
+/** Max copies in a deck with rarity ≥ 5 (includes 6★ if added later). */
+export const DECK_MAX_FIVE_STAR_OR_ABOVE = 5;
+/** Max copies in a deck with rarity ≥ 4 (includes all 5★+ copies). */
+export const DECK_MAX_FOUR_STAR_OR_ABOVE = 15;
+
 export type DeckComposition = Record<string, number>;
 
-/** Default deck composition: balanced sampler across all catalog items. */
-export function defaultDeckComposition(): DeckComposition {
-  const each = Math.floor(DECK_SIZE / ALL_ITEMS.length);
-  const remainder = DECK_SIZE - each * ALL_ITEMS.length;
-  const composition: DeckComposition = {};
-  ALL_ITEMS.forEach((it, idx) => {
-    composition[it.id] = each + (idx < remainder ? 1 : 0);
+export type DeckValidationResult = { ok: true } | { ok: false; reason: string };
+
+/** Count cards in a composition whose catalog rarity is at least `minRarity`. */
+export function countDeckCardsAtLeastRarity(composition: DeckComposition, minRarity: number): number {
+  let total = 0;
+  Object.entries(composition).forEach(([id, count]) => {
+    const item = ITEMS_BY_ID[id];
+    if (!item || count <= 0) return;
+    if (item.rarity.rarity >= minRarity) {
+      total += count;
+    }
   });
+  return total;
+}
+
+/** Default deck composition: 25 cards, respects rarity caps (mostly 3★ equipment + consumables). */
+export function defaultDeckComposition(): DeckComposition {
+  const composition: DeckComposition = {};
+  ALL_ITEMS.forEach((it) => {
+    composition[it.id] = 0;
+  });
+
+  const fillerIds = ALL_ITEMS.filter((it) => it.rarity.rarity < 5).map((it) => it.id);
+  let remaining = DECK_SIZE;
+  let idx = 0;
+  while (remaining > 0 && fillerIds.length > 0) {
+    const id = fillerIds[idx % fillerIds.length];
+    if (composition[id] < PER_CARD_MAX) {
+      composition[id] += 1;
+      remaining -= 1;
+    }
+    idx += 1;
+    if (idx > fillerIds.length * PER_CARD_MAX) break;
+  }
   return composition;
 }
 
@@ -453,13 +546,42 @@ export function buildExampleDeck(): Item[] {
   return expandDeckComposition(defaultDeckComposition());
 }
 
-/** True when the composition forms a legal deck (== 25 known cards, each within cap). */
-export function isLegalDeck(composition: DeckComposition): boolean {
+/** Validate deck size, per-card cap, and rarity band limits (5★+ / 4★+ caps include lower bands). */
+export function validateDeckComposition(composition: DeckComposition): DeckValidationResult {
   let total = 0;
   for (const [id, count] of Object.entries(composition)) {
-    if (!ITEMS_BY_ID[id]) return false;
-    if (!Number.isInteger(count) || count < 0 || count > PER_CARD_MAX) return false;
+    if (!ITEMS_BY_ID[id]) {
+      return { ok: false, reason: `Unknown item id: ${id}` };
+    }
+    if (!Number.isInteger(count) || count < 0 || count > PER_CARD_MAX) {
+      return { ok: false, reason: `Each card must be 0–${PER_CARD_MAX} copies.` };
+    }
     total += count;
   }
-  return total === DECK_SIZE;
+  if (total !== DECK_SIZE) {
+    return {
+      ok: false,
+      reason: `Deck must have exactly ${DECK_SIZE} cards (currently ${total}).`,
+    };
+  }
+  const fivePlus = countDeckCardsAtLeastRarity(composition, 5);
+  if (fivePlus > DECK_MAX_FIVE_STAR_OR_ABOVE) {
+    return {
+      ok: false,
+      reason: `At most ${DECK_MAX_FIVE_STAR_OR_ABOVE} cards may be 5★ or higher (currently ${fivePlus}).`,
+    };
+  }
+  const fourPlus = countDeckCardsAtLeastRarity(composition, 4);
+  if (fourPlus > DECK_MAX_FOUR_STAR_OR_ABOVE) {
+    return {
+      ok: false,
+      reason: `At most ${DECK_MAX_FOUR_STAR_OR_ABOVE} cards may be 4★ or higher (currently ${fourPlus}, includes 5★+).`,
+    };
+  }
+  return { ok: true };
+}
+
+/** True when the composition passes {@link validateDeckComposition}. */
+export function isLegalDeck(composition: DeckComposition): boolean {
+  return validateDeckComposition(composition).ok;
 }

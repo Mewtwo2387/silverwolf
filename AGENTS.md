@@ -397,7 +397,9 @@ all alive cards (this is when effect durations tick) and draws 2 cards per side.
 
 - `DECK_SIZE = 25`, `STARTING_HAND = 5`, `DRAW_PER_ROUND = 2`.
 - Decks are persisted per Discord user in `User.tcg_deck` (JSON `{itemId: count}`).
-- A **legal deck** is exactly 25 known items, each with count `0..PER_CARD_MAX (10)`.
+- A **legal deck** is exactly 25 known items, each with count `0..PER_CARD_MAX (10)`, at most
+  **5** copies at 5★+, and at most **15** copies at 4★+ (the 5★ cap counts toward the 4★ cap).
+  See `validateDeckComposition` in `tcg/items.ts`.
 - Two kinds of items:
   - **Equipment** — attaches permanently to a character (max 3 per character, see
     `MAX_EQUIPMENTS_PER_CHARACTER`). Its `effects` are pushed onto the character's effect

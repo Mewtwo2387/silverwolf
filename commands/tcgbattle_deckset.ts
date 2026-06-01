@@ -8,7 +8,9 @@ import {
   ITEM_DISCORD_CHOICES,
   ITEMS_BY_ID,
   PER_CARD_MAX,
-  isLegalDeck,
+  DECK_MAX_FIVE_STAR_OR_ABOVE,
+  DECK_MAX_FOUR_STAR_OR_ABOVE,
+  validateDeckComposition,
 } from '../tcg/items';
 import { DECK_SIZE } from '../tcg/battle';
 
@@ -24,7 +26,7 @@ class TcgbattleDeckset extends Command {
       },
       {
         name: 'count',
-        description: `New number of copies (0–${PER_CARD_MAX}). Total deck must end up at ${DECK_SIZE}.`,
+        description: `Copies (0–${PER_CARD_MAX}). Deck: ${DECK_SIZE} cards, max ${DECK_MAX_FIVE_STAR_OR_ABOVE} at 5★+, max ${DECK_MAX_FOUR_STAR_OR_ABOVE} at 4★+.`,
         type: 4,
         required: true,
         min_value: 0,
@@ -46,14 +48,11 @@ class TcgbattleDeckset extends Command {
     const previous = composition[itemId] ?? 0;
     composition[itemId] = count;
 
-    const total = Object.values(composition).reduce((s, n) => s + n, 0);
-    if (!isLegalDeck(composition)) {
+    const validation = validateDeckComposition(composition);
+    if (!validation.ok) {
       const text = formatDeckComposition(composition);
-      const reason = total !== DECK_SIZE
-        ? `Deck has ${total} cards but must have exactly ${DECK_SIZE}. Adjust other cards to compensate.`
-        : `Each card must be 0–${PER_CARD_MAX}.`;
       await interaction.editReply([
-        `Did not save: ${reason}`,
+        `Did not save: ${validation.reason}`,
         '',
         text,
         '',
