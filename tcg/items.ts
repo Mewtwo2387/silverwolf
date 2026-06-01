@@ -254,22 +254,21 @@ export const SILVERWOLF_KEYCHAIN = new SignatureEquipment(
     ),
   ],
   (target) => {
-    const quantumAllies = target.battle.ally(target.side)
-      .filter((c) => c.character.element === Element.Quantum);
-    quantumAllies.forEach(() => {
+    const quantumCount = target.battle.ally(target.side)
+      .filter((c) => c.character.element === Element.Quantum).length;
+    if (quantumCount > 0) {
       target.addEffect(
         new Effect(
           'Silverwolf Keychain (Team)',
-          '+10% quantum damage per quantum ally on the team.',
+          `+${quantumCount * 10}% quantum damage (${quantumCount} quantum ally${quantumCount === 1 ? '' : 'ies'}).`,
           EffectType.OutgoingDamage,
-          1.1,
+          1 + 0.1 * quantumCount,
           9999,
           true,
           { appliesToElement: Element.Quantum },
-          true,
         ),
       );
-    });
+    }
     if (target.character.name === 'Ei') {
       target.addEffect(
         new Effect(
