@@ -71,9 +71,14 @@ export class CharacterInBattle {
    * {@link EffectType.DamageElementOverride} effect can convert outgoing damage to another element.
    */
   get effectiveDamageElement(): Element {
-    const override = this.effects.find((e) => e.type === EffectType.DamageElementOverride);
-    if (override?.metadata?.overrideElement !== undefined) {
-      return override.metadata.overrideElement;
+    for (let i = this.effects.length - 1; i >= 0; i -= 1) {
+      const effect = this.effects[i];
+      if (
+        effect.type === EffectType.DamageElementOverride
+        && effect.metadata?.overrideElement !== undefined
+      ) {
+        return effect.metadata.overrideElement;
+      }
     }
     return this.character.element;
   }

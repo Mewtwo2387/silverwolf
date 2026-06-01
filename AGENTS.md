@@ -411,7 +411,7 @@ empty = draw.
 
 ### 5.2 Class map (the "how")
 
-```
+```text
 Character (data)             — hp/element/skills/abilities + visual config (Background, ImagePanel, TextColors).
 CharacterInBattle            — runtime state: currentHp, energy, effects, equipments, side.
 Skill                        — name/desc/damage/range/effects + battleCost (Normal|Charged|Ultimate).

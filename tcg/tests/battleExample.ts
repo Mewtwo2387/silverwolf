@@ -102,6 +102,15 @@ function handleCommand(input: string, battle: Battle, rl: readline.Interface, pr
         }
         const handIdx = parseInt(parts[2], 10);
         const charIdx = parseInt(parts[3], 10);
+        const allies = side === 'p1' ? battle.p1cards : battle.p2cards;
+        if (!Number.isInteger(handIdx) || handIdx < 0) {
+          console.log('Invalid hand slot id (must be a non-negative integer; see "hand" command).');
+          break;
+        }
+        if (!Number.isInteger(charIdx) || charIdx < 0 || charIdx >= allies.length) {
+          console.log(`Invalid character index (must be 0-${allies.length - 1}).`);
+          break;
+        }
         const r = executeUseItem(battle, side, handIdx, charIdx);
         if (r.ok) {
           console.log(formatUseItemMessage(r.detail, 'cli'));
@@ -190,6 +199,8 @@ export function runBattleExample() {
   console.log('  skills [p1|p2] [index] - Show skills for a character');
   console.log('  use [p1|p2] [charIndex] [skillIndex] [targetIndex] - Use a skill');
   console.log('    (use "self" or -1 for targetIndex if self-targeting)');
+  console.log('  hand [p1|p2] - Show item hand');
+  console.log('  item [p1|p2] [handSlotId] [charIndex] - Play an item (use slot id from "hand")');
   console.log('  debug - Give everyone 9999 energy');
   console.log('  end - End current turn');
   console.log('  help - Show this help');

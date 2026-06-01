@@ -431,10 +431,12 @@ export class Battle {
 
     const item = hand.get(handSlotId)!;
     this.currentActionLog = [];
+    const turnHistoryLenBefore = this.turnHistory.length;
     this.logEvent(`${side.toUpperCase()} used [${item.name}] on ${target.character.name}`);
     const ok = item.apply(target, this);
     if (!ok) {
-      // Roll back the log line; the application failed (e.g. equipment cap reached).
+      // Roll back logs from this attempt (e.g. equipment cap); apply may have called logEvent too.
+      this.turnHistory.length = turnHistoryLenBefore;
       this.currentActionLog = [];
       return false;
     }
