@@ -10,6 +10,16 @@ import { round2 } from '../utils/math';
 export const MAX_EQUIPMENTS_PER_CHARACTER = 3;
 
 /**
+ * Optional context for a single damage roll. Charged-attack bonuses are applied here only
+ * (not stored as separate timed buffs).
+ */
+export interface DamageCalculationContext {
+  chargedAttack?: boolean;
+  /** Team skill points spent to use the charged attack (from {@link Skill.skillPointsCost}). */
+  skillPointsSpent?: number;
+}
+
+/**
  * A single character and their status in a battle
  * @param character - The character class, which includes its base stats and skills/abilities
  * @param battle - The battle
@@ -146,6 +156,22 @@ export class CharacterInBattle {
    * @param damageElement - Element type of the damage (defaults to character's element if not specified)
    * @param attacker - If from another character, this character gains energy from being hit
    */
+  /**
+   * Combined dodge chance from all {@link EffectType.DodgeChance} effects (capped at 100%).
+   * Rolled once per incoming enemy skill in {@link Skill.useSkill}.
+   */
+  getDodgeChance(): number {
+    return this.effects
+      .filter((effect) => effect.type === EffectType.DodgeChance)
+      .reduce((sum, effect) => Math.min(1, sum + effect.amount), 0);
+  }
+
+  /** Single roll for whether an entire enemy skill is avoided (effects + damage). */
+  rollDodge(): boolean {
+    const chance = this.getDodgeChance();
+    return chance > 0 && Math.random() < chance;
+  }
+
   takeDamage(amount: number, damageElement?: Element, attacker?: CharacterInBattle | null) {
     if (this.isKnockedOut) return;
 
@@ -187,9 +213,14 @@ export class CharacterInBattle {
   }
 
   /**
-   * Calculate outgoing damage with modifiers applied (without tracking stats)
+   * Calculate outgoing damage with modifiers applied (without tracking stats).
+   * Pass {@link DamageCalculationContext} for charged-attack-only equipment bonuses.
    */
-  calculateDamage(amount: number, damageElement?: Element): number {
+  calculateDamage(
+    amount: number,
+    damageElement?: Element,
+    context?: DamageCalculationContext,
+  ): number {
     const element = damageElement || this.character.element;
 
     let damage = amount;
@@ -199,14 +230,35 @@ export class CharacterInBattle {
       .forEach((effect) => {
         damage *= effect.amount;
       });
+
+    if (context?.chargedAttack) {
+      this.effects
+        .filter((effect) => effect.type === EffectType.ChargedOutgoingDamage)
+        .forEach((effect) => {
+          damage *= effect.amount;
+        });
+      const sp = context.skillPointsSpent ?? 0;
+      if (sp > 0) {
+        this.effects
+          .filter((effect) => effect.type === EffectType.ChargedSkillPointScaling)
+          .forEach((effect) => {
+            damage *= 1 + effect.amount * sp;
+          });
+      }
+    }
+
     return round2(Math.max(0, damage));
   }
 
   /**
    * Calculate and track outgoing damage with modifiers applied
    */
-  dealDamage(amount: number, damageElement?: Element): number {
-    const damage = this.calculateDamage(amount, damageElement);
+  dealDamage(
+    amount: number,
+    damageElement?: Element,
+    context?: DamageCalculationContext,
+  ): number {
+    const damage = this.calculateDamage(amount, damageElement, context);
     this.stats.damageDealt = round2(this.stats.damageDealt + damage);
     return damage;
   }

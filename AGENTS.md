@@ -418,7 +418,8 @@ Skill                        — name/desc/damage/range/effects + battleCost (No
 Ability                      — passive: applies static effects on activation, optional onBattleEvent hook.
 Effect                       — { name, description, type, amount, duration, positive, metadata }.
 EffectType                   — IncomingDamage / OutgoingDamage / FormChange / EnergyGain
-                                / SkillPointsMaxBonus / DamageElementOverride.
+                                / SkillPointsMaxBonus / DamageElementOverride / DodgeChance
+                                / ChargedOutgoingDamage / ChargedSkillPointScaling.
 RangeType                    — Self / SingleAlly / AllAllies / SingleOpponent / AllOpponents / AllCards.
 SkillBattleCost              — { kind: 'normal' | 'charged' | 'ultimate', ... }.
 Item (abstract)              — base for cards in the deck/hand.
@@ -462,6 +463,12 @@ Patterns used in existing characters:
 2. Wire it where it should apply:
    - Damage modifiers: `Skill.useSkill` → `CharacterInBattle.calculateDamage` /
      `dealDamage`.
+   - Dodge: rolled once per hostile target at the start of `Skill.useSkill` (sums
+     `DodgeChance`, capped at 100%). A dodge skips **all** of that skill on that target
+     (hostile effects and damage); ally-targeted parts of the same skill still resolve.
+   - Charged attack damage: `ChargedOutgoingDamage` / `ChargedSkillPointScaling` apply only
+     inside `CharacterInBattle.calculateDamage` when `Skill.useSkill` passes
+     `{ chargedAttack: true, skillPointsSpent }` — they are not separate timed buffs.
    - Resource caps: `Battle.skillPointsCapForSide`.
    - Per-element rules: respect `effect.appliesToDamageElement(element)`.
    - One-off behaviour at end of turn: `CharacterInBattle.processEndOfTurn`.
@@ -524,6 +531,19 @@ derived from that array, so the deck-edit slash commands will pick it up automat
 
 Equipment effects should use `duration: 9999` (treated as permanent in display logic). The
 equip cap is enforced in `CharacterInBattle.equip` (returns `false` when full).
+
+**Signature equipment** (`SignatureEquipment` in `tcg/item.ts`): same combat rules as
+`Equipment`, but the card uses a gold frame, `SIG` emblem, and a banner naming
+`signatureOf` (e.g. Estrogen → Kaitlin). No extra in-battle restrictions.
+
+```ts
+export const ESTROGEN = new SignatureEquipment(
+  'estrogen', 'Estrogen', 'Kaitlin', description, new Rarity(5),
+  itemImagePanel('estrogen', '#1a2536'),
+  defaultSignatureEquipmentBackground(),
+  [ /* effects */ ], onEquipped?, footer?,
+);
+```
 
 If an item performs something that doesn't map to "push an effect" or "call a method on the
 target", call back into `Battle` via the second parameter (`battle.logEvent(...)`,

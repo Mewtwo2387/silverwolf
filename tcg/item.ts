@@ -324,6 +324,156 @@ export class Equipment extends Item {
   }
 }
 
+/** Gold palette for signature equipment card art (visual only; no combat effect). */
+const SIGNATURE_GOLD = '#e8c468';
+const SIGNATURE_GOLD_DARK = '#9a6b2e';
+const SIGNATURE_GOLD_LIGHT = '#fff6d8';
+
+/**
+ * Signature equipment: same combat rules as {@link Equipment}, but the generated card
+ * uses a distinct gold frame, SIG emblem, and a banner naming the linked character.
+ */
+export class SignatureEquipment extends Equipment {
+  /** Display name of the character this item is signature gear for (e.g. "Kaitlin"). */
+  signatureOf: string;
+
+  constructor(
+    id: string,
+    name: string,
+    signatureOf: string,
+    description: string,
+    rarity: Rarity,
+    imagePanel: ImagePanel,
+    background: Background,
+    effects: Effect[],
+    onEquipped?: (target: CharacterInBattle) => void,
+    footer?: string,
+  ) {
+    super(id, name, description, rarity, imagePanel, background, effects, onEquipped, footer);
+    this.signatureOf = signatureOf;
+  }
+
+  protected override get emblemColor(): string {
+    return '#c9a227';
+  }
+
+  protected override get emblemLabel(): string {
+    return 'SIG';
+  }
+
+  private drawSignatureBorder(ctx: Canvas.CanvasRenderingContext2D): void {
+    const inset = 12;
+    const w = CARD_WIDTH - inset * 2;
+    const h = CARD_HEIGHT - inset * 2;
+    ctx.save();
+    ctx.shadowColor = 'rgba(232, 196, 104, 0.55)';
+    ctx.shadowBlur = 28;
+    ctx.strokeStyle = SIGNATURE_GOLD;
+    ctx.lineWidth = 6;
+    ctx.strokeRect(inset, inset, w, h);
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = SIGNATURE_GOLD_DARK;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(inset + 8, inset + 8, w - 16, h - 16);
+    ctx.restore();
+
+    // Corner accents
+    const corner = 48;
+    const corners: [number, number, number, number][] = [
+      [inset, inset, 1, 1],
+      [CARD_WIDTH - inset, inset, -1, 1],
+      [inset, CARD_HEIGHT - inset, 1, -1],
+      [CARD_WIDTH - inset, CARD_HEIGHT - inset, -1, -1],
+    ];
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 246, 216, 0.75)';
+    ctx.lineWidth = 3;
+    corners.forEach(([cx, cy, sx, sy]) => {
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + sx * corner, cy);
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx, cy + sy * corner);
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  /** Ribbon under the top bar: SIGNATURE + character name. */
+  private drawSignatureBanner(ctx: Canvas.CanvasRenderingContext2D): void {
+    const bannerY = TOP_BAR_HEIGHT + 8;
+    const bannerH = 56;
+    const left = 64;
+    const right = CARD_WIDTH - 64;
+    const width = right - left;
+
+    ctx.save();
+    const grad = ctx.createLinearGradient(left, bannerY, right, bannerY + bannerH);
+    grad.addColorStop(0, 'rgba(154, 107, 46, 0.92)');
+    grad.addColorStop(0.5, 'rgba(232, 196, 104, 0.95)');
+    grad.addColorStop(1, 'rgba(154, 107, 46, 0.92)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(left, bannerY, width, bannerH);
+    ctx.strokeStyle = SIGNATURE_GOLD_LIGHT;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(left, bannerY, width, bannerH);
+    ctx.restore();
+
+    drawTcgText(ctx, 'SIGNATURE', left + width / 2, bannerY + 18, {
+      font: '700 22px "Bahnschrift"',
+      fillStyle: SIGNATURE_GOLD_DARK,
+      strokeStyle: 'rgba(255, 255, 255, 0.35)',
+      lineWidth: 2,
+      textAlign: 'center',
+      shadowBlur: 0,
+    });
+    drawTcgText(ctx, this.signatureOf.toUpperCase(), left + width / 2, bannerY + 46, {
+      font: '800 28px "Bahnschrift"',
+      fillStyle: SIGNATURE_GOLD_LIGHT,
+      strokeStyle: SIGNATURE_GOLD_DARK,
+      lineWidth: 3,
+      textAlign: 'center',
+      shadowBlur: 8,
+    });
+  }
+
+  override async generateCard(): Promise<Canvas.Canvas> {
+    const canvas = Canvas.createCanvas(CARD_WIDTH, CARD_HEIGHT);
+    const ctx = canvas.getContext('2d');
+
+    await this.background.draw(ctx);
+    this.drawSignatureBorder(ctx);
+    this.drawTypeEmblem(ctx);
+    await this.rarity.draw(ctx);
+
+    drawTcgText(ctx, this.name.toUpperCase(), 144, 96, {
+      font: '700 84px "Bahnschrift"',
+      fillStyle: SIGNATURE_GOLD_LIGHT,
+      strokeStyle: SIGNATURE_GOLD_DARK,
+      lineWidth: 7,
+      textAlign: 'left',
+      shadowBlur: 14,
+      shadowOffsetY: 4,
+    });
+
+    this.drawSignatureBanner(ctx);
+
+    const imagePanelY = TOP_BAR_HEIGHT + 64 + 56;
+    const afterImageY = await this.imagePanel.draw(ctx, imagePanelY);
+
+    let textEndY = this.drawDescription(ctx, afterImageY, this.description);
+    if (this.footer) {
+      textEndY = this.drawFooter(ctx, textEndY, this.footer);
+    }
+
+    return canvas;
+  }
+}
+
+export function isSignatureEquipment(item: Item): item is SignatureEquipment {
+  return item instanceof SignatureEquipment;
+}
+
 /**
  * Consumable item: runs its `effect` callback once on the target and is then destroyed.
  * Use one of the helper factories (heal / dispel / restoreEnergy) or pass a custom callback.

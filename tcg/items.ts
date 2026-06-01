@@ -4,7 +4,7 @@ import { Rarity } from './rarity';
 import { Effect } from './effect';
 import { EffectType } from './effectType';
 import { Element } from './element';
-import { Equipment, Consumable, Item } from './item';
+import { Equipment, SignatureEquipment, Consumable, Item } from './item';
 import { DECK_SIZE } from './battle';
 import { itemImagePath } from './assetPaths';
 
@@ -20,6 +20,17 @@ function defaultEquipmentBackground(): Background {
     '#3b6cf2',
     TopBarType.Fade,
     { color: '#08101e', opacity1: 0.85, opacity2: 0.5 },
+  );
+}
+
+/** Warmer gradient + gold top bar for signature equipment cards. */
+export function defaultSignatureEquipmentBackground(): Background {
+  return new Background(
+    BackgroundType.Gradient,
+    { color1: '#3d2a4a', color2: '#1a1028' },
+    '#c9a227',
+    TopBarType.Fade,
+    { color: '#2a1838', opacity1: 0.88, opacity2: 0.55 },
   );
 }
 
@@ -159,13 +170,14 @@ export const PLATE_ARMOR = new Equipment(
 /** Kaitlin form skill indices (Slay Queen + Estrogen ultimate), same as her transformation skill. */
 const KAITLIN_FORM_SKILL_INDICES = [1, 2];
 
-export const ESTROGEN = new Equipment(
+export const ESTROGEN = new SignatureEquipment(
   'estrogen',
   'Estrogen',
+  'Kaitlin',
   'Converts all outgoing damage to Fairy type and increases Fairy damage by 20%. If the holder is already Fairy, increases Fairy damage by an additional 20%. When held by Kaitlin, instantly transforms to Kaitlin form.',
   new Rarity(5),
   itemImagePanel('estrogen', '#1a2536'),
-  defaultEquipmentBackground(),
+  defaultSignatureEquipmentBackground(),
   [
     new Effect(
       'Estrogen',
@@ -219,6 +231,107 @@ export const ESTROGEN = new Equipment(
     }
   },
   'You want this too, don\'t you? uwu :3'
+);
+
+export const SILVERWOLF_KEYCHAIN = new SignatureEquipment(
+  'silverwolf_keychain',
+  'Silverwolf Keychain',
+  'Ei',
+  'Increases quantum damage by 20%. Additionally increases quantum damage by 10% for each quantum ally on your team. When held by Ei, reduces incoming damage by 20% and grants a 20% chance to dodge attacks.',
+  new Rarity(5),
+  itemImagePanel('silverwolf_keychain', '#1a2536'),
+  defaultSignatureEquipmentBackground(),
+  [
+    new Effect(
+      'Silverwolf Keychain',
+      '+20% quantum damage.',
+      EffectType.OutgoingDamage,
+      1.2,
+      9999,
+      true,
+      { appliesToElement: Element.Quantum },
+      true,
+    ),
+  ],
+  (target) => {
+    const quantumAllies = target.battle.ally(target.side)
+      .filter((c) => c.character.element === Element.Quantum);
+    quantumAllies.forEach(() => {
+      target.addEffect(
+        new Effect(
+          'Silverwolf Keychain (Team)',
+          '+10% quantum damage per quantum ally on the team.',
+          EffectType.OutgoingDamage,
+          1.1,
+          9999,
+          true,
+          { appliesToElement: Element.Quantum },
+          true,
+        ),
+      );
+    });
+    if (target.character.name === 'Ei') {
+      target.addEffect(
+        new Effect(
+          'Silverwolf Keychain (Ei Guard)',
+          '-20% incoming damage.',
+          EffectType.IncomingDamage,
+          0.8,
+          9999,
+          true,
+          undefined,
+          true,
+        ),
+      );
+      target.addEffect(
+        new Effect(
+          'Silverwolf Keychain (Ei Dodge)',
+          '20% chance to dodge attacks.',
+          EffectType.DodgeChance,
+          0.2,
+          9999,
+          true,
+          undefined,
+          true,
+        ),
+      );
+    }
+  },
+  'The thing that Ei brings everywhere like it protects him or some shit'
+);
+
+export const CREDIT_CARD = new SignatureEquipment(
+  'credit_card',
+  'Credit Card',
+  'Electro',
+  'Increases charged attack damage by 20%. For each skill point spent on a charged attack, that attack deals 10% more damage.',
+  new Rarity(5),
+  itemImagePanel('credit_card', '#1a2536'),
+  defaultSignatureEquipmentBackground(),
+  [
+    new Effect(
+      'Credit Card',
+      '+20% charged attack damage.',
+      EffectType.ChargedOutgoingDamage,
+      1.2,
+      9999,
+      true,
+      undefined,
+      true,
+    ),
+    new Effect(
+      'Credit Card',
+      '+10% charged attack damage per skill point spent on the attack.',
+      EffectType.ChargedSkillPointScaling,
+      0.1,
+      9999,
+      true,
+      undefined,
+      true,
+    ),
+  ],
+  undefined,
+  'The best card in the game',
 );
 
 // ---------------------------------------------------------------------------
@@ -281,6 +394,8 @@ export const ALL_ITEMS: Item[] = [
   STRANGE_QUARK,
   PLATE_ARMOR,
   ESTROGEN,
+  SILVERWOLF_KEYCHAIN,
+  CREDIT_CARD,
   HEALING_POTION,
   CLEANSER,
   BATTERY,
