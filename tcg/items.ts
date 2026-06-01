@@ -1,4 +1,3 @@
-import { BackgroundType, TopBarType, Background } from './background';
 import { ImagePanel, ImagePanelMode } from './imagePanel';
 import { Rarity } from './rarity';
 import { Effect } from './effect';
@@ -7,41 +6,13 @@ import { Element } from './element';
 import { Equipment, SignatureEquipment, Consumable, Item } from './item';
 import { DECK_SIZE } from './battle';
 import { itemImagePath } from './assetPaths';
+import { itemBackgroundForRarity } from './rarityColors';
+import { round2 } from '../utils/math';
+import type { CharacterInBattle } from './characterInBattle';
 
-/**
- * Default visual treatment for items: a moody slate-to-amber gradient with a dark
- * top bar so the name stands out. We don't have per-item background art so this
- * keeps everything visually consistent.
- */
-function defaultEquipmentBackground(): Background {
-  return new Background(
-    BackgroundType.Gradient,
-    { color1: '#2a3a52', color2: '#0e1320' },
-    '#3b6cf2',
-    TopBarType.Fade,
-    { color: '#08101e', opacity1: 0.85, opacity2: 0.5 },
-  );
-}
-
-/** Warmer gradient + gold top bar for signature equipment cards. */
-export function defaultSignatureEquipmentBackground(): Background {
-  return new Background(
-    BackgroundType.Gradient,
-    { color1: '#3d2a4a', color2: '#1a1028' },
-    '#c9a227',
-    TopBarType.Fade,
-    { color: '#2a1838', opacity1: 0.88, opacity2: 0.55 },
-  );
-}
-
-function defaultConsumableBackground(): Background {
-  return new Background(
-    BackgroundType.Gradient,
-    { color1: '#2c4a32', color2: '#10211c' },
-    '#23b378',
-    TopBarType.Fade,
-    { color: '#0a1815', opacity1: 0.85, opacity2: 0.5 },
-  );
+/** Heal `percent` of the target's max HP (0–1) plus a flat amount. */
+function healPercentOfMaxPlusFlat(target: CharacterInBattle, percent: number, flat: number): void {
+  target.heal(round2(target.character.hp * percent + flat));
 }
 
 function itemImagePanel(itemId: string, backgroundColor: string): ImagePanel {
@@ -71,7 +42,7 @@ function elementalDamageEquipment(
     options.description ?? `The wearer deals ${bonusPct}% more ${typeLabel} damage.`,
     options.rarity,
     itemImagePanel(id, '#1a2536'),
-    defaultEquipmentBackground(),
+    itemBackgroundForRarity(options.rarity),
     [
       new Effect(
         name,
@@ -181,7 +152,7 @@ export const STRANGE_QUARK = new Equipment(
   'Converts all outgoing damage from this character into quantum damage.',
   new Rarity(3),
   itemImagePanel('strange_quark', '#1a2536'),
-  defaultEquipmentBackground(),
+  itemBackgroundForRarity(3),
   [
     new Effect(
       'Strange Quark',
@@ -204,7 +175,7 @@ export const PLATE_ARMOR = new Equipment(
   'Reduces incoming damage by 30%.',
   new Rarity(3),
   itemImagePanel('plate_armor', '#1a2536'),
-  defaultEquipmentBackground(),
+  itemBackgroundForRarity(3),
   [
     new Effect(
       'Plate Armor',
@@ -229,7 +200,7 @@ export const ESTROGEN = new SignatureEquipment(
   'Converts all outgoing damage to Fairy type and increases Fairy damage by 20%. If the holder is already Fairy, increases Fairy damage by an additional 20%. When held by Kaitlin, instantly transforms to Kaitlin form.',
   new Rarity(5),
   itemImagePanel('estrogen', '#1a2536'),
-  defaultSignatureEquipmentBackground(),
+  itemBackgroundForRarity(5),
   [
     new Effect(
       'Estrogen',
@@ -292,7 +263,7 @@ export const SILVERWOLF_KEYCHAIN = new SignatureEquipment(
   'Increases quantum damage by 20%. Additionally increases quantum damage by 10% for each quantum ally on your team. When held by Ei, reduces incoming damage by 20% and grants a 20% chance to dodge attacks.',
   new Rarity(5),
   itemImagePanel('silverwolf_keychain', '#1a2536'),
-  defaultSignatureEquipmentBackground(),
+  itemBackgroundForRarity(5),
   [
     new Effect(
       'Silverwolf Keychain',
@@ -358,7 +329,7 @@ export const CREDIT_CARD = new SignatureEquipment(
   'Increases charged attack damage by 20%. For each skill point spent on a charged attack, that attack deals 10% more damage.',
   new Rarity(5),
   itemImagePanel('credit_card', '#1a2536'),
-  defaultSignatureEquipmentBackground(),
+  itemBackgroundForRarity(5),
   [
     new Effect(
       'Credit Card',
@@ -395,7 +366,7 @@ export const HEALING_POTION = new Consumable(
   'Immediately restores 20 HP to the target.',
   new Rarity(2),
   itemImagePanel('healing_potion', '#1c2a22'),
-  defaultConsumableBackground(),
+  itemBackgroundForRarity(2),
   (target) => {
     target.heal(20);
   },
@@ -407,7 +378,7 @@ export const CLEANSER = new Consumable(
   'Removes all debuffs from the target.',
   new Rarity(3),
   itemImagePanel('cleanser', '#1c2a22'),
-  defaultConsumableBackground(),
+  itemBackgroundForRarity(3),
   (target, battle) => {
     const removed = target.cleanseDebuffs();
     if (removed > 0) {
@@ -422,12 +393,36 @@ export const BATTERY = new Consumable(
   'Grants the target 20 energy immediately.',
   new Rarity(2),
   itemImagePanel('battery', '#1c2a22'),
-  defaultConsumableBackground(),
+  itemBackgroundForRarity(2),
   (target, battle) => {
     const before = target.energy;
     target.gainEnergy(20);
     const gained = target.energy - before;
     battle.logEvent(`${target.character.name} gained ${gained} energy`);
+  },
+);
+
+export const MYSTIC_CHICKEN = new Consumable(
+  'mystic_chicken',
+  'Mystic Chicken',
+  'Restores 30% of max HP plus 30 HP.',
+  new Rarity(5),
+  itemImagePanel('mystic_chicken', '#1c2a22'),
+  itemBackgroundForRarity(5),
+  (target) => {
+    healPercentOfMaxPlusFlat(target, 0.3, 30);
+  },
+);
+
+export const XEI_PIZZA = new Consumable(
+  'xei_pizza',
+  'Xei Pizza',
+  'Restores 50% of max HP plus 10 HP.',
+  new Rarity(5),
+  itemImagePanel('xei_pizza', '#1c2a22'),
+  itemBackgroundForRarity(5),
+  (target) => {
+    healPercentOfMaxPlusFlat(target, 0.5, 10);
   },
 );
 
@@ -460,6 +455,8 @@ export const ALL_ITEMS: Item[] = [
   HEALING_POTION,
   CLEANSER,
   BATTERY,
+  MYSTIC_CHICKEN,
+  XEI_PIZZA,
 ];
 
 /** Map item id → Item, for hydrating decks loaded from the database. */

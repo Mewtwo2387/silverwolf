@@ -37,3 +37,11 @@ export function itemImagePath(itemId: string, ext: 'png' | 'jpg' = 'png'): strin
 export function itemCardPath(itemId: string): string {
   return `${tcgAssetPaths.items.cards}/${itemId}.png`;
 }
+
+export function commonEquipmentIconPath(): string {
+  return `${tcgAssetPaths.common}/equipment.png`;
+}
+
+export function commonConsumableIconPath(): string {
+  return `${tcgAssetPaths.common}/consumable.png`;
+}

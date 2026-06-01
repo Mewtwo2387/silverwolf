@@ -6,8 +6,28 @@ import { ImagePanel } from './imagePanel';
 import { Card } from './interfaces/card';
 import { Effect } from './effect';
 import { drawTcgText } from './utils/tcgTextStyle';
+import { commonConsumableIconPath, commonEquipmentIconPath } from './assetPaths';
 import type { CharacterInBattle } from './characterInBattle';
 import type { Battle } from './battle';
+
+let equipmentIconPromise: Promise<Canvas.Image> | null = null;
+let consumableIconPromise: Promise<Canvas.Image> | null = null;
+
+async function loadItemTypeIcon(kind: ItemKind): Promise<Canvas.Image | null> {
+  const path = kind === ItemKind.Consumable ? commonConsumableIconPath() : commonEquipmentIconPath();
+  const cache = kind === ItemKind.Consumable ? consumableIconPromise : equipmentIconPromise;
+  const loader = cache ?? Canvas.loadImage(path);
+  if (kind === ItemKind.Consumable) {
+    consumableIconPromise = loader;
+  } else {
+    equipmentIconPromise = loader;
+  }
+  try {
+    return await loader;
+  } catch {
+    return null;
+  }
+}
 
 export enum ItemKind {
   Equipment = 'equipment',
@@ -25,7 +45,7 @@ const TOP_BAR_HEIGHT = 128;
  *
  * Visual design (from the user spec):
  *  - Top bar: stars + name (same as character cards).
- *  - Type emblem (top-left): one logo for equipment, one for consumable, in place of element.
+ *  - Type emblem (top-left): equipment/consumable PNG (card background is tinted by star tier).
  *  - No HP, no title/description above the image.
  *  - Image panel.
  *  - One paragraph of description below the image.
@@ -69,90 +89,15 @@ export abstract class Item implements Card {
    */
   abstract apply(target: CharacterInBattle, battle: Battle): boolean;
 
-  /** Color used for the type emblem (drawn behind the EQ/CO glyph). Subclasses override. */
-  protected abstract get emblemColor(): string;
-  /** Two-letter glyph drawn inside the type emblem (e.g. EQ / CO). */
-  protected abstract get emblemLabel(): string;
-
   /**
-   * Draw the type emblem in the top-left where character cards put their element icon.
-   * Falls back to a stylized vector glyph since item type icons aren't shipped as PNGs.
+   * Draw the type emblem in the top-left (same slot as character element icons):
+   * `common/equipment.png` or `common/consumable.png`.
    */
-  protected drawTypeEmblem(ctx: Canvas.CanvasRenderingContext2D): void {
-    const size = 96;
-    const x = 16;
-    const y = 16;
-    const cx = x + size / 2;
-    const cy = y + size / 2;
-
-    ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
-    ctx.shadowBlur = 12;
-    ctx.shadowOffsetY = 3;
-
-    if (this.kind === ItemKind.Consumable) {
-      // Flask shape: rounded triangle/teardrop.
-      ctx.beginPath();
-      ctx.arc(cx, cy + 4, size / 2 - 4, 0, Math.PI * 2);
-      ctx.fillStyle = this.emblemColor;
-      ctx.fill();
-    } else {
-      // Shield-style rounded square for equipment.
-      const r = 18;
-      const left = x + 4;
-      const top = y + 4;
-      const right = x + size - 4;
-      const bottom = y + size - 4;
-      ctx.beginPath();
-      ctx.moveTo(left + r, top);
-      ctx.lineTo(right - r, top);
-      ctx.quadraticCurveTo(right, top, right, top + r);
-      ctx.lineTo(right, bottom - r);
-      ctx.quadraticCurveTo(right, bottom, right - r, bottom);
-      ctx.lineTo(left + r, bottom);
-      ctx.quadraticCurveTo(left, bottom, left, bottom - r);
-      ctx.lineTo(left, top + r);
-      ctx.quadraticCurveTo(left, top, left + r, top);
-      ctx.closePath();
-      ctx.fillStyle = this.emblemColor;
-      ctx.fill();
+  protected async drawTypeEmblem(ctx: Canvas.CanvasRenderingContext2D): Promise<void> {
+    const icon = await loadItemTypeIcon(this.kind);
+    if (icon) {
+      ctx.drawImage(icon, 0, 0, 128, 128);
     }
-    ctx.restore();
-
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    if (this.kind === ItemKind.Consumable) {
-      ctx.arc(cx, cy + 4, size / 2 - 4, 0, Math.PI * 2);
-    } else {
-      const r = 18;
-      const left = x + 4;
-      const top = y + 4;
-      const right = x + size - 4;
-      const bottom = y + size - 4;
-      ctx.moveTo(left + r, top);
-      ctx.lineTo(right - r, top);
-      ctx.quadraticCurveTo(right, top, right, top + r);
-      ctx.lineTo(right, bottom - r);
-      ctx.quadraticCurveTo(right, bottom, right - r, bottom);
-      ctx.lineTo(left + r, bottom);
-      ctx.quadraticCurveTo(left, bottom, left, bottom - r);
-      ctx.lineTo(left, top + r);
-      ctx.quadraticCurveTo(left, top, left + r, top);
-      ctx.closePath();
-    }
-    ctx.stroke();
-    ctx.restore();
-
-    drawTcgText(ctx, this.emblemLabel, cx, cy + 14, {
-      font: '800 38px "Bahnschrift"',
-      fillStyle: '#ffffff',
-      strokeStyle: 'rgba(0, 0, 0, 0.6)',
-      lineWidth: 4,
-      textAlign: 'center',
-      shadowBlur: 6,
-    });
   }
 
   private static wrapLines(
@@ -255,7 +200,7 @@ export abstract class Item implements Card {
     const ctx = canvas.getContext('2d');
 
     await this.background.draw(ctx);
-    this.drawTypeEmblem(ctx);
+    await this.drawTypeEmblem(ctx);
     await this.rarity.draw(ctx);
 
     drawTcgText(ctx, this.name.toUpperCase(), 144, 96, {
@@ -311,14 +256,6 @@ export class Equipment extends Item {
     return ItemKind.Equipment;
   }
 
-  protected override get emblemColor(): string {
-    return '#3b6cf2';
-  }
-
-  protected override get emblemLabel(): string {
-    return 'EQ';
-  }
-
   override apply(target: CharacterInBattle, _battle: Battle): boolean {
     return target.equip(this);
   }
@@ -331,7 +268,7 @@ const SIGNATURE_GOLD_LIGHT = '#fff6d8';
 
 /**
  * Signature equipment: same combat rules as {@link Equipment}, but the generated card
- * uses a distinct gold frame, SIG emblem, and a banner naming the linked character.
+ * uses a distinct gold frame and a banner naming the linked character.
  */
 export class SignatureEquipment extends Equipment {
   /** Display name of the character this item is signature gear for (e.g. "Kaitlin"). */
@@ -351,14 +288,6 @@ export class SignatureEquipment extends Equipment {
   ) {
     super(id, name, description, rarity, imagePanel, background, effects, onEquipped, footer);
     this.signatureOf = signatureOf;
-  }
-
-  protected override get emblemColor(): string {
-    return '#c9a227';
-  }
-
-  protected override get emblemLabel(): string {
-    return 'SIG';
   }
 
   private drawSignatureBorder(ctx: Canvas.CanvasRenderingContext2D): void {
@@ -443,7 +372,7 @@ export class SignatureEquipment extends Equipment {
 
     await this.background.draw(ctx);
     this.drawSignatureBorder(ctx);
-    this.drawTypeEmblem(ctx);
+    await this.drawTypeEmblem(ctx);
     await this.rarity.draw(ctx);
 
     drawTcgText(ctx, this.name.toUpperCase(), 144, 96, {
@@ -497,14 +426,6 @@ export class Consumable extends Item {
 
   override get kind(): ItemKind {
     return ItemKind.Consumable;
-  }
-
-  protected override get emblemColor(): string {
-    return '#23b378';
-  }
-
-  protected override get emblemLabel(): string {
-    return 'CO';
   }
 
   override apply(target: CharacterInBattle, battle: Battle): boolean {

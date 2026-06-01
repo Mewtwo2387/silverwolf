@@ -522,7 +522,7 @@ export const HEALING_POTION = new Consumable(
   'Immediately restores 20 HP to the target.',
   new Rarity(2),
   itemImagePanel('healing_potion', '#1c2a22'),
-  defaultConsumableBackground(),
+  itemBackgroundForRarity(rarity),
   (target, battle) => { target.heal(20); },
   'Optional lore footer.',
 );
@@ -535,14 +535,14 @@ Equipment effects should use `duration: 9999` (treated as permanent in display l
 equip cap is enforced in `CharacterInBattle.equip` (returns `false` when full).
 
 **Signature equipment** (`SignatureEquipment` in `tcg/item.ts`): same combat rules as
-`Equipment`, but the card uses a gold frame, `SIG` emblem, and a banner naming
+`Equipment`, but the card uses a gold frame and a banner naming
 `signatureOf` (e.g. Estrogen → Kaitlin). No extra in-battle restrictions.
 
 ```ts
 export const ESTROGEN = new SignatureEquipment(
   'estrogen', 'Estrogen', 'Kaitlin', description, new Rarity(5),
   itemImagePanel('estrogen', '#1a2536'),
-  defaultSignatureEquipmentBackground(),
+  itemBackgroundForRarity(5),
   [ /* effects */ ], onEquipped?, footer?,
 );
 ```
@@ -566,7 +566,8 @@ interface Card {
 `Character.generateCard` composes `Background → element icon → name/HP → TitleDesc →
 ImagePanel → skills (Skill.draw) → abilities (Ability.draw)`.
 
-`Item.generateCard` is the simpler version: `Background → type emblem → name/rarity →
+`Item.generateCard` is the simpler version: `Background (gradient tinted by star tier)
+→ type icon (equipment/consumable PNG) → name/rarity →
 ImagePanel → wrapped description → optional italic gray footer` (set via the last constructor
 arg on `Item` / `Equipment` / `Consumable`, or the 5th arg on `elementalDamageEquipment`).
 
