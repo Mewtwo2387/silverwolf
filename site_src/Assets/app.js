@@ -463,6 +463,10 @@
   overlay.addEventListener('click', function (e) {
     var card = e.target.closest && e.target.closest('.search-result');
     if (card) {
+      // Let the browser handle modified/middle clicks (new tab, window, etc.);
+      // the anchor's href carries the destination (theme is patched on by the
+      // capture-phase delegate above). Only intercept plain primary clicks.
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button === 1) return;
       e.preventDefault();
       activate(parseInt(card.dataset.idx, 10));
       return;
