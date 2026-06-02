@@ -238,7 +238,7 @@ function daysUntil(nextBirthday: string): number {
 
 function renderUser(u: BirthdayUser, upcoming = false) {
   const avatar = u.avatarURL
-    ? html`<img src="${u.avatarURL}" alt="" class="w-[22px] h-[22px] rounded-full object-cover bg-ink-500 shrink-0" />`
+    ? html`<img src="${u.avatarURL}" alt="" loading="lazy" decoding="async" class="w-[22px] h-[22px] rounded-full object-cover bg-ink-500 shrink-0" />`
     : html`<div class="w-[22px] h-[22px] rounded-full bg-ink-500 shrink-0"></div>`;
   const upcomingClass = upcoming ? ' bday-user-upcoming' : '';
   const upcomingBadge = upcoming

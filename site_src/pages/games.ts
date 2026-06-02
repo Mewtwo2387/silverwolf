@@ -1019,8 +1019,8 @@ export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import(
         ? HoloIcon(svgFileName(overlaySrc), 'holo-overlay')
         : null;
       return html`<div class="composite-icon">
-              <img class="base holo-raster" src="${(game as any).imageSrc}" alt="${game.name}" />
-              ${overlay ?? html`<img class="overlay" src="${overlaySrc}" alt="" />`}
+              <img class="base holo-raster" src="${(game as any).imageSrc}" alt="${game.name}" loading="lazy" decoding="async" />
+              ${overlay ?? html`<img class="overlay" src="${overlaySrc}" alt="" loading="lazy" decoding="async" />`}
             </div>`;
     }
     const src = (game as any).imageSrc as string;
@@ -1028,7 +1028,7 @@ export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import(
       const holo = HoloIcon(svgFileName(src));
       if (holo) return holo;
     }
-    return html`<img class="holo-raster" src="${src}" alt="${game.name}" />`;
+    return html`<img class="holo-raster" src="${src}" alt="${game.name}" loading="lazy" decoding="async" />`;
   })()}
             </div>
             <div class="card-content">

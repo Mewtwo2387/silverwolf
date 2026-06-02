@@ -100,6 +100,7 @@
     "node_modules/",
     "coverage/",
     "dist/",
-    ".git/"
+    ".git/",
+    "site_src/Assets/"
   ]
 }

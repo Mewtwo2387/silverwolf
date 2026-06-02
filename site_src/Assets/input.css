@@ -2,6 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Self-hosted fonts (latin subset, variable woff2). Served from /static/fonts/
+   so they're allowed by the strict CSP (font-src 'self'); the previous
+   Google Fonts <link> was blocked by that CSP and silently fell back to system
+   fonts. font-display: swap shows fallback text immediately, then swaps in. */
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url('/static/fonts/Outfit.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 300 600;
+  font-display: swap;
+  src: url('/static/fonts/JetBrainsMono.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/static/fonts/JetBrainsMono-Italic.woff2') format('woff2');
+}
+
 body {
   font-family: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
@@ -331,3 +357,354 @@ code, pre, kbd, .font-mono {
 .btn-accent.btn-sm { padding: 0.5rem 1.1rem; }
 .btn-accent.btn-lg { padding: 1rem 2.5rem; font-size: 1.1rem; }
 
+
+/* ───────────────────────────────────────────────────────────
+   Navbar styles (migrated from components/navbar.ts so they ship in the
+   cached styles.css instead of re-parsing inline on every navigation).
+   ─────────────────────────────────────────────────────────── */
+/* Default (desktop / non-touch): top links visible, mobile dock hidden. */
+  #nav-links  { display: flex; }
+  #nav-mobile { display: none; }
+
+  .nav-link.active { border-bottom-color: var(--accent); }
+  .nav-links.js-ready .nav-link.active { border-bottom-color: transparent; }
+
+  /* Caisena gradient nav surfaces — theme-aware via CSS vars */
+  .nav-surface {
+    background: color-mix(in oklab, var(--ink-800) 75%, transparent);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid transparent;
+    border-image: linear-gradient(90deg, transparent 0%, var(--accent) 30%, var(--accent-pale) 70%, transparent 100%) 1;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+  .nav-underline-grad {
+    background: linear-gradient(90deg, var(--accent) 0%, var(--accent-pale) 100%);
+    box-shadow: 0 0 14px var(--glow-bright), 0 0 4px var(--accent);
+  }
+
+  /* Desktop window header is hidden by default (mobile/narrow) */
+  .nav-window-header {
+    display: none;
+  }
+  @media (min-width: 1025px) {
+    .nav-window-header {
+      display: flex;
+    }
+  }
+
+  /* Desktop window styles override */
+  @media (min-width: 1025px) {
+    .nav-surface {
+      max-width: 1100px;
+      width: calc(100% - 2rem);
+      margin: 1.5rem auto 0 auto;
+      border-radius: 0.75rem;
+      border: 1px solid color-mix(in oklab, var(--accent) 20%, transparent);
+      border-image: none;
+      background: color-mix(in oklab, var(--ink-800) 65%, transparent);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 
+        0 10px 30px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05),
+        0 0 15px rgba(34, 211, 255, 0.05);
+      position: relative;
+      overflow: hidden;
+    }
+  }
+
+  /* Desktop nav link spacing */
+  #nav-links { gap: 1.75rem; }
+
+  /* Spacer balances the logo so links stay visually centered when no auth chip is present. */
+  .nav-spacer { width: 3rem; height: 3rem; flex: none; }
+
+  /* Desktop auth chip (right side of navbar, logged-in only) */
+  #nav-auth-desktop { display: flex; align-items: center; }
+  .nav-auth { display: flex; align-items: center; gap: 0.6rem; color: var(--fog-200); font-size: 0.9rem; font-family: 'JetBrains Mono', monospace !important; }
+  /* Avatar + username are wrapped in <a href="/me"> — the link itself stays unstyled. */
+  .nav-profile-link { display: inline-flex; align-items: center; gap: 0.6rem; text-decoration: none; color: inherit; }
+  .nav-avatar { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--accent); transition: box-shadow 0.2s; }
+  .nav-username { font-weight: 500; color: var(--fog-100); max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; }
+  .nav-profile-link:hover .nav-username { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--accent); }
+  .nav-profile-link:hover .nav-avatar { box-shadow: 0 0 6px var(--glow-faint, rgba(255,255,255,0.2)); }
+  .nav-auth-link { color: color-mix(in oklab, var(--danger) 65%, #000); text-decoration: none; font-size: 0.85rem; padding: 0.3rem 0.6rem; border-radius: 0.4rem; border: 1px solid transparent; transition: color 0.2s, text-shadow 0.2s; }
+  .nav-auth-link:hover { color: var(--danger); text-shadow: 0 0 8px var(--danger-glow); }
+  .nav-login-link { color: color-mix(in oklab, var(--accent) 65%, #000); text-decoration: none; font-size: 0.85rem; padding: 0.3rem 0.6rem; border-radius: 0.4rem; border: 1px solid transparent; transition: color 0.2s, text-shadow 0.2s; }
+  .nav-login-link:hover { color: var(--accent); text-shadow: 0 0 8px var(--glow-bright); }
+
+  /* ── Touch / narrow-viewport dock ───────────────────────────────────────
+     Floating glass tab bar pinned to the bottom. Triggered by either a
+     narrow viewport (covers tablets, foldables, phones in DevTools where
+     hover/pointer emulation is unreliable) OR a true touch device (covers
+     touchscreens that happen to be wider, e.g. Nest Hub Max, iPad Pro
+     12.9 in landscape). */
+  @media (max-width: 1024px), (hover: none) and (pointer: coarse) {
+    #nav-links { display: none; }
+
+    /* Reserve scroll space below the page content so the floating dock
+       never permanently covers the footer — users can scroll past it. */
+    body {
+      padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+    }
+
+    #nav-mobile {
+      display: flex !important;
+      position: fixed;
+      bottom: calc(0.9rem + env(safe-area-inset-bottom));
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(92vw, 26rem);
+      padding: 0.45rem 0.5rem;
+      border-radius: 9999px;
+      background: color-mix(in oklab, var(--ink-900) 72%, transparent) !important;
+      -webkit-backdrop-filter: blur(25px) saturate(190%);
+      backdrop-filter: blur(25px) saturate(190%);
+      border: 1px solid color-mix(in oklab, var(--accent) 35%, transparent) !important;
+      border-image: none !important;
+      box-shadow:
+        0 12px 32px rgba(0, 0, 0, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        0 0 15px rgba(34, 211, 255, 0.15);
+      flex-direction: row;
+      justify-content: space-around;
+      align-items: stretch;
+      gap: 0;
+      z-index: 50;
+      isolation: isolate;
+    }
+
+    /* Sliding pill — accent-tinted, animates between tiles, draggable */
+    #nav-mobile .dock-pill {
+      position: absolute;
+      top: 0.4rem;
+      bottom: 0.4rem;
+      left: 0;
+      width: 0;
+      border-radius: 9999px;
+      background: linear-gradient(90deg, color-mix(in oklab, var(--accent) 25%, transparent), color-mix(in oklab, var(--accent-pale) 25%, transparent));
+      border: 1px solid color-mix(in oklab, var(--accent) 45%, transparent);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.15),
+        0 0 12px rgba(34, 211, 255, 0.25);
+      pointer-events: auto;
+      touch-action: none;
+      cursor: grab;
+      z-index: 0;
+      will-change: transform, width;
+    }
+    #nav-mobile .dock-pill.dragging {
+      cursor: grabbing;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.5),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.1),
+        0 4px 16px color-mix(in oklab, var(--accent) 40%, transparent);
+    }
+
+    /* Tile = icon + label, stacked. Sits above the pill in z-stack. */
+    #nav-mobile .nav-link {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 0.45rem 0.25rem;
+      border: 0 !important;
+      border-radius: 9999px;
+      background: transparent !important;
+      color: var(--fog-300);
+      position: relative;
+      z-index: 1;
+      transition: color 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #nav-mobile .nav-link svg {
+      width: 22px;
+      height: 22px;
+      display: block;
+    }
+    #nav-mobile .nav-link .label {
+      font-size: 0.62rem;
+      line-height: 1;
+      letter-spacing: 0.02em;
+      font-weight: 500;
+    }
+    /* Active state: text color brightens; the pill below provides the bg */
+    #nav-mobile .nav-link.active { color: var(--fog-100); }
+  }
+
+/* ───────────────────────────────────────────────────────────
+   Search / command-palette styles (migrated from components/search.ts).
+   ─────────────────────────────────────────────────────────── */
+/* Backdrop fills the viewport, blurs whatever is behind. Hidden via the
+     [hidden] attribute by default so it doesn't intercept clicks. */
+  .search-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 12vh;
+    background: rgba(0, 0, 0, 0.45);
+    -webkit-backdrop-filter: blur(6px) saturate(120%);
+    backdrop-filter: blur(6px) saturate(120%);
+    opacity: 0;
+    transition: opacity 0.15s ease-out;
+  }
+  .search-overlay[hidden] { display: none; }
+  .search-overlay.visible { opacity: 1; }
+
+  /* Translucent themed glass card — matches the mobile dock vibe. Uses
+     color-mix so the surface picks up the active theme's --ink-800. */
+  .search-box {
+    width: min(560px, 92vw);
+    border-radius: 0.9rem;
+    /* Match the site chrome (navbar, badges, kbd hints) which is all
+       JetBrains Mono. Everything inside inherits this. */
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: color-mix(in oklab, var(--ink-800) 70%, transparent);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    backdrop-filter: blur(22px) saturate(180%);
+    border: 1px solid color-mix(in oklab, var(--accent) 35%, var(--ink-600));
+    box-shadow:
+      0 20px 60px rgba(0, 0, 0, 0.45),
+      0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+      0 0 24px color-mix(in oklab, var(--accent) 18%, transparent);
+    overflow: hidden;
+    transform: translateY(-8px);
+    transition: transform 0.18s cubic-bezier(0.34, 1.2, 0.64, 1);
+  }
+  .search-overlay.visible .search-box { transform: translateY(0); }
+
+  .search-input-row {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.9rem 1.1rem;
+    border-bottom: 1px solid color-mix(in oklab, var(--ink-600) 80%, transparent);
+  }
+  .search-input-row svg {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    color: var(--fog-300);
+  }
+  .search-input {
+    flex: 1;
+    background: transparent;
+    border: 0;
+    outline: 0;
+    /* Theme-aware text color so flashbang stays readable. */
+    color: var(--fog-100);
+    font: inherit;
+    font-size: 1rem;
+    padding: 0.15rem 0;
+  }
+  .search-input::placeholder { color: var(--fog-400); }
+
+  .search-hint {
+    font-size: 0.7rem;
+    color: var(--fog-400);
+    border: 1px solid var(--ink-600);
+    border-radius: 0.3rem;
+    padding: 0.1rem 0.4rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Results list — cap height at ~10 rows; scroll past that. */
+  .search-results {
+    max-height: 420px;
+    overflow-y: auto;
+    padding: 0.35rem;
+  }
+  .search-results:empty + .search-empty { display: block; }
+
+  .search-empty {
+    display: none;
+    padding: 1rem 1.2rem;
+    color: var(--fog-400);
+    font-size: 0.9rem;
+  }
+  .search-overlay[data-state="empty"] .search-empty { display: block; }
+  .search-overlay[data-state="results"] .search-empty { display: none; }
+  .search-overlay[data-state="idle"] .search-empty {
+    display: block;
+    color: var(--fog-400);
+  }
+
+  .search-result {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 0.8rem;
+    border-radius: 0.5rem;
+    text-decoration: none;
+    color: var(--fog-200);
+    cursor: pointer;
+    transition: background-color 0.1s, color 0.1s;
+  }
+  .search-result .titles {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+  }
+  .search-result .title {
+    color: var(--fog-100);
+    font-size: 0.95rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .search-result .desc {
+    color: var(--fog-400);
+    font-size: 0.78rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .search-result .group-tag {
+    font-size: 0.7rem;
+    color: var(--fog-400);
+    border: 1px solid var(--ink-600);
+    border-radius: 0.3rem;
+    padding: 0.1rem 0.45rem;
+    flex: none;
+  }
+  .search-result mark {
+    background: color-mix(in oklab, var(--accent) 30%, transparent);
+    color: var(--accent-light);
+    border-radius: 0.2rem;
+    padding: 0 1px;
+  }
+  .search-result.selected {
+    background: color-mix(in oklab, var(--accent) 22%, transparent);
+  }
+  .search-result.selected .title { color: var(--fog-100); }
+  .search-result.selected .group-tag {
+    border-color: color-mix(in oklab, var(--accent) 55%, var(--ink-600));
+    color: var(--accent-light);
+  }
+  .search-result:hover {
+    background: color-mix(in oklab, var(--accent) 14%, transparent);
+  }
+
+  .search-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.45rem 0.9rem;
+    border-top: 1px solid color-mix(in oklab, var(--ink-600) 80%, transparent);
+    font-size: 0.72rem;
+    color: var(--fog-400);
+    gap: 0.5rem;
+  }
+  .search-footer kbd {
+    font-family: 'JetBrains Mono', monospace;
+    border: 1px solid var(--ink-600);
+    border-radius: 0.25rem;
+    padding: 0.05rem 0.35rem;
+    color: var(--fog-300);
+  }

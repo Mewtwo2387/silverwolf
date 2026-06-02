@@ -7,6 +7,7 @@ const ROOT_DIR = path.resolve(import.meta.dir, '..', '..');
 const ASSETS_DIR = path.join(import.meta.dir, '..', 'Assets');
 const IMAGES_DIR = path.join(ASSETS_DIR, 'Images');
 const SVG_DIR = path.join(ASSETS_DIR, 'svg');
+const FONTS_DIR = path.join(ASSETS_DIR, 'fonts');
 const IMMUTABLE_CACHE = 'public, max-age=31536000, immutable';
 
 interface StaticEntry {
@@ -20,6 +21,7 @@ const STATIC_ASSETS: Record<string, StaticEntry> = {
   '/static/silverwolfLv.999.webp': { path: path.join(ROOT_DIR, 'silverwolfLv.999.webp'), contentType: 'image/webp' },
   '/static/silverwolfLv.999.avif': { path: path.join(ROOT_DIR, 'silverwolfLv.999.avif'), contentType: 'image/avif' },
   '/static/styles.css': { path: path.join(ASSETS_DIR, 'styles.css'), contentType: 'text/css; charset=utf-8' },
+  '/static/app.js': { path: path.join(ASSETS_DIR, 'app.js'), contentType: 'text/javascript; charset=utf-8' },
 };
 // Stickers power the favicon (WebP) and the social-embed thumbnail. The PNG
 // twin of each is served as a universally-decodable fallback for link-preview
@@ -46,6 +48,10 @@ STATIC_ASSETS['/static/svg/toilet-svgrepo-com.svg'] = { path: path.join(SVG_DIR,
 STATIC_ASSETS['/static/svg/love-heart-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'love-heart-svgrepo-com.svg'), contentType: 'image/svg+xml' };
 STATIC_ASSETS['/static/svg/coin-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'coin-svgrepo-com.svg'), contentType: 'image/svg+xml' };
 STATIC_ASSETS['/static/svg/wrench-screwdriver-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'wrench-screwdriver-svgrepo-com.svg'), contentType: 'image/svg+xml' };
+// Self-hosted fonts (latin-subset variable woff2). See Assets/input.css @font-face.
+for (const fontFile of ['Outfit.woff2', 'JetBrainsMono.woff2', 'JetBrainsMono-Italic.woff2']) {
+  STATIC_ASSETS[`/static/fonts/${fontFile}`] = { path: path.join(FONTS_DIR, fontFile), contentType: 'font/woff2' };
+}
 STATIC_ASSETS['/static/game-dinonuggie.webp'] = { path: path.join(IMAGES_DIR, 'game-dinonuggie.webp'), contentType: 'image/webp' };
 STATIC_ASSETS['/static/game-awdangit.jpeg'] = { path: path.join(IMAGES_DIR, 'game-awdangit.jpeg'), contentType: 'image/jpeg' };
 STATIC_ASSETS['/static/game-fakequote.webp'] = { path: path.join(IMAGES_DIR, 'game-fakequote.webp'), contentType: 'image/webp' };
