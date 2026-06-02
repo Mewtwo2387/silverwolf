@@ -15,10 +15,10 @@ function healPercentOfMaxPlusFlat(target: CharacterInBattle, percent: number, fl
   target.heal(round2(target.character.hp * percent + flat));
 }
 
-function itemImagePanel(itemId: string, backgroundColor: string): ImagePanel {
+function itemImagePanel(itemId: string, options?: { whiteBackground?: boolean }): ImagePanel {
   return new ImagePanel(itemImagePath(itemId), {
-    mode: ImagePanelMode.Crop,
-    backgroundColor,
+    mode: ImagePanelMode.Background,
+    backgroundColor: options?.whiteBackground ? '#ffffff' : 'transparent',
   });
 }
 
@@ -41,7 +41,7 @@ function elementalDamageEquipment(
     name,
     options.description ?? `The wearer deals ${bonusPct}% more ${typeLabel} damage.`,
     options.rarity,
-    itemImagePanel(id, '#1a2536'),
+    itemImagePanel(id),
     itemBackgroundForRarity(options.rarity),
     [
       new Effect(
@@ -120,10 +120,28 @@ export const ANEMO_GNOSIS = elementalDamageEquipment(
     footer: 'Someone kicked Venti in the balls. Fortunately, his balls are so humongous that it\'s barely a tickle.',
   },
 );
-export const GEO_GNOSIS = elementalDamageEquipment('geo_gnosis', 'Geo Gnosis', Element.Geo, ELEMENTAL_50);
+export const GEO_GNOSIS = elementalDamageEquipment(
+  'geo_gnosis',
+  'Geo Gnosis',
+  Element.Geo,
+  {
+    ...ELEMENTAL_50,
+    footer: 'I wonder if it\'ll hurt if I shove it up. I guess Signora knows the answer.'
+  },
+);
 export const PYRO_GNOSIS = elementalDamageEquipment('pyro_gnosis', 'Pyro Gnosis', Element.Pyro, ELEMENTAL_50);
-export const DENDRO_GNOSIS = elementalDamageEquipment('dendro_gnosis', 'Dendro Gnosis', Element.Dendro, ELEMENTAL_50);
-export const ELECTRO_GNOSIS = elementalDamageEquipment('electro_gnosis', 'Electro Gnosis', Element.Electro, ELEMENTAL_50);
+export const DENDRO_GNOSIS = elementalDamageEquipment(
+  'dendro_gnosis', 'Dendro Gnosis', Element.Dendro, {
+    ...ELEMENTAL_50,
+    footer: 'Teyvat is a simulated universe in a Scepter, powered by a Stellaron. The skies of Teyvat are fake.'
+  },
+);
+export const ELECTRO_GNOSIS = elementalDamageEquipment(
+  'electro_gnosis', 'Electro Gnosis', Element.Electro, {
+    ...ELEMENTAL_50,
+    footer: 'Scara... who?'
+  },
+);
 export const CRYO_GNOSIS = elementalDamageEquipment('cryo_gnosis', 'Cryo Gnosis', Element.Cryo, ELEMENTAL_50);
 export const HYDRO_GNOSIS = elementalDamageEquipment('hydro_gnosis', 'Hydro Gnosis', Element.Hydro, ELEMENTAL_50);
 export const PINK_FOR_SLUG = elementalDamageEquipment('pink_for_slug', 'Pink for Slug!', Element.Fairy, ELEMENTAL_50);
@@ -151,7 +169,7 @@ export const STRANGE_QUARK = new Equipment(
   'Strange Quark',
   'Converts all outgoing damage from this character into quantum damage.',
   new Rarity(3),
-  itemImagePanel('strange_quark', '#1a2536'),
+  itemImagePanel('strange_quark'),
   itemBackgroundForRarity(3),
   [
     new Effect(
@@ -174,7 +192,7 @@ export const PLATE_ARMOR = new Equipment(
   'Plate Armor',
   'Reduces incoming damage by 30%.',
   new Rarity(3),
-  itemImagePanel('plate_armor', '#1a2536'),
+  itemImagePanel('plate_armor'),
   itemBackgroundForRarity(3),
   [
     new Effect(
@@ -199,7 +217,7 @@ export const ESTROGEN = new SignatureEquipment(
   'Kaitlin',
   'Converts all outgoing damage to Fairy type and increases Fairy damage by 20%. If the holder is already Fairy, increases Fairy damage by an additional 20%. When held by Kaitlin, instantly transforms to Kaitlin form.',
   new Rarity(5),
-  itemImagePanel('estrogen', '#1a2536'),
+  itemImagePanel('estrogen', { whiteBackground: true }),
   itemBackgroundForRarity(5),
   [
     new Effect(
@@ -262,7 +280,7 @@ export const SILVERWOLF_KEYCHAIN = new SignatureEquipment(
   'Ei',
   'Increases quantum damage by 20%. Additionally increases quantum damage by 10% for each quantum ally on your team. When held by Ei, reduces incoming damage by 20% and grants a 20% chance to dodge attacks.',
   new Rarity(5),
-  itemImagePanel('silverwolf_keychain', '#1a2536'),
+  itemImagePanel('silverwolf_keychain'),
   itemBackgroundForRarity(5),
   [
     new Effect(
@@ -328,7 +346,7 @@ export const CREDIT_CARD = new SignatureEquipment(
   'Electro',
   'Increases charged attack damage by 20%. For each skill point spent on a charged attack, that attack deals 10% more damage.',
   new Rarity(5),
-  itemImagePanel('credit_card', '#1a2536'),
+  itemImagePanel('credit_card'),
   itemBackgroundForRarity(5),
   [
     new Effect(
@@ -365,7 +383,7 @@ export const HEALING_POTION = new Consumable(
   'Healing Potion',
   'Immediately restores 20 HP to the target.',
   new Rarity(2),
-  itemImagePanel('healing_potion', '#1c2a22'),
+  itemImagePanel('healing_potion'),
   itemBackgroundForRarity(2),
   (target) => {
     target.heal(20);
@@ -377,7 +395,7 @@ export const CLEANSER = new Consumable(
   'Cleanser',
   'Removes all debuffs from the target.',
   new Rarity(3),
-  itemImagePanel('cleanser', '#1c2a22'),
+  itemImagePanel('cleanser'),
   itemBackgroundForRarity(3),
   (target, battle) => {
     const removed = target.cleanseDebuffs();
@@ -392,7 +410,7 @@ export const BATTERY = new Consumable(
   'Battery',
   'Grants the target 20 energy immediately.',
   new Rarity(2),
-  itemImagePanel('battery', '#1c2a22'),
+  itemImagePanel('battery'),
   itemBackgroundForRarity(2),
   (target, battle) => {
     const before = target.energy;
@@ -407,11 +425,12 @@ export const MYSTIC_CHICKEN = new Consumable(
   'Mystic Chicken',
   'Restores 30% of max HP plus 30 HP.',
   new Rarity(5),
-  itemImagePanel('mystic_chicken', '#1c2a22'),
+  itemImagePanel('mystic_chicken'),
   itemBackgroundForRarity(5),
   (target) => {
     healPercentOfMaxPlusFlat(target, 0.3, 30);
   },
+  'A polychromatic, polyspiced, polyherbal, polysauced bowl of chicken sat beside a polygrain medley on a polyhedral platter.'
 );
 
 export const XEI_PIZZA = new Consumable(
@@ -419,7 +438,7 @@ export const XEI_PIZZA = new Consumable(
   'Xei Pizza',
   'Restores 50% of max HP plus 10 HP.',
   new Rarity(5),
-  itemImagePanel('xei_pizza', '#1c2a22'),
+  itemImagePanel('xei_pizza'),
   itemBackgroundForRarity(5),
   (target) => {
     healPercentOfMaxPlusFlat(target, 0.5, 10);

@@ -521,7 +521,7 @@ export const HEALING_POTION = new Consumable(
   'Healing Potion',
   'Immediately restores 20 HP to the target.',
   new Rarity(2),
-  itemImagePanel('healing_potion', '#1c2a22'),
+  itemImagePanel('healing_potion'),
   itemBackgroundForRarity(rarity),
   (target, battle) => { target.heal(20); },
   'Optional lore footer.',
@@ -541,7 +541,7 @@ equip cap is enforced in `CharacterInBattle.equip` (returns `false` when full).
 ```ts
 export const ESTROGEN = new SignatureEquipment(
   'estrogen', 'Estrogen', 'Kaitlin', description, new Rarity(5),
-  itemImagePanel('estrogen', '#1a2536'),
+  itemImagePanel('estrogen'),
   itemBackgroundForRarity(5),
   [ /* effects */ ], onEquipped?, footer?,
 );
@@ -584,7 +584,7 @@ don't draw your own background from scratch.
 | --- | --- |
 | `tcg/assets/characters/images/` | Character source art (referenced from `characters.ts`) |
 | `tcg/assets/characters/cards/` | Generated character card PNGs (`bun run card:generate`) |
-| `tcg/assets/items/images/` | Item source art (`<itemId>.png`, used by `itemImagePanel` in `items.ts`) |
+| `tcg/assets/items/images/` | Item source art (`<itemId>.png`; `itemImagePanel` fits art on a transparent panel; estrogen uses white) |
 | `tcg/assets/items/cards/` | Generated item card PNGs (`bun run card:generate-items`) |
 | `tcg/assets/common/`, `tcg/assets/types/` | Shared UI icons (stars, skill points, element badges) |
 

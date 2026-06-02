@@ -201,7 +201,7 @@ export abstract class Item implements Card {
 
     await this.background.draw(ctx);
     await this.drawTypeEmblem(ctx);
-    await this.rarity.draw(ctx);
+    await this.rarity.draw(ctx, 'item');
 
     drawTcgText(ctx, this.name.toUpperCase(), 144, 96, {
       font: '700 84px "Bahnschrift"',
@@ -373,7 +373,7 @@ export class SignatureEquipment extends Equipment {
     await this.background.draw(ctx);
     this.drawSignatureBorder(ctx);
     await this.drawTypeEmblem(ctx);
-    await this.rarity.draw(ctx);
+    await this.rarity.draw(ctx, 'item');
 
     drawTcgText(ctx, this.name.toUpperCase(), 144, 96, {
       font: '700 84px "Bahnschrift"',
