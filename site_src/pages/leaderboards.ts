@@ -79,7 +79,7 @@ export function LeaderboardsPage(opts: {
                 <td class="py-3 px-4">
                   <div class="flex items-center gap-3">
                     ${row.avatarURL
-      ? html`<img src="${row.avatarURL}" alt="" class="w-8 h-8 rounded-full border border-ink-500 object-cover" />`
+      ? html`<img src="${row.avatarURL}" alt="" loading="lazy" decoding="async" class="w-8 h-8 rounded-full border border-ink-500 object-cover" />`
       : html`<div class="w-8 h-8 rounded-full bg-ink-600 border border-ink-500 flex items-center justify-center font-mono text-xs text-fog-400">?</div>`}
                     <span class="font-mono font-medium text-fog-100 hover:text-accent transition-colors">${row.username}</span>
                   </div>

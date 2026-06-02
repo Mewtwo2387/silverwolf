@@ -1,32 +1,14 @@
 import { html, raw } from 'hono/html';
-import { statSync, readFileSync } from 'fs';
 import path from 'path';
 import type { HtmlEscapedString } from 'hono/utils/html';
 import { Navbar, type NavActive, type NavUser } from './navbar';
 import { Footer } from './footer';
 import { Search } from './search';
 import { STICKER_STEMS, STICKER_STEMS_LV999, stickerWebpUrl } from '../stickers';
+import { assetVersion } from '../asset-version';
 
-// styles.css is served with `immutable, max-age=1y`, so without a cache buster
-// the browser never re-fetches after a CSS rebuild. Hash the contents and
-// append `?v=<hash>` — same contents → same URL → still cached; changed
-// contents → new URL → fresh fetch. stat() each request is microseconds;
-// re-hash only when mtime moves.
 const STYLES_PATH = path.resolve(import.meta.dir, '..', 'Assets', 'styles.css');
-let stylesCache = { mtime: 0, hash: 'dev' };
-function getStylesVersion(): string {
-  try {
-    const mtime = statSync(STYLES_PATH).mtimeMs;
-    if (mtime !== stylesCache.mtime) {
-      const bytes = readFileSync(STYLES_PATH);
-      stylesCache = {
-        mtime,
-        hash: new Bun.CryptoHasher('md5').update(bytes).digest('hex').slice(0, 8),
-      };
-    }
-  } catch { /* keep last good (or "dev") if the file vanishes mid-build */ }
-  return stylesCache.hash;
-}
+const APP_JS_PATH = path.resolve(import.meta.dir, '..', 'Assets', 'app.js');
 
 // Exported so the embed-meta middleware can reuse the same pool for the social
 // thumbnail — the link preview shows a random favicon sticker, matching the tab.
@@ -40,10 +22,8 @@ const faviconLink = (lv999: boolean) => {
 };
 
 const pageHead = (nonce: string) => raw(`
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/styles.css?v=${getStylesVersion()}" />
+<link rel="preload" href="/static/fonts/Outfit.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/static/styles.css?v=${assetVersion(STYLES_PATH)}" />
 <style>
   /* Guard against any descendant (entrance-animation transforms, full-bleed
      images, etc.) accidentally pushing the page wider than the viewport.
@@ -68,35 +48,14 @@ const pageHead = (nonce: string) => raw(`
   }
 </style>
 <script nonce="${nonce}">
+// Pre-paint only: set <html data-theme> before first paint to avoid a flash of
+// the wrong theme. The heavier link-patching lives in /static/app.js.
 (function(){
   var t = new URLSearchParams(location.search).get('theme');
-  if (t !== 'flashbang' && t !== 'blackout') return;
-  document.documentElement.setAttribute('data-theme', t);
-
-  function patch(a) {
-    try {
-      var u = new URL(a.href, location.origin);
-      if (u.origin !== location.origin) return;
-      if (u.searchParams.has('theme')) return;
-      u.searchParams.set('theme', t);
-      a.href = u.toString();
-    } catch (e) {}
-  }
-
-  // Patch all internal anchors once the DOM is ready (keeps hover URLs accurate)
-  document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('a[href]').forEach(patch);
-  });
-
-  // Capture-phase click delegation: bulletproof fallback for any anchor
-  // (mobile drawer links, dynamically inserted links, etc.) — runs before
-  // any other click handler so href is patched by the time navigation happens.
-  document.addEventListener('click', function(e) {
-    var a = e.target && e.target.closest && e.target.closest('a[href]');
-    if (a) patch(a);
-  }, true);
+  if (t === 'flashbang' || t === 'blackout') document.documentElement.setAttribute('data-theme', t);
 })();
 </script>
+<script src="/static/app.js?v=${assetVersion(APP_JS_PATH)}" defer></script>
 `);
 
 export function Layout(opts: {
@@ -119,10 +78,10 @@ export function Layout(opts: {
         ${opts.extraHead ?? ''}
       </head>
       <body class="font-sans bg-ink-900 text-fog-100 min-h-screen flex flex-col scanlines cyber-grid">
-        ${Navbar(opts.active, opts.nonce, opts.lv999, opts.user)}
+        ${Navbar(opts.active, opts.lv999, opts.user)}
         <main class="flex-1 w-full max-w-[1100px] mx-auto py-8 px-[clamp(1rem,4vw,3rem)]">${opts.body}</main>
         ${Footer(opts.nonce)}
-        ${Search(opts.nonce)}
+        ${Search()}
       </body>
     </html>`;
 }
