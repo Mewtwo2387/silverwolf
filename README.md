@@ -4,34 +4,30 @@ silverwolf is very hot.
 
 ![image](https://github.com/Mewtwo2387/silverwolf/blob/master/silverwolf.webp)
 
+> **Full technical reference** (architecture, website, database, security & performance): see [AGENTS.md](AGENTS.md).
+
 ## Setup
 
 ```bash
 git clone https://github.com/Mewtwo2387/silverwolf.git
 git pull origin master
-npm install
+bun install
 ```
 
-Create a `.env` file and add the following:
-
-```
-CLIENT_ID=your-discord-bot-client-id
-TOKEN=your-discord-bot-token
-GEMINI_TOKEN=your-gemini-token
-ALLOWED_USERS=discord-user-ids-of-devs,separated,by,commas
-GUILD_ID=discord-server-ids,separated,by,commas
-```
+Create a `.env` file. See [`.env.example`](.env.example) for the full, current list of keys
+(Discord bot token + client ID, OAuth/session secrets for the website, AI provider keys, etc.).
+Bun loads `.env` automatically. Allowed servers are configured in the database, not via env.
 
 ## Run
 
-For dev (with nodemon):
+For dev (hot reload via `bun --watch`):
 ```bash
-npm run dev
+bun run dev
 ```
 
 For prod:
 ```bash
-npm run start
+bun run start
 ```
 
 
@@ -39,12 +35,12 @@ npm run start
 
 To list all issues:
 ```bash
-npm run lint
+bun run lint
 ```
 
 To fix all fixable issues:
 ```bash
-npm run lint:fix
+bun run lint:fix
 ```
 This only fixes stuff like indentations and line breaks, so good luck with the rest.
 
