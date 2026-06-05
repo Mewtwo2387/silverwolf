@@ -16,18 +16,31 @@ interface StaticEntry {
 }
 
 const STATIC_ASSETS: Record<string, StaticEntry> = {
+  // silverwolf.webp source still lives at the repo root (it's the canonical
+  // hero image, kept top-level for visibility). Every other hero file —
+  // derived AVIF, LV.999 variants, and the responsive widths emitted by
+  // scripts/build-images.ts — lives under site_src/Assets/Images/.
   '/static/silverwolf.webp': { path: path.join(ROOT_DIR, 'silverwolf.webp'), contentType: 'image/webp' },
-  '/static/silverwolf.avif': { path: path.join(ROOT_DIR, 'silverwolf.avif'), contentType: 'image/avif' },
-  '/static/silverwolfLv.999.webp': { path: path.join(ROOT_DIR, 'silverwolfLv.999.webp'), contentType: 'image/webp' },
-  '/static/silverwolfLv.999.avif': { path: path.join(ROOT_DIR, 'silverwolfLv.999.avif'), contentType: 'image/avif' },
+  '/static/silverwolf.avif': { path: path.join(IMAGES_DIR, 'silverwolf.avif'), contentType: 'image/avif' },
+  '/static/silverwolfLv.999.webp': { path: path.join(IMAGES_DIR, 'silverwolfLv.999.webp'), contentType: 'image/webp' },
+  '/static/silverwolfLv.999.avif': { path: path.join(IMAGES_DIR, 'silverwolfLv.999.avif'), contentType: 'image/avif' },
   '/static/styles.css': { path: path.join(ASSETS_DIR, 'styles.css'), contentType: 'text/css; charset=utf-8' },
   '/static/app.js': { path: path.join(ASSETS_DIR, 'app.js'), contentType: 'text/javascript; charset=utf-8' },
 };
+// Hero responsive variants — emitted by scripts/build-images.ts. The about-page
+// <picture> picks the smallest width that covers its slot (sizes attribute).
+for (const w of [512, 1024, 1600]) {
+  STATIC_ASSETS[`/static/silverwolf-${w}w.webp`] = { path: path.join(IMAGES_DIR, `silverwolf-${w}w.webp`), contentType: 'image/webp' };
+  STATIC_ASSETS[`/static/silverwolf-${w}w.avif`] = { path: path.join(IMAGES_DIR, `silverwolf-${w}w.avif`), contentType: 'image/avif' };
+  STATIC_ASSETS[`/static/silverwolfLv.999-${w}w.webp`] = { path: path.join(IMAGES_DIR, `silverwolfLv.999-${w}w.webp`), contentType: 'image/webp' };
+  STATIC_ASSETS[`/static/silverwolfLv.999-${w}w.avif`] = { path: path.join(IMAGES_DIR, `silverwolfLv.999-${w}w.avif`), contentType: 'image/avif' };
+}
 // Stickers power the favicon (WebP) and the social-embed thumbnail. The PNG
 // twin of each is served as a universally-decodable fallback for link-preview
 // scrapers that won't fetch WebP (see site_src/embed-meta.ts).
 for (const stem of ALL_STICKER_STEMS) {
   STATIC_ASSETS[`/static/stickers/${stem}.webp`] = { path: path.join(IMAGES_DIR, `${stem}.webp`), contentType: 'image/webp' };
+  STATIC_ASSETS[`/static/stickers/${stem}-128w.webp`] = { path: path.join(IMAGES_DIR, `${stem}-128w.webp`), contentType: 'image/webp' };
   STATIC_ASSETS[`/static/stickers/${stem}.png`] = { path: path.join(IMAGES_DIR, `${stem}.png`), contentType: 'image/png' };
 }
 // Eidolons: serve both WebP and AVIF; <picture> in pages/about.ts picks the best.
@@ -36,6 +49,8 @@ for (let i = 1; i <= 6; i += 1) {
     const stem = `Character_Silver_Wolf_${variant}Eidolon_${i}`;
     STATIC_ASSETS[`/static/eidolons/${stem}.webp`] = { path: path.join(IMAGES_DIR, `${stem}.webp`), contentType: 'image/webp' };
     STATIC_ASSETS[`/static/eidolons/${stem}.avif`] = { path: path.join(IMAGES_DIR, `${stem}.avif`), contentType: 'image/avif' };
+    STATIC_ASSETS[`/static/eidolons/${stem}-768w.webp`] = { path: path.join(IMAGES_DIR, `${stem}-768w.webp`), contentType: 'image/webp' };
+    STATIC_ASSETS[`/static/eidolons/${stem}-768w.avif`] = { path: path.join(IMAGES_DIR, `${stem}-768w.avif`), contentType: 'image/avif' };
   }
 }
 STATIC_ASSETS['/static/svg/pool-8-ball-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'pool-8-ball-svgrepo-com.svg'), contentType: 'image/svg+xml' };
