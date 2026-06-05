@@ -15,6 +15,14 @@ const RARITY_RIGHT_MARGIN: Record<RarityDrawLayout, number> = {
   item: 32,
 };
 
+/** Left edge (x) of the leftmost star in the top bar, for reserving title space. */
+export function rarityStarsBlockLeftEdge(layout: RarityDrawLayout, starCount: number): number {
+  const rightMargin = RARITY_RIGHT_MARGIN[layout];
+  const rightmostStarX = CARD_WIDTH - rightMargin - STAR_SIZE - STAR_SPACING;
+  if (starCount <= 1) return rightmostStarX;
+  return rightmostStarX - (starCount - 1) * (STAR_SIZE + STAR_SPACING);
+}
+
 /**
  * The rarity of a card. Literally just an integer.
  * Does not have effects in battle other than being a visual indicator.

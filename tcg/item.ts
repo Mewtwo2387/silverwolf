@@ -1,11 +1,11 @@
 /* eslint-disable max-classes-per-file */
 import Canvas from 'canvas';
-import { Rarity } from './rarity';
+import { Rarity, rarityStarsBlockLeftEdge } from './rarity';
 import { Background } from './background';
 import { ImagePanel } from './imagePanel';
 import { Card } from './interfaces/card';
 import { Effect } from './effect';
-import { drawTcgText } from './utils/tcgTextStyle';
+import { drawFittedTcgText, drawTcgText } from './utils/tcgTextStyle';
 import { commonConsumableIconPath, commonEquipmentIconPath } from './assetPaths';
 import type { CharacterInBattle } from './characterInBattle';
 import type { Battle } from './battle';
@@ -42,6 +42,9 @@ async function loadItemTypeIcon(kind: ItemKind): Promise<Canvas.Image | null> {
 const CARD_WIDTH = 1080;
 const CARD_HEIGHT = 1920;
 const TOP_BAR_HEIGHT = 128;
+const ITEM_TITLE_LEFT = 144;
+const ITEM_TITLE_Y = 96;
+const ITEM_TITLE_STAR_GAP = 20;
 
 /**
  * Base class for any item card. Items live in a player's deck/hand and can be played onto
@@ -103,6 +106,28 @@ export abstract class Item implements Card {
     if (icon) {
       ctx.drawImage(icon, 0, 0, 128, 128);
     }
+  }
+
+  /** Top-bar name: shrinks to avoid overlapping rarity stars. */
+  protected drawItemTitle(
+    ctx: Canvas.CanvasRenderingContext2D,
+    style: {
+      fillStyle: string;
+      strokeStyle: string;
+      shadowBlur?: number;
+    },
+  ): void {
+    const starsLeft = rarityStarsBlockLeftEdge('item', this.rarity.rarity);
+    const maxWidth = starsLeft - ITEM_TITLE_LEFT - ITEM_TITLE_STAR_GAP;
+    drawFittedTcgText(ctx, this.name.toUpperCase(), ITEM_TITLE_LEFT, ITEM_TITLE_Y, maxWidth, {
+      fillStyle: style.fillStyle,
+      strokeStyle: style.strokeStyle,
+      lineWidth: 7,
+      textAlign: 'left',
+      shadowBlur: style.shadowBlur ?? 12,
+      shadowOffsetY: 4,
+      font: '700 84px "Bahnschrift"',
+    });
   }
 
   private static wrapLines(
@@ -208,14 +233,9 @@ export abstract class Item implements Card {
     await this.drawTypeEmblem(ctx);
     await this.rarity.draw(ctx, 'item');
 
-    drawTcgText(ctx, this.name.toUpperCase(), 144, 96, {
-      font: '700 84px "Bahnschrift"',
+    this.drawItemTitle(ctx, {
       fillStyle: '#fdfaf2',
       strokeStyle: '#3a2018',
-      lineWidth: 7,
-      textAlign: 'left',
-      shadowBlur: 12,
-      shadowOffsetY: 4,
     });
 
     // Items skip the title-desc panel; image panel starts directly below the top bar.
@@ -380,14 +400,10 @@ export class SignatureEquipment extends Equipment {
     await this.drawTypeEmblem(ctx);
     await this.rarity.draw(ctx, 'item');
 
-    drawTcgText(ctx, this.name.toUpperCase(), 144, 96, {
-      font: '700 84px "Bahnschrift"',
+    this.drawItemTitle(ctx, {
       fillStyle: SIGNATURE_GOLD_LIGHT,
       strokeStyle: SIGNATURE_GOLD_DARK,
-      lineWidth: 7,
-      textAlign: 'left',
       shadowBlur: 14,
-      shadowOffsetY: 4,
     });
 
     this.drawSignatureBanner(ctx);
