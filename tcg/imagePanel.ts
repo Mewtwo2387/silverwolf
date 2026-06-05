@@ -108,7 +108,7 @@ export class ImagePanel implements DrawableBlock {
           ctx.drawImage(image, dx, dy, drawWidth, drawHeight);
         }
       }
-    } catch (error) {
+    } catch {
       console.warn(`Image not found for panel: ${this.imagePath}`);
     }
 

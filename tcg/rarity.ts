@@ -50,4 +50,3 @@ export class Rarity implements DrawableFixed {
     ctx.restore();
   }
 }
-

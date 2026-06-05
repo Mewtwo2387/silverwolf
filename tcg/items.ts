@@ -3,7 +3,9 @@ import { Rarity } from './rarity';
 import { Effect } from './effect';
 import { EffectType } from './effectType';
 import { Element } from './element';
-import { Equipment, SignatureEquipment, Consumable, Item } from './item';
+import {
+  Equipment, SignatureEquipment, Consumable, Item,
+} from './item';
 import { DECK_SIZE } from './battle';
 import { itemImagePath } from './assetPaths';
 import { itemBackgroundForRarity } from './rarityColors';
@@ -126,22 +128,18 @@ export const GEO_GNOSIS = elementalDamageEquipment(
   Element.Geo,
   {
     ...ELEMENTAL_50,
-    footer: 'I wonder if it\'ll hurt if I shove it up. I guess Signora knows the answer.'
+    footer: 'I wonder if it\'ll hurt if I shove it up. I guess Signora knows the answer.',
   },
 );
 export const PYRO_GNOSIS = elementalDamageEquipment('pyro_gnosis', 'Pyro Gnosis', Element.Pyro, ELEMENTAL_50);
-export const DENDRO_GNOSIS = elementalDamageEquipment(
-  'dendro_gnosis', 'Dendro Gnosis', Element.Dendro, {
-    ...ELEMENTAL_50,
-    footer: 'Teyvat is a simulated universe in a Scepter, powered by a Stellaron. The skies of Teyvat are fake.'
-  },
-);
-export const ELECTRO_GNOSIS = elementalDamageEquipment(
-  'electro_gnosis', 'Electro Gnosis', Element.Electro, {
-    ...ELEMENTAL_50,
-    footer: 'Scara... who?'
-  },
-);
+export const DENDRO_GNOSIS = elementalDamageEquipment('dendro_gnosis', 'Dendro Gnosis', Element.Dendro, {
+  ...ELEMENTAL_50,
+  footer: 'Teyvat is a simulated universe in a Scepter, powered by a Stellaron. The skies of Teyvat are fake.',
+});
+export const ELECTRO_GNOSIS = elementalDamageEquipment('electro_gnosis', 'Electro Gnosis', Element.Electro, {
+  ...ELEMENTAL_50,
+  footer: 'Scara... who?',
+});
 export const CRYO_GNOSIS = elementalDamageEquipment('cryo_gnosis', 'Cryo Gnosis', Element.Cryo, ELEMENTAL_50);
 export const HYDRO_GNOSIS = elementalDamageEquipment('hydro_gnosis', 'Hydro Gnosis', Element.Hydro, ELEMENTAL_50);
 export const PINK_FOR_SLUG = elementalDamageEquipment('pink_for_slug', 'Pink for Slug!', Element.Fairy, ELEMENTAL_50);
@@ -271,7 +269,7 @@ export const ESTROGEN = new SignatureEquipment(
       target.battle.logEvent(`${target.character.name} transformed into Kaitlin Form!`);
     }
   },
-  'You want this too, don\'t you? uwu :3'
+  'You want this too, don\'t you? uwu :3',
 );
 
 export const SILVERWOLF_KEYCHAIN = new SignatureEquipment(
@@ -303,7 +301,7 @@ export const SILVERWOLF_KEYCHAIN = new SignatureEquipment(
           'Silverwolf Keychain (Team)',
           `+${quantumCount * 10}% quantum damage (${quantumCount} quantum ally${quantumCount === 1 ? '' : 'ies'}).`,
           EffectType.OutgoingDamage,
-          1 + 0.1 * quantumCount,
+          round2(1 + 0.1 * quantumCount),
           9999,
           true,
           { appliesToElement: Element.Quantum },
@@ -337,7 +335,7 @@ export const SILVERWOLF_KEYCHAIN = new SignatureEquipment(
       );
     }
   },
-  'The thing that Ei brings everywhere like it protects him or some shit'
+  'The thing that Ei brings everywhere like it protects him or some shit',
 );
 
 export const CREDIT_CARD = new SignatureEquipment(
@@ -430,7 +428,7 @@ export const MYSTIC_CHICKEN = new Consumable(
   (target) => {
     healPercentOfMaxPlusFlat(target, 0.3, 30);
   },
-  'A polychromatic, polyspiced, polyherbal, polysauced bowl of chicken sat beside a polygrain medley on a polyhedral platter.'
+  'A polychromatic, polyspiced, polyherbal, polysauced bowl of chicken sat beside a polygrain medley on a polyhedral platter.',
 );
 
 export const XEI_PIZZA = new Consumable(

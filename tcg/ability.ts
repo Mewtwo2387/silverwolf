@@ -44,14 +44,14 @@ export class Ability implements DrawableBlock {
   constructor(
     name: string,
     description: string,
-    effectPairs: AbilityEffectPair[] = [],
-    panelColor: string = '#D6DDE8',
+    effectPairs?: AbilityEffectPair[],
+    panelColor?: string,
     onBattleEvent?: AbilityBattleEventHandler,
   ) {
     this.name = name;
     this.description = description;
-    this.effectPairs = effectPairs;
-    this.panelColor = panelColor;
+    this.effectPairs = effectPairs ?? [];
+    this.panelColor = panelColor ?? '#D6DDE8';
     this.onBattleEvent = onBattleEvent;
   }
 
@@ -72,7 +72,7 @@ export class Ability implements DrawableBlock {
    * Each effect is only applied if its activation condition is met (or if no condition is specified)
    */
   applyEffects(context: AbilityActivationContext) {
-    this.effectPairs.forEach(pair => {
+    this.effectPairs.forEach((pair) => {
       // Check if this effect should be activated
       let shouldActivate = true;
       if (pair.activationCondition) {
@@ -99,21 +99,21 @@ export class Ability implements DrawableBlock {
           }
           break;
         case RangeType.AllOpponents:
-          context.character.battle.opponent(context.character.side).forEach(opponent => {
+          context.character.battle.opponent(context.character.side).forEach((opponent) => {
             if (!opponent.isKnockedOut) {
               opponent.addEffect(rangeEffect.effect);
             }
           });
           break;
         case RangeType.AllAllies:
-          context.getAllies().forEach(ally => {
+          context.getAllies().forEach((ally) => {
             if (!ally.isKnockedOut) {
               ally.addEffect(rangeEffect.effect);
             }
           });
           break;
         case RangeType.AllCards:
-          context.getAllCards().forEach(card => {
+          context.getAllCards().forEach((card) => {
             if (!card.isKnockedOut) {
               card.addEffect(rangeEffect.effect);
             }
@@ -130,7 +130,11 @@ export class Ability implements DrawableBlock {
     });
   }
 
-  async draw(ctx: Canvas.CanvasRenderingContext2D, y: number, textColors: CharacterTextColors = DEFAULT_CHARACTER_TEXT_COLORS): Promise<number> {
+  async draw(
+    ctx: Canvas.CanvasRenderingContext2D,
+    y: number,
+    textColors: CharacterTextColors = DEFAULT_CHARACTER_TEXT_COLORS,
+  ): Promise<number> {
     let currentY = y;
 
     // Set up text wrapping parameters
@@ -168,9 +172,19 @@ export class Ability implements DrawableBlock {
       ctx.lineTo(rightTop - cornerRadius, trapeziumTop);
       ctx.quadraticCurveTo(rightTop, trapeziumTop, rightTop + (cornerRadius * 0.75), trapeziumTop + cornerRadius);
       ctx.lineTo(rightBottom, trapeziumTop + trapeziumHeight - cornerRadius);
-      ctx.quadraticCurveTo(rightBottom, trapeziumTop + trapeziumHeight, rightBottom - cornerRadius, trapeziumTop + trapeziumHeight);
+      ctx.quadraticCurveTo(
+        rightBottom,
+        trapeziumTop + trapeziumHeight,
+        rightBottom - cornerRadius,
+        trapeziumTop + trapeziumHeight,
+      );
       ctx.lineTo(trapeziumLeft + cornerRadius, trapeziumTop + trapeziumHeight);
-      ctx.quadraticCurveTo(trapeziumLeft, trapeziumTop + trapeziumHeight, trapeziumLeft, trapeziumTop + trapeziumHeight - cornerRadius);
+      ctx.quadraticCurveTo(
+        trapeziumLeft,
+        trapeziumTop + trapeziumHeight,
+        trapeziumLeft,
+        trapeziumTop + trapeziumHeight - cornerRadius,
+      );
       ctx.lineTo(trapeziumLeft, trapeziumTop + cornerRadius);
       ctx.quadraticCurveTo(trapeziumLeft, trapeziumTop, trapeziumLeft + cornerRadius, trapeziumTop);
       ctx.closePath();

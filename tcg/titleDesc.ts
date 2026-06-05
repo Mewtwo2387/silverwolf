@@ -22,7 +22,11 @@ export class TitleDesc implements DrawableBlock {
     this.color = color;
   }
 
-  async draw(ctx: Canvas.CanvasRenderingContext2D, y: number, textColors: CharacterTextColors = DEFAULT_CHARACTER_TEXT_COLORS): Promise<number> {
+  async draw(
+    ctx: Canvas.CanvasRenderingContext2D,
+    y: number,
+    textColors: CharacterTextColors = DEFAULT_CHARACTER_TEXT_COLORS,
+  ): Promise<number> {
     let currentY = y;
 
     // Set up text wrapping parameters
@@ -60,9 +64,19 @@ export class TitleDesc implements DrawableBlock {
       ctx.lineTo(rightTop - cornerRadius, trapeziumTop);
       ctx.quadraticCurveTo(rightTop, trapeziumTop, rightTop + (cornerRadius * 0.75), trapeziumTop + cornerRadius);
       ctx.lineTo(rightBottom, trapeziumTop + trapeziumHeight - cornerRadius);
-      ctx.quadraticCurveTo(rightBottom, trapeziumTop + trapeziumHeight, rightBottom - cornerRadius, trapeziumTop + trapeziumHeight);
+      ctx.quadraticCurveTo(
+        rightBottom,
+        trapeziumTop + trapeziumHeight,
+        rightBottom - cornerRadius,
+        trapeziumTop + trapeziumHeight,
+      );
       ctx.lineTo(trapeziumLeft + cornerRadius, trapeziumTop + trapeziumHeight);
-      ctx.quadraticCurveTo(trapeziumLeft, trapeziumTop + trapeziumHeight, trapeziumLeft, trapeziumTop + trapeziumHeight - cornerRadius);
+      ctx.quadraticCurveTo(
+        trapeziumLeft,
+        trapeziumTop + trapeziumHeight,
+        trapeziumLeft,
+        trapeziumTop + trapeziumHeight - cornerRadius,
+      );
       ctx.lineTo(trapeziumLeft, trapeziumTop + cornerRadius);
       ctx.quadraticCurveTo(trapeziumLeft, trapeziumTop, trapeziumLeft + cornerRadius, trapeziumTop);
       ctx.closePath();

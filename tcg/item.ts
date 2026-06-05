@@ -10,6 +10,11 @@ import { commonConsumableIconPath, commonEquipmentIconPath } from './assetPaths'
 import type { CharacterInBattle } from './characterInBattle';
 import type { Battle } from './battle';
 
+export enum ItemKind {
+  Equipment = 'equipment',
+  Consumable = 'consumable',
+}
+
 let equipmentIconPromise: Promise<Canvas.Image> | null = null;
 let consumableIconPromise: Promise<Canvas.Image> | null = null;
 
@@ -25,13 +30,13 @@ async function loadItemTypeIcon(kind: ItemKind): Promise<Canvas.Image | null> {
   try {
     return await loader;
   } catch {
+    if (kind === ItemKind.Consumable) {
+      consumableIconPromise = null;
+    } else {
+      equipmentIconPromise = null;
+    }
     return null;
   }
-}
-
-export enum ItemKind {
-  Equipment = 'equipment',
-  Consumable = 'consumable',
 }
 
 const CARD_WIDTH = 1080;
@@ -217,9 +222,9 @@ export abstract class Item implements Card {
     const imagePanelY = TOP_BAR_HEIGHT + 64;
     const afterImageY = await this.imagePanel.draw(ctx, imagePanelY);
 
-    let textEndY = this.drawDescription(ctx, afterImageY, this.description);
+    const descEndY = this.drawDescription(ctx, afterImageY, this.description);
     if (this.footer) {
-      textEndY = this.drawFooter(ctx, textEndY, this.footer);
+      this.drawFooter(ctx, descEndY, this.footer);
     }
 
     return canvas;
@@ -390,9 +395,9 @@ export class SignatureEquipment extends Equipment {
     const imagePanelY = TOP_BAR_HEIGHT + 64 + 56;
     const afterImageY = await this.imagePanel.draw(ctx, imagePanelY);
 
-    let textEndY = this.drawDescription(ctx, afterImageY, this.description);
+    const descEndY = this.drawDescription(ctx, afterImageY, this.description);
     if (this.footer) {
-      textEndY = this.drawFooter(ctx, textEndY, this.footer);
+      this.drawFooter(ctx, descEndY, this.footer);
     }
 
     return canvas;
