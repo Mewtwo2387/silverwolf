@@ -65,6 +65,72 @@ function elementalDamageEquipment(
 const ELEMENTAL_25 = { rarity: new Rarity(3), damageMultiplier: 1.25 } as const;
 const ELEMENTAL_50 = { rarity: new Rarity(5), damageMultiplier: 1.5 } as const;
 
+/** All-element outgoing damage equipment (stackable). */
+function outgoingDamageEquipment(
+  id: string,
+  name: string,
+  stars: number,
+  bonusPercent: number,
+  footer?: string,
+): Equipment {
+  const multiplier = 1 + bonusPercent / 100;
+  return new Equipment(
+    id,
+    name,
+    `The wearer deals ${bonusPercent}% more damage.`,
+    new Rarity(stars),
+    itemImagePanel(id),
+    itemBackgroundForRarity(stars),
+    [
+      new Effect(
+        name,
+        `+${bonusPercent}% damage.`,
+        EffectType.OutgoingDamage,
+        multiplier,
+        9999,
+        true,
+        undefined,
+        true,
+      ),
+    ],
+    undefined,
+    footer,
+  );
+}
+
+/** All-type incoming damage reduction equipment (stackable). */
+function incomingReductionEquipment(
+  id: string,
+  name: string,
+  stars: number,
+  reductionPercent: number,
+  footer?: string,
+): Equipment {
+  const multiplier = 1 - reductionPercent / 100;
+  return new Equipment(
+    id,
+    name,
+    `Reduces incoming damage by ${reductionPercent}%.`,
+    new Rarity(stars),
+    itemImagePanel(id),
+    itemBackgroundForRarity(stars),
+    [
+      new Effect(
+        name,
+        `-${reductionPercent}% incoming damage.`,
+        EffectType.IncomingDamage,
+        multiplier,
+        9999,
+        true,
+        undefined,
+        true,
+      ),
+    ],
+    undefined,
+    footer,
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Equipment items
 // ---------------------------------------------------------------------------
@@ -204,6 +270,49 @@ export const PLATE_ARMOR = new Equipment(
       true,
     ),
   ],
+);
+
+// Minecraft-tier tools (+10% … +50% outgoing) and armor (−10% … −50% incoming)
+export const WOODEN_TOOL = outgoingDamageEquipment(
+  'wooden_tool',
+  'Wooden Tools',
+  1,
+  10,
+  'Does anyone actually ever use these other than their first pickaxe? And the wooden axe I use to worldedit everything.',
+);
+export const STONE_TOOL = outgoingDamageEquipment('stone_tool', 'Stone Tools', 2, 20);
+export const IRON_TOOL = outgoingDamageEquipment('iron_tool', 'Iron Tools', 3, 30);
+export const DIAMOND_TOOL = outgoingDamageEquipment('diamond_tool', 'Diamond Tools', 4, 40);
+export const NETHERITE_TOOL = outgoingDamageEquipment(
+  'netherite_tool',
+  'Netherite Tools',
+  5,
+  50,
+  'The eternal weapon that can stop a certain person that loves video journal machines from respawning.',
+);
+
+export const LEATHER_ARMOR = incomingReductionEquipment(
+  'leather_armor',
+  'Leather Armor',
+  1,
+  10,
+  'In parkour civilization, no one jumps for the beef.',
+);
+export const CHAIN_ARMOR = incomingReductionEquipment(
+  'chain_armor',
+  'Chain Armor',
+  2,
+  20,
+  'Silverwolf can tie me up using this.',
+);
+export const IRON_ARMOR = incomingReductionEquipment('iron_armor', 'Iron Armor', 3, 30);
+export const DIAMOND_ARMOR = incomingReductionEquipment('diamond_armor', 'Diamond Armor', 4, 40);
+export const NETHERITE_ARMOR = incomingReductionEquipment(
+  'netherite_armor',
+  'Netherite Armor',
+  5,
+  50,
+  'There\'s something written on the boots, but I can\'t understand it as it\'s written in parkour.',
 );
 
 /** Kaitlin form skill indices (Slay Queen + Estrogen ultimate), same as her transformation skill. */
@@ -571,6 +680,16 @@ export const ALL_ITEMS: Item[] = [
   QUANTUM_COMPRESSOR,
   STRANGE_QUARK,
   PLATE_ARMOR,
+  WOODEN_TOOL,
+  STONE_TOOL,
+  IRON_TOOL,
+  DIAMOND_TOOL,
+  NETHERITE_TOOL,
+  LEATHER_ARMOR,
+  CHAIN_ARMOR,
+  IRON_ARMOR,
+  DIAMOND_ARMOR,
+  NETHERITE_ARMOR,
   ANEMO_GNOSIS,
   GEO_GNOSIS,
   PYRO_GNOSIS,
