@@ -382,6 +382,11 @@ export function executeUseItem(
     };
   }
 
+  const gate = item.canApply(target, battle);
+  if (!gate.ok) {
+    return { ok: false, error: gate.reason };
+  }
+
   const ok = battle.useItem(side, handSlotId, target);
   if (!ok) {
     return { ok: false, error: 'Failed to play item.' };

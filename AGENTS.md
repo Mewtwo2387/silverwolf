@@ -534,6 +534,17 @@ derived from that array, so the deck-edit slash commands will pick it up automat
 Equipment effects should use `duration: 9999` (treated as permanent in display logic). The
 equip cap is enforced in `CharacterInBattle.equip` (returns `false` when full).
 
+**Equipment combine** (`tcg/equipmentCombine.ts`): set `Equipment.combinesWhenEquipped` so
+equipping enough copies (default 3) of an item replaces them with one upgraded piece.
+`CharacterInBattle.equip` runs this automatically after `onEquipped`. For one-off rules,
+use `combineWhenEquipped({ fromItemId, into, requiredCount? })` or call
+`tryCombineEquipment` directly.
+
+```ts
+WARN.combinesWhenEquipped = { into: MUTE };
+NOTICE.combinesWhenEquipped = { into: WARN };
+```
+
 **Signature equipment** (`SignatureEquipment` in `tcg/item.ts`): same combat rules as
 `Equipment`, but the card uses a gold frame and a banner naming
 `signatureOf` (e.g. Estrogen → Kaitlin). No extra in-battle restrictions.

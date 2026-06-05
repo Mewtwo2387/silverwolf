@@ -5,6 +5,7 @@ import { Effect } from './effect';
 import { Skill } from './skill';
 import { Element } from './element';
 import type { Equipment } from './item';
+import { runEquipmentCombineIfReady } from './equipmentCombine';
 import { round2 } from '../utils/math';
 
 export const MAX_EQUIPMENTS_PER_CHARACTER = 3;
@@ -47,6 +48,8 @@ export class CharacterInBattle {
   energy: number;
   /** Equipment items attached to this character (max {@link MAX_EQUIPMENTS_PER_CHARACTER}). */
   equipments: Equipment[];
+  /** Consumable item id → earliest battle round when that consumable may target this character again. */
+  consumableCooldownUntilRound: Record<string, number>;
 
   constructor(character: Character, battle: Battle, side: string) {
     this.character = character;
@@ -64,6 +67,45 @@ export class CharacterInBattle {
     this.side = side;
     this.energy = 0;
     this.equipments = [];
+    this.consumableCooldownUntilRound = {};
+  }
+
+  /** True when a consumable with the given id is off cooldown for this character. */
+  canUseConsumable(itemId: string): boolean {
+    const availableRound = this.consumableCooldownUntilRound[itemId] ?? 1;
+    return this.battle.currentTurn >= availableRound;
+  }
+
+  /** Earliest round (inclusive) when the consumable may be used again. */
+  consumableAvailableRound(itemId: string): number {
+    return this.consumableCooldownUntilRound[itemId] ?? 1;
+  }
+
+  /** Block a consumable on this character for `cooldownRounds` full battle rounds. */
+  setConsumableCooldown(itemId: string, cooldownRounds: number): void {
+    this.consumableCooldownUntilRound[itemId] = this.battle.currentTurn + cooldownRounds;
+  }
+
+  /**
+   * Detach all equipment with the given id and remove one matching effect instance per
+   * effect defined on each removed piece (supports stackable equipment bonuses).
+   */
+  removeEquipmentsById(itemId: string): number {
+    const removed = this.equipments.filter((e) => e.id === itemId);
+    removed.forEach((equipment) => {
+      equipment.effects.forEach((effTemplate) => {
+        const idx = this.effects.findIndex(
+          (e) => e.name === effTemplate.name
+            && e.type === effTemplate.type
+            && e.stackable === effTemplate.stackable,
+        );
+        if (idx >= 0) {
+          this.effects.splice(idx, 1);
+        }
+      });
+    });
+    this.equipments = this.equipments.filter((e) => e.id !== itemId);
+    return removed.length;
   }
 
   /**
@@ -97,7 +139,10 @@ export class CharacterInBattle {
       this.addEffect(effect);
     });
     equipment.onEquipped?.(this);
-    this.battle.logEvent(`${this.character.name} equipped [${equipment.name}]`);
+    runEquipmentCombineIfReady(this, equipment);
+    if (this.equipments.includes(equipment)) {
+      this.battle.logEvent(`${this.character.name} equipped [${equipment.name}]`);
+    }
     return true;
   }
 

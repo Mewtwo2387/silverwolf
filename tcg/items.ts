@@ -443,6 +443,121 @@ export const XEI_PIZZA = new Consumable(
   },
 );
 
+export const YELLOW_PIXEL = new Consumable(
+  'yellow_pixel',
+  'Yellow Pixel',
+  'Decreases incoming damage by 20% for the next 2 turns. Can only be used once every 5 turns.',
+  new Rarity(1),
+  itemImagePanel('yellow_pixel'),
+  itemBackgroundForRarity(1),
+  (target) => {
+    target.addEffect(new Effect(
+      'Yellow Pixel',
+      '-20% incoming damage for 2 turns.',
+      EffectType.IncomingDamage,
+      0.8,
+      2,
+      true,
+    ));
+  },
+  'A single yellow pixel on Lumine\'s head in the r/place \'23 canvas. Once fought over by thousands of people that sacrificed sleep to keep this yellow. There\'s also this dude named Ei that tried putting more of these to give Lumine cat ears.',
+  5,
+);
+
+export const WHITE_PIXEL = new Consumable(
+  'white_pixel',
+  'White Pixel',
+  'Increases outgoing damage by 20% for the next 2 turns. Can only be used once every 5 turns.',
+  new Rarity(1),
+  itemImagePanel('white_pixel'),
+  itemBackgroundForRarity(1),
+  (target) => {
+    target.addEffect(new Effect(
+      'White Pixel',
+      '+20% outgoing damage for 2 turns.',
+      EffectType.OutgoingDamage,
+      1.2,
+      2,
+      true,
+    ));
+  },
+  'A single white pixel in the TGP r/place \'23 mural that shouldn\'t be there. Placed by one of xQc\'s minions. The ultimate PTSD inducer.',
+  5,
+);
+
+// ---------------------------------------------------------------------------
+// Moderation equipment (Notice → Warn → Mute)
+// ---------------------------------------------------------------------------
+
+export const MUTE = new Equipment(
+  'mute',
+  'Mute',
+  'Increases outgoing damage by 40%.',
+  new Rarity(3),
+  itemImagePanel('mute'),
+  itemBackgroundForRarity(3),
+  [
+    new Effect(
+      'Mute',
+      '+40% outgoing damage.',
+      EffectType.OutgoingDamage,
+      1.4,
+      9999,
+      true,
+    ),
+  ],
+  undefined,
+  'Someone forgot they already have 2 warns in hand and got a little bit too naughty.',
+);
+
+export const WARN = new Equipment(
+  'warn',
+  'Warn',
+  'Increases outgoing damage by 20%. When equipping 3 Warns, it will be combined into a Mute.',
+  new Rarity(2),
+  itemImagePanel('warn'),
+  itemBackgroundForRarity(2),
+  [
+    new Effect(
+      'Warn',
+      '+20% outgoing damage.',
+      EffectType.OutgoingDamage,
+      1.2,
+      9999,
+      true,
+      undefined,
+      true,
+    ),
+  ],
+  undefined,
+  'Some treat it like an undesired thing that\'ll taint you for 2 months. Some treat it like you\'re allowed one rule break every 2 months. Legends say that someone got over 20 of these. Reasons of giving out these include but is not limited to: Misspelling Ningguang, posting a gif of kicking a stickman in the balls, and posting a Ganyu spider.',
+);
+WARN.combinesWhenEquipped = { into: MUTE };
+
+export const NOTICE = new Equipment(
+  'notice',
+  'Notice',
+  'Increases outgoing damage by 10%. When equipping 3 Notices, it will be combined into a Warn.',
+  new Rarity(1),
+  itemImagePanel('notice'),
+  itemBackgroundForRarity(1),
+  [
+    new Effect(
+      'Notice',
+      '+10% outgoing damage.',
+      EffectType.OutgoingDamage,
+      1.1,
+      9999,
+      true,
+      undefined,
+      true,
+    ),
+  ],
+  undefined,
+  'On the bright side, this is given out when a certain someone\'s pissed off at someone, but the mod doesn\'t really want to warn so they give out one of these for show to calm the certain someone. On the dark side, this is given out at completely arbitrary rule breaks that doesn\'t really break any rule.',
+);
+NOTICE.combinesWhenEquipped = { into: WARN };
+
 export const ALL_ITEMS: Item[] = [
   ANEMOCULUS,
   CRYOCULUS,
@@ -474,6 +589,11 @@ export const ALL_ITEMS: Item[] = [
   BATTERY,
   MYSTIC_CHICKEN,
   XEI_PIZZA,
+  YELLOW_PIXEL,
+  WHITE_PIXEL,
+  NOTICE,
+  WARN,
+  MUTE,
 ];
 
 /** Map item id → Item, for hydrating decks loaded from the database. */

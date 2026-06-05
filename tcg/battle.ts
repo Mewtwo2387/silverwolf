@@ -430,6 +430,9 @@ export class Battle {
     if (target.isKnockedOut) return false;
 
     const item = hand.get(handSlotId)!;
+    const gate = item.canApply(target, this);
+    if (!gate.ok) return false;
+
     this.currentActionLog = [];
     const turnHistoryLenBefore = this.turnHistory.length;
     this.logEvent(`${side.toUpperCase()} used [${item.name}] on ${target.character.name}`);

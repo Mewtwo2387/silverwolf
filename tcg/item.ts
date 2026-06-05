@@ -7,6 +7,7 @@ import { Card } from './interfaces/card';
 import { Effect } from './effect';
 import { drawFittedTcgText, drawTcgText } from './utils/tcgTextStyle';
 import { commonConsumableIconPath, commonEquipmentIconPath } from './assetPaths';
+import type { EquipmentCombineConfig } from './equipmentCombine';
 import type { CharacterInBattle } from './characterInBattle';
 import type { Battle } from './battle';
 
@@ -89,6 +90,16 @@ export abstract class Item implements Card {
   }
 
   abstract get kind(): ItemKind;
+
+  /**
+   * Pre-flight gate before {@link apply}. Override for cooldowns, caps, etc.
+   */
+  canApply(
+    target: CharacterInBattle,
+    _battle: Battle,
+  ): { ok: true } | { ok: false; reason: string } {
+    return { ok: true };
+  }
 
   /**
    * Apply the item onto a target character. Equipment attaches; consumables run their effect.
@@ -258,6 +269,11 @@ export abstract class Item implements Card {
  */
 export class Equipment extends Item {
   effects: Effect[];
+  /**
+   * When set, equipping enough copies of this item (see {@link EquipmentCombineConfig})
+   * replaces them with a single upgraded equipment. Handled in {@link CharacterInBattle.equip}.
+   */
+  combinesWhenEquipped?: EquipmentCombineConfig;
   /** Optional hook after base effects are applied (conditional bonuses, form change, etc.). */
   onEquipped?: (target: CharacterInBattle) => void;
 
@@ -430,6 +446,8 @@ export function isSignatureEquipment(item: Item): item is SignatureEquipment {
  */
 export class Consumable extends Item {
   effect: (target: CharacterInBattle, battle: Battle) => void;
+  /** Full battle rounds before this consumable may target the same character again. */
+  useCooldownRounds?: number;
 
   constructor(
     id: string,
@@ -440,18 +458,41 @@ export class Consumable extends Item {
     background: Background,
     effect: (target: CharacterInBattle, battle: Battle) => void,
     footer?: string,
+    useCooldownRounds?: number,
   ) {
     super(id, name, description, rarity, imagePanel, background, footer);
     this.effect = effect;
+    this.useCooldownRounds = useCooldownRounds;
   }
 
   override get kind(): ItemKind {
     return ItemKind.Consumable;
   }
 
+  override canApply(
+    target: CharacterInBattle,
+    _battle: Battle,
+  ): { ok: true } | { ok: false; reason: string } {
+    if (target.isKnockedOut) {
+      return { ok: false, reason: `${target.character.name} is knocked out.` };
+    }
+    if (this.useCooldownRounds && !target.canUseConsumable(this.id)) {
+      const round = target.consumableAvailableRound(this.id);
+      return {
+        ok: false,
+        reason: `${this.name} is on cooldown for ${target.character.name} until round ${round}.`,
+      };
+    }
+    return { ok: true };
+  }
+
   override apply(target: CharacterInBattle, battle: Battle): boolean {
-    if (target.isKnockedOut) return false;
+    const gate = this.canApply(target, battle);
+    if (!gate.ok) return false;
     this.effect(target, battle);
+    if (this.useCooldownRounds) {
+      target.setConsumableCooldown(this.id, this.useCooldownRounds);
+    }
     return true;
   }
 }
