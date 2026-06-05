@@ -99,14 +99,18 @@
   );
   if (dock && pill && dockVisible) {
     const tiles = Array.from(dock.querySelectorAll('.nav-link'));
-    const NAV_DELAY = 320;
+    const NAV_DELAY = 200;
     const SPRING = '0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+    // How much the pill grows while a finger is pressed/dragging — gives the
+    // "bubble expands under your thumb" feel.
+    const PRESS_SCALE = 1.12;
 
     let activeIdx = tiles.findIndex((t) => t.classList.contains('active'));
     if (activeIdx < 0) activeIdx = 0;
     let pillX = 0;
     let pillW = 0;
     let pendingNav = null;
+    let pressed = false;
 
     const tileGeom = (tile) => {
       const dr = dock.getBoundingClientRect();
@@ -114,21 +118,18 @@
       return { x: tr.left - dr.left, w: tr.width };
     };
 
+    // Transform carries both position (translateX) and the press scale, so they
+    // can animate together. transform-origin defaults to center → grows evenly.
+    const applyPillTransform = (x) => {
+      pill.style.transform = 'translateX(' + x + 'px) scale(' + (pressed ? PRESS_SCALE : 1) + ')';
+    };
+
     const placePill = (idx, animate) => {
       const g = tileGeom(tiles[idx]);
       pillX = g.x; pillW = g.w;
       pill.style.transition = animate ? 'transform ' + SPRING + ', width ' + SPRING : 'none';
       pill.style.width = g.w + 'px';
-      pill.style.transform = 'translateX(' + g.x + 'px)';
-    };
-
-    const setActive = (idx) => {
-      if (idx === activeIdx) return;
-      tiles[activeIdx].classList.remove('active');
-      tiles[activeIdx].removeAttribute('aria-current');
-      tiles[idx].classList.add('active');
-      tiles[idx].setAttribute('aria-current', 'page');
-      activeIdx = idx;
+      applyPillTransform(g.x);
     };
 
     const navigate = (idx) => {
@@ -138,25 +139,29 @@
 
     requestAnimationFrame(() => placePill(activeIdx, false));
 
-    // Tap a tile → slide pill + navigate (skip if it was a drag-induced click)
-    tiles.forEach((tile, i) => {
+    // Navigation is driven entirely by pointerup (a genuine finger-lift) so we
+    // never navigate mid-drag. Anchors would otherwise navigate on their native
+    // click, so swallow it — but let modifier/middle clicks open a new tab.
+    const hasModifier = (e) => e.metaKey || e.ctrlKey || e.shiftKey || e.altKey;
+    tiles.forEach((tile) => {
       tile.addEventListener('click', (e) => {
-        if (suppressClick) { suppressClick = false; e.preventDefault(); e.stopPropagation(); return; }
-        if (i === activeIdx) return;
-        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button === 1) return;
+        if (hasModifier(e) || e.button === 1) return;
+        // Keyboard / AT activation (Enter/Space) reports detail === 0 and never
+        // goes through the pointer drag path — let it navigate natively.
+        if (e.detail === 0) return;
         e.preventDefault();
-        setActive(i);
-        placePill(i, true);
-        navigate(i);
       });
     });
 
-    // ── Drag the pill to slide focus ─────────────────────────────
+    // Kill the browser's native link/image drag so a mouse drag scrubs the pill
+    // instead of tearing the anchor out as a draggable URL ghost.
+    dock.addEventListener('dragstart', (e) => e.preventDefault());
+
+    // ── Press & drag the pill to slide focus ─────────────────────
     let dragging = false;
     let dragStartX = 0;
     let dragOriginX = 0;
     let dragMoved = false;
-    let suppressClick = false;
     // Geometry snapshot taken once on pointerdown so the move loop never calls
     // getBoundingClientRect (each call forces a synchronous reflow; doing it per
     // tile, per pointermove at 60–120Hz is the classic layout-thrash jank).
@@ -173,62 +178,85 @@
       return nearest;
     };
 
+    const PAD = 4;
+    const clampX = (x) => {
+      const minX = PAD;
+      const maxX = dragGeom.dockWidth - pillW - PAD;
+      if (x < minX) return minX;
+      if (x > maxX) return maxX;
+      return x;
+    };
+
     dock.addEventListener('pointerdown', (e) => {
-      // Only initiate drag when the pointer lands on the pill itself.
+      if (e.button && e.button !== 0) return;
+      // Let modifier-clicks fall through to the native anchor (open in new tab)
+      // — don't start a drag, or pointerup would also navigate the current tab.
+      if (hasModifier(e)) return;
       const dr = dock.getBoundingClientRect();
       const localX = e.clientX - dr.left;
-      if (localX < pillX || localX > pillX + pillW) return;
-      dragging = true;
-      dragMoved = false;
-      dragStartX = e.clientX;
-      dragOriginX = pillX;
       // Snapshot geometry up front; reused for the whole drag (see dragGeom note).
       dragGeom = {
         centers: tiles.map((t) => { const g = tileGeom(t); return g.x + g.w / 2; }),
         dockWidth: dr.width,
       };
+      dragging = true;
+      dragMoved = false;
+      dragStartX = e.clientX;
+      pressed = true;
       pill.classList.add('dragging');
-      pill.style.transition = 'none';
+      // Pop the pill open; if the press landed away from the pill, slide it under
+      // the finger. Both animate via the spring transition set here.
+      pill.style.transition = 'transform ' + SPRING + ', width ' + SPRING;
+      if (localX < pillX || localX > pillX + pillW) {
+        pillX = clampX(localX - pillW / 2);
+        const nearest = nearestTo(pillX + pillW / 2);
+        tiles.forEach((t, i) => t.classList.toggle('active', i === nearest));
+      }
+      dragOriginX = pillX;
+      applyPillTransform(pillX);
       try { dock.setPointerCapture(e.pointerId); } catch (_) {}
     });
 
     dock.addEventListener('pointermove', (e) => {
       if (!dragging) return;
       const dx = e.clientX - dragStartX;
-      if (Math.abs(dx) > 4) dragMoved = true;
-      // Pad inside the dock so the pill never overlaps the curved edge
-      const pad = 4;
-      const minX = pad;
-      const maxX = dragGeom.dockWidth - pillW - pad;
-      let nx = dragOriginX + dx;
-      if (nx < minX) nx = minX;
-      if (nx > maxX) nx = maxX;
+      if (!dragMoved && Math.abs(dx) > 4) {
+        dragMoved = true;
+        // Once a real drag begins, the pill must track the finger 1:1 — drop the
+        // spring transition so it follows instantly instead of lagging behind.
+        pill.style.transition = 'none';
+      }
+      const nx = clampX(dragOriginX + dx);
       pillX = nx;
-      pill.style.transform = 'translateX(' + nx + 'px)';
+      applyPillTransform(nx);
 
       // Live preview: brighten whichever tile the pill center is closest to
       const nearest = nearestTo(nx + pillW / 2);
       tiles.forEach((t, i) => t.classList.toggle('active', i === nearest));
     });
 
-    const endDrag = (e) => {
-      if (!dragging) return;
+    // Reset to the currently-active tile and shrink the pill back. Shared by the
+    // "abort" paths (pointercancel) where we must NOT navigate.
+    const settleToActive = (e) => {
       dragging = false;
+      pressed = false;
       pill.classList.remove('dragging');
       try { dock.releasePointerCapture(e.pointerId); } catch (_) {}
-      if (!dragMoved) {
-        // No real drag — restore pill under the previously-active tile.
-        tiles.forEach((t, i) => t.classList.toggle('active', i === activeIdx));
-        if (activeIdx >= 0) tiles[activeIdx].setAttribute('aria-current', 'page');
-        placePill(activeIdx, true);
-        return;
-      }
-      // Snap to nearest tile, navigate if changed. Reuse the drag snapshot.
-      suppressClick = true;
-      setTimeout(() => { suppressClick = false; }, 400);
+      tiles.forEach((t, i) => t.classList.toggle('active', i === activeIdx));
+      if (activeIdx >= 0) tiles[activeIdx].setAttribute('aria-current', 'page');
+      placePill(activeIdx, true);
+    };
+
+    // Finger genuinely lifted: snap to the tile under the pill and navigate to
+    // it. This is the ONLY path that navigates — a tap, or a drag-then-release.
+    dock.addEventListener('pointerup', (e) => {
+      if (!dragging) return;
+      dragging = false;
+      pressed = false;
+      pill.classList.remove('dragging');
+      try { dock.releasePointerCapture(e.pointerId); } catch (_) {}
       const nearest = nearestTo(pillX + pillW / 2);
       const changed = nearest !== activeIdx;
-      // Update aria-current on the new active tile
       tiles.forEach((t, i) => {
         t.classList.toggle('active', i === nearest);
         if (i === nearest) t.setAttribute('aria-current', 'page');
@@ -237,10 +265,14 @@
       activeIdx = nearest;
       placePill(nearest, true);
       if (changed) navigate(nearest);
-    };
+    });
 
-    dock.addEventListener('pointerup', endDrag);
-    dock.addEventListener('pointercancel', endDrag);
+    // Pointer was cancelled by the browser (e.g. a scroll/gesture took over) —
+    // treat it as "never lifted off the selection": abort without navigating.
+    dock.addEventListener('pointercancel', (e) => {
+      if (!dragging) return;
+      settleToActive(e);
+    });
 
     window.addEventListener('resize', () => placePill(activeIdx, false));
   }

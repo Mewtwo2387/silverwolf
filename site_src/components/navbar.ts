@@ -66,7 +66,7 @@ export function Navbar(active: NavActive | undefined, lv999?: boolean, user?: Na
   const dockLink = (href: string, label: string, key: keyof typeof ICONS) => {
     const isActive = active === key;
     const cls = `nav-link no-underline${isActive ? ' active' : ''}`;
-    return html`<a href="${href}" class="${cls}" aria-label="${label}"${isActive ? raw(' aria-current="page"') : ''}>${ICONS[key]}<span class="label">${label}</span></a>`;
+    return html`<a href="${href}" class="${cls}" aria-label="${label}" draggable="false"${isActive ? raw(' aria-current="page"') : ''}>${ICONS[key]}<span class="label">${label}</span></a>`;
   };
 
   // The "Home" tab was retired — the public tab now goes to /about for everyone,

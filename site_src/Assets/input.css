@@ -494,12 +494,20 @@ code, pre, kbd, .font-mono {
       z-index: 0;
       will-change: transform, width;
     }
+    /* While pressed/dragging the pill scales up (transform driven by JS) and
+       its glow intensifies so the "bubble" feels like it lifts toward you. */
     #nav-mobile .dock-pill.dragging {
       cursor: grabbing;
+      background: linear-gradient(90deg, color-mix(in oklab, var(--accent) 38%, transparent), color-mix(in oklab, var(--accent-pale) 38%, transparent));
+      border-color: color-mix(in oklab, var(--accent) 65%, transparent);
       box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.5),
         inset 0 -1px 0 rgba(0, 0, 0, 0.1),
-        0 4px 16px color-mix(in oklab, var(--accent) 40%, transparent);
+        0 6px 22px color-mix(in oklab, var(--accent) 50%, transparent),
+        0 0 18px color-mix(in oklab, var(--accent) 35%, transparent);
+      transition: background 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+        border-color 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
     /* Tile = icon + label, stacked. Sits above the pill in z-stack. */
@@ -518,7 +526,15 @@ code, pre, kbd, .font-mono {
       position: relative;
       z-index: 1;
       transition: color 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+      /* Suppress native link-drag + text selection so a mouse/finger drag scrubs
+         the pill instead of pulling the URL out as a draggable ghost. */
+      -webkit-user-drag: none;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
     }
+    #nav-mobile .nav-link svg,
+    #nav-mobile .nav-link .label { pointer-events: none; }
     #nav-mobile .nav-link svg {
       width: 22px;
       height: 22px;
