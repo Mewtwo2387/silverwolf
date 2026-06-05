@@ -12,11 +12,15 @@ const APP_JS_PATH = path.resolve(import.meta.dir, '..', 'Assets', 'app.js');
 
 // Exported so the embed-meta middleware can reuse the same pool for the social
 // thumbnail — the link preview shows a random favicon sticker, matching the tab.
+// Embed thumbnails still point at the full-size sticker for scrapers; only the
+// in-page favicon uses the 128w variant (rendered at ≤96px).
 export const FAVICON_STICKERS = STICKER_STEMS.map(stickerWebpUrl);
 export const FAVICON_STICKERS_LV999 = STICKER_STEMS_LV999.map(stickerWebpUrl);
+const FAVICON_STICKERS_128 = STICKER_STEMS.map((s) => `/static/stickers/${s}-128w.webp`);
+const FAVICON_STICKERS_128_LV999 = STICKER_STEMS_LV999.map((s) => `/static/stickers/${s}-128w.webp`);
 
 const faviconLink = (lv999: boolean) => {
-  const pool = lv999 ? FAVICON_STICKERS_LV999 : FAVICON_STICKERS;
+  const pool = lv999 ? FAVICON_STICKERS_128_LV999 : FAVICON_STICKERS_128;
   const pick = pool[Math.floor(Math.random() * pool.length)];
   return raw(`<link rel="icon" type="image/webp" href="${pick}" />`);
 };

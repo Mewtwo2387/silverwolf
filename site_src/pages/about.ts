@@ -110,13 +110,16 @@ const aboutExtras = (nonce: string) => raw(`
     transform: translateY(1px);
     box-shadow: 0 0 6px rgba(88, 101, 242, 0.2);
   }
+  /* Opacity-only fade. Earlier versions translated 5rem horizontally which
+     compounded with the typing-text reflow to push CLS to 0.28 on Lighthouse;
+     dropping the translate keeps the entrance soft without shifting layout. */
   @keyframes about-slide-left {
-    0%   { opacity: 0; transform: translate3d(-5rem, 0, 0); }
-    100% { opacity: 1; transform: translate3d(0, 0, 0); }
+    0%   { opacity: 0; }
+    100% { opacity: 1; }
   }
   @keyframes about-slide-right {
-    0%   { opacity: 0; transform: translate3d(5rem, 0, 0); }
-    100% { opacity: 1; transform: translate3d(0, 0, 0); }
+    0%   { opacity: 0; }
+    100% { opacity: 1; }
   }
   .about-text {
     animation: about-slide-left 1.8s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both !important;
@@ -223,22 +226,21 @@ const aboutExtras = (nonce: string) => raw(`
   .eid-from-left.is-visible  { animation: about-slide-left  1.8s cubic-bezier(0.22, 1, 0.36, 1) both; }
   .eid-from-right.is-visible { animation: about-slide-right 1.8s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
-  /* Typing text animations and terminal cursor */
-  .typing-text {
-    visibility: hidden;
-  }
-  .typing-text.is-typing,
-  .typing-text.is-typed {
-    visibility: visible;
-  }
-  .terminal-cursor {
+  /* Typing text — CLS-safe reveal. The full text is laid out from frame zero
+     (untyped chars are color: transparent), so paragraph height never grows.
+     The cursor ::after is zero-width with overflow-visible so it appears at
+     the end without ever contributing to inline width. */
+  .typing-text { visibility: visible; }
+  .typing-text .typing-untyped { color: transparent; }
+  .typing-text.is-typed::after {
+    content: '.';
     display: inline-block;
-    color: rgba(34, 211, 255, 0.95);
+    width: 0;
     margin-left: 2px;
+    color: rgba(34, 211, 255, 0.95);
     font-weight: bold;
     vertical-align: middle;
-  }
-  .terminal-cursor.blink {
+    white-space: nowrap;
     animation: terminal-blink 1s step-end infinite;
   }
   @keyframes terminal-blink {
@@ -397,49 +399,44 @@ const aboutExtras = (nonce: string) => raw(`
 <script nonce="${nonce}">
 (() => {
   const animateTyping = (el) => {
-    if (el.classList.contains('is-typed')) return;
+    if (el.classList.contains('is-typed') || el.classList.contains('is-typing')) return;
     el.classList.add('is-typing');
 
-    const originalText = el.getAttribute('data-text') || el.textContent.trim();
-    let textToType = originalText;
+    const fullText = el.getAttribute('data-text') || el.textContent.trim();
 
-    if (textToType.endsWith('.')) {
-      textToType = textToType.slice(0, -1);
-    }
+    // Reset to a two-span structure: visible "typed" prefix + transparent
+    // "untyped" suffix. Total inline content = fullText from frame zero, so
+    // line breaks and paragraph height are fixed before typing starts.
+    el.textContent = '';
+    const typedSpan = document.createElement('span');
+    typedSpan.className = 'typing-typed';
+    const untypedSpan = document.createElement('span');
+    untypedSpan.className = 'typing-untyped';
+    untypedSpan.textContent = fullText;
+    el.appendChild(typedSpan);
+    el.appendChild(untypedSpan);
 
-    const words = originalText.split(/\\s+/).filter(w => w.length > 0);
+    const words = fullText.split(/\\s+/).filter(w => w.length > 0);
     const wordCount = words.length || 1;
     const wps = 5;
     const totalDuration = (wordCount / wps) * 1000;
-    const charCount = textToType.length || 1;
+    const charCount = fullText.length || 1;
     const baseInterval = totalDuration / charCount;
 
-    el.textContent = '';
-
-    const textSpan = document.createElement('span');
-    el.appendChild(textSpan);
-
-    const cursorSpan = document.createElement('span');
-    cursorSpan.className = 'terminal-cursor';
-    cursorSpan.textContent = '.';
-    el.appendChild(cursorSpan);
-
-    let charIndex = 0;
-
-    const typeChar = () => {
-      if (charIndex < textToType.length) {
-        textSpan.textContent += textToType[charIndex];
-        charIndex++;
-        const randomDelay = baseInterval * (0.8 + Math.random() * 0.4);
-        setTimeout(typeChar, randomDelay);
+    let i = 0;
+    const tick = () => {
+      if (i < fullText.length) {
+        i++;
+        typedSpan.textContent = fullText.slice(0, i);
+        untypedSpan.textContent = fullText.slice(i);
+        setTimeout(tick, baseInterval * (0.8 + Math.random() * 0.4));
       } else {
-        cursorSpan.classList.add('blink');
+        untypedSpan.remove();
         el.classList.remove('is-typing');
         el.classList.add('is-typed');
       }
     };
-
-    typeChar();
+    tick();
   };
 
   const run = () => {
@@ -603,6 +600,15 @@ const artistModalScript = (nonce: string) => raw(`
 
 export function AboutPage(opts: { nonce: string; lv999?: boolean; goof?: boolean; user?: NavUser | null }) {
   const { lv999, goof, user } = opts;
+  // Hero responsive sources. Sizes: full viewport width on mobile, capped at
+  // ~48rem (≈768px) inside the centered layout on desktop. The 2000w fallback
+  // covers high-DPI desktop; smaller widths shave hundreds of KiB on typical
+  // displays. Generated by scripts/build-images.ts.
+  const heroBase = lv999 ? '/static/silverwolfLv.999' : '/static/silverwolf';
+  const heroSizes = '(max-width: 800px) 100vw, 48rem';
+  const heroWidth = lv999 ? 1800 : 2000;
+  const heroAvifSrcset = `${heroBase}-512w.avif 512w, ${heroBase}-1024w.avif 1024w, ${heroBase}-1600w.avif 1600w, ${heroBase}.avif ${heroWidth}w`;
+  const heroWebpSrcset = `${heroBase}-512w.webp 512w, ${heroBase}-1024w.webp 1024w, ${heroBase}-1600w.webp 1600w, ${heroBase}.webp ${heroWidth}w`;
   const titleBlock = goof
     ? html`
         <h1 class="about-title about-title--goof font-mono italic font-bold tracking-[0.01em] leading-[0.95] mb-4" style="font-size: clamp(3.5rem, 9vw, 5.5rem);">
@@ -676,10 +682,14 @@ export function AboutPage(opts: { nonce: string; lv999?: boolean; goof?: boolean
   const eidolonSections = eidolonData.map(({ n, title, text }) => {
     const imgLeft = n % 2 === 1;
     const eidolonStem = lv999 ? `Character_Silver_Wolf_LV.999_Eidolon_${n}` : `Character_Silver_Wolf_Eidolon_${n}`;
+    const eidSizes = '(max-width: 800px) 100vw, 28rem';
+    const eidAvifSrcset = `/static/eidolons/${eidolonStem}-768w.avif 768w, /static/eidolons/${eidolonStem}.avif 1000w`;
+    const eidWebpSrcset = `/static/eidolons/${eidolonStem}-768w.webp 768w, /static/eidolons/${eidolonStem}.webp 1000w`;
     const imgEl = html`
       <div class="eid-img ${imgLeft ? 'eid-from-left' : 'eid-from-right'} flex justify-center items-center max-[800px]:order-[-1]">
         <picture class="block w-full max-w-[28rem]">
-          <source type="image/avif" srcset="/static/eidolons/${eidolonStem}.avif" />
+          <source type="image/avif" srcset="${eidAvifSrcset}" sizes="${eidSizes}" />
+          <source type="image/webp" srcset="${eidWebpSrcset}" sizes="${eidSizes}" />
           <img src="/static/eidolons/${eidolonStem}.webp" alt="Silver Wolf Eidolon ${n}" width="1000" height="1000" loading="lazy" decoding="async" class="w-full h-auto" />
         </picture>
       </div>`;
@@ -707,8 +717,9 @@ export function AboutPage(opts: { nonce: string; lv999?: boolean; goof?: boolean
       </div>
       <div class="about-image artist-trigger relative flex justify-center items-center max-[800px]:order-[-1]" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="artist-modal" aria-expanded="false" aria-label="View artist credit">
         <picture class="block w-full max-w-[48rem]">
-          <source type="image/avif" srcset="${lv999 ? '/static/silverwolfLv.999.avif' : '/static/silverwolf.avif'}" />
-          <img src="${lv999 ? '/static/silverwolfLv.999.webp' : '/static/silverwolf.webp'}" alt="Silverwolf" width="${lv999 ? '1800' : '2000'}" height="${lv999 ? '1800' : '2000'}" decoding="async" fetchpriority="high" class="w-full h-auto" />
+          <source type="image/avif" srcset="${heroAvifSrcset}" sizes="${heroSizes}" />
+          <source type="image/webp" srcset="${heroWebpSrcset}" sizes="${heroSizes}" />
+          <img src="${heroBase}.webp" alt="Silverwolf" width="${lv999 ? '1800' : '2000'}" height="${lv999 ? '1800' : '2000'}" decoding="async" fetchpriority="high" class="w-full h-auto" />
         </picture>
         <span class="artist-hint">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
@@ -721,10 +732,22 @@ export function AboutPage(opts: { nonce: string; lv999?: boolean; goof?: boolean
     ${eidolonSections}
   `;
 
+  // LCP preload — the hero <img> is the LCP candidate but Lighthouse flags it
+  // as "not discoverable in the initial HTML stream" because it sits behind
+  // <picture>/srcset. The preload here mirrors the same srcset/sizes so the
+  // browser picks the right width and starts the fetch during HTML parse.
+  const heroPreload = raw(`
+<link rel="preload" as="image" type="image/avif"
+      href="${heroBase}-1024w.avif"
+      imagesrcset="${heroAvifSrcset}"
+      imagesizes="${heroSizes}"
+      fetchpriority="high">`);
+  const extraHead = html`${heroPreload}${aboutExtras(opts.nonce)}`;
+
   return Layout({
     title: 'Silverwolf — About',
     active: 'about',
-    extraHead: aboutExtras(opts.nonce) as unknown as HtmlEscapedString,
+    extraHead: extraHead as unknown as HtmlEscapedString,
     body: body as unknown as HtmlEscapedString,
     nonce: opts.nonce,
     lv999,

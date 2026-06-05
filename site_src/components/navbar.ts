@@ -1,8 +1,10 @@
 import { html, raw } from 'hono/html';
-import { STICKER_STEMS, STICKER_STEMS_LV999, stickerWebpUrl } from '../stickers';
+import { STICKER_STEMS, STICKER_STEMS_LV999 } from '../stickers';
 
-const STICKER_IMAGES = STICKER_STEMS.map(stickerWebpUrl);
-const STICKER_IMAGES_LV999 = STICKER_STEMS_LV999.map(stickerWebpUrl);
+// Navbar logo renders at ≤48px CSS / ~96px at 2× DPI — the 128w variant from
+// scripts/build-images.ts is plenty.
+const STICKER_IMAGES = STICKER_STEMS.map((s) => `/static/stickers/${s}-128w.webp`);
+const STICKER_IMAGES_LV999 = STICKER_STEMS_LV999.map((s) => `/static/stickers/${s}-128w.webp`);
 
 // Inline SVG icons — fill/stroke set to currentColor so they inherit the
 // link's themed text color via CSS variables.

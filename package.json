@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.ts",
   "scripts": {
-    "start": "bun index.ts",
-    "dev": "bun --watch index.ts",
+    "start": "bun run build:css && bun run build:js && bun index.ts",
+    "dev": "bun run build:css && bun run build:js && bun --watch index.ts",
     "test": "bun test --preload ./tests/setup.ts",
     "test:watch": "bun test --watch --preload ./tests/setup.ts",
     "lint": "eslint .",
@@ -13,7 +13,10 @@
     "typecheck": "tsc --noEmit",
     "build:css": "tailwindcss -i ./site_src/Assets/input.css -o ./site_src/Assets/styles.css --minify",
     "build:css:watch": "tailwindcss -i ./site_src/Assets/input.css -o ./site_src/Assets/styles.css --watch --minify",
-    "build:images": "bun scripts/build-images.ts"
+    "build:js": "bun build ./site_src/Assets/app.src.js --minify --outfile ./site_src/Assets/app.js",
+    "build:js:watch": "bun build ./site_src/Assets/app.src.js --minify --outfile ./site_src/Assets/app.js --watch",
+    "build:images": "bun scripts/build-images.ts",
+    "build:all": "bun run build:css && bun run build:js && bun run build:images"
   },
   "keywords": [],
   "author": "",
