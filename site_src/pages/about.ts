@@ -110,16 +110,13 @@ const aboutExtras = (nonce: string) => raw(`
     transform: translateY(1px);
     box-shadow: 0 0 6px rgba(88, 101, 242, 0.2);
   }
-  /* Opacity-only fade. Earlier versions translated 5rem horizontally which
-     compounded with the typing-text reflow to push CLS to 0.28 on Lighthouse;
-     dropping the translate keeps the entrance soft without shifting layout. */
   @keyframes about-slide-left {
-    0%   { opacity: 0; }
-    100% { opacity: 1; }
+    0%   { opacity: 0; transform: translate3d(-5rem, 0, 0); }
+    100% { opacity: 1; transform: translate3d(0, 0, 0); }
   }
   @keyframes about-slide-right {
-    0%   { opacity: 0; }
-    100% { opacity: 1; }
+    0%   { opacity: 0; transform: translate3d(5rem, 0, 0); }
+    100% { opacity: 1; transform: translate3d(0, 0, 0); }
   }
   .about-text {
     animation: about-slide-left 1.8s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both !important;
@@ -226,21 +223,22 @@ const aboutExtras = (nonce: string) => raw(`
   .eid-from-left.is-visible  { animation: about-slide-left  1.8s cubic-bezier(0.22, 1, 0.36, 1) both; }
   .eid-from-right.is-visible { animation: about-slide-right 1.8s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
-  /* Typing text — CLS-safe reveal. The full text is laid out from frame zero
-     (untyped chars are color: transparent), so paragraph height never grows.
-     The cursor ::after is zero-width with overflow-visible so it appears at
-     the end without ever contributing to inline width. */
-  .typing-text { visibility: visible; }
-  .typing-text .typing-untyped { color: transparent; }
-  .typing-text.is-typed::after {
-    content: '.';
+  /* Typing text animations and terminal cursor */
+  .typing-text {
+    visibility: hidden;
+  }
+  .typing-text.is-typing,
+  .typing-text.is-typed {
+    visibility: visible;
+  }
+  .terminal-cursor {
     display: inline-block;
-    width: 0;
-    margin-left: 2px;
     color: rgba(34, 211, 255, 0.95);
+    margin-left: 2px;
     font-weight: bold;
     vertical-align: middle;
-    white-space: nowrap;
+  }
+  .terminal-cursor.blink {
     animation: terminal-blink 1s step-end infinite;
   }
   @keyframes terminal-blink {
@@ -399,44 +397,49 @@ const aboutExtras = (nonce: string) => raw(`
 <script nonce="${nonce}">
 (() => {
   const animateTyping = (el) => {
-    if (el.classList.contains('is-typed') || el.classList.contains('is-typing')) return;
+    if (el.classList.contains('is-typed')) return;
     el.classList.add('is-typing');
 
-    const fullText = el.getAttribute('data-text') || el.textContent.trim();
+    const originalText = el.getAttribute('data-text') || el.textContent.trim();
+    let textToType = originalText;
 
-    // Reset to a two-span structure: visible "typed" prefix + transparent
-    // "untyped" suffix. Total inline content = fullText from frame zero, so
-    // line breaks and paragraph height are fixed before typing starts.
-    el.textContent = '';
-    const typedSpan = document.createElement('span');
-    typedSpan.className = 'typing-typed';
-    const untypedSpan = document.createElement('span');
-    untypedSpan.className = 'typing-untyped';
-    untypedSpan.textContent = fullText;
-    el.appendChild(typedSpan);
-    el.appendChild(untypedSpan);
+    if (textToType.endsWith('.')) {
+      textToType = textToType.slice(0, -1);
+    }
 
-    const words = fullText.split(/\\s+/).filter(w => w.length > 0);
+    const words = originalText.split(/\\s+/).filter(w => w.length > 0);
     const wordCount = words.length || 1;
     const wps = 5;
     const totalDuration = (wordCount / wps) * 1000;
-    const charCount = fullText.length || 1;
+    const charCount = textToType.length || 1;
     const baseInterval = totalDuration / charCount;
 
-    let i = 0;
-    const tick = () => {
-      if (i < fullText.length) {
-        i++;
-        typedSpan.textContent = fullText.slice(0, i);
-        untypedSpan.textContent = fullText.slice(i);
-        setTimeout(tick, baseInterval * (0.8 + Math.random() * 0.4));
+    el.textContent = '';
+
+    const textSpan = document.createElement('span');
+    el.appendChild(textSpan);
+
+    const cursorSpan = document.createElement('span');
+    cursorSpan.className = 'terminal-cursor';
+    cursorSpan.textContent = '.';
+    el.appendChild(cursorSpan);
+
+    let charIndex = 0;
+
+    const typeChar = () => {
+      if (charIndex < textToType.length) {
+        textSpan.textContent += textToType[charIndex];
+        charIndex++;
+        const randomDelay = baseInterval * (0.8 + Math.random() * 0.4);
+        setTimeout(typeChar, randomDelay);
       } else {
-        untypedSpan.remove();
+        cursorSpan.classList.add('blink');
         el.classList.remove('is-typing');
         el.classList.add('is-typed');
       }
     };
-    tick();
+
+    typeChar();
   };
 
   const run = () => {
