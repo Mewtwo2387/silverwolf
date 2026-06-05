@@ -142,9 +142,13 @@
     // Navigation is driven entirely by pointerup (a genuine finger-lift) so we
     // never navigate mid-drag. Anchors would otherwise navigate on their native
     // click, so swallow it — but let modifier/middle clicks open a new tab.
+    const hasModifier = (e) => e.metaKey || e.ctrlKey || e.shiftKey || e.altKey;
     tiles.forEach((tile) => {
       tile.addEventListener('click', (e) => {
-        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button === 1) return;
+        if (hasModifier(e) || e.button === 1) return;
+        // Keyboard / AT activation (Enter/Space) reports detail === 0 and never
+        // goes through the pointer drag path — let it navigate natively.
+        if (e.detail === 0) return;
         e.preventDefault();
       });
     });
@@ -185,6 +189,9 @@
 
     dock.addEventListener('pointerdown', (e) => {
       if (e.button && e.button !== 0) return;
+      // Let modifier-clicks fall through to the native anchor (open in new tab)
+      // — don't start a drag, or pointerup would also navigate the current tab.
+      if (hasModifier(e)) return;
       const dr = dock.getBoundingClientRect();
       const localX = e.clientX - dr.left;
       // Snapshot geometry up front; reused for the whole drag (see dragGeom note).
