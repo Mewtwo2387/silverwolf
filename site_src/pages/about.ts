@@ -421,6 +421,8 @@ const aboutExtras = (nonce: string) => raw(`
 
     const cursorSpan = document.createElement('span');
     cursorSpan.className = 'terminal-cursor';
+    cursorSpan.setAttribute('aria-hidden', 'true');
+    cursorSpan.setAttribute('role', 'presentation');
     cursorSpan.textContent = '.';
     el.appendChild(cursorSpan);
 
