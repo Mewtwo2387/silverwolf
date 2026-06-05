@@ -473,6 +473,12 @@ code, pre, kbd, .font-mono {
       gap: 0;
       z-index: 50;
       isolation: isolate;
+      /* The drag handlers live on the dock and the press usually lands on a tile,
+         not the pill. Without this the browser claims a horizontal finger-drag as
+         a pan/scroll gesture, fires pointercancel mid-drag, and the pill rubber-
+         bands back to the active tile. Disable native touch gestures dock-wide so
+         the pointer drag is never stolen. */
+      touch-action: none;
     }
 
     /* Sliding pill — accent-tinted, animates between tiles, draggable */
