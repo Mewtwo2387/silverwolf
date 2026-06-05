@@ -523,7 +523,7 @@ named constants plus a uniquely named catalog array (e.g. `elementalDamageItems`
 | `consumables/healing.ts` | HP restore |
 | `consumables/utility.ts` | Cleanse, energy, etc. |
 | `consumables/timedBuffs.ts` | Timed buffs with cooldowns |
-| `shared.ts` | `itemImagePanel`, shared helpers |
+| `shared.ts` | `itemImagePanel` |
 | `deck.ts` | Deck validation / default composition |
 
 To add an item: declare it in the matching module and append it to that file's `items`

@@ -2,7 +2,14 @@ import { Rarity } from '../../rarity';
 import { Consumable } from '../../item';
 import type { Item } from '../../item';
 import { itemBackgroundForRarity } from '../../rarityColors';
-import { healPercentOfMaxPlusFlat, itemImagePanel } from '../shared';
+import { round2 } from '../../../utils/math';
+import type { CharacterInBattle } from '../../characterInBattle';
+import { itemImagePanel } from '../shared';
+
+/** Heal `percent` of the target's max HP (0–1) plus a flat amount. */
+function healPercentOfMaxPlusFlat(target: CharacterInBattle, percent: number, flat: number): void {
+  target.heal(round2(target.character.hp * percent + flat));
+}
 
 export const HEALING_POTION = new Consumable(
   'healing_potion',
