@@ -399,7 +399,7 @@ all alive cards (this is when effect durations tick) and draws 2 cards per side.
 - Decks are persisted per Discord user in `User.tcg_deck` (JSON `{itemId: count}`).
 - A **legal deck** is exactly 25 known items, each with count `0..PER_CARD_MAX (10)`, at most
   **5** copies at 5★+, and at most **15** copies at 4★+ (the 5★ cap counts toward the 4★ cap).
-  See `validateDeckComposition` in `tcg/items.ts`.
+  See `validateDeckComposition` in `tcg/items/deck.ts`.
 - Two kinds of items:
   - **Equipment** — attaches permanently to a character (max 3 per character, see
     `MAX_EQUIPMENTS_PER_CHARACTER`). Its `effects` are pushed onto the character's effect
@@ -508,28 +508,35 @@ To add a new event variant:
 
 ### 5.6 Adding a new item
 
-`tcg/items.ts` is where items are declared:
+Items live under `tcg/items/`, grouped by **function** (not theme). Each module exports
+named constants plus a uniquely named catalog array (e.g. `elementalDamageItems`,
+`equipmentItems`); `tcg/items/catalog.ts` flattens those into
+`ALL_ITEMS` (no per-item manual listing). Import from `tcg/items` (barrel) elsewhere.
+
+| Module | Purpose |
+| --- | --- |
+| `equipment/elementalDamage.ts` | +X% outgoing damage for one element (`elementalDamageEquipment`) |
+| `equipment/outgoingDamage.ts` | +X% all-element outgoing (`outgoingDamageEquipment`); combine tiers (Notice/Warn/Mute) |
+| `equipment/incomingReduction.ts` | −X% incoming (`incomingReductionEquipment`) |
+| `equipment/elementOverride.ts` | `DamageElementOverride` gear |
+| `equipment/signatureEquipment.ts` | `SignatureEquipment` character-bound gear |
+| `consumables/healing.ts` | HP restore |
+| `consumables/utility.ts` | Cleanse, energy, etc. |
+| `consumables/timedBuffs.ts` | Timed buffs with cooldowns |
+| `shared.ts` | `itemImagePanel`, shared helpers |
+| `deck.ts` | Deck validation / default composition |
+
+To add an item: declare it in the matching module and append it to that file's `items`
+array. `ITEMS_BY_ID` and `ITEM_DISCORD_CHOICES` update on next start automatically.
 
 ```ts
+// tcg/items/equipment/elementalDamage.ts
 export const MAID_OUTFIT = elementalDamageEquipment(
-  'maid_outfit', 'Maid Outfit', Element.Fairy, undefined, 'Optional lore footer text.',
+  'maid_outfit', 'Maid Outfit', Element.Fairy,
+  { ...ELEMENTAL_25, footer: 'Optional lore.' },
 );
-// …other 3★ type boosters use the same helper; pass lore as the 5th `footer` arg when needed.
-
-export const HEALING_POTION = new Consumable(
-  'healing_potion',
-  'Healing Potion',
-  'Immediately restores 20 HP to the target.',
-  new Rarity(2),
-  itemImagePanel('healing_potion'),
-  itemBackgroundForRarity(rarity),
-  (target, battle) => { target.heal(20); },
-  'Optional lore footer.',
-);
+export const elementalDamageItems: Item[] = [ /* …existing… */, MAID_OUTFIT ];
 ```
-
-Then add the new constant to `ALL_ITEMS`. `ITEMS_BY_ID` and `ITEM_DISCORD_CHOICES` are
-derived from that array, so the deck-edit slash commands will pick it up automatically.
 
 Equipment effects should use `duration: 9999` (treated as permanent in display logic). The
 equip cap is enforced in `CharacterInBattle.equip` (returns `false` when full).
@@ -716,7 +723,7 @@ add a new persona, drop a system prompt into `data/aiPersonas.json` /
 | Add a DB column | `database/tables/<X>Table.ts` (+ types). No migration needed for additions. |
 | Add a DB model method | `database/queries/<x>Queries.ts` and `database/models/<X>Model.ts` |
 | Add a TCG character | `tcg/characters.ts` (use `characterBuilder` helpers); register through `CHARACTERS`. |
-| Add a TCG item | `tcg/items.ts`; add to `ALL_ITEMS`. |
+| Add a TCG item | Matching file under `tcg/items/`; append to that module's `*Items` catalog array (e.g. `elementalDamageItems`). |
 | Add a battle rule | `tcg/battle.ts` (turn loop, victory, draws). |
 | Add a passive trigger | `tcg/battleEvents.ts` + emission in `Battle` + subscriber in an `Ability`. |
 | Add a status effect kind | `tcg/effectType.ts` + the relevant resolver(s) in `characterInBattle.ts`/`battle.ts`. |

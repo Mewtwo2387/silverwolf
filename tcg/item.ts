@@ -95,7 +95,7 @@ export abstract class Item implements Card {
    * Pre-flight gate before {@link apply}. Override for cooldowns, caps, etc.
    */
   canApply(
-    target: CharacterInBattle,
+    _target: CharacterInBattle,
     _battle: Battle,
   ): { ok: true } | { ok: false; reason: string } {
     return { ok: true };
