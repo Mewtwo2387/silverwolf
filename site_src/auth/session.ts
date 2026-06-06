@@ -32,7 +32,7 @@ function sign(value: string): string {
   return createHmac('sha256', getSecret()).update(value).digest('base64url');
 }
 
-function signedToken(value: string): string {
+export function signedToken(value: string): string {
   return `${value}.${sign(value)}`;
 }
 

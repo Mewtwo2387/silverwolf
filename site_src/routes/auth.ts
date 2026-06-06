@@ -19,7 +19,9 @@ import {
   setOAuthStateCookie,
   setReturnCookie,
   setSessionCookie,
+  signedToken,
 } from '../auth/session';
+import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import type { AppEnv } from '../shared';
 
 export function registerAuthRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
@@ -27,6 +29,12 @@ export function registerAuthRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
     try {
       const state = newRandomId(16);
       setOAuthStateCookie(c, state);
+
+      const isApp = c.req.query('app') === 'true';
+      if (isApp) {
+        setCookie(c, 'sw_is_app', 'true', { maxAge: 300, path: '/' });
+      }
+
       // Optional ?return=/some/path — restored after OAuth callback. Rejected
       // unless it's a same-origin absolute path so we can't be turned into an
       // open redirect.
@@ -60,6 +68,14 @@ export function registerAuthRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
       await silverwolf.db.user.getUser(me.id);
       const { id: sessionId } = await createSession(silverwolf, me.id);
       setSessionCookie(c, sessionId);
+
+      const isApp = getCookie(c, 'sw_is_app') === 'true';
+      deleteCookie(c, 'sw_is_app', { path: '/' });
+
+      if (isApp) {
+        return c.redirect(`silverwolf://login?session=${signedToken(sessionId)}`);
+      }
+
       const returnTo = readReturnCookie(c);
       clearReturnCookie(c);
       return c.redirect(returnTo ?? '/me');
