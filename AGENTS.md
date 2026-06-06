@@ -516,9 +516,9 @@ named constants plus a uniquely named catalog array (e.g. `elementalDamageItems`
 | Module | Purpose |
 | --- | --- |
 | `equipment/elementalDamage.ts` | +X% outgoing damage for one element (`elementalDamageEquipment`) |
-| `equipment/outgoingDamage.ts` | +X% all-element outgoing (`outgoingDamageEquipment`); combine tiers (Notice/Warn/Mute) |
+| `equipment/outgoingDamage.ts` | +X% all-element outgoing (`outgoingDamageEquipment`, `mergableOutgoingDamageEquipment` for combine tiers) |
 | `equipment/incomingReduction.ts` | −X% incoming (`incomingReductionEquipment`) |
-| `equipment/elementOverride.ts` | `DamageElementOverride` gear |
+| `equipment/elementOverride.ts` | `DamageElementOverride` gear (`elementOverrideEquipment`) |
 | `equipment/signatureEquipment.ts` | `SignatureEquipment` character-bound gear |
 | `consumables/healing.ts` | HP restore |
 | `consumables/utility.ts` | Cleanse, energy, etc. |
@@ -532,8 +532,7 @@ array. `ITEMS_BY_ID` and `ITEM_DISCORD_CHOICES` update on next start automatical
 ```ts
 // tcg/items/equipment/elementalDamage.ts
 export const MAID_OUTFIT = elementalDamageEquipment(
-  'maid_outfit', 'Maid Outfit', Element.Fairy,
-  { ...ELEMENTAL_25, footer: 'Optional lore.' },
+  'maid_outfit', 'Maid Outfit', Element.Fairy, 3, 30, 'Optional lore.',
 );
 export const elementalDamageItems: Item[] = [ /* …existing… */, MAID_OUTFIT ];
 ```
@@ -548,8 +547,9 @@ use `combineWhenEquipped({ fromItemId, into, requiredCount? })` or call
 `tryCombineEquipment` directly.
 
 ```ts
-WARN.combinesWhenEquipped = { into: MUTE };
-NOTICE.combinesWhenEquipped = { into: WARN };
+export const MUTE = outgoingDamageEquipment('mute', 'Mute', 4, 32);
+export const WARN = mergableOutgoingDamageEquipment('warn', 'Warn', 2, 16, MUTE);
+export const NOTICE = mergableOutgoingDamageEquipment('notice', 'Notice', 1, 8, WARN);
 ```
 
 **Signature equipment** (`SignatureEquipment` in `tcg/item.ts`): same combat rules as
@@ -587,7 +587,7 @@ ImagePanel → skills (Skill.draw) → abilities (Ability.draw)`.
 `Item.generateCard` is the simpler version: `Background (gradient tinted by star tier)
 → type icon (equipment/consumable PNG) → name/rarity →
 ImagePanel → wrapped description → optional italic gray footer` (set via the last constructor
-arg on `Item` / `Equipment` / `Consumable`, or the 5th arg on `elementalDamageEquipment`).
+arg on `Item` / `Equipment` / `Consumable`, or the 6th arg on `elementalDamageEquipment`).
 
 For Discord battle thumbnails, `tcg/renderDiscordBattleBoard.ts` scales each card down,
 overlays HP/effect rows, glows the active character, and arranges sides so the *current

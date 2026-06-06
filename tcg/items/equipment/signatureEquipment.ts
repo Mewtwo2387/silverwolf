@@ -8,6 +8,12 @@ import { itemBackgroundForRarity } from '../../rarityColors';
 import { round2 } from '../../../utils/math';
 import { itemImagePanel } from '../shared';
 
+/** SIGNATURE EQUIPMENTS
+ * We know what a signature is.
+ * Signature equipment for 6* characters are 5*.
+ * It could be a mix-and-match of several other buffs.
+ * /
+
 /** Kaitlin form skill indices (Slay Queen + Estrogen ultimate), same as her transformation skill. */
 const KAITLIN_FORM_SKILL_INDICES = [1, 2];
 
@@ -174,7 +180,8 @@ export const CREDIT_CARD = new SignatureEquipment(
   'The best card in the game',
 );
 
-/** Character signature equipment. */
+/* ------------------------------------------------------------ */
+
 export const signatureEquipmentItems: Item[] = [
   ESTROGEN,
   SILVERWOLF_KEYCHAIN,

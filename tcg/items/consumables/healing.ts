@@ -6,6 +6,11 @@ import { round2 } from '../../../utils/math';
 import type { CharacterInBattle } from '../../characterInBattle';
 import { itemImagePanel } from '../shared';
 
+/** HEALING CONSUMABLES
+ * Restores HP to the target.
+ * By default, a 1/2/3/4/5 star consumable restores 10/20/30/40/50 HP to a 100HP character. (e.g. a 1* could restore 10HP, or 10% of max HP, or 5% of max HP plus 5HP)
+ */
+
 /** Heal `percent` of the target's max HP (0–1) plus a flat amount. */
 function healPercentOfMaxPlusFlat(target: CharacterInBattle, percent: number, flat: number): void {
   target.heal(round2(target.character.hp * percent + flat));
@@ -26,7 +31,7 @@ export const HEALING_POTION = new Consumable(
 export const MYSTIC_CHICKEN = new Consumable(
   'mystic_chicken',
   'Mystic Chicken',
-  'Restores 30% of max HP plus 30 HP.',
+  'Restores 20% of max HP plus 30 HP.',
   new Rarity(5),
   itemImagePanel('mystic_chicken'),
   itemBackgroundForRarity(5),
@@ -39,7 +44,7 @@ export const MYSTIC_CHICKEN = new Consumable(
 export const XEI_PIZZA = new Consumable(
   'xei_pizza',
   'Xei Pizza',
-  'Restores 50% of max HP plus 10 HP.',
+  'Restores 40% of max HP plus 10 HP.',
   new Rarity(5),
   itemImagePanel('xei_pizza'),
   itemBackgroundForRarity(5),
@@ -48,7 +53,8 @@ export const XEI_PIZZA = new Consumable(
   },
 );
 
-/** Consumables that restore HP. */
+/* ------------------------------------------------------------ */
+
 export const healingItems: Item[] = [
   HEALING_POTION,
   MYSTIC_CHICKEN,

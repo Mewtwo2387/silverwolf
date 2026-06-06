@@ -7,33 +7,36 @@ import type { Item } from '../../item';
 import { itemBackgroundForRarity } from '../../rarityColors';
 import { itemImagePanel } from '../shared';
 
-/** Equipment that boosts outgoing damage of a single element (stackable). */
+/** ELEMENTAL DAMAGE EQUIPMENTS
+ * Boosts outgoing damage of a single element.
+ * By default, a 1/2/3/4/5 star equipment boosts by 10/20/30/40/50%.
+ * This could be BiS for many characters of their respective elements.
+ */
+
+/** Regular elemental damage equipments. */
 export function elementalDamageEquipment(
   id: string,
   name: string,
   element: Element,
-  options: {
-    rarity: Rarity;
-    damageMultiplier: number;
-    description?: string;
-    footer?: string;
-  },
+  stars: number,
+  bonusPercent: number,
+  footer?: string,
 ): Equipment {
+  const multiplier = 1 + bonusPercent / 100;
   const typeLabel = Element[element].toLowerCase();
-  const bonusPct = Math.round((options.damageMultiplier - 1) * 100);
   return new Equipment(
     id,
     name,
-    options.description ?? `The wearer deals ${bonusPct}% more ${typeLabel} damage.`,
-    options.rarity,
+    `The wearer deals ${bonusPercent}% more ${typeLabel} damage.`,
+    new Rarity(stars),
     itemImagePanel(id),
-    itemBackgroundForRarity(options.rarity),
+    itemBackgroundForRarity(stars),
     [
       new Effect(
         name,
-        `+${bonusPct}% ${typeLabel} damage.`,
+        `+${bonusPercent}% ${typeLabel} damage.`,
         EffectType.OutgoingDamage,
-        options.damageMultiplier,
+        multiplier,
         9999,
         true,
         { appliesToElement: element },
@@ -41,103 +44,104 @@ export function elementalDamageEquipment(
       ),
     ],
     undefined,
-    options.footer,
+    footer,
   );
 }
 
-const ELEMENTAL_25 = { rarity: new Rarity(3), damageMultiplier: 1.25 } as const;
-const ELEMENTAL_50 = { rarity: new Rarity(5), damageMultiplier: 1.5 } as const;
+/* ------------------------------------------------------------ */
 
 export const ANEMOCULUS = elementalDamageEquipment(
   'anemoculus',
   'Anemoculus',
   Element.Anemo,
-  {
-    ...ELEMENTAL_25,
-    footer: 'Mondstadt\'s oculus. Back when you can actually find them all by exploring, and not like, this area can only be unlocked during this questline which is a continuation of another questline triggered by entering this particular cave; or like, you need this funny tree to be level 10 before you can open this door.',
-  },
+  3,
+  30,
+  'Mondstadt\'s oculus. Back when you can actually find them all by exploring, and not like, this area can only be unlocked during this questline which is a continuation of another questline triggered by entering this particular cave; or like, you need this funny tree to be level 10 before you can open this door.',
 );
-export const CRYOCULUS = elementalDamageEquipment('cryoculus', 'Cryoculus', Element.Cryo, ELEMENTAL_25);
-export const DENDROCULUS = elementalDamageEquipment('dendroculus', 'Dendroculus', Element.Dendro, ELEMENTAL_25);
-export const ELECTROCULUS = elementalDamageEquipment('electroculus', 'Electroculus', Element.Electro, ELEMENTAL_25);
-export const GEOCULUS = elementalDamageEquipment('geoculus', 'Geoculus', Element.Geo, ELEMENTAL_25);
-export const HYDROCULUS = elementalDamageEquipment('hydroculus', 'Hydroculus', Element.Hydro, ELEMENTAL_25);
-export const PYROCULUS = elementalDamageEquipment('pyroculus', 'Pyroculus', Element.Pyro, ELEMENTAL_25);
+export const CRYOCULUS = elementalDamageEquipment('cryoculus', 'Cryoculus', Element.Cryo, 3, 30);
+export const DENDROCULUS = elementalDamageEquipment('dendroculus', 'Dendroculus', Element.Dendro, 3, 30);
+export const ELECTROCULUS = elementalDamageEquipment('electroculus', 'Electroculus', Element.Electro, 3, 30);
+export const GEOCULUS = elementalDamageEquipment('geoculus', 'Geoculus', Element.Geo, 3, 30);
+export const HYDROCULUS = elementalDamageEquipment('hydroculus', 'Hydroculus', Element.Hydro, 3, 30);
+export const PYROCULUS = elementalDamageEquipment('pyroculus', 'Pyroculus', Element.Pyro, 3, 30);
 export const MAID_OUTFIT = elementalDamageEquipment(
   'maid_outfit',
   'Maid Outfit',
   Element.Fairy,
-  {
-    ...ELEMENTAL_25,
-    footer: 'uwu :3\nOnce worn by a certain someone that swears if Japan win against Germany in the 2022 World Cup.',
-  },
+  3,
+  30,
+  'uwu :3\nOnce worn by a certain someone that swears if Japan win against Germany in the 2022 World Cup.',
 );
 export const RUSTED_SWORD = elementalDamageEquipment(
   'rusted_sword',
   'Rusted Sword',
   Element.Physical,
-  {
-    ...ELEMENTAL_25,
-    footer: 'I don\'t know how this broken shit can increase damage but it\'s not like I know much about swordfight. At least not the straight type of swordfight.',
-  },
+  3,
+  30,
+  'I don\'t know how this broken shit can increase damage but it\'s not like I know much about swordfight. At least not the straight type of swordfight.',
 );
 export const QUANTUM_COMPRESSOR = elementalDamageEquipment(
   'quantum_compressor',
   'Quantum Compressor',
   Element.Quantum,
-  {
-    ...ELEMENTAL_25,
-    footer: 'Anyone playing modded Minecraft knows everyone loves this slop when we see it in a tech modpack. Can\'t think of an endgame goal? Just make the player obtain 10000 of every item and squeeze them into a singularity. Instantly triples playtime.',
-  },
+  3,
+  30,
+  'Anyone playing modded Minecraft knows everyone loves this slop when we see it in a tech modpack. Can\'t think of an endgame goal? Just make the player obtain 10000 of every item and squeeze them into a singularity. Instantly triples playtime.',
 );
+
+/* ------------------------------------------------------------ */
 
 export const ANEMO_GNOSIS = elementalDamageEquipment(
   'anemo_gnosis',
   'Anemo Gnosis',
   Element.Anemo,
-  {
-    ...ELEMENTAL_50,
-    footer: 'Someone kicked Venti in the balls. Fortunately, his balls are so humongous that it\'s barely a tickle.',
-  },
+  5,
+  50,
+  'Someone kicked Venti in the balls. Fortunately, his balls are so humongous that it\'s barely a tickle.',
 );
 export const GEO_GNOSIS = elementalDamageEquipment(
   'geo_gnosis',
   'Geo Gnosis',
   Element.Geo,
-  {
-    ...ELEMENTAL_50,
-    footer: 'I wonder if it\'ll hurt if I shove it up. I guess Signora knows the answer.',
-  },
+  5,
+  50,
+  'I wonder if it\'ll hurt if I shove it up. I guess Signora knows the answer.',
 );
-export const PYRO_GNOSIS = elementalDamageEquipment('pyro_gnosis', 'Pyro Gnosis', Element.Pyro, ELEMENTAL_50);
-export const DENDRO_GNOSIS = elementalDamageEquipment('dendro_gnosis', 'Dendro Gnosis', Element.Dendro, {
-  ...ELEMENTAL_50,
-  footer: 'Teyvat is a simulated universe in a Scepter, powered by a Stellaron. The skies of Teyvat are fake.',
-});
-export const ELECTRO_GNOSIS = elementalDamageEquipment('electro_gnosis', 'Electro Gnosis', Element.Electro, {
-  ...ELEMENTAL_50,
-  footer: 'Scara... who?',
-});
-export const CRYO_GNOSIS = elementalDamageEquipment('cryo_gnosis', 'Cryo Gnosis', Element.Cryo, ELEMENTAL_50);
-export const HYDRO_GNOSIS = elementalDamageEquipment('hydro_gnosis', 'Hydro Gnosis', Element.Hydro, ELEMENTAL_50);
-export const PINK_FOR_SLUG = elementalDamageEquipment('pink_for_slug', 'Pink for Slug!', Element.Fairy, ELEMENTAL_50);
+export const PYRO_GNOSIS = elementalDamageEquipment('pyro_gnosis', 'Pyro Gnosis', Element.Pyro, 5, 50);
+export const DENDRO_GNOSIS = elementalDamageEquipment(
+  'dendro_gnosis',
+  'Dendro Gnosis',
+  Element.Dendro,
+  5,
+  50,
+  'Teyvat is a simulated universe in a Scepter, powered by a Stellaron. The skies of Teyvat are fake.',
+);
+export const ELECTRO_GNOSIS = elementalDamageEquipment(
+  'electro_gnosis',
+  'Electro Gnosis',
+  Element.Electro,
+  5,
+  50,
+  'Scara... who?',
+);
+export const CRYO_GNOSIS = elementalDamageEquipment('cryo_gnosis', 'Cryo Gnosis', Element.Cryo, 5, 50);
+export const HYDRO_GNOSIS = elementalDamageEquipment('hydro_gnosis', 'Hydro Gnosis', Element.Hydro, 5, 50);
+export const PINK_FOR_SLUG = elementalDamageEquipment('pink_for_slug', 'Pink for Slug!', Element.Fairy, 5, 50);
 export const AK_47 = elementalDamageEquipment(
   'ak_47',
   'AK-47',
   Element.Physical,
-  {
-    ...ELEMENTAL_50,
-    footer: 'Enemies die to a severe allergic reaction to metal',
-  },
+  5,
+  50,
+  'Enemies die to a severe allergic reaction to metal',
 );
 export const BLACK_HOLE = elementalDamageEquipment(
   'black_hole',
   'Black hole',
   Element.Quantum,
-  {
-    ...ELEMENTAL_50,
-    footer: 'massive and dark like your mom\'s hole',
-  },
+  5,
+  50,
+  'massive and dark like your mom\'s hole',
 );
 
 /** All elemental outgoing-damage equipment in this module. */

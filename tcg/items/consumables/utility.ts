@@ -4,6 +4,11 @@ import type { Item } from '../../item';
 import { itemBackgroundForRarity } from '../../rarityColors';
 import { itemImagePanel } from '../shared';
 
+/** UTILITY CONSUMABLES
+ * Misc consumables.
+ * No specific rules to these.
+ */
+
 export const CLEANSER = new Consumable(
   'cleanser',
   'Cleanser',
@@ -34,7 +39,8 @@ export const BATTERY = new Consumable(
   },
 );
 
-/** Consumables that cleanse or grant resources (non-HP). */
+/* ------------------------------------------------------------ */
+
 export const utilityItems: Item[] = [
   CLEANSER,
   BATTERY,

@@ -6,6 +6,13 @@ import type { Item } from '../../item';
 import { itemBackgroundForRarity } from '../../rarityColors';
 import { itemImagePanel } from '../shared';
 
+/** TIMED BUFF CONSUMABLES
+ * Applies a nuff to a character that expires after a certain number of turns.
+ * There's no specific rules on the values, but generally they have double the effect of equipments of an equivalent rarity.
+ * As unlike equipments, effects are temporary.
+ * Most of these should have cooldowns.
+ */
+
 export const YELLOW_PIXEL = new Consumable(
   'yellow_pixel',
   'Yellow Pixel',
@@ -48,7 +55,8 @@ export const WHITE_PIXEL = new Consumable(
   5,
 );
 
-/** Consumables that apply timed buffs with per-target cooldowns. */
+/* ------------------------------------------------------------ */
+
 export const timedBuffItems: Item[] = [
   YELLOW_PIXEL,
   WHITE_PIXEL,
