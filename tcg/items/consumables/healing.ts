@@ -16,16 +16,56 @@ function healPercentOfMaxPlusFlat(target: CharacterInBattle, percent: number, fl
   target.heal(round2(target.character.hp * percent + flat));
 }
 
-export const HEALING_POTION = new Consumable(
-  'healing_potion',
-  'Healing Potion',
+export const COPIUM = new Consumable(
+  'copium',
+  'Copium',
+  'Immediately restores 10 HP to the target.',
+  new Rarity(1),
+  itemImagePanel('copium'),
+  itemBackgroundForRarity(1),
+  (target) => {
+    target.heal(10);
+  },
+  'Like Hopium, but worse, because there isn\'t even any hope left.',
+);
+
+export const HOPIUM = new Consumable(
+  'hopium',
+  'Hopium',
   'Immediately restores 20 HP to the target.',
   new Rarity(2),
-  itemImagePanel('healing_potion'),
+  itemImagePanel('hopium'),
   itemBackgroundForRarity(2),
   (target) => {
     target.heal(20);
   },
+  'It will- It won\'t.',
+);
+
+export const DINONUGGIES = new Consumable(
+  'dinonuggies',
+  'Dinonuggies',
+  'Immediately restores 30 HP to the target.',
+  new Rarity(3),
+  itemImagePanel('dinonuggies'),
+  itemBackgroundForRarity(3),
+  (target) => {
+    target.heal(30);
+  },
+  'A bunch of dinonuggies baked by Beki. Apparently Fit and Finch have over 1 quadrillion of these because the dinonuggie economy is so broken.',
+);
+
+export const COCOGOAT_MILK = new Consumable(
+  'cocogoat_milk',
+  'Cocogoat Milk',
+  'Immediately restores 40 HP to the target.',
+  new Rarity(4),
+  itemImagePanel('cocogoat_milk'),
+  itemBackgroundForRarity(4),
+  (target) => {
+    target.heal(40);
+  },
+  'Legend says that there was once a battle between Gamebang and Sideways for this milk, known as the Battle of the Cocogoat Milk.',
 );
 
 export const MYSTIC_CHICKEN = new Consumable(
@@ -56,7 +96,9 @@ export const XEI_PIZZA = new Consumable(
 /* ------------------------------------------------------------ */
 
 export const healingItems: Item[] = [
-  HEALING_POTION,
+  COPIUM,
+  HOPIUM,
+  COCOGOAT_MILK,
   MYSTIC_CHICKEN,
   XEI_PIZZA,
 ];

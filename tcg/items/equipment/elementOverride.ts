@@ -47,6 +47,22 @@ export function elementOverrideEquipment(
 
 /* ------------------------------------------------------------ */
 
+export const VENTI_HAT = elementOverrideEquipment(
+  'venti_hat',
+  'Venti Hat',
+  Element.Anemo,
+  3,
+  'The one thing Gamebang put his life in defending during r/place. Might or might not give you some anemo archon powers, such as, an 8-incher.',
+);
+
+export const GRASS = elementOverrideEquipment(
+  'grass',
+  'Grass',
+  Element.Dendro,
+  3,
+  'Ei is allergic to this. Kittycat and Bomby use this to their advantage.',
+);
+
 export const STRANGE_QUARK = elementOverrideEquipment(
   'strange_quark',
   'Strange Quark',
@@ -57,4 +73,8 @@ export const STRANGE_QUARK = elementOverrideEquipment(
 
 /* ------------------------------------------------------------ */
 
-export const elementOverrideItems: Item[] = [STRANGE_QUARK];
+export const elementOverrideItems: Item[] = [
+  STRANGE_QUARK,
+  VENTI_HAT,
+  GRASS,
+];

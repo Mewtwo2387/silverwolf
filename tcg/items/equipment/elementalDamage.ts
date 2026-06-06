@@ -144,7 +144,8 @@ export const BLACK_HOLE = elementalDamageEquipment(
   'massive and dark like your mom\'s hole',
 );
 
-/** All elemental outgoing-damage equipment in this module. */
+/* ------------------------------------------------------------ */
+
 export const elementalDamageItems: Item[] = [
   ANEMOCULUS,
   CRYOCULUS,

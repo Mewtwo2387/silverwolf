@@ -9,12 +9,12 @@ import { itemImagePanel } from '../shared';
  * No specific rules to these.
  */
 
-export const CLEANSER = new Consumable(
-  'cleanser',
-  'Cleanser',
+export const VACUUM_CLEANER = new Consumable(
+  'vacuum_cleaner',
+  'Vacuum Cleaner',
   'Removes all debuffs from the target.',
   new Rarity(3),
-  itemImagePanel('cleanser'),
+  itemImagePanel('vacuum_cleaner'),
   itemBackgroundForRarity(3),
   (target, battle) => {
     const removed = target.cleanseDebuffs();
@@ -22,6 +22,7 @@ export const CLEANSER = new Consumable(
       battle.logEvent(`${target.character.name} was cleansed of ${removed} debuff${removed === 1 ? '' : 's'}`);
     }
   },
+  'You sure this thing works like this?',
 );
 
 export const BATTERY = new Consumable(
@@ -37,11 +38,12 @@ export const BATTERY = new Consumable(
     const gained = target.energy - before;
     battle.logEvent(`${target.character.name} gained ${gained} energy`);
   },
+  'nom nom nom',
 );
 
 /* ------------------------------------------------------------ */
 
 export const utilityItems: Item[] = [
-  CLEANSER,
+  VACUUM_CLEANER,
   BATTERY,
 ];
