@@ -76,7 +76,7 @@ export const MYSTIC_CHICKEN = new Consumable(
   itemImagePanel('mystic_chicken'),
   itemBackgroundForRarity(5),
   (target) => {
-    healPercentOfMaxPlusFlat(target, 0.3, 30);
+    healPercentOfMaxPlusFlat(target, 0.2, 30);
   },
   'A polychromatic, polyspiced, polyherbal, polysauced bowl of chicken sat beside a polygrain medley on a polyhedral platter.',
 );
@@ -89,7 +89,7 @@ export const XEI_PIZZA = new Consumable(
   itemImagePanel('xei_pizza'),
   itemBackgroundForRarity(5),
   (target) => {
-    healPercentOfMaxPlusFlat(target, 0.5, 10);
+    healPercentOfMaxPlusFlat(target, 0.4, 10);
   },
 );
 

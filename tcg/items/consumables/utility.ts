@@ -3,6 +3,7 @@ import { Consumable } from '../../item';
 import type { Item } from '../../item';
 import { itemBackgroundForRarity } from '../../rarityColors';
 import { itemImagePanel } from '../shared';
+import { round2 } from '../../../utils/math';
 
 /** UTILITY CONSUMABLES
  * Misc consumables.
@@ -36,7 +37,7 @@ export const BATTERY = new Consumable(
     const before = target.energy;
     target.gainEnergy(20);
     const gained = target.energy - before;
-    battle.logEvent(`${target.character.name} gained ${gained} energy`);
+    battle.logEvent(`${target.character.name} gained ${round2(gained)} energy`);
   },
   'nom nom nom',
 );

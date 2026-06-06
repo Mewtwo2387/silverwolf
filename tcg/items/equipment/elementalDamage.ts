@@ -6,6 +6,7 @@ import { Equipment } from '../../item';
 import type { Item } from '../../item';
 import { itemBackgroundForRarity } from '../../rarityColors';
 import { itemImagePanel } from '../shared';
+import { round2 } from '../../../utils/math';
 
 /** ELEMENTAL DAMAGE EQUIPMENTS
  * Boosts outgoing damage of a single element.
@@ -22,7 +23,7 @@ export function elementalDamageEquipment(
   bonusPercent: number,
   footer?: string,
 ): Equipment {
-  const multiplier = 1 + bonusPercent / 100;
+  const multiplier = round2(1 + bonusPercent / 100);
   const typeLabel = Element[element].toLowerCase();
   return new Equipment(
     id,

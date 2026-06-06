@@ -6,6 +6,7 @@ import type { Item } from '../../item';
 import { DEFAULT_EQUIPMENT_COMBINE_COUNT } from '../../equipmentCombine';
 import { itemBackgroundForRarity } from '../../rarityColors';
 import { itemImagePanel } from '../shared';
+import { round2 } from '../../../utils/math';
 
 /** OUTGOING DAMAGE EQUIPMENTS
  * Buffs all outgoing damage by a certain percentage.
@@ -23,7 +24,7 @@ export function outgoingDamageEquipment(
   bonusPercent: number,
   footer?: string,
 ): Equipment {
-  const multiplier = 1 + bonusPercent / 100;
+  const multiplier = round2(1 + bonusPercent / 100);
   return new Equipment(
     id,
     name,
@@ -64,7 +65,7 @@ export function mergableOutgoingDamageEquipment(
     description?: string;
   },
 ): Equipment {
-  const multiplier = 1 + bonusPercent / 100;
+  const multiplier = round2(1 + bonusPercent / 100);
   const required = combineOptions?.requiredCount ?? DEFAULT_EQUIPMENT_COMBINE_COUNT;
   const equipment = new Equipment(
     id,

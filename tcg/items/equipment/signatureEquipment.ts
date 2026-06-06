@@ -107,12 +107,13 @@ export const SILVERWOLF_KEYCHAIN = new SignatureEquipment(
       target.addEffect(
         new Effect(
           'Silverwolf Keychain (Team)',
-          `+${quantumCount * 10}% quantum damage (${quantumCount} quantum ally${quantumCount === 1 ? '' : 'ies'}).`,
+          `+${quantumCount * 10}% quantum damage (${quantumCount} quantum ${quantumCount === 1 ? 'ally' : 'allies'}).`,
           EffectType.OutgoingDamage,
           round2(1 + 0.1 * quantumCount),
           9999,
           true,
           { appliesToElement: Element.Quantum },
+          true,
         ),
       );
     }

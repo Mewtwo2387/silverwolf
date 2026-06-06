@@ -5,6 +5,7 @@ import { Equipment } from '../../item';
 import type { Item } from '../../item';
 import { itemBackgroundForRarity } from '../../rarityColors';
 import { itemImagePanel } from '../shared';
+import { round2 } from '../../../utils/math';
 
 /** INCOMING DAMAGE REDUCTION EQUIPMENTS
  * Reduces all incoming damage by a certain percentage.
@@ -21,7 +22,7 @@ export function incomingReductionEquipment(
   reductionPercent: number,
   footer?: string,
 ): Equipment {
-  const multiplier = 1 - reductionPercent / 100;
+  const multiplier = round2(1 - reductionPercent / 100);
   return new Equipment(
     id,
     name,
