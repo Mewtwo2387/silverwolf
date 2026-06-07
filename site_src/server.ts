@@ -10,6 +10,7 @@ import { embedMetaMiddleware } from './middleware/embed';
 import { registerStaticRoutes } from './routes/static';
 import { registerAuthRoutes } from './routes/auth';
 import { registerPageRoutes } from './routes/pages';
+import { registerAppApiRoutes } from './routes/app-api';
 import { registerGameApiRoutes } from './routes/games-api';
 import { registerAiSlopApiRoutes } from './routes/ai-slop-api';
 import { registerCyclicTttMpRoutes } from './routes/cyclic-tictactoe-mp';
@@ -37,6 +38,7 @@ export function startWebsite(silverwolf: Silverwolf) {
   registerStaticRoutes(app);
   registerAuthRoutes(app, silverwolf);
   registerPageRoutes(app, silverwolf);
+  registerAppApiRoutes(app, silverwolf);
   registerGameApiRoutes(app, silverwolf);
   registerAiSlopApiRoutes(app, silverwolf);
   registerCyclicTttMpRoutes(app, silverwolf, upgradeWebSocket);

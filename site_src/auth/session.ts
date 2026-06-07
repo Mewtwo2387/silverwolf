@@ -74,8 +74,21 @@ export function clearSessionCookie(c: Context) {
   deleteCookie(c, SESSION_COOKIE, { path: '/' });
 }
 
+export function readBearerSessionId(c: Context): string | null {
+  const header = c.req.header('authorization');
+  if (!header) return null;
+  const match = /^Bearer\s+(.+)$/i.exec(header.trim());
+  if (!match) return null;
+  return verifySigned(match[1]);
+}
+
 export function readSessionId(c: Context): string | null {
-  return verifySigned(getCookie(c, SESSION_COOKIE));
+  const fromCookie = verifySigned(getCookie(c, SESSION_COOKIE));
+  if (fromCookie) return fromCookie;
+  // Native clients (Android app) can't rely on cookie semantics, so they send
+  // the same signed session token as an `Authorization: Bearer <token>` header.
+  // The token is verified identically; only the transport differs.
+  return readBearerSessionId(c);
 }
 
 export function setOAuthStateCookie(c: Context, state: string) {

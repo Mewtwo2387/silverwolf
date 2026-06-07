@@ -11,7 +11,10 @@ import android.webkit.WebViewClient
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,7 +27,10 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.navigation3.runtime.NavKey
 import androidx.webkit.WebViewAssetLoader
+import com.example.silverwolf.Birthdays
 import com.example.silverwolf.CookieHelper
+import com.example.silverwolf.Dashboard
+import com.example.silverwolf.Leaderboards
 import com.example.silverwolf.LoginSessionManager
 import com.example.silverwolf.NetworkMonitor
 import kotlinx.coroutines.flow.collectLatest
@@ -100,6 +106,15 @@ fun MainScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { onItemClick(Dashboard) }) {
+                        Icon(imageVector = Icons.Default.AccountCircle, contentDescription = "Native dashboard")
+                    }
+                    IconButton(onClick = { onItemClick(Leaderboards) }) {
+                        Icon(imageVector = Icons.Default.Star, contentDescription = "Leaderboards")
+                    }
+                    IconButton(onClick = { onItemClick(Birthdays) }) {
+                        Icon(imageVector = Icons.Default.DateRange, contentDescription = "Birthdays")
+                    }
                     IconButton(onClick = { webViewInstance?.reload() }) {
                         Icon(imageVector = Icons.Default.Refresh, contentDescription = "Reload")
                     }

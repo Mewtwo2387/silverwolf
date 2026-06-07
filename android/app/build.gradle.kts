@@ -85,4 +85,17 @@ dependencies {
 
   // WebView Support
   implementation(libs.androidx.webkit)
+
+  // Networking: Retrofit + OkHttp + kotlinx.serialization
+  implementation(libs.retrofit)
+  implementation(libs.retrofit.kotlinx.serialization)
+  implementation(libs.okhttp)
+  implementation(libs.okhttp.logging)
+  implementation(libs.kotlinx.serialization.json)
+
+  // Image loading (avatars)
+  implementation(libs.coil.compose)
+
+  // Token storage
+  implementation(libs.androidx.datastore.preferences)
 }
