@@ -1,6 +1,6 @@
 import Canvas from 'canvas';
 import { Battle } from './battle';
-import { CharacterInBattle } from './characterInBattle';
+import { CharacterInBattle, MAX_EQUIPMENTS_PER_CHARACTER } from './characterInBattle';
 import type { Effect } from './effect';
 
 const SCALE = 0.2;
@@ -45,6 +45,66 @@ function overlayBarHeight(effectLines: string[]): number {
   const base = OVERLAY_TOP_PAD + LINE_NAME + GAP_NAME_HP + LINE_HP + OVERLAY_BOTTOM_PAD;
   if (effectLines.length === 0) return base;
   return base + GAP_BEFORE_EFFECTS + effectLines.length * LINE_EFFECT;
+}
+
+function roundRect(
+  ctx: Canvas.CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+): void {
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.lineTo(x + w - rr, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+  ctx.lineTo(x + w, y + h - rr);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+  ctx.lineTo(x + rr, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
+  ctx.lineTo(x, y + rr);
+  ctx.quadraticCurveTo(x, y, x + rr, y);
+  ctx.closePath();
+}
+
+/**
+ * Draws up to {@link MAX_EQUIPMENTS_PER_CHARACTER} small slot pips in the top-right
+ * of a thumbnail. Filled blue = equipped, dim outline = empty slot. Hidden if the
+ * character isn't holding anything (to avoid visual noise on most cards).
+ */
+function drawEquipmentPips(ctx: Canvas.CanvasRenderingContext2D, cib: CharacterInBattle): void {
+  const equipped = cib.equipments.length;
+  if (equipped === 0) return;
+
+  const pipW = 18;
+  const pipH = 10;
+  const gap = 3;
+  const right = TW - 6;
+  const top = 6;
+
+  ctx.save();
+  ctx.font = 'bold 8px "Segoe UI", sans-serif';
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'center';
+
+  for (let i = 0; i < MAX_EQUIPMENTS_PER_CHARACTER; i += 1) {
+    const x = right - (MAX_EQUIPMENTS_PER_CHARACTER - i) * (pipW + gap) + gap;
+    const y = top;
+    const filled = i < equipped;
+    ctx.fillStyle = filled ? 'rgba(59, 108, 242, 0.92)' : 'rgba(20, 24, 32, 0.55)';
+    ctx.strokeStyle = filled ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.35)';
+    ctx.lineWidth = 1;
+    roundRect(ctx, x, y, pipW, pipH, 3);
+    ctx.fill();
+    ctx.stroke();
+    if (filled) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('EQ', x + pipW / 2, y + pipH / 2 + 0.5);
+    }
+  }
+  ctx.restore();
 }
 
 async function renderCharacterThumb(
@@ -107,6 +167,8 @@ async function renderCharacterThumb(
       y += LINE_EFFECT;
     }
   }
+
+  drawEquipmentPips(ctx, cib);
 
   if (cib.isKnockedOut) {
     ctx.fillStyle = 'rgba(15,15,18,0.82)';

@@ -11,8 +11,9 @@ import { CharacterTextColors, DEFAULT_CHARACTER_TEXT_COLORS } from './textTheme'
 import { SkillCategory } from './skillCategory';
 import type { SkillBattleCost } from './skillBattleCost';
 import { Normal } from './skillBattleCost';
+import { tcgAssetPaths } from './assetPaths';
 
-const SKILL_POINT_ICON_PATH = './tcg/assets/common/skillPoint.png';
+const SKILL_POINT_ICON_PATH = `${tcgAssetPaths.common}/skillPoint.png`;
 let skillPointIconPromise: Promise<Canvas.Image> | null = null;
 
 /**
@@ -358,6 +359,8 @@ export class Skill implements DrawableBlock {
   }
 
   useSkill(character: CharacterInBattle, target: CharacterInBattle | null) {
+    const dodgedTargets = Skill.resolveDodgesForHostileSkillTargets(character, target, this);
+
     this.effects.forEach((rangeEffect) => {
       let effectToApply = rangeEffect.effect;
       if (rangeEffect.effect.type === EffectType.FormChange && this.formActiveSkillIndices) {
@@ -372,107 +375,104 @@ export class Skill implements DrawableBlock {
         );
       }
 
-      switch (rangeEffect.range) {
-        case RangeType.Self:
-          character.addEffect(effectToApply);
-          break;
-        case RangeType.SingleAlly:
-          if (target) {
-            const allies = character.battle.ally(character.side);
-            if (allies.includes(target) && !target.isKnockedOut) {
-              target.addEffect(effectToApply);
-            }
-          }
-          break;
-        case RangeType.AllAllies:
-          character.battle.ally(character.side).forEach((ally) => {
-            if (!ally.isKnockedOut) {
-              ally.addEffect(effectToApply);
-            }
-          });
-          break;
-        case RangeType.SingleOpponent:
-          if (target) {
-            const opponents = character.battle.opponent(character.side);
-            if (opponents.includes(target)) {
-              target.addEffect(effectToApply);
-            }
-          }
-          break;
-        case RangeType.AllOpponents:
-          character.battle.opponent(character.side).forEach((opponent) => {
-            if (!opponent.isKnockedOut) {
-              opponent.addEffect(effectToApply);
-            }
-          });
-          break;
-        case RangeType.AllCards:
-          character.battle.allCards().forEach((card) => {
-            if (!card.isKnockedOut) {
-              card.addEffect(effectToApply);
-            }
-          });
-          break;
-        default:
-          throw new Error(`Invalid skill effect type: ${rangeEffect.range}`);
-      }
+      Skill.resolveSkillRangeTargets(rangeEffect.range, character, target).forEach((victim) => {
+        if (Skill.shouldResolveOnHostileTarget(character, victim, dodgedTargets)) {
+          victim.addEffect(effectToApply);
+        }
+      });
     });
 
-    const damageElement = character.character.element;
+    const damageElement = character.effectiveDamageElement;
 
     if (this.damage > 0) {
-      switch (this.damageRange) {
-        case RangeType.Self: {
-          const selfDamage = character.dealDamage(this.damage, damageElement);
-          character.takeDamage(selfDamage, damageElement, character);
-          break;
+      const damageContext = this.category === SkillCategory.Charged
+        ? { chargedAttack: true, skillPointsSpent: this.skillPointsCost }
+        : undefined;
+      Skill.resolveSkillRangeTargets(this.damageRange, character, target).forEach((victim) => {
+        if (!Skill.shouldResolveOnHostileTarget(character, victim, dodgedTargets)) {
+          return;
         }
-        case RangeType.SingleOpponent:
-          if (target) {
-            const opponents = character.battle.opponent(character.side);
-            if (opponents.includes(target) && !target.isKnockedOut) {
-              const dealtDamage = character.dealDamage(this.damage, damageElement);
-              target.takeDamage(dealtDamage, damageElement, character);
-            }
-          }
-          break;
-        case RangeType.AllOpponents:
-          character.battle.opponent(character.side).forEach((opponent) => {
-            if (!opponent.isKnockedOut) {
-              const dealtDamage = character.dealDamage(this.damage, damageElement);
-              opponent.takeDamage(dealtDamage, damageElement, character);
-            }
-          });
-          break;
-        case RangeType.SingleAlly:
-          if (target) {
-            const allies = character.battle.ally(character.side);
-            if (allies.includes(target) && !target.isKnockedOut) {
-              const dealtDamage = character.dealDamage(this.damage, damageElement);
-              target.takeDamage(dealtDamage, damageElement, character);
-            }
-          }
-          break;
-        case RangeType.AllAllies:
-          character.battle.ally(character.side).forEach((ally) => {
-            if (!ally.isKnockedOut) {
-              const dealtDamage = character.dealDamage(this.damage, damageElement);
-              ally.takeDamage(dealtDamage, damageElement, character);
-            }
-          });
-          break;
-        case RangeType.AllCards:
-          character.battle.allCards().forEach((card) => {
-            if (!card.isKnockedOut) {
-              const dealtDamage = character.dealDamage(this.damage, damageElement);
-              card.takeDamage(dealtDamage, damageElement, character);
-            }
-          });
-          break;
-        default:
-          break;
-      }
+        const dealtDamage = character.dealDamage(this.damage, damageElement, damageContext);
+        victim.takeDamage(dealtDamage, damageElement, character);
+      });
     }
+  }
+
+  /** Living characters in range for this skill line (effects or damage). */
+  private static resolveSkillRangeTargets(
+    range: RangeType,
+    caster: CharacterInBattle,
+    target: CharacterInBattle | null,
+  ): CharacterInBattle[] {
+    const alive = (c: CharacterInBattle) => !c.isKnockedOut;
+    switch (range) {
+      case RangeType.Self:
+        return alive(caster) ? [caster] : [];
+      case RangeType.SingleAlly:
+        if (!target) return [];
+        return caster.battle.ally(caster.side).includes(target) && alive(target) ? [target] : [];
+      case RangeType.AllAllies:
+        return caster.battle.ally(caster.side).filter(alive);
+      case RangeType.SingleOpponent:
+        if (!target) return [];
+        return caster.battle.opponent(caster.side).includes(target) && alive(target) ? [target] : [];
+      case RangeType.AllOpponents:
+        return caster.battle.opponent(caster.side).filter(alive);
+      case RangeType.AllCards:
+        return caster.battle.allCards().filter(alive);
+      default:
+        throw new Error(`Invalid skill range: ${range}`);
+    }
+  }
+
+  /**
+   * Before resolving a skill, roll dodge once per hostile target (anyone on the other
+   * side who would receive an effect or damage from this use). Dodging skips the entire
+   * skill on that character — no debuffs, no damage, no hit energy.
+   */
+  private static resolveDodgesForHostileSkillTargets(
+    caster: CharacterInBattle,
+    target: CharacterInBattle | null,
+    skill: Skill,
+  ): Set<CharacterInBattle> {
+    const hostileTargets = new Set<CharacterInBattle>();
+
+    skill.effects.forEach((rangeEffect) => {
+      Skill.resolveSkillRangeTargets(rangeEffect.range, caster, target).forEach((victim) => {
+        if (victim.side !== caster.side) {
+          hostileTargets.add(victim);
+        }
+      });
+    });
+
+    if (skill.damage > 0) {
+      Skill.resolveSkillRangeTargets(skill.damageRange, caster, target).forEach((victim) => {
+        if (victim.side !== caster.side) {
+          hostileTargets.add(victim);
+        }
+      });
+    }
+
+    const dodged = new Set<CharacterInBattle>();
+    hostileTargets.forEach((victim) => {
+      if (victim.rollDodge()) {
+        dodged.add(victim);
+        caster.battle.logEvent(`${victim.character.name} dodged the attack!`);
+      }
+    });
+    return dodged;
+  }
+
+  /** False when a hostile target dodged this skill (skip effects and damage on them). */
+  private static shouldResolveOnHostileTarget(
+    caster: CharacterInBattle,
+    victim: CharacterInBattle,
+    dodgedTargets: Set<CharacterInBattle>,
+  ): boolean {
+    if (victim.side === caster.side) {
+      return true;
+    }
+    return !dodgedTargets.has(victim);
   }
 
   toString(): string {

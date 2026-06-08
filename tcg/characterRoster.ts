@@ -7,8 +7,12 @@ export function rosterValueForCharacter(c: Character): string {
 }
 
 /** Stable slash-command values → Character (duplicate refs allowed in a team array). */
-const BY_VALUE: Record<string, Character> = Object.fromEntries(
-  CHARACTERS.map((c) => [rosterValueForCharacter(c), c]),
+const BY_VALUE: Record<string, Character> = CHARACTERS.reduce(
+  (acc, c) => {
+    acc[rosterValueForCharacter(c)] = c;
+    return acc;
+  },
+  {} as Record<string, Character>,
 );
 
 /** Discord slash `choices` for each team slot (max 25 options each). */

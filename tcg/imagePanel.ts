@@ -14,7 +14,17 @@ export interface ImagePanelOptions {
   width?: number;
   height?: number;
   spacingAfter?: number;
+  /** Panel fill behind the image; omit or `'transparent'` to leave the area clear. */
   backgroundColor?: string;
+}
+
+/** True when the panel should not paint a background rectangle. */
+export function isTransparentPanelBackground(color: string): boolean {
+  const normalized = color.trim().toLowerCase();
+  if (normalized === 'transparent' || normalized === 'none') return true;
+  const rgba = normalized.match(/^rgba\(\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*,\s*([\d.]+)\s*\)$/);
+  if (rgba && parseFloat(rgba[1]) === 0) return true;
+  return false;
 }
 
 /**
@@ -42,9 +52,10 @@ export class ImagePanel implements DrawableBlock {
   async draw(ctx: Canvas.CanvasRenderingContext2D, y: number): Promise<number> {
     const top = y;
 
-    // Base panel background used by contain mode and as a safe fallback.
-    ctx.fillStyle = this.backgroundColor;
-    ctx.fillRect(this.x, top, this.width, this.height);
+    if (!isTransparentPanelBackground(this.backgroundColor)) {
+      ctx.fillStyle = this.backgroundColor;
+      ctx.fillRect(this.x, top, this.width, this.height);
+    }
 
     if (this.mode === ImagePanelMode.None || !this.imagePath) {
       return top + this.height + this.spacingAfter;
@@ -97,7 +108,7 @@ export class ImagePanel implements DrawableBlock {
           ctx.drawImage(image, dx, dy, drawWidth, drawHeight);
         }
       }
-    } catch (error) {
+    } catch {
       console.warn(`Image not found for panel: ${this.imagePath}`);
     }
 

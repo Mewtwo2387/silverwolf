@@ -6,9 +6,12 @@ import {
   debugMaxEnergy,
   endTurnAsCurrentPlayer,
   executeUseSkill,
+  executeUseItem,
   formatBattleStatus,
+  formatHandForSide,
   formatSkillsForSide,
   formatUseSkillMessage,
+  formatUseItemMessage,
   getLatestPhaseSummary,
   parseBattleSide,
 } from '../battleInterface';
@@ -76,6 +79,55 @@ function handleCommand(input: string, battle: Battle, rl: readline.Interface, pr
       }
       break;
 
+    case 'hand': {
+      const sideArg = parts[1] ? parseBattleSide(parts[1]) : battle.currentPlayer;
+      if (!sideArg) {
+        console.log('Side must be p1 or p2');
+        break;
+      }
+      console.log(formatHandForSide(battle, sideArg, 'cli'));
+      break;
+    }
+
+    case 'item':
+      if (parts.length < 4) {
+        console.log('Usage: item [p1|p2] [handSlotId] [charIndex]  (handSlotId = id from "hand" command)');
+        break;
+      }
+      {
+        const side = parseBattleSide(parts[1]);
+        if (!side) {
+          console.log('Side must be p1 or p2');
+          break;
+        }
+        const handIdx = parseInt(parts[2], 10);
+        const charIdx = parseInt(parts[3], 10);
+        const allies = side === 'p1' ? battle.p1cards : battle.p2cards;
+        if (!Number.isInteger(handIdx) || handIdx < 0) {
+          console.log('Invalid hand slot id (must be a non-negative integer; see "hand" command).');
+          break;
+        }
+        if (!Number.isInteger(charIdx) || charIdx < 0 || charIdx >= allies.length) {
+          console.log(`Invalid character index (must be 0-${allies.length - 1}).`);
+          break;
+        }
+        const r = executeUseItem(battle, side, handIdx, charIdx);
+        if (r.ok) {
+          console.log(formatUseItemMessage(r.detail, 'cli'));
+        } else if (r.hints?.length) {
+          console.log('Failed to use item. Possible reasons:');
+          r.hints.forEach((h) => {
+            console.log(`  - ${h}`);
+          });
+        } else {
+          console.log(r.error);
+        }
+        if (battle.status !== BattleStatus.Ongoing) {
+          console.log(`\n=== Battle Ended: ${battle.status} ===`);
+        }
+      }
+      break;
+
     case 'end': {
       const et = endTurnAsCurrentPlayer(battle, battle.currentPlayer);
       if (!et.ok) {
@@ -95,6 +147,8 @@ function handleCommand(input: string, battle: Battle, rl: readline.Interface, pr
       console.log('  status - Show battle status');
       console.log('  skills [p1|p2] [index] - Show skills for a character');
       console.log('  use [p1|p2] [charIndex] [skillIndex] [targetIndex] - Use a skill');
+      console.log('  hand [p1|p2] - Show item hand');
+      console.log('  item [p1|p2] [handSlotId] [charIndex] - Play an item (use slot id from "hand")');
       console.log('  end - Advance rotation (next active character / next side)');
       console.log('  help - Show this help');
       console.log('  quit - Exit');
@@ -118,7 +172,7 @@ function handleCommand(input: string, battle: Battle, rl: readline.Interface, pr
   }
 
   if (battle.status === BattleStatus.Ongoing && command !== 'quit' && command !== 'exit') {
-    if (command === 'use' || command === 'end' || previousPlayer !== battle.currentPlayer) {
+    if (command === 'use' || command === 'item' || command === 'end' || previousPlayer !== battle.currentPlayer) {
       promptFn();
     } else {
       rl.question('\n> ', (line) => {
@@ -145,6 +199,8 @@ export function runBattleExample() {
   console.log('  skills [p1|p2] [index] - Show skills for a character');
   console.log('  use [p1|p2] [charIndex] [skillIndex] [targetIndex] - Use a skill');
   console.log('    (use "self" or -1 for targetIndex if self-targeting)');
+  console.log('  hand [p1|p2] - Show item hand');
+  console.log('  item [p1|p2] [handSlotId] [charIndex] - Play an item (use slot id from "hand")');
   console.log('  debug - Give everyone 9999 energy');
   console.log('  end - End current turn');
   console.log('  help - Show this help');

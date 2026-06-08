@@ -4,7 +4,21 @@ import { Battle } from './battle';
 import { Effect } from './effect';
 import { Skill } from './skill';
 import { Element } from './element';
+import type { Equipment } from './item';
+import { runEquipmentCombineIfReady } from './equipmentCombine';
 import { round2 } from '../utils/math';
+
+export const MAX_EQUIPMENTS_PER_CHARACTER = 3;
+
+/**
+ * Optional context for a single damage roll. Charged-attack bonuses are applied here only
+ * (not stored as separate timed buffs).
+ */
+export interface DamageCalculationContext {
+  chargedAttack?: boolean;
+  /** Team skill points spent to use the charged attack (from {@link Skill.skillPointsCost}). */
+  skillPointsSpent?: number;
+}
 
 /**
  * A single character and their status in a battle
@@ -32,6 +46,10 @@ export class CharacterInBattle {
   battle: Battle;
   side: string;
   energy: number;
+  /** Equipment items attached to this character (max {@link MAX_EQUIPMENTS_PER_CHARACTER}). */
+  equipments: Equipment[];
+  /** Consumable item id → earliest battle round when that consumable may target this character again. */
+  consumableCooldownUntilRound: Record<string, number>;
 
   constructor(character: Character, battle: Battle, side: string) {
     this.character = character;
@@ -48,6 +66,94 @@ export class CharacterInBattle {
     this.battle = battle;
     this.side = side;
     this.energy = 0;
+    this.equipments = [];
+    this.consumableCooldownUntilRound = {};
+  }
+
+  /** True when a consumable with the given id is off cooldown for this character. */
+  canUseConsumable(itemId: string): boolean {
+    const availableRound = this.consumableCooldownUntilRound[itemId] ?? 1;
+    return this.battle.currentTurn >= availableRound;
+  }
+
+  /** Earliest round (inclusive) when the consumable may be used again. */
+  consumableAvailableRound(itemId: string): number {
+    return this.consumableCooldownUntilRound[itemId] ?? 1;
+  }
+
+  /** Block a consumable on this character for `cooldownRounds` full battle rounds. */
+  setConsumableCooldown(itemId: string, cooldownRounds: number): void {
+    this.consumableCooldownUntilRound[itemId] = this.battle.currentTurn + cooldownRounds;
+  }
+
+  /**
+   * Detach all equipment with the given id and remove one matching effect instance per
+   * effect defined on each removed piece (supports stackable equipment bonuses).
+   */
+  removeEquipmentsById(itemId: string): number {
+    const removed = this.equipments.filter((e) => e.id === itemId);
+    removed.forEach((equipment) => {
+      equipment.effects.forEach((effTemplate) => {
+        const idx = this.effects.findIndex(
+          (e) => e.name === effTemplate.name
+            && e.type === effTemplate.type
+            && e.stackable === effTemplate.stackable,
+        );
+        if (idx >= 0) {
+          this.effects.splice(idx, 1);
+        }
+      });
+    });
+    this.equipments = this.equipments.filter((e) => e.id !== itemId);
+    return removed.length;
+  }
+
+  /**
+   * Element used for outgoing damage. Defaults to character.element, but a
+   * {@link EffectType.DamageElementOverride} effect can convert outgoing damage to another element.
+   */
+  get effectiveDamageElement(): Element {
+    for (let i = this.effects.length - 1; i >= 0; i -= 1) {
+      const effect = this.effects[i];
+      if (
+        effect.type === EffectType.DamageElementOverride
+        && effect.metadata?.overrideElement !== undefined
+      ) {
+        return effect.metadata.overrideElement;
+      }
+    }
+    return this.character.element;
+  }
+
+  /**
+   * Attach an equipment to this character. Equipment effects are pushed to the regular
+   * effects list (with whatever duration the effect specifies; equipment effects should
+   * use 9999 to be permanent).
+   * @returns true if equipped, false if the character is already at the cap or KO'd.
+   */
+  equip(equipment: Equipment): boolean {
+    if (this.isKnockedOut) return false;
+    if (this.equipments.length >= MAX_EQUIPMENTS_PER_CHARACTER) return false;
+    this.equipments.push(equipment);
+    equipment.effects.forEach((effect) => {
+      this.addEffect(effect);
+    });
+    equipment.onEquipped?.(this);
+    runEquipmentCombineIfReady(this, equipment);
+    if (this.equipments.includes(equipment)) {
+      this.battle.logEvent(`${this.character.name} equipped [${equipment.name}]`);
+    }
+    return true;
+  }
+
+  /**
+   * Remove all currently active debuff effects (positive=false). Used by the Cleanser consumable.
+   * @returns number of debuffs removed.
+   */
+  cleanseDebuffs(): number {
+    const before = this.effects.length;
+    this.effects = this.effects.filter((e) => e.positive);
+    return before - this.effects.length;
   }
 
   /**
@@ -100,6 +206,22 @@ export class CharacterInBattle {
    * @param damageElement - Element type of the damage (defaults to character's element if not specified)
    * @param attacker - If from another character, this character gains energy from being hit
    */
+  /**
+   * Combined dodge chance from all {@link EffectType.DodgeChance} effects (capped at 100%).
+   * Rolled once per incoming enemy skill in {@link Skill.useSkill}.
+   */
+  getDodgeChance(): number {
+    return this.effects
+      .filter((effect) => effect.type === EffectType.DodgeChance)
+      .reduce((sum, effect) => Math.min(1, sum + effect.amount), 0);
+  }
+
+  /** Single roll for whether an entire enemy skill is avoided (effects + damage). */
+  rollDodge(): boolean {
+    const chance = this.getDodgeChance();
+    return chance > 0 && Math.random() < chance;
+  }
+
   takeDamage(amount: number, damageElement?: Element, attacker?: CharacterInBattle | null) {
     if (this.isKnockedOut) return;
 
@@ -131,14 +253,24 @@ export class CharacterInBattle {
 
   heal(amount: number) {
     if (this.isKnockedOut) return;
+    const before = this.currentHp;
     this.currentHp = round2(this.currentHp + amount);
     if (this.currentHp > this.character.hp) this.currentHp = this.character.hp;
+    const gained = round2(this.currentHp - before);
+    if (gained > 0) {
+      this.battle.logEvent(`${this.character.name} recovered ${gained} HP`);
+    }
   }
 
   /**
-   * Calculate outgoing damage with modifiers applied (without tracking stats)
+   * Calculate outgoing damage with modifiers applied (without tracking stats).
+   * Pass {@link DamageCalculationContext} for charged-attack-only equipment bonuses.
    */
-  calculateDamage(amount: number, damageElement?: Element): number {
+  calculateDamage(
+    amount: number,
+    damageElement?: Element,
+    context?: DamageCalculationContext,
+  ): number {
     const element = damageElement || this.character.element;
 
     let damage = amount;
@@ -148,28 +280,65 @@ export class CharacterInBattle {
       .forEach((effect) => {
         damage *= effect.amount;
       });
+
+    if (context?.chargedAttack) {
+      this.effects
+        .filter((effect) => effect.type === EffectType.ChargedOutgoingDamage)
+        .forEach((effect) => {
+          damage *= effect.amount;
+        });
+      const sp = context.skillPointsSpent ?? 0;
+      if (sp > 0) {
+        this.effects
+          .filter((effect) => effect.type === EffectType.ChargedSkillPointScaling)
+          .forEach((effect) => {
+            damage *= 1 + effect.amount * sp;
+          });
+      }
+    }
+
     return round2(Math.max(0, damage));
   }
 
   /**
    * Calculate and track outgoing damage with modifiers applied
    */
-  dealDamage(amount: number, damageElement?: Element): number {
-    const damage = this.calculateDamage(amount, damageElement);
+  dealDamage(
+    amount: number,
+    damageElement?: Element,
+    context?: DamageCalculationContext,
+  ): number {
+    const damage = this.calculateDamage(amount, damageElement, context);
     this.stats.damageDealt = round2(this.stats.damageDealt + damage);
     return damage;
   }
 
+  /**
+   * Apply an effect. By default, an existing effect with the same name has its duration
+   * refreshed (longest-of) and no new instance is added. When the incoming effect has
+   * `stackable === true`, it is appended as a separate copy so multiple identical effects
+   * coexist (e.g. two of the same equipment each contribute their own multiplier).
+   */
+  /**
+   * Apply an effect. By default, an existing effect with the same name has its duration
+   * refreshed (longest-of) and no new instance is added. When the incoming effect has
+   * `stackable === true`, it is appended as a separate copy so multiple identical effects
+   * coexist (e.g. two of the same equipment each contribute their own multiplier).
+   *
+   * Effects are always cloned before being pushed so the per-instance state we mutate
+   * (duration ticks down, etc.) can't bleed back into the shared source definition.
+   */
   addEffect(effect: Effect) {
-    const existingEffect = this.effects.find((e) => e.name === effect.name);
-
-    if (existingEffect) {
-      if (effect.duration > existingEffect.duration) {
-        existingEffect.duration = effect.duration;
+    if (!effect.stackable) {
+      const existingEffect = this.effects.find((e) => e.name === effect.name && !e.stackable);
+      if (existingEffect) {
+        if (effect.duration > existingEffect.duration) {
+          existingEffect.duration = effect.duration;
+        }
+        return;
       }
-      return;
     }
-    this.effects.push(effect);
+    this.effects.push(effect.clone());
     const verb = effect.positive ? 'gained' : 'was inflicted with';
     this.battle.logEvent(`${this.character.name} ${verb} [${effect.name}]`);
   }
@@ -179,6 +348,7 @@ export class CharacterInBattle {
    */
   processEndOfTurn() {
     this.effects.forEach((effect) => {
+      // eslint-disable-next-line no-param-reassign
       effect.duration -= 1;
     });
 
@@ -259,6 +429,11 @@ export class CharacterInBattle {
 
     const status = statusParts.join(', ');
     const lines: string[] = [status];
+
+    if (this.equipments.length > 0) {
+      const equipStr = this.equipments.map((e) => e.name).join(', ');
+      lines.push(`  Equipped: ${equipStr}`);
+    }
 
     if (this.effects.length > 0) {
       const effectsStr = this.effects.map((e) => e.toString()).join('\n  ');

@@ -47,7 +47,23 @@ export class Background implements DrawableFixed {
     opacity2?: number;
   };
 
-  constructor(backgroundType: BackgroundType, backgroundOptions: { color?: string; color1?: string; color2?: string; image?: string; }, borderColor: string, topBarType: TopBarType, topBarOptions: { color?: string; opacity?: number; opacity1?: number; opacity2?: number; }) {
+  constructor(
+    backgroundType: BackgroundType,
+    backgroundOptions: {
+      color?: string;
+      color1?: string;
+      color2?: string;
+      image?: string;
+    },
+    borderColor: string,
+    topBarType: TopBarType,
+    topBarOptions: {
+      color?: string;
+      opacity?: number;
+      opacity1?: number;
+      opacity2?: number;
+    },
+  ) {
     this.backgroundType = backgroundType;
     this.backgroundOptions = backgroundOptions;
     this.borderColor = borderColor;
@@ -115,12 +131,26 @@ export class Background implements DrawableFixed {
       ctx.lineWidth = 10;
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
-      this.buildRoundedRectPath(ctx, outerInset, outerInset, 1080 - (outerInset * 2), 1920 - (outerInset * 2), outerRadius);
+      this.buildRoundedRectPath(
+        ctx,
+        outerInset,
+        outerInset,
+        1080 - (outerInset * 2),
+        1920 - (outerInset * 2),
+        outerRadius,
+      );
       ctx.stroke();
 
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
       ctx.lineWidth = 3;
-      this.buildRoundedRectPath(ctx, innerInset, innerInset, 1080 - (innerInset * 2), 1920 - (innerInset * 2), innerRadius);
+      this.buildRoundedRectPath(
+        ctx,
+        innerInset,
+        innerInset,
+        1080 - (innerInset * 2),
+        1920 - (innerInset * 2),
+        innerRadius,
+      );
       ctx.stroke();
     }
 

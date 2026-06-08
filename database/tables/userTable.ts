@@ -51,6 +51,8 @@ export interface UserRow {
   last_murder: string | null;
   murder_success: number;
   murder_fail: number;
+  /** JSON-encoded {itemId: count}; null/empty means "use default deck". */
+  tcg_deck: string | null;
 }
 
 /** Extended row returned by GET_USER_STATS (includes computed join columns). */
@@ -118,6 +120,7 @@ const userTable: TableDefinition = {
     { name: 'last_murder', type: 'DATETIME DEFAULT NULL' },
     { name: 'murder_success', type: 'INTEGER DEFAULT 0' },
     { name: 'murder_fail', type: 'INTEGER DEFAULT 0' },
+    { name: 'tcg_deck', type: 'TEXT DEFAULT NULL' },
   ],
   primaryKey: ['id'],
   specialConstraints: [],

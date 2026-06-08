@@ -3,10 +3,14 @@ import type { Battle } from './battle';
 import type { Character } from './character';
 import {
   executeUseSkill,
+  executeUseItem,
   formatAllyStatusForDiscord,
   formatBattleForDiscord,
+  formatHandForSide,
   formatUseSkillFailureMessage,
   formatUseSkillMessage,
+  formatUseItemFailureMessage,
+  formatUseItemMessage,
   statusLine as battleStatusLine,
 } from './battleInterface';
 import { renderBattleBoardPng } from './renderDiscordBattleBoard';
@@ -117,6 +121,23 @@ export function tryUseSkill(
     return { ok: false, error: formatUseSkillFailureMessage(r) };
   }
   return { ok: true, message: formatUseSkillMessage(r.detail, 'markdown') };
+}
+
+export function tryUseItem(
+  session: DiscordBattleSession,
+  side: 'p1' | 'p2',
+  handSlotId: number,
+  targetCharIndex: number,
+): { ok: true; message: string } | { ok: false; error: string } {
+  const r = executeUseItem(session.battle, side, handSlotId, targetCharIndex);
+  if (!r.ok) {
+    return { ok: false, error: formatUseItemFailureMessage(r) };
+  }
+  return { ok: true, message: formatUseItemMessage(r.detail, 'markdown') };
+}
+
+export function handTextForSide(session: DiscordBattleSession, side: 'p1' | 'p2'): string {
+  return formatHandForSide(session.battle, side, 'markdown');
 }
 
 /** Discord embeds: status line for the battle in this session. */

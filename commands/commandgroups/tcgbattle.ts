@@ -10,6 +10,11 @@ export default class Tcgbattle extends CommandGroup {
       'end',
       'cancel',
       'debug',
+      'item',
+      'hand',
+      'deck',
+      'deckset',
+      'deckreset',
     ]);
   }
 }

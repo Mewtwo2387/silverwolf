@@ -4,6 +4,7 @@ import { SkillCategory } from './skillCategory';
 import type { Skill } from './skill';
 import type { BattleEvent } from './battleEvents';
 import { EffectType } from './effectType';
+import { Item } from './item';
 import { log } from '../utils/log';
 
 export enum BattleStatus {
@@ -17,6 +18,10 @@ export const SKILL_POINTS_START = 2;
 export const SKILL_POINTS_CAP = 5;
 const ENERGY_AFTER_NORMAL = 5;
 const ENERGY_AFTER_CHARGED = 15;
+
+export const DECK_SIZE = 25;
+export const STARTING_HAND = 5;
+export const DRAW_PER_ROUND = 2;
 
 /**
  * Turn order: P1 slot 0 → P2 slot 0 → P1 slot 1 → P2 slot 1 → … (wraps each round).
@@ -38,8 +43,20 @@ export class Battle {
   turnHistory: string[];
   /** Event lines produced during the most recent useMainAction / useUltimate call. */
   currentActionLog: string[];
+  /** Per-side item deck; cards are drawn from index 0 (top). */
+  p1Deck: Item[];
+  p2Deck: Item[];
+  /**
+   * Per-side hand: stable slot id → item. Ids are never reused: using slot 2 leaves
+   * gaps so remaining cards stay 0,1,3,4, and the next draw gets the next id (e.g. 5).
+   */
+  p1Hand: Map<number, Item>;
+  p2Hand: Map<number, Item>;
+  /** Next hand slot id to assign when drawing from the deck (monotonic per side). */
+  p1HandNextSlot: number;
+  p2HandNextSlot: number;
 
-  constructor(p1cards: Character[], p2cards: Character[]) {
+  constructor(p1cards: Character[], p2cards: Character[], options?: { p1Deck?: Item[]; p2Deck?: Item[] }) {
     this.p1cards = p1cards.map((char) => new CharacterInBattle(char, this, 'p1'));
     this.p2cards = p2cards.map((char) => new CharacterInBattle(char, this, 'p2'));
 
@@ -53,10 +70,63 @@ export class Battle {
     this.turnHistory = [];
     this.currentActionLog = [];
 
+    this.p1Deck = Battle.shuffle(options?.p1Deck ?? []).slice(0, DECK_SIZE);
+    this.p2Deck = Battle.shuffle(options?.p2Deck ?? []).slice(0, DECK_SIZE);
+    this.p1Hand = new Map();
+    this.p2Hand = new Map();
+    this.p1HandNextSlot = 0;
+    this.p2HandNextSlot = 0;
+    this.drawCards('p1', STARTING_HAND);
+    this.drawCards('p2', STARTING_HAND);
+
     this.activateAllAbilities();
     this.turnHistory.push(
       `Round ${this.currentTurn} — ${this.currentPlayer.toUpperCase()}'s active slot ${this.getCurrentActiveSlot()} (${this.getActiveCharacterForCurrentPhase()?.character.name ?? 'none'})`,
     );
+  }
+
+  private static shuffle<T>(arr: T[]): T[] {
+    const out = arr.slice();
+    for (let i = out.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [out[i], out[j]] = [out[j], out[i]];
+    }
+    return out;
+  }
+
+  deckForSide(side: 'p1' | 'p2'): Item[] {
+    return side === 'p1' ? this.p1Deck : this.p2Deck;
+  }
+
+  handForSide(side: 'p1' | 'p2'): Map<number, Item> {
+    return side === 'p1' ? this.p1Hand : this.p2Hand;
+  }
+
+  /**
+   * Draw up to `n` cards from the side's deck into their hand. Stops early if the deck runs out.
+   * Returns the number actually drawn.
+   */
+  drawCards(side: 'p1' | 'p2', n: number): number {
+    const deck = this.deckForSide(side);
+    const hand = this.handForSide(side);
+    let slot = side === 'p1' ? this.p1HandNextSlot : this.p2HandNextSlot;
+    let drawn = 0;
+    for (let i = 0; i < n && deck.length > 0; i += 1) {
+      const card = deck.shift();
+      if (!card) break;
+      hand.set(slot, card);
+      slot += 1;
+      drawn += 1;
+    }
+    if (side === 'p1') {
+      this.p1HandNextSlot = slot;
+    } else {
+      this.p2HandNextSlot = slot;
+    }
+    if (drawn > 0) {
+      this.logEvent(`${side.toUpperCase()} drew ${drawn} card${drawn === 1 ? '' : 's'}`);
+    }
+    return drawn;
   }
 
   /** Whose “turn” it is: the side that may act (normals / charged / ultimates). */
@@ -344,6 +414,42 @@ export class Battle {
   }
 
   /**
+   * Play an item from the side's hand onto an own character. Allowed only on that side's turn.
+   * Items don't count as the main action and don't consume energy / skill points.
+   * @param handSlotId Stable slot id (see / hand list), not a dense 0..n-1 index.
+   * @returns true if the item was played; false otherwise (rule violation).
+   */
+  useItem(side: 'p1' | 'p2', handSlotId: number, target: CharacterInBattle): boolean {
+    if (this.status !== BattleStatus.Ongoing) return false;
+    if (side !== this.currentPlayer) return false;
+
+    const hand = this.handForSide(side);
+    if (!hand.has(handSlotId)) return false;
+
+    if (target.side !== side) return false;
+    if (target.isKnockedOut) return false;
+
+    const item = hand.get(handSlotId)!;
+    const gate = item.canApply(target, this);
+    if (!gate.ok) return false;
+
+    this.currentActionLog = [];
+    const turnHistoryLenBefore = this.turnHistory.length;
+    this.logEvent(`${side.toUpperCase()} used [${item.name}] on ${target.character.name}`);
+    const ok = item.apply(target, this);
+    if (!ok) {
+      // Roll back logs from this attempt (e.g. equipment cap); apply may have called logEvent too.
+      this.turnHistory.length = turnHistoryLenBefore;
+      this.currentActionLog = [];
+      return false;
+    }
+    hand.delete(handSlotId);
+    this.status = this.checkVictory();
+    this.clampSkillPointsToCaps();
+    return true;
+  }
+
+  /**
    * Pass to the next slot in the rotation. Durations tick once per full round (after both players’ slots).
    */
   endTurn() {
@@ -364,6 +470,9 @@ export class Battle {
       });
       this.clampSkillPointsToCaps();
       this.currentTurn += 1;
+      // New round → both sides draw their per-round cards.
+      this.drawCards('p1', DRAW_PER_ROUND);
+      this.drawCards('p2', DRAW_PER_ROUND);
     }
 
     this.turnHistory.push(
@@ -390,7 +499,10 @@ export class Battle {
           maxHp: char.character.hp,
           energy: char.energy,
           effects: char.effects.map((e) => e.toString()),
+          equipments: char.equipments.map((e) => e.name),
         })),
+        handSize: this.p1Hand.size,
+        deckSize: this.p1Deck.length,
       },
       p2: {
         alive: this.getAliveAlly('p2').map((char) => ({
@@ -399,7 +511,10 @@ export class Battle {
           maxHp: char.character.hp,
           energy: char.energy,
           effects: char.effects.map((e) => e.toString()),
+          equipments: char.equipments.map((e) => e.name),
         })),
+        handSize: this.p2Hand.size,
+        deckSize: this.p2Deck.length,
       },
     };
   }
@@ -412,8 +527,11 @@ export class Battle {
     lines.push(
       `Team skill points — P1: ${this.p1SkillPoints}/${this.skillPointsCapForSide('p1')}  P2: ${this.p2SkillPoints}/${this.skillPointsCapForSide('p2')}`,
     );
+    lines.push(
+      `Items — P1 hand ${this.p1Hand.size} (deck ${this.p1Deck.length})  P2 hand ${this.p2Hand.size} (deck ${this.p2Deck.length})`,
+    );
     if (this.mainActionUsedThisPhase) {
-      lines.push(`This phase: main action already used by active character`);
+      lines.push('This phase: main action already used by active character');
     }
     lines.push(`Status: ${this.status}`);
 
