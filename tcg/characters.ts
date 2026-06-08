@@ -17,6 +17,7 @@ import {
 } from './characterBuilder';
 import { ImagePanelMode } from './imagePanel';
 import { characterImagePath } from './assetPaths';
+import { TAGS, countTaggedAllies } from './characterTags';
 
 /**
  * A list of all characters in the game
@@ -111,6 +112,7 @@ export const KAITLIN = createCharacter({
   rarity: 6,
   hp: 100,
   element: Element.Fairy,
+  tags: [TAGS.TGP, TAGS.BASEMENT],
   imagePanel: {
     imagePath: characterImagePath('kaitlin'),
     mode: ImagePanelMode.Crop,
@@ -197,6 +199,7 @@ export const VENFEI = createCharacter({
   rarity: 6,
   hp: 80,
   element: Element.Fairy,
+  tags: [TAGS.TGP],
   imagePanel: {
     mode: ImagePanelMode.Background,
     backgroundColor: '#FFFFFF',
@@ -260,6 +263,7 @@ export const EI = createCharacter({
   rarity: 6,
   hp: 100,
   element: Element.Quantum,
+  tags: [TAGS.TGP, TAGS.BASEMENT],
   imagePanel: {
     mode: ImagePanelMode.Background,
     backgroundColor: '#49497d',
@@ -319,7 +323,7 @@ export const EI = createCharacter({
             positive: true,
           }),
           condition: (context: AbilityActivationContext) => (
-            context.getAllies().filter((ally) => ally.character.element === Element.Quantum).length === 2
+            countTaggedAllies(context.getAllies(), TAGS.QUANTUM_GIRL) === 2
           ),
         }),
         createAbilityEffect({
@@ -332,7 +336,7 @@ export const EI = createCharacter({
             positive: true,
           }),
           condition: (context: AbilityActivationContext) => (
-            context.getAllies().filter((ally) => ally.character.element === Element.Quantum).length === 3
+            countTaggedAllies(context.getAllies(), TAGS.QUANTUM_GIRL) === 3
           ),
         }),
       ],
@@ -347,6 +351,7 @@ export const SILVERWOLF = createCharacter({
   rarity: 6,
   hp: 80,
   element: Element.Quantum,
+  tags: [TAGS.QUANTUM_GIRL, TAGS.HSR],
   imagePanel: {
     imagePath: characterImagePath('silverwolf', 'jpg'),
     mode: ImagePanelMode.Crop,
@@ -492,6 +497,7 @@ export const SPARKLE = createCharacter({
   rarity: 6,
   hp: 80,
   element: Element.Quantum,
+  tags: [TAGS.QUANTUM_GIRL, TAGS.HSR],
   imagePanel: {
     mode: ImagePanelMode.Background,
     backgroundColor: '#000000',
@@ -584,6 +590,7 @@ export const ELECTRO = createCharacter({
   rarity: 6,
   hp: 100,
   element: Element.Electro,
+  tags: [TAGS.TGP, TAGS.BASEMENT],
   imagePanel: {
     mode: ImagePanelMode.Background,
     backgroundColor: '#39AACC',

@@ -458,6 +458,10 @@ Patterns used in existing characters:
 - **Buff/debuff polarity** — every `createEffect` call must pass `positive: true|false`. This
   drives log phrasing ("X gained [Y]" vs "X was inflicted with [Y]") and the Cleanser
   consumable (which only removes `positive: false` effects).
+- **Tags** — optional `tags: string[]` on `createCharacter` (stored on `Character.tags`).
+  Internal only (not rendered on cards or in Discord UI). Use for ability/equipment logic
+  that should not depend on element or name (e.g. `TAGS.QUANTUM_GIRL` in `tcg/characterTags.ts`).
+  Helpers: `characterHasTag`, `countTaggedAllies`, `Character.hasTag`.
 
 ### 5.4 Adding a new effect type
 

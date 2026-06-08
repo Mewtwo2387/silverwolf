@@ -38,8 +38,10 @@ export class Character implements Card {
   defaultActiveSkillIndices?: number[];
   textColors: CharacterTextColors;
   twoColumnSkills: boolean;
+  /** Internal labels for ability/equipment logic; not shown in UI. */
+  tags: readonly string[];
 
-  constructor(name: string, titleDesc: TitleDesc, rarity: Rarity, hp: number, element: Element, imagePanel: ImagePanel, background: Background, skills: Skill[] = [], abilities: Ability[] = [], defaultActiveSkillIndices?: number[], textColors?: Partial<CharacterTextColors>, twoColumnSkills: boolean = false) {
+  constructor(name: string, titleDesc: TitleDesc, rarity: Rarity, hp: number, element: Element, imagePanel: ImagePanel, background: Background, skills: Skill[] = [], abilities: Ability[] = [], defaultActiveSkillIndices?: number[], textColors?: Partial<CharacterTextColors>, twoColumnSkills: boolean = false, tags: readonly string[] = []) {
     this.name = name;
     this.titleDesc = titleDesc;
     this.rarity = rarity;
@@ -52,6 +54,11 @@ export class Character implements Card {
     this.defaultActiveSkillIndices = defaultActiveSkillIndices;
     this.textColors = resolveCharacterTextColors(textColors);
     this.twoColumnSkills = twoColumnSkills;
+    this.tags = tags;
+  }
+
+  hasTag(tag: string): boolean {
+    return this.tags.includes(tag);
   }
 
   async generateCard() {

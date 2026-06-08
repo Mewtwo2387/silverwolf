@@ -68,6 +68,8 @@ export function createCharacter(params: {
   textColors?: Partial<CharacterTextColors>;
   /** Render skills in a 2-column half-scale grid (useful for characters with many skills). */
   twoColumnSkills?: boolean;
+  /** Internal labels for ability/equipment logic; not shown in UI. */
+  tags?: readonly string[];
 }): Character {
   const titleDesc = new TitleDesc(
     params.title,
@@ -90,6 +92,7 @@ export function createCharacter(params: {
     params.defaultForm,
     params.textColors,
     params.twoColumnSkills ?? false,
+    params.tags ?? [],
   );
 }
 

@@ -7,6 +7,7 @@ import type { Item } from '../../item';
 import { itemBackgroundForRarity } from '../../rarityColors';
 import { round2 } from '../../../utils/math';
 import { itemImagePanel } from '../shared';
+import { TAGS } from '../../characterTags';
 
 /** SIGNATURE EQUIPMENTS
  * We know what a signature is.
@@ -101,15 +102,15 @@ export const SILVERWOLF_KEYCHAIN = new SignatureEquipment(
     ),
   ],
   (target) => {
-    const quantumCount = target.battle.ally(target.side)
-      .filter((c) => c.character.element === Element.Quantum).length;
-    if (quantumCount > 0) {
+    const quantumGirlCount = target.battle.ally(target.side)
+      .filter((c) => c.character.hasTag(TAGS.QUANTUM_GIRL)).length;
+    if (quantumGirlCount > 0) {
       target.addEffect(
         new Effect(
           'Silverwolf Keychain (Team)',
-          `+${quantumCount * 10}% quantum damage (${quantumCount} quantum ${quantumCount === 1 ? 'ally' : 'allies'}).`,
+          `+${quantumGirlCount * 10}% quantum damage (${quantumGirlCount} quantum ${quantumGirlCount === 1 ? 'ally' : 'allies'}).`,
           EffectType.OutgoingDamage,
-          round2(1 + 0.1 * quantumCount),
+          round2(1 + 0.1 * quantumGirlCount),
           9999,
           true,
           { appliesToElement: Element.Quantum },
