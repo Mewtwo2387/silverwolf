@@ -15,6 +15,7 @@ import { Effect } from './effect';
 import { EffectType } from './effectType';
 import { RangeType } from './rangeType';
 import { Element } from './element';
+import type { SkillDamageOptions, SkillOnUse } from './skill';
 import { CharacterTextColors } from './textTheme';
 import { ImagePanel, ImagePanelOptions } from './imagePanel';
 
@@ -108,7 +109,25 @@ export function createSkill(params: {
   formChange?: number[]; // skill indices active after transformation
   /** Normal(n) / Charged(n) / Ultimate(energy); defaults to Normal(1). */
   battleCost?: SkillBattleCost;
+  /** Hits per target; each hit rolls damage and dodge independently. Default 1. */
+  hitCount?: number;
+  /** Fixed element for every hit. */
+  damageElement?: Element;
+  /** Each hit picks a random element. */
+  randomElementPerHit?: boolean;
+  /** Character-specific resolve logic (see {@link SkillOnUse}). */
+  onUse?: SkillOnUse;
 }): Skill {
+  const damageOptions: SkillDamageOptions | undefined = (
+    params.hitCount !== undefined
+      || params.damageElement !== undefined
+      || params.randomElementPerHit
+  ) ? {
+      hitCount: params.hitCount,
+      damageElement: params.damageElement,
+      randomElementPerHit: params.randomElementPerHit,
+    } : undefined;
+
   return new Skill(
     params.name,
     params.description,
@@ -116,6 +135,8 @@ export function createSkill(params: {
     params.range ?? RangeType.SingleOpponent,
     params.effects || [],
     params.formChange,
+    damageOptions,
+    params.onUse,
     params.battleCost ?? Normal(1),
   );
 }
@@ -136,8 +157,14 @@ export function createEffect(params: {
   activeSkillIndices?: number[]; // for FormChange effects
   appliesToElement?: Element; // for damage effects: if specified, only applies to damage of this element type
   overrideElement?: Element; // for DamageElementOverride: the element to convert outgoing damage to
+  maxStacks?: number;
 }): Effect {
-  const metadata: { activeSkillIndices?: number[]; appliesToElement?: Element; overrideElement?: Element } = {};
+  const metadata: {
+    activeSkillIndices?: number[];
+    appliesToElement?: Element;
+    overrideElement?: Element;
+    maxStacks?: number;
+  } = {};
   if (params.activeSkillIndices) {
     metadata.activeSkillIndices = params.activeSkillIndices;
   }
@@ -146,6 +173,9 @@ export function createEffect(params: {
   }
   if (params.overrideElement !== undefined) {
     metadata.overrideElement = params.overrideElement;
+  }
+  if (params.maxStacks !== undefined) {
+    metadata.maxStacks = params.maxStacks;
   }
 
   return new Effect(

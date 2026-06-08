@@ -455,6 +455,13 @@ Patterns used in existing characters:
 - **FormChange** — pass `formChange: [skillIdx,...]` on a skill and `defaultForm: [...]` on
   the character to enable transformations. The active skill set is what
   `CharacterInBattle.getActiveSkills()` filters.
+- **Multi-hit / per-hit element** — `createSkill({ hitCount, damageElement?, randomElementPerHit? })`.
+  Card damage shows as `4x4` when `hitCount > 1`. Each hit rolls dodge and damage separately;
+  `damageElement` or `randomElementPerHit` sets the element passed to
+  `calculateDamage` / `takeDamage` so elemental buffs match the hit.
+- **Character-specific skill logic** — `createSkill({ onUse })` runs after declarative
+  `effects` resolve. Put bespoke behaviour here (e.g. Mystic's Polygrowth stacks² bonus in
+  `characters.ts`), not in `characterInBattle.ts`.
 - **Buff/debuff polarity** — every `createEffect` call must pass `positive: true|false`. This
   drives log phrasing ("X gained [Y]" vs "X was inflicted with [Y]") and the Cleanser
   consumable (which only removes `positive: false` effects).

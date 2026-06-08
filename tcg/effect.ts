@@ -27,6 +27,8 @@ export class Effect {
     activeSkillIndices?: number[]; // For FormChange: which skill indices should be active in this form
     appliesToElement?: Element; // For damage effects: if specified, only applies to damage of this element type
     overrideElement?: Element; // For DamageElementOverride: the element to convert outgoing damage to
+    /** Cap stackable copies sharing this effect name (refresh duration when at cap). */
+    maxStacks?: number;
   };
 
   constructor(
@@ -36,7 +38,12 @@ export class Effect {
     amount: number,
     duration: number,
     positive: boolean,
-    metadata?: { activeSkillIndices?: number[]; appliesToElement?: Element; overrideElement?: Element },
+    metadata?: {
+      activeSkillIndices?: number[];
+      appliesToElement?: Element;
+      overrideElement?: Element;
+      maxStacks?: number;
+    },
     stackable: boolean = false,
   ) {
     this.name = name;

@@ -328,7 +328,23 @@ export class CharacterInBattle {
    * Effects are always cloned before being pushed so the per-instance state we mutate
    * (duration ticks down, etc.) can't bleed back into the shared source definition.
    */
+  removeEffectsByName(name: string): void {
+    this.effects = this.effects.filter((e) => e.name !== name);
+  }
+
   addEffect(effect: Effect) {
+    if (effect.stackable && effect.metadata?.maxStacks !== undefined) {
+      const stacks = this.effects.filter((e) => e.name === effect.name);
+      if (stacks.length >= effect.metadata.maxStacks) {
+        stacks.forEach((e) => {
+          if (effect.duration > e.duration) {
+            // eslint-disable-next-line no-param-reassign
+            e.duration = effect.duration;
+          }
+        });
+        return;
+      }
+    }
     if (!effect.stackable) {
       const existingEffect = this.effects.find((e) => e.name === effect.name && !e.stackable);
       if (existingEffect) {

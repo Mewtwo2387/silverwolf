@@ -18,6 +18,44 @@ import {
 import { ImagePanelMode } from './imagePanel';
 import { characterImagePath } from './assetPaths';
 import { TAGS, countTaggedAllies } from './characterTags';
+import type { CharacterInBattle } from './characterInBattle';
+import { round2 } from '../utils/math';
+
+const POLYGROWTH_STACK_NAME = 'Polygrowth Stack';
+const POLYGROWTH_BONUS_NAME = 'Polygrowth';
+const POLYGROWTH_DURATION = 5;
+const POLYGROWTH_MAX_STACKS = 5;
+
+/** Mystic charged skill: stack markers + outgoing-damage bonus at 20% × stacks². */
+function applyPolygrowthStack(caster: CharacterInBattle): void {
+  caster.addEffect(createEffect({
+    name: POLYGROWTH_STACK_NAME,
+    description: 'One Polygrowth stack.',
+    type: EffectType.OutgoingDamage,
+    amount: 1,
+    duration: POLYGROWTH_DURATION,
+    positive: true,
+    stackable: true,
+    maxStacks: POLYGROWTH_MAX_STACKS,
+  }));
+
+  const stacks = Math.min(
+    POLYGROWTH_MAX_STACKS,
+    caster.effects.filter((e) => e.name === POLYGROWTH_STACK_NAME).length,
+  );
+  const bonusMultiplier = round2(1 + 0.2 * stacks * stacks);
+
+  caster.removeEffectsByName(POLYGROWTH_BONUS_NAME);
+
+  caster.addEffect(createEffect({
+    name: POLYGROWTH_BONUS_NAME,
+    description: `Outgoing damage +${Math.round((bonusMultiplier - 1) * 100)}% (${stacks} stack${stacks === 1 ? '' : 's'}).`,
+    type: EffectType.OutgoingDamage,
+    amount: bonusMultiplier,
+    duration: POLYGROWTH_DURATION,
+    positive: true,
+  }));
+}
 
 /**
  * A list of all characters in the game
@@ -104,6 +142,33 @@ const ELECTRO_TEXT_COLORS = {
 };
 
 const ELECTRO_ABILITY_PANEL_COLOR = '#39AACC';
+
+const ANEMO_TEXT_COLORS = {
+  nameFill: '#E8FFF4',
+  nameStroke: '#123A2A',
+  hpLabelFill: '#C8F5E0',
+  hpLabelStroke: '#123A2A',
+  hpValueFill: '#F4FFFA',
+  hpValueStroke: '#0E2E22',
+  titleFill: '#D4F5E4',
+  titleStroke: '#143528',
+  titleDescFill: '#F0FFF8',
+  titleDescStroke: '#102820',
+  skillNameFill: '#C8EDDA',
+  skillNameStroke: '#143528',
+  skillDamageFill: '#FFFFFF',
+  skillDamageStroke: '#0E2E22',
+  skillCostFill: '#D8FFE8',
+  skillCostStroke: '#1A3D30',
+  skillDescFill: '#F4FFFA',
+  skillDescStroke: '#102820',
+  abilityNameFill: '#C8EDDA',
+  abilityNameStroke: '#143528',
+  abilityDescFill: '#F4FFFA',
+  abilityDescStroke: '#102820',
+};
+
+const ANEMO_ABILITY_PANEL_COLOR = '#5FBF8A';
 
 export const KAITLIN = createCharacter({
   name: 'Kaitlin',
@@ -675,4 +740,97 @@ export const ELECTRO = createCharacter({
   ],
 });
 
-export const CHARACTERS = [KAITLIN, VENFEI, EI, SILVERWOLF, SPARKLE, ELECTRO];
+export const MYSTIC = createCharacter({
+  name: 'Mystic',
+  title: 'Herrscher of Poly',
+  description: '-',
+  rarity: 6,
+  hp: 100,
+  element: Element.Anemo,
+  tags: [TAGS.TGP],
+  imagePanel: {
+    mode: ImagePanelMode.Background,
+    backgroundColor: '#5FBF8A',
+    imagePath: characterImagePath('mystic'),
+  },
+  background: createSimpleBackground('#5FBF8A', '#2D6B4A'),
+  textColors: ANEMO_TEXT_COLORS,
+  skills: [
+    createSkill({
+      name: 'Polyrhythm',
+      description: 'Deals 4 damage to one target 4 times.',
+      damage: 4,
+      hitCount: 4,
+      range: RangeType.SingleOpponent,
+      battleCost: Normal(1),
+    }),
+    createSkill({
+      name: 'Polynomial Polygrowth',
+      description: 'Gains one stack of [Polygrowth] for 5 turns. Increases outgoing damage by 20% x stacks² (max 5 stacks).',
+      range: RangeType.Self,
+      battleCost: Charged(1),
+      onUse: (caster) => {
+        applyPolygrowthStack(caster);
+      },
+    }),
+    createSkill({
+      name: 'Polychromatic Polystrike',
+      description: 'Deals 20 damage of 3 random elements to all targets.',
+      damage: 20,
+      hitCount: 3,
+      randomElementPerHit: true,
+      range: RangeType.AllOpponents,
+      battleCost: Ultimate(35),
+    }),
+  ],
+  abilities: [
+    createAbility({
+      name: 'Polymorphism',
+      description: 'For every TGP member in the team, increase outgoing damage by 20%.',
+      panelColor: ANEMO_ABILITY_PANEL_COLOR,
+      effects: [
+        createAbilityEffect({
+          range: RangeType.Self,
+          effect: createEffect({
+            name: 'Polymorphism',
+            description: 'Increases outgoing damage by 20%.',
+            type: EffectType.OutgoingDamage,
+            amount: 1.2,
+            positive: true,
+          }),
+          condition: (context: AbilityActivationContext) => (
+            countTaggedAllies(context.getAllies(), TAGS.TGP) === 1
+          ),
+        }),
+        createAbilityEffect({
+          range: RangeType.Self,
+          effect: createEffect({
+            name: 'Polymorphism',
+            description: 'Increases outgoing damage by 40%.',
+            type: EffectType.OutgoingDamage,
+            amount: 1.4,
+            positive: true,
+          }),
+          condition: (context: AbilityActivationContext) => (
+            countTaggedAllies(context.getAllies(), TAGS.TGP) === 2
+          ),
+        }),
+        createAbilityEffect({
+          range: RangeType.Self,
+          effect: createEffect({
+            name: 'Polymorphism',
+            description: 'Increases outgoing damage by 60%.',
+            type: EffectType.OutgoingDamage,
+            amount: 1.6,
+            positive: true,
+          }),
+          condition: (context: AbilityActivationContext) => (
+            countTaggedAllies(context.getAllies(), TAGS.TGP) === 3
+          ),
+        }),
+      ],
+    }),
+  ],
+});
+
+export const CHARACTERS = [KAITLIN, VENFEI, EI, SILVERWOLF, SPARKLE, ELECTRO, MYSTIC];
