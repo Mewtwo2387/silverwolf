@@ -442,8 +442,11 @@ Use the helpers in `tcg/characterBuilder.ts` (`createCharacter`, `createSkill`,
 `createSimpleBackground`, plus the `Normal`/`Charged`/`Ultimate` factories re-exported). You
 *can* call the constructors directly, but the helpers exist to keep examples readable.
 
-Place character definitions in `tcg/characters.ts`. Add the character to the `CHARACTERS`
-array — `tcg/characterRoster.ts` automatically derives Discord choice values from the array.
+Characters live under `tcg/characters/` — **one file per character** (e.g. `mystic.ts`).
+Shared element palettes are in `shared.ts`; `tcg/characters/roster.ts` aggregates exports
+into `CHARACTERS`. Import from `tcg/characters` (barrel) elsewhere. Add a new character
+module and append it to `ROSTER_ENTRIES` in `roster.ts` — `tcg/characterRoster.ts`
+automatically derives Discord choice values from `CHARACTERS`.
 
 Patterns used in existing characters:
 
@@ -461,7 +464,7 @@ Patterns used in existing characters:
   `calculateDamage` / `takeDamage` so elemental buffs match the hit.
 - **Character-specific skill logic** — `createSkill({ onUse })` runs after declarative
   `effects` resolve. Put bespoke behaviour here (e.g. Mystic's Polygrowth stacks² bonus in
-  `characters.ts`), not in `characterInBattle.ts`.
+  `tcg/characters/mystic.ts`), not in `characterInBattle.ts`.
 - **Buff/debuff polarity** — every `createEffect` call must pass `positive: true|false`. This
   drives log phrasing ("X gained [Y]" vs "X was inflicted with [Y]") and the Cleanser
   consumable (which only removes `positive: false` effects).
@@ -611,7 +614,7 @@ don't draw your own background from scratch.
 
 | Path | Purpose |
 | --- | --- |
-| `tcg/assets/characters/images/` | Character source art (referenced from `characters.ts`) |
+| `tcg/assets/characters/images/` | Character source art (referenced from `tcg/characters/<name>.ts`) |
 | `tcg/assets/characters/cards/` | Generated character card PNGs (`bun run card:generate`) |
 | `tcg/assets/items/images/` | Item source art (`<itemId>.png`; `itemImagePanel` fits art on a transparent panel; estrogen uses white) |
 | `tcg/assets/items/cards/` | Generated item card PNGs (`bun run card:generate-items`) |
@@ -733,7 +736,7 @@ add a new persona, drop a system prompt into `data/aiPersonas.json` /
 | Add a slash command | `commands/<file>.ts` (+ `commands/commandgroups/<group>.ts` if a sub) |
 | Add a DB column | `database/tables/<X>Table.ts` (+ types). No migration needed for additions. |
 | Add a DB model method | `database/queries/<x>Queries.ts` and `database/models/<X>Model.ts` |
-| Add a TCG character | `tcg/characters.ts` (use `characterBuilder` helpers); register through `CHARACTERS`. |
+| Add a TCG character | `tcg/characters/<name>.ts` (use `characterBuilder` helpers); append to `ROSTER_ENTRIES` in `roster.ts`. |
 | Add a TCG item | Matching file under `tcg/items/`; append to that module's `*Items` catalog array (e.g. `elementalDamageItems`). |
 | Add a battle rule | `tcg/battle.ts` (turn loop, victory, draws). |
 | Add a passive trigger | `tcg/battleEvents.ts` + emission in `Battle` + subscriber in an `Ability`. |
