@@ -12,6 +12,14 @@ import { CharacterTextColors, resolveCharacterTextColors } from './textTheme';
 import { ImagePanel } from './imagePanel';
 import { tcgAssetPaths } from './assetPaths';
 
+/** Fixed card canvas dimensions. */
+const CARD_WIDTH = 1080;
+const CARD_HEIGHT = 1920;
+/** Y where the variable-height body (title/art/skills/abilities) begins, under the header. */
+const BODY_START_Y = 192;
+/** Breathing room kept below the body so content never touches the bottom edge. */
+const BODY_BOTTOM_MARGIN = 32;
+
 /**
  * A single character card and their stats
  * @param name - The name of the character
@@ -62,7 +70,7 @@ export class Character implements Card {
   }
 
   async generateCard() {
-    const canvas = Canvas.createCanvas(1080, 1920);
+    const canvas = Canvas.createCanvas(CARD_WIDTH, CARD_HEIGHT);
     const ctx = canvas.getContext('2d');
 
     // Set background
@@ -110,14 +118,46 @@ export class Character implements Card {
       shadowOffsetY: 4,
     });
 
-    let currentY = await this.titleDesc.draw(ctx, 192, this.textColors);
+    // The body (title, art, skills, abilities) grows with how much a character has to say.
+    // Measure it on a throwaway context first, then uniformly scale it down so it always
+    // fits within the card instead of spilling past the bottom edge.
+    const measureCtx = Canvas.createCanvas(CARD_WIDTH, CARD_HEIGHT).getContext('2d');
+    const bodyEndY = await this.drawBody(measureCtx, BODY_START_Y);
+    const bodyHeight = bodyEndY - BODY_START_Y;
+    const availableHeight = CARD_HEIGHT - BODY_BOTTOM_MARGIN - BODY_START_Y;
+
+    if (bodyHeight > availableHeight && bodyHeight > 0) {
+      const scale = availableHeight / bodyHeight;
+      // Anchor the scaled body at its start Y and re-center it horizontally so the
+      // shrunken content keeps even margins instead of hugging the left edge.
+      const horizontalInset = (CARD_WIDTH * (1 - scale)) / 2;
+      ctx.save();
+      ctx.translate(horizontalInset, BODY_START_Y);
+      ctx.scale(scale, scale);
+      await this.drawBody(ctx, 0);
+      ctx.restore();
+    } else {
+      await this.drawBody(ctx, BODY_START_Y);
+    }
+
+    return canvas;
+  }
+
+  /**
+   * Draws the variable-height portion of the card (title/description, art panel, skills,
+   * abilities) starting at `startY` and returns the Y coordinate just past the last block.
+   * Kept side-effect free with respect to the header so it can be rendered twice: once to
+   * measure its height, once (optionally scaled) to actually paint it.
+   */
+  private async drawBody(ctx: Canvas.CanvasRenderingContext2D, startY: number): Promise<number> {
+    let currentY = await this.titleDesc.draw(ctx, startY, this.textColors);
 
     currentY = await this.imagePanel.draw(ctx, currentY);
 
     if (this.twoColumnSkills && this.skills.length > 0) {
       const edgeInset = 20;
       const gutter = 20;
-      const renderedColumnWidth = (canvas.width - edgeInset * 2 - gutter) / 2;
+      const renderedColumnWidth = (CARD_WIDTH - edgeInset * 2 - gutter) / 2;
       const scale = 0.85;
       const internalColumnWidth = renderedColumnWidth / scale;
       const skillLayout = {
@@ -159,6 +199,6 @@ export class Character implements Card {
       currentY = await ability.draw(ctx, currentY, this.textColors);
     }
 
-    return canvas;
+    return currentY;
   }
 }

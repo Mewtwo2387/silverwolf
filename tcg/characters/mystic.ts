@@ -59,7 +59,7 @@ function applyPolygrowthStack(caster: CharacterInBattle): void {
 export const MYSTIC = createCharacter({
   name: 'Mystic',
   title: 'Herrscher of Poly',
-  description: '-',
+  description: 'A polymathic, polychromatic sovereign who commands polyphonic, polyrhythmic, polymorphic forces.',
   rarity: 6,
   hp: 100,
   element: Element.Anemo,
@@ -67,7 +67,7 @@ export const MYSTIC = createCharacter({
   imagePanel: {
     mode: ImagePanelMode.Background,
     backgroundColor: '#5FBF8A',
-    imagePath: characterImagePath('mystic'),
+    imagePath: characterImagePath('mystic', 'jpg'),
   },
   background: createSimpleBackground('#5FBF8A', '#2D6B4A'),
   textColors: ANEMO_TEXT_COLORS,

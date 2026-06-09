@@ -197,9 +197,9 @@ export class Skill implements DrawableBlock {
   ): Promise<number> {
     let currentY = y;
 
-    const maxTextWidth = layout.maxTextWidth ?? 800;
+    const maxTextWidth = layout.maxTextWidth ?? 940;
     const nameLeft = layout.left ?? 64;
-    const damageRight = layout.right ?? 956;
+    const damageRight = layout.right ?? 1004;
     const compactDamage = layout.compactDamage ?? false;
     const compact = layout.compact ?? false;
     const nameLineHeight = 56;
