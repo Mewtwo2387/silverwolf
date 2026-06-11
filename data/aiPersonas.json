@@ -29,7 +29,7 @@
         "gpt"
       ],
       "provider": "openrouter",
-      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
       "systemPrompt": "You are GPT-4.2 , a helpful AI assistant. Respond clearly, concisely, neutrally, and politely. Keep answers short, under a few sentences unless more detail is explicitly requested.",
       "avatarURL": "https://freelogopng.com/images/all_img/1681142503openai-icon-png.png",
       "webSearchEnabled": true
@@ -52,6 +52,13 @@
       "systemPromptFile": "data/SummarizerSystemPrompt.txt"
     },
     {
+      "name": "Imgen",
+      "triggers": [],
+      "provider": "openrouter",
+      "model": "black-forest-labs/flux.2-pro",
+      "responseModalities": ["image"]
+    },
+    {
       "name": "TitleGen",
       "triggers": [],
       "provider": "openrouter",
@@ -62,7 +69,7 @@
       "name": "Deepseek",
       "triggers": ["@ds", "deepseek"],
       "provider": "openrouter",
-      "model": "deepseek/deepseek-v4-flash:free",
+      "model": "deepseek/deepseek-v4-flash",
       "systemPrompt": "You are Deepseek V4 flash, a helpful AI assistant. Respond clearly, concisely, and politely. Keep answers under a few sentences unless more detail is explicitly requested.",
       "avatarURL": "https://freepnglogo.com/images/all_img/deep-seek-logo-whale-1ced.png",
       "webSearchEnabled": true

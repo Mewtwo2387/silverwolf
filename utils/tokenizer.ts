@@ -56,12 +56,10 @@ const CONTEXT_LIMITS: Record<string, number> = {
   'gemini-3.1-flash-lite': 1_000_000,
   'gemini-2.0-flash-preview-image-generation': 8_192,
   // OpenRouter models
-  'x-ai/grok-4.1-fast': 2_000_000,
-  // Spec says 262k but the :free tier caps well below that in practice.
   // Calibration further narrows the effective budget based on real usage.
-  'nvidia/nemotron-3-super-120b-a12b:free': 131_072,
+  'nvidia/nemotron-3-ultra-550b-a55b:free': 1_000_000,
+  'deepseek/deepseek-v4-flash': 1_000_000,
   'xiaomi/mimo-v2-flash:nitro': 256_000,
-  'cognitivecomputations/dolphin-mistral-24b-venice-edition:free': 32_768,
   // Default for unknown models
   default: 128_000,
 };

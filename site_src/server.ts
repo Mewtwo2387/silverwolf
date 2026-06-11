@@ -46,6 +46,11 @@ export function startWebsite(silverwolf: Silverwolf) {
   const server = Bun.serve({
     port: PORT,
     hostname: HOSTNAME,
+    // Bun's default is 128 MiB. The largest legitimate request body is an
+    // ai-slop message (~8 KB), so cap hard — unauthenticated POSTs (e.g.
+    // /games/love/calculate) are otherwise fully buffered and JSON.parsed
+    // before any validation runs.
+    maxRequestBodySize: 256 * 1024,
     fetch: app.fetch,
     websocket,
   });
