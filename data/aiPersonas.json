@@ -62,7 +62,7 @@
       "name": "Deepseek",
       "triggers": ["@ds", "deepseek"],
       "provider": "openrouter",
-      "model": "deepseek/deepseek-v4-flash:free",
+      "model": "deepseek/deepseek-v4-flash",
       "systemPrompt": "You are Deepseek V4 flash, a helpful AI assistant. Respond clearly, concisely, and politely. Keep answers under a few sentences unless more detail is explicitly requested.",
       "avatarURL": "https://freepnglogo.com/images/all_img/deep-seek-logo-whale-1ced.png",
       "webSearchEnabled": true
