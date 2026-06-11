@@ -52,6 +52,13 @@
       "systemPromptFile": "data/SummarizerSystemPrompt.txt"
     },
     {
+      "name": "Imgen",
+      "triggers": [],
+      "provider": "openrouter",
+      "model": "black-forest-labs/flux.2-pro",
+      "responseModalities": ["image"]
+    },
+    {
       "name": "TitleGen",
       "triggers": [],
       "provider": "openrouter",
