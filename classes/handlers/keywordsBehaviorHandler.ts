@@ -4,6 +4,7 @@ import {
 } from 'discord.js';
 import { log, logError } from '../../utils/log';
 import { resolvePersona, generateContent, generateTitleForHistory } from '../../utils/ai';
+import { IMAGE_GEN_TOOL_NAME } from '../../utils/imageGen';
 import { trimHistoryToFit } from '../../utils/tokenizer';
 import { extractPdfsFromMessage } from '../../utils/pdf';
 
@@ -185,6 +186,11 @@ const scriptHandlers = {
         prompt,
         history,
         webSearchEnabled: persona.webSearchEnabled,
+        // Image generation is Discord-only (delivery rides this webhook); the
+        // rate limit is keyed to the requesting Discord user.
+        imageGen: hasMemory
+          ? { userId: message.author.id, db: (message.client as any).db }
+          : undefined,
       });
 
       if (!webhook) {
@@ -211,10 +217,13 @@ const scriptHandlers = {
       }
 
       const MAX_LENGTH = 2000;
-      const searchPrefix = toolCalls && toolCalls.length > 0
-        ? `-# 🔎 searched the web (${toolCalls.length})\n`
+      const searchCallCount = (toolCalls ?? []).filter((tc: any) => tc.name !== IMAGE_GEN_TOOL_NAME).length;
+      const imageCallHappened = (toolCalls ?? []).some((tc: any) => tc.name === IMAGE_GEN_TOOL_NAME && tc.ok);
+      const searchPrefix = searchCallCount > 0
+        ? `-# 🔎 searched the web (${searchCallCount})\n`
         : '';
-      let remainingText = `${searchPrefix}${(text || '').toString()}`;
+      const imagePrefix = imageCallHappened ? '-# 🎨 generated an image\n' : '';
+      let remainingText = `${searchPrefix}${imagePrefix}${(text || '').toString()}`;
       let previousMsg: any = null;
       let filesToAttach: any[] = images || [];
 
@@ -240,6 +249,11 @@ const scriptHandlers = {
         allowedMentions: { parse: [] },
       });
       previousMsg = sentInitial;
+      // Discord CDN URLs of attached generated images — saved to history so the
+      // model has a reference to what it sent (links are signed and expire ~24h).
+      const imageCdnUrls: string[] = filesToAttach.length > 0
+        ? [...(sentInitial.attachments?.values() ?? [])].map((a: any) => a.url).filter(Boolean)
+        : [];
       filesToAttach = [];
 
       while (remainingText.length > 0) {
@@ -322,6 +336,13 @@ const scriptHandlers = {
               aiSession.sessionId,
               aiRole,
               `[image-only response] ${imageMeta}`,
+            );
+          }
+          if (hasImages && imageCdnUrls.length > 0) {
+            await (message.client as any).db.aiChat.addHistory(
+              aiSession.sessionId,
+              aiRole,
+              `[generated image attached: ${imageCdnUrls.join(' ')}] (note: this link expires within ~24 hours)`,
             );
           }
 
