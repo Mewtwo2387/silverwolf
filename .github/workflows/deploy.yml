@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - master
+    # Changes that never reach the server image shouldn't trigger a redeploy.
+    paths-ignore:
+      - 'android/**'
+      - '**.md'
+      - '.claude/**'
 
 jobs:
   build-and-push:
