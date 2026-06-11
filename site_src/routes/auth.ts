@@ -1,4 +1,5 @@
 import type { Hono } from 'hono';
+import { html, raw as rawHtml } from 'hono/html';
 import { logError } from '../../utils/log';
 import type { Silverwolf } from '../../classes/silverwolf';
 import {
@@ -21,19 +22,18 @@ import {
   setSessionCookie,
   signedToken,
 } from '../auth/session';
-import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import type { AppEnv } from '../shared';
 
 export function registerAuthRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
   app.get('/auth/discord/login', (c) => {
     try {
-      const state = newRandomId(16);
-      setOAuthStateCookie(c, state);
-
+      // The Android app appends ?app=true. Encode that in the OAuth state
+      // (echoed back by Discord) instead of a separate cookie — cookies set
+      // on the redirect hop are easy to lose across the external-browser
+      // round trip, and the state is already CSRF-verified.
       const isApp = c.req.query('app') === 'true';
-      if (isApp) {
-        setCookie(c, 'sw_is_app', 'true', { maxAge: 300, path: '/' });
-      }
+      const state = isApp ? `${newRandomId(16)}.app` : newRandomId(16);
+      setOAuthStateCookie(c, state);
 
       // Optional ?return=/some/path — restored after OAuth callback. Rejected
       // unless it's a same-origin absolute path so we can't be turned into an
@@ -69,11 +69,29 @@ export function registerAuthRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
       const { id: sessionId } = await createSession(silverwolf, me.id);
       setSessionCookie(c, sessionId);
 
-      const isApp = getCookie(c, 'sw_is_app') === 'true';
-      deleteCookie(c, 'sw_is_app', { path: '/' });
+      const isApp = state.endsWith('.app');
 
       if (isApp) {
-        return c.redirect(`silverwolf://login?session=${signedToken(sessionId)}`);
+        // Chrome on Android blocks server redirects to custom schemes without
+        // a user gesture, so a bare 302 to silverwolf:// dies silently. Serve
+        // an interstitial that auto-attempts the deep link and keeps a
+        // tappable fallback (a click is always allowed to leave the browser).
+        const deepLink = `silverwolf://login?session=${signedToken(sessionId)}`;
+        const nonce = c.get('nonce');
+        return c.html(html`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="0;url=${deepLink}">
+  <title>Returning to the app…</title>
+</head>
+<body style="background:#06080F;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:1.5rem;margin:0">
+  <p>Logged in! Sending you back to the app…</p>
+  <a href="${deepLink}" style="background:#4C6EF5;color:#fff;padding:.75rem 1.5rem;border-radius:.5rem;text-decoration:none">Open the app</a>
+  <script nonce="${nonce}">location.href = ${rawHtml(JSON.stringify(deepLink))};</script>
+</body>
+</html>`);
       }
 
       const returnTo = readReturnCookie(c);

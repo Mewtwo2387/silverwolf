@@ -70,8 +70,10 @@ export function setSessionCookie(c: Context, sessionId: string) {
   });
 }
 
+// deleteCookie serializes the cookie too — __Host- names require Secure even
+// when expiring them, so deletes must carry the same flags as sets.
 export function clearSessionCookie(c: Context) {
-  deleteCookie(c, SESSION_COOKIE, { path: '/' });
+  deleteCookie(c, SESSION_COOKIE, { path: '/', secure: isProd() });
 }
 
 export function readSessionId(c: Context): string | null {
@@ -90,7 +92,7 @@ export function readOAuthStateCookie(c: Context): string | null {
 }
 
 export function clearOAuthStateCookie(c: Context) {
-  deleteCookie(c, OAUTH_STATE_COOKIE, { path: '/' });
+  deleteCookie(c, OAUTH_STATE_COOKIE, { path: '/', secure: isProd() });
 }
 
 // Whitelist for the `?return=` redirect on /auth/discord/login. Only same-origin
@@ -120,7 +122,7 @@ export function readReturnCookie(c: Context): string | null {
 }
 
 export function clearReturnCookie(c: Context) {
-  deleteCookie(c, OAUTH_RETURN_COOKIE, { path: '/' });
+  deleteCookie(c, OAUTH_RETURN_COOKIE, { path: '/', secure: isProd() });
 }
 
 export async function loadSession(
