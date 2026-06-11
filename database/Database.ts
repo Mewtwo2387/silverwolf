@@ -2,6 +2,7 @@ import { Database as BunDatabase } from 'bun:sqlite';
 import { log, logError } from '../utils/log';
 import { snakeToCamelJSON } from '../utils/caseConvert';
 import * as tables from './tables';
+import imageGenQueries from './queries/imageGenQueries';
 import * as modelClasses from './models';
 import type { TableDefinition, QueryResult } from './types';
 import type UserModel from './models/UserModel';
@@ -154,10 +155,7 @@ class Database {
     `);
 
     // Back the per-user rolling-24h image-generation rate-limit count.
-    this.db.run(`
-      CREATE INDEX IF NOT EXISTS idx_imagegenlog_user_created
-      ON ImageGenLog (user_id, created_at)
-    `);
+    this.db.run(imageGenQueries.CREATE_USER_CREATED_INDEX);
 
     // Back the per-user recent-match lookup (GET_RECENT_FOR_USER).
     this.db.run(`

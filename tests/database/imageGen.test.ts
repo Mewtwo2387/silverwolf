@@ -21,29 +21,29 @@ describe('ImageGenModel', () => {
     await db.executeQuery('DELETE FROM ImageGenLog');
   });
 
-  it('counts zero generations for a fresh user', async () => {
+  test('counts zero generations for a fresh user', async () => {
     expect(await imageGenModel.countLast24h('u1')).toBe(0);
   });
 
-  it('counts successful generations within the window', async () => {
+  test('counts successful generations within the window', async () => {
     await imageGenModel.logGeneration('u1', 'a cat', 'test-model', true);
     await imageGenModel.logGeneration('u1', 'a dog', 'test-model', true);
     expect(await imageGenModel.countLast24h('u1')).toBe(2);
   });
 
-  it('does not count failed generations toward the limit', async () => {
+  test('does not count failed generations toward the limit', async () => {
     await imageGenModel.logGeneration('u1', 'a cat', 'test-model', false);
     await imageGenModel.logGeneration('u1', 'a dog', 'test-model', true);
     expect(await imageGenModel.countLast24h('u1')).toBe(1);
   });
 
-  it('scopes the count to the requesting user', async () => {
+  test('scopes the count to the requesting user', async () => {
     await imageGenModel.logGeneration('u1', 'a cat', 'test-model', true);
     await imageGenModel.logGeneration('u2', 'a dog', 'test-model', true);
     expect(await imageGenModel.countLast24h('u1')).toBe(1);
   });
 
-  it('excludes rows older than 24 hours (rolling window)', async () => {
+  test('excludes rows older than 24 hours (rolling window)', async () => {
     await db.executeQuery(
       "INSERT INTO ImageGenLog (user_id, prompt, model, success, created_at) VALUES (?, ?, ?, 1, datetime('now', '-25 hours'))",
       ['u1', 'old prompt', 'test-model'],
@@ -52,11 +52,29 @@ describe('ImageGenModel', () => {
     expect(await imageGenModel.countLast24h('u1')).toBe(1);
   });
 
-  it('reaches the limit after IMAGE_GEN_DAILY_LIMIT successes', async () => {
+  test('reserveGeneration consumes slots until the limit, then returns null', async () => {
     for (let i = 0; i < IMAGE_GEN_DAILY_LIMIT; i += 1) {
       // eslint-disable-next-line no-await-in-loop
-      await imageGenModel.logGeneration('u1', `prompt ${i}`, 'test-model', true);
+      const id = await imageGenModel.reserveGeneration('u1', `prompt ${i}`, 'test-model', IMAGE_GEN_DAILY_LIMIT);
+      expect(id).not.toBeNull();
     }
+    const blocked = await imageGenModel.reserveGeneration('u1', 'one too many', 'test-model', IMAGE_GEN_DAILY_LIMIT);
+    expect(blocked).toBeNull();
     expect(await imageGenModel.countLast24h('u1')).toBe(IMAGE_GEN_DAILY_LIMIT);
+  });
+
+  test('markFailed releases a reserved slot', async () => {
+    for (let i = 0; i < IMAGE_GEN_DAILY_LIMIT; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await imageGenModel.reserveGeneration('u1', `prompt ${i}`, 'test-model', IMAGE_GEN_DAILY_LIMIT);
+    }
+    const id = await imageGenModel.reserveGeneration('u1', 'blocked', 'test-model', IMAGE_GEN_DAILY_LIMIT);
+    expect(id).toBeNull();
+
+    const lastRow = await db.executeSelectQuery('SELECT id FROM ImageGenLog ORDER BY id DESC LIMIT 1');
+    await imageGenModel.markFailed(lastRow!.id);
+
+    const freed = await imageGenModel.reserveGeneration('u1', 'retry', 'test-model', IMAGE_GEN_DAILY_LIMIT);
+    expect(freed).not.toBeNull();
   });
 });

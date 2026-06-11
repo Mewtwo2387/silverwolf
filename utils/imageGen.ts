@@ -100,14 +100,15 @@ export async function runImageGeneration(opts: {
   }
   const prompt = rawPrompt.trim().slice(0, MAX_PROMPT_CHARS);
 
-  let used = 0;
+  // Atomically count + insert the quota row (fail closed: DB errors block generation).
+  let reservationId: number | null = null;
   try {
-    used = await ctx.db.imageGen.countLast24h(ctx.userId);
+    reservationId = await ctx.db.imageGen.reserveGeneration(ctx.userId, prompt, model, IMAGE_GEN_DAILY_LIMIT);
   } catch (err) {
-    logError('[imagegen] rate-limit check failed:', err);
+    logError('[imagegen] quota reservation failed:', err);
     return { ok: false, error: 'Error: image generation is temporarily unavailable.' };
   }
-  if (used >= IMAGE_GEN_DAILY_LIMIT) {
+  if (reservationId === null) {
     return {
       ok: false,
       error: `Error: this user has reached the image generation limit (${IMAGE_GEN_DAILY_LIMIT} per 24 hours). `
@@ -115,7 +116,14 @@ export async function runImageGeneration(opts: {
     };
   }
 
-  log(`[imagegen] user ${ctx.userId} generating (${used + 1}/${IMAGE_GEN_DAILY_LIMIT}): ${prompt.slice(0, 120)}`);
+  const reservedId = reservationId;
+  const releaseQuota = async () => {
+    await ctx.db.imageGen.markFailed(reservedId).catch((err: any) => {
+      logError('[imagegen] failed to release quota slot:', err);
+    });
+  };
+
+  log(`[imagegen] user ${ctx.userId} generating: ${prompt.slice(0, 120)}`);
 
   let dataUrl = '';
   try {
@@ -131,27 +139,23 @@ export async function runImageGeneration(opts: {
     dataUrl = completion?.choices?.[0]?.message?.images?.[0]?.image_url?.url ?? '';
   } catch (err) {
     logError('[imagegen] generation failed:', err);
-    await ctx.db.imageGen.logGeneration(ctx.userId, prompt, model, false).catch(() => {});
+    await releaseQuota();
     return { ok: false, error: 'Error: image generation failed. Tell the user to try again later.' };
   }
 
   const match = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/is.exec(dataUrl);
   if (!match) {
     logError(`[imagegen] unexpected response format (no base64 data URL); got: ${dataUrl.slice(0, 80)}`);
-    await ctx.db.imageGen.logGeneration(ctx.userId, prompt, model, false).catch(() => {});
+    await releaseQuota();
     return { ok: false, error: 'Error: the image model returned no image. Tell the user to try again later.' };
   }
 
   const ext = match[1].split('/')[1].replace('jpeg', 'jpg');
   const buffer = Buffer.from(match[2], 'base64');
   if (buffer.length === 0 || buffer.length > MAX_IMAGE_BYTES) {
-    await ctx.db.imageGen.logGeneration(ctx.userId, prompt, model, false).catch(() => {});
+    await releaseQuota();
     return { ok: false, error: 'Error: the generated image could not be attached (empty or too large).' };
   }
-
-  await ctx.db.imageGen.logGeneration(ctx.userId, prompt, model, true).catch((err: any) => {
-    logError('[imagegen] failed to log generation:', err);
-  });
 
   return {
     ok: true,
