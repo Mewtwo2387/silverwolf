@@ -33,7 +33,7 @@ import kotlinx.coroutines.launch
 private const val PREFS_NAME = "silverwolf_prefs"
 private const val KEY_SERVER_URL = "server_url"
 private const val KEY_FORCE_OFFLINE = "force_offline"
-private const val DEFAULT_SERVER_URL = "http://10.0.2.2:6769"
+private const val DEFAULT_SERVER_URL = "https://bot.silverwolf.dev"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
