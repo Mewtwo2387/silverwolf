@@ -24,6 +24,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.navigation3.runtime.NavKey
 import androidx.webkit.WebViewAssetLoader
+import com.example.silverwolf.BundledAssetInterceptor
 import com.example.silverwolf.CookieHelper
 import com.example.silverwolf.LoginSessionManager
 import com.example.silverwolf.NetworkMonitor
@@ -184,8 +185,16 @@ private fun WebViewContainer(
                     javaScriptEnabled = true
                     domStorageEnabled = true
                     databaseEnabled = true
+                    cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
+                    // Pre-rasterize offscreen tiles for smoother scrolling
+                    offscreenPreRaster = true
                     // Add a custom UA header so Hono backend knows it's the mobile app if needed
                     userAgentString = "$userAgentString SilverwolfAndroidApp"
+                }
+
+                // chrome://inspect profiling on debug builds
+                if (ctx.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) {
+                    WebView.setWebContentsDebuggingEnabled(true)
                 }
 
                 webViewClient = object : WebViewClient() {
@@ -194,11 +203,14 @@ private fun WebViewContainer(
                         request: WebResourceRequest
                     ): WebResourceResponse? {
                         // Forward request to AssetLoader if URL starts with appassets host
-                        return if (request.url.host == "appassets.androidplatform.net") {
-                            assetLoader.shouldInterceptRequest(request.url)
-                        } else {
-                            super.shouldInterceptRequest(view, request)
+                        if (request.url.host == "appassets.androidplatform.net") {
+                            return assetLoader.shouldInterceptRequest(request.url)
                         }
+                        // Serve bundled fonts/images for the live site from the APK
+                        if (request.url.host == Uri.parse(serverUrl).host) {
+                            BundledAssetInterceptor.intercept(ctx, request.url)?.let { return it }
+                        }
+                        return super.shouldInterceptRequest(view, request)
                     }
 
                     override fun shouldOverrideUrlLoading(
