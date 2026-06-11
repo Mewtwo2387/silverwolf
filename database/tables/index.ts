@@ -6,6 +6,7 @@ import commandConfigTable from './commandConfigTable';
 import cyclicTttMatchTable from './cyclicTttMatchTable';
 import gameUIDTable from './gameUIDTable';
 import globalConfigTable from './globalConfigTable';
+import imageGenLogTable from './imageGenLogTable';
 import marriageTable from './marriageTable';
 import pokemonTable from './pokemonTable';
 import poopEntryTable from './poopEntryTable';
@@ -23,6 +24,7 @@ export {
   cyclicTttMatchTable,
   gameUIDTable,
   globalConfigTable,
+  imageGenLogTable,
   marriageTable,
   pokemonTable,
   poopEntryTable,
@@ -40,6 +42,7 @@ export type { CommandConfigRow } from './commandConfigTable';
 export type { CyclicTttMatchRow } from './cyclicTttMatchTable';
 export type { GameUIDRow } from './gameUIDTable';
 export type { GlobalConfigRow } from './globalConfigTable';
+export type { ImageGenLogRow } from './imageGenLogTable';
 export type { MarriageRow } from './marriageTable';
 export type { PokemonRow } from './pokemonTable';
 export type { PoopEntryRow } from './poopEntryTable';

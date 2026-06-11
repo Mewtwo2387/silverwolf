@@ -5,6 +5,7 @@ import CommandConfigModel from './CommandConfigModel';
 import CyclicTttMatchModel from './CyclicTttMatchModel';
 import GameUIDModel from './GameUIDModel';
 import GlobalConfigModel from './GlobalConfigModel';
+import ImageGenModel from './ImageGenModel';
 import MarriageModel from './MarriageModel';
 import PokemonModel from './PokemonModel';
 import PoopModel from './PoopModel';
@@ -20,6 +21,7 @@ export {
   CyclicTttMatchModel,
   GameUIDModel,
   GlobalConfigModel,
+  ImageGenModel,
   MarriageModel,
   PokemonModel,
   PoopModel,

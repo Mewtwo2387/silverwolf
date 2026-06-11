@@ -2,6 +2,7 @@ import { Database as BunDatabase } from 'bun:sqlite';
 import { log, logError } from '../utils/log';
 import { snakeToCamelJSON } from '../utils/caseConvert';
 import * as tables from './tables';
+import imageGenQueries from './queries/imageGenQueries';
 import * as modelClasses from './models';
 import type { TableDefinition, QueryResult } from './types';
 import type UserModel from './models/UserModel';
@@ -13,6 +14,7 @@ import type CommandConfigModel from './models/CommandConfigModel';
 import type CyclicTttMatchModel from './models/CyclicTttMatchModel';
 import type GameUIDModel from './models/GameUIDModel';
 import type GlobalConfigModel from './models/GlobalConfigModel';
+import type ImageGenModel from './models/ImageGenModel';
 import type ServerRolesModel from './models/ServerRolesModel';
 import type BirthdayReminderModel from './models/BirthdayReminderModel';
 import type PoopModel from './models/PoopModel';
@@ -152,6 +154,9 @@ class Database {
       ON PoopEntry (user_id, logged_at)
     `);
 
+    // Back the per-user rolling-24h image-generation rate-limit count.
+    this.db.run(imageGenQueries.CREATE_USER_CREATED_INDEX);
+
     // Back the per-user recent-match lookup (GET_RECENT_FOR_USER).
     this.db.run(`
       CREATE INDEX IF NOT EXISTS idx_cyclic_ttt_x_id_ended_at
@@ -277,6 +282,7 @@ class Database {
   get cyclicTttMatch(): CyclicTttMatchModel { return this.models.CyclicTttMatchModel; }
   get gameUID(): GameUIDModel { return this.models.GameUIDModel; }
   get globalConfig(): GlobalConfigModel { return this.models.GlobalConfigModel; }
+  get imageGen(): ImageGenModel { return this.models.ImageGenModel; }
   get marriage(): MarriageModel { return this.models.MarriageModel; }
   get pokemon(): PokemonModel { return this.models.PokemonModel; }
   get poop(): PoopModel { return this.models.PoopModel; }
