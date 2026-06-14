@@ -1,9 +1,23 @@
 import { EmbedBuilder } from 'discord.js';
-import * as fs from 'fs';
 import { Command } from './classes/Command';
 import { generateContent, getPersonaByName } from '../utils/ai';
 import { log, logError } from '../utils/log';
 import { fetchMessagesByTime } from '../utils/fetch';
+
+function splitForEmbed(text: string, max = 4096): string[] {
+  if (text.length <= max) return [text];
+  const chunks: string[] = [];
+  let remaining = text;
+  while (remaining.length > max) {
+    let end = remaining.lastIndexOf('\n', max);
+    if (end <= 0) end = remaining.lastIndexOf(' ', max);
+    if (end <= 0) end = max;
+    chunks.push(remaining.slice(0, end));
+    remaining = remaining.slice(end).replace(/^\s+/, '');
+  }
+  if (remaining.length > 0) chunks.push(remaining);
+  return chunks;
+}
 
 class Summary extends Command {
   constructor(client: any) {
@@ -33,8 +47,12 @@ class Summary extends Command {
       await interaction.editReply('Invalid time range. Please enter a number greater than 0 minutes.');
       return;
     }
+    if (totalMinutes > 72 * 60) {
+      await interaction.editReply('Invalid time range. Maximum is 72 hours.');
+      return;
+    }
 
-    const messages = await fetchMessagesByTime(interaction.channel, timeLimit.getTime());
+    const messages = await fetchMessagesByTime(interaction.channel, timeLimit.getTime(), 3000);
     log(`Fetched ${messages.length} messages`);
 
     if (messages.length === 0) {
@@ -42,20 +60,14 @@ class Summary extends Command {
       return;
     }
 
-    const content = messages.map((message: any) => `Message by ${message[1].author.username}: ${message[1].content}`).join('\n');
+    const content = `Summarizing ${messages.length} messages.\n\n${messages.map((message: any) => `Message by ${message[1].author.username}: ${message[1].content}`).join('\n')}`;
     const persona = await getPersonaByName('Summarizer');
     if (!persona) {
       await interaction.editReply('Summarizer persona not configured.');
       return;
     }
     if (persona.systemPromptFile) {
-      const systemPromptFile = await new Promise<string>((resolve, reject) => {
-        fs.readFile(persona.systemPromptFile!, 'utf8', (err, data) => {
-          if (err) reject(err);
-          else resolve(data);
-        });
-      });
-      persona.systemPrompt = systemPromptFile;
+      persona.systemPrompt = await Bun.file(persona.systemPromptFile).text();
     }
 
     let summary: any;
@@ -73,15 +85,22 @@ class Summary extends Command {
       return;
     }
 
+    const chunks = splitForEmbed(summary.text);
     await interaction.editReply(
       {
         embeds: [
           new EmbedBuilder()
-            .setTitle(`Summary of${messages.length === 1000 ? ' the last' : ''} ${messages.length} messages from the last ${Math.floor(totalMinutes / 60)} hours and ${totalMinutes % 60} minutes`)
-            .setDescription(summary.text),
+            .setTitle(`Summary of${messages.length === 3000 ? ' the last' : ''} ${messages.length} messages from the last ${Math.floor(totalMinutes / 60)} hours and ${totalMinutes % 60} minutes`)
+            .setDescription(chunks[0]),
         ],
       },
     );
+    for (let i = 1; i < chunks.length; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await interaction.followUp({
+        embeds: [new EmbedBuilder().setDescription(chunks[i])],
+      });
+    }
   }
 }
 

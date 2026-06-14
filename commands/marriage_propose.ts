@@ -114,7 +114,7 @@ class MarriagePropose extends Command {
             .setTitle('Hold On!')
             .setDescription(randomResponse)
             .setImage(randomGif)],
-          ephemeral: true,
+          flags: Discord.MessageFlags.Ephemeral,
         });
         return;
       }

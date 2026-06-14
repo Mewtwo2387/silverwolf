@@ -23,6 +23,15 @@ COPY package.json bun.lockb* bun.lock ./
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     bun install --frozen-lockfile --production
 
+# 4. Build CSS (Tailwind) and JS (Bun.build minify) inside the image so the
+#    runtime never depends on committed build artifacts. tailwindcss is a
+#    devDep and was skipped by --production above; `bunx --bun tailwindcss@3`
+#    fetches it just-in-time. bun build is built into the runtime, no install.
+COPY site_src ./site_src
+COPY tailwind.config.js ./
+RUN bun build ./site_src/Assets/app.src.js --minify --outfile ./site_src/Assets/app.js \
+    && bunx --bun tailwindcss@3 -i ./site_src/Assets/input.css -o ./site_src/Assets/styles.css --minify
+
 # --- STAGE 2: Run ---
 # Use 'slim' (Debian) for a smaller final image that is still compatible with Stage 1
 FROM oven/bun:1-slim
@@ -48,6 +57,11 @@ USER bun
 # Copy node_modules and code from builder
 COPY --from=builder --chown=bun:bun /app/node_modules ./node_modules
 COPY --chown=bun:bun . .
+# Overlay the built CSS/JS from the builder stage. The local `.dockerignore`
+# excludes these from the `COPY . .` above, so the only copies that reach the
+# runtime are the ones the builder just produced.
+COPY --from=builder --chown=bun:bun /app/site_src/Assets/styles.css ./site_src/Assets/styles.css
+COPY --from=builder --chown=bun:bun /app/site_src/Assets/app.js ./site_src/Assets/app.js
 
 # Refresh font cache
 RUN fc-cache -f

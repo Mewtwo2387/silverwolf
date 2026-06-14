@@ -1,12 +1,34 @@
 import path from 'path';
-import fs from 'fs';
 import { Command } from './classes/Command';
 import { logError } from '../utils/log';
 
-const hsrAvatars = path.join(import.meta.dir, '../data/hsrAvartars.json');
-const hsrCharacters = path.join(import.meta.dir, '../data/hsrCharacters.json');
-const hsrNames = path.join(import.meta.dir, '../data/hsr.json');
-const hsrLC = path.join(import.meta.dir, '../data/hsrLC.json');
+type HsrData = {
+  avatarData: any;
+  characterData: any;
+  namesData: any;
+  lightconeData: any;
+};
+let dataCache: HsrData | null = null;
+let dataCachePromise: Promise<HsrData> | null = null;
+
+async function loadHsrData() {
+  if (dataCache) return dataCache;
+  if (!dataCachePromise) {
+    dataCachePromise = Promise.all([
+      Bun.file(path.join(__dirname, '../data/hsrAvartars.json')).json(),
+      Bun.file(path.join(__dirname, '../data/hsrCharacters.json')).json(),
+      Bun.file(path.join(__dirname, '../data/hsr.json')).json(),
+      Bun.file(path.join(__dirname, '../data/hsrLC.json')).json(),
+    ]).then(([avatarData, characterData, namesData, lightconeData]) => {
+      dataCache = {
+        avatarData, characterData, namesData, lightconeData,
+      };
+      dataCachePromise = null;
+      return dataCache;
+    });
+  }
+  return dataCachePromise;
+}
 
 class HsrProfile extends Command {
   constructor(client: any) {
@@ -27,22 +49,20 @@ class HsrProfile extends Command {
       'User-Agent': 'Silverwolf-bot/1.0 (Example@gmail.com)',
     };
 
-    const avatarData = JSON.parse(fs.readFileSync(hsrAvatars, 'utf8'));
-    const characterData = JSON.parse(fs.readFileSync(hsrCharacters, 'utf8'));
-    const namesData = JSON.parse(fs.readFileSync(hsrNames, 'utf8'));
-    const lightconeData = JSON.parse(fs.readFileSync(hsrLC, 'utf8'));
-
     try {
+      const {
+        avatarData, characterData, namesData, lightconeData,
+      } = await loadHsrData();
       const response = await fetch(url, { headers });
       if (!response.ok) {
         logError(`HTTP Error Response: Status ${response.status} ${response.statusText}`);
-        await interaction.editReply({ content: `Failed to fetch data: HTTP status ${response.status}. Please contact mystichunterz for assistance.`, ephemeral: true });
+        await interaction.editReply({ content: `Failed to fetch data: HTTP status ${response.status}. Please contact mystichunterz for assistance.` });
         return;
       }
       const data = await response.json();
 
       if (!data.detailInfo) {
-        await interaction.editReply({ content: 'No data found for the given UID. Please check the UID and try again.', ephemeral: true });
+        await interaction.editReply({ content: 'No data found for the given UID. Please check the UID and try again.' });
         return;
       }
 
@@ -117,7 +137,7 @@ class HsrProfile extends Command {
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       logError('Error fetching data from Honkai Star Rail API:', error);
-      await interaction.editReply({ content: 'Failed to fetch data from Honkai Star Rail API. Please contact mystichunterz for assistance.', ephemeral: true });
+      await interaction.editReply({ content: 'Failed to fetch data from Honkai Star Rail API. Please contact mystichunterz for assistance.' });
     }
   }
 }

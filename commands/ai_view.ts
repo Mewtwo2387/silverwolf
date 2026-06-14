@@ -14,7 +14,10 @@ class AiView extends Command {
     const userId = interaction.user.id;
 
     try {
-      const sessions = await this.client.db.aiChat.getAllUserSessions(userId);
+      // Only Discord-source sessions — web-created (source='web') chats from
+      // the /games/ai-slop UI deliberately live in their own world and would
+      // be confusing to surface here (they share no memory with the bot).
+      const sessions = await this.client.db.aiChat.getUserDiscordSessions(userId);
 
       if (sessions.length === 0) {
         await interaction.editReply({
@@ -38,7 +41,7 @@ class AiView extends Command {
         const date = new Date(s.createdAt).toLocaleDateString('en-GB', {
           year: 'numeric', month: 'short', day: 'numeric',
         });
-        return `**[${s.sessionId}]** ${s.personaName} · ${status} · ${messageCount} ${messageLabel} · Created ${date}`;
+        return `**[${s.sessionId}]** ${s.title || s.personaName} · ${status} · ${messageCount} ${messageLabel} · Created ${date}`;
       });
 
       const description = rows.join('\n')
@@ -50,7 +53,7 @@ class AiView extends Command {
             .setColor('#5865F2')
             .setTitle('🤖 Your AI Chat Sessions')
             .setDescription(description)
-            .setFooter({ text: 'Use /ai chatnew, /ai chatswitch, or /ai chatdelete.' }),
+            .setFooter({ text: 'Use /ai chatnew, /ai chatswitch, /ai chatdelete, or /ai retitle.' }),
         ],
       });
     } catch (err) {

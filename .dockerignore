@@ -7,3 +7,10 @@ database.db
 persistence/
 .DS_Store
 local_db_folder/
+# Built inside the Dockerfile from input.css / app.src.js — never copy a stale
+# local artifact into the image.
+site_src/Assets/styles.css
+site_src/Assets/app.js
+# Android app — client-side only, never part of the server image
+android/
+*.apk

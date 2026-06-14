@@ -1,5 +1,5 @@
 import {
-  ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder,
+  ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags,
 } from 'discord.js';
 import { Command } from './classes/Command';
 
@@ -58,7 +58,7 @@ class RussianRouletteSingleplayer extends Command {
         }
       } else if (i.customId === 'thisChamber') {
         if (thisChamberCooldown) {
-          await i.reply({ content: 'You cannot press "This Chamber" consecutively!', ephemeral: true });
+          await i.reply({ content: 'You cannot press "This Chamber" consecutively!', flags: MessageFlags.Ephemeral });
           return;
         }
 

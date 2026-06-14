@@ -77,7 +77,7 @@ class Gongyoo extends Command {
 
     collector.on('collect', async (buttonInteraction: any) => {
       if (buttonInteraction.user.id !== interaction.user.id) {
-        await buttonInteraction.reply({ content: "This isn't your game!", ephemeral: true });
+        await buttonInteraction.reply({ content: "This isn't your game!", flags: Discord.MessageFlags.Ephemeral });
         return;
       }
 
