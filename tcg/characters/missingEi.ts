@@ -17,6 +17,7 @@ import {
 import { ImagePanelMode } from '../imagePanel';
 import { characterImagePath } from '../assetPaths';
 import { applyDotStacks } from '../dotStacks';
+import { TAGS, allyHasTag } from '../characterTags';
 import { PYRO_ABILITY_PANEL_COLOR, PYRO_TEXT_COLORS } from './shared';
 
 function applyBurn(
@@ -52,6 +53,7 @@ export const MISSING_EI = createCharacter({
   rarity: 5,
   hp: 90,
   element: Element.Pyro,
+  tags: [TAGS.MISSING_EI],
   imagePanel: {
     mode: ImagePanelMode.Background,
     backgroundColor: '#E85D3A',
@@ -114,7 +116,7 @@ export const MISSING_EI = createCharacter({
             appliesToElement: Element.Pyro,
           }),
           condition: (context: AbilityActivationContext) => (
-            context.getAllies().some((ally) => ally.character.name === 'Keqislaw')
+            allyHasTag(context.getAllies(), TAGS.KEQISLAW_KEQOWSKI)
           ),
         }),
       ],

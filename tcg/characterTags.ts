@@ -7,6 +7,17 @@ export const TAGS = {
   TGP: 'tgp',
   HSR: 'hsr',
   BASEMENT: 'basement',
+  /** Roster / referenced characters — each must appear in that character's `tags` array. */
+  KAITLIN: 'Kaitlin',
+  VENFEI: 'Venfei',
+  EI: 'Ei',
+  SILVERWOLF: 'Silverwolf',
+  SPARKLE: 'Sparkle',
+  ELECTRO: 'Electro',
+  MYSTIC: 'Mystic',
+  MISSING_EI: 'missingEi',
+  FURINA: 'Furina',
+  KEQISLAW_KEQOWSKI: 'KeqislawKeqowski',
 } as const;
 
 export type CharacterTag = typeof TAGS[keyof typeof TAGS];
@@ -17,4 +28,8 @@ export function characterHasTag(character: Character, tag: CharacterTag): boolea
 
 export function countTaggedAllies(allies: CharacterInBattle[], tag: CharacterTag): number {
   return allies.filter((ally) => characterHasTag(ally.character, tag)).length;
+}
+
+export function allyHasTag(allies: CharacterInBattle[], tag: CharacterTag): boolean {
+  return allies.some((ally) => characterHasTag(ally.character, tag));
 }

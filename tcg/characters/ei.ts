@@ -26,7 +26,7 @@ export const EI = createCharacter({
   rarity: 6,
   hp: 100,
   element: Element.Quantum,
-  tags: [TAGS.TGP, TAGS.BASEMENT],
+  tags: [TAGS.EI, TAGS.TGP, TAGS.BASEMENT],
   imagePanel: {
     mode: ImagePanelMode.Background,
     backgroundColor: '#49497d',

@@ -7,14 +7,8 @@ import type { Item } from '../../item';
 import { itemBackgroundForRarity } from '../../rarityColors';
 import { round2 } from '../../../utils/math';
 import { itemImagePanel } from '../shared';
-import { TAGS } from '../../characterTags';
+import { TAGS, allyHasTag } from '../../characterTags';
 import type { CharacterInBattle } from '../../characterInBattle';
-
-function teamHasKeqAlly(holder: CharacterInBattle): boolean {
-  return holder.battle.ally(holder.side).some(
-    (ally) => ally.character.name === 'Keqislaw' || ally.character.name === 'Keqowski',
-  );
-}
 
 function enterBloodMoon(holder: CharacterInBattle): void {
   holder.removeEffectsByName('Blood Moon (Pyro)');
@@ -97,7 +91,7 @@ export const ESTROGEN = new SignatureEquipment(
         ),
       );
     }
-    if (target.character.name === 'Kaitlin') {
+    if (target.character.hasTag(TAGS.KAITLIN)) {
       target.addEffect(
         new Effect(
           'Kaitlin Form',
@@ -152,7 +146,7 @@ export const SILVERWOLF_KEYCHAIN = new SignatureEquipment(
         ),
       );
     }
-    if (target.character.name === 'Ei') {
+    if (target.character.hasTag(TAGS.EI)) {
       target.addEffect(
         new Effect(
           'Silverwolf Keychain (Ei Guard)',
@@ -237,7 +231,7 @@ export const MOONLIGHT_ALTER = new SignatureEquipment(
     ),
   ],
   (target) => {
-    if (target.character.name !== 'missingEi') return;
+    if (!target.character.hasTag(TAGS.MISSING_EI)) return;
     target.addEffect(
       new Effect(
         'Fly me to the moon',
@@ -250,7 +244,7 @@ export const MOONLIGHT_ALTER = new SignatureEquipment(
         true,
       ),
     );
-    if (teamHasKeqAlly(target)) {
+    if (allyHasTag(target.battle.ally(target.side), TAGS.KEQISLAW_KEQOWSKI)) {
       target.addEffect(
         new Effect(
           'And let me play among the stars',

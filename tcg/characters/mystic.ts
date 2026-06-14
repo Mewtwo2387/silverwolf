@@ -63,7 +63,7 @@ export const MYSTIC = createCharacter({
   rarity: 6,
   hp: 100,
   element: Element.Anemo,
-  tags: [TAGS.TGP],
+  tags: [TAGS.MYSTIC, TAGS.TGP],
   imagePanel: {
     mode: ImagePanelMode.Background,
     backgroundColor: '#5FBF8A',

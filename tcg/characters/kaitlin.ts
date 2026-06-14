@@ -25,7 +25,7 @@ export const KAITLIN = createCharacter({
   rarity: 6,
   hp: 100,
   element: Element.Fairy,
-  tags: [TAGS.TGP, TAGS.BASEMENT],
+  tags: [TAGS.KAITLIN, TAGS.TGP, TAGS.BASEMENT],
   imagePanel: {
     imagePath: characterImagePath('kaitlin'),
     mode: ImagePanelMode.Crop,

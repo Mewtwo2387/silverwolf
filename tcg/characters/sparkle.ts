@@ -26,7 +26,7 @@ export const SPARKLE = createCharacter({
   rarity: 6,
   hp: 80,
   element: Element.Quantum,
-  tags: [TAGS.QUANTUM_GIRL, TAGS.HSR],
+  tags: [TAGS.SPARKLE, TAGS.QUANTUM_GIRL, TAGS.HSR],
   imagePanel: {
     mode: ImagePanelMode.Background,
     backgroundColor: '#000000',

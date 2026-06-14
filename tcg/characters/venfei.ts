@@ -23,7 +23,7 @@ export const VENFEI = createCharacter({
   rarity: 6,
   hp: 80,
   element: Element.Fairy,
-  tags: [TAGS.TGP],
+  tags: [TAGS.VENFEI, TAGS.TGP],
   imagePanel: {
     mode: ImagePanelMode.Background,
     backgroundColor: '#FFFFFF',

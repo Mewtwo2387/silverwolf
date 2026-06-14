@@ -15,7 +15,7 @@ import {
 } from '../characterBuilder';
 import { ImagePanelMode } from '../imagePanel';
 import { characterImagePath } from '../assetPaths';
-import { TAGS } from '../characterTags';
+import { TAGS, allyHasTag } from '../characterTags';
 import { ELECTRO_ABILITY_PANEL_COLOR, ELECTRO_TEXT_COLORS } from './shared';
 
 export const ELECTRO = createCharacter({
@@ -25,7 +25,7 @@ export const ELECTRO = createCharacter({
   rarity: 6,
   hp: 100,
   element: Element.Electro,
-  tags: [TAGS.TGP, TAGS.BASEMENT],
+  tags: [TAGS.ELECTRO, TAGS.TGP, TAGS.BASEMENT],
   imagePanel: {
     mode: ImagePanelMode.Background,
     backgroundColor: '#39AACC',
@@ -102,7 +102,7 @@ export const ELECTRO = createCharacter({
             positive: true,
           }),
           condition: (context: AbilityActivationContext) => (
-            context.getAllies().some((ally) => ally.character.name === 'Furina')
+            allyHasTag(context.getAllies(), TAGS.FURINA)
           ),
         }),
       ],
