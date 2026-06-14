@@ -8,11 +8,17 @@ validate every input, never trust client data, keep the CSP tight.**
 
 **Last updated: 2026-06-14**
 
-> **Maintenance rule.** Edit this file only on *substantive architectural* change — new
-> architecture, new auth, new data flows/services, schema or security-model changes, or when
-> something here becomes factually wrong. Do **not** touch it for routine work (adding a single
-> command, page, asset, or a content tweak). When you make a qualifying change, bump the date above
-> and edit only the affected section. Keep it dense; no fluff.
+> **Maintenance rules.** Edit this file when something here becomes factually wrong, or when you
+> make a qualifying structural change. Rules differ by area:
+> - **Bot, website, DB, shared infra** — update only on *substantive architectural* change (new
+>   auth, data flows, schema/security model, etc.). Do **not** touch it for routine work: a single
+>   command, page, asset, or content tweak.
+> - **TCG (`tcg/`)** — also update §6 when you add or change a **convention other agents must
+>   follow**: a new `EffectType`, `BattleEvent`, item/equipment pattern, battle-phase rule,
+>   card-rendering contract, or catalog layout. Adding a single character or item using an existing
+>   pattern does not require a doc edit.
+> When you make a qualifying change, bump the date above and edit only the affected section. Keep
+> it dense; no fluff.
 
 ---
 
@@ -148,10 +154,11 @@ and as the first WebSocket message** (`authedGameRequest` validates session + CS
 a user see their own dashboard/stats and play account-tied games — there is **no** admin/management
 surface on the web.
 
-## 6. The TCG (`tcg/`) (`tcg/`)
+## 6. The TCG (`tcg/`)
 
 This is the largest subsystem in the repo. It powers `/tcgbattle …` and the standalone CLI
-demo (`bun tcg/tests/battleExample.ts`).
+demo (`bun tcg/tests/battleExample.ts`). See the maintenance rules above — §6 expects updates when
+TCG *patterns* change, not when you ship another character or item that follows them.
 
 ### 6.1 Game rules (the "what")
 
