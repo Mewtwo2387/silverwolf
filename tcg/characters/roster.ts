@@ -6,6 +6,7 @@ import { SILVERWOLF } from './silverwolf';
 import { SPARKLE } from './sparkle';
 import { ELECTRO } from './electro';
 import { MYSTIC } from './mystic';
+import { MISSING_EI } from './missingEi';
 
 /** Roster entries aggregated for the catalog. Add new character modules here only. */
 const ROSTER_ENTRIES: readonly Character[] = [
@@ -16,6 +17,7 @@ const ROSTER_ENTRIES: readonly Character[] = [
   SPARKLE,
   ELECTRO,
   MYSTIC,
+  MISSING_EI,
 ];
 
 /** All playable characters; derived from per-character modules (no per-character listing). */

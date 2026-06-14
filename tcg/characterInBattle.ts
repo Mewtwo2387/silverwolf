@@ -18,6 +18,7 @@ export interface DamageCalculationContext {
   chargedAttack?: boolean;
   /** Team skill points spent to use the charged attack (from {@link Skill.skillPointsCost}). */
   skillPointsSpent?: number;
+  ultimateAttack?: boolean;
 }
 
 /**
@@ -297,6 +298,14 @@ export class CharacterInBattle {
       }
     }
 
+    if (context?.ultimateAttack) {
+      this.effects
+        .filter((effect) => effect.type === EffectType.UltimateOutgoingDamage)
+        .forEach((effect) => {
+          damage *= effect.amount;
+        });
+    }
+
     return round2(Math.max(0, damage));
   }
 
@@ -363,12 +372,33 @@ export class CharacterInBattle {
    * Process end of turn: reduce effect durations, remove expired effects
    */
   processEndOfTurn() {
+    this.equipments.forEach((equipment) => {
+      equipment.onTurnEnd?.(this);
+    });
+
+    this.processBurnTicks();
+
     this.effects.forEach((effect) => {
       // eslint-disable-next-line no-param-reassign
       effect.duration -= 1;
     });
 
     this.effects = this.effects.filter((effect) => effect.duration > 0);
+  }
+
+  /** Sum per-stack {@link EffectType.Burn} damage and apply as elemental DoT (no attacker). */
+  private processBurnTicks(): void {
+    if (this.isKnockedOut) return;
+
+    const burnStacks = this.effects.filter((effect) => effect.type === EffectType.Burn);
+    if (burnStacks.length === 0) return;
+
+    const totalDamage = round2(burnStacks.reduce((sum, effect) => sum + effect.amount, 0));
+    if (totalDamage <= 0) return;
+
+    const element = burnStacks[0].metadata?.appliesToElement ?? Element.Pyro;
+    this.battle.logEvent(`${this.character.name} took ${totalDamage} pyro damage from [Burn]`);
+    this.takeDamage(totalDamage, element, null);
   }
 
   /**

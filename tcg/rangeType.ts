@@ -3,6 +3,8 @@ export enum RangeType {
   SingleAlly, // targets one ally of your choice. can be self.
   AllAllies, // targets all allies including self.
   SingleOpponent, // targets one opponent of your choice.
+  /** Opponents in enemy slots adjacent to the caster's slot (same index ± 1). */
+  AdjacentOpponents,
   AllOpponents, // targets all opponents.
   AllCards, // targets all cards in the battle including self and allies.
 }

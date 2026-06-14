@@ -422,9 +422,14 @@ export class Skill implements DrawableBlock {
     }
 
     if (this.damage > 0 && this.hitCount > 0) {
-      const damageContext = this.category === SkillCategory.Charged
-        ? { chargedAttack: true, skillPointsSpent: this.skillPointsCost }
-        : undefined;
+      let damageContext;
+      if (this.category === SkillCategory.Charged) {
+        damageContext = { chargedAttack: true, skillPointsSpent: this.skillPointsCost };
+      } else if (this.category === SkillCategory.Ultimate) {
+        damageContext = { ultimateAttack: true };
+      } else {
+        damageContext = undefined;
+      }
       const victims = Skill.resolveSkillRangeTargets(this.damageRange, character, target);
       for (let hit = 0; hit < this.hitCount; hit += 1) {
         const hitElement = this.resolveDamageElementForHit(character);
@@ -469,6 +474,12 @@ export class Skill implements DrawableBlock {
       case RangeType.SingleOpponent:
         if (!target) return [];
         return caster.battle.opponent(caster.side).includes(target) && alive(target) ? [target] : [];
+      case RangeType.AdjacentOpponents: {
+        const slot = caster.slotIndexOnSide();
+        return caster.battle.opponent(caster.side).filter(
+          (opponent, idx) => alive(opponent) && Math.abs(idx - slot) <= 1,
+        );
+      }
       case RangeType.AllOpponents:
         return caster.battle.opponent(caster.side).filter(alive);
       case RangeType.AllCards:

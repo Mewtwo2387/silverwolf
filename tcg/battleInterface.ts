@@ -76,6 +76,8 @@ export function formatSkillTargetLabel(
       return `self (slot ${findSlotIndex(battle, caster) ?? '?'})`;
     case RangeType.AllOpponents:
       return 'all opponents';
+    case RangeType.AdjacentOpponents:
+      return 'adjacent opponents';
     case RangeType.AllAllies:
       return 'all allies';
     case RangeType.AllCards:

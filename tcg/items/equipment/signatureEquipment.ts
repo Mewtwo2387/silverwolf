@@ -8,15 +8,49 @@ import { itemBackgroundForRarity } from '../../rarityColors';
 import { round2 } from '../../../utils/math';
 import { itemImagePanel } from '../shared';
 import { TAGS } from '../../characterTags';
+import type { CharacterInBattle } from '../../characterInBattle';
+
+function teamHasKeqAlly(holder: CharacterInBattle): boolean {
+  return holder.battle.ally(holder.side).some(
+    (ally) => ally.character.name === 'Keqislaw' || ally.character.name === 'Keqowski',
+  );
+}
+
+function enterBloodMoon(holder: CharacterInBattle): void {
+  holder.removeEffectsByName('Blood Moon (Pyro)');
+  holder.removeEffectsByName('Blood Moon (DoT)');
+  holder.addEffect(
+    new Effect(
+      'Blood Moon (Pyro)',
+      '+30% pyro damage during Blood Moon.',
+      EffectType.OutgoingDamage,
+      1.3,
+      2,
+      true,
+      { appliesToElement: Element.Pyro },
+      true,
+    ),
+  );
+  holder.addEffect(
+    new Effect(
+      'Blood Moon (DoT)',
+      '+30% DoT during Blood Moon.',
+      EffectType.DotDamageBonus,
+      1.3,
+      2,
+      true,
+      undefined,
+      true,
+    ),
+  );
+  holder.battle.logEvent(`${holder.character.name} entered [Blood Moon]!`);
+}
 
 /** SIGNATURE EQUIPMENTS
  * We know what a signature is.
  * Signature equipment for 6* characters are 5*.
  * It could be a mix-and-match of several other buffs.
- * /
-
-/** Kaitlin form skill indices (Slay Queen + Estrogen ultimate), same as her transformation skill. */
-const KAITLIN_FORM_SKILL_INDICES = [1, 2];
+ */
 
 export const ESTROGEN = new SignatureEquipment(
   'estrogen',
@@ -72,7 +106,7 @@ export const ESTROGEN = new SignatureEquipment(
           1,
           9999,
           true,
-          { activeSkillIndices: KAITLIN_FORM_SKILL_INDICES },
+          { activeSkillIndices: [1, 2] },
         ),
       );
       target.battle.logEvent(`${target.character.name} transformed into Kaitlin Form!`);
@@ -182,10 +216,67 @@ export const CREDIT_CARD = new SignatureEquipment(
   'The best card in the game',
 );
 
+export const MOONLIGHT_ALTER = new SignatureEquipment(
+  'moonlight_alter',
+  'Moonlight Alter',
+  'missingEi',
+  'Increases DoT by 30%. Every 5 turns, enter the [Blood Moon] state for 2 turns. In the [Blood Moon] state, increase Pyro DMG and DoT by a further 30%. When equipped by missingEi, obtain [Fly me to the moon] which gives a 20% dodge chance. If Keqislaw is also in the team, obtain [And let me play among the stars] that increases missingEi\'s ult dmg by 20%.',
+  new Rarity(5),
+  itemImagePanel('moonlight_alter'),
+  itemBackgroundForRarity(5),
+  [
+    new Effect(
+      'Moonlight Alter',
+      '+30% DoT dealt.',
+      EffectType.DotDamageBonus,
+      1.3,
+      9999,
+      true,
+      undefined,
+      true,
+    ),
+  ],
+  (target) => {
+    if (target.character.name !== 'missingEi') return;
+    target.addEffect(
+      new Effect(
+        'Fly me to the moon',
+        '20% chance to dodge attacks.',
+        EffectType.DodgeChance,
+        0.2,
+        9999,
+        true,
+        undefined,
+        true,
+      ),
+    );
+    if (teamHasKeqAlly(target)) {
+      target.addEffect(
+        new Effect(
+          'And let me play among the stars',
+          '+20% ultimate damage.',
+          EffectType.UltimateOutgoingDamage,
+          1.2,
+          9999,
+          true,
+          undefined,
+          true,
+        ),
+      );
+    }
+  },
+);
+
+MOONLIGHT_ALTER.onTurnEnd = (holder) => {
+  if (holder.battle.currentTurn % 5 !== 0) return;
+  enterBloodMoon(holder);
+};
+
 /* ------------------------------------------------------------ */
 
 export const signatureEquipmentItems: Item[] = [
   ESTROGEN,
   SILVERWOLF_KEYCHAIN,
   CREDIT_CARD,
+  MOONLIGHT_ALTER,
 ];

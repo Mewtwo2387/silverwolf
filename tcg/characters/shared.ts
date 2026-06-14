@@ -108,3 +108,30 @@ export const ANEMO_TEXT_COLORS: CharacterTextColors = {
 };
 
 export const ANEMO_ABILITY_PANEL_COLOR = '#5FBF8A';
+
+export const PYRO_TEXT_COLORS: CharacterTextColors = {
+  nameFill: '#FFF4EE',
+  nameStroke: '#3A1810',
+  hpLabelFill: '#FFD4C4',
+  hpLabelStroke: '#3A1810',
+  hpValueFill: '#FFFAF7',
+  hpValueStroke: '#2A120C',
+  titleFill: '#FFE5D8',
+  titleStroke: '#3A1810',
+  titleDescFill: '#FFF8F4',
+  titleDescStroke: '#281410',
+  skillNameFill: '#FFD0BC',
+  skillNameStroke: '#3A1810',
+  skillDamageFill: '#FFFFFF',
+  skillDamageStroke: '#2A120C',
+  skillCostFill: '#FFE8DC',
+  skillCostStroke: '#3D2018',
+  skillDescFill: '#FFF8F4',
+  skillDescStroke: '#281410',
+  abilityNameFill: '#FFD0BC',
+  abilityNameStroke: '#3A1810',
+  abilityDescFill: '#FFF8F4',
+  abilityDescStroke: '#281410',
+};
+
+export const PYRO_ABILITY_PANEL_COLOR = '#E85D3A';
