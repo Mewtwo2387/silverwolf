@@ -1,4 +1,5 @@
 import { format } from './math';
+import { withUserLock } from './userLock';
 
 export type EatItem =
   | { type: 'mystic_small'; earned: number }
@@ -132,15 +133,6 @@ async function processEatInner(client: any, userId: string, amount: number): Pro
   };
 }
 
-export async function processEat(client: any, userId: string, amount: number): Promise<EatResult> {
-  const existing = eatLocks.get(userId);
-  const run = existing
-    ? existing.catch(() => undefined).then(() => processEatInner(client, userId, amount))
-    : processEatInner(client, userId, amount);
-  eatLocks.set(userId, run);
-  try {
-    return await run;
-  } finally {
-    if (eatLocks.get(userId) === run) eatLocks.delete(userId);
-  }
+export function processEat(client: any, userId: string, amount: number): Promise<EatResult> {
+  return withUserLock(eatLocks, userId, () => processEatInner(client, userId, amount));
 }

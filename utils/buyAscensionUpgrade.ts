@@ -1,4 +1,5 @@
 import { getNextAscensionUpgradeCost } from './ascensionupgrades';
+import { withUserLock } from './userLock';
 
 export const ASCENSION_UPGRADES = [
   'nuggieFlatMultiplier',
@@ -109,22 +110,11 @@ async function processBuyAscensionUpgradeInner(
   };
 }
 
-export async function processBuyAscensionUpgrade(
+export function processBuyAscensionUpgrade(
   client: any,
   userId: string,
   upgradeId: number,
   amount: number,
 ): Promise<BuyAscensionResult> {
-  let existing = buyAscLocks.get(userId);
-  while (existing) {
-    await existing.catch(() => {});
-    existing = buyAscLocks.get(userId);
-  }
-  const run = processBuyAscensionUpgradeInner(client, userId, upgradeId, amount);
-  buyAscLocks.set(userId, run);
-  try {
-    return await run;
-  } finally {
-    if (buyAscLocks.get(userId) === run) buyAscLocks.delete(userId);
-  }
+  return withUserLock(buyAscLocks, userId, () => processBuyAscensionUpgradeInner(client, userId, upgradeId, amount));
 }

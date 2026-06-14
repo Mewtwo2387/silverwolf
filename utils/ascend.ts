@@ -1,4 +1,5 @@
 import { getMaxLevel } from './upgrades';
+import { withUserLock } from './userLock';
 
 export interface AscensionState {
   dinonuggies: number;
@@ -59,17 +60,6 @@ async function processAscendInner(client: any, userId: string): Promise<AscendRe
   };
 }
 
-export async function processAscend(client: any, userId: string): Promise<AscendResult> {
-  let existing = ascendLocks.get(userId);
-  while (existing) {
-    await existing.catch(() => {});
-    existing = ascendLocks.get(userId);
-  }
-  const run = processAscendInner(client, userId);
-  ascendLocks.set(userId, run);
-  try {
-    return await run;
-  } finally {
-    if (ascendLocks.get(userId) === run) ascendLocks.delete(userId);
-  }
+export function processAscend(client: any, userId: string): Promise<AscendResult> {
+  return withUserLock(ascendLocks, userId, () => processAscendInner(client, userId));
 }
