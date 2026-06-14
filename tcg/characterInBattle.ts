@@ -376,7 +376,7 @@ export class CharacterInBattle {
       equipment.onTurnEnd?.(this);
     });
 
-    this.processBurnTicks();
+    this.processDotTicks();
 
     this.effects.forEach((effect) => {
       // eslint-disable-next-line no-param-reassign
@@ -386,19 +386,29 @@ export class CharacterInBattle {
     this.effects = this.effects.filter((effect) => effect.duration > 0);
   }
 
-  /** Sum per-stack {@link EffectType.Burn} damage and apply as elemental DoT (no attacker). */
-  private processBurnTicks(): void {
+  /** Sum fixed per-stack {@link EffectType.Dot} damage by label + element, then tick each group. */
+  private processDotTicks(): void {
     if (this.isKnockedOut) return;
 
-    const burnStacks = this.effects.filter((effect) => effect.type === EffectType.Burn);
-    if (burnStacks.length === 0) return;
+    const dotStacks = this.effects.filter((effect) => effect.type === EffectType.Dot);
+    if (dotStacks.length === 0) return;
 
-    const totalDamage = round2(burnStacks.reduce((sum, effect) => sum + effect.amount, 0));
-    if (totalDamage <= 0) return;
+    const groups = new Map<string, { name: string; element: Element; total: number }>();
+    dotStacks.forEach((dot) => {
+      const element = dot.metadata?.appliesToElement ?? Element.Physical;
+      const key = `${dot.name}:${element}`;
+      const group = groups.get(key) ?? { name: dot.name, element, total: 0 };
+      group.total += dot.amount;
+      groups.set(key, group);
+    });
 
-    const element = burnStacks[0].metadata?.appliesToElement ?? Element.Pyro;
-    this.battle.logEvent(`${this.character.name} took ${totalDamage} pyro damage from [Burn]`);
-    this.takeDamage(totalDamage, element, null);
+    groups.forEach(({ name, element, total }) => {
+      const damage = round2(total);
+      if (damage <= 0) return;
+      const typeLabel = Element[element].toLowerCase();
+      this.battle.logEvent(`${this.character.name} took ${damage} ${typeLabel} damage from [${name}]`);
+      this.takeDamage(damage, element, null);
+    });
   }
 
   /**

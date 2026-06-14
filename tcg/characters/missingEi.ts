@@ -1,12 +1,14 @@
 import { Element } from '../element';
 import { EffectType } from '../effectType';
 import { RangeType } from '../rangeType';
+import { AbilityActivationContext } from '../ability';
 import type { CharacterInBattle } from '../characterInBattle';
 import {
   createCharacter,
   createSkill,
   createEffect,
   createAbility,
+  createAbilityEffect,
   createSimpleBackground,
   Normal,
   Charged,
@@ -14,35 +16,8 @@ import {
 } from '../characterBuilder';
 import { ImagePanelMode } from '../imagePanel';
 import { characterImagePath } from '../assetPaths';
-import { round2 } from '../../utils/math';
+import { applyDotStacks } from '../dotStacks';
 import { PYRO_ABILITY_PANEL_COLOR, PYRO_TEXT_COLORS } from './shared';
-
-const BURN_NAME = 'Burn';
-const KEQ_ALLY_NAMES = ['Keqislaw', 'Keqowski'] as const;
-const BASE_BURN_PER_STACK = 3;
-const BOOSTED_BURN_PER_STACK = 5;
-
-function teamHasKeqAlly(caster: CharacterInBattle): boolean {
-  return caster.battle.ally(caster.side).some(
-    (ally) => KEQ_ALLY_NAMES.includes(ally.character.name as typeof KEQ_ALLY_NAMES[number]),
-  );
-}
-
-/** Multiplier from {@link EffectType.DotDamageBonus} on the caster (e.g. Moonlight Alter). */
-export function dotDamageMultiplierFor(caster: CharacterInBattle): number {
-  let multiplier = 1;
-  caster.effects
-    .filter((effect) => effect.type === EffectType.DotDamageBonus)
-    .forEach((effect) => {
-      multiplier *= effect.amount;
-    });
-  return multiplier;
-}
-
-function burnDamagePerStack(caster: CharacterInBattle): number {
-  const base = teamHasKeqAlly(caster) ? BOOSTED_BURN_PER_STACK : BASE_BURN_PER_STACK;
-  return round2(base * dotDamageMultiplierFor(caster));
-}
 
 function applyBurn(
   target: CharacterInBattle,
@@ -50,19 +25,13 @@ function applyBurn(
   duration: number,
   caster: CharacterInBattle,
 ): void {
-  const perStack = burnDamagePerStack(caster);
-  for (let i = 0; i < stacks; i += 1) {
-    target.addEffect(createEffect({
-      name: BURN_NAME,
-      description: `Takes ${perStack} pyro damage per turn.`,
-      type: EffectType.Burn,
-      amount: perStack,
-      duration,
-      positive: false,
-      stackable: true,
-      appliesToElement: Element.Pyro,
-    }));
-  }
+  applyDotStacks(target, caster, {
+    name: 'Burn',
+    element: Element.Pyro,
+    basePerStack: 3,
+    stacks,
+    duration,
+  });
 }
 
 function adjacentOpponents(caster: CharacterInBattle): CharacterInBattle[] {
@@ -133,7 +102,22 @@ export const MISSING_EI = createCharacter({
       name: 'In other words, hold my hand',
       description: 'When Keqislaw is in the team, increase base burn damage from 3 to 5.',
       panelColor: PYRO_ABILITY_PANEL_COLOR,
-      effects: [],
+      effects: [
+        createAbilityEffect({
+          range: RangeType.Self,
+          effect: createEffect({
+            name: 'In other words, hold my hand',
+            description: '+2 damage per [Burn] stack inflicted.',
+            type: EffectType.DotStackBaseBonus,
+            amount: 2,
+            positive: true,
+            appliesToElement: Element.Pyro,
+          }),
+          condition: (context: AbilityActivationContext) => (
+            context.getAllies().some((ally) => ally.character.name === 'Keqislaw')
+          ),
+        }),
+      ],
     }),
   ],
 });

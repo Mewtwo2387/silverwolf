@@ -20,11 +20,13 @@ export enum EffectType {
    */
   ChargedSkillPointScaling,
   /**
-   * DoT: `amount` is damage per stack per turn. Stackable copies add up. Resolved in
-   * {@link CharacterInBattle.processEndOfTurn} before durations tick.
+   * DoT stack: `amount` is fixed damage per turn for this stack (snapshotted at inflict time).
+   * Stackable copies add up. `metadata.appliesToElement` is the damage element (Burn → Pyro, etc.).
    */
-  Burn,
-  /** Multiplier on DoT the holder inflicts (applied when creating burn stacks). */
+  Dot,
+  /** Flat bonus added to base per-stack DoT before multipliers, only when the holder inflicts DoT. */
+  DotStackBaseBonus,
+  /** Multiplier on DoT the holder inflicts (applied only when creating new DoT stacks). */
   DotDamageBonus,
   /** Multiplier on ultimate attack damage only (resolved in damage calc with ultimate context). */
   UltimateOutgoingDamage,
