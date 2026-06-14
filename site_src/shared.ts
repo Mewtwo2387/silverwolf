@@ -23,14 +23,19 @@ export const navUser = (c: Context<AppEnv>): NavUser | null => {
 
 export type GameBody = Record<string, unknown> & { csrf?: unknown };
 
-// Coerce an untrusted JSON field (number or numeric string) to an integer.
-// Returns null when the value is missing or not a finite number — callers apply
-// their own default / range checks. Truncates toward zero, matching Math.trunc.
+// Coerce an untrusted JSON field (number or integer string) to an integer.
+// Returns null when the value is missing or not an integer — callers apply their
+// own default / range checks. A number is truncated toward zero; a string must be
+// wholly an optional-sign integer (so "12abc", "1e2", "5.5" are rejected, not
+// silently parsed by parseInt's prefix behaviour).
 export function coerceInt(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) return Math.trunc(value);
-  if (typeof value === 'string' && value.trim() !== '') {
-    const n = parseInt(value, 10);
-    if (!Number.isNaN(n)) return n;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (/^-?\d+$/.test(trimmed)) {
+      const n = Number(trimmed);
+      if (Number.isSafeInteger(n)) return n;
+    }
   }
   return null;
 }

@@ -1,5 +1,5 @@
 import { getNextAscensionUpgradeCost } from './ascensionupgrades';
-import { withUserLock } from './userLock';
+import { withUserLock, userLocks } from './userLock';
 
 export const ASCENSION_UPGRADES = [
   'nuggieFlatMultiplier',
@@ -63,8 +63,6 @@ export type BuyAscensionResult =
     heavenlyNuggies: number;
   };
 
-const buyAscLocks = new Map<string, Promise<BuyAscensionResult>>();
-
 async function processBuyAscensionUpgradeInner(
   client: any,
   userId: string,
@@ -116,5 +114,5 @@ export function processBuyAscensionUpgrade(
   upgradeId: number,
   amount: number,
 ): Promise<BuyAscensionResult> {
-  return withUserLock(buyAscLocks, userId, () => processBuyAscensionUpgradeInner(client, userId, upgradeId, amount));
+  return withUserLock(userLocks, userId, () => processBuyAscensionUpgradeInner(client, userId, upgradeId, amount));
 }

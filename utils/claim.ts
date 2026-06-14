@@ -15,7 +15,7 @@ import {
   getBekiCooldown,
 } from './upgrades';
 import { format } from './math';
-import { withUserLock } from './userLock';
+import { withUserLock, userLocks } from './userLock';
 
 const DAY_LENGTH = 24 * 60 * 60 * 1000;
 const HOUR_LENGTH = 60 * 60 * 1000;
@@ -181,8 +181,6 @@ type ClaimResult =
     previousStreak: number;
   };
 
-const claimLocks = new Map<string, Promise<ClaimResult>>();
-
 async function processClaimInner(client: any, uid: string): Promise<ClaimResult> {
   const now = Date.now();
   const lastClaimedInt = await client.db.user.getUserAttr(uid, 'dinonuggiesLastClaimed');
@@ -237,7 +235,7 @@ async function processClaimInner(client: any, uid: string): Promise<ClaimResult>
 }
 
 function processClaim(client: any, uid: string): Promise<ClaimResult> {
-  return withUserLock(claimLocks, uid, () => processClaimInner(client, uid));
+  return withUserLock(userLocks, uid, () => processClaimInner(client, uid));
 }
 
 // eslint-disable-next-line max-len

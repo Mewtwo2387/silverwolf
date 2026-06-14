@@ -54,6 +54,14 @@ export function registerGameApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf)
     });
   };
 
+  // Optional quantity: absent means 1; a provided-but-malformed value (e.g.
+  // "abc", 0, negative) is rejected rather than silently treated as 1.
+  const parseQuantity = (raw: unknown): number | null => {
+    if (raw === undefined) return 1;
+    const n = coerceInt(raw);
+    return n !== null && n >= 1 ? n : null;
+  };
+
   gameRoute('/games/blackjack/start', 'blackjack start', async ({ c, body, discordId }) => {
     const amount = typeof body.amount === 'string' ? body.amount : '';
     if (!amount) return c.json({ error: 'invalid' }, 400);
@@ -91,22 +99,23 @@ export function registerGameApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf)
     ok: true, data: await getDinoUpgradesStateWeb(silverwolf, discordId),
   }));
 
-  gameRoute('/games/dinonuggie-upgrades/eat', 'eat', async ({ body, discordId }) => {
-    const amount = coerceInt(body.amount) ?? 1;
+  gameRoute('/games/dinonuggie-upgrades/eat', 'eat', async ({ c, body, discordId }) => {
+    const amount = parseQuantity(body.amount);
+    if (amount === null) return c.json({ error: 'invalid' }, 400);
     return { ok: true, data: await eatWeb(silverwolf, discordId, amount) };
   });
 
   gameRoute('/games/dinonuggie-upgrades/buy-upgrade', 'buy upgrade', async ({ c, body, discordId }) => {
     const upgradeId = coerceInt(body.upgradeId);
-    const amount = coerceInt(body.amount) ?? 1;
-    if (upgradeId === null) return c.json({ error: 'invalid' }, 400);
+    const amount = parseQuantity(body.amount);
+    if (upgradeId === null || amount === null) return c.json({ error: 'invalid' }, 400);
     return { ok: true, data: await buyUpgradeWeb(silverwolf, discordId, upgradeId, amount) };
   });
 
   gameRoute('/games/dinonuggie-upgrades/buy-ascension', 'buy ascension upgrade', async ({ c, body, discordId }) => {
     const upgradeId = coerceInt(body.upgradeId);
-    const amount = coerceInt(body.amount) ?? 1;
-    if (upgradeId === null) return c.json({ error: 'invalid' }, 400);
+    const amount = parseQuantity(body.amount);
+    if (upgradeId === null || amount === null) return c.json({ error: 'invalid' }, 400);
     return { ok: true, data: await buyAscensionUpgradeWeb(silverwolf, discordId, upgradeId, amount) };
   });
 

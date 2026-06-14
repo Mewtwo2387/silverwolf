@@ -1,5 +1,5 @@
 import { getMaxLevel } from './upgrades';
-import { withUserLock } from './userLock';
+import { withUserLock, userLocks } from './userLock';
 
 export interface AscensionState {
   dinonuggies: number;
@@ -43,8 +43,6 @@ export async function getAscensionState(client: any, userId: string): Promise<As
   };
 }
 
-const ascendLocks = new Map<string, Promise<AscendResult>>();
-
 async function processAscendInner(client: any, userId: string): Promise<AscendResult> {
   const state = await getAscensionState(client, userId);
   if (!state.canAscend) return { status: 'too_few', dinonuggies: state.dinonuggies };
@@ -61,5 +59,5 @@ async function processAscendInner(client: any, userId: string): Promise<AscendRe
 }
 
 export function processAscend(client: any, userId: string): Promise<AscendResult> {
-  return withUserLock(ascendLocks, userId, () => processAscendInner(client, userId));
+  return withUserLock(userLocks, userId, () => processAscendInner(client, userId));
 }

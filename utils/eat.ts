@@ -1,5 +1,5 @@
 import { format } from './math';
-import { withUserLock } from './userLock';
+import { withUserLock, userLocks } from './userLock';
 
 export type EatItem =
   | { type: 'mystic_small'; earned: number }
@@ -32,8 +32,6 @@ export type EatResult =
   };
 
 export const MAX_EAT = 10_000;
-
-const eatLocks = new Map<string, Promise<EatResult>>();
 
 function rollOne(): EatItem {
   const rand = Math.random();
@@ -134,5 +132,5 @@ async function processEatInner(client: any, userId: string, amount: number): Pro
 }
 
 export function processEat(client: any, userId: string, amount: number): Promise<EatResult> {
-  return withUserLock(eatLocks, userId, () => processEatInner(client, userId, amount));
+  return withUserLock(userLocks, userId, () => processEatInner(client, userId, amount));
 }

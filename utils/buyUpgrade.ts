@@ -1,5 +1,5 @@
 import { getNextUpgradeCost, getMaxLevel } from './upgrades';
-import { withUserLock } from './userLock';
+import { withUserLock, userLocks } from './userLock';
 
 export const UPGRADES = ['multiplierAmount', 'multiplierRarity', 'beki'] as const;
 export type UpgradeKey = typeof UPGRADES[number];
@@ -19,8 +19,6 @@ export type BuyUpgradeResult =
     cost: number;
     credits: number;
   };
-
-const buyLocks = new Map<string, Promise<BuyUpgradeResult>>();
 
 async function processBuyUpgradeInner(
   client: any,
@@ -75,5 +73,5 @@ export function processBuyUpgrade(
   upgradeId: number,
   amount: number,
 ): Promise<BuyUpgradeResult> {
-  return withUserLock(buyLocks, userId, () => processBuyUpgradeInner(client, userId, upgradeId, amount));
+  return withUserLock(userLocks, userId, () => processBuyUpgradeInner(client, userId, upgradeId, amount));
 }

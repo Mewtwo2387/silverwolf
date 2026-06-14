@@ -1,3 +1,11 @@
+// One shared registry of in-flight per-user operations. All economy mutations
+// (claim, eat, buy upgrade, buy ascension upgrade, ascend) chain through this so
+// the same user can't run two of them concurrently — they read-check-write the
+// same balances non-atomically, so a per-module lock would still let, say, an
+// eat and a buy overspend the same dinonuggies. None of these processors call
+// another, so a single global chain can't deadlock.
+export const userLocks = new Map<string, Promise<any>>();
+
 // Serialize concurrent calls for the same user through a per-user promise chain.
 //
 // Each surface keeps its own module-level `Map<userId, Promise>` and routes its
