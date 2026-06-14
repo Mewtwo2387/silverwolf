@@ -1,10 +1,40 @@
 import { EmbedBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { antiFormat } from './math';
 
-const INVALID_AMOUNT = -1;
-const NEGATIVE_AMOUNT = -2;
-const POOR_AMOUNT = -3;
-const INFINITY_AMOUNT = -4;
+export const INVALID_AMOUNT = -1;
+export const NEGATIVE_AMOUNT = -2;
+export const POOR_AMOUNT = -3;
+export const INFINITY_AMOUNT = -4;
+
+// Shared string codes used by both the Discord command error embeds and the
+// web JSON responses. Lives here so the JSON-mapping helper and the embed
+// switch can't drift apart.
+export type BetErrorCode = 'invalid' | 'negative' | 'poor' | 'infinity';
+
+// Convert a `checkValidBetRaw` return code into a `{ error }` object, or null
+// when the code is actually a parsed amount (positive number). Used by the
+// web bet routes which want JSON instead of Discord embeds.
+export function mapBetCode(code: number): { error: BetErrorCode } | null {
+  switch (code) {
+    case INVALID_AMOUNT: return { error: 'invalid' };
+    case NEGATIVE_AMOUNT: return { error: 'negative' };
+    case POOR_AMOUNT: return { error: 'poor' };
+    case INFINITY_AMOUNT: return { error: 'infinity' };
+    default: return null;
+  }
+}
+
+/** True when `amount` is a finite number strictly greater than zero. */
+export function isValidBetAmount(amount: number): boolean {
+  return Number.isFinite(amount) && amount > 0;
+}
+
+/** Guard for game helpers that accept a pre-parsed bet (e.g. spinSlots). */
+export function assertPositiveFiniteBet(amount: number): void {
+  if (!isValidBetAmount(amount)) {
+    throw new Error('Invalid bet amount');
+  }
+}
 
 const INFINITY_KEYWORDS = [
   'infinity', 'inf', '∞', 'unlimited', 'forever',
@@ -12,16 +42,16 @@ const INFINITY_KEYWORDS = [
   'eternal', 'never-ending',
 ];
 
-async function checkValidBetRaw(client: any, user: { id: string }, amountString: string): Promise<number> {
+export async function checkValidBetRaw(client: any, user: { id: string }, amountString: string): Promise<number> {
   if (INFINITY_KEYWORDS.some((keyword) => amountString.toLowerCase().includes(keyword.toLowerCase()))) {
     return INFINITY_AMOUNT;
   }
   const amount = antiFormat(amountString);
-  if (Number.isNaN(amount)) {
+  if (Number.isNaN(amount) || !Number.isFinite(amount)) {
     return INVALID_AMOUNT;
   }
-  if (amount < 0) {
-    return NEGATIVE_AMOUNT;
+  if (amount <= 0) {
+    return amount < 0 ? NEGATIVE_AMOUNT : INVALID_AMOUNT;
   }
 
   const credits = await client.db.user.getUserAttr(user.id, 'credits');

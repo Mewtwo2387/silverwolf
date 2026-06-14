@@ -1,0 +1,732 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Self-hosted fonts (latin subset, variable woff2). Served from /static/fonts/
+   so they're allowed by the strict CSP (font-src 'self'); the previous
+   Google Fonts <link> was blocked by that CSP and silently fell back to system
+   fonts. font-display: swap shows fallback text immediately, then swaps in. */
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url('/static/fonts/Outfit.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 300 600;
+  font-display: swap;
+  src: url('/static/fonts/JetBrainsMono.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/static/fonts/JetBrainsMono-Italic.woff2') format('woff2');
+}
+
+body {
+  font-family: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+code, pre, kbd, .font-mono {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace !important;
+}
+
+:root {
+  --ink-900:#06080f; --ink-800:#0a0e1c; --ink-700:#111729; --ink-600:#1a2138; --ink-500:#232b46;
+  --fog-100:#e8efff; --fog-200:#b4c2e0; --fog-300:#8290b8; --fog-400:#606e94; --fog-500:#4a5578;
+  --accent:#22d3ff; --accent-light:#7cdcff; --accent-pale:#a78bff;
+  --danger:#ff6b8a;
+  --heading-top:#ffffff; --heading-bottom:#22d3ff;
+  --glow-faint:rgba(34,211,255,0.32); --glow-bright:rgba(34,211,255,0.55);
+  --danger-glow:rgba(255,107,138,0.4);
+}
+[data-theme="flashbang"] {
+  --ink-900:#eef3ff; --ink-800:#e0e8f7; --ink-700:#cfd9ee; --ink-600:#b8c4dc; --ink-500:#a0aecb;
+  --fog-100:#0a1428; --fog-200:#1e2a44; --fog-300:#3a4866; --fog-400:#5a6886; --fog-500:#7a88a6;
+  --accent:#0891b2; --accent-light:#0e7490; --accent-pale:#7c3aed;
+  --danger:#be3a5b;
+  --heading-top:#0a1428; --heading-bottom:#0891b2;
+  --glow-faint:rgba(8,145,178,0.28); --glow-bright:rgba(8,145,178,0.5);
+  --danger-glow:rgba(190,58,91,0.35);
+}
+[data-theme="blackout"] {
+  --ink-900:#020308; --ink-800:#04060d; --ink-700:#070912; --ink-600:#0c0f1c; --ink-500:#121628;
+  --fog-100:#6c7a9a; --fog-200:#566382; --fog-300:#42506b; --fog-400:#323f56; --fog-500:#252f44;
+  --accent:#1a8aa8; --accent-light:#2298b8; --accent-pale:#5d4a9a;
+  --danger:#8a3f55;
+  --heading-top:#6c7a9a; --heading-bottom:#1a8aa8;
+  --glow-faint:rgba(26,138,168,0.18); --glow-bright:rgba(26,138,168,0.32);
+  --danger-glow:rgba(138,63,85,0.22);
+}
+
+@layer base {
+  h1, h2, h3 {
+    margin: 0 0 0.5em;
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .bday-user { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; }
+  a { color: var(--accent-light); transition: color 0.15s ease; }
+  a:hover { color: var(--accent); text-shadow: 0 0 6px var(--glow-faint); }
+  table { @apply border-collapse mx-auto w-full; }
+  th, td { @apply py-[0.55rem] px-[1.1rem] border-b border-ink-600 text-left; }
+  th { @apply text-fog-200 font-semibold text-[0.85rem] uppercase tracking-[0.04em] bg-ink-800; }
+  code { @apply font-mono bg-ink-700 rounded-[3px] text-accent-light; padding: 0.1em 0.35em; border: 1px solid var(--ink-600); }
+
+  /* Beautiful Custom Monospace Scrollbars for Cyber Deck Vibe */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--ink-900); }
+  ::-webkit-scrollbar-thumb { background: var(--ink-600); border-radius: 4px; border: 1px solid var(--ink-900); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--accent-pale); }
+
+  /* Custom Global Details styling (Holo-Windows) */
+  details {
+    background: rgba(10, 14, 28, 0.55);
+    border: 1px solid rgba(34, 211, 255, 0.15);
+    border-radius: 0.75rem;
+    margin-bottom: 1.25rem;
+    padding: 1.25rem;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.03),
+      0 0 12px rgba(34, 211, 255, 0.03);
+    transition: border-color 0.25s, box-shadow 0.25s, transform 0.2s;
+  }
+  [data-theme="flashbang"] details {
+    background: rgba(224, 232, 247, 0.65);
+    border: 1px solid rgba(8, 145, 178, 0.2);
+    box-shadow: 0 8px 32px rgba(10, 20, 40, 0.08);
+  }
+  [data-theme="blackout"] details {
+    background: rgba(4, 6, 13, 0.75);
+    border: 1px solid rgba(26, 138, 168, 0.15);
+  }
+
+  details:hover, details[open] {
+    border-color: rgba(34, 211, 255, 0.4);
+    box-shadow: 
+      0 12px 36px rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 0 20px rgba(34, 211, 255, 0.08);
+  }
+  [data-theme="flashbang"] details:hover, [data-theme="flashbang"] details[open] {
+    border-color: rgba(8, 145, 178, 0.45);
+    box-shadow: 0 12px 36px rgba(10, 20, 40, 0.12);
+  }
+  [data-theme="blackout"] details:hover, [data-theme="blackout"] details[open] {
+    border-color: rgba(26, 138, 168, 0.3);
+  }
+
+  summary {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--fog-100);
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+    letter-spacing: 0.03em;
+    padding: 0.2rem 0;
+  }
+  summary::-webkit-details-marker {
+    display: none;
+  }
+  summary::before {
+    content: '⚡';
+    margin-right: 0.6rem;
+    font-size: 0.95rem;
+    color: var(--accent);
+    text-shadow: 0 0 6px var(--accent);
+    transition: transform 0.25s;
+  }
+  details[open] summary::before {
+    transform: rotate(90deg) scale(1.15);
+    color: var(--accent-pale);
+    text-shadow: 0 0 8px var(--accent-pale);
+  }
+
+  summary::after {
+    content: '[ OPEN ]';
+    font-size: 0.72rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent-light);
+    border: 1px solid rgba(34, 211, 255, 0.25);
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    background: rgba(34, 211, 255, 0.05);
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+  }
+  details[open] summary::after {
+    content: '[ CLOSE ]';
+    color: var(--danger);
+    border-color: rgba(255, 107, 138, 0.3);
+    background: rgba(255, 107, 138, 0.05);
+  }
+  [data-theme="flashbang"] summary::after {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: rgba(8, 145, 178, 0.05);
+  }
+}
+
+/* ── Animated Cyber Scanlines & Grids ───────────────────────────────────── */
+.cyber-grid {
+  background-image: 
+    linear-gradient(rgba(34, 211, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 255, 0.015) 1px, transparent 1px);
+  background-size: 28px 28px;
+  background-position: center top;
+}
+.scanlines {
+  position: relative;
+}
+.scanlines::before {
+  content: " ";
+  display: block;
+  position: fixed;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%);
+  z-index: 9999;
+  background-size: 100% 4px;
+  pointer-events: none;
+  opacity: 0.3;
+}
+
+/* ── Futuristic Cyber Deck Card ─────────────────────────────────────────── */
+.cyber-card {
+  position: relative;
+  background: rgba(10, 14, 28, 0.7);
+  border: 1px solid rgba(34, 211, 255, 0.18);
+  border-radius: 0.75rem;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  overflow: hidden;
+}
+.cyber-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-pale));
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.cyber-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--accent);
+  box-shadow: 
+    0 12px 30px rgba(0, 0, 0, 0.5),
+    0 0 20px var(--glow-faint);
+}
+.cyber-card:hover::before {
+  opacity: 1;
+}
+
+/* ── RPG HUD Progress Bars ──────────────────────────────────────────────── */
+.hud-progress-container {
+  width: 100%;
+  height: 6px;
+  background: rgba(6, 8, 15, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
+  margin-top: 0.5rem;
+}
+.hud-progress-bar {
+  height: 100%;
+  border-radius: 9999px;
+  box-shadow: 0 0 8px rgba(34, 211, 255, 0.5);
+  transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.hud-progress-bar-cyan {
+  background: linear-gradient(90deg, #00f0ff, #00b8ff);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.6);
+}
+.hud-progress-bar-purple {
+  background: linear-gradient(90deg, #a78bff, #8a2be2);
+  box-shadow: 0 0 10px rgba(167, 139, 250, 0.6);
+}
+.hud-progress-bar-pink {
+  background: linear-gradient(90deg, #ff6b8a, #ff1493);
+  box-shadow: 0 0 10px rgba(255, 107, 138, 0.6);
+}
+
+/* ── Podium Badges ──────────────────────────────────────────────────────── */
+.rank-podium {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 0.75rem;
+  border: 1px solid transparent;
+}
+.rank-podium-1 {
+  background: rgba(254, 240, 138, 0.15); /* Light yellow */
+  color: #fef08a;
+  border-color: #fef08a;
+  box-shadow: 0 0 10px rgba(254, 240, 138, 0.4);
+}
+.rank-podium-2 {
+  background: rgba(167, 139, 250, 0.15); /* Lavender purple */
+  color: #a78bff;
+  border-color: #a78bff;
+  box-shadow: 0 0 10px rgba(167, 139, 250, 0.4);
+}
+.rank-podium-3 {
+  background: rgba(255, 107, 138, 0.15); /* Pink/Red */
+  color: #ff6b8a;
+  border-color: #ff6b8a;
+  box-shadow: 0 0 10px rgba(255, 107, 138, 0.4);
+}
+.rank-podium-normal {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--fog-300);
+  border-color: var(--ink-600);
+}
+
+/* ── Status LED Indicators ──────────────────────────────────────────────── */
+.status-led {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  animation: led-glow 2s infinite alternate;
+}
+@keyframes led-glow {
+  from { opacity: 0.5; filter: brightness(0.8); }
+  to { opacity: 1; filter: brightness(1.2); }
+}
+.status-led-green {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+.status-led-orange {
+  background: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+}
+.status-led-cyan {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
+/* ── Shared accent button ───────────────────────────────────────────────── */
+.btn-accent {
+  background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 8%, transparent), color-mix(in oklab, var(--accent-pale) 8%, transparent));
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 0.7rem 1.6rem;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 0 8px var(--glow-faint);
+  transition: transform 0.1s, box-shadow 0.15s, opacity 0.1s, background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+.btn-accent:not(:disabled):hover {
+  background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 25%, transparent), color-mix(in oklab, var(--accent-pale) 25%, transparent));
+  color: #ffffff;
+  border-color: var(--accent-light);
+  box-shadow: 0 0 16px var(--glow-bright), 0 0 4px var(--accent);
+}
+.btn-accent:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: 0 0 6px var(--glow-faint);
+}
+.btn-accent:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: var(--ink-500);
+  background: transparent;
+  color: var(--ink-500);
+  box-shadow: none;
+}
+.btn-accent.btn-sm { padding: 0.5rem 1.1rem; }
+.btn-accent.btn-lg { padding: 1rem 2.5rem; font-size: 1.1rem; }
+
+
+/* ───────────────────────────────────────────────────────────
+   Navbar styles (migrated from components/navbar.ts so they ship in the
+   cached styles.css instead of re-parsing inline on every navigation).
+   ─────────────────────────────────────────────────────────── */
+/* Default (desktop / non-touch): top links visible, mobile dock hidden. */
+  #nav-links  { display: flex; }
+  #nav-mobile { display: none; }
+
+  .nav-link.active { border-bottom-color: var(--accent); }
+  .nav-links.js-ready .nav-link.active { border-bottom-color: transparent; }
+
+  /* Caisena gradient nav surfaces — theme-aware via CSS vars */
+  .nav-surface {
+    background: color-mix(in oklab, var(--ink-800) 75%, transparent);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid transparent;
+    border-image: linear-gradient(90deg, transparent 0%, var(--accent) 30%, var(--accent-pale) 70%, transparent 100%) 1;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+  .nav-underline-grad {
+    background: linear-gradient(90deg, var(--accent) 0%, var(--accent-pale) 100%);
+    box-shadow: 0 0 14px var(--glow-bright), 0 0 4px var(--accent);
+  }
+
+  /* Desktop window header is hidden by default (mobile/narrow) */
+  .nav-window-header {
+    display: none;
+  }
+  @media (min-width: 1025px) {
+    .nav-window-header {
+      display: flex;
+    }
+  }
+
+  /* Desktop window styles override */
+  @media (min-width: 1025px) {
+    .nav-surface {
+      max-width: 1100px;
+      width: calc(100% - 2rem);
+      margin: 1.5rem auto 0 auto;
+      border-radius: 0.75rem;
+      border: 1px solid color-mix(in oklab, var(--accent) 20%, transparent);
+      border-image: none;
+      background: color-mix(in oklab, var(--ink-800) 65%, transparent);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 
+        0 10px 30px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05),
+        0 0 15px rgba(34, 211, 255, 0.05);
+      position: relative;
+      overflow: hidden;
+    }
+  }
+
+  /* Desktop nav link spacing */
+  #nav-links { gap: 1.75rem; }
+
+  /* Spacer balances the logo so links stay visually centered when no auth chip is present. */
+  .nav-spacer { width: 3rem; height: 3rem; flex: none; }
+
+  /* Desktop auth chip (right side of navbar, logged-in only) */
+  #nav-auth-desktop { display: flex; align-items: center; }
+  .nav-auth { display: flex; align-items: center; gap: 0.6rem; color: var(--fog-200); font-size: 0.9rem; font-family: 'JetBrains Mono', monospace !important; }
+  /* Avatar + username are wrapped in <a href="/me"> — the link itself stays unstyled. */
+  .nav-profile-link { display: inline-flex; align-items: center; gap: 0.6rem; text-decoration: none; color: inherit; }
+  .nav-avatar { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--accent); transition: box-shadow 0.2s; }
+  .nav-username { font-weight: 500; color: var(--fog-100); max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; }
+  .nav-profile-link:hover .nav-username { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--accent); }
+  .nav-profile-link:hover .nav-avatar { box-shadow: 0 0 6px var(--glow-faint, rgba(255,255,255,0.2)); }
+  .nav-auth-link { color: color-mix(in oklab, var(--danger) 65%, #000); text-decoration: none; font-size: 0.85rem; padding: 0.3rem 0.6rem; border-radius: 0.4rem; border: 1px solid transparent; transition: color 0.2s, text-shadow 0.2s; }
+  .nav-auth-link:hover { color: var(--danger); text-shadow: 0 0 8px var(--danger-glow); }
+  .nav-login-link { color: color-mix(in oklab, var(--accent) 65%, #000); text-decoration: none; font-size: 0.85rem; padding: 0.3rem 0.6rem; border-radius: 0.4rem; border: 1px solid transparent; transition: color 0.2s, text-shadow 0.2s; }
+  .nav-login-link:hover { color: var(--accent); text-shadow: 0 0 8px var(--glow-bright); }
+
+  /* ── Touch / narrow-viewport dock ───────────────────────────────────────
+     Floating glass tab bar pinned to the bottom. Triggered by either a
+     narrow viewport (covers tablets, foldables, phones in DevTools where
+     hover/pointer emulation is unreliable) OR a true touch device (covers
+     touchscreens that happen to be wider, e.g. Nest Hub Max, iPad Pro
+     12.9 in landscape). */
+  @media (max-width: 1024px), (hover: none) and (pointer: coarse) {
+    #nav-links { display: none; }
+
+    /* Reserve scroll space below the page content so the floating dock
+       never permanently covers the footer — users can scroll past it. */
+    body {
+      padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+    }
+
+    #nav-mobile {
+      display: flex !important;
+      position: fixed;
+      bottom: calc(0.9rem + env(safe-area-inset-bottom));
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(92vw, 26rem);
+      padding: 0.45rem 0.5rem;
+      border-radius: 9999px;
+      background: color-mix(in oklab, var(--ink-900) 72%, transparent) !important;
+      -webkit-backdrop-filter: blur(25px) saturate(190%);
+      backdrop-filter: blur(25px) saturate(190%);
+      border: 1px solid color-mix(in oklab, var(--accent) 35%, transparent) !important;
+      border-image: none !important;
+      box-shadow:
+        0 12px 32px rgba(0, 0, 0, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        0 0 15px rgba(34, 211, 255, 0.15);
+      flex-direction: row;
+      justify-content: space-around;
+      align-items: stretch;
+      gap: 0;
+      z-index: 50;
+      isolation: isolate;
+      /* The drag handlers live on the dock and the press usually lands on a tile,
+         not the pill. Without this the browser claims a horizontal finger-drag as
+         a pan/scroll gesture, fires pointercancel mid-drag, and the pill rubber-
+         bands back to the active tile. Disable native touch gestures dock-wide so
+         the pointer drag is never stolen. */
+      touch-action: none;
+    }
+
+    /* Sliding pill — accent-tinted, animates between tiles, draggable */
+    #nav-mobile .dock-pill {
+      position: absolute;
+      top: 0.4rem;
+      bottom: 0.4rem;
+      left: 0;
+      width: 0;
+      border-radius: 9999px;
+      background: linear-gradient(90deg, color-mix(in oklab, var(--accent) 25%, transparent), color-mix(in oklab, var(--accent-pale) 25%, transparent));
+      border: 1px solid color-mix(in oklab, var(--accent) 45%, transparent);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.15),
+        0 0 12px rgba(34, 211, 255, 0.25);
+      pointer-events: auto;
+      touch-action: none;
+      cursor: grab;
+      z-index: 0;
+      will-change: transform, width;
+    }
+    /* While pressed/dragging the pill scales up (transform driven by JS) and
+       its glow intensifies so the "bubble" feels like it lifts toward you. */
+    #nav-mobile .dock-pill.dragging {
+      cursor: grabbing;
+      background: linear-gradient(90deg, color-mix(in oklab, var(--accent) 38%, transparent), color-mix(in oklab, var(--accent-pale) 38%, transparent));
+      border-color: color-mix(in oklab, var(--accent) 65%, transparent);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.5),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.1),
+        0 6px 22px color-mix(in oklab, var(--accent) 50%, transparent),
+        0 0 18px color-mix(in oklab, var(--accent) 35%, transparent);
+      transition: background 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+        border-color 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Tile = icon + label, stacked. Sits above the pill in z-stack. */
+    #nav-mobile .nav-link {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 0.45rem 0.25rem;
+      border: 0 !important;
+      border-radius: 9999px;
+      background: transparent !important;
+      color: var(--fog-300);
+      position: relative;
+      z-index: 1;
+      transition: color 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+      /* Suppress native link-drag + text selection so a mouse/finger drag scrubs
+         the pill instead of pulling the URL out as a draggable ghost. */
+      -webkit-user-drag: none;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+    #nav-mobile .nav-link svg,
+    #nav-mobile .nav-link .label { pointer-events: none; }
+    #nav-mobile .nav-link svg {
+      width: 22px;
+      height: 22px;
+      display: block;
+    }
+    #nav-mobile .nav-link .label {
+      font-size: 0.62rem;
+      line-height: 1;
+      letter-spacing: 0.02em;
+      font-weight: 500;
+    }
+    /* Active state: text color brightens; the pill below provides the bg */
+    #nav-mobile .nav-link.active { color: var(--fog-100); }
+  }
+
+/* ───────────────────────────────────────────────────────────
+   Search / command-palette styles (migrated from components/search.ts).
+   ─────────────────────────────────────────────────────────── */
+/* Backdrop fills the viewport, blurs whatever is behind. Hidden via the
+     [hidden] attribute by default so it doesn't intercept clicks. */
+  .search-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 12vh;
+    background: rgba(0, 0, 0, 0.45);
+    -webkit-backdrop-filter: blur(6px) saturate(120%);
+    backdrop-filter: blur(6px) saturate(120%);
+    opacity: 0;
+    transition: opacity 0.15s ease-out;
+  }
+  .search-overlay[hidden] { display: none; }
+  .search-overlay.visible { opacity: 1; }
+
+  /* Translucent themed glass card — matches the mobile dock vibe. Uses
+     color-mix so the surface picks up the active theme's --ink-800. */
+  .search-box {
+    width: min(560px, 92vw);
+    border-radius: 0.9rem;
+    /* Match the site chrome (navbar, badges, kbd hints) which is all
+       JetBrains Mono. Everything inside inherits this. */
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: color-mix(in oklab, var(--ink-800) 70%, transparent);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    backdrop-filter: blur(22px) saturate(180%);
+    border: 1px solid color-mix(in oklab, var(--accent) 35%, var(--ink-600));
+    box-shadow:
+      0 20px 60px rgba(0, 0, 0, 0.45),
+      0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+      0 0 24px color-mix(in oklab, var(--accent) 18%, transparent);
+    overflow: hidden;
+    transform: translateY(-8px);
+    transition: transform 0.18s cubic-bezier(0.34, 1.2, 0.64, 1);
+  }
+  .search-overlay.visible .search-box { transform: translateY(0); }
+
+  .search-input-row {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.9rem 1.1rem;
+    border-bottom: 1px solid color-mix(in oklab, var(--ink-600) 80%, transparent);
+  }
+  .search-input-row svg {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    color: var(--fog-300);
+  }
+  .search-input {
+    flex: 1;
+    background: transparent;
+    border: 0;
+    outline: 0;
+    /* Theme-aware text color so flashbang stays readable. */
+    color: var(--fog-100);
+    font: inherit;
+    font-size: 1rem;
+    padding: 0.15rem 0;
+  }
+  .search-input::placeholder { color: var(--fog-400); }
+
+  .search-hint {
+    font-size: 0.7rem;
+    color: var(--fog-400);
+    border: 1px solid var(--ink-600);
+    border-radius: 0.3rem;
+    padding: 0.1rem 0.4rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Results list — cap height at ~10 rows; scroll past that. */
+  .search-results {
+    max-height: 420px;
+    overflow-y: auto;
+    padding: 0.35rem;
+  }
+  .search-results:empty + .search-empty { display: block; }
+
+  .search-empty {
+    display: none;
+    padding: 1rem 1.2rem;
+    color: var(--fog-400);
+    font-size: 0.9rem;
+  }
+  .search-overlay[data-state="empty"] .search-empty { display: block; }
+  .search-overlay[data-state="results"] .search-empty { display: none; }
+  .search-overlay[data-state="idle"] .search-empty {
+    display: block;
+    color: var(--fog-400);
+  }
+
+  .search-result {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 0.8rem;
+    border-radius: 0.5rem;
+    text-decoration: none;
+    color: var(--fog-200);
+    cursor: pointer;
+    transition: background-color 0.1s, color 0.1s;
+  }
+  .search-result .titles {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+  }
+  .search-result .title {
+    color: var(--fog-100);
+    font-size: 0.95rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .search-result .desc {
+    color: var(--fog-400);
+    font-size: 0.78rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .search-result .group-tag {
+    font-size: 0.7rem;
+    color: var(--fog-400);
+    border: 1px solid var(--ink-600);
+    border-radius: 0.3rem;
+    padding: 0.1rem 0.45rem;
+    flex: none;
+  }
+  .search-result mark {
+    background: color-mix(in oklab, var(--accent) 30%, transparent);
+    color: var(--accent-light);
+    border-radius: 0.2rem;
+    padding: 0 1px;
+  }
+  .search-result.selected {
+    background: color-mix(in oklab, var(--accent) 22%, transparent);
+  }
+  .search-result.selected .title { color: var(--fog-100); }
+  .search-result.selected .group-tag {
+    border-color: color-mix(in oklab, var(--accent) 55%, var(--ink-600));
+    color: var(--accent-light);
+  }
+  .search-result:hover {
+    background: color-mix(in oklab, var(--accent) 14%, transparent);
+  }
+
+  .search-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.45rem 0.9rem;
+    border-top: 1px solid color-mix(in oklab, var(--ink-600) 80%, transparent);
+    font-size: 0.72rem;
+    color: var(--fog-400);
+    gap: 0.5rem;
+  }
+  .search-footer kbd {
+    font-family: 'JetBrains Mono', monospace;
+    border: 1px solid var(--ink-600);
+    border-radius: 0.25rem;
+    padding: 0.05rem 0.35rem;
+    color: var(--fog-300);
+  }

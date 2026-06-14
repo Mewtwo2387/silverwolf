@@ -36,7 +36,6 @@ class GrabEmoji extends Command {
       if (!match) {
         interaction.editReply({
           content: 'Please provide a valid **``custom``** emoji.',
-          ephemeral: true,
         });
         return;
       }
@@ -47,7 +46,6 @@ class GrabEmoji extends Command {
       if (isAnimated && format !== 'gif') {
         await interaction.editReply({
           content: 'Animated emojis can only be downloaded as GIF format. Please use GIF format for animated emojis.',
-          ephemeral: true,
         });
         return;
       }
@@ -76,7 +74,6 @@ class GrabEmoji extends Command {
           logError('Canvas conversion error:', error);
           await interaction.editReply({
             content: `Could not convert to ${format.toUpperCase()}. Providing original PNG format instead.`,
-            ephemeral: true,
           });
         }
       }
@@ -95,7 +92,6 @@ class GrabEmoji extends Command {
       logError('Error processing emoji:', error);
       await interaction.editReply({
         content: 'There was an error processing the emoji. Please check if the emoji exists and the format is valid.',
-        ephemeral: true,
       });
     }
   }

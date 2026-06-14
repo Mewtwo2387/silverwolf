@@ -1,0 +1,452 @@
+import { html, raw } from 'hono/html';
+import { Layout } from '../../components/layout';
+import type { NavUser } from '../../components/navbar';
+import { inlineJSON, NUM_FMT_JS } from '../../inline';
+import {
+  GAMBLING_STATS_CSS,
+  GAMBLING_STATS_JS,
+  renderGambleStatsBar,
+  type GamblingPageStats,
+} from '../../gambling-stats';
+
+export function SlotsPage(opts: {
+  nonce: string;
+  lv999?: boolean;
+  user?: NavUser | null;
+  gambleStats?: GamblingPageStats | null;
+}) {
+  const {
+    nonce, lv999, user, gambleStats,
+  } = opts;
+  const csrfJSON = inlineJSON(user?.csrf ?? '');
+  const loggedOut = !user;
+
+  const extras = raw(`
+<style>
+  ${GAMBLING_STATS_CSS}
+  .slots-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    margin-top: 1rem;
+  }
+  .slots-machine {
+    background: linear-gradient(180deg, #c0252e 0%, #7e1820 100%);
+    padding: 1rem;
+    border-radius: 1rem;
+    border: 4px solid #4a0d12;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.5), inset 0 0 12px rgba(0,0,0,0.4);
+  }
+  .reels {
+    display: flex;
+    gap: 0.5rem;
+    background: #111;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+  }
+  .reel {
+    width: 70px;
+    height: 210px;
+    overflow: hidden;
+    position: relative;
+    perspective: 600px;
+    background: var(--ink-900);
+    border-radius: 0.4rem;
+    border: 1px solid var(--ink-600);
+  }
+  .reel::before, .reel::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 30px;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .reel::before { top: 0; background: linear-gradient(180deg, var(--ink-900), transparent); }
+  .reel::after { bottom: 0; background: linear-gradient(0deg, var(--ink-900), transparent); }
+  .strip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(0);
+    will-change: transform;
+  }
+  .strip.spinning { transition: transform var(--spin-duration, 2s) cubic-bezier(0.18, 0.7, 0.16, 1); }
+  .symbol {
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--fog-100);
+    font-size: 2rem;
+    line-height: 1;
+  }
+  .symbol img { width: 48px; height: 48px; object-fit: contain; }
+  /* Aura around symbols sitting on a matched payline. Box-shadow is clipped by
+     the reel's overflow:hidden, which is fine — it reads as a contained glow. */
+  .symbol.winning {
+    border-radius: 8px;
+    animation: slot-aura-pulse 1.1s ease-in-out infinite;
+    position: relative;
+    z-index: 1;
+  }
+  @keyframes slot-aura-pulse {
+    0%, 100% {
+      box-shadow:
+        0 0 8px 1px rgba(255, 204, 77, 0.55),
+        inset 0 0 6px rgba(255, 204, 77, 0.28);
+      background: rgba(255, 204, 77, 0.06);
+    }
+    50% {
+      box-shadow:
+        0 0 16px 3px rgba(255, 204, 77, 0.85),
+        inset 0 0 10px rgba(255, 204, 77, 0.4);
+      background: rgba(255, 204, 77, 0.12);
+    }
+  }
+
+  .slots-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 420px;
+  }
+  .slots-form label {
+    color: var(--fog-300);
+    font-size: 0.85rem;
+  }
+  .slots-form input {
+    width: 100%;
+    background: var(--ink-800);
+    border: 1px solid var(--ink-600);
+    border-radius: 4px;
+    padding: 0.6rem 0.9rem;
+    color: var(--fog-100);
+    font: inherit;
+  }
+  .slots-form input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .slots-form .roll-btn { width: 100%; }
+  .roll-btn { padding: 0.7rem 2rem; }
+
+  .result-banner {
+    text-align: center;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    background: var(--ink-800);
+    border: 1px solid var(--ink-600);
+    width: 100%;
+    max-width: 540px;
+    display: none;
+  }
+  .result-banner.win { border-color: #2ecc71; color: #7ee2a4; }
+  .result-banner.loss { border-color: var(--danger); color: var(--danger); }
+  .result-banner h2 { font-size: 1.1rem; margin: 0 0 0.4rem 0; font-weight: bold; }
+  .result-banner .sub { color: var(--fog-300); font-size: 0.9rem; }
+  .result-banner img { width: 24px; height: 24px; vertical-align: middle; object-fit: contain; }
+
+  .login-cta {
+    background: var(--ink-800);
+    border: 1px solid var(--ink-600);
+    border-radius: 0.75rem;
+    padding: 1.5rem 2rem;
+    text-align: center;
+    color: var(--fog-200);
+  }
+  .login-cta a { color: var(--accent-light); font-weight: bold; text-decoration: none; }
+  .login-cta a:hover { color: var(--accent); }
+</style>
+`);
+
+  // Render 5 empty reels with placeholder strips. The script will populate
+  // them with filler symbols and animate to the server-supplied 3-symbol stop
+  // position.
+  const reelsHTML = Array.from({ length: 5 }, (_, j) => `
+    <div class="reel" data-reel="${j}">
+      <div class="strip"></div>
+    </div>
+  `).join('');
+
+  const script = raw(`
+<script nonce="${nonce}">
+(() => {
+  ${NUM_FMT_JS}
+  ${GAMBLING_STATS_JS}
+  initGambleStats(${inlineJSON(gambleStats ?? null)});
+  const csrf = ${csrfJSON};
+  const slotsForm = document.querySelector('.slots-form');
+  const rollBtn = document.getElementById('roll-btn');
+  const amountInput = document.getElementById('amount-input');
+  const banner = document.getElementById('result-banner');
+  const reels = Array.from(document.querySelectorAll('.reel'));
+  const SYMBOL_HEIGHT = 70;
+
+  let spinning = false;
+  // Filler pool: populated from the server result on each spin so the rolling
+  // strips show the same Discord emotes the result will land on (no unicode
+  // fallback emojis — those don't match the season's skin).
+  let fillerPool = [];
+
+  // Paylines mirror commands/slots.ts. Each entry picks a row index (0/1/2)
+  // for each of the 5 columns. A line "wins" when ≥3 consecutive columns from
+  // the left land on the same emote — same rule the server uses to score.
+  const PAYLINES = [
+    [0, 0, 0, 0, 0],
+    [1, 1, 1, 1, 1],
+    [2, 2, 2, 2, 2],
+    [0, 1, 2, 1, 0],
+    [2, 1, 0, 1, 2],
+    [0, 1, 2, 2, 2],
+    [2, 1, 0, 0, 0],
+    [0, 0, 0, 1, 2],
+    [2, 2, 2, 1, 0],
+  ];
+
+  function computeWinningCells(results) {
+    const winners = new Map();
+    for (const line of PAYLINES) {
+      const e0 = results[line[0]][0].emote;
+      let matchCount = 1;
+      for (let col = 1; col < 5; col += 1) {
+        if (results[line[col]][col].emote === e0) matchCount += 1;
+        else break;
+      }
+      if (matchCount >= 3) {
+        for (let col = 0; col < matchCount; col += 1) {
+          winners.set(line[col] + ',' + col, { row: line[col], col });
+        }
+      }
+    }
+    return Array.from(winners.values());
+  }
+
+  function symbolHTML(emote) {
+    if (!emote) return '<div class="symbol"></div>';
+    if (typeof emote === 'string') {
+      return '<div class="symbol">' + escape(emote) + '</div>';
+    }
+    const e = emote.emote || '';
+    const m = e.match(/^<a?:[\\w-]+:(\\d+)>$/);
+    if (m) {
+      return '<div class="symbol"><img src="https://cdn.discordapp.com/emojis/' + m[1] + '.png" alt="" loading="lazy" /></div>';
+    }
+    return '<div class="symbol">' + escape(e) + '</div>';
+  }
+
+  function escape(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  }
+
+  function buildStrip(reelIdx, reelStop) {
+    // reelStop = [topSymbol, middleSymbol, bottomSymbol] for this reel
+    // Strip layout (top → bottom): N filler symbols, then the 3 stop symbols.
+    // We translate the strip up so the 3 stop symbols sit centered in the visible area.
+    const FILLER_COUNT = 24 + reelIdx * 4; // staggered length per reel
+    const out = [];
+    const pool = fillerPool.length > 0 ? fillerPool : reelStop;
+    for (let k = 0; k < FILLER_COUNT; k += 1) {
+      out.push(symbolHTML(pool[Math.floor(Math.random() * pool.length)]));
+    }
+    out.push(symbolHTML(reelStop[0]));
+    out.push(symbolHTML(reelStop[1]));
+    out.push(symbolHTML(reelStop[2]));
+    return { html: out.join(''), totalCount: FILLER_COUNT + 3 };
+  }
+
+  function setBanner(state, html) {
+    // Use 'block' explicitly: setting '' would clear the inline style and
+    // fall back to the CSS display:none rule, hiding the banner.
+    banner.style.display = 'block';
+    banner.classList.remove('win', 'loss');
+    banner.classList.add(state);
+    banner.innerHTML = html;
+  }
+
+  function clearBanner() { banner.style.display = 'none'; banner.innerHTML = ''; }
+
+  function emoteToInline(emote) {
+    if (typeof emote === 'string') return escape(emote);
+    const e = emote.emote || '';
+    const m = e.match(/^<a?:[\\w-]+:(\\d+)>$/);
+    if (m) return '<img src="https://cdn.discordapp.com/emojis/' + m[1] + '.png" alt="" />';
+    return escape(e);
+  }
+
+  function renderResultMessage(message, results) {
+    // Replace each Discord emoji shortcode in the message with its CDN image.
+    const escaped = message.replace(/<a?:[\\w-]+:(\\d+)>/g, (_, id) => '<img src="https://cdn.discordapp.com/emojis/' + id + '.png" alt="" />');
+    return escaped;
+  }
+
+  function handleErrorCode(code) {
+    const map = {
+      unauthenticated: 'You must log in.',
+      csrf: 'Session expired, refresh the page.',
+      invalid: 'Invalid bet amount.',
+      negative: "You can't bet debt.",
+      poor: "You don't have enough credits.",
+      infinity: 'Nice try cheater.',
+      server: 'Server error, try again.',
+    };
+    setBanner('loss', '<h2>' + (map[code] || ('Error: ' + code)) + '</h2>');
+  }
+
+  async function roll() {
+    if (spinning) return;
+    spinning = true;
+    rollBtn.disabled = true;
+    clearBanner();
+
+    const amount = amountInput.value.trim();
+    if (!amount) { setBanner('loss', '<h2>Enter a bet amount.</h2>'); spinning = false; rollBtn.disabled = false; return; }
+
+    let data;
+    try {
+      const r = await fetch('/games/slots/play', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ csrf, amount }),
+      });
+      data = await r.json();
+    } catch (e) {
+      setBanner('loss', '<h2>Network error.</h2>');
+      spinning = false;
+      rollBtn.disabled = false;
+      return;
+    }
+
+    if (data.error || !data.data) {
+      handleErrorCode(data.error || 'server');
+      spinning = false;
+      rollBtn.disabled = false;
+      return;
+    }
+
+    const d = data.data;
+    // d.results is [row0, row1, row2], each an array of 5 emote objects.
+    // Reel j's stop column is [d.results[0][j], d.results[1][j], d.results[2][j]].
+    // Pool the 15 result symbols for the rolling fillers — keeps the spin
+    // visually consistent with the season's Discord emotes.
+    fillerPool = [].concat(d.results[0], d.results[1], d.results[2]);
+    const stopDelays = [1700, 2100, 2500, 2900, 3300];
+
+    reels.forEach((reelEl, j) => {
+      const strip = reelEl.querySelector('.strip');
+      strip.querySelectorAll('.symbol.winning').forEach((s) => s.classList.remove('winning'));
+      const stopCol = [d.results[0][j], d.results[1][j], d.results[2][j]];
+      const built = buildStrip(j, stopCol);
+      strip.innerHTML = built.html;
+      // Tag the 3 visible stop cells (always the last 3 children) so the
+      // winning-cell highlighter can target them after the reel lands.
+      const stopCells = Array.from(strip.children).slice(-3);
+      stopCells.forEach((el, row) => { el.dataset.row = String(row); });
+      // Total strip height in px:
+      const stripHeight = built.totalCount * SYMBOL_HEIGHT;
+      // We want the 3 stop symbols (last 3 in strip) centered around the middle symbol
+      // sitting at y = SYMBOL_HEIGHT (middle row of the 3-row visible window).
+      // The middle stop symbol is at index (total - 2). Its top in the strip = (total - 2) * SYMBOL_HEIGHT.
+      // We want that to land at SYMBOL_HEIGHT in the viewport, so translate = -(((total - 2) * SYMBOL_HEIGHT) - SYMBOL_HEIGHT).
+      const middleIdx = built.totalCount - 2;
+      const translate = -(middleIdx - 1) * SYMBOL_HEIGHT;
+
+      // Reset position instantly: park the strip so the stop symbols sit
+      // below the visible window, then animate up to the final position.
+      strip.classList.remove('spinning');
+      strip.style.transition = 'none';
+      strip.style.transform = 'translateY(' + (translate + stripHeight - SYMBOL_HEIGHT * 3) + 'px)';
+      // Force reflow so the parked position is committed before we re-enable transitions.
+      void strip.offsetWidth;
+      strip.style.transition = '';
+      strip.style.setProperty('--spin-duration', (stopDelays[j] / 1000) + 's');
+      strip.classList.add('spinning');
+      // After await(fetch), the browser may batch style writes from Enter/submit
+      // in the same frame — double rAF ensures the parked position paints first.
+      const finalY = translate;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          strip.style.transform = 'translateY(' + finalY + 'px)';
+        });
+      });
+    });
+
+    const totalWait = Math.max(...stopDelays) + 200;
+    setTimeout(() => {
+      // Render the final message; preserve Discord emoji rendering.
+      const inline = renderResultMessage(d.isWin ? d.winMessage : d.loseMessage, d.results);
+      const headline = d.isWin
+        ? 'You won ' + fmtNumSpan(d.winningsLabel, d.winningsTitle) + ' mystic credits'
+        : 'You lost ' + fmtNumSpan(d.amountLabel, d.amountTitle) + ' mystic credits';
+      setBanner(d.isWin ? 'win' : 'loss', '<h2>' + headline + '</h2><div class="sub">' + inline + '</div>');
+      updateGambleStats(d);
+
+      // Light up every cell that participated in a matched payline. Run this
+      // regardless of d.isWin — natural 3-in-a-rows are worth showing even
+      // during seasons that override the multiplier (e.g. aprilFools).
+      const winners = computeWinningCells(d.results);
+      winners.forEach(({ row, col }) => {
+        const strip = reels[col].querySelector('.strip');
+        const cell = strip.querySelector('.symbol[data-row="' + row + '"]');
+        if (cell) cell.classList.add('winning');
+      });
+
+      spinning = false;
+      rollBtn.disabled = false;
+    }, totalWait);
+  }
+
+  rollBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    roll();
+  });
+  // Enter in the bet field submits the form; keypress + implicit submit could
+  // invoke roll twice or skip CSS transitions — handle submit once instead.
+  slotsForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    roll();
+  });
+})();
+</script>
+`);
+
+  const body = html`
+    <h1 class="text-center">Slots</h1>
+    <p class="text-center text-fog-300 mb-4">Pull the lever and watch your mystic credits disappear in style.</p>
+    ${gambleStats ? renderGambleStatsBar(gambleStats) : ''}
+    <div class="slots-container">
+      <div class="slots-machine">
+        <div class="reels">
+          ${raw(reelsHTML)}
+        </div>
+      </div>
+      ${loggedOut
+    ? html`<div class="login-cta">Log in with <a href="/auth/discord/login">Discord</a> to play.</div>`
+    : html`
+            <form class="slots-form" onsubmit="return false">
+              <label for="amount-input">Bet amount</label>
+              <input id="amount-input" type="text" placeholder="amount (e.g. 1000 or 1k)" autocomplete="off" aria-label="Bet amount" />
+              <button id="roll-btn" type="button" class="btn-accent roll-btn">Roll</button>
+            </form>
+          `}
+      <div id="result-banner" class="result-banner"></div>
+    </div>
+    ${extras}
+    ${loggedOut ? '' : script}
+  `;
+
+  return Layout({
+    title: 'Silverwolf — Slots',
+    active: 'games',
+    body: body as any,
+    nonce,
+    lv999,
+    user,
+  });
+}

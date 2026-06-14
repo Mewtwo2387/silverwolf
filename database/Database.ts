@@ -2,20 +2,23 @@ import { Database as BunDatabase } from 'bun:sqlite';
 import { log, logError } from '../utils/log';
 import { snakeToCamelJSON } from '../utils/caseConvert';
 import * as tables from './tables';
+import imageGenQueries from './queries/imageGenQueries';
 import * as modelClasses from './models';
 import type { TableDefinition, QueryResult } from './types';
 import type UserModel from './models/UserModel';
 import type BabyModel from './models/BabyModel';
 import type AiChatModel from './models/AiChatModel';
-import type ChatModel from './models/ChatModel';
 import type PokemonModel from './models/PokemonModel';
 import type MarriageModel from './models/MarriageModel';
 import type CommandConfigModel from './models/CommandConfigModel';
+import type CyclicTttMatchModel from './models/CyclicTttMatchModel';
 import type GameUIDModel from './models/GameUIDModel';
 import type GlobalConfigModel from './models/GlobalConfigModel';
+import type ImageGenModel from './models/ImageGenModel';
 import type ServerRolesModel from './models/ServerRolesModel';
 import type BirthdayReminderModel from './models/BirthdayReminderModel';
 import type PoopModel from './models/PoopModel';
+import type WebSessionModel from './models/WebSessionModel';
 
 class Database {
   db!: BunDatabase;
@@ -97,11 +100,71 @@ class Database {
         )
     `);
 
-    // Enforce at most one active AI session per user+persona
+    // Enforce at most one active AI session per user+persona on Discord. Scoped
+    // to source='discord' so an accidental active=1 web row can't collide with
+    // the bot's active session. The legacy source-agnostic index is dropped
+    // first so older databases pick up the new predicate.
+    this.db.run('DROP INDEX IF EXISTS idx_aichatsession_user_persona_active');
     this.db.run(`
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_aichatsession_user_persona_active
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_aichatsession_user_discord_active
       ON AiChatSession (user_id, persona_name)
-      WHERE active = 1
+      WHERE active = 1 AND source = 'discord'
+    `);
+
+    // Speed up the website sidebar query (user's web-only chat list).
+    this.db.run(`
+      CREATE INDEX IF NOT EXISTS idx_aichatsession_user_source
+      ON AiChatSession (user_id, source)
+    `);
+
+    // SQLite can't ALTER a CHECK constraint — rebuild AiChatHistory if the
+    // 'tool' role isn't allowed yet. Idempotent: skipped on subsequent boots.
+    const aiChatSchema = this.db
+      .query("SELECT sql FROM sqlite_master WHERE type='table' AND name='AiChatHistory'")
+      .get() as { sql?: string } | null;
+    if (aiChatSchema?.sql && !aiChatSchema.sql.includes("'tool'")) {
+      log('Migrating AiChatHistory: adding tool role to CHECK constraint');
+      this.db.run('BEGIN IMMEDIATE TRANSACTION');
+      try {
+        this.db.run(`
+          CREATE TABLE AiChatHistory_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id INTEGER NOT NULL,
+            role TEXT CHECK(role IN ('user', 'model', 'assistant', 'tool')) NOT NULL,
+            message TEXT NOT NULL,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (session_id) REFERENCES AiChatSession(session_id)
+          )
+        `);
+        this.db.run('INSERT INTO AiChatHistory_new (id, session_id, role, message, timestamp) SELECT id, session_id, role, message, timestamp FROM AiChatHistory');
+        this.db.run('DROP TABLE AiChatHistory');
+        this.db.run('ALTER TABLE AiChatHistory_new RENAME TO AiChatHistory');
+        this.db.run('COMMIT');
+        log('AiChatHistory migration complete');
+      } catch (err) {
+        this.db.run('ROLLBACK');
+        logError('AiChatHistory migration failed:', err);
+        throw err;
+      }
+    }
+
+    // Speed up per-user poop lookups and daily-count range queries
+    this.db.run(`
+      CREATE INDEX IF NOT EXISTS idx_poopentry_user_logged
+      ON PoopEntry (user_id, logged_at)
+    `);
+
+    // Back the per-user rolling-24h image-generation rate-limit count.
+    this.db.run(imageGenQueries.CREATE_USER_CREATED_INDEX);
+
+    // Back the per-user recent-match lookup (GET_RECENT_FOR_USER).
+    this.db.run(`
+      CREATE INDEX IF NOT EXISTS idx_cyclic_ttt_x_id_ended_at
+      ON CyclicTttMatch (x_discord_id, ended_at DESC)
+    `);
+    this.db.run(`
+      CREATE INDEX IF NOT EXISTS idx_cyclic_ttt_o_id_ended_at
+      ON CyclicTttMatch (o_discord_id, ended_at DESC)
     `);
 
     // Initialize models
@@ -209,23 +272,23 @@ class Database {
   async dumpBaby(): Promise<string> { return this.dumpTable('Baby', ['mother_id', 'father_id']); }
   async dumpCommandConfig(): Promise<string> { return this.dumpTable('CommandConfig', []); }
   async dumpServerRoles(): Promise<string> { return this.dumpTable('ServerRoles', []); }
-  async dumpChatHistory(): Promise<string> { return this.dumpTable('ChatHistory', []); }
-  async dumpChatSession(): Promise<string> { return this.dumpTable('ChatSession', ['started_by']); }
   async dumpGlobalConfig(): Promise<string> { return this.dumpTable('GlobalConfig', []); }
   async dumpGameUID(): Promise<string> { return this.dumpTable('GameUID', ['user_id']); }
 
   get aiChat(): AiChatModel { return this.models.AiChatModel; }
   get birthdayReminder(): BirthdayReminderModel { return this.models.BirthdayReminderModel; }
   get baby(): BabyModel { return this.models.BabyModel; }
-  get chat(): ChatModel { return this.models.ChatModel; }
   get commandConfig(): CommandConfigModel { return this.models.CommandConfigModel; }
+  get cyclicTttMatch(): CyclicTttMatchModel { return this.models.CyclicTttMatchModel; }
   get gameUID(): GameUIDModel { return this.models.GameUIDModel; }
   get globalConfig(): GlobalConfigModel { return this.models.GlobalConfigModel; }
+  get imageGen(): ImageGenModel { return this.models.ImageGenModel; }
   get marriage(): MarriageModel { return this.models.MarriageModel; }
   get pokemon(): PokemonModel { return this.models.PokemonModel; }
   get poop(): PoopModel { return this.models.PoopModel; }
   get serverRoles(): ServerRolesModel { return this.models.ServerRolesModel; }
   get user(): UserModel { return this.models.UserModel; }
+  get webSession(): WebSessionModel { return this.models.WebSessionModel; }
 }
 
 export default Database;

@@ -2,6 +2,7 @@ import * as Discord from 'discord.js';
 import { Command } from './classes/Command';
 import { format } from '../utils/math';
 import { logError } from '../utils/log';
+import { gamblerBoardTitle } from '../utils/leaderboards';
 
 class GamblerBoard extends Command {
   itemsPerPage: number;
@@ -24,30 +25,28 @@ class GamblerBoard extends Command {
     this.itemsPerPage = 10;
   }
 
+  async fetchData(leaderboardType: string, page: number = 0): Promise<{ winnings: any[]; totalCount: number }> {
+    const winnings = (leaderboardType === 'all')
+      ? await this.client.db.user.getAllRelativeNetWinnings(
+        this.itemsPerPage,
+        page * this.itemsPerPage,
+      )
+      : await this.client.db.user.getRelativeNetWinnings(
+        leaderboardType,
+        this.itemsPerPage,
+        page * this.itemsPerPage,
+      );
+    const totalCount = (leaderboardType === 'all')
+      ? await this.client.db.user.getAllRelativeNetWinningsCount()
+      : await this.client.db.user.getEveryoneAttrCount(`${leaderboardType}TimesPlayed`);
+    return { winnings, totalCount };
+  }
+
   async run(interaction: any): Promise<void> {
     try {
       let currentPage = 0;
       const leaderboardType = interaction.options.getString('leaderboard');
-      let winnings;
-      if (leaderboardType === 'all') {
-        winnings = await this.client.db.user.getAllRelativeNetWinnings(
-          this.itemsPerPage,
-          currentPage * this.itemsPerPage,
-        );
-      } else {
-        winnings = await this.client.db.user.getRelativeNetWinnings(
-          leaderboardType,
-          this.itemsPerPage,
-          currentPage * this.itemsPerPage,
-        );
-      }
-
-      let totalCount;
-      if (leaderboardType === 'all') {
-        totalCount = await this.client.db.user.getAllRelativeNetWinningsCount();
-      } else {
-        totalCount = await this.client.db.user.getEveryoneAttrCount(`${leaderboardType}TimesPlayed`);
-      }
+      const { winnings, totalCount } = await this.fetchData(leaderboardType, currentPage);
       const maxPage = Math.ceil(totalCount / this.itemsPerPage) - 1;
       const leaderboard = await this.generateLeaderboard(winnings, currentPage, leaderboardType);
 
@@ -79,19 +78,7 @@ class GamblerBoard extends Command {
           currentPage += 1;
         }
 
-        let newWinnings;
-        if (leaderboardType === 'all') {
-          newWinnings = await this.client.db.user.getAllRelativeNetWinnings(
-            this.itemsPerPage,
-            currentPage * this.itemsPerPage,
-          );
-        } else {
-          newWinnings = await this.client.db.user.getRelativeNetWinnings(
-            leaderboardType,
-            this.itemsPerPage,
-            currentPage * this.itemsPerPage,
-          );
-        }
+        const { winnings: newWinnings } = await this.fetchData(leaderboardType, currentPage);
         const newLeaderboard = await this.generateLeaderboard(newWinnings, currentPage, leaderboardType);
 
         const newRow = new Discord.ActionRowBuilder()
@@ -129,7 +116,7 @@ class GamblerBoard extends Command {
       });
     } catch (error) {
       logError('Failed to fetch leaderboard:', error);
-      await interaction.editReply({ content: 'Failed to retrieve leaderboard', ephemeral: true });
+      await interaction.editReply({ content: 'Failed to retrieve leaderboard' });
     }
   }
 
@@ -139,15 +126,8 @@ class GamblerBoard extends Command {
       result += `${i + 1 + (page * this.itemsPerPage)}. <@${winnings[i].id}>: ${winnings[i].relativeWon > 0 ? '+' : ''}${format(winnings[i].relativeWon, true)} bets\n`;
     }
 
-    let title;
-    if (leaderboardType === 'all') {
-      title = 'The Ultimate Gambler Leaderboard';
-    } else {
-      title = `${leaderboardType.charAt(0).toUpperCase() + leaderboardType.slice(1)} Leaderboard`;
-    }
-
     return new Discord.EmbedBuilder()
-      .setTitle(title)
+      .setTitle(gamblerBoardTitle(leaderboardType))
       .setDescription(result)
       .setFooter({ text: `Page ${page + 1}` });
   }
