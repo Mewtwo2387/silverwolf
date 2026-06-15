@@ -135,3 +135,30 @@ export const PYRO_TEXT_COLORS: CharacterTextColors = {
 };
 
 export const PYRO_ABILITY_PANEL_COLOR = '#E85D3A';
+
+export const DENDRO_TEXT_COLORS: CharacterTextColors = {
+  nameFill: '#F1FFE6',
+  nameStroke: '#1C3A12',
+  hpLabelFill: '#D6F5BE',
+  hpLabelStroke: '#1C3A12',
+  hpValueFill: '#FAFFF4',
+  hpValueStroke: '#142B0E',
+  titleFill: '#E0F5CC',
+  titleStroke: '#1E3A14',
+  titleDescFill: '#F4FFEC',
+  titleDescStroke: '#172E10',
+  skillNameFill: '#D2EDB8',
+  skillNameStroke: '#1E3A14',
+  skillDamageFill: '#FFFFFF',
+  skillDamageStroke: '#142B0E',
+  skillCostFill: '#E2FFCC',
+  skillCostStroke: '#233D18',
+  skillDescFill: '#F4FFEC',
+  skillDescStroke: '#172E10',
+  abilityNameFill: '#D2EDB8',
+  abilityNameStroke: '#1E3A14',
+  abilityDescFill: '#F4FFEC',
+  abilityDescStroke: '#172E10',
+};
+
+export const DENDRO_ABILITY_PANEL_COLOR = '#5FA63A';
