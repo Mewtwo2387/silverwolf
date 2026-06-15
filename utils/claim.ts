@@ -15,6 +15,7 @@ import {
   getBekiCooldown,
 } from './upgrades';
 import { format } from './math';
+import { withUserLock, userLocks } from './userLock';
 
 const DAY_LENGTH = 24 * 60 * 60 * 1000;
 const HOUR_LENGTH = 60 * 60 * 1000;
@@ -180,8 +181,6 @@ type ClaimResult =
     previousStreak: number;
   };
 
-const claimLocks = new Map<string, Promise<ClaimResult>>();
-
 async function processClaimInner(client: any, uid: string): Promise<ClaimResult> {
   const now = Date.now();
   const lastClaimedInt = await client.db.user.getUserAttr(uid, 'dinonuggiesLastClaimed');
@@ -235,22 +234,8 @@ async function processClaimInner(client: any, uid: string): Promise<ClaimResult>
   };
 }
 
-async function processClaim(client: any, uid: string): Promise<ClaimResult> {
-  // Chain each call after the previous one for the same uid. Awaiting an
-  // existing in-flight promise before kicking off a new one would let multiple
-  // callers resume in parallel as soon as the predecessor settles, racing each
-  // other through processClaimInner.
-  const previous = claimLocks.get(uid);
-  const run: Promise<ClaimResult> = (async () => {
-    if (previous) await previous.catch(() => undefined);
-    return processClaimInner(client, uid);
-  })();
-  claimLocks.set(uid, run);
-  try {
-    return await run;
-  } finally {
-    if (claimLocks.get(uid) === run) claimLocks.delete(uid);
-  }
+function processClaim(client: any, uid: string): Promise<ClaimResult> {
+  return withUserLock(userLocks, uid, () => processClaimInner(client, uid));
 }
 
 // eslint-disable-next-line max-len
