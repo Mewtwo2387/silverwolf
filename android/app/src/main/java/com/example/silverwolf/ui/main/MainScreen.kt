@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -35,6 +36,8 @@ private const val PREFS_NAME = "silverwolf_prefs"
 private const val KEY_SERVER_URL = "server_url"
 private const val KEY_FORCE_OFFLINE = "force_offline"
 private const val DEFAULT_SERVER_URL = "https://bot.silverwolf.dev"
+private const val ASSET_HOST = "appassets.androidplatform.net"
+private const val OFFLINE_URL = "https://$ASSET_HOST/assets/offline/index.html"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,6 +53,9 @@ fun MainScreen(
     var serverUrl by remember { mutableStateOf(sharedPrefs.getString(KEY_SERVER_URL, DEFAULT_SERVER_URL) ?: DEFAULT_SERVER_URL) }
     var forceOffline by remember { mutableStateOf(sharedPrefs.getBoolean(KEY_FORCE_OFFLINE, false)) }
     var showSettings by remember { mutableStateOf(false) }
+    // Set when a remote main-frame load fails (server down, DNS, timeout) — flips
+    // the WebView to the bundled offline hub even while the network itself is up.
+    var serverLoadFailed by remember { mutableStateOf(false) }
 
     // Monitor Network Connectivity
     val networkMonitor = remember { NetworkMonitor(context) }
@@ -57,6 +63,15 @@ fun MainScreen(
 
     // Determine active online status
     val isAppOnline = isNetworkOnline && !forceOffline
+    // Effective state driving the WebView + badge: a failed server load downgrades
+    // us to offline even though isAppOnline may still be true.
+    val showOnline = isAppOnline && !serverLoadFailed
+
+    // When connectivity returns (or Force Offline is switched off), clear any prior
+    // load failure so the next composition retries the server automatically.
+    LaunchedEffect(isAppOnline) {
+        if (isAppOnline) serverLoadFailed = false
+    }
 
     // Track active WebView instance
     var webViewInstance by remember { mutableStateOf<WebView?>(null) }
@@ -89,10 +104,10 @@ fun MainScreen(
                         // Online / Offline Badge
                         Surface(
                             shape = MaterialTheme.shapes.small,
-                            color = if (isAppOnline) Color(0xFF22C55E) else Color(0xFFEF4444)
+                            color = if (showOnline) Color(0xFF22C55E) else Color(0xFFEF4444)
                         ) {
                             Text(
-                                text = if (isAppOnline) "ONLINE" else "OFFLINE",
+                                text = if (showOnline) "ONLINE" else "OFFLINE",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color.White,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -101,7 +116,16 @@ fun MainScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { webViewInstance?.reload() }) {
+                    IconButton(onClick = {
+                        if (serverLoadFailed) {
+                            // Parked on the offline hub after a failed load — Refresh
+                            // should retry the server, not reload the hub. Clearing the
+                            // flag lets the update block navigate back to serverUrl.
+                            serverLoadFailed = false
+                        } else {
+                            webViewInstance?.reload()
+                        }
+                    }) {
                         Icon(imageVector = Icons.Default.Refresh, contentDescription = "Reload")
                     }
                     IconButton(onClick = { showSettings = true }) {
@@ -124,7 +148,8 @@ fun MainScreen(
         ) {
             WebViewContainer(
                 serverUrl = serverUrl,
-                isOnline = isAppOnline,
+                isOnline = showOnline,
+                onServerLoadFailed = { serverLoadFailed = true },
                 onWebViewReady = { webView ->
                     webViewInstance = webView
                 }
@@ -146,11 +171,11 @@ fun MainScreen(
                     .putBoolean(KEY_FORCE_OFFLINE, newForceOffline)
                     .apply()
                 showSettings = false
-                
-                // Reload WebView based on new settings
+                // New settings → clear any stale load failure, then reload.
+                serverLoadFailed = false
                 webViewInstance?.post {
                     if (newForceOffline) {
-                        webViewInstance?.loadUrl("https://appassets.androidplatform.net/assets/offline/index.html")
+                        webViewInstance?.loadUrl(OFFLINE_URL)
                     } else {
                         webViewInstance?.loadUrl(newUrl)
                     }
@@ -165,6 +190,7 @@ fun MainScreen(
 private fun WebViewContainer(
     serverUrl: String,
     isOnline: Boolean,
+    onServerLoadFailed: () -> Unit,
     onWebViewReady: (WebView) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -243,6 +269,24 @@ private fun WebViewContainer(
 
                         return false
                     }
+
+                    override fun onReceivedError(
+                        view: WebView,
+                        request: WebResourceRequest,
+                        error: WebResourceError
+                    ) {
+                        // A remote main-frame load failed (server unreachable, DNS,
+                        // timeout). Fall back to the bundled offline hub instead of
+                        // Chrome's "Webpage not available" page. Subresource failures
+                        // and errors on the local offline page are ignored so we
+                        // neither nuke a partially-working page nor loop.
+                        if (request.isForMainFrame &&
+                            request.url.host != ASSET_HOST &&
+                            view.url?.startsWith("https://$ASSET_HOST") != true
+                        ) {
+                            onServerLoadFailed()
+                        }
+                    }
                 }
 
                 onWebViewReady(this)
@@ -251,7 +295,7 @@ private fun WebViewContainer(
                 if (isOnline) {
                     loadUrl(serverUrl)
                 } else {
-                    loadUrl("https://appassets.androidplatform.net/assets/offline/index.html")
+                    loadUrl(OFFLINE_URL)
                 }
             }
         },
@@ -259,12 +303,12 @@ private fun WebViewContainer(
             // Handle online/offline transitions dynamically
             val currentUrl = webView.url
             if (isOnline) {
-                if (currentUrl == null || currentUrl.startsWith("https://appassets.androidplatform.net")) {
+                if (currentUrl == null || currentUrl.startsWith("https://$ASSET_HOST")) {
                     webView.loadUrl(serverUrl)
                 }
             } else {
-                if (currentUrl == null || !currentUrl.startsWith("https://appassets.androidplatform.net")) {
-                    webView.loadUrl("https://appassets.androidplatform.net/assets/offline/index.html")
+                if (currentUrl == null || !currentUrl.startsWith("https://$ASSET_HOST")) {
+                    webView.loadUrl(OFFLINE_URL)
                 }
             }
         }

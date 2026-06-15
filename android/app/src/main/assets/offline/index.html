@@ -22,6 +22,138 @@
       letter-spacing: 0.05em;
       font-family: 'JetBrains Mono', monospace;
     }
+
+    /* Game cards — ported from the live games page (site_src/pages/games.ts),
+       where these .game-card / .card-* / .games-grid rules live inline on the
+       page rather than in the shared styles.css this offline copy bundles.
+       Without them the offline hub's cards render completely unstyled. The
+       offline hub is single-layout, so the live grid-4 / list-view variants are
+       intentionally omitted. */
+    .games-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1.5rem;
+    }
+    @media (max-width: 700px) {
+      .games-grid { grid-template-columns: minmax(0, 1fr); }
+    }
+    @media (min-width: 701px) and (max-width: 1000px) {
+      .games-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    .game-card {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      background: color-mix(in oklab, var(--ink-800) 45%, transparent);
+      border: 1px solid color-mix(in oklab, var(--accent) 18%, var(--ink-600));
+      border-radius: 0.75rem;
+      overflow: hidden;
+      text-decoration: none;
+      color: inherit;
+      font-family: 'JetBrains Mono', monospace;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 12px rgba(34, 211, 255, 0.03);
+      transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+                  box-shadow 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+                  border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+    .game-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 16px 36px rgba(0,0,0,0.55), 0 0 20px var(--glow-bright), inset 0 0 12px rgba(34, 211, 255, 0.1);
+      border-color: var(--accent);
+      background: color-mix(in oklab, var(--ink-700) 60%, transparent);
+    }
+    .card-image {
+      aspect-ratio: 1 / 1;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: color-mix(in oklab, var(--ink-900) 65%, transparent);
+      overflow: hidden;
+      position: relative;
+      border-bottom: 1px solid color-mix(in oklab, var(--accent) 15%, transparent);
+    }
+    .card-image img {
+      width: 70%;
+      height: 70%;
+      object-fit: contain;
+      transition: transform 0.3s ease;
+      z-index: 1;
+    }
+    .game-card:hover .card-image img { transform: scale(1.05); }
+    .card-image::after {
+      content: '';
+      position: absolute;
+      top: 0; left: -150%;
+      width: 100%; height: 100%;
+      background: linear-gradient(120deg, transparent 30%, rgba(34, 211, 255, 0.2) 40%, rgba(167, 139, 250, 0.35) 50%, rgba(34, 211, 255, 0.2) 60%, transparent 70%);
+      transition: left 0.6s ease;
+      z-index: 2;
+      pointer-events: none;
+    }
+    .game-card:hover .card-image::after { left: 150%; }
+    .card-content {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 0;
+    }
+    .card-header-bar {
+      position: relative;
+      display: flex;
+      width: 100%;
+      border-bottom: 1px solid color-mix(in oklab, var(--accent) 15%, transparent);
+      background: transparent;
+    }
+    .card-title-tab {
+      position: relative;
+      padding: 0.35rem 1.5rem 0.35rem 0.75rem;
+      background: color-mix(in oklab, var(--accent) 8%, transparent);
+      border-top: 1px solid color-mix(in oklab, var(--accent) 25%, transparent);
+      clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 100%, 0 100%);
+      display: flex;
+      align-items: center;
+      transition: background-color 0.2s, border-color 0.2s;
+    }
+    .game-card:hover .card-title-tab {
+      background: color-mix(in oklab, var(--accent) 15%, transparent);
+      border-color: var(--accent);
+    }
+    .card-title-tab h2 {
+      font-size: 1rem;
+      font-weight: bold;
+      color: var(--accent-light);
+      margin: 0;
+      font-family: 'JetBrains Mono', monospace;
+      transition: color 0.2s;
+    }
+    .game-card:hover .card-title-tab h2 { color: var(--accent); }
+    .card-title-tab h2::before {
+      content: '> ';
+      color: var(--accent);
+      opacity: 0.75;
+      margin-right: 0.3rem;
+      transition: opacity 0.2s;
+    }
+    .game-card:hover .card-title-tab h2::before {
+      opacity: 1;
+      text-shadow: 0 0 6px var(--accent);
+    }
+    .card-body {
+      padding: 1rem 1.25rem 1.25rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      flex-grow: 1;
+    }
+    .card-body p {
+      font-size: 0.85rem;
+      color: var(--fog-200);
+      margin: 0;
+      line-height: 1.4;
+    }
   </style>
 </head>
 <body class="font-sans bg-ink-900 text-fog-100 min-h-screen flex flex-col scanlines cyber-grid">
@@ -51,11 +183,11 @@
     </div>
 
     <!-- Games grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="games-grid">
       
       <!-- Coin Flip -->
       <a href="games/flip.html" class="game-card">
-        <div class="card-image h-48 flex items-center justify-center bg-black/40">
+        <div class="card-image">
           <div class="mini-coin-wrap">
             <div class="mini-coin">
               <div class="mini-face">Silver</div>
@@ -77,8 +209,8 @@
 
       <!-- Magic 8-Ball -->
       <a href="games/8ball.html" class="game-card">
-        <div class="card-image h-48 flex items-center justify-center bg-black/40">
-          <img src="svg/pool-8-ball-svgrepo-com.svg" alt="8ball" class="w-24 h-24 object-contain" />
+        <div class="card-image">
+          <img src="svg/pool-8-ball-svgrepo-com.svg" alt="8ball" />
         </div>
         <div class="card-content">
           <div class="card-header-bar">
@@ -94,8 +226,8 @@
 
       <!-- Fortune Cookie -->
       <a href="games/fortune.html" class="game-card">
-        <div class="card-image h-48 flex items-center justify-center bg-black/40">
-          <img src="svg/fortune-cookie-svgrepo-com.svg" alt="Fortune Cookie" class="w-24 h-24 object-contain" />
+        <div class="card-image">
+          <img src="svg/fortune-cookie-svgrepo-com.svg" alt="Fortune Cookie" />
         </div>
         <div class="card-content">
           <div class="card-header-bar">
@@ -111,8 +243,8 @@
 
       <!-- Love Calculator -->
       <a href="games/love.html" class="game-card">
-        <div class="card-image h-48 flex items-center justify-center bg-black/40">
-          <img src="svg/love-heart-svgrepo-com.svg" alt="Love Calculator" class="w-24 h-24 object-contain" />
+        <div class="card-image">
+          <img src="svg/love-heart-svgrepo-com.svg" alt="Love Calculator" />
         </div>
         <div class="card-content">
           <div class="card-header-bar">
@@ -128,7 +260,7 @@
 
       <!-- Cyclic Tic-Tac-Toe -->
       <a href="games/cyclic_tictactoe.html" class="game-card">
-        <div class="card-image h-48 flex items-center justify-center bg-black/40">
+        <div class="card-image">
           <div class="cyc-thumb">
             <span class="x">X</span><span class="o">O</span><span></span>
             <span></span><span class="x">X</span><span class="o">O</span>
