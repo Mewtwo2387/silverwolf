@@ -17,7 +17,7 @@ export const TAGS = {
   MYSTIC: 'Mystic',
   MISSING_EI: 'missingEi',
   FURINA: 'Furina',
-  KEQISLAW_KEQOWSKI: 'KeqislawKeqowski',
+  KEQISLAW: 'Keqislaw',
 } as const;
 
 export type CharacterTag = typeof TAGS[keyof typeof TAGS];

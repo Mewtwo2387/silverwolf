@@ -55,9 +55,8 @@ export const MISSING_EI = createCharacter({
   element: Element.Pyro,
   tags: [TAGS.MISSING_EI],
   imagePanel: {
-    mode: ImagePanelMode.Background,
-    backgroundColor: '#E85D3A',
-    imagePath: characterImagePath('missingei'),
+    mode: ImagePanelMode.Crop,
+    imagePath: characterImagePath('missingei', 'jpg'),
   },
   background: createSimpleBackground('#E85D3A', '#8B2E1A'),
   textColors: PYRO_TEXT_COLORS,
@@ -116,7 +115,7 @@ export const MISSING_EI = createCharacter({
             appliesToElement: Element.Pyro,
           }),
           condition: (context: AbilityActivationContext) => (
-            allyHasTag(context.getAllies(), TAGS.KEQISLAW_KEQOWSKI)
+            allyHasTag(context.getAllies(), TAGS.KEQISLAW)
           ),
         }),
       ],

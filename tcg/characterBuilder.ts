@@ -71,6 +71,8 @@ export function createCharacter(params: {
   twoColumnSkills?: boolean;
   /** Internal labels for ability/equipment logic; not shown in UI. */
   tags?: readonly string[];
+  /** Internal namespace for file outputs (card PNG). Defaults to a slug of {@link name}. */
+  slug?: string;
 }): Character {
   const titleDesc = new TitleDesc(
     params.title,
@@ -94,6 +96,7 @@ export function createCharacter(params: {
     params.textColors,
     params.twoColumnSkills ?? false,
     params.tags ?? [],
+    params.slug,
   );
 }
 

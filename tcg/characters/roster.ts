@@ -7,7 +7,7 @@ import { SPARKLE } from './sparkle';
 import { ELECTRO } from './electro';
 import { MYSTIC } from './mystic';
 import { MISSING_EI } from './missingEi';
-import { KEQISLAW_KEQOWSKI } from './keqislawKeqowski';
+import { KEQISLAW } from './keqislaw';
 
 /** Roster entries aggregated for the catalog. Add new character modules here only. */
 const ROSTER_ENTRIES: readonly Character[] = [
@@ -19,7 +19,7 @@ const ROSTER_ENTRIES: readonly Character[] = [
   ELECTRO,
   MYSTIC,
   MISSING_EI,
-  KEQISLAW_KEQOWSKI,
+  KEQISLAW,
 ];
 
 /** All playable characters; derived from per-character modules (no per-character listing). */

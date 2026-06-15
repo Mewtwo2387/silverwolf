@@ -1,17 +1,17 @@
 import fs from 'fs';
 import path from 'path';
 import { CHARACTERS } from '../characters';
-import { characterCardPath, characterSlugFromName, tcgAssetPaths } from '../assetPaths';
+import { characterCardPath, tcgAssetPaths } from '../assetPaths';
 import { removeStaleCardOutputs } from '../cardGenerateCleanup';
 
 async function testGenerateCard() {
   const outDir = tcgAssetPaths.characters.cards;
-  const expectedSlugs = new Set(CHARACTERS.map((character) => characterSlugFromName(character.name)));
+  const expectedSlugs = new Set(CHARACTERS.map((character) => character.slug));
   fs.mkdirSync(outDir, { recursive: true });
   for (const character of CHARACTERS) {
     const canvas = await character.generateCard();
     const buffer = canvas.toBuffer('image/png') as Buffer;
-    const outPath = characterCardPath(characterSlugFromName(character.name));
+    const outPath = characterCardPath(character.slug);
     fs.writeFileSync(path.resolve(outPath), buffer);
     console.log(`Wrote ${outPath}`);
   }

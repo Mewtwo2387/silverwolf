@@ -244,7 +244,7 @@ export const MOONLIGHT_ALTER = new SignatureEquipment(
         true,
       ),
     );
-    if (allyHasTag(target.battle.ally(target.side), TAGS.KEQISLAW_KEQOWSKI)) {
+    if (allyHasTag(target.battle.ally(target.side), TAGS.KEQISLAW)) {
       target.addEffect(
         new Effect(
           'And let me play among the stars',

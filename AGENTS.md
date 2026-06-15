@@ -465,6 +465,11 @@ Patterns used in existing characters:
 - **Character-specific skill logic** — `createSkill({ onUse })` runs after declarative
   `effects` resolve. Put bespoke behaviour here (e.g. Mystic's Polygrowth stacks² bonus in
   `tcg/characters/mystic.ts`), not in `characterInBattle.ts`.
+- **Display name vs slug** — `name` is the display string shown on the card / Discord UI.
+  File outputs (the generated card PNG) use `character.slug`, which defaults to a slug of
+  `name` but should be set explicitly when the display name differs from the internal
+  namespace (e.g. `name: 'Keqisław Keqowski', slug: 'keqislaw'`). Keep the slug aligned with
+  the character's file/const name.
 - **Buff/debuff polarity** — every `createEffect` call must pass `positive: true|false`. This
   drives log phrasing ("X gained [Y]" vs "X was inflicted with [Y]") and the Cleanser
   consumable (which only removes `positive: false` effects).
@@ -617,7 +622,7 @@ don't draw your own background from scratch.
 | Path | Purpose |
 | --- | --- |
 | `tcg/assets/characters/images/` | Character source art (referenced from `tcg/characters/<name>.ts`) |
-| `tcg/assets/characters/cards/` | Generated character card PNGs (`bun run card:generate`) |
+| `tcg/assets/characters/cards/` | Generated character card PNGs (`bun run card:generate`), named `<character.slug>.png` |
 | `tcg/assets/items/images/` | Item source art (`<itemId>.png`; `itemImagePanel` fits art on a transparent panel; estrogen uses white) |
 | `tcg/assets/items/cards/` | Generated item card PNGs (`bun run card:generate-items`) |
 | `tcg/assets/common/`, `tcg/assets/types/` | Shared UI icons (stars, skill points, element badges) |

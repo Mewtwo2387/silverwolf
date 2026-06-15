@@ -10,7 +10,7 @@ import { Element } from './element';
 import { drawTcgText } from './utils/tcgTextStyle';
 import { CharacterTextColors, resolveCharacterTextColors } from './textTheme';
 import { ImagePanel } from './imagePanel';
-import { tcgAssetPaths } from './assetPaths';
+import { tcgAssetPaths, characterSlugFromName } from './assetPaths';
 
 /** Fixed card canvas dimensions. */
 const CARD_WIDTH = 1080;
@@ -48,8 +48,10 @@ export class Character implements Card {
   twoColumnSkills: boolean;
   /** Internal labels for ability/equipment logic; not shown in UI. */
   tags: readonly string[];
+  /** Internal namespace for file outputs (card PNG); decoupled from the display {@link name}. */
+  slug: string;
 
-  constructor(name: string, titleDesc: TitleDesc, rarity: Rarity, hp: number, element: Element, imagePanel: ImagePanel, background: Background, skills: Skill[] = [], abilities: Ability[] = [], defaultActiveSkillIndices?: number[], textColors?: Partial<CharacterTextColors>, twoColumnSkills: boolean = false, tags: readonly string[] = []) {
+  constructor(name: string, titleDesc: TitleDesc, rarity: Rarity, hp: number, element: Element, imagePanel: ImagePanel, background: Background, skills: Skill[] = [], abilities: Ability[] = [], defaultActiveSkillIndices?: number[], textColors?: Partial<CharacterTextColors>, twoColumnSkills: boolean = false, tags: readonly string[] = [], slug?: string) {
     this.name = name;
     this.titleDesc = titleDesc;
     this.rarity = rarity;
@@ -63,6 +65,7 @@ export class Character implements Card {
     this.textColors = resolveCharacterTextColors(textColors);
     this.twoColumnSkills = twoColumnSkills;
     this.tags = tags;
+    this.slug = slug ?? characterSlugFromName(name);
   }
 
   hasTag(tag: string): boolean {

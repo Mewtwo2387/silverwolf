@@ -36,18 +36,18 @@ function bloomStack() {
   );
 }
 
-export const KEQISLAW_KEQOWSKI = createCharacter({
+export const KEQISLAW = createCharacter({
   name: 'Keqisław Keqowski',
+  slug: 'keqislaw',
   title: 'Wisdom of the North',
   description: 'A Snezhnayan diplomat and bow user hunting the Słowacki family treasure.',
   rarity: 4,
   hp: 75,
   element: Element.Dendro,
-  tags: [TAGS.KEQISLAW_KEQOWSKI],
+  tags: [TAGS.KEQISLAW],
   imagePanel: {
-    mode: ImagePanelMode.Background,
-    backgroundColor: '#3A6B22',
-    imagePath: characterImagePath('keqislaw'),
+    mode: ImagePanelMode.Crop,
+    imagePath: characterImagePath('keqislaw', 'jpg'),
   },
   background: createSimpleBackground('#5FA63A', '#234012'),
   textColors: DENDRO_TEXT_COLORS,
@@ -100,6 +100,23 @@ export const KEQISLAW_KEQOWSKI = createCharacter({
           condition: (context: AbilityActivationContext) => (
             allyHasTag(context.getAllies(), TAGS.EI)
           ),
+        }),
+      ],
+    }),
+    createAbility({
+      name: 'Superior Intellect',
+      description: 'Keqisław raises the team skill point cap by 1.',
+      panelColor: DENDRO_ABILITY_PANEL_COLOR,
+      effects: [
+        createAbilityEffect({
+          range: RangeType.Self,
+          effect: createEffect({
+            name: 'Superior Intellect',
+            description: '+1 maximum team skill points.',
+            type: EffectType.SkillPointsMaxBonus,
+            amount: 1,
+            positive: true,
+          }),
         }),
       ],
     }),

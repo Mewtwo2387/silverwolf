@@ -13,4 +13,4 @@ export * from './sparkle';
 export * from './electro';
 export * from './mystic';
 export * from './missingEi';
-export * from './keqislawKeqowski';
+export * from './keqislaw';
