@@ -40,5 +40,5 @@ export async function securityHeadersMiddleware(c: Context<AppEnv>, next: Next) 
   // user's nonce (and /me payload) across visitors.
   c.header('Cache-Control', 'private, no-store');
   c.header('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
-  c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), interest-cohort=()');
+  c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 }
