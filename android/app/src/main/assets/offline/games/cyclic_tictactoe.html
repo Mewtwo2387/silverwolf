@@ -1,0 +1,1150 @@
+<!doctype html>
+<html lang="en" data-theme="blackout">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Silverwolf — Cyclic Tic-Tac-Toe</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    html, body { overflow-x: clip; background-color: #020308; color-scheme: dark; }
+    main { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
+    .cyc-wrap {
+      max-width: 760px;
+      margin: 1.5rem auto 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* Control panel — glassmorphic, matching the games-card aesthetic */
+    .cyc-panel {
+      background: color-mix(in oklab, var(--ink-800) 50%, transparent);
+      border: 1px solid color-mix(in oklab, var(--accent) 18%, var(--ink-600));
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    }
+    .cyc-subtitle {
+      text-align: center;
+      color: var(--fog-300);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      margin: 0 0 1.25rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .cyc-controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      align-items: end;
+    }
+    @media (max-width: 620px) {
+      .cyc-controls { grid-template-columns: 1fr; }
+    }
+    .cyc-reset-row {
+      display: flex;
+      justify-content: center;
+      margin-top: 1.25rem;
+    }
+    .cyc-field { display: flex; flex-direction: column; gap: 0.5rem; }
+    .cyc-field label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--fog-400);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .cyc-range-row { display: flex; align-items: center; gap: 0.75rem; }
+    .cyc-range {
+      flex: 1;
+      height: 6px;
+      background: var(--ink-600);
+      border-radius: 999px;
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+      outline: none;
+    }
+    .cyc-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--glow-bright);
+      cursor: pointer;
+    }
+    .cyc-range::-moz-range-thumb {
+      width: 16px; height: 16px;
+      border: none;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--glow-bright);
+      cursor: pointer;
+    }
+    .cyc-range-val {
+      font-size: 1.25rem;
+      font-weight: 800;
+      width: 1.75rem;
+      text-align: center;
+      color: var(--accent-light);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .cyc-select {
+      background: var(--ink-900);
+      border: 1px solid var(--ink-600);
+      border-radius: 4px;
+      padding: 0.55rem 0.75rem;
+      color: var(--fog-100);
+      font: inherit;
+      font-size: 0.9rem;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .cyc-select:focus { border-color: var(--accent); box-shadow: 0 0 8px var(--glow-faint); }
+    .cyc-reset {
+      background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 10%, transparent), color-mix(in oklab, var(--accent-pale) 10%, transparent));
+      color: var(--accent-light);
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      padding: 0.6rem 1.4rem;
+      font: inherit;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 0 8px var(--glow-faint);
+      transition: transform 0.1s, box-shadow 0.15s, color 0.15s, background-color 0.15s;
+    }
+    .cyc-reset:hover {
+      color: #fff;
+      box-shadow: 0 0 16px var(--glow-bright);
+    }
+    .cyc-reset:active { transform: translateY(1px); }
+
+    .cyc-status {
+      text-align: center;
+      font-size: 1.25rem;
+      font-weight: 600;
+      min-height: 2rem;
+      color: var(--accent-light);
+      font-family: 'JetBrains Mono', monospace;
+      transition: color 0.2s;
+    }
+    .cyc-status.thinking { color: var(--danger); }
+    .cyc-status.win  { font-size: 1.9rem; font-weight: 800; color: #4ade80; }
+    .cyc-status.lose { font-size: 1.9rem; font-weight: 800; color: var(--danger); }
+    .cyc-status.draw { font-size: 1.6rem; font-weight: 800; color: var(--fog-200); }
+
+    .cyc-board-shell {
+      display: flex;
+      justify-content: center;
+      padding: 1rem;
+      background: color-mix(in oklab, var(--ink-900) 40%, transparent);
+      border: 1px solid color-mix(in oklab, var(--accent) 12%, var(--ink-600));
+      border-radius: 1rem;
+      overflow: auto;
+    }
+    .cyc-board {
+      display: grid;
+      gap: 4px;
+      background: var(--ink-600);
+      padding: 4px;
+      border-radius: 0.6rem;
+      border: 1px solid color-mix(in oklab, var(--accent) 18%, transparent);
+    }
+    .cyc-cell {
+      background: var(--ink-900);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      user-select: none;
+      border-radius: 5px;
+      cursor: pointer;
+      position: relative;
+      transition: background 0.2s, transform 0.1s;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .cyc-cell:hover { background: var(--ink-700); }
+    .cyc-cell .mark { animation: cyc-appear 0.3s ease-out; line-height: 1; }
+    .cyc-cell .mark.x { color: var(--accent); text-shadow: 0 0 14px var(--glow-bright); }
+    .cyc-cell .mark.o { color: var(--danger); text-shadow: 0 0 14px var(--danger-glow); }
+    @keyframes cyc-appear { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+    /* The mark that will vanish on the owner's next placement */
+    .cyc-cell .mark.fading {
+      opacity: 0.4;
+      filter: grayscale(0.7) blur(0.6px);
+      animation: cyc-blink 1.5s ease-in-out infinite;
+    }
+    @keyframes cyc-blink { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.12; } }
+
+    .cyc-cell.win {
+      background: color-mix(in oklab, #059669 70%, var(--ink-900)) !important;
+      animation: cyc-pulse 1s ease-in-out infinite;
+      z-index: 1;
+    }
+    @keyframes cyc-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+
+    .cyc-rule {
+      background: color-mix(in oklab, var(--ink-800) 35%, transparent);
+      border: 1px solid var(--ink-600);
+      border-radius: 0.6rem;
+      padding: 0.9rem 1rem;
+      text-align: center;
+      color: var(--fog-300);
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+    .cyc-rule .lim { color: var(--accent-light); font-weight: 700; }
+    .cyc-rule .nxt { color: var(--danger); font-weight: 700; }
+
+    /* ── Skills add-on ──────────────────────────────────────────── */
+    .cyc-toggle-row { display: flex; align-items: center; gap: 0.6rem; }
+    .cyc-toggle-row label {
+      margin: 0;
+      cursor: pointer;
+    }
+    .cyc-toggle-row input[type="checkbox"] {
+      width: 1rem; height: 1rem;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .cyc-toggle-hint {
+      font-size: 0.65rem;
+      color: var(--fog-400);
+      font-family: 'JetBrains Mono', monospace;
+      font-style: italic;
+    }
+    input[type="checkbox"]:disabled + label,
+    input[type="checkbox"]:disabled { cursor: not-allowed; opacity: 0.5; }
+
+    /* Arena = board + skill sidebar */
+    .cyc-arena {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+      justify-content: center;
+    }
+    .cyc-arena > .cyc-board-shell { flex: 1 1 auto; min-width: 0; }
+    .cyc-skill-panel {
+      flex: 0 0 220px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      background: color-mix(in oklab, var(--ink-800) 50%, transparent);
+      border: 1px solid color-mix(in oklab, var(--accent) 18%, var(--ink-600));
+      border-radius: 0.75rem;
+      padding: 0.9rem;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    }
+    .cyc-skill-panel.hidden { display: none; }
+    @media (max-width: 720px) {
+      .cyc-arena { flex-direction: column; align-items: stretch; }
+      .cyc-skill-panel { flex-basis: auto; }
+    }
+    .cyc-skill-title {
+      text-align: center;
+      color: var(--fog-300);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      margin: 0 0 0.2rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .cyc-energy {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--fog-400);
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+    .cyc-energy-bar {
+      height: 8px;
+      border-radius: 999px;
+      background: var(--ink-700);
+      overflow: hidden;
+    }
+    .cyc-energy-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-light));
+      box-shadow: 0 0 8px var(--glow-bright);
+      width: 0%;
+      transition: width 0.25s;
+    }
+    .cyc-skill-btn {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+      text-align: left;
+      background: color-mix(in oklab, var(--ink-900) 50%, transparent);
+      border: 1px solid var(--ink-600);
+      border-radius: 0.5rem;
+      padding: 0.5rem 0.6rem;
+      color: var(--fog-200);
+      font: inherit;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s, opacity 0.15s;
+    }
+    .cyc-skill-btn:hover:not([disabled]) {
+      border-color: var(--accent);
+      box-shadow: 0 0 10px var(--glow-faint);
+    }
+    .cyc-skill-btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+    .cyc-skill-btn.armed {
+      border-color: var(--accent);
+      box-shadow: 0 0 14px var(--glow-bright);
+      background: color-mix(in oklab, var(--accent) 14%, transparent);
+    }
+    .cyc-skill-btn .skill-name {
+      font-weight: 700;
+      font-size: 0.82rem;
+      color: var(--accent-light);
+      font-family: 'JetBrains Mono', monospace;
+      display: flex;
+      justify-content: space-between;
+      gap: 0.4rem;
+    }
+    .cyc-skill-btn .skill-cd {
+      font-size: 0.62rem;
+      color: var(--danger);
+      font-weight: 700;
+    }
+    .cyc-skill-btn .skill-cd.ready { color: #4ade80; }
+    .cyc-skill-btn .skill-desc {
+      font-size: 0.62rem;
+      line-height: 1.3;
+      color: var(--fog-400);
+    }
+
+    /* Opponent panel (left side): active enemy effects + usage log */
+    .cyc-wrap.skills-on { max-width: 1040px; }
+    .cyc-foe-panel {
+      flex: 0 0 190px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      background: color-mix(in oklab, var(--ink-800) 50%, transparent);
+      border: 1px solid color-mix(in oklab, var(--danger) 22%, var(--ink-600));
+      border-radius: 0.75rem;
+      padding: 0.9rem;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .cyc-foe-panel.hidden { display: none; }
+    .cyc-foe-title {
+      text-align: center;
+      color: var(--danger);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      margin: 0 0 0.2rem;
+    }
+    .cyc-foe-label {
+      font-size: 0.58rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--fog-400);
+    }
+    .cyc-foe-active { display: flex; flex-direction: column; gap: 0.3rem; }
+    .cyc-foe-badge {
+      font-size: 0.66rem;
+      color: var(--danger);
+      background: color-mix(in oklab, var(--danger) 14%, transparent);
+      border: 1px solid color-mix(in oklab, var(--danger) 30%, transparent);
+      border-radius: 0.4rem;
+      padding: 0.2rem 0.4rem;
+    }
+    .cyc-foe-none { font-size: 0.64rem; color: var(--fog-400); font-style: italic; }
+    .cyc-foe-log { display: flex; flex-direction: column; gap: 0.22rem; max-height: 240px; overflow: auto; }
+    .cyc-foe-entry { font-size: 0.64rem; color: var(--fog-300); line-height: 1.3; }
+    .cyc-foe-entry.hit { color: var(--accent-light); font-style: italic; }
+    @media (max-width: 720px) { .cyc-foe-panel { flex-basis: auto; } }
+
+    /* Targeting mode: empty cells invite a click */
+    .cyc-board.targeting .cyc-cell:hover {
+      background: color-mix(in oklab, var(--danger) 35%, var(--ink-900));
+      box-shadow: inset 0 0 0 2px var(--danger);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .cyc-cell .mark, .cyc-cell .mark.fading, .cyc-cell.win { animation: none; }
+    }
+  </style>
+</head>
+<body class="font-sans bg-ink-900 text-fog-100 min-h-screen flex flex-col scanlines cyber-grid">
+  <!-- Top bar emulator -->
+  <nav id="site-nav" class="nav-surface font-mono">
+    <div class="nav-window-header flex items-center justify-between px-[1.5rem] py-2 border-b border-[rgba(34,211,255,0.12)] select-none">
+      <div class="flex items-center gap-1.5">
+        <a href="../index.html" class="text-accent hover:text-accent-light no-underline mr-2 font-bold">&lt; Back</a>
+        <span class="text-[0.7rem] font-semibold text-accent opacity-75 tracking-widest font-mono">GAME.CYCTTT.EXE</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="status-led status-led-red w-1.5 h-1.5"></span>
+        <span class="text-[#EF4444] text-[0.7rem] font-bold tracking-widest font-mono">[OFFLINE]</span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="flex-1 w-full max-w-[1100px] mx-auto py-8 px-[clamp(1rem,4vw,3rem)]">
+    <h1 class="text-center text-3xl font-extrabold text-white">Cyclic Tic-Tac-Toe</h1>
+    <p class="text-center text-fog-300 mb-6">Win while your old pieces expire.</p>
+    
+    <div class="cyc-wrap">
+      <div class="cyc-panel">
+        <p class="cyc-subtitle">Old marks fade away</p>
+        <div class="cyc-controls">
+          <div class="cyc-field">
+            <label for="cyc-size">Grid &amp; Limit (n)</label>
+            <div class="cyc-range-row">
+              <input type="range" id="cyc-size" class="cyc-range" min="3" max="15" value="3" aria-label="Grid size" />
+              <span id="cyc-size-val" class="cyc-range-val">3</span>
+            </div>
+          </div>
+          <div class="cyc-field">
+            <label for="cyc-difficulty">Bot Intelligence</label>
+            <select id="cyc-difficulty" class="cyc-select">
+              <option value="normal">Normal (Casual)</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+              <option value="xhard">X-Hard (Expert)</option>
+            </select>
+          </div>
+        </div>
+        <div class="cyc-toggle-row" style="margin-top: 1rem; justify-content: center;">
+          <input type="checkbox" id="cyc-skills-toggle" />
+          <label for="cyc-skills-toggle">Enable Skills</label>
+          <span id="cyc-skills-hint" class="cyc-toggle-hint">unlocks at 8×8+</span>
+        </div>
+        <div class="cyc-reset-row">
+          <button id="cyc-reset" class="cyc-reset" type="button">Reset Arena</button>
+        </div>
+      </div>
+
+      <div id="cyc-status" class="cyc-status">Your turn (X)</div>
+
+      <div class="cyc-arena">
+        <div id="cyc-foe-panel" class="cyc-foe-panel hidden" aria-label="Opponent skills">
+          <p class="cyc-foe-title">Opponent</p>
+          <div class="cyc-foe-label">Active vs you</div>
+          <div id="cyc-foe-active" class="cyc-foe-active"></div>
+          <div class="cyc-foe-label" style="margin-top:0.3rem;">History</div>
+          <div id="cyc-foe-log" class="cyc-foe-log"></div>
+        </div>
+        <div id="cyc-board-shell" class="cyc-board-shell">
+          <div id="cyc-board" class="cyc-board"></div>
+        </div>
+        <div id="cyc-skill-panel" class="cyc-skill-panel hidden" aria-label="Skills">
+          <p class="cyc-skill-title">Skills</p>
+          <div class="cyc-energy">
+            <span>Energy <span id="cyc-energy-val">0</span>/<span id="cyc-energy-cap">10</span> ⚡</span>
+            <div class="cyc-energy-bar"><div id="cyc-energy-fill" class="cyc-energy-fill"></div></div>
+          </div>
+          <div id="cyc-skill-list"></div>
+        </div>
+      </div>
+
+      <div class="cyc-rule">
+        Rule: you may keep <span id="cyc-limit-rule" class="lim">5</span> marks (⌈1.5n⌉).
+        Placing the <span id="cyc-limit-next" class="nxt">6th</span> expires your oldest mark.
+        <span id="cyc-skills-rule" style="display:none;"><br/>Skills are on — spend ⚡ (it fills as you play) on the panel; some have cooldowns.</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- Mobile bottom dock -->
+  <div id="nav-mobile" role="navigation" aria-label="Mobile navigation">
+    <a href="../index.html" class="nav-link no-underline active" aria-label="Games">
+      <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="w-6 h-6">
+        <path d="M15.9 5.5C15.3 4.5 14.2 4 13 4H7c-1.2 0-2.3.5-2.9 1.5-2.3 3.5-2.8 8.8-1.2 9.9 1.6 1.1 5.2-3.7 7.1-3.7s5.4 4.8 7.1 3.7c1.6-1.1 1.1-6.4-1.2-9.9zM8 9H7v1H6V9H5V8h1V7h1v1h1v1h1v1h1v1zm5.4.5c0 .5-.4.9-.9.9s-.9-.4-.9-.9.4-.9.9-.9.9.4.9.9zm1.9-2c0 .5-.4.9-.9.9s-.9-.4-.9-.9.4-.9.9-.9.9.4.9.9z"/>
+      </svg>
+      <span class="label">Games</span>
+    </a>
+  </div>
+
+  <script>
+    (() => {
+      let size = 3;
+      let markLimit = 5;
+      let board = [];
+      let gameActive = true;
+      let currentPlayer = 'X';
+      let difficulty = 'normal';
+      let busy = false;
+
+      const moveHistory = { X: [], O: [] };
+
+      let cellEls = [];
+      let rendered = [];
+
+      const RANDOM_CHANCE = { normal: 0.45, medium: 0.25, hard: 0.10, xhard: 0 };
+
+      const SKILL_MIN_SIZE = 8;
+      const ENERGY_CAP = 10;
+      const ENERGY_PER_TURN = 1;
+      const SKILLS = {
+        bomb:       { name: 'Bomb',        cost: 7, cooldown: 12, target: true,  desc: 'Fill a 3×3 area with your marks (overrides foes). Ends your turn.' },
+        dome:       { name: 'Iron Dome',   cost: 4, cooldown: 10, target: false, desc: 'Deflect the next enemy skill (75%). Lasts 10 turns.' },
+        collapse:   { name: 'Collapse',    cost: 0, cooldown: 0,  target: false, desc: 'Clear the 2 most-filled lines. Once per game; foe gains +3⚡.' },
+        dissonance: { name: 'Dissonance',  cost: 6, cooldown: 14, target: false, desc: 'Foe misplaces (75%) for their next 5 turns.' },
+        air:        { name: 'Air Support', cost: 8, cooldown: 20, target: false, desc: 'A bonus AI-placed mark each of your next 5 turns.' },
+      };
+      const SKILL_ORDER = ['bomb', 'dome', 'collapse', 'dissonance', 'air'];
+
+      function freshSkillSide() {
+        return {
+          energy: 0,
+          cd: { bomb: 0, dome: 0, dissonance: 0, air: 0 },
+          collapseUsed: false,
+          shieldTurns: 0,
+          dissonanceTurns: 0,
+          airTurns: 0,
+        };
+      }
+      let skillsEnabled = false;
+      let skillState = { X: freshSkillSide(), O: freshSkillSide() };
+      let armedSkill = null;
+
+      const boardEl    = document.getElementById('cyc-board');
+      const shellEl    = document.getElementById('cyc-board-shell');
+      const sizeRange  = document.getElementById('cyc-size');
+      const sizeValue  = document.getElementById('cyc-size-val');
+      const limitRule  = document.getElementById('cyc-limit-rule');
+      const limitNext  = document.getElementById('cyc-limit-next');
+      const diffSelect = document.getElementById('cyc-difficulty');
+      const statusEl   = document.getElementById('cyc-status');
+      const resetBtn   = document.getElementById('cyc-reset');
+      const skillsToggle = document.getElementById('cyc-skills-toggle');
+      const skillsHint   = document.getElementById('cyc-skills-hint');
+      const skillsRule   = document.getElementById('cyc-skills-rule');
+      const skillPanelEl = document.getElementById('cyc-skill-panel');
+      const skillListEl  = document.getElementById('cyc-skill-list');
+      const energyValEl  = document.getElementById('cyc-energy-val');
+      const energyCapEl  = document.getElementById('cyc-energy-cap');
+      const energyFillEl = document.getElementById('cyc-energy-fill');
+      const wrapEl       = document.querySelector('.cyc-wrap');
+      const foePanelEl   = document.getElementById('cyc-foe-panel');
+      const foeActiveEl  = document.getElementById('cyc-foe-active');
+      const foeLogEl     = document.getElementById('cyc-foe-log');
+      const skillBtns = {};
+      let foeLog = [];
+      if (energyCapEl) energyCapEl.textContent = ENERGY_CAP;
+
+      function setStatus(text, cls) {
+        statusEl.textContent = text;
+        statusEl.className = 'cyc-status' + (cls ? ' ' + cls : '');
+      }
+
+      function initGame() {
+        size = parseInt(sizeRange.value, 10);
+        markLimit = Math.ceil(1.5 * size);
+
+        sizeValue.textContent = size;
+        limitRule.textContent = markLimit;
+        limitNext.textContent = markLimit + 1;
+        difficulty = diffSelect.value;
+
+        board = new Array(size * size).fill(null);
+        moveHistory.X = [];
+        moveHistory.O = [];
+
+        updateSkillGate();
+        skillsEnabled = !skillsToggle.disabled && skillsToggle.checked;
+        skillState = { X: freshSkillSide(), O: freshSkillSide() };
+        armedSkill = null;
+        foeLog = [];
+        skillPanelEl.classList.toggle('hidden', !skillsEnabled);
+        foePanelEl.classList.toggle('hidden', !skillsEnabled);
+        if (wrapEl) wrapEl.classList.toggle('skills-on', skillsEnabled);
+        skillsRule.style.display = skillsEnabled ? '' : 'none';
+
+        gameActive = true;
+        busy = false;
+        currentPlayer = 'X';
+        setStatus('Your turn (X)');
+        buildBoard();
+        if (skillsEnabled) { buildSkillPanel(); renderSkillPanel(); }
+      }
+
+      function logFoe(text, hit) {
+        foeLog.push({ text, hit: !!hit });
+        if (foeLog.length > 30) foeLog.shift();
+        renderFoePanel();
+      }
+
+      function renderFoePanel() {
+        if (!skillsEnabled || !foeActiveEl) return;
+        const active = [];
+        if (skillState.O.shieldTurns > 0) active.push('Iron Dome (' + skillState.O.shieldTurns + ' left)');
+        if (skillState.O.airTurns > 0) active.push('Air Support (' + skillState.O.airTurns + ' left)');
+        if (skillState.X.dissonanceTurns > 0) active.push('Dissonance on you (' + skillState.X.dissonanceTurns + ' left)');
+        foeActiveEl.innerHTML = '';
+        if (active.length === 0) {
+          const none = document.createElement('div');
+          none.className = 'cyc-foe-none';
+          none.textContent = '— nothing active —';
+          foeActiveEl.appendChild(none);
+        } else {
+          for (const a of active) {
+            const b = document.createElement('div');
+            b.className = 'cyc-foe-badge';
+            b.textContent = a;
+            foeActiveEl.appendChild(b);
+          }
+        }
+        foeLogEl.innerHTML = '';
+        if (foeLog.length === 0) {
+          const none = document.createElement('div');
+          none.className = 'cyc-foe-none';
+          none.textContent = 'no skills used yet';
+          foeLogEl.appendChild(none);
+        } else {
+          for (let i = foeLog.length - 1; i >= 0; i--) {
+            const e = document.createElement('div');
+            e.className = 'cyc-foe-entry' + (foeLog[i].hit ? ' hit' : '');
+            e.textContent = foeLog[i].text;
+            foeLogEl.appendChild(e);
+          }
+        }
+      }
+
+      function updateSkillGate() {
+        const s = parseInt(sizeRange.value, 10);
+        const ok = s >= SKILL_MIN_SIZE;
+        skillsToggle.disabled = !ok;
+        if (!ok) skillsToggle.checked = false;
+        skillsHint.textContent = ok ? 'spice up large grids' : 'unlocks at 8×8+';
+      }
+
+      function buildBoard() {
+        boardEl.innerHTML = '';
+        boardEl.classList.remove('targeting');
+        cellEls = [];
+        rendered = new Array(size * size).fill(undefined);
+        boardEl.style.gridTemplateColumns = 'repeat(' + size + ', 1fr)';
+
+        for (let i = 0; i < size * size; i++) {
+          const cell = document.createElement('div');
+          cell.className = 'cyc-cell';
+          cell.addEventListener('click', () => handleCellClick(i));
+          boardEl.appendChild(cell);
+          cellEls.push(cell);
+        }
+        layoutBoard();
+        paintBoard();
+      }
+
+      function layoutBoard() {
+        const avail = Math.min((shellEl.clientWidth || 520) - 32, 520);
+        const cellSize = Math.max(28, Math.floor(avail / size) - 4);
+        boardEl.style.gridTemplateColumns = 'repeat(' + size + ', ' + cellSize + 'px)';
+        for (const cell of cellEls) {
+          cell.style.width = cellSize + 'px';
+          cell.style.height = cellSize + 'px';
+          cell.style.fontSize = Math.floor(cellSize * 0.55) + 'px';
+        }
+      }
+
+      function cellStateVal(i) {
+        const owner = board[i];
+        if (!owner) return '';
+        const hist = moveHistory[owner];
+        const fading = hist.length === markLimit && hist[0] === i;
+        return owner + (fading ? '!' : '');
+      }
+
+      function paintBoard() {
+        for (let i = 0; i < cellEls.length; i++) {
+          const want = cellStateVal(i);
+          if (want === rendered[i]) continue;
+          rendered[i] = want;
+          const cell = cellEls[i];
+          cell.innerHTML = '';
+          cell.classList.remove('win');
+          if (want) {
+            const owner = want[0];
+            const span = document.createElement('span');
+            span.className = 'mark ' + (owner === 'X' ? 'x' : 'o');
+            if (want.length > 1) span.classList.add('fading');
+            span.textContent = owner;
+            cell.appendChild(span);
+          }
+        }
+      }
+
+      function handleCellClick(index) {
+        if (armedSkill && SKILLS[armedSkill].target) { tryBombAt(index); return; }
+        if (!gameActive || busy || board[index] || currentPlayer !== 'X') return;
+        takeTurn(index, 'X');
+        if (skillsEnabled) renderSkillPanel();
+        if (gameActive) {
+          busy = true;
+          setStatus('Bot is calculating…', 'thinking');
+          setTimeout(botMove, 550);
+        }
+      }
+
+      function placeMark(index, player) {
+        board[index] = player;
+        moveHistory[player].push(index);
+        if (moveHistory[player].length > markLimit) {
+          const oldest = moveHistory[player].shift();
+          board[oldest] = null;
+        }
+        paintBoard();
+        const result = checkWin(board, size);
+        if (result) { endGame(result); return true; }
+        if (!board.includes(null)) { endGame({ winner: null }); return true; }
+        return false;
+      }
+
+      function maybeDisrupt(index, player) {
+        if (!skillsEnabled) return index;
+        const st = skillState[player];
+        if (st.dissonanceTurns > 0) {
+          st.dissonanceTurns -= 1;
+          if (Math.random() < 0.75) {
+            const empties = board
+              .map((v, i) => (v === null && i !== index ? i : -1))
+              .filter((i) => i !== -1);
+            if (empties.length) {
+              if (player === 'X') logFoe('Dissonance scrambled your move', true);
+              return empties[Math.floor(Math.random() * empties.length)];
+            }
+          }
+        }
+        return index;
+      }
+
+      function finishTurn(player, ended) {
+        if (skillsEnabled) {
+          const st = skillState[player];
+          st.energy = Math.min(ENERGY_CAP, st.energy + ENERGY_PER_TURN);
+          for (const k in st.cd) if (st.cd[k] > 0) st.cd[k] -= 1;
+          if (st.shieldTurns > 0) st.shieldTurns -= 1;
+        }
+        if (ended) return;
+        currentPlayer = player === 'X' ? 'O' : 'X';
+      }
+
+      function takeTurn(rawIndex, player) {
+        const index = maybeDisrupt(rawIndex, player);
+        let ended = placeMark(index, player);
+        if (!ended && skillsEnabled && skillState[player].airTurns > 0) {
+          skillState[player].airTurns -= 1;
+          const bonus = bestMoveFor(player);
+          if (bonus !== undefined && board[bonus] === null) ended = placeMark(bonus, player);
+        }
+        finishTurn(player, ended);
+      }
+
+      function checkWin(b, s) {
+        for (let r = 0; r < s; r++) {
+          const start = r * s;
+          const first = b[start];
+          if (first) {
+            let win = true; const line = [];
+            for (let i = 0; i < s; i++) { line.push(start + i); if (b[start + i] !== first) { win = false; break; } }
+            if (win) return { winner: first, line };
+          }
+        }
+        for (let c = 0; c < s; c++) {
+          const first = b[c];
+          if (first) {
+            let win = true; const line = [];
+            for (let i = 0; i < s; i++) { line.push(i * s + c); if (b[i * s + c] !== first) { win = false; break; } }
+            if (win) return { winner: first, line };
+          }
+        }
+        let d1 = true, d2 = true; const l1 = [], l2 = [];
+        for (let i = 0; i < s; i++) {
+          l1.push(i * s + i);
+          if (b[i * s + i] !== b[0]) d1 = false;
+          l2.push(i * s + (s - 1 - i));
+          if (b[i * s + (s - 1 - i)] !== b[s - 1]) d2 = false;
+        }
+        if (d1 && b[0]) return { winner: b[0], line: l1 };
+        if (d2 && b[s - 1]) return { winner: b[s - 1], line: l2 };
+        return null;
+      }
+
+      function botMove() {
+        if (!gameActive) return;
+        if (skillsEnabled && maybeBotSkill()) return;
+        if (!gameActive) { if (skillsEnabled) renderSkillPanel(); return; }
+        let move;
+        if (Math.random() < (RANDOM_CHANCE[difficulty] || 0)) {
+          const empty = board.map((v, i) => (v === null ? i : -1)).filter((v) => v !== -1);
+          move = empty[Math.floor(Math.random() * empty.length)];
+        } else {
+          move = bestMoveFor('O');
+        }
+        busy = false;
+        if (move !== undefined) {
+          takeTurn(move, 'O');
+          if (skillsEnabled) renderSkillPanel();
+          if (gameActive) setStatus('Your turn (X)');
+        }
+      }
+
+      function bestMoveFor(me) {
+        const opp = me === 'X' ? 'O' : 'X';
+        const empty = board.map((v, i) => (v === null ? i : -1)).filter((v) => v !== -1);
+        if (empty.length === 0) return undefined;
+
+        for (const idx of empty) {
+          const sim = board.slice(); sim[idx] = me;
+          if (checkWin(sim, size)) return idx;
+        }
+        for (const idx of empty) {
+          const sim = board.slice(); sim[idx] = opp;
+          if (checkWin(sim, size)) return idx;
+        }
+        let bestScore = -Infinity;
+        let bestIdx = empty[0];
+        for (const idx of empty) {
+          const r = Math.floor(idx / size);
+          const c = idx % size;
+          let score = -(Math.abs(r - (size - 1) / 2) + Math.abs(c - (size - 1) / 2));
+          score += evaluatePosition(idx, me) * 1.5;
+          score += evaluatePosition(idx, opp);
+          if (score > bestScore) { bestScore = score; bestIdx = idx; }
+        }
+        return bestIdx;
+      }
+
+      function evaluatePosition(index, player) {
+        let score = 0;
+        const r = Math.floor(index / size);
+        const c = index % size;
+        const dirs = [{ dr: 0, dc: 1 }, { dr: 1, dc: 0 }, { dr: 1, dc: 1 }, { dr: 1, dc: -1 }];
+        for (const { dr, dc } of dirs) {
+          let count = 0;
+          for (let step = 1; step < size; step++) {
+            const nr = r + dr * step, nc = c + dc * step;
+            if (nr < 0 || nr >= size || nc < 0 || nc >= size) break;
+            const v = board[nr * size + nc];
+            if (v === player) count++;
+            else if (v !== null) { count = -1; break; }
+          }
+          if (count !== -1) {
+            for (let step = 1; step < size; step++) {
+              const nr = r - dr * step, nc = c - dc * step;
+              if (nr < 0 || nr >= size || nc < 0 || nc >= size) break;
+              const v = board[nr * size + nc];
+              if (v === player) count++;
+              else if (v !== null) { count = -1; break; }
+            }
+          }
+          if (count !== -1) score += Math.pow(10, count);
+        }
+        return score;
+      }
+
+      function endGame(result) {
+        gameActive = false;
+        busy = false;
+        armedSkill = null;
+        boardEl.classList.remove('targeting');
+        if (skillsEnabled) renderSkillPanel();
+        if (result.winner === 'X') {
+          setStatus('Victory!', 'win');
+        } else if (result.winner === 'O') {
+          setStatus('The bot wins!', 'lose');
+        } else {
+          setStatus('Stalemate — board is full', 'draw');
+          return;
+        }
+        (result.line || []).forEach((idx) => {
+          const cell = cellEls[idx];
+          if (cell) cell.classList.add('win');
+        });
+      }
+
+      function removeFromHistory(owner, idx) {
+        const h = moveHistory[owner];
+        const at = h.indexOf(idx);
+        if (at !== -1) h.splice(at, 1);
+      }
+
+      function allLines() {
+        const lines = [];
+        for (let r = 0; r < size; r++) { const l = []; for (let i = 0; i < size; i++) l.push(r * size + i); lines.push(l); }
+        for (let c = 0; c < size; c++) { const l = []; for (let i = 0; i < size; i++) l.push(i * size + c); lines.push(l); }
+        const d1 = []; const d2 = [];
+        for (let i = 0; i < size; i++) { d1.push(i * size + i); d2.push(i * size + (size - 1 - i)); }
+        lines.push(d1); lines.push(d2);
+        return lines;
+      }
+
+      function longestLineCount(player) {
+        let best = 0;
+        for (const line of allLines()) {
+          let c = 0;
+          for (const idx of line) if (board[idx] === player) c++;
+          if (c > best) best = c;
+        }
+        return best;
+      }
+
+      function canCast(player, id) {
+        if (!skillsEnabled || !gameActive) return false;
+        const s = SKILLS[id]; const st = skillState[player];
+        if (st.energy < s.cost) return false;
+        if (id !== 'collapse' && st.cd[id] > 0) return false;
+        if (id === 'collapse' && st.collapseUsed) return false;
+        return true;
+      }
+
+      function spendSkill(player, id) {
+        const s = SKILLS[id]; const st = skillState[player];
+        st.energy = Math.max(0, st.energy - s.cost);
+        if (id !== 'collapse') st.cd[id] = s.cooldown;
+      }
+
+      function tryBlock(victim) {
+        const st = skillState[victim];
+        if (st.shieldTurns > 0 && Math.random() < 0.75) {
+          st.shieldTurns = 0;
+          return true;
+        }
+        return false;
+      }
+
+      function resolveBomb(center, player) {
+        const opp = player === 'X' ? 'O' : 'X';
+        const blocked = tryBlock(opp);
+        const cr = Math.floor(center / size); const cc = center % size;
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            const nr = cr + dr; const nc = cc + dc;
+            if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
+            const idx = nr * size + nc;
+            if (board[idx] === player) continue;
+            if (board[idx] === opp) {
+              if (blocked) continue;
+              removeFromHistory(opp, idx);
+            }
+            board[idx] = player;
+            moveHistory[player].push(idx);
+          }
+        }
+        while (moveHistory[player].length > markLimit) {
+          const oldest = moveHistory[player].shift();
+          board[oldest] = null;
+        }
+        paintBoard();
+        let ended = false;
+        const w = checkWin(board, size);
+        if (w) { endGame(w); ended = true; }
+        else if (!board.includes(null)) { endGame({ winner: null }); ended = true; }
+        finishTurn(player, ended);
+        return blocked;
+      }
+
+      function resolveCollapse(player) {
+        const lines = allLines().slice();
+        const occ = (line) => line.reduce((n, idx) => n + (board[idx] ? 1 : 0), 0);
+        lines.sort((a, b) => occ(b) - occ(a));
+        for (const line of lines.slice(0, 2)) {
+          for (const idx of line) {
+            const owner = board[idx];
+            if (owner) { removeFromHistory(owner, idx); board[idx] = null; }
+          }
+        }
+        paintBoard();
+        skillState[player].collapseUsed = true;
+        const opp = player === 'X' ? 'O' : 'X';
+        skillState[opp].energy = Math.min(ENERGY_CAP, skillState[opp].energy + 3);
+      }
+
+      function castSkill(player, id) {
+        spendSkill(player, id);
+        const opp = player === 'X' ? 'O' : 'X';
+        const who = player === 'X' ? 'You' : 'Bot';
+        const fromBot = player === 'O';
+        if (id === 'dome') {
+          skillState[player].shieldTurns = 10;
+          setStatus(who + ': Iron Dome up');
+          if (fromBot) logFoe('Raised Iron Dome');
+        } else if (id === 'air') {
+          skillState[player].airTurns = 5;
+          setStatus(who + ': Air support inbound');
+          if (fromBot) logFoe('Called Air Support');
+        } else if (id === 'dissonance') {
+          if (tryBlock(opp)) {
+            setStatus('Dissonance deflected by Iron Dome');
+            if (fromBot) logFoe('Dissonance — your Iron Dome deflected it', true);
+          } else {
+            skillState[opp].dissonanceTurns = 5;
+            setStatus(who + ': Dissonance cast');
+            if (fromBot) logFoe('Cast Dissonance on you');
+          }
+        } else if (id === 'collapse') {
+          resolveCollapse(player);
+          setStatus(who + ': Collapse!');
+          if (fromBot) logFoe('Triggered Collapse');
+        }
+      }
+
+      function bombThreat(player) {
+        const opp = player === 'X' ? 'O' : 'X';
+        let bestIdx = -1; let bestGain = 0;
+        for (let i = 0; i < board.length; i++) {
+          const cr = Math.floor(i / size); const cc = i % size;
+          let gain = 0;
+          for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+            const nr = cr + dr; const nc = cc + dc;
+            if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
+            const v = board[nr * size + nc];
+            if (v === opp) gain += 2; else if (v === null) gain += 1;
+          }
+          if (gain > bestGain) { bestGain = gain; bestIdx = i; }
+        }
+        return { idx: bestIdx, gain: bestGain };
+      }
+
+      function maybeBotSkill() {
+        const eager = difficulty === 'xhard' || difficulty === 'hard';
+        const xThreat = longestLineCount('X');
+        if (canCast('O', 'collapse') && xThreat >= size - 1) {
+          castSkill('O', 'collapse'); renderSkillPanel(); return false;
+        }
+        if (canCast('O', 'dissonance') && xThreat >= size - 2) {
+          castSkill('O', 'dissonance'); renderSkillPanel(); return false;
+        }
+        if (eager && canCast('O', 'bomb')) {
+          const t = bombThreat('O');
+          if (t.idx !== -1 && t.gain >= 6) {
+            spendSkill('O', 'bomb');
+            busy = false;
+            logFoe('Dropped a Bomb');
+            resolveBomb(t.idx, 'O');
+            renderSkillPanel();
+            if (gameActive) setStatus('Your turn (X)');
+            return true;
+          }
+        }
+        if (canCast('O', 'dome') && skillState.O.energy >= ENERGY_CAP - 1) {
+          castSkill('O', 'dome'); renderSkillPanel();
+        } else if (eager && canCast('O', 'air') && skillState.O.energy >= SKILLS.air.cost) {
+          castSkill('O', 'air'); renderSkillPanel();
+        }
+        return false;
+      }
+
+      function buildSkillPanel() {
+        skillListEl.innerHTML = '';
+        for (const id of SKILL_ORDER) {
+          const s = SKILLS[id];
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'cyc-skill-btn';
+          const name = document.createElement('span');
+          name.className = 'skill-name';
+          const nm = document.createElement('span'); nm.textContent = s.name;
+          const cost = document.createElement('span'); cost.textContent = s.cost > 0 ? (s.cost + '⚡') : 'free';
+          name.appendChild(nm); name.appendChild(cost);
+          const cd = document.createElement('span'); cd.className = 'skill-cd';
+          const desc = document.createElement('span'); desc.className = 'skill-desc'; desc.textContent = s.desc;
+          btn.appendChild(name); btn.appendChild(cd); btn.appendChild(desc);
+          btn.addEventListener('click', () => onSkillClick(id));
+          skillListEl.appendChild(btn);
+          skillBtns[id] = btn;
+        }
+      }
+
+      function renderSkillPanel() {
+        if (!skillsEnabled) return;
+        const st = skillState.X;
+        energyValEl.textContent = st.energy;
+        energyFillEl.style.width = Math.round((100 * st.energy) / ENERGY_CAP) + '%';
+        const myTurn = gameActive && !busy && currentPlayer === 'X';
+        for (const id of SKILL_ORDER) {
+          const btn = skillBtns[id]; if (!btn) continue;
+          const cdEl = btn.querySelector('.skill-cd');
+          let label; let ready = true;
+          if (id === 'collapse' && st.collapseUsed) { label = 'used up'; ready = false; }
+          else if (id !== 'collapse' && st.cd[id] > 0) { label = 'cooldown ' + st.cd[id]; ready = false; }
+          else if (st.energy < SKILLS[id].cost) { label = 'need ' + SKILLS[id].cost + '⚡'; ready = false; }
+          else label = 'ready';
+          cdEl.textContent = label;
+          cdEl.classList.toggle('ready', ready);
+          btn.disabled = !(canCast('X', id) && myTurn);
+          btn.classList.toggle('armed', armedSkill === id);
+        }
+        renderFoePanel();
+      }
+
+      function onSkillClick(id) {
+        if (!(canCast('X', id) && gameActive && !busy && currentPlayer === 'X')) return;
+        if (SKILLS[id].target) {
+          if (armedSkill === id) {
+            armedSkill = null;
+            boardEl.classList.remove('targeting');
+            setStatus('Your turn (X)');
+          } else {
+            armedSkill = id;
+            boardEl.classList.add('targeting');
+            setStatus('Pick a target cell for ' + SKILLS[id].name);
+          }
+          renderSkillPanel();
+          return;
+        }
+        castSkill('X', id);
+        renderSkillPanel();
+      }
+
+      function tryBombAt(index) {
+        armedSkill = null;
+        boardEl.classList.remove('targeting');
+        if (!(canCast('X', 'bomb') && gameActive && !busy && currentPlayer === 'X')) {
+          renderSkillPanel();
+          return;
+        }
+        spendSkill('X', 'bomb');
+        resolveBomb(index, 'X');
+        renderSkillPanel();
+        if (gameActive) {
+          busy = true;
+          setStatus('Bot is calculating…', 'thinking');
+          setTimeout(botMove, 550);
+        }
+      }
+
+      sizeRange.addEventListener('input', () => { sizeValue.textContent = sizeRange.value; updateSkillGate(); });
+      sizeRange.addEventListener('change', initGame);
+      resetBtn.addEventListener('click', initGame);
+      diffSelect.addEventListener('change', initGame);
+      skillsToggle.addEventListener('change', initGame);
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && armedSkill) {
+          armedSkill = null;
+          boardEl.classList.remove('targeting');
+          setStatus('Your turn (X)');
+          renderSkillPanel();
+        }
+      });
+      let resizeRaf;
+      window.addEventListener('resize', () => {
+        cancelAnimationFrame(resizeRaf);
+        resizeRaf = requestAnimationFrame(layoutBoard);
+      });
+      initGame();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en" data-theme="blackout">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Silverwolf — Coin Flip</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    html, body { overflow-x: clip; background-color: #020308; color-scheme: dark; }
+    main { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
+    .flip-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3rem;
+      margin-top: 2rem;
+    }
+    .coin {
+      width: 200px;
+      height: 200px;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 1s;
+    }
+    .coin div {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 2rem;
+      font-weight: bold;
+      backface-visibility: hidden;
+      border: 8px solid var(--accent);
+      box-shadow: 0 0 20px var(--glow-bright);
+      background: var(--ink-800);
+      color: var(--accent-light);
+    }
+    .coin .heads {
+      transform: rotateY(0deg);
+    }
+    .coin .tails {
+      transform: rotateY(180deg);
+    }
+    .coin .side {
+      width: 20px;
+      height: 200px;
+      left: 90px;
+      transform: rotateY(90deg);
+      background: var(--accent);
+      border: none;
+      box-shadow: none;
+    }
+
+    @keyframes flip-heads {
+      from { transform: rotateY(0); }
+      to { transform: rotateY(1800deg); }
+    }
+    @keyframes flip-tails {
+      from { transform: rotateY(0); }
+      to { transform: rotateY(1980deg); }
+    }
+    @keyframes flip-side {
+      from { transform: rotateY(0); }
+      to { transform: rotateY(1890deg); }
+    }
+
+    .flipping-heads { animation: flip-heads 3s cubic-bezier(0.1, 0, 0.3, 1) forwards; }
+    .flipping-tails { animation: flip-tails 3s cubic-bezier(0.1, 0, 0.3, 1) forwards; }
+    .flipping-side { animation: flip-side 3s cubic-bezier(0.1, 0, 0.3, 1) forwards; }
+
+    .result-text {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--accent-light);
+      height: 2rem;
+    }
+  </style>
+</head>
+<body class="font-sans bg-ink-900 text-fog-100 min-h-screen flex flex-col scanlines cyber-grid">
+  <!-- Top bar emulator -->
+  <nav id="site-nav" class="nav-surface font-mono">
+    <div class="nav-window-header flex items-center justify-between px-[1.5rem] py-2 border-b border-[rgba(34,211,255,0.12)] select-none">
+      <div class="flex items-center gap-1.5">
+        <a href="../index.html" class="text-accent hover:text-accent-light no-underline mr-2 font-bold">&lt; Back</a>
+        <span class="text-[0.7rem] font-semibold text-accent opacity-75 tracking-widest font-mono">GAME.FLIP.EXE</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="status-led status-led-red w-1.5 h-1.5"></span>
+        <span class="text-[#EF4444] text-[0.7rem] font-bold tracking-widest font-mono">[OFFLINE]</span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="flex-1 w-full max-w-[1100px] mx-auto py-8 px-[clamp(1rem,4vw,3rem)]">
+    <h1 class="text-center text-3xl font-extrabold text-white">Coin Flip</h1>
+    <div class="flip-container">
+      <div id="result-text" class="result-text"></div>
+      <div id="coin" class="coin">
+        <div class="heads">Heads</div>
+        <div class="tails">Tails</div>
+        <div class="side"></div>
+      </div>
+      <button id="flip-btn" class="btn-accent btn-lg px-8 py-3 rounded font-bold">FLIP COIN</button>
+      <p class="text-fog-400 text-sm mt-4 text-center">50/50 for Silverwolf to give you head.</p>
+    </div>
+  </main>
+
+  <!-- Mobile bottom dock -->
+  <div id="nav-mobile" role="navigation" aria-label="Mobile navigation">
+    <a href="../index.html" class="nav-link no-underline active" aria-label="Games">
+      <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="w-6 h-6">
+        <path d="M15.9 5.5C15.3 4.5 14.2 4 13 4H7c-1.2 0-2.3.5-2.9 1.5-2.3 3.5-2.8 8.8-1.2 9.9 1.6 1.1 5.2-3.7 7.1-3.7s5.4 4.8 7.1 3.7c1.6-1.1 1.1-6.4-1.2-9.9zM8 9H7v1H6V9H5V8h1V7h1v1h1v1h1v1h1v1zm5.4.5c0 .5-.4.9-.9.9s-.9-.4-.9-.9.4-.9.9-.9.9.4.9.9zm1.9-2c0 .5-.4.9-.9.9s-.9-.4-.9-.9.4-.9.9-.9.9.4.9.9z"/>
+      </svg>
+      <span class="label">Games</span>
+    </a>
+  </div>
+
+  <script>
+    (() => {
+      const coin = document.getElementById('coin');
+      const btn = document.getElementById('flip-btn');
+      const resultText = document.getElementById('result-text');
+
+      let animating = false;
+
+      btn.addEventListener('click', () => {
+        if (animating) return;
+        animating = true;
+        btn.disabled = true;
+        resultText.textContent = '';
+
+        // Reset rotation first
+        coin.style.transition = 'none';
+        coin.style.transform = 'rotateY(0deg)';
+        coin.classList.remove('flipping-heads', 'flipping-tails', 'flipping-side');
+
+        // Force reflow
+        void coin.offsetWidth;
+
+        const rand = Math.random();
+        let result = '';
+        let animClass = '';
+
+        if (rand < 0.49) {
+          result = 'Head';
+          animClass = 'flipping-heads';
+        } else if (rand < 0.98) {
+          result = 'Tail';
+          animClass = 'flipping-tails';
+        } else {
+          result = 'SIDE?!';
+          animClass = 'flipping-side';
+        }
+
+        coin.classList.add(animClass);
+
+        setTimeout(() => {
+          resultText.textContent = result;
+          animating = false;
+          btn.disabled = false;
+        }, 3000);
+      });
+    })();
+  </script>
+</body>
+</html>
