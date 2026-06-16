@@ -39,6 +39,17 @@ private const val DEFAULT_SERVER_URL = "https://bot.silverwolf.dev"
 private const val ASSET_HOST = "appassets.androidplatform.net"
 private const val OFFLINE_URL = "https://$ASSET_HOST/assets/offline/index.html"
 
+// Accept only an http/https URL with a host. Returns a cleaned URL (query and
+// fragment stripped) or null, so callers can reject junk before it reaches
+// WebView.loadUrl / CookieManager / Uri.parse(serverUrl).host comparisons.
+private fun normalizeServerUrl(raw: String): String? {
+    val uri = Uri.parse(raw.trim())
+    val scheme = uri.scheme?.lowercase()
+    if (scheme != "http" && scheme != "https") return null
+    if (uri.host.isNullOrBlank()) return null
+    return uri.buildUpon().clearQuery().fragment(null).build().toString()
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
@@ -164,10 +175,14 @@ fun MainScreen(
             currentForceOffline = forceOffline,
             onDismiss = { showSettings = false },
             onSave = { newUrl, newForceOffline ->
-                serverUrl = newUrl
+                // Reject malformed / non-http(s) input rather than persisting it
+                // and crashing later on loadUrl or Uri.parse(serverUrl).host; fall
+                // back to the previous URL when the new one is invalid.
+                val effectiveUrl = normalizeServerUrl(newUrl) ?: serverUrl
+                serverUrl = effectiveUrl
                 forceOffline = newForceOffline
                 sharedPrefs.edit()
-                    .putString(KEY_SERVER_URL, newUrl)
+                    .putString(KEY_SERVER_URL, effectiveUrl)
                     .putBoolean(KEY_FORCE_OFFLINE, newForceOffline)
                     .apply()
                 showSettings = false
@@ -177,7 +192,7 @@ fun MainScreen(
                     if (newForceOffline) {
                         webViewInstance?.loadUrl(OFFLINE_URL)
                     } else {
-                        webViewInstance?.loadUrl(newUrl)
+                        webViewInstance?.loadUrl(effectiveUrl)
                     }
                 }
             }
@@ -254,7 +269,11 @@ private fun WebViewContainer(
                                 builder.appendQueryParameter("app", "true")
                             }
                             val intent = Intent(Intent.ACTION_VIEW, builder.build())
-                            ctx.startActivity(intent)
+                            try {
+                                ctx.startActivity(intent)
+                            } catch (e: android.content.ActivityNotFoundException) {
+                                android.util.Log.w("MainScreen", "No app to handle login intent", e)
+                            }
                             return true
                         }
 
@@ -263,7 +282,11 @@ private fun WebViewContainer(
                         val requestHost = request.url.host
                         if (requestHost != null && requestHost != serverHost && requestHost != "appassets.androidplatform.net") {
                             val intent = Intent(Intent.ACTION_VIEW, request.url)
-                            ctx.startActivity(intent)
+                            try {
+                                ctx.startActivity(intent)
+                            } catch (e: android.content.ActivityNotFoundException) {
+                                android.util.Log.w("MainScreen", "No app to handle ${request.url}", e)
+                            }
                             return true
                         }
 

@@ -14,7 +14,9 @@ object CookieHelper {
         cookieManager.setAcceptCookie(true)
 
         val secure = if (url.startsWith("https://")) "; Secure" else ""
-        val cookieValue = "${cookieName(url)}=$signedSessionId; Path=/; Max-Age=2592000; SameSite=Lax$secure"
+        // HttpOnly keeps the session token out of document.cookie, so a script
+        // injected into the WebView can't read it.
+        val cookieValue = "${cookieName(url)}=$signedSessionId; Path=/; Max-Age=2592000; SameSite=Lax; HttpOnly$secure"
         cookieManager.setCookie(url, cookieValue)
         cookieManager.flush()
     }
@@ -22,7 +24,7 @@ object CookieHelper {
     fun clearSessionCookie(url: String) {
         val cookieManager = CookieManager.getInstance()
         val secure = if (url.startsWith("https://")) "; Secure" else ""
-        cookieManager.setCookie(url, "${cookieName(url)}=; Path=/; Max-Age=0$secure")
+        cookieManager.setCookie(url, "${cookieName(url)}=; Path=/; Max-Age=0; SameSite=Lax; HttpOnly$secure")
         cookieManager.flush()
     }
 }

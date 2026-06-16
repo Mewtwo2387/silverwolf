@@ -75,3 +75,4 @@ different key on the same `applicationId` is rejected with a signature
 mismatch). For a key that's independent of this machine, swap the `signingConfig`
 for a dedicated keystore (`keytool` + a gitignored `keystore.properties`).
 Minification (R8) is off.
+

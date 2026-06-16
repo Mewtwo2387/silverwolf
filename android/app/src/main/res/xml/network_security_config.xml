@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Production traffic (bot.silverwolf.dev) is HTTPS only, so cleartext is denied
+  by default. Cleartext is permitted ONLY for a local dev server reached from an
+  emulator/device (10.0.2.2 is the emulator's host loopback), so pointing the
+  app at http://10.0.2.2:6769 still works for local testing.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">10.0.2.2</domain>
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>

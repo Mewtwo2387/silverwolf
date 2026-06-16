@@ -1,8 +1,14 @@
+// Copies website assets into the Android app's bundled offline assets.
+// Paths are resolved relative to this script's location, so it can be run from
+// any working directory. (Lives under android/ so it stays outside the server
+// image and CI deploy path.)
 import { mkdir, copyFile, readdir } from "fs/promises";
-import { join } from "path";
+import { dirname, join, resolve } from "path";
+import { fileURLToPath } from "url";
 
-const SRC_ASSETS = "./site_src/Assets";
-const DEST_OFFLINE = "./android/app/src/main/assets/offline";
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const SRC_ASSETS = resolve(REPO_ROOT, "site_src/Assets");
+const DEST_OFFLINE = resolve(REPO_ROOT, "android/app/src/main/assets/offline");
 
 async function copyDir(src: string, dest: string) {
   await mkdir(dest, { recursive: true });
