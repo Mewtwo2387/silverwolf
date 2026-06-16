@@ -11,7 +11,21 @@ import { CharacterTextColors, DEFAULT_CHARACTER_TEXT_COLORS } from './textTheme'
 import { SkillCategory } from './skillCategory';
 import type { SkillBattleCost } from './skillBattleCost';
 import { Normal } from './skillBattleCost';
+import { Element, randomElement } from './element';
 import { tcgAssetPaths } from './assetPaths';
+
+/** Character-specific logic when a skill resolves (effects, damage, etc. still run unless omitted). */
+export type SkillOnUse = (caster: CharacterInBattle, target: CharacterInBattle | null) => void;
+
+/** Optional per-skill damage behaviour (multi-hit, element overrides). */
+export interface SkillDamageOptions {
+  /** Hits per target; each hit rolls damage and dodge independently. Default 1. */
+  hitCount?: number;
+  /** Fixed element for every hit (elemental buffs apply to this element, not the caster's). */
+  damageElement?: Element;
+  /** Each hit picks a random element (mutually exclusive with {@link damageElement}). */
+  randomElementPerHit?: boolean;
+}
 
 const SKILL_POINT_ICON_PATH = `${tcgAssetPaths.common}/skillPoint.png`;
 let skillPointIconPromise: Promise<Canvas.Image> | null = null;
@@ -45,6 +59,10 @@ export class Skill implements DrawableBlock {
   effects: RangeEffect[];
   formActiveSkillIndices?: number[];
   battleCost: SkillBattleCost;
+  hitCount: number;
+  damageElement?: Element;
+  randomElementPerHit: boolean;
+  onUse?: SkillOnUse;
 
   constructor(
     name: string,
@@ -53,6 +71,8 @@ export class Skill implements DrawableBlock {
     damageRange: RangeType,
     effects: RangeEffect[],
     formActiveSkillIndices?: number[],
+    damageOptions?: SkillDamageOptions,
+    onUse?: SkillOnUse,
     battleCost: SkillBattleCost = Normal(1),
   ) {
     this.name = name;
@@ -62,6 +82,21 @@ export class Skill implements DrawableBlock {
     this.effects = effects;
     this.formActiveSkillIndices = formActiveSkillIndices;
     this.battleCost = battleCost;
+    this.hitCount = damageOptions?.hitCount ?? 1;
+    this.damageElement = damageOptions?.damageElement;
+    this.randomElementPerHit = damageOptions?.randomElementPerHit ?? false;
+    this.onUse = onUse;
+  }
+
+  /** Card-facing damage label (e.g. `4x4` for four hits of 4). */
+  get damageDisplayText(): string {
+    if (this.damage <= 0) {
+      return '--';
+    }
+    if (this.hitCount > 1) {
+      return `${this.hitCount}x${this.damage}`;
+    }
+    return `${this.damage}`;
   }
 
   /** Legacy-style category for turn rules and UI branches. */
@@ -162,15 +197,15 @@ export class Skill implements DrawableBlock {
   ): Promise<number> {
     let currentY = y;
 
-    const maxTextWidth = layout.maxTextWidth ?? 800;
+    const maxTextWidth = layout.maxTextWidth ?? 940;
     const nameLeft = layout.left ?? 64;
-    const damageRight = layout.right ?? 956;
+    const damageRight = layout.right ?? 1004;
     const compactDamage = layout.compactDamage ?? false;
     const compact = layout.compact ?? false;
     const nameLineHeight = 56;
     const descLineHeight = 48;
 
-    const damageText = this.damage > 0 ? `${this.damage}` : '--';
+    const damageText = this.damageDisplayText;
     ctx.font = '700 64px "Bahnschrift"';
     const damageTextWidth = ctx.measureText(damageText).width;
     const damageSlotMin = compact ? 140 : 180;
@@ -359,7 +394,7 @@ export class Skill implements DrawableBlock {
   }
 
   useSkill(character: CharacterInBattle, target: CharacterInBattle | null) {
-    const dodgedTargets = Skill.resolveDodgesForHostileSkillTargets(character, target, this);
+    const effectDodgedTargets = Skill.resolveDodgesForHostileEffectTargets(character, target, this);
 
     this.effects.forEach((rangeEffect) => {
       let effectToApply = rangeEffect.effect;
@@ -376,26 +411,49 @@ export class Skill implements DrawableBlock {
       }
 
       Skill.resolveSkillRangeTargets(rangeEffect.range, character, target).forEach((victim) => {
-        if (Skill.shouldResolveOnHostileTarget(character, victim, dodgedTargets)) {
+        if (Skill.shouldResolveOnHostileTarget(character, victim, effectDodgedTargets)) {
           victim.addEffect(effectToApply);
         }
       });
     });
 
-    const damageElement = character.effectiveDamageElement;
-
-    if (this.damage > 0) {
-      const damageContext = this.category === SkillCategory.Charged
-        ? { chargedAttack: true, skillPointsSpent: this.skillPointsCost }
-        : undefined;
-      Skill.resolveSkillRangeTargets(this.damageRange, character, target).forEach((victim) => {
-        if (!Skill.shouldResolveOnHostileTarget(character, victim, dodgedTargets)) {
-          return;
-        }
-        const dealtDamage = character.dealDamage(this.damage, damageElement, damageContext);
-        victim.takeDamage(dealtDamage, damageElement, character);
-      });
+    if (this.onUse) {
+      this.onUse(character, target);
     }
+
+    if (this.damage > 0 && this.hitCount > 0) {
+      let damageContext;
+      if (this.category === SkillCategory.Charged) {
+        damageContext = { chargedAttack: true, skillPointsSpent: this.skillPointsCost };
+      } else if (this.category === SkillCategory.Ultimate) {
+        damageContext = { ultimateAttack: true };
+      } else {
+        damageContext = undefined;
+      }
+      const victims = Skill.resolveSkillRangeTargets(this.damageRange, character, target);
+      for (let hit = 0; hit < this.hitCount; hit += 1) {
+        const hitElement = this.resolveDamageElementForHit(character);
+        victims.forEach((victim) => {
+          if (victim.side !== character.side && victim.rollDodge()) {
+            character.battle.logEvent(`${victim.character.name} dodged the attack!`);
+            return;
+          }
+          const dealtDamage = character.dealDamage(this.damage, hitElement, damageContext);
+          victim.takeDamage(dealtDamage, hitElement, character);
+        });
+      }
+    }
+  }
+
+  /** Element used for a single damage hit (per-hit random, skill override, or caster default). */
+  private resolveDamageElementForHit(caster: CharacterInBattle): Element {
+    if (this.randomElementPerHit) {
+      return randomElement();
+    }
+    if (this.damageElement !== undefined) {
+      return this.damageElement;
+    }
+    return caster.effectiveDamageElement;
   }
 
   /** Living characters in range for this skill line (effects or damage). */
@@ -416,6 +474,12 @@ export class Skill implements DrawableBlock {
       case RangeType.SingleOpponent:
         if (!target) return [];
         return caster.battle.opponent(caster.side).includes(target) && alive(target) ? [target] : [];
+      case RangeType.AdjacentOpponents: {
+        const slot = caster.slotIndexOnSide();
+        return caster.battle.opponent(caster.side).filter(
+          (opponent, idx) => alive(opponent) && Math.abs(idx - slot) <= 1,
+        );
+      }
       case RangeType.AllOpponents:
         return caster.battle.opponent(caster.side).filter(alive);
       case RangeType.AllCards:
@@ -426,11 +490,10 @@ export class Skill implements DrawableBlock {
   }
 
   /**
-   * Before resolving a skill, roll dodge once per hostile target (anyone on the other
-   * side who would receive an effect or damage from this use). Dodging skips the entire
-   * skill on that character — no debuffs, no damage, no hit energy.
+   * Before applying skill effects, roll dodge once per hostile effect target. Dodging skips
+   * debuffs/buffs from effects on that character for this skill use. Damage dodges per hit.
    */
-  private static resolveDodgesForHostileSkillTargets(
+  private static resolveDodgesForHostileEffectTargets(
     caster: CharacterInBattle,
     target: CharacterInBattle | null,
     skill: Skill,
@@ -444,14 +507,6 @@ export class Skill implements DrawableBlock {
         }
       });
     });
-
-    if (skill.damage > 0) {
-      Skill.resolveSkillRangeTargets(skill.damageRange, caster, target).forEach((victim) => {
-        if (victim.side !== caster.side) {
-          hostileTargets.add(victim);
-        }
-      });
-    }
 
     const dodged = new Set<CharacterInBattle>();
     hostileTargets.forEach((victim) => {
@@ -476,7 +531,7 @@ export class Skill implements DrawableBlock {
   }
 
   toString(): string {
-    const damageStr = this.damage > 0 ? `Damage: ${this.damage}` : '';
+    const damageStr = this.damage > 0 ? `Damage: ${this.damageDisplayText}` : '';
     let costStr = '';
     if (this.battleCost.kind === 'ultimate') {
       const ultParts: string[] = [];

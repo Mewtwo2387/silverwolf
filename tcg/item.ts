@@ -276,6 +276,8 @@ export class Equipment extends Item {
   combinesWhenEquipped?: EquipmentCombineConfig;
   /** Optional hook after base effects are applied (conditional bonuses, form change, etc.). */
   onEquipped?: (target: CharacterInBattle) => void;
+  /** Optional hook at the end of each battle round (before DoT ticks and duration decay). */
+  onTurnEnd?: (holder: CharacterInBattle) => void;
 
   constructor(
     id: string,

@@ -19,4 +19,15 @@ export enum EffectType {
    * (e.g. 0.1 → +10% per SP: 3 SP ⇒ ×1.3 for that hit only). Only applied during damage calc.
    */
   ChargedSkillPointScaling,
+  /**
+   * DoT stack: `amount` is fixed damage per turn for this stack (snapshotted at inflict time).
+   * Stackable copies add up. `metadata.appliesToElement` is the damage element (Burn → Pyro, etc.).
+   */
+  Dot,
+  /** Flat bonus added to base per-stack DoT before multipliers, only when the holder inflicts DoT. */
+  DotStackBaseBonus,
+  /** Multiplier on DoT the holder inflicts (applied only when creating new DoT stacks). */
+  DotDamageBonus,
+  /** Multiplier on ultimate attack damage only (resolved in damage calc with ultimate context). */
+  UltimateOutgoingDamage,
 }

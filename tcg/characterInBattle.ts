@@ -18,6 +18,7 @@ export interface DamageCalculationContext {
   chargedAttack?: boolean;
   /** Team skill points spent to use the charged attack (from {@link Skill.skillPointsCost}). */
   skillPointsSpent?: number;
+  ultimateAttack?: boolean;
 }
 
 /**
@@ -297,6 +298,14 @@ export class CharacterInBattle {
       }
     }
 
+    if (context?.ultimateAttack) {
+      this.effects
+        .filter((effect) => effect.type === EffectType.UltimateOutgoingDamage)
+        .forEach((effect) => {
+          damage *= effect.amount;
+        });
+    }
+
     return round2(Math.max(0, damage));
   }
 
@@ -328,7 +337,23 @@ export class CharacterInBattle {
    * Effects are always cloned before being pushed so the per-instance state we mutate
    * (duration ticks down, etc.) can't bleed back into the shared source definition.
    */
+  removeEffectsByName(name: string): void {
+    this.effects = this.effects.filter((e) => e.name !== name);
+  }
+
   addEffect(effect: Effect) {
+    if (effect.stackable && effect.metadata?.maxStacks !== undefined) {
+      const stacks = this.effects.filter((e) => e.name === effect.name && e.stackable);
+      if (stacks.length >= effect.metadata.maxStacks) {
+        stacks.forEach((e) => {
+          if (effect.duration > e.duration) {
+            // eslint-disable-next-line no-param-reassign
+            e.duration = effect.duration;
+          }
+        });
+        return;
+      }
+    }
     if (!effect.stackable) {
       const existingEffect = this.effects.find((e) => e.name === effect.name && !e.stackable);
       if (existingEffect) {
@@ -347,12 +372,43 @@ export class CharacterInBattle {
    * Process end of turn: reduce effect durations, remove expired effects
    */
   processEndOfTurn() {
+    this.equipments.forEach((equipment) => {
+      equipment.onTurnEnd?.(this);
+    });
+
+    this.processDotTicks();
+
     this.effects.forEach((effect) => {
       // eslint-disable-next-line no-param-reassign
       effect.duration -= 1;
     });
 
     this.effects = this.effects.filter((effect) => effect.duration > 0);
+  }
+
+  /** Sum fixed per-stack {@link EffectType.Dot} damage by label + element, then tick each group. */
+  private processDotTicks(): void {
+    if (this.isKnockedOut) return;
+
+    const dotStacks = this.effects.filter((effect) => effect.type === EffectType.Dot);
+    if (dotStacks.length === 0) return;
+
+    const groups = new Map<string, { name: string; element: Element; total: number }>();
+    dotStacks.forEach((dot) => {
+      const element = dot.metadata?.appliesToElement ?? Element.Physical;
+      const key = `${dot.name}:${element}`;
+      const group = groups.get(key) ?? { name: dot.name, element, total: 0 };
+      group.total += dot.amount;
+      groups.set(key, group);
+    });
+
+    groups.forEach(({ name, element, total }) => {
+      const damage = round2(total);
+      if (damage <= 0) return;
+      const typeLabel = Element[element].toLowerCase();
+      this.battle.logEvent(`${this.character.name} took ${damage} ${typeLabel} damage from [${name}]`);
+      this.takeDamage(damage, element, null);
+    });
   }
 
   /**

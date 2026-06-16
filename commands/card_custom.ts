@@ -375,6 +375,8 @@ class CardCustom extends Command {
               RangeType.SingleOpponent,
               [],
               undefined,
+              undefined,
+              undefined,
               Normal(attack.attackCost),
             ),
           );

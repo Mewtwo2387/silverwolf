@@ -6,7 +6,7 @@ Bun process**. It serves fun/games both as slash commands and as web pages, plus
 **The website is public, so security and performance are first-class concerns — code defensively:
 validate every input, never trust client data, keep the CSP tight.**
 
-**Last updated: 2026-06-14**
+**Last updated: 2026-06-17**
 
 > **Maintenance rules.** Edit this file when something here becomes factually wrong, or when you
 > make a qualifying structural change. Rules differ by area:
@@ -256,8 +256,11 @@ Use the helpers in `tcg/characterBuilder.ts` (`createCharacter`, `createSkill`,
 `createSimpleBackground`, plus the `Normal`/`Charged`/`Ultimate` factories re-exported). You
 *can* call the constructors directly, but the helpers exist to keep examples readable.
 
-Place character definitions in `tcg/characters.ts`. Add the character to the `CHARACTERS`
-array — `tcg/characterRoster.ts` automatically derives Discord choice values from the array.
+Characters live under `tcg/characters/` — **one file per character** (e.g. `mystic.ts`).
+Shared element palettes are in `shared.ts`; `tcg/characters/roster.ts` aggregates exports
+into `CHARACTERS`. Import from `tcg/characters` (barrel) elsewhere. Add a new character
+module and append it to `ROSTER_ENTRIES` in `roster.ts` — `tcg/characterRoster.ts`
+automatically derives Discord choice values from `CHARACTERS`.
 
 Patterns used in existing characters:
 
@@ -269,9 +272,27 @@ Patterns used in existing characters:
 - **FormChange** — pass `formChange: [skillIdx,...]` on a skill and `defaultForm: [...]` on
   the character to enable transformations. The active skill set is what
   `CharacterInBattle.getActiveSkills()` filters.
+- **Multi-hit / per-hit element** — `createSkill({ hitCount, damageElement?, randomElementPerHit? })`.
+  Card damage shows as `4x4` when `hitCount > 1`. Each hit rolls dodge and damage separately;
+  `damageElement` or `randomElementPerHit` sets the element passed to
+  `calculateDamage` / `takeDamage` so elemental buffs match the hit.
+- **Character-specific skill logic** — `createSkill({ onUse })` runs after declarative
+  `effects` resolve. Put bespoke behaviour here (e.g. Mystic's Polygrowth stacks² bonus in
+  `tcg/characters/mystic.ts`), not in `characterInBattle.ts`.
+- **Display name vs slug** — `name` is the display string shown on the card / Discord UI.
+  File outputs (the generated card PNG) use `character.slug`, which defaults to a slug of
+  `name` but should be set explicitly when the display name differs from the internal
+  namespace (e.g. `name: 'Keqisław Keqowski', slug: 'keqislaw'`). Keep the slug aligned with
+  the character's file/const name.
 - **Buff/debuff polarity** — every `createEffect` call must pass `positive: true|false`. This
   drives log phrasing ("X gained [Y]" vs "X was inflicted with [Y]") and the Cleanser
   consumable (which only removes `positive: false` effects).
+- **Tags** — declare identity and group tags explicitly on `createCharacter` (e.g.
+  `tags: [TAGS.KAITLIN, TAGS.TGP]`). Internal only (not rendered on cards or in Discord UI).
+  Constants live in `tcg/characterTags.ts`; include the character's own `TAGS.*` entry in their
+  file. Use tags for cross-character conditions; keep name-pattern checks (e.g.
+  `name.startsWith('V')`) when the rule is about letters in the name itself.
+  Helpers: `characterHasTag`, `countTaggedAllies`, `allyHasTag`, `Character.hasTag`.
 
 ### 6.4 Adding a new effect type
 
@@ -414,8 +435,8 @@ don't draw your own background from scratch.
 
 | Path | Purpose |
 | --- | --- |
-| `tcg/assets/characters/images/` | Character source art (referenced from `characters.ts`) |
-| `tcg/assets/characters/cards/` | Generated character card PNGs (`bun run card:generate`) |
+| `tcg/assets/characters/images/` | Character source art (referenced from `tcg/characters/<name>.ts`) |
+| `tcg/assets/characters/cards/` | Generated character card PNGs (`bun run card:generate`), named `<character.slug>.png` |
 | `tcg/assets/items/images/` | Item source art (`<itemId>.png`; `itemImagePanel` fits art on a transparent panel; estrogen uses white) |
 | `tcg/assets/items/cards/` | Generated item card PNGs (`bun run card:generate-items`) |
 | `tcg/assets/common/`, `tcg/assets/types/` | Shared UI icons (stars, skill points, element badges) |
@@ -487,18 +508,87 @@ website-facing data access and the leaderboard/birthday cache.
   `CMD ["bun","index.ts"]`. `docker-compose.yaml` mounts `./persistence` (SQLite persistence),
   publishes `127.0.0.1:8080:6769`, `mem_limit: 1g`.
 
-## 10. Conventions, tooling & gotchas
+## 10. Other bot systems (high-level pointers)
+
+### 10.1 Schedulers
+
+`BirthdayScheduler` and `BabyScheduler` are constructed in `Silverwolf.constructor` and started
+in `init`. Both use `Bun.cron`. To add a recurring task either extend the relevant scheduler or
+create a new one and start it in `init`.
+
+### 10.2 Seasonal handlers
+
+`getHandler()` reads `globalConfig.season` and looks up
+`data/config/skin/pokemon.json` to decide which class in `classes/handlers/index.ts` to
+instantiate per pokemon-summon event. To add a new season, add an entry in the JSON and a
+new handler class extending `Handler` (`classes/handlers/handler.ts`) implementing
+`summonPokemon`/`summonShinyPokemon`/`summonMysteryPokemon`/`summonNormalPokemon`.
+
+### 10.3 Keyword auto-replies
+
+Anything in `data/keywords.json` is loaded into `client.keywords`. Each entry is
+`{ triggers: string[], reply?: string, script?: string, excludeSerious?: boolean }`. A
+`trigger` may be a substring or a regex of the form `/.../g`. `script` references a function
+in `classes/handlers/keywordsBehaviorHandler.ts`. `excludeSerious` skips trigger in the
+hard-coded "serious channels" list.
+
+### 10.4 Quote tool
+
+`utils/quote.ts` powers the "@bot in reply to a message" → quote-card pipeline (`processMessage`
+in `silverwolf.ts`). Inline params `bg:`, `pfp:`, `pfpc:`, `font:`, `txt:` are parsed from the
+message that mentions the bot.
+
+### 10.5 AI
+
+`utils/ai.ts` and `database/models/AiChatModel.ts` (+ `AiChatHistoryRow`/`AiChatSessionRow`)
+implement the Gemini/persona chat sessions. Important: `Database.init` enforces a unique
+index `(user_id, persona_name) WHERE active = 1` to prevent duplicate-active sessions. If you
+add a new persona, drop a system prompt into `data/aiPersonas.json` /
+`data/SilverwolfSystemPrompt.txt` etc. — see existing usage.
+
+## 11. Conventions, tooling & gotchas
+
 - **Lint:** `.eslintrc.json` = airbnb-base + node + promise. TS overrides: `no-explicit-any` off,
   unused vars ignored when `_`-prefixed, `max-len` 120, `no-console` off. `site_src/Assets/` is
   lint-ignored. `eslint-by-rule.sh` (needs `jq`) lists issues by rule.
 - **Tests:** `bun test` in `tests/` with `tests/setup.ts` preload (30s default timeout). Jest-like
-  API (`describe`/`test`/`expect`).
+  API (`describe`/`test`/`expect`). Database integration tests live under `tests/database/` and
+  run against a temp SQLite file (`tests/temp/<name>-<timestamp>.db`); pattern after
+  `tests/database/user.test.ts` when adding a new model. For card rendering changes, run
+  `bun run card:generate` and/or `bun run card:generate-items` and visually inspect output under
+  `tcg/assets/characters/cards/` and `tcg/assets/items/cards/`.
 - **Numeric rounding:** HP / damage / energy and chained multipliers use `round2` from `utils/math.ts`.
 - **Adding things:** a new command = new file in `commands/` extending `Command`/`DevCommand`
   (auto-discovered on restart). A new page = `pages/` component wrapped in `Layout()` + a route in
   `routes/pages.ts`. A new game API = handler in `routes/games-api.ts` guarded by
-  `authedGameRequest`. CSS change = edit `input.css` + `build:css`. TCG character = `tcg/characters.ts`;
-  TCG item = matching file under `tcg/items/`; battle rule = `tcg/battle.ts`.
+  `authedGameRequest`. CSS change = edit `input.css` + `build:css`. TCG character =
+  `tcg/characters/<name>.ts`; TCG item = matching file under `tcg/items/`; battle rule =
+  `tcg/battle.ts`.
 - **Gotchas:** use absolute slot indices (0/1/2) for TCG targeting, not alive-only positions;
-  every `Effect` needs `positive: true|false`; the repo uses **CRLF** line endings; there are **no DB migrations** (see §4); a
-  website crash is caught and logged while the bot continues; `persistence/` holds all runtime data.
+  every `Effect` needs `positive: true|false`; the repo uses **CRLF** line endings; there are **no DB
+  migrations** (see §4); a website crash is caught and logged while the bot continues;
+  `persistence/` holds all runtime data; this codebase imports `bun:sqlite` directly — don't swap
+  it for `better-sqlite3` casually; commands are loaded once at startup (no hot-reload without
+  touching `loadCommands`/`registerCommands`); missing `TOKEN` aborts startup before any commands load.
+
+## 12. Where to start when you change something
+
+| Want to… | Touch… |
+| --- | --- |
+| Add a slash command | `commands/<file>.ts` (+ `commands/commandgroups/<group>.ts` if a sub) |
+| Add a DB column | `database/tables/<X>Table.ts` (+ types). No migration needed for additions. |
+| Add a DB model method | `database/queries/<x>Queries.ts` and `database/models/<X>Model.ts` |
+| Add a TCG character | `tcg/characters/<name>.ts` (use `characterBuilder` helpers); append to `ROSTER_ENTRIES` in `roster.ts`. |
+| Add a TCG item | Matching file under `tcg/items/`; append to that module's `*Items` catalog array (e.g. `elementalDamageItems`). |
+| Add a battle rule | `tcg/battle.ts` (turn loop, victory, draws). |
+| Add a passive trigger | `tcg/battleEvents.ts` + emission in `Battle` + subscriber in an `Ability`. |
+| Add a status effect kind | `tcg/effectType.ts` + the relevant resolver(s) in `characterInBattle.ts`/`battle.ts`. |
+| Tweak card art | `tcg/character.ts`, `tcg/skill.ts`, `tcg/ability.ts`, `tcg/item.ts`, `tcg/background.ts`, `tcg/imagePanel.ts`. |
+| Tweak Discord battle board | `tcg/renderDiscordBattleBoard.ts`. |
+| Schedule a recurring job | New cron in `BirthdayScheduler`/`BabyScheduler` or a new scheduler started in `Silverwolf.init`. |
+| Block a command per guild | `CommandConfig` blacklist (via dev tools) — applied on next bot start. |
+
+---
+
+Keep this document honest. When you add a new system or change a public-ish convention,
+update the relevant section.
