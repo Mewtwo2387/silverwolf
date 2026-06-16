@@ -18,6 +18,7 @@ import { Element } from './element';
 import type { SkillDamageOptions, SkillOnUse } from './skill';
 import { CharacterTextColors } from './textTheme';
 import { ImagePanel, ImagePanelOptions } from './imagePanel';
+import type { CharacterTag } from './characterTags';
 
 export {
   Normal,
@@ -70,7 +71,7 @@ export function createCharacter(params: {
   /** Render skills in a 2-column half-scale grid (useful for characters with many skills). */
   twoColumnSkills?: boolean;
   /** Internal labels for ability/equipment logic; not shown in UI. */
-  tags?: readonly string[];
+  tags?: readonly CharacterTag[];
   /** Internal namespace for file outputs (card PNG). Defaults to a slug of {@link name}. */
   slug?: string;
 }): Character {

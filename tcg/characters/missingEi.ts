@@ -7,6 +7,7 @@ import {
   createCharacter,
   createSkill,
   createEffect,
+  createRangeEffect,
   createAbility,
   createAbilityEffect,
   createSimpleBackground,
@@ -35,15 +36,21 @@ function applyBurn(
   });
 }
 
-function adjacentOpponents(caster: CharacterInBattle): CharacterInBattle[] {
-  const slot = caster.slotIndexOnSide();
-  return caster.battle.opponent(caster.side).filter(
-    (opponent, idx) => !opponent.isKnockedOut && Math.abs(idx - slot) <= 1,
+/** One stack of [Burn]; list multiple times on a skill to apply several stacks. */
+function burnStack(range: RangeType, duration: number) {
+  return createRangeEffect(
+    range,
+    createEffect({
+      name: 'Burn',
+      description: 'Takes 3 pyro damage per turn.',
+      type: EffectType.Dot,
+      amount: 3,
+      duration,
+      positive: false,
+      stackable: true,
+      appliesToElement: Element.Pyro,
+    }),
   );
-}
-
-function livingOpponents(caster: CharacterInBattle): CharacterInBattle[] {
-  return caster.battle.opponent(caster.side).filter((opponent) => !opponent.isKnockedOut);
 }
 
 export const MISSING_EI = createCharacter({
@@ -79,11 +86,7 @@ export const MISSING_EI = createCharacter({
       damage: 15,
       range: RangeType.AdjacentOpponents,
       battleCost: Charged(1),
-      onUse: (caster) => {
-        adjacentOpponents(caster).forEach((opponent) => {
-          applyBurn(opponent, 2, 5, caster);
-        });
-      },
+      effects: [burnStack(RangeType.AdjacentOpponents, 5), burnStack(RangeType.AdjacentOpponents, 5)],
     }),
     createSkill({
       name: 'Meteor',
@@ -91,11 +94,12 @@ export const MISSING_EI = createCharacter({
       damage: 35,
       range: RangeType.AllOpponents,
       battleCost: Ultimate(35),
-      onUse: (caster) => {
-        livingOpponents(caster).forEach((opponent) => {
-          applyBurn(opponent, 4, 5, caster);
-        });
-      },
+      effects: [
+        burnStack(RangeType.AllOpponents, 5),
+        burnStack(RangeType.AllOpponents, 5),
+        burnStack(RangeType.AllOpponents, 5),
+        burnStack(RangeType.AllOpponents, 5),
+      ],
     }),
   ],
   abilities: [

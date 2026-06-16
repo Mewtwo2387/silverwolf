@@ -343,7 +343,7 @@ export class CharacterInBattle {
 
   addEffect(effect: Effect) {
     if (effect.stackable && effect.metadata?.maxStacks !== undefined) {
-      const stacks = this.effects.filter((e) => e.name === effect.name);
+      const stacks = this.effects.filter((e) => e.name === effect.name && e.stackable);
       if (stacks.length >= effect.metadata.maxStacks) {
         stacks.forEach((e) => {
           if (effect.duration > e.duration) {
