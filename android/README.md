@@ -56,16 +56,22 @@ The app defaults to production. Tap the **gear** (top-right) to change the
 
 ## Build for production
 
-Bump `versionCode` / `versionName` in `app/build.gradle.kts`, then:
+Bump `versionCode` in `app/build.gradle.kts` (so a new build installs as an
+update over the previous one), then:
 
 ```bash
-./gradlew assembleRelease   # APK -> app/build/outputs/apk/release/app-release-unsigned.apk
-# or, for the Play Store:
-./gradlew bundleRelease      # AAB -> app/build/outputs/bundle/release/
+./gradlew assembleRelease   # signed APK -> app/build/outputs/apk/release/app-release.apk
 ```
 
-The release artifact is **unsigned** — no signing config is committed. Sign it
-before distributing: use `apksigner`, add a `signingConfigs` block to
-`app/build.gradle.kts`, or use Android Studio's
-**Build → Generate Signed Bundle / APK**. Code minification (R8) is currently
-off.
+The release build is signed with the local **debug** key (see the `release`
+`signingConfig` in `app/build.gradle.kts`), so the APK installs and updates
+directly when sideloaded — just send `app-release.apk` to a friend and have them
+allow "install unknown apps". Release builds are smaller and non-debuggable, so
+they run faster than `installDebug` builds.
+
+Caveats: the debug key lives at `~/.android/debug.keystore` and is per-machine,
+so build releases from the same machine for updates to install cleanly (a
+different key on the same `applicationId` is rejected with a signature
+mismatch). For a key that's independent of this machine, swap the `signingConfig`
+for a dedicated keystore (`keytool` + a gitignored `keystore.properties`).
+Minification (R8) is off.

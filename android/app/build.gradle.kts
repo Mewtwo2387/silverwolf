@@ -17,6 +17,12 @@ android {
 
     buildTypes {
         release {
+            // Hobby sideloading: sign the release build with the local debug key so
+            // it installs (and updates) cleanly when shared with friends, without
+            // standing up a dedicated keystore. Release (vs debug) yields a smaller,
+            // non-debuggable, faster APK. Swap in a real signingConfig later if builds
+            // ever need to be reproducible across machines.
+            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
