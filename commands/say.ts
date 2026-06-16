@@ -36,19 +36,20 @@ class Say extends AdminCommand {
     const targetChannels: TextChannel[] = [];
     if (channelsInput) {
       const channelMentions = channelsInput.split(',').map((id: string) => id.trim());
-      channelMentions.forEach(async (mention: string) => {
+      const fetched = await Promise.all(channelMentions.map(async (mention: string) => {
         const channelId = mention.match(/^<#(\d+)>$/)?.[1];
-        if (channelId) {
-          try {
-            const channel = await interaction.client.channels.fetch(channelId);
-            if (channel instanceof TextChannel) {
-              targetChannels.push(channel);
-            }
-          } catch (error) {
-            logError(`Failed to fetch channel ${channelId}:`, error);
-          }
+        if (!channelId) return null;
+        try {
+          const channel = await interaction.client.channels.fetch(channelId);
+          return channel instanceof TextChannel ? channel : null;
+        } catch (error) {
+          logError(`Failed to fetch channel ${channelId}:`, error);
+          return null;
         }
-      });
+      }));
+      for (const channel of fetched) {
+        if (channel) targetChannels.push(channel);
+      }
     }
 
     if (targetChannels.length === 0) {
@@ -62,13 +63,22 @@ class Say extends AdminCommand {
 
     let successCount = 0;
     const failedChannels: string[] = [];
-    targetChannels.forEach(async (channel) => {
-      try {
-        await channel.send(messageOptions);
+    const sendResults = await Promise.all(
+      targetChannels.map(async (channel) => {
+        try {
+          await channel.send(messageOptions);
+          return { ok: true as const };
+        } catch (error) {
+          return { ok: false as const, channelId: channel.id, error };
+        }
+      }),
+    );
+    sendResults.forEach((result) => {
+      if (result.ok) {
         successCount += 1;
-      } catch (error) {
-        logError(`Failed to send message to channel ${channel.id}:`, error);
-        failedChannels.push(`<#${channel.id}>`);
+      } else {
+        logError(`Failed to send message to channel ${result.channelId}:`, result.error);
+        failedChannels.push(`<#${result.channelId}>`);
       }
     });
 
@@ -95,7 +105,7 @@ class Say extends AdminCommand {
       });
     }
 
-    await interaction.editReply({ embeds: [embed], ephemeral: true });
+    await interaction.editReply({ embeds: [embed] });
   }
 }
 

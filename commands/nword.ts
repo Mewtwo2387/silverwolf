@@ -1,5 +1,14 @@
+import path from 'path';
 import { Command } from './classes/Command';
-import wordlist from '../data/words_dictionary.json';
+
+let nwordsCache: string[] | null = null;
+
+async function getNwords(): Promise<string[]> {
+  if (!nwordsCache) {
+    nwordsCache = await Bun.file(path.join(__dirname, '../data/nwords.json')).json();
+  }
+  return nwordsCache!;
+}
 
 class NWord extends Command {
   constructor(client: any) {
@@ -7,7 +16,7 @@ class NWord extends Command {
   }
 
   async run(interaction: any): Promise<void> {
-    const nwords = Object.keys(wordlist).filter((word) => word.startsWith('n'));
+    const nwords = await getNwords();
     const nword = nwords[Math.floor(Math.random() * nwords.length)];
     await interaction.editReply(nword);
   }

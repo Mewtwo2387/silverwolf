@@ -1,10 +1,10 @@
 import { EmbedBuilder } from 'discord.js';
 import { Command } from './classes/Command';
 import { log, logError } from '../utils/log';
-import { unformatFile } from '../utils/formatter';
-import { getGeminiAI } from '../utils/ai';
+import { getPersonaByName, generateContent, generateTitleForHistory } from '../utils/ai';
+import { trimHistoryToFit } from '../utils/tokenizer';
 
-const systemInstruction = unformatFile('./data/SilverwolfSystemPrompt.txt');
+const PERSONA_NAME = 'Silverwolf';
 
 class AskSilverwolfAI extends Command {
   constructor(client: any) {
@@ -25,69 +25,103 @@ class AskSilverwolfAI extends Command {
   }
 
   async run(interaction: any): Promise<void> {
-    let prompt = interaction.options.getString('prompt');
-    const reset = interaction.options.getBoolean('reset');
     const { username } = interaction.user;
-
-    prompt = `${username}: ${prompt}`;
+    const userPrompt = interaction.options.getString('prompt');
+    const reset = interaction.options.getBoolean('reset');
+    const prompt = `User ${username.toLowerCase()} said: ${userPrompt}`;
 
     try {
-      const genAI = getGeminiAI();
-      const model = genAI.getGenerativeModel({
-        model: 'gemini-3-flash-preview',
-        systemInstruction,
+      const persona = await getPersonaByName(PERSONA_NAME);
+      if (!persona) {
+        await interaction.editReply({ content: 'Silverwolf persona not configured.' });
+        return;
+      }
+
+      const aiSession = reset
+        ? await this.client.db.aiChat.startNewSession(interaction.user.id, PERSONA_NAME)
+        : await this.client.db.aiChat.getOrCreateSession(interaction.user.id, PERSONA_NAME);
+
+      if (!aiSession) {
+        await interaction.editReply({ content: 'Failed to start a chat session. Please try again.' });
+        return;
+      }
+
+      const rawHistory = await this.client.db.aiChat.getHistory(aiSession.sessionId, 100);
+      const hadRawHistory = rawHistory.length > 0;
+      const filteredHistory = rawHistory.filter((h: { role: string }) => h.role !== 'tool');
+      const { trimmedHistory: history, warnings: contextWarnings } = await trimHistoryToFit(
+        persona.provider,
+        persona.model,
+        persona.systemPrompt ?? '',
+        filteredHistory,
+        prompt,
+        persona.webSearchEnabled,
+      );
+
+      const { text, toolCalls } = await generateContent({
+        provider: persona.provider,
+        model: persona.model,
+        systemPrompt: persona.systemPrompt ?? '',
+        prompt,
+        history,
+        webSearchEnabled: persona.webSearchEnabled,
       });
 
-      const generationConfig = {
-        temperature: 1,
-        topP: 0.95,
-        topK: 40,
-        maxOutputTokens: 8192,
-        responseMimeType: 'text/plain',
-      };
-
-      let session;
-
-      if (reset) {
-        session = await this.client.db.chat.endAndStartNewChatSession(interaction.user.id, interaction.guild.id);
-      } else {
-        session = await this.client.db.chat.startChatSessionIfNotExists(interaction.user.id, interaction.guild.id);
-      }
-
-      const rawChatHistory = await this.client.db.chat.getChatHistory(session.sessionId);
-
-      const chatHistory = rawChatHistory.reverse().map((entry: any) => ({
-        role: entry.role === 'assistant' ? 'model' : entry.role,
-        parts: [{ text: entry.message }],
-      }));
-
-      if (chatHistory.length > 0 && chatHistory[0].role === 'model') {
-        chatHistory.shift();
-      }
-      console.log(chatHistory.map((entry: any) => `${entry.role}: ${entry.parts[0].text}`).join('\n'));
-
-      const chatSession = model.startChat({ generationConfig, history: chatHistory });
-      const result = await chatSession.sendMessage(prompt);
-      const response = await result.response;
-      const text = await response.text();
-      const processedText = text.replace('(Trailblazer)', username);
+      const processedText = (text || '').replace('(Trailblazer)', username);
+      const searchPrefix = toolCalls && toolCalls.length > 0
+        ? `-# 🔎 searched the web (${toolCalls.length})\n`
+        : '';
+      const description = `${searchPrefix}${processedText}`;
 
       log(`Original: ${text}`);
       log(`Processed: ${processedText}`);
 
       const embed = new EmbedBuilder()
         .setTitle('Silverwolf Ai says:')
-        .setDescription(processedText)
+        .setDescription(description.slice(0, 4096))
         .setColor(0x0099ff)
         .setFooter({ text: 'Powered by ChatTGP', iconURL: 'https://media.discordapp.net/attachments/969953667597893675/1272422507533828106/Qzrb7Us.png?ex=66baeb4e&is=66b999ce&hm=cf4e7ed0da32e823e5ceb90cd94b1abf3e54cc19f447e38a0aef572af68cd04b&=&format=webp&quality=lossless&width=899&height=899' });
 
       await interaction.editReply({ content: null, embeds: [embed] });
 
-      await this.client.db.chat.addChatHistory(session.sessionId, 'user', prompt);
-      await this.client.db.chat.addChatHistory(session.sessionId, 'model', processedText);
+      const trimWarning = contextWarnings.find((w) => w.wasTrimmed);
+      if (trimWarning) {
+        const trimEmbed = new EmbedBuilder()
+          .setColor('#FEE75C')
+          .setTitle('Context limit reached')
+          .setDescription(`Trimmed **${trimWarning.trimmedCount}** old message${trimWarning.trimmedCount === 1 ? '' : 's'} to fit this model's context window. Use \`reset: True\` or \`/ai chatnew\` to start fresh.`);
+        await interaction.followUp({ embeds: [trimEmbed] }).catch((err: unknown) => {
+          logError('Failed to send trim warning:', err);
+        });
+      }
+
+      const aiRole = persona.provider === 'openrouter' ? 'assistant' : 'model';
+      await this.client.db.aiChat.addHistory(aiSession.sessionId, 'user', prompt);
+      if (toolCalls?.length) {
+        for (const tc of toolCalls) {
+          await this.client.db.aiChat.addHistory(aiSession.sessionId, 'tool', JSON.stringify(tc));
+        }
+      }
+      if (text) {
+        await this.client.db.aiChat.addHistory(aiSession.sessionId, aiRole, text);
+      }
+
+      if (!hadRawHistory && text) {
+        this.client.db.aiChat.getHistory(aiSession.sessionId, 100)
+          .then((savedHistory: { role: string; message: string }[]) => generateTitleForHistory(savedHistory))
+          .then((title: string | null) => {
+            if (title) {
+              return this.client.db.aiChat.updateTitle(aiSession.sessionId, title);
+            }
+            return undefined;
+          })
+          .catch((titleErr: unknown) => {
+            logError('AiChat: Failed to generate session title:', titleErr);
+          });
+      }
     } catch (error) {
       logError('Error generating text:', error);
-      await interaction.editReply({ content: 'Failed to retrieve response from Gemini AI. Please try again later.', ephemeral: true });
+      await interaction.editReply({ content: 'Failed to retrieve response from the AI. Please try again later.' });
     }
   }
 }

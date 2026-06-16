@@ -9,15 +9,7 @@ import {
   getNuggieNuggieMultiplierInfo,
 } from '../utils/ascensionupgradesInfo';
 import { INFO_LEVEL } from '../utils/upgradesInfo';
-import { getNextAscensionUpgradeCost } from '../utils/ascensionupgrades';
-
-const ASCENSION_UPGRADES = [
-  'nuggieFlatMultiplier',
-  'nuggieStreakMultiplier',
-  'nuggieCreditsMultiplier',
-  'nuggiePokeMultiplier',
-  'nuggieNuggieMultiplier',
-];
+import { processBuyAscensionUpgrade } from '../utils/buyAscensionUpgrade';
 
 class BuyAscension extends Command {
   constructor(client: any) {
@@ -39,8 +31,16 @@ class BuyAscension extends Command {
 
   async run(interaction: any): Promise<void> {
     const upgradeId = interaction.options.getInteger('upgrade');
+    const amount = interaction.options.getInteger('amount') ?? 1;
 
-    if (upgradeId < 1 || upgradeId > ASCENSION_UPGRADES.length) {
+    const result = await processBuyAscensionUpgrade(
+      this.client,
+      interaction.user.id,
+      upgradeId,
+      amount,
+    );
+
+    if (result.status === 'invalid_upgrade' || result.status === 'invalid_amount') {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')
@@ -51,122 +51,92 @@ class BuyAscension extends Command {
       return;
     }
 
-    const upgrade = ASCENSION_UPGRADES[upgradeId - 1];
-    const level = await this.client.db.user.getUserAttr(interaction.user.id, `${upgrade}Level`);
-    const ascensionLevel = await this.client.db.user.getUserAttr(interaction.user.id, 'ascensionLevel');
-
-    const amplifier: Record<string, number> = {
-      nuggieFlatMultiplier: 1,
-      nuggieStreakMultiplier: 1,
-      nuggieCreditsMultiplier: 3,
-      nuggiePokeMultiplier: 9,
-      nuggieNuggieMultiplier: 27,
-    };
-
-    const levelRequirement: Record<string, number> = {
-      nuggieFlatMultiplier: 1,
-      nuggieStreakMultiplier: 1,
-      nuggieCreditsMultiplier: 2,
-      nuggiePokeMultiplier: 4,
-      nuggieNuggieMultiplier: 6,
-    };
-
-    if (ascensionLevel < levelRequirement[upgrade]) {
+    if (result.status === 'locked') {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')
           .setTitle('You cannot buy this upgrade!')
-          .setDescription(`You need to be at least ascension ${levelRequirement[upgrade]} to buy this upgrade. You are currently at ascension ${ascensionLevel}`)
+          .setDescription(`You need to be at least ascension ${result.required} to buy this upgrade. You are currently at ascension ${result.ascensionLevel}`)
           .setFooter({ text: 'dinonuggie' }),
         ],
       });
       return;
     }
 
-    const amount = interaction.options.getInteger('amount') || 1;
-
-    let cost = 0;
-    for (let i = 0; i < amount; i += 1) {
-      cost += getNextAscensionUpgradeCost(level + i, amplifier[upgrade]);
-    }
-    const heavenlyNuggies = await this.client.db.user.getUserAttr(interaction.user.id, 'heavenlyNuggies');
-
-    if (heavenlyNuggies < cost) {
+    if (result.status === 'poor') {
       await interaction.editReply({
         embeds: [new Discord.EmbedBuilder()
           .setColor('#AA0000')
           .setTitle('You dont have enough heavenly nuggies')
-          .setDescription(`You have ${format(heavenlyNuggies)} heavenly nuggies, but you need ${format(cost)} to buy ${amount > 1 ? `${amount} upgrades` : 'the upgrade'}`)
+          .setDescription(`You have ${format(result.heavenlyNuggies)} heavenly nuggies, but you need ${format(result.cost)} to buy ${amount > 1 ? `${amount} upgrades` : 'the upgrade'}`)
           .setFooter({ text: 'heavenly nuggies can be obtained by /ascend' }),
         ],
       });
       return;
     }
 
-    await this.client.db.user.addUserAttr(interaction.user.id, 'heavenlyNuggies', -cost);
-    await this.client.db.user.addUserAttr(interaction.user.id, `${upgrade}Level`, amount);
+    const {
+      upgrade, level, cost, heavenlyNuggies,
+    } = result;
+
+    const heavenlyAfter = `Heavenly Nuggies: ${format(heavenlyNuggies)} -> ${format(heavenlyNuggies - cost)}`;
 
     switch (upgrade) {
-      case 'nuggieFlatMultiplier': {
+      case 'nuggieFlatMultiplier':
         await interaction.editReply({
           embeds: [new Discord.EmbedBuilder()
             .setColor('#00AA00')
             .setTitle('Nuggie Flat Multiplier Upgrade Bought')
             .setDescription(`${getNuggieFlatMultiplierInfo(level, INFO_LEVEL.NEXT_LEVEL, amount)}
-Heavenly Nuggies: ${format(heavenlyNuggies)} -> ${format(heavenlyNuggies - cost)}`)
+${heavenlyAfter}`)
             .setFooter({ text: 'dinonuggie' }),
           ],
         });
         break;
-      }
-      case 'nuggieStreakMultiplier': {
+      case 'nuggieStreakMultiplier':
         await interaction.editReply({
           embeds: [new Discord.EmbedBuilder()
             .setColor('#00AA00')
             .setTitle('Nuggie Streak Multiplier Upgrade Bought')
             .setDescription(`${getNuggieStreakMultiplierInfo(level, INFO_LEVEL.NEXT_LEVEL, amount)}
-Heavenly Nuggies: ${format(heavenlyNuggies)} -> ${format(heavenlyNuggies - cost)}`)
+${heavenlyAfter}`)
             .setFooter({ text: 'dinonuggie' }),
           ],
         });
         break;
-      }
-      case 'nuggieCreditsMultiplier': {
+      case 'nuggieCreditsMultiplier':
         await interaction.editReply({
           embeds: [new Discord.EmbedBuilder()
             .setColor('#00AA00')
             .setTitle('Nuggie Credits Multiplier Upgrade Bought')
             .setDescription(`${getNuggieCreditsMultiplierInfo(level, INFO_LEVEL.NEXT_LEVEL, amount)}
-Heavenly Nuggies: ${format(heavenlyNuggies)} -> ${format(heavenlyNuggies - cost)}`)
+${heavenlyAfter}`)
             .setFooter({ text: 'dinonuggie' }),
           ],
         });
         break;
-      }
-      case 'nuggiePokeMultiplier': {
+      case 'nuggiePokeMultiplier':
         await interaction.editReply({
           embeds: [new Discord.EmbedBuilder()
             .setColor('#00AA00')
             .setTitle('Nuggie PokeMultiplier Upgrade Bought')
             .setDescription(`${getNuggiePokeMultiplierInfo(level, INFO_LEVEL.NEXT_LEVEL, amount)}
-Heavenly Nuggies: ${format(heavenlyNuggies)} -> ${format(heavenlyNuggies - cost)}`)
+${heavenlyAfter}`)
             .setFooter({ text: 'dinonuggie' }),
           ],
         });
         break;
-      }
-      case 'nuggieNuggieMultiplier': {
+      case 'nuggieNuggieMultiplier':
         await interaction.editReply({
           embeds: [new Discord.EmbedBuilder()
             .setColor('#00AA00')
             .setTitle('Nuggie Nuggie Multiplier Upgrade Bought')
             .setDescription(`${getNuggieNuggieMultiplierInfo(level, INFO_LEVEL.NEXT_LEVEL, amount)}
-Heavenly Nuggies: ${format(heavenlyNuggies)} -> ${format(heavenlyNuggies - cost)}`)
+${heavenlyAfter}`)
             .setFooter({ text: 'dinonuggie' }),
           ],
         });
         break;
-      }
       default:
         break;
     }

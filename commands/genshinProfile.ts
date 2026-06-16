@@ -1,10 +1,25 @@
 import path from 'path';
-import fs from 'fs';
 import { Command } from './classes/Command';
 import { logError } from '../utils/log';
 
-const genshinPfp = path.join(import.meta.dir, '../data/genshinPfps.json');
-const genshinNamecards = path.join(import.meta.dir, '../data/genshinNamecards.json');
+type GenshinData = { profilePictures: any; namecards: any };
+let dataCache: GenshinData | null = null;
+let dataCachePromise: Promise<GenshinData> | null = null;
+
+async function loadGenshinData() {
+  if (dataCache) return dataCache;
+  if (!dataCachePromise) {
+    dataCachePromise = Promise.all([
+      Bun.file(path.join(__dirname, '../data/genshinPfps.json')).json(),
+      Bun.file(path.join(__dirname, '../data/genshinNamecards.json')).json(),
+    ]).then(([profilePictures, namecards]) => {
+      dataCache = { profilePictures, namecards };
+      dataCachePromise = null;
+      return dataCache;
+    });
+  }
+  return dataCachePromise;
+}
 
 class GenshinProfile extends Command {
   constructor(client: any) {
@@ -25,20 +40,18 @@ class GenshinProfile extends Command {
       'User-Agent': 'Silverwolf-bot/1.0 (Example@gmail.com)',
     };
 
-    const profilePictures = JSON.parse(fs.readFileSync(genshinPfp, 'utf8'));
-    const namecards = JSON.parse(fs.readFileSync(genshinNamecards, 'utf8'));
-
     try {
+      const { profilePictures, namecards } = await loadGenshinData();
       const response = await fetch(url, { headers });
       if (!response.ok) {
         logError(`HTTP Error Response: Status ${response.status} ${response.statusText}`);
-        await interaction.editReply({ content: `Failed to fetch data: HTTP status ${response.status}. Please contact mystichunterz for assistance.`, ephemeral: true });
+        await interaction.editReply({ content: `Failed to fetch data: HTTP status ${response.status}. Please contact mystichunterz for assistance.` });
         return;
       }
       const data = await response.json();
 
       if (!data.playerInfo) {
-        await interaction.editReply({ content: 'No data found for the given UID. Please check the UID and try again.', ephemeral: true });
+        await interaction.editReply({ content: 'No data found for the given UID. Please check the UID and try again.' });
         return;
       }
 
@@ -47,15 +60,15 @@ class GenshinProfile extends Command {
       const profilePictureId = playerInfo.profilePicture?.id;
       let profilePictureUrl = null;
       if (profilePictureId && profilePictures[profilePictureId]) {
-        const { iconPath } = profilePictures[profilePictureId];
-        profilePictureUrl = `https://enka.network/ui/${iconPath}.png`;
+        const { IconPath } = profilePictures[profilePictureId];
+        profilePictureUrl = `https://enka.network${IconPath}`;
       }
 
       const { nameCardId } = playerInfo;
       let namecardUrl = null;
       if (nameCardId && namecards[nameCardId]) {
-        const namecardPath = namecards[nameCardId].icon;
-        namecardUrl = `https://enka.network/ui/${namecardPath}.png`;
+        const namecardPath = namecards[nameCardId].Icon;
+        namecardUrl = `https://enka.network${namecardPath}`;
       }
 
       const embed = {
@@ -78,7 +91,7 @@ class GenshinProfile extends Command {
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       logError('Error fetching data from Genshin Impact API:', error);
-      await interaction.editReply({ content: 'Failed to fetch data from Genshin Impact API. Please contact mystichunterz for assistance.', ephemeral: true });
+      await interaction.editReply({ content: 'Failed to fetch data from Genshin Impact API. Please contact mystichunterz for assistance.' });
     }
   }
 }

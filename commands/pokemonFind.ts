@@ -92,7 +92,7 @@ class PokemonFind extends Command {
       });
     } catch (error) {
       logError('Failed to retrieve hasPokemon list.', error);
-      interaction.editReply({ content: 'Failed to retrieve list.', ephemeral: true });
+      interaction.editReply({ content: 'Failed to retrieve list.' });
     }
   }
 }

@@ -1,6 +1,5 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import { Command } from './classes/Command';
+import fortuneData from '../data/fortune.json';
 
 class Fortune extends Command {
   constructor(client: any) {
@@ -8,9 +7,7 @@ class Fortune extends Command {
   }
 
   async run(interaction: any): Promise<void> {
-    const filePath = path.join(import.meta.dir, '../data/fortune.json');
-    const data = fs.readFileSync(filePath);
-    const { fortunes } = JSON.parse(data.toString());
+    const { fortunes } = fortuneData;
 
     const randomIndex = Math.floor(Math.random() * fortunes.length);
     const fortune = fortunes[randomIndex];

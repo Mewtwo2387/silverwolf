@@ -1,11 +1,9 @@
+import { stripModelTimestampPrefix } from '../../utils/ai';
 import { log } from '../../utils/log';
 import aiChatQueries from '../queries/aiChatQueries';
 import type Database from '../Database';
 
-/**
- * Model for managing per-user, per-persona AI chat sessions and history.
- * Completely separate from ChatModel (which is used by /ask-silverwolf-ai).
- */
+/** Model for managing per-user, per-persona AI chat sessions and history. */
 class AiChatModel {
   private db: Database;
 
@@ -87,11 +85,67 @@ class AiChatModel {
   }
 
   /**
+   * Returns only the user's web-created sessions (source='web'), newest first.
+   * Used by the /games/ai-slop sidebar — keeps Discord-bot sessions hidden.
+   */
+  async getUserWebSessions(userId: string): Promise<Record<string, any>[]> {
+    return this.db.executeSelectAllQuery(aiChatQueries.GET_USER_WEB_SESSIONS, [userId]);
+  }
+
+  /**
+   * Returns only the user's Discord-created sessions (source='discord'),
+   * newest first. Used by /ai view so Discord users don't see (and can't
+   * manipulate) the web-created sessions that live in the same table.
+   */
+  async getUserDiscordSessions(userId: string): Promise<Record<string, any>[]> {
+    return this.db.executeSelectAllQuery(aiChatQueries.GET_USER_DISCORD_SESSIONS, [userId]);
+  }
+
+  /**
+   * Creates a new web-source session for the given user/persona. Web sessions
+   * are inserted with active=0 so they never collide with the bot's
+   * per-persona active-session uniqueness invariant.
+   */
+  async createWebSession(userId: string, personaName: string): Promise<Record<string, any> | null> {
+    await this.db.user.getUser(userId);
+    const result = await this.db.executeQuery(
+      aiChatQueries.START_WEB_SESSION,
+      [userId, personaName],
+    );
+    if (!result.lastID) return null;
+    const session = await this.getSessionById(result.lastID);
+    if (session) {
+      log(`AiChat (web): Created session ${session.sessionId} for user ${userId} with persona ${personaName}`);
+    }
+    return session;
+  }
+
+  /**
+   * Renames a session after verifying it belongs to the requesting user.
+   * Unlike updateTitle (which only fires once on auto-title), this overwrites
+   * an existing title.
+   */
+  async renameSession(userId: string, sessionId: number, title: string): Promise<boolean> {
+    const session = await this.getSessionById(sessionId);
+    if (!session || session.userId !== userId) return false;
+    await this.db.executeQuery(aiChatQueries.RENAME_SESSION, [title, sessionId]);
+    return true;
+  }
+
+  /**
    * Marks a session as inactive.
    */
   async endSession(sessionId: number): Promise<void> {
     await this.db.executeQuery(aiChatQueries.END_SESSION, [sessionId]);
     log(`AiChat: Ended session ${sessionId}`);
+  }
+
+  /**
+   * Updates the generated title for a session.
+   */
+  async updateTitle(sessionId: number, title: string): Promise<void> {
+    await this.db.executeQuery(aiChatQueries.UPDATE_SESSION_TITLE, [title, sessionId]);
+    log(`AiChat: Updated title for session ${sessionId}`);
   }
 
   /**
@@ -128,8 +182,11 @@ class AiChatModel {
   /**
    * Appends a message to the session's history.
    */
-  async addHistory(sessionId: number, role: 'user' | 'model' | 'assistant', message: string): Promise<void> {
-    await this.db.executeQuery(aiChatQueries.ADD_HISTORY, [sessionId, role, message]);
+  async addHistory(sessionId: number, role: 'user' | 'model' | 'assistant' | 'tool', message: string): Promise<void> {
+    const stored = role === 'model' || role === 'assistant'
+      ? stripModelTimestampPrefix(message)
+      : message;
+    await this.db.executeQuery(aiChatQueries.ADD_HISTORY, [sessionId, role, stored]);
   }
 
   /**

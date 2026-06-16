@@ -1,9 +1,32 @@
-/* eslint-disable no-unreachable */
-import fs from 'fs';
+import path from 'path';
 import {
   EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
 } from 'discord.js';
 import { Command } from './classes/Command';
+
+type Pools = { namesData: any; characterPool: any[]; lightconePool: any[] };
+let pools: Pools | null = null;
+let poolsPromise: Promise<Pools> | null = null;
+
+async function getPools() {
+  if (pools) return pools;
+  if (!poolsPromise) {
+    poolsPromise = Promise.all([
+      Bun.file(path.join(__dirname, '../data/hsrCharacters.json')).json(),
+      Bun.file(path.join(__dirname, '../data/hsrLC.json')).json(),
+      Bun.file(path.join(__dirname, '../data/hsr.json')).json(),
+    ]).then(([charactersRaw, lightconesRaw, hsrNames]) => {
+      pools = {
+        namesData: hsrNames,
+        characterPool: Object.values(charactersRaw),
+        lightconePool: Object.values(lightconesRaw),
+      };
+      poolsPromise = null;
+      return pools;
+    });
+  }
+  return poolsPromise;
+}
 
 class Gacha extends Command {
   namesData: any;
@@ -24,12 +47,9 @@ class Gacha extends Command {
       },
     ], { blame: 'xei' });
 
-    const charactersRaw = JSON.parse(fs.readFileSync('./data/hsrCharacters.json', 'utf-8'));
-    const lightconesRaw = JSON.parse(fs.readFileSync('./data/hsrLC.json', 'utf-8'));
-    this.namesData = JSON.parse(fs.readFileSync('./data/hsr.json', 'utf-8'));
-
-    this.characterPool = Object.values(charactersRaw);
-    this.lightconePool = Object.values(lightconesRaw);
+    this.namesData = null;
+    this.characterPool = [];
+    this.lightconePool = [];
   }
 
   getRandomItem(pool: any[]) {
@@ -41,7 +61,7 @@ class Gacha extends Command {
   }
 
   getItemDetails(item: any) {
-    if (!item) return { name: 'Unknown', imagePath: null, rarity: 'Unknown' };
+    if (!item) return { name: 'Unknown', imageUrl: null, rarity: 'Unknown' };
 
     const nameHash = item.AvatarName?.Hash?.toString() || item.EquipmentName?.Hash?.toString();
     const name = this.namesData.en[nameHash] || 'Unknown';
@@ -50,14 +70,16 @@ class Gacha extends Command {
 
     return {
       name,
-      imageUrl: imagePath ? `https://enka.network/ui/hsr/${imagePath}` : null,
+      imageUrl: imagePath ? `https://enka.network${imagePath}` : null,
       rarity,
     };
   }
 
   async run(interaction: any): Promise<void> {
-    await interaction.editReply({ content: 'gacha is not ready yet', ephemeral: true });
-    return;
+    const loaded = await getPools();
+    this.namesData = loaded.namesData;
+    this.characterPool = loaded.characterPool;
+    this.lightconePool = loaded.lightconePool;
 
     const amount = interaction.options.getInteger('amount');
     const userId = interaction.user.id;
@@ -106,7 +128,7 @@ class Gacha extends Command {
       const itemDetails = this.getItemDetails(rollResult);
       results.push(itemDetails);
 
-      const itemType = this.characterPool.some((c) => c.name === itemDetails.name) ? 'Character' : 'Lightcone';
+      const itemType = rollResult?.AvatarName ? 'Character' : 'Lightcone';
       this.client.db.gacha.addGachaItem(userId, itemDetails.name, itemType, itemDetails.rarity);
     }
 
@@ -163,12 +185,12 @@ class Gacha extends Command {
     const collector = message.createMessageComponentCollector({ time: 60000 });
 
     collector.on('collect', async (i: any) => {
-      if (i.customId === 'next_roll') {
+      if (i.customId === 'nextRoll') {
         currentIndex += 1;
         if (currentIndex < results.length) {
           await updateMessage(i);
         }
-      } else if (i.customId === 'skip_results') {
+      } else if (i.customId === 'skipResults') {
         collector.stop();
       }
     });

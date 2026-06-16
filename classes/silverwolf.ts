@@ -1,7 +1,6 @@
 import {
-  Client, REST, Routes, type ClientOptions, type Message, type Interaction,
+  Client, REST, Routes, MessageFlags, type ClientOptions, type Message, type Interaction,
 } from 'discord.js';
-import fs from 'fs';
 import path from 'path';
 import { createRequire } from 'node:module';
 import Database from '../database/Database';
@@ -10,13 +9,17 @@ import BabyScheduler from './babyScheduler';
 import { log, logError } from '../utils/log';
 // Note: Bun automatically reads .env files
 import seasonConfig from '../data/config/skin/pokemon.json';
+import keywordsJson from '../data/keywords.json';
+import statusJson from '../data/status.json';
 import {
   ChristmasHandler, NormalHandler, HalloweenHandler, AprilFoolsHandler,
 } from './handlers/index';
 import scriptHandlers from './handlers/keywordsBehaviorHandler';
 import quoteDefault from '../utils/quote';
+import { loadAllowedServers } from '../utils/accessControl';
 
 const FONT_INDEX: string[] = (quoteDefault as any).FONT_INDEX;
+const MAX_MESSAGE_HISTORY = 100;
 
 const handlers: Record<string, any> = {
   ChristmasHandler,
@@ -26,6 +29,16 @@ const handlers: Record<string, any> = {
 };
 
 const SERIOUS_CHANNELS = ['1262239871758766221'];
+
+/** Given a list of .ts and .js filenames, prefer .ts; only keep a .js file when no .ts counterpart exists. */
+function preferTsOverJs(files: string[]): string[] {
+  const tsBasenames = new Set(files.filter((f) => f.endsWith('.ts')).map((f) => f.replace(/\.ts$/, '')));
+  return files.filter((file) => {
+    if (file.endsWith('.ts')) return true;
+    if (file.endsWith('.js')) return !tsBasenames.has(file.replace(/\.js$/, ''));
+    return false;
+  });
+}
 
 class Silverwolf extends Client {
   declare token: string;
@@ -68,6 +81,9 @@ class Silverwolf extends Client {
     await this.loadListeners();
     await this.db.ready;
 
+    await loadAllowedServers(this.db);
+    log('Allowed servers loaded from DB.');
+
     this.birthdayScheduler.start();
     log('Birthday scheduler started.');
     this.babyScheduler.start();
@@ -90,13 +106,8 @@ All wrongs reserved.
     log('--------------------\nLoading commands...\n--------------------');
     const commandDir = path.join(import.meta.dir, '../commands');
     // Prefer .ts files; only fall back to .js if no .ts version exists
-    const allFiles = fs.readdirSync(commandDir);
-    const tsFiles = new Set(allFiles.filter((f) => f.endsWith('.ts')).map((f) => f.replace('.ts', '')));
-    const commandFiles = allFiles.filter((file) => {
-      if (file.endsWith('.ts')) return true;
-      if (file.endsWith('.js')) return !tsFiles.has(file.replace('.js', ''));
-      return false;
-    });
+    const allFiles = [...new Bun.Glob('*.{ts,js}').scanSync(commandDir)];
+    const commandFiles = preferTsOverJs(allFiles);
     // Use createRequire so CJS command files load correctly (avoids ESM circular-dep issues with some deps)
     const _require = createRequire(import.meta.url);
 
@@ -118,7 +129,8 @@ All wrongs reserved.
 
     log('--------------------\nLoading command groups...\n--------------------');
     const commandGroupDir = path.join(import.meta.dir, '../commands/commandgroups');
-    const commandGroupFiles = fs.readdirSync(commandGroupDir).filter((file) => file.endsWith('.ts'));
+    const allGroupFiles = [...new Bun.Glob('*.{ts,js}').scanSync(commandGroupDir)];
+    const commandGroupFiles = preferTsOverJs(allGroupFiles);
 
     let commandGroupCount = 0;
     for (const file of commandGroupFiles) {
@@ -134,9 +146,28 @@ All wrongs reserved.
 
   async loadKeywords(): Promise<void> {
     log('--------------------\nLoading keywords...\n--------------------');
-    const keywordsFile = path.join(import.meta.dir, '../data/keywords.json');
-    const keywordsRaw = fs.readFileSync(keywordsFile, 'utf8');
-    this.keywords = JSON.parse(keywordsRaw);
+    if (!Array.isArray(keywordsJson)) {
+      log('Warning: keywordsJson is not an array, defaulting to empty keywords list.');
+      this.keywords = [];
+      return;
+    }
+    const raw = keywordsJson as any[];
+    this.keywords = raw.filter((entry: any, i: number) => {
+      if (!entry || typeof entry !== 'object') {
+        log(`Warning: skipping keywords entry at index ${i} (not an object).`);
+        return false;
+      }
+      if (!Array.isArray(entry.triggers) || entry.triggers.length === 0) {
+        log(`Warning: skipping keywords entry at index ${i} (missing or empty triggers).`);
+        return false;
+      }
+      if (!entry.triggers.every((t: any) => typeof t === 'string' && t.trim().length > 0)) {
+        const blanks = entry.triggers.filter((t: any) => typeof t !== 'string' || t.trim().length === 0);
+        log(`Warning: skipping keywords entry at index ${i} (triggers contains non-string or blank values: ${JSON.stringify(blanks)}).`);
+        return false;
+      }
+      return true;
+    });
 
     this.keywords.forEach((entry: any) => {
       log(`Keyword(s) [${entry.triggers.join(', ')}] loaded.`);
@@ -183,14 +214,14 @@ All wrongs reserved.
       if (interaction.customId.startsWith('del_girlcockx_')) {
         const targetUserId = interaction.customId.replace('del_girlcockx_', '');
         if (interaction.user.id !== targetUserId) {
-          await interaction.reply({ content: 'You can only delete your own messages.', ephemeral: true });
+          await interaction.reply({ content: 'You can only delete your own messages.', flags: MessageFlags.Ephemeral });
           return;
         }
         try {
           await interaction.message.delete();
         } catch (err) {
           logError('Error deleting girlcockx webhook message:', err);
-          await interaction.reply({ content: 'Failed to delete message.', ephemeral: true });
+          await interaction.reply({ content: 'Failed to delete message.', flags: MessageFlags.Ephemeral });
         }
       }
     }
@@ -285,9 +316,19 @@ All wrongs reserved.
           if (hexTest) textColor = `#${hexTest[1]}`;
         }
 
-        const guildMember = await message.guild.members.fetch(referencedMessage.author.id);
         const person = referencedMessage.author;
-        const nickname = guildMember.nickname || person.username;
+        let nickname: string;
+        if (referencedMessage.webhookId) {
+          nickname = referencedMessage.author.username;
+        } else {
+          let guildMember = null;
+          try {
+            guildMember = await message.guild.members.fetch(referencedMessage.author.id);
+          } catch {
+            guildMember = null;
+          }
+          nickname = guildMember?.nickname || person.username;
+        }
         const originalMessage = referencedMessage.content;
 
         log(`original message: ${originalMessage}`);
@@ -371,6 +412,7 @@ All wrongs reserved.
       repliedMessageContent,
       repliedMessageAuthor,
     });
+    if (this.deletedMessages.length > MAX_MESSAGE_HISTORY) this.deletedMessages.length = MAX_MESSAGE_HISTORY;
   }
 
   processEdit(oldMessage: any, newMessage: any): void {
@@ -386,18 +428,38 @@ All wrongs reserved.
 
     log(`> Message edited by ${oldMessage.author.username} (${oldMessage.author.id}) in ${oldMessage.channel.name} (${oldMessage.channel.id}) in ${oldMessage.guild.name} (${oldMessage.guild.id}): ${oldMessage.content} -> ${newMessage.content}`);
     this.editedMessages.unshift({ old: oldMessage, new: newMessage });
+    if (this.editedMessages.length > MAX_MESSAGE_HISTORY) this.editedMessages.length = MAX_MESSAGE_HISTORY;
   }
 
   async registerCommands(clientId: string | undefined): Promise<void> {
-    const guildIds = process.env.GUILD_ID!.split(','); // Split the GUILD_IDs into an array
+    const dbServers = await this.db.globalConfig.getGlobalConfig('allowed_servers');
     const rest = new REST({ version: '10' }).setToken(this.token);
 
-    // Clear any globally registered commands (they persist across restarts and cause duplicates)
-    await rest.put(Routes.applicationCommands(clientId!), { body: [] });
-    log('Global commands cleared.');
+    // Build the full command list
+    const commandValues = Array.from(this.commands.values());
+    const validCommands = commandValues.filter((command: any) => command !== null && command.isSubcommandOf === null);
+    const allCommandsArray = validCommands.map((command: any) => command.toJSON());
+
+    if (!dbServers) {
+      // No servers registered yet — only register /server globally so /server register is available
+      const serverCommand = allCommandsArray.find((cmd: any) => cmd.name === 'server');
+      const globalCommands = serverCommand ? [serverCommand] : [];
+      log('No allowed_servers in DB. Registering /server command globally.');
+      await rest.put(Routes.applicationCommands(clientId!), { body: globalCommands });
+      log(`Registered ${globalCommands.length} command(s) globally.`);
+      return;
+    }
+
+    const guildIds = dbServers.split(',');
+
+    // Servers exist — keep /server globally, register everything else per-guild
+    const serverCommand = allCommandsArray.find((cmd: any) => cmd.name === 'server');
+    const globalCommands = serverCommand ? [serverCommand] : [];
+    await rest.put(Routes.applicationCommands(clientId!), { body: globalCommands });
+    log(`Registered ${globalCommands.length} global command(s) (keeping /server).`);
 
     // Loop over each guild ID
-    await Promise.all(guildIds.map(async (guildId) => {
+    await Promise.all(guildIds.map(async (guildId: string) => {
       try {
         // Retrieve blacklisted commands for the guild
         const blacklistedCommandsData = await this.db.commandConfig.getBlacklistedCommands(guildId);
@@ -407,10 +469,10 @@ All wrongs reserved.
         const blacklistedCommands = blacklistedCommandsData.map((item: any) => item.commandName);
 
         // Create a copy of the commands array
-        const commandValues = Array.from(this.commands.values());
+        const guildCommandValues = Array.from(this.commands.values());
         // eslint-disable-next-line max-len
-        const validCommands = commandValues.filter((command: any) => command !== null && command.isSubcommandOf === null);
-        const commandsArray = validCommands.map((command: any) => command.toJSON());
+        const guildValidCommands = guildCommandValues.filter((command: any) => command !== null && command.isSubcommandOf === null);
+        const commandsArray = guildValidCommands.map((command: any) => command.toJSON());
 
         // If there are no blacklisted commands, register all commands
         if (blacklistedCommands.length === 0) {
@@ -453,6 +515,7 @@ All wrongs reserved.
   }
 
   setRandomGame(): void {
+    if (!this.games || this.games.length === 0) return;
     const randomGame = this.games[Math.floor(Math.random() * this.games.length)];
     this.user!.setPresence({
       activities: [{
@@ -475,11 +538,11 @@ All wrongs reserved.
   }
 
   loadGames(): void {
-    const filePath = path.join(import.meta.dir, '../data/status.json');
     try {
-      const data = fs.readFileSync(filePath, 'utf8');
-      const json = JSON.parse(data);
-      this.games = json.games || [];
+      const games = (statusJson as any).games;
+      if (games && Array.isArray(games) && games.length > 0) {
+        this.games = games.filter((g: unknown) => typeof g === 'string' && g.trim().length > 0);
+      }
       log(`Games loaded from status.json: ${this.games}`);
     } catch (error) {
       logError('Error loading games from status.json:', error);

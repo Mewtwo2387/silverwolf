@@ -7,7 +7,7 @@ Credits:
 
 import path from 'path';
 import Canvas, { type CanvasRenderingContext2D as CanvasCtx } from 'canvas';
-import type { Guild, User } from 'discord.js';
+import type { APIUser, Guild, User } from 'discord.js';
 import { log, logError } from './log';
 
 // ─── Font Registration ────────────────────────────────────────────────────────
@@ -136,6 +136,58 @@ function getDiscordEmojiUrl(id: string, animated: boolean): string {
 
 // Matches custom Discord emoji tags: <:name:id> and <a:name:id>
 const DISCORD_EMOJI_RE = /<(a?):([^:>]+):(\d+)>/g;
+
+// Matches Discord user, role, and channel mentions
+const USER_MENTION_RE = /<@!?(\d+)>/g;
+const ROLE_MENTION_RE = /<@&(\d+)>/g;
+const CHANNEL_MENTION_RE = /<#(\d+)>/g;
+
+/**
+ * Replaces Discord mention tokens (<@id>, <@!id>, <@&id>, <#id>) in `text`
+ * with human-readable @name / #name strings, using the provided guild for lookup.
+ */
+async function resolveMentions(guild: Guild | null, text: string): Promise<string> {
+  let out = text;
+
+  const userIds = new Set<string>();
+  let m: RegExpExecArray | null;
+  USER_MENTION_RE.lastIndex = 0;
+  // eslint-disable-next-line no-cond-assign
+  while ((m = USER_MENTION_RE.exec(text)) !== null) userIds.add(m[1]);
+
+  const userNames = new Map<string, string>();
+  for (const id of userIds) {
+    let name: string | null = null;
+    try {
+      if (guild) {
+        const member = guild.members.cache.get(id) || await guild.members.fetch(id).catch(() => null);
+        if (member) name = member.nickname || member.user.username;
+      }
+      if (!name && guild?.client) {
+        const user = guild.client.users.cache.get(id) || await guild.client.users.fetch(id).catch(() => null);
+        if (user) name = user.username;
+      }
+    } catch {
+      // ignore
+    }
+    userNames.set(id, name || id);
+  }
+
+  out = out.replace(USER_MENTION_RE, (_match, id) => `@${userNames.get(id) || id}`);
+
+  if (guild) {
+    out = out.replace(ROLE_MENTION_RE, (_match, id) => {
+      const role = guild.roles.cache.get(id);
+      return `@${role ? role.name : id}`;
+    });
+    out = out.replace(CHANNEL_MENTION_RE, (_match, id) => {
+      const channel = guild.channels.cache.get(id) as any;
+      return `#${channel?.name || id}`;
+    });
+  }
+
+  return out;
+}
 
 // Matches Unicode emoji sequences (presentations, ZWJ, skin tones, flags, keycaps, etc.)
 const UNICODE_EMOJI_RE = new RegExp(
@@ -422,11 +474,25 @@ function fitNickname(
   return size;
 }
 
+// ─── Avatar URL Resolution ────────────────────────────────────────────────────
+
+function resolveAvatarUrl(person: User | APIUser): string {
+  if (typeof (person as User).displayAvatarURL === 'function') {
+    return (person as User).displayAvatarURL({ extension: 'png', size: 512 });
+  }
+  if (person.avatar) {
+    return `https://cdn.discordapp.com/avatars/${person.id}/${person.avatar}.png?size=512`;
+  }
+  // eslint-disable-next-line no-bitwise, node/no-unsupported-features/es-builtins
+  const defaultIndex = (BigInt(person.id) >> 22n) % 6n;
+  return `https://cdn.discordapp.com/embed/avatars/${defaultIndex}.png`;
+}
+
 // ─── Main Quote Function ──────────────────────────────────────────────────────
 
 async function quote(
-  guild: Guild,
-  _person: User,
+  guild: Guild | null,
+  _person: User | APIUser,
   _nickname: string | null,
   _message: string,
   _backgroundColor: string | null,
@@ -437,7 +503,8 @@ async function quote(
 ): Promise<Buffer> {
   const { username } = _person;
   const nickname = _nickname || username;
-  const message = `"${_message}"`;
+  const resolvedMessage = await resolveMentions(guild, _message);
+  const message = `"${resolvedMessage}"`;
   const backgroundColor = _backgroundColor || 'black';
   const profileColor = _profileColor || 'normal';
   const avatarSource = _avatarSource || 'global';
@@ -456,7 +523,7 @@ async function quote(
 
   // ── Avatar ────────────────────────────────────────────────────────────────
   let pfp: string;
-  if (avatarSource === 'server') {
+  if (avatarSource === 'server' && guild) {
     try {
       const member = guild.members.cache.get(_person.id);
       if (member && member.avatar) {
@@ -466,10 +533,10 @@ async function quote(
       }
     } catch (error) {
       logError('Failed to fetch server avatar:', error);
-      pfp = _person.displayAvatarURL({ extension: 'png', size: 512 });
+      pfp = resolveAvatarUrl(_person);
     }
   } else {
-    pfp = _person.displayAvatarURL({ extension: 'png', size: 512 });
+    pfp = resolveAvatarUrl(_person);
   }
 
   // ── Canvas Setup ──────────────────────────────────────────────────────────
@@ -658,6 +725,57 @@ async function quote(
 
   return canvas.toBuffer();
 }
+
+// ─── Shared option lists for the fakequote command + web page ────────────────
+
+export interface FakeQuoteOption { value: string; label: string }
+
+// Source of truth for the font picker; order matches what the Discord slash
+// command displays. The web page builds <select> options from this list, and
+// `bot-bridge.ts` validates incoming `fontStyle` values against it.
+export const FAKEQUOTE_FONTS: FakeQuoteOption[] = [
+  { value: 'sans-serif', label: 'Default (Sans-serif)' },
+  { value: 'playfair', label: 'Playfair Display (Elegant Serif)' },
+  { value: 'caveat', label: 'Caveat (Handwritten)' },
+  { value: 'cinzel', label: 'Cinzel (Dramatic Classic)' },
+  { value: 'righteous', label: 'Righteous (Bold Display)' },
+  { value: 'special-elite', label: 'Special Elite (Typewriter)' },
+  { value: 'minecraft', label: 'Minecraft (Pixel)' },
+  { value: 'harrypotter', label: 'Harry Potter (Wizarding)' },
+  { value: 'genshin', label: 'Genshin Impact' },
+  { value: 'comic-sans', label: 'Comic Sans (Comic Neue)' },
+  { value: 'bebas-neue', label: 'Bebas Neue (Condensed)' },
+];
+
+export const FAKEQUOTE_BACKGROUNDS: FakeQuoteOption[] = [
+  { value: 'black', label: 'Black' },
+  { value: 'white', label: 'White' },
+];
+
+export const FAKEQUOTE_PROFILE_COLORS: FakeQuoteOption[] = [
+  { value: 'normal', label: 'Normal' },
+  { value: 'bw', label: 'Black and White' },
+  { value: 'inverted', label: 'Inverted' },
+  { value: 'sepia', label: 'Sepia' },
+  { value: 'nightmare', label: 'Nightmare Fuel' },
+];
+
+export const FAKEQUOTE_AVATAR_SOURCES: FakeQuoteOption[] = [
+  { value: 'server', label: 'Server Avatar' },
+  { value: 'global', label: 'Global Avatar' },
+];
+
+const valuesOf = (opts: FakeQuoteOption[]) => opts.map((o) => o.value);
+
+export const FAKEQUOTE_FONT_VALUES = valuesOf(FAKEQUOTE_FONTS);
+export const FAKEQUOTE_BACKGROUND_VALUES = valuesOf(FAKEQUOTE_BACKGROUNDS);
+export const FAKEQUOTE_PROFILE_COLOR_VALUES = valuesOf(FAKEQUOTE_PROFILE_COLORS);
+export const FAKEQUOTE_AVATAR_SOURCE_VALUES = valuesOf(FAKEQUOTE_AVATAR_SOURCES);
+
+// Discord slash-command `choices` shape ({ name, value }).
+export const fakeQuoteChoices = (
+  opts: FakeQuoteOption[],
+): { name: string; value: string }[] => opts.map(({ label, value }) => ({ name: label, value }));
 
 export default quote;
 export { FONT_MAP, FONT_INDEX };

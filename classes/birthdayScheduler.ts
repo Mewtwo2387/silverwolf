@@ -1,10 +1,13 @@
-import cron from 'node-cron';
 import { EmbedBuilder } from 'discord.js';
 import { log, logError } from '../utils/log';
+import { parseChannelIds } from '../utils/parseChannelIds';
+import { getNextBirthdayInfo } from '../utils/birthdays';
 // Note: Bun automatically reads .env files
 
 class BirthdayScheduler {
   client: any;
+  private hourlyJob: BunCronJob | null = null;
+  private dailyJob: BunCronJob | null = null;
 
   constructor(client: any) {
     this.client = client;
@@ -12,7 +15,7 @@ class BirthdayScheduler {
 
   // Start the scheduler to run every hour
   start(): void {
-    cron.schedule('0 * * * *', async () => { // * * * * * every minute for testing, change to '0 * * * *' for every hour
+    this.hourlyJob = (Bun.cron as any)('0 * * * *', async () => { // * * * * * every minute for testing, change to '0 * * * *' for every hour
       const now = new Date();
       const utcMonth = (now.getUTCMonth() + 1).toString().padStart(2, '0');
       const utcDay = now.getUTCDate().toString().padStart(2, '0');
@@ -25,7 +28,9 @@ class BirthdayScheduler {
         log(`Users with birthdays this hour: ${birthdays}`);
 
         if (birthdays.length > 0) {
-          const channelIds = process.env.BIRTHDAY_CHANNELS!.split(','); // Get all channel IDs from .env
+          // Read from DB first, fall back to env var
+          const dbChannels = await this.client.db.globalConfig.getGlobalConfig('birthday_channels');
+          const channelIds = parseChannelIds(dbChannels ?? process.env.BIRTHDAY_CHANNELS);
           for (const channelId of channelIds) {
             const channel = this.client.channels.cache.get(channelId.trim()); // Trim spaces and get the channel
             if (!channel) {
@@ -61,7 +66,10 @@ class BirthdayScheduler {
     });
 
     // Daily reminder check at midnight UTC
-    cron.schedule('0 0 * * *', async () => {
+    // Note: Bun.cron does not support timezone options like node-cron did.
+    // The callback uses UTC date methods internally, so the logic is UTC-safe.
+    // The cron expression fires at system local time (UTC in Docker by default).
+    this.dailyJob = (Bun.cron as any)('0 0 * * *', async () => {
       const now = new Date();
       const currentYear = now.getUTCFullYear();
       log(`Running daily birthday reminder check for year ${currentYear}`);
@@ -71,18 +79,11 @@ class BirthdayScheduler {
         log(`Found ${pending.length} pending reminder(s) to evaluate`);
 
         for (const entry of pending) {
-          const birthday = new Date(entry.birthdays);
-
-          // Calculate next occurrence of this birthday, preserving stored UTC time
-          const thisYear = new Date(birthday);
-          thisYear.setUTCFullYear(currentYear);
-          const nextBirthday = thisYear < now
-            ? new Date(new Date(birthday).setUTCFullYear(currentYear + 1))
-            : thisYear;
-
-          const daysUntil = Math.ceil((nextBirthday.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-          if (daysUntil !== entry.daysBefore) continue;
+          // Use the shared util so a /birthday get and the reminder evaluator
+          // always agree on what "the next birthday" is for a given stored ISO.
+          const info = getNextBirthdayInfo(entry.birthdays, now);
+          if (!info) continue;
+          if (info.daysUntil !== entry.daysBefore) continue;
 
           // Fetch users
           const trackedUser = await this.client.users.fetch(entry.trackedUserId).catch(() => null);
@@ -116,7 +117,12 @@ class BirthdayScheduler {
       } catch (error) {
         logError('Error during daily reminder check:', error);
       }
-    }, { timezone: 'UTC' });
+    });
+  }
+
+  stop(): void {
+    this.hourlyJob?.stop();
+    this.dailyJob?.stop();
   }
 }
 
