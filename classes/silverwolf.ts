@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import Database from '../database/Database';
 import BirthdayScheduler from './birthdayScheduler';
 import BabyScheduler from './babyScheduler';
+import FootballScheduler from './footballScheduler';
 import { log, logError } from '../utils/log';
 // Note: Bun automatically reads .env files
 import seasonConfig from '../data/config/skin/pokemon.json';
@@ -51,6 +52,7 @@ class Silverwolf extends Client {
   currentPokemon: string | null;
   birthdayScheduler: BirthdayScheduler;
   babyScheduler: BabyScheduler;
+  footballScheduler: FootballScheduler;
   games: string[];
   chat: any;
   sexSessions: any[];
@@ -67,6 +69,7 @@ class Silverwolf extends Client {
     this.currentPokemon = null;
     this.birthdayScheduler = new BirthdayScheduler(this);
     this.babyScheduler = new BabyScheduler(this);
+    this.footballScheduler = new FootballScheduler(this);
     this.init();
     this.games = [];
     this.loadGames(); // Initialize the games list from the JSON file
@@ -88,6 +91,8 @@ class Silverwolf extends Client {
     log('Birthday scheduler started.');
     this.babyScheduler.start();
     log('Baby scheduler started.');
+    this.footballScheduler.start();
+    log('Football scheduler started.');
 
     log(`Silverwolf initialized.
 ----------------------------------------------

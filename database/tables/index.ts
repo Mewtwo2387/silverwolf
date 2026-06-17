@@ -2,6 +2,7 @@ import aiChatHistoryTable from './aiChatHistoryTable';
 import aiChatSessionTable from './aiChatSessionTable';
 import babyTable from './babyTable';
 import birthdayReminderTable from './birthdayReminderTable';
+import footballMatchAnnouncementTable from './footballMatchAnnouncementTable';
 import commandConfigTable from './commandConfigTable';
 import cyclicTttMatchTable from './cyclicTttMatchTable';
 import gameUIDTable from './gameUIDTable';
@@ -20,6 +21,7 @@ export {
   aiChatSessionTable,
   babyTable,
   birthdayReminderTable,
+  footballMatchAnnouncementTable,
   commandConfigTable,
   cyclicTttMatchTable,
   gameUIDTable,
@@ -38,6 +40,7 @@ export type { AiChatHistoryRow } from './aiChatHistoryTable';
 export type { AiChatSessionRow } from './aiChatSessionTable';
 export type { BabyRow } from './babyTable';
 export type { BirthdayReminderRow } from './birthdayReminderTable';
+export type { FootballMatchAnnouncementRow } from './footballMatchAnnouncementTable';
 export type { CommandConfigRow } from './commandConfigTable';
 export type { CyclicTttMatchRow } from './cyclicTttMatchTable';
 export type { GameUIDRow } from './gameUIDTable';
