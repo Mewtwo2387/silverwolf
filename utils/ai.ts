@@ -193,6 +193,19 @@ async function getPersonaByName(name: string): Promise<Persona | undefined> {
 }
 
 /**
+ * Returns a short uppercase label identifying which AI a persona is invoked
+ * by, derived from its primary trigger prefix (e.g. `@gpt` -> "GPT",
+ * `@ds` -> "DS"). Falls back to the persona name when it has no triggers.
+ */
+function getPersonaInvokeLabel(personaName: string): string {
+  const personas: Persona[] = personasConfig.personas || [];
+  const found = personas.find((p) => p.name.toLowerCase() === String(personaName).toLowerCase());
+  const trigger = found?.triggers?.find((t) => String(t).trim().length > 0);
+  if (!trigger) return String(personaName).toUpperCase();
+  return String(trigger).replace(/^@/, '').toUpperCase();
+}
+
+/**
  * Generates content (text and/or images) from the specified AI provider and model.
  */
 /**
@@ -734,4 +747,5 @@ export {
   getGeminiAI,
   getOpenRouterClient,
   getPersonaByName,
+  getPersonaInvokeLabel,
 };

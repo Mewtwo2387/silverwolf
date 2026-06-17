@@ -1,6 +1,7 @@
 import { EmbedBuilder } from 'discord.js';
 import { Command } from './classes/Command';
 import { logError } from '../utils/log';
+import { getPersonaInvokeLabel } from '../utils/ai';
 
 class AiView extends Command {
   constructor(client: any) {
@@ -41,7 +42,8 @@ class AiView extends Command {
         const date = new Date(s.createdAt).toLocaleDateString('en-GB', {
           year: 'numeric', month: 'short', day: 'numeric',
         });
-        return `**[${s.sessionId}]** ${s.title || s.personaName} · ${status} · ${messageCount} ${messageLabel} · Created ${date}`;
+        const ai = getPersonaInvokeLabel(s.personaName);
+        return `**[${s.sessionId}]** ${s.title || s.personaName} · ${status} · ${messageCount} ${messageLabel} · Created ${date} · ${ai}`;
       });
 
       const description = rows.join('\n')
