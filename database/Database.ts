@@ -17,6 +17,7 @@ import type GlobalConfigModel from './models/GlobalConfigModel';
 import type ImageGenModel from './models/ImageGenModel';
 import type ServerRolesModel from './models/ServerRolesModel';
 import type BirthdayReminderModel from './models/BirthdayReminderModel';
+import type FootballMatchAnnouncementModel from './models/FootballMatchAnnouncementModel';
 import type PoopModel from './models/PoopModel';
 import type WebSessionModel from './models/WebSessionModel';
 
@@ -277,6 +278,7 @@ class Database {
 
   get aiChat(): AiChatModel { return this.models.AiChatModel; }
   get birthdayReminder(): BirthdayReminderModel { return this.models.BirthdayReminderModel; }
+  get footballMatchAnnouncement(): FootballMatchAnnouncementModel { return this.models.FootballMatchAnnouncementModel; }
   get baby(): BabyModel { return this.models.BabyModel; }
   get commandConfig(): CommandConfigModel { return this.models.CommandConfigModel; }
   get cyclicTttMatch(): CyclicTttMatchModel { return this.models.CyclicTttMatchModel; }

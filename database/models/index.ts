@@ -1,6 +1,7 @@
 import AiChatModel from './AiChatModel';
 import BabyModel from './BabyModel';
 import BirthdayReminderModel from './BirthdayReminderModel';
+import FootballMatchAnnouncementModel from './FootballMatchAnnouncementModel';
 import CommandConfigModel from './CommandConfigModel';
 import CyclicTttMatchModel from './CyclicTttMatchModel';
 import GameUIDModel from './GameUIDModel';
@@ -17,6 +18,7 @@ export {
   AiChatModel,
   BabyModel,
   BirthdayReminderModel,
+  FootballMatchAnnouncementModel,
   CommandConfigModel,
   CyclicTttMatchModel,
   GameUIDModel,
