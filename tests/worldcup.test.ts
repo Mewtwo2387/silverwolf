@@ -34,6 +34,14 @@ describe('worldcup utils', () => {
     expect(kickoff!.toISOString()).toBe('2026-06-11T19:00:00.000Z');
   });
 
+  test('parseKickoffUtc prefers kickoffUtc from live API', () => {
+    const kickoff = parseKickoffUtc({
+      ...sampleMatch,
+      kickoffUtc: '2026-06-12T01:00:00Z',
+    });
+    expect(kickoff!.toISOString()).toBe('2026-06-12T01:00:00.000Z');
+  });
+
   test('getDisplayedScore prefers full-time score', () => {
     expect(getDisplayedScore(sampleMatch)).toEqual({ home: 2, away: 0 });
   });

@@ -1,7 +1,6 @@
 import { formatFootballTeam } from './footballTeams';
 
-const OPENFOOTBALL_WORLDCUP_URL = 'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json';
-const CACHE_TTL_MS = 60_000;
+export { fetchWorldCupMatches, clearFootballDataCache } from './footballData';
 
 export const MATCH_WINDOW_MS = 3 * 60 * 60 * 1000;
 export const PRE_MATCH_LEAD_MS = 5 * 60 * 1000;
@@ -17,22 +16,21 @@ export interface WorldCupMatch {
   goals2?: { name: string; minute: string; penalty?: boolean }[];
   group?: string;
   ground?: string;
+  kickoffUtc?: string;
+  status?: string;
 }
-
-interface WorldCupData {
-  name: string;
-  matches: WorldCupMatch[];
-}
-
-let cachedMatches: WorldCupMatch[] | null = null;
-let cacheExpiresAt = 0;
 
 export function matchId(match: WorldCupMatch): string {
   return `${match.date}|${match.team1}|${match.team2}`;
 }
 
-/** Parse "13:00 UTC-6" style kickoff strings into a UTC Date. */
+/** Parse kickoff time into a UTC Date. */
 export function parseKickoffUtc(match: WorldCupMatch): Date | null {
+  if (match.kickoffUtc) {
+    const kickoff = new Date(match.kickoffUtc);
+    return Number.isNaN(kickoff.getTime()) ? null : kickoff;
+  }
+
   const parsed = match.time.match(/^(\d{1,2}):(\d{2})\s+UTC([+-]\d+)$/);
   if (!parsed) return null;
 
@@ -47,6 +45,7 @@ export function parseKickoffUtc(match: WorldCupMatch): Date | null {
 }
 
 export function isFinished(match: WorldCupMatch): boolean {
+  if (match.status) return match.status === 'FINISHED';
   return Boolean(match.score?.ft);
 }
 
@@ -122,25 +121,4 @@ export function getFinishedMatches(
 
   if (options.limit != null) return finished.slice(0, options.limit);
   return finished;
-}
-
-export async function fetchWorldCupMatches(): Promise<WorldCupMatch[]> {
-  const now = Date.now();
-  if (cachedMatches && now < cacheExpiresAt) return cachedMatches;
-
-  const response = await fetch(OPENFOOTBALL_WORLDCUP_URL);
-  if (!response.ok) {
-    throw new Error(`World Cup data fetch failed: HTTP ${response.status}`);
-  }
-
-  const data = await response.json() as WorldCupData;
-  cachedMatches = Array.isArray(data.matches) ? data.matches : [];
-  cacheExpiresAt = now + CACHE_TTL_MS;
-  return cachedMatches;
-}
-
-/** Test helper — clears the in-memory fetch cache. */
-export function clearWorldCupCache(): void {
-  cachedMatches = null;
-  cacheExpiresAt = 0;
 }
