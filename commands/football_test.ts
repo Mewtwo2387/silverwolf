@@ -2,12 +2,22 @@ import { DevCommand } from './classes/DevCommand';
 import { logError } from '../utils/log';
 import { getFootballChannelIds } from '../utils/footballChannels';
 import {
-  buildReplayEmbedsForMatch,
+  buildFullTimeEmbed,
+  buildPreMatchEmbed,
+  buildScoreUpdateEmbed,
   formatReplayWindow,
+  getGoalEvents,
   getMatchesForReplay,
   replayWindowMsFromHours,
 } from '../utils/footballAnnouncements';
-import { fetchWorldCupMatches } from '../utils/worldcup';
+import { broadcastGoalAnnouncement } from '../utils/footballBroadcast';
+import { getGoalFollowUpContent } from '../utils/footballEasterEggs';
+import {
+  fetchWorldCupMatches,
+  getDisplayedScore,
+  isFinished,
+  parseKickoffUtc,
+} from '../utils/worldcup';
 
 class FootballTest extends DevCommand {
   constructor(client: any) {
@@ -51,31 +61,45 @@ class FootballTest extends DevCommand {
     try {
       const matches = await fetchWorldCupMatches();
       const recentMatches = getMatchesForReplay(matches, Date.now(), windowMs);
-      let embedCount = 0;
+      let messageCount = 0;
       const failedChannels = new Set<string>();
 
       for (const match of recentMatches) {
-        const embeds = buildReplayEmbedsForMatch(match);
-        for (const embed of embeds) {
+        const kickoff = parseKickoffUtc(match);
+        if (kickoff) {
+          messageCount += await this.broadcastEmbed(channelIds, failedChannels, buildPreMatchEmbed(match, kickoff));
+        }
+
+        for (const goal of getGoalEvents(match)) {
           for (const channelId of channelIds) {
-            try {
-              const channel = this.client.channels.cache.get(channelId)
-                ?? await this.client.channels.fetch(channelId);
-              if (!channel?.isTextBased()) {
-                failedChannels.add(channelId);
-                continue;
-              }
-              await channel.send({ embeds: [embed] });
-              embedCount += 1;
-            } catch (error) {
-              logError(`Football test failed for channel ${channelId}:`, error);
-              failedChannels.add(channelId);
-            }
+            const ok = await broadcastGoalAnnouncement(this.client, channelId, match, goal);
+            if (ok) messageCount += 1 + getGoalFollowUpContent(goal).length;
+            else failedChannels.add(channelId);
+          }
+        }
+
+        if (isFinished(match)) {
+          const finalScore = getDisplayedScore(match);
+          if (finalScore) {
+            messageCount += await this.broadcastEmbed(
+              channelIds,
+              failedChannels,
+              buildFullTimeEmbed(match, finalScore),
+            );
+          }
+        } else {
+          const liveScore = getDisplayedScore(match);
+          if (liveScore && (liveScore.home > 0 || liveScore.away > 0) && getGoalEvents(match).length === 0) {
+            messageCount += await this.broadcastEmbed(
+              channelIds,
+              failedChannels,
+              buildScoreUpdateEmbed(match, liveScore),
+            );
           }
         }
       }
 
-      let resultMessage = `Replayed **${embedCount}** announcement${embedCount === 1 ? '' : 's'} `
+      let resultMessage = `Replayed **${messageCount}** message${messageCount === 1 ? '' : 's'} `
         + `across **${recentMatches.length}** match${recentMatches.length === 1 ? '' : 'es'} from ${windowLabel}.`;
 
       if (recentMatches.length === 0) {
@@ -91,6 +115,30 @@ class FootballTest extends DevCommand {
       logError('Football test command failed:', error);
       await interaction.editReply('Failed to replay football announcements. Please try again later.');
     }
+  }
+
+  private async broadcastEmbed(
+    channelIds: string[],
+    failedChannels: Set<string>,
+    embed: ReturnType<typeof buildPreMatchEmbed>,
+  ): Promise<number> {
+    let sent = 0;
+    for (const channelId of channelIds) {
+      try {
+        const channel = this.client.channels.cache.get(channelId)
+          ?? await this.client.channels.fetch(channelId);
+        if (!channel?.isTextBased()) {
+          failedChannels.add(channelId);
+          continue;
+        }
+        await channel.send({ embeds: [embed] });
+        sent += 1;
+      } catch (error) {
+        logError(`Football test failed for channel ${channelId}:`, error);
+        failedChannels.add(channelId);
+      }
+    }
+    return sent;
   }
 }
 

@@ -3,12 +3,11 @@ import { log, logError } from '../utils/log';
 import { getFootballChannelIds } from '../utils/footballChannels';
 import {
   buildFullTimeEmbed,
-  buildGoalEmbed,
   buildPreMatchEmbed,
   buildScoreUpdateEmbed,
   getNewGoalEvents,
-  type GoalEvent,
 } from '../utils/footballAnnouncements';
+import { broadcastGoalAnnouncement } from '../utils/footballBroadcast';
 import {
   fetchWorldCupMatches,
   getDisplayedScore,
@@ -118,7 +117,9 @@ class FootballScheduler {
 
     let currentState = state;
     for (const goal of getNewGoalEvents(match, currentState)) {
-      await this.announceGoal(match, goal, channelIds);
+      for (const channelId of channelIds) {
+        await broadcastGoalAnnouncement(this.client, channelId, match, goal);
+      }
       await this.client.db.footballMatchAnnouncement.markScoreAnnounced(id, goal.home, goal.away);
       currentState = await this.client.db.footballMatchAnnouncement.getState(id);
     }
@@ -138,11 +139,6 @@ class FootballScheduler {
   private async announcePreMatch(match: WorldCupMatch, kickoff: Date, channelIds: string[]): Promise<void> {
     await this.broadcast(channelIds, { embeds: [buildPreMatchEmbed(match, kickoff)] });
     log(`Football pre-match announcement: ${match.team1} vs ${match.team2}`);
-  }
-
-  private async announceGoal(match: WorldCupMatch, goal: GoalEvent, channelIds: string[]): Promise<void> {
-    await this.broadcast(channelIds, { embeds: [buildGoalEmbed(match, goal)] });
-    log(`Football goal: ${goal.scorer} ${goal.home}-${goal.away} (${match.team1} vs ${match.team2})`);
   }
 
   private async announceScoreUpdate(

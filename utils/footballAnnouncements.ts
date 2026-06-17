@@ -11,6 +11,7 @@ import {
   type WorldCupMatch,
 } from './worldcup';
 import type { FootballMatchAnnouncementState } from '../database/models/FootballMatchAnnouncementModel';
+import { displayScorerName } from './footballEasterEggs';
 
 export interface GoalEvent {
   home: number;
@@ -49,7 +50,7 @@ export function formatGoalTitle(match: WorldCupMatch, goal: GoalEvent): string {
 
 function formatGoalScorerLine(goal: GoalEvent): string {
   const pen = goal.penalty ? ' (pen)' : '';
-  return `⚽ **${goal.scorer}** · ${goal.minute}'${pen}`;
+  return `⚽ **${displayScorerName(goal)}** · ${goal.minute}'${pen}`;
 }
 
 export function buildGoalEmbed(match: WorldCupMatch, goal: GoalEvent): EmbedBuilder {
