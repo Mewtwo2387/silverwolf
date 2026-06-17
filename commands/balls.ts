@@ -22,7 +22,9 @@ class Balls extends Command {
 
     try {
       const url = `https://api.unsplash.com/photos/random?query=${encodeURIComponent('balls')}&orientation=landscape`;
+      const timeoutMs = Number(process.env.DISCORD_FETCH_TIMEOUT_MS ?? 10000);
       const response = await fetch(url, {
+        signal: AbortSignal.timeout(timeoutMs),
         headers: {
           Authorization: `Client-ID ${accessKey}`,
           'Accept-Version': 'v1',
@@ -38,7 +40,9 @@ class Balls extends Command {
       // Trigger a download event so the photographer gets credited, as Unsplash requires.
       const downloadLocation = photo?.links?.download_location;
       if (downloadLocation) {
-        fetch(`${downloadLocation}&client_id=${accessKey}`).catch(() => {});
+        const attributionUrl = new URL(downloadLocation);
+        attributionUrl.searchParams.set('client_id', accessKey);
+        fetch(attributionUrl.toString()).catch(() => {});
       }
 
       const photographer = photo?.user?.name || 'Unknown';
