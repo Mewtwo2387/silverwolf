@@ -106,10 +106,54 @@ export function AiSlopPage(opts: {
     border-radius: 0.75rem;
     overflow: hidden;
   }
+  /* Hamburger + drawer backdrop are desktop-hidden by default. */
+  .aislop-burger {
+    display: none;
+    flex-shrink: 0;
+    background: transparent;
+    border: 1px solid var(--ink-600);
+    border-radius: 0.5rem;
+    color: var(--fog-100);
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .aislop-burger:hover { border-color: var(--accent); color: var(--accent-light); }
+  .aislop-burger svg { display: block; }
+  .aislop-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 1100;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .aislop-backdrop.open { display: block; opacity: 1; }
+
   @media (max-width: 760px) {
-    .aislop-shell { flex-direction: column; height: auto; }
-    .aislop-side { width: 100%; max-height: 38vh; }
-    .aislop-main { min-height: 60vh; }
+    .aislop-shell { flex-direction: column; height: calc(100vh - 210px); min-height: 480px; }
+    .aislop-burger { display: inline-flex; }
+    /* Sidebar becomes an off-canvas drawer sliding in from the left. */
+    .aislop-side {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 82%;
+      max-width: 320px;
+      max-height: none;
+      z-index: 1200;
+      border-radius: 0 0.75rem 0.75rem 0;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+    }
+    .aislop-side.open { transform: translateX(0); }
+    .aislop-main { flex: 1; min-height: 0; }
   }
 
   .aislop-new {
@@ -279,7 +323,7 @@ export function AiSlopPage(opts: {
     border: 1px solid var(--ink-600);
     border-radius: 0.4rem;
     padding: 0.2rem;
-    z-index: 1000;
+    z-index: 1300;
     min-width: 110px;
     box-shadow: 0 6px 16px rgba(0,0,0,0.5);
   }
@@ -460,10 +504,21 @@ export function AiSlopPage(opts: {
 
   .aislop-input {
     display: flex;
+    flex-direction: column;
     gap: 0.5rem;
     padding: 0.6rem 0.75rem 0.75rem;
     border-top: 1px solid var(--ink-600);
+  }
+  .input-row {
+    display: flex;
+    gap: 0.5rem;
     align-items: flex-end;
+  }
+  .model-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 0;
   }
   .aislop-input textarea {
     flex: 1;
@@ -495,6 +550,9 @@ export function AiSlopPage(opts: {
   }
   .aislop-input select:focus { outline: none; border-color: var(--accent); }
   .aislop-input select:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* Model selector spans its own row under the textarea. */
+  .model-row select { width: 100%; }
   .aislop-input button.send {
     background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 8%, transparent), color-mix(in oklab, var(--accent-pale) 8%, transparent));
     color: var(--accent);
@@ -608,6 +666,8 @@ export function AiSlopPage(opts: {
   const PERSONAS = ${personasJSON};
 
   const sideEl = document.querySelector('.aislop-side');
+  const backdropEl = document.getElementById('aislop-backdrop');
+  const burgerBtn = document.getElementById('aislop-burger');
   const newBtn = document.getElementById('aislop-new');
   const msgsEl = document.getElementById('aislop-msgs');
   const titleEl = document.getElementById('aislop-title');
@@ -1171,6 +1231,31 @@ export function AiSlopPage(opts: {
     if (currentSessionId == null) setHead('New chat', currentPersona);
   });
 
+  // Mobile drawer for the chat list.
+  function openDrawer() {
+    sideEl.classList.add('open');
+    backdropEl.classList.add('open');
+    burgerBtn.setAttribute('aria-expanded', 'true');
+  }
+  function closeDrawer() {
+    sideEl.classList.remove('open');
+    backdropEl.classList.remove('open');
+    burgerBtn.setAttribute('aria-expanded', 'false');
+  }
+  burgerBtn.addEventListener('click', () => {
+    if (sideEl.classList.contains('open')) closeDrawer(); else openDrawer();
+  });
+  backdropEl.addEventListener('click', closeDrawer);
+  // Close the drawer after picking or starting a chat on mobile.
+  sideEl.addEventListener('click', (e) => {
+    if (e.target instanceof Element && e.target.closest('.chat-title, #aislop-new')) {
+      closeDrawer();
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeDrawer();
+  });
+
   // Start in fresh-chat state
   newChat();
 })();
@@ -1185,23 +1270,33 @@ export function AiSlopPage(opts: {
   } else {
     chatArea = html`
           <div class="aislop-shell">
-            <aside class="aislop-side">
+            <div class="aislop-backdrop" id="aislop-backdrop"></div>
+            <aside class="aislop-side" id="aislop-side">
               <button type="button" id="aislop-new" class="aislop-new">+ New chat</button>
               ${sidebarBody()}
             </aside>
             <section class="aislop-main">
               <div class="aislop-head">
+                <button type="button" id="aislop-burger" class="aislop-burger" aria-label="Show chats" aria-expanded="false">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+                  </svg>
+                </button>
                 <h2 id="aislop-title">New chat</h2>
                 <span id="aislop-persona-pill" class="pill">${PERSONAS[0].name}</span>
               </div>
               <div id="aislop-error" class="aislop-error" style="display:none"></div>
               <div id="aislop-msgs" class="aislop-msgs"></div>
               <form id="aislop-form" class="aislop-input">
-                <textarea id="aislop-text" rows="1" placeholder="Talk to AI Slop..." aria-label="Message" autocomplete="off"></textarea>
-                <select id="aislop-model" aria-label="Model">
-                  ${modelOptions}
-                </select>
-                <button type="submit" class="send" id="aislop-send">Send</button>
+                <div class="input-row">
+                  <textarea id="aislop-text" rows="1" placeholder="Talk to AI Slop..." aria-label="Message" autocomplete="off"></textarea>
+                  <button type="submit" class="send" id="aislop-send">Send</button>
+                </div>
+                <div class="model-row">
+                  <select id="aislop-model" aria-label="Model">
+                    ${modelOptions}
+                  </select>
+                </div>
               </form>
             </section>
           </div>
