@@ -7,14 +7,16 @@ import {
   endTurnAsCurrentPlayer,
   executeUseSkill,
   executeUseItem,
+  parseBattleSide,
+} from '../battleCore';
+import {
   formatBattleStatus,
   formatHandForSide,
   formatSkillsForSide,
   formatUseSkillMessage,
   formatUseItemMessage,
   getLatestPhaseSummary,
-  parseBattleSide,
-} from '../battleInterface';
+} from '../battleText';
 
 function handleCommand(input: string, battle: Battle, rl: readline.Interface, promptFn: () => void) {
   const parts = input.split(' ').filter((p) => p.length > 0);

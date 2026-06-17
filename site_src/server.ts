@@ -13,6 +13,7 @@ import { registerPageRoutes } from './routes/pages';
 import { registerGameApiRoutes } from './routes/games-api';
 import { registerAiSlopApiRoutes } from './routes/ai-slop-api';
 import { registerCyclicTttMpRoutes } from './routes/cyclic-tictactoe-mp';
+import { registerTcgBattleRoutes } from './routes/tcg-battle';
 import type { AppEnv } from './shared';
 
 const PORT = 6769;
@@ -40,6 +41,7 @@ export function startWebsite(silverwolf: Silverwolf) {
   registerGameApiRoutes(app, silverwolf);
   registerAiSlopApiRoutes(app, silverwolf);
   registerCyclicTttMpRoutes(app, silverwolf, upgradeWebSocket);
+  registerTcgBattleRoutes(app, silverwolf, upgradeWebSocket);
 
   app.notFound((c) => c.text('not found', 404));
 

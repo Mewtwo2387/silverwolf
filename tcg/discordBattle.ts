@@ -1,9 +1,8 @@
 import { AttachmentBuilder, EmbedBuilder } from 'discord.js';
 import type { Battle } from './battle';
 import type { Character } from './character';
+import { executeUseSkill, executeUseItem } from './battleCore';
 import {
-  executeUseSkill,
-  executeUseItem,
   formatAllyStatusForDiscord,
   formatBattleForDiscord,
   formatHandForSide,
@@ -12,10 +11,10 @@ import {
   formatUseItemFailureMessage,
   formatUseItemMessage,
   statusLine as battleStatusLine,
-} from './battleInterface';
+} from './battleText';
 import { renderBattleBoardPng } from './renderDiscordBattleBoard';
 
-export { createDemoBattle, resolveTargetForSkill } from './battleInterface';
+export { createDemoBattle, resolveTargetForSkill } from './battleCore';
 
 export interface DiscordBattleSession {
   battle: Battle;

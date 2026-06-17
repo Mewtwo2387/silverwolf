@@ -100,6 +100,12 @@ export const GAMES = [
     info: 'Tic-tac-toe where your oldest marks expire. Outlast the bot — or a friend.',
     imageType: 'cyclic' as const,
   },
+  {
+    name: 'tcg battle',
+    href: '/games/tcg',
+    info: 'Build a deck, pick a team of three, and duel a friend or practice solo.',
+    imageType: 'tcg' as const,
+  },
 ];
 
 const styles = raw(`
@@ -565,6 +571,32 @@ const styles = raw(`
     .cyc-thumb .fade { animation: none; opacity: 0.4; }
   }
 
+  /* TCG battle card thumbnail: three fanned mini-cards */
+  .tcg-thumb {
+    width: 72%;
+    aspect-ratio: 1 / 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .tcg-thumb .tcg-mini {
+    position: absolute;
+    width: 34%;
+    aspect-ratio: 1080 / 1920;
+    border-radius: 6px;
+    border: 1.5px solid var(--accent);
+    background: linear-gradient(160deg, color-mix(in oklab, var(--accent) 28%, var(--ink-800)), var(--ink-900));
+    box-shadow: 0 0 10px var(--glow-faint);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .tcg-thumb .tcg-mini.left   { transform: translateX(-44%) rotate(-16deg); }
+  .tcg-thumb .tcg-mini.right  { transform: translateX(44%) rotate(16deg); border-color: var(--accent-pale); }
+  .tcg-thumb .tcg-mini.center { transform: translateY(-8%) scale(1.12); z-index: 2; box-shadow: 0 0 16px var(--glow-bright); }
+  .game-card:hover .tcg-thumb .tcg-mini.left   { transform: translateX(-58%) rotate(-22deg); }
+  .game-card:hover .tcg-thumb .tcg-mini.right  { transform: translateX(58%) rotate(22deg); }
+  .game-card:hover .tcg-thumb .tcg-mini.center { transform: translateY(-14%) scale(1.16); }
+
   /* Mini spinning coin for the flip card */
   .mini-coin-wrap {
     width: 120px;
@@ -774,6 +806,18 @@ function CyclicImage() {
       <span class="x">X</span><span class="o">O</span><span></span>
       <span></span><span class="x">X</span><span class="o">O</span>
       <span class="o">O</span><span></span><span class="x fade">X</span>
+    </div>
+  `);
+}
+
+// TCG battle card thumbnail: a fanned trio of glowing cards (the three-character
+// team), the centre one lifted, hinting at the card-battle theme.
+function TcgImage() {
+  return raw(`
+    <div class="tcg-thumb" aria-hidden="true">
+      <span class="tcg-mini left"></span>
+      <span class="tcg-mini right"></span>
+      <span class="tcg-mini center"></span>
     </div>
   `);
 }
@@ -1013,6 +1057,7 @@ export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import(
     if (game.imageType === 'coin') return CoinImage();
     if (game.imageType === 'ai-slop') return AiSlopImage();
     if (game.imageType === 'cyclic') return CyclicImage();
+    if (game.imageType === 'tcg') return TcgImage();
     if (game.imageType === 'composite') {
       const overlaySrc = (game as any).overlaySrc as string;
       const overlay = overlaySrc.endsWith('.svg')
