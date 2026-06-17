@@ -111,7 +111,7 @@ class FootballScheduler {
       && getNewGoalEvents(match, state).length === 0
       && this.shouldAnnounceScore(score, state, false)
     ) {
-      await this.announceScoreUpdate(match, score, channelIds);
+      await this.announceScoreUpdate(match, score, channelIds, state);
       await this.client.db.footballMatchAnnouncement.markScoreAnnounced(id, score.home, score.away);
     }
   }
@@ -155,8 +155,13 @@ class FootballScheduler {
     match: WorldCupMatch,
     score: { home: number; away: number },
     channelIds: string[],
+    state: FootballMatchAnnouncementState | null,
   ): Promise<void> {
-    await this.broadcast(channelIds, { embeds: [buildScoreUpdateEmbed(match, score)] });
+    const prevScore = {
+      home: state?.lastHomeScore ?? 0,
+      away: state?.lastAwayScore ?? 0,
+    };
+    await this.broadcast(channelIds, { embeds: [buildScoreUpdateEmbed(match, score, prevScore)] });
     log(`Football score update: ${match.team1} ${score.home}-${score.away} ${match.team2}`);
   }
 

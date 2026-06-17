@@ -42,6 +42,31 @@ export function formatHighlightedScore(
   return `${homeStr} – ${awayStr}`;
 }
 
+export function formatHighlightedScoreFromDelta(
+  home: number,
+  away: number,
+  prevHome: number,
+  prevAway: number,
+): string {
+  const homeStr = home > prevHome ? `[${home}]` : `${home}`;
+  const awayStr = away > prevAway ? `[${away}]` : `${away}`;
+  return `${homeStr} – ${awayStr}`;
+}
+
+function formatMatchScoreTitleWithHighlight(
+  match: WorldCupMatch,
+  score: { home: number; away: number },
+  prevScore: { home: number; away: number },
+): string {
+  const scoreLine = formatHighlightedScoreFromDelta(
+    score.home,
+    score.away,
+    prevScore.home,
+    prevScore.away,
+  );
+  return `${formatFootballTeam(match.team1)}  ${scoreLine}  ${formatFootballTeam(match.team2, 'after')}`;
+}
+
 export function formatGoalTitle(match: WorldCupMatch, goal: GoalEvent): string {
   const scoringSide = goal.team === match.team1 ? 'home' : 'away';
   const scoreLine = formatHighlightedScore(goal.home, goal.away, scoringSide);
@@ -64,10 +89,11 @@ export function buildGoalEmbed(match: WorldCupMatch, goal: GoalEvent): EmbedBuil
 export function buildScoreUpdateEmbed(
   match: WorldCupMatch,
   score: { home: number; away: number },
+  prevScore: { home: number; away: number } = { home: 0, away: 0 },
 ): EmbedBuilder {
   const context = formatMatchContext(match);
   return new EmbedBuilder()
-    .setTitle(formatMatchScoreTitle(match, score))
+    .setTitle(formatMatchScoreTitleWithHighlight(match, score, prevScore))
     .setDescription(context || 'Live score')
     .setColor(0xFFD700);
 }

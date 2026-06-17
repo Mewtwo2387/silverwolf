@@ -2,8 +2,10 @@ import { describe, expect, test } from 'bun:test';
 import {
   buildGoalEmbed,
   buildReplayEmbedsForMatch,
+  buildScoreUpdateEmbed,
   formatGoalTitle,
   formatHighlightedScore,
+  formatHighlightedScoreFromDelta,
   formatReplayWindow,
   getGoalEvents,
   getMatchesForReplay,
@@ -45,6 +47,18 @@ describe('footballAnnouncements', () => {
   test('formatHighlightedScore brackets the scoring side', () => {
     expect(formatHighlightedScore(1, 0, 'home')).toBe('[1] – 0');
     expect(formatHighlightedScore(1, 2, 'away')).toBe('1 – [2]');
+  });
+
+  test('formatHighlightedScoreFromDelta brackets sides that increased', () => {
+    expect(formatHighlightedScoreFromDelta(1, 0, 0, 0)).toBe('[1] – 0');
+    expect(formatHighlightedScoreFromDelta(1, 1, 1, 0)).toBe('1 – [1]');
+    expect(formatHighlightedScoreFromDelta(2, 0, 0, 0)).toBe('[2] – 0');
+    expect(formatHighlightedScoreFromDelta(2, 1, 1, 0)).toBe('[2] – [1]');
+  });
+
+  test('buildScoreUpdateEmbed highlights sides that scored since last update', () => {
+    const embed = buildScoreUpdateEmbed(sampleMatch, { home: 1, away: 1 }, { home: 1, away: 0 });
+    expect(embed.data.title).toContain('1 – [1]');
   });
 
   test('getGoalEvents follows chronological order across both teams', () => {
