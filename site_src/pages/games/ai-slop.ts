@@ -323,7 +323,7 @@ export function AiSlopPage(opts: {
     border: 1px solid var(--ink-600);
     border-radius: 0.4rem;
     padding: 0.2rem;
-    z-index: 1000;
+    z-index: 1300;
     min-width: 110px;
     box-shadow: 0 6px 16px rgba(0,0,0,0.5);
   }
