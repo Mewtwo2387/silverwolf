@@ -9,7 +9,12 @@ const UTM = 'utm_source=silverwolf&utm_medium=referral';
 
 class Balls extends Command {
   constructor(client: any) {
-    super(client, 'balls', 'Fetch a random picture of balls', [], { blame: 'xei' });
+    super(client, 'balls', 'Fetch a random picture of balls', [], {
+      ephemeral: false,
+      skipDefer: false,
+      isSubcommandOf: null,
+      blame: 'xei',
+    });
   }
 
   async run(interaction: any): Promise<void> {
