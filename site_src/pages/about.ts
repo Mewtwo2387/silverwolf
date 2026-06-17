@@ -157,20 +157,44 @@ const aboutExtras = (nonce: string) => raw(`
 
   /* eidolon sections */
   .eidolon-section { padding-top: clamp(4rem, 8vw, 7rem); padding-bottom: clamp(4rem, 8vw, 7rem); padding-left: clamp(1rem, 4vw, 3rem); padding-right: clamp(1rem, 4vw, 3rem); }
-  .eid-txt {
+  /* The eid-txt now only carries the scroll-in animation; the visual card +
+     hover-lift live on the inner .eid-link anchor so the hover transform
+     doesn't fight the animation's held end-state (same split as .eid-img). */
+  .eid-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
     background: color-mix(in oklab, var(--ink-800) 65%, transparent);
     border: 1px solid rgba(34, 211, 255, 0.2);
     border-radius: 0.75rem;
     padding: 2.25rem 2rem 2rem;
     backdrop-filter: blur(12px);
-    box-shadow: 
+    box-shadow:
       0 10px 30px rgba(0, 0, 0, 0.4),
       inset 0 1px 0 rgba(255, 255, 255, 0.05),
       0 0 15px rgba(34, 211, 255, 0.05);
     position: relative;
     overflow: hidden;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+                border-color 0.3s, box-shadow 0.3s;
   }
-  .eid-txt::before {
+  .eid-link:hover,
+  .eid-link:focus-visible {
+    transform: translateY(-6px);
+    border-color: rgba(34, 211, 255, 0.6);
+    outline: none;
+    box-shadow:
+      0 18px 40px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 0 25px rgba(34, 211, 255, 0.18);
+  }
+  .eid-link:hover h2,
+  .eid-link:focus-visible h2 {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+  }
+  .eid-link::before {
     content: 'SYS.EIDOLON.LOG_0' attr(data-index);
     position: absolute;
     top: 0.6rem;
@@ -180,7 +204,7 @@ const aboutExtras = (nonce: string) => raw(`
     color: rgba(34, 211, 255, 0.4);
     letter-spacing: 0.08em;
   }
-  .eid-txt::after {
+  .eid-link::after {
     content: '[ONLINE]';
     position: absolute;
     top: 0.6rem;
@@ -190,7 +214,7 @@ const aboutExtras = (nonce: string) => raw(`
     color: #10b981;
     letter-spacing: 0.08em;
   }
-  .eid-txt h2 {
+  .eid-link h2 {
     background: linear-gradient(180deg, var(--heading-top) 0%, var(--heading-bottom) 100%);
     -webkit-background-clip: text;
             background-clip: text;
@@ -656,35 +680,49 @@ export function AboutPage(opts: { nonce: string; lv999?: boolean; goof?: boolean
       n: 1,
       title: 'Utils',
       text: 'Honestly.. boring? like even silver wolf pictured here isnt even facing us cuz she lowkirkenuinely doesnt give a fuge. some utils : /say, /convert,/profile, /avatar and...shurg idk not exactly exciting imo. more out of boring necessity.',
+      href: '/about',
+      external: false,
     },
     {
       n: 2,
       title: '@grok is this true?',
       text: 'ask the totally real grok or gork. omg we are so relevant now we added ai into the bot :fire: we are at the forefront of tech! we should ipo and get 7 dollars. enough to get something nice but not expensive! ',
+      href: '/games/ai-slop',
+      external: false,
     },
     {
       n: 3,
       title: 'Games',
       text: 'claim dinonuggies, gamble mystic credits, and buy..more upgrades so you can earn more dinonuggies...economy is kinda broken tho...',
+      href: '/games',
+      external: false,
     },
     {
       n: 4,
       title: 'Womb eviction commemoration day',
       text: 'Set your birthday, when it comes you get a ping and everyone knows, #OnThisDay you got expelled from you momma. You can also set a reminder to other peeps bdays.',
+      href: '/birthdays',
+      external: false,
     },
     {
       n: 5,
       title: 'Health & Wellness - Poop tracking!',
       text: 'LIVE SILVERWOLF REACTION. Dont be like finch who hates the idea of poop tracking. ANNOUNCE TO THE WHOLE WORLD YOU DID YOUR BUINSESS!! and also gut health is important you start by tracking it smh',
+      href: '/games/poop',
+      external: false,
     },
     {
       n: 6,
       title: 'E sex!',
       text: 'Yes... incase you couldnt get laid irl, you can with someone...on discord!!!. consent is important tho. Theres also a chance you make a virtual kid that can slave off gambling and doing tasks... Horrified yet? ',
+      href: 'https://www.ashasexualhealth.org/understanding-consent/',
+      external: true,
     },
   ];
 
-  const eidolonSections = eidolonData.map(({ n, title, text }) => {
+  const eidolonSections = eidolonData.map(({
+    n, title, text, href, external,
+  }) => {
     const imgLeft = n % 2 === 1;
     const eidolonStem = lv999 ? `Character_Silver_Wolf_LV.999_Eidolon_${n}` : `Character_Silver_Wolf_Eidolon_${n}`;
     const eidSizes = '(max-width: 800px) 100vw, 28rem';
@@ -699,9 +737,11 @@ export function AboutPage(opts: { nonce: string; lv999?: boolean; goof?: boolean
         </picture>
       </div>`;
     const txtEl = html`
-      <div class="eid-txt font-mono ${imgLeft ? 'eid-from-right' : 'eid-from-left'} max-w-[38rem] ${imgLeft ? 'justify-self-end' : 'justify-self-start'}" data-index="${n}">
-        <h2 class="font-mono italic font-bold tracking-tight mb-4" style="font-size: clamp(2rem, 5.5vw, 3.75rem);">${title}</h2>
-        <p class="typing-text text-[1.1rem] leading-[1.6] text-fog-200">${text}</p>
+      <div class="eid-txt font-mono ${imgLeft ? 'eid-from-right' : 'eid-from-left'} max-w-[38rem] ${imgLeft ? 'justify-self-end' : 'justify-self-start'}">
+        <a class="eid-link" href="${href}" data-index="${n}" ${external ? raw('target="_blank" rel="noopener noreferrer"') : ''}>
+          <h2 class="font-mono italic font-bold tracking-tight mb-4" style="font-size: clamp(2rem, 5.5vw, 3.75rem);">${title}</h2>
+          <p class="typing-text text-[1.1rem] leading-[1.6] text-fog-200">${text}</p>
+        </a>
       </div>`;
     return html`
       <section class="eidolon-section grid grid-cols-2 gap-12 items-center max-[800px]:grid-cols-1 max-[800px]:text-left">
