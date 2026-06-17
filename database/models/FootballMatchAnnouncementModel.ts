@@ -51,8 +51,10 @@ class FootballMatchAnnouncementModel {
       return;
     }
     if (home != null && away != null) {
-      await this.markPreMatchSent(matchId);
-      await this.markScoreAnnounced(matchId, home, away);
+      await this.db.executeQuery(
+        footballMatchAnnouncementQueries.UPSERT_BASELINE_WITH_SCORE,
+        [matchId, home, away],
+      );
       return;
     }
     await this.markPreMatchSent(matchId);

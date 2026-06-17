@@ -39,7 +39,9 @@ describe('footballEasterEggs', () => {
   });
 
   test('getGoalFollowUpContent stacks easter eggs', () => {
-    const goal: GoalEvent = { ...baseGoal, home: 7, away: 1, minute: '67' };
+    const goal: GoalEvent = {
+      ...baseGoal, home: 7, away: 1, minute: '67',
+    };
     expect(getGoalFollowUpContent(goal)).toEqual([MINUTE_67_GIF_URL, brazilFlagSpam()]);
   });
 });

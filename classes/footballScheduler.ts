@@ -24,19 +24,29 @@ import type { FootballMatchAnnouncementState } from '../database/models/Football
 class FootballScheduler {
   client: any;
   private minuteJob: BunCronJob | null = null;
+  private isRunning = false;
 
   constructor(client: any) {
     this.client = client;
   }
 
   start(): void {
+    if (this.minuteJob) return;
+
     this.minuteJob = (Bun.cron as any)('* * * * *', async () => {
-      await this.checkMatches();
+      if (this.isRunning) return;
+      this.isRunning = true;
+      try {
+        await this.checkMatches();
+      } finally {
+        this.isRunning = false;
+      }
     });
   }
 
   stop(): void {
     this.minuteJob?.stop();
+    this.minuteJob = null;
   }
 
   async checkMatches(): Promise<void> {
