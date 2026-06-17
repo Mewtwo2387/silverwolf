@@ -3,8 +3,11 @@ import { log, logError } from '../utils/log';
 import { getFootballChannelIds } from '../utils/footballChannels';
 import {
   buildFullTimeEmbed,
+  buildGoalEmbed,
   buildPreMatchEmbed,
   buildScoreUpdateEmbed,
+  getNewGoalEvents,
+  type GoalEvent,
 } from '../utils/footballAnnouncements';
 import {
   fetchWorldCupMatches,
@@ -73,7 +76,6 @@ class FootballScheduler {
         score?.away ?? null,
         finished,
       );
-      state = await this.client.db.footballMatchAnnouncement.getState(id);
       return;
     }
 
@@ -84,17 +86,43 @@ class FootballScheduler {
     if (!state?.preMatchSent && now >= kickoffMs - PRE_MATCH_LEAD_MS && now < kickoffMs) {
       await this.announcePreMatch(match, kickoff, channelIds);
       await this.client.db.footballMatchAnnouncement.markPreMatchSent(id);
+      state = await this.client.db.footballMatchAnnouncement.getState(id);
     }
 
-    if (score && this.shouldAnnounceScore(score, state, finished)) {
-      if (finished && !state?.fullTimeSent) {
-        await this.announceFullTime(match, score, channelIds);
-        await this.client.db.footballMatchAnnouncement.markFullTimeSent(id, score.home, score.away);
-      } else if (!finished && now >= kickoffMs && now <= kickoffMs + MATCH_WINDOW_MS) {
-        await this.announceScoreUpdate(match, score, channelIds);
-        await this.client.db.footballMatchAnnouncement.markScoreAnnounced(id, score.home, score.away);
-      }
+    const inLiveWindow = now >= kickoffMs && now <= kickoffMs + MATCH_WINDOW_MS;
+    state = await this.announcePendingGoals(match, id, channelIds, state, finished ? true : inLiveWindow);
+
+    if (finished && !state?.fullTimeSent && score) {
+      await this.announceFullTime(match, score, channelIds);
+      await this.client.db.footballMatchAnnouncement.markFullTimeSent(id, score.home, score.away);
+    } else if (
+      !finished
+      && inLiveWindow
+      && score
+      && getNewGoalEvents(match, state).length === 0
+      && this.shouldAnnounceScore(score, state, false)
+    ) {
+      await this.announceScoreUpdate(match, score, channelIds);
+      await this.client.db.footballMatchAnnouncement.markScoreAnnounced(id, score.home, score.away);
     }
+  }
+
+  private async announcePendingGoals(
+    match: WorldCupMatch,
+    id: string,
+    channelIds: string[],
+    state: FootballMatchAnnouncementState | null,
+    allowAnnounce: boolean,
+  ): Promise<FootballMatchAnnouncementState | null> {
+    if (!allowAnnounce) return state;
+
+    let currentState = state;
+    for (const goal of getNewGoalEvents(match, currentState)) {
+      await this.announceGoal(match, goal, channelIds);
+      await this.client.db.footballMatchAnnouncement.markScoreAnnounced(id, goal.home, goal.away);
+      currentState = await this.client.db.footballMatchAnnouncement.getState(id);
+    }
+    return currentState;
   }
 
   private shouldAnnounceScore(
@@ -110,6 +138,11 @@ class FootballScheduler {
   private async announcePreMatch(match: WorldCupMatch, kickoff: Date, channelIds: string[]): Promise<void> {
     await this.broadcast(channelIds, { embeds: [buildPreMatchEmbed(match, kickoff)] });
     log(`Football pre-match announcement: ${match.team1} vs ${match.team2}`);
+  }
+
+  private async announceGoal(match: WorldCupMatch, goal: GoalEvent, channelIds: string[]): Promise<void> {
+    await this.broadcast(channelIds, { embeds: [buildGoalEmbed(match, goal)] });
+    log(`Football goal: ${goal.scorer} ${goal.home}-${goal.away} (${match.team1} vs ${match.team2})`);
   }
 
   private async announceScoreUpdate(
