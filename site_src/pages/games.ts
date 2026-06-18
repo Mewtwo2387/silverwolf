@@ -100,6 +100,13 @@ export const GAMES = [
     info: 'Tic-tac-toe where your oldest marks expire. Outlast the bot — or a friend.',
     imageType: 'cyclic' as const,
   },
+  {
+    name: 'battleships',
+    href: '/games/battleships',
+    info: 'Classic naval warfare. Place your fleet, then sink the AI before it sinks you.',
+    imageType: 'img' as const,
+    imageSrc: '/static/svg/battleship-badge.svg',
+  },
 ];
 
 const styles = raw(`
