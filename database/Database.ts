@@ -3,6 +3,7 @@ import { log, logError } from '../utils/log';
 import { snakeToCamelJSON } from '../utils/caseConvert';
 import * as tables from './tables';
 import imageGenQueries from './queries/imageGenQueries';
+import battleshipsMatchQueries from './queries/battleshipsMatchQueries';
 import * as modelClasses from './models';
 import type { TableDefinition, QueryResult } from './types';
 import type UserModel from './models/UserModel';
@@ -169,14 +170,8 @@ class Database {
     `);
 
     // Back the per-user recent battleships-match lookup (GET_RECENT_FOR_USER).
-    this.db.run(`
-      CREATE INDEX IF NOT EXISTS idx_battleships_x_id_ended_at
-      ON BattleshipsMatch (x_discord_id, ended_at DESC)
-    `);
-    this.db.run(`
-      CREATE INDEX IF NOT EXISTS idx_battleships_o_id_ended_at
-      ON BattleshipsMatch (o_discord_id, ended_at DESC)
-    `);
+    this.db.run(battleshipsMatchQueries.CREATE_INDEX_X_RECENT);
+    this.db.run(battleshipsMatchQueries.CREATE_INDEX_O_RECENT);
 
     // Initialize models
     Object.entries(modelClasses).forEach(([modelName, ModelClass]) => {

@@ -252,6 +252,7 @@ export function BattleshipsPage(opts: { nonce: string; lv999?: boolean; user?: i
   .bs-grid.radar .bs-cell { cursor: crosshair; }
   .bs-grid.radar.locked .bs-cell { cursor: default; }
   .bs-grid.radar .bs-cell:hover { background: color-mix(in oklab, var(--accent) 22%, var(--ink-900)); }
+  .bs-grid.radar .bs-cell:focus-visible { outline: 2px solid var(--accent-light); outline-offset: 2px; }
   .bs-grid.radar.locked .bs-cell:hover { background: var(--ink-900); }
 
   /* ship segment on the home board */
@@ -511,7 +512,16 @@ export function BattleshipsPage(opts: { nonce: string; lv999?: boolean; user?: i
       const cell = document.createElement('div');
       cell.className = 'bs-cell';
       cell.dataset.i = i;
-      if (isRadar) cell.addEventListener('click', () => onRadarClick(i));
+      if (isRadar) {
+        const fire = () => onRadarClick(i);
+        cell.setAttribute('role', 'button');
+        cell.tabIndex = 0;
+        cell.setAttribute('aria-label', 'Fire at row ' + (rowOf(i) + 1) + ', column ' + (colOf(i) + 1));
+        cell.addEventListener('click', fire);
+        cell.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fire(); }
+        });
+      }
       gridEl.appendChild(cell);
       cellArr.push(cell);
     }
@@ -564,7 +574,10 @@ export function BattleshipsPage(opts: { nonce: string; lv999?: boolean; user?: i
     buildGrid(homeGrid, homeCells, false);
     radarGrid.classList.add('locked');           // no firing until battle starts
 
-    placeAIFleet();
+    if (!placeAIFleet()) {
+      setStatus('Could not prepare the enemy fleet — start a new game.');
+      return;
+    }
     buildTray();
     buildFoeList();
     paintHome();
@@ -581,26 +594,38 @@ export function BattleshipsPage(opts: { nonce: string; lv999?: boolean; user?: i
   }
 
   // ── AI fleet placement (random, non-overlapping) ──────────────
+  // Returns true only if the WHOLE fleet was placed; never leaves a partial
+  // board (which could otherwise let allPlaced() enable battle prematurely).
   function placeFleetOn(board) {
-    for (const ci in board) board[ci] = null;
-    for (const ship of FLEET) {
-      let placed = false, guard = 0;
-      while (!placed && guard++ < 500) {
-        const orient = Math.random() < 0.5 ? 'h' : 'v';
-        const anchor = Math.floor(Math.random() * SIZE * SIZE);
-        const cells = shipCells(anchor, orient, ship.len);
-        if (placementValid(cells, board, null)) {
-          for (const ci of cells) board[ci] = ship.id;
-          placed = true;
+    for (let restart = 0; restart < 50; restart++) {
+      for (let i = 0; i < board.length; i++) board[i] = null;
+      let complete = true;
+      for (const ship of FLEET) {
+        let placed = false, guard = 0;
+        while (!placed && guard++ < 500) {
+          const orient = Math.random() < 0.5 ? 'h' : 'v';
+          const anchor = Math.floor(Math.random() * SIZE * SIZE);
+          const cells = shipCells(anchor, orient, ship.len);
+          if (placementValid(cells, board, null)) {
+            for (const ci of cells) board[ci] = ship.id;
+            placed = true;
+          }
         }
+        if (!placed) { complete = false; break; }
       }
+      if (complete) return true;
     }
+    for (let i = 0; i < board.length; i++) board[i] = null;
+    return false;
   }
-  function placeAIFleet() { placeFleetOn(aiBoard); }
+  function placeAIFleet() { return placeFleetOn(aiBoard); }
 
   function randomizePlayerFleet() {
     if (phase !== 'placing') return;
-    placeFleetOn(playerBoard);
+    if (!placeFleetOn(playerBoard)) {
+      setStatus('Could not randomise a full fleet — try again.', 'thinking');
+      return;
+    }
     placements = {};
     // recover placement metadata from the board
     for (const ship of FLEET) {

@@ -10,6 +10,15 @@ const battleshipsMatchQueries = {
     ORDER BY ended_at DESC
     LIMIT ?
   `,
+  // Back the per-user recent-match lookup (GET_RECENT_FOR_USER).
+  CREATE_INDEX_X_RECENT: `
+    CREATE INDEX IF NOT EXISTS idx_battleships_x_id_ended_at
+    ON BattleshipsMatch (x_discord_id, ended_at DESC)
+  `,
+  CREATE_INDEX_O_RECENT: `
+    CREATE INDEX IF NOT EXISTS idx_battleships_o_id_ended_at
+    ON BattleshipsMatch (o_discord_id, ended_at DESC)
+  `,
 };
 
 export default battleshipsMatchQueries;

@@ -22,7 +22,11 @@ const battleshipsMatchTable: TableDefinition = {
     { name: 'ended_at', type: 'INTEGER NOT NULL' },
   ],
   primaryKey: ['id'],
-  specialConstraints: [],
+  // Enforce the match invariants at the DB level too, not just in app code.
+  specialConstraints: [
+    "CHECK (end_reason IN ('win', 'disconnect', 'forfeit'))",
+    'CHECK (winner_discord_id IS NULL OR winner_discord_id IN (x_discord_id, o_discord_id))',
+  ],
   constraints: [],
 };
 

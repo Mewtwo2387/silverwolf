@@ -116,31 +116,35 @@ export function validateFleet(input: unknown): ValidateFleetResult {
 // placement clock so the match can still proceed (server-authoritative, never
 // leaks to the opponent until reveal).
 export function randomFleet(rng: () => number = Math.random): ShipPlacement[] {
-  const occupied = new Set<number>();
-  const fleet: ShipPlacement[] = [];
-  for (const def of FLEET) {
-    // Bounded attempts; the classic fleet always fits well within this.
-    let placed = false;
-    for (let attempt = 0; attempt < 1000 && !placed; attempt += 1) {
-      const horizontal = rng() < 0.5;
-      const maxRow = horizontal ? SIZE : SIZE - def.len;
-      const maxCol = horizontal ? SIZE - def.len : SIZE;
-      const row = Math.floor(rng() * maxRow);
-      const col = Math.floor(rng() * maxCol);
-      const cells: number[] = [];
-      for (let i = 0; i < def.len; i += 1) {
-        cells.push(horizontal ? row * SIZE + col + i : (row + i) * SIZE + col);
+  // Bounded iterative restart (no recursion): a pathological RNG sequence can
+  // never block match progression, and we never hand back a partial fleet.
+  for (let restart = 0; restart < 100; restart += 1) {
+    const occupied = new Set<number>();
+    const fleet: ShipPlacement[] = [];
+    let failed = false;
+
+    for (const def of FLEET) {
+      let placed = false;
+      for (let attempt = 0; attempt < 1000 && !placed; attempt += 1) {
+        const horizontal = rng() < 0.5;
+        const maxRow = horizontal ? SIZE : SIZE - def.len;
+        const maxCol = horizontal ? SIZE - def.len : SIZE;
+        const row = Math.floor(rng() * maxRow);
+        const col = Math.floor(rng() * maxCol);
+        const cells: number[] = [];
+        for (let i = 0; i < def.len; i += 1) {
+          cells.push(horizontal ? row * SIZE + col + i : (row + i) * SIZE + col);
+        }
+        if (cells.some((c) => occupied.has(c))) continue;
+        cells.forEach((c) => occupied.add(c));
+        fleet.push({ id: def.id, cells });
+        placed = true;
       }
-      if (cells.some((c) => occupied.has(c))) continue;
-      cells.forEach((c) => occupied.add(c));
-      fleet.push({ id: def.id, cells });
-      placed = true;
+      if (!placed) { failed = true; break; }
     }
-    if (!placed) {
-      // Should be unreachable for the standard fleet on a 10×10 board, but never
-      // hand back a partial fleet — restart the whole layout deterministically.
-      return randomFleet(rng);
-    }
+
+    if (!failed) return fleet;
   }
-  return fleet;
+  // Unreachable for the classic fleet on a 10×10 board.
+  throw new Error('Unable to generate a Battleships fleet');
 }
