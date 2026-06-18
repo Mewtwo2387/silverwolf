@@ -1042,6 +1042,9 @@ export function BattleshipsPage(opts: { nonce: string; lv999?: boolean; user?: i
   const body = html`
     <h1 class="text-center">Battleships</h1>
     <p class="text-center text-fog-300">Deploy your fleet and sink the AI before it sinks you.</p>
+    <p class="text-center" style="margin-top:-0.5rem;">
+      <a href="/games/battleships/multiplayer" style="color: var(--accent-light); text-decoration: none; border-bottom: 1px dashed currentColor;">play a friend →</a>
+    </p>
 
     <div class="bs-wrap">
       <!-- Settings screen -->
