@@ -3,10 +3,12 @@ import { log, logError } from '../utils/log';
 import { snakeToCamelJSON } from '../utils/caseConvert';
 import * as tables from './tables';
 import imageGenQueries from './queries/imageGenQueries';
+import battleshipsMatchQueries from './queries/battleshipsMatchQueries';
 import * as modelClasses from './models';
 import type { TableDefinition, QueryResult } from './types';
 import type UserModel from './models/UserModel';
 import type BabyModel from './models/BabyModel';
+import type BattleshipsMatchModel from './models/BattleshipsMatchModel';
 import type AiChatModel from './models/AiChatModel';
 import type PokemonModel from './models/PokemonModel';
 import type MarriageModel from './models/MarriageModel';
@@ -168,6 +170,10 @@ class Database {
       ON CyclicTttMatch (o_discord_id, ended_at DESC)
     `);
 
+    // Back the per-user recent battleships-match lookup (GET_RECENT_FOR_USER).
+    this.db.run(battleshipsMatchQueries.CREATE_INDEX_X_RECENT);
+    this.db.run(battleshipsMatchQueries.CREATE_INDEX_O_RECENT);
+
     // Initialize models
     Object.entries(modelClasses).forEach(([modelName, ModelClass]) => {
       this.models[modelName] = new (ModelClass as any)(this);
@@ -280,6 +286,8 @@ class Database {
   get birthdayReminder(): BirthdayReminderModel { return this.models.BirthdayReminderModel; }
   get footballMatchAnnouncement(): FootballMatchAnnouncementModel { return this.models.FootballMatchAnnouncementModel; }
   get baby(): BabyModel { return this.models.BabyModel; }
+
+  get battleshipsMatch(): BattleshipsMatchModel { return this.models.BattleshipsMatchModel; }
   get commandConfig(): CommandConfigModel { return this.models.CommandConfigModel; }
   get cyclicTttMatch(): CyclicTttMatchModel { return this.models.CyclicTttMatchModel; }
   get gameUID(): GameUIDModel { return this.models.GameUIDModel; }

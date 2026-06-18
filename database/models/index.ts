@@ -1,5 +1,6 @@
 import AiChatModel from './AiChatModel';
 import BabyModel from './BabyModel';
+import BattleshipsMatchModel from './BattleshipsMatchModel';
 import BirthdayReminderModel from './BirthdayReminderModel';
 import FootballMatchAnnouncementModel from './FootballMatchAnnouncementModel';
 import CommandConfigModel from './CommandConfigModel';
@@ -17,6 +18,7 @@ import WebSessionModel from './WebSessionModel';
 export {
   AiChatModel,
   BabyModel,
+  BattleshipsMatchModel,
   BirthdayReminderModel,
   FootballMatchAnnouncementModel,
   CommandConfigModel,

@@ -63,6 +63,7 @@ STATIC_ASSETS['/static/svg/toilet-svgrepo-com.svg'] = { path: path.join(SVG_DIR,
 STATIC_ASSETS['/static/svg/love-heart-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'love-heart-svgrepo-com.svg'), contentType: 'image/svg+xml' };
 STATIC_ASSETS['/static/svg/coin-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'coin-svgrepo-com.svg'), contentType: 'image/svg+xml' };
 STATIC_ASSETS['/static/svg/wrench-screwdriver-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'wrench-screwdriver-svgrepo-com.svg'), contentType: 'image/svg+xml' };
+STATIC_ASSETS['/static/svg/battleship-badge.svg'] = { path: path.join(SVG_DIR, 'battleship-badge.svg'), contentType: 'image/svg+xml' };
 // Self-hosted fonts (latin-subset variable woff2). See Assets/input.css @font-face.
 for (const fontFile of ['Outfit.woff2', 'JetBrainsMono.woff2', 'JetBrainsMono-Italic.woff2']) {
   STATIC_ASSETS[`/static/fonts/${fontFile}`] = { path: path.join(FONTS_DIR, fontFile), contentType: 'font/woff2' };
