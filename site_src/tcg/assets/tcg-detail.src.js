@@ -128,7 +128,7 @@ import { formatBattleSide, formatItemKind, formatSkillCategory } from './tcg-lab
     const frag = cloneTpl('tcg-tpl-list-item');
     const li = frag.querySelector('li');
     if (!li) return frag;
-    if (extraClass) li.classList.add(extraClass);
+    if (extraClass) li.classList.add(...extraClass.trim().split(/\s+/));
     setText(li.querySelector('.li-name'), name);
     setTextOrHide(li.querySelector('.li-meta'), meta);
     setText(li.querySelector('.li-desc'), desc);
