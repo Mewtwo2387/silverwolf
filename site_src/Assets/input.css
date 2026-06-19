@@ -1065,7 +1065,6 @@ code, pre, kbd, .font-mono {
 }
 .tcg-char .art { width: 100%; aspect-ratio: 1080 / 1920; object-fit: cover; display: block; }
 .tcg-char.active { border-color: var(--accent); box-shadow: 0 0 16px var(--glow-bright); }
-.tcg-char.focus { border-color: var(--accent-light); box-shadow: 0 0 14px var(--glow-bright); }
 .tcg-char.targetable { cursor: crosshair; border-color: var(--danger); box-shadow: 0 0 12px var(--danger-glow); }
 .tcg-char.targetable.ally { border-color: #4ade80; box-shadow: 0 0 12px rgba(74,222,128,0.5); }
 .tcg-char.ko { filter: grayscale(0.85) brightness(0.6); }
@@ -1075,8 +1074,24 @@ code, pre, kbd, .font-mono {
   padding: 3px 5px; font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; font-weight: 700;
   background: linear-gradient(180deg, rgba(0,0,0,0.8), transparent);
 }
-.tcg-char-name { color: #fff; text-shadow: 0 1px 3px #000; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tcg-char-energy { color: #ffe08a; text-shadow: 0 1px 3px #000; }
+.tcg-char-name { color: #fff; text-shadow: 0 1px 3px #000; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Energy bar mirrors the HP bar: full-width bar + a centered value line below it. */
+.tcg-energy-bar { height: 7px; border-radius: 999px; background: rgba(255,255,255,0.18); overflow: hidden; border: 1px solid rgba(0,0,0,0.5); margin-top: 4px; }
+.tcg-energy-fill { height: 100%; width: 0; background: linear-gradient(90deg, #ffd86b, #ffb347); transition: width 0.3s ease; }
+.tcg-energy-bar.full .tcg-energy-fill { background: linear-gradient(90deg, #ffe08a, #ffd34d); box-shadow: 0 0 8px rgba(255,216,107,0.85); }
+.tcg-energy-text { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: #ffe08a; text-shadow: 0 1px 2px #000; text-align: center; margin-top: 1px; }
+.tcg-ult-btn {
+  display: block; width: 100%; margin-top: 4px;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.56rem; font-weight: 800;
+  letter-spacing: 0.08em; line-height: 1; padding: 0.24rem 0.3rem; border-radius: 4px; cursor: pointer;
+  background: rgba(0,0,0,0.55); border: 1px solid var(--ink-500); color: var(--fog-400);
+  transition: color 0.15s, border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.tcg-ult-btn.ready { color: #1a1206; background: linear-gradient(135deg, #ffe08a, #ffb347); border-color: #ffd34d; box-shadow: 0 0 8px rgba(255,216,107,0.7); }
+.tcg-ult-btn.ready:hover { box-shadow: 0 0 12px rgba(255,216,107,0.95); }
+.tcg-ult-btn.armed { box-shadow: 0 0 0 2px #fff, 0 0 12px rgba(255,216,107,0.95); }
+.tcg-ult-btn:disabled { cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) { .tcg-energy-fill { transition: none; } }
 .tcg-char-bottom { position: absolute; bottom: 0; left: 0; right: 0; padding: 4px 5px 5px; background: linear-gradient(0deg, rgba(0,0,0,0.85), transparent); }
 .tcg-hp-bar { height: 7px; border-radius: 999px; background: rgba(255,255,255,0.18); overflow: hidden; border: 1px solid rgba(0,0,0,0.5); }
 .tcg-hp-fill { height: 100%; background: linear-gradient(90deg, #4ade80, #22d3ee); transition: width 0.3s ease; }

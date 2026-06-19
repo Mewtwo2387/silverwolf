@@ -22,7 +22,6 @@ let wsRetryDelayMs = 1500;
 let wsClosedByServer = false;
 let serverError = null;
 let countdownTimer = null;
-let focusSlot = null;               // focused own-team slot for the skill panel
 let armedSkill = null;              // { slot, index, targetKind }
 let armedItem = null;               // hand slotId
 const logLines = [];
@@ -102,6 +101,21 @@ function playersRow() {
   return el('div', { class: 'tcg-players' }, [playerCard(state.players.p1, 'p1', 'left'), el('div', { class: 'tcg-vs' }, 'vs'), playerCard(state.players.p2, 'p2', 'right')]);
 }
 
+function ultButton(ch) {
+  const ult = ch.skills.find((s) => s.category === 'ultimate');
+  if (!ult) return null;
+  const armed = !!(armedSkill && armedSkill.slot === ch.slot && armedSkill.index === ult.index);
+  const ready = myTurn() && ult.available;
+  const btn = el('button', {
+    type: 'button',
+    class: 'tcg-ult-btn' + (armed ? ' armed' : '') + (ready ? ' ready' : ''),
+    title: ult.name + (!ult.available && ult.reason ? ' \u2014 ' + ult.reason : ''),
+  }, 'ULT');
+  btn.disabled = !ready;
+  btn.addEventListener('click', (ev) => { ev.stopPropagation(); onSkillClick(ch, ult); });
+  return btn;
+}
+
 function charCard(ch, side) {
   const mine = side === mySide();
   const b = state.battle;
@@ -109,7 +123,6 @@ function charCard(ch, side) {
   const cls = ['tcg-char'];
   if (isActiveSlot) cls.push('active');
   if (ch.isKnockedOut) cls.push('ko');
-  if (mine && focusSlot === ch.slot) cls.push('focus');
 
   // Targeting affordances
   let targetable = false;
@@ -126,7 +139,6 @@ function charCard(ch, side) {
 
   card.appendChild(el('div', { class: 'tcg-char-top' }, [
     el('span', { class: 'tcg-char-name' }, ch.name),
-    el('span', { class: 'tcg-char-energy' }, '\u26a1' + ch.energy),
   ]));
 
   const bottom = el('div', { class: 'tcg-char-bottom' });
@@ -137,6 +149,21 @@ function charCard(ch, side) {
   bar.appendChild(fill);
   bottom.appendChild(bar);
   bottom.appendChild(el('div', { class: 'tcg-hp-text' }, ch.currentHp + ' / ' + ch.maxHp));
+
+  // Energy bar fills toward the ultimate's requirement (assume one ult/char);
+  // overflow shows as full. A separate ULT button on your own alive cards fires it.
+  const ult = ch.skills.find((s) => s.category === 'ultimate');
+  const ultCost = ult ? ult.energyCost : 0;
+  const ePct = ultCost > 0 ? Math.max(0, Math.min(100, Math.round((100 * ch.energy) / ultCost))) : 100;
+  const eBar = el('div', { class: 'tcg-energy-bar' + (ePct >= 100 ? ' full' : '') });
+  const eFill = el('div', { class: 'tcg-energy-fill' });
+  eFill.style.width = ePct + '%';
+  eBar.appendChild(eFill);
+  bottom.appendChild(eBar);
+  const shownEnergy = ultCost > 0 ? Math.min(ch.energy, ultCost) : ch.energy;
+  bottom.appendChild(el('div', { class: 'tcg-energy-text' }, '⚡ ' + shownEnergy + (ultCost > 0 ? ' / ' + ultCost : '')));
+  if (mine && !ch.isKnockedOut) { const ub = ultButton(ch); if (ub) bottom.appendChild(ub); }
+
   if (ch.effects && ch.effects.length) {
     const fx = el('div', { class: 'tcg-effects' });
     for (const e of ch.effects.slice(0, 6)) {
@@ -172,33 +199,30 @@ function onCharClick(ch, side, mine) {
     send({ type: 'use_item', handSlotId: armedItem, charIndex: ch.slot });
     armedItem = null; render(); return;
   }
-  globalThis.TcgDetail.showBattleCharacter(ch, side, {
-    onFocus: (mine && myTurn() && !ch.isKnockedOut)
-      ? (slot) => { focusSlot = slot; armedSkill = null; render(); }
-      : null,
-  });
+  globalThis.TcgDetail.showBattleCharacter(ch, side, { onFocus: null });
 }
 
 function skillPanel() {
-  const side = mySide();
-  const team = state.battle.teams[side] || [];
-  let slot = focusSlot;
-  if (slot == null || !team[slot] || team[slot].isKnockedOut) {
-    // Default to the active slot if alive, else first living ally.
-    const act = state.battle.activeSlot;
-    if (team[act] && !team[act].isKnockedOut) slot = act;
-    else { const liv = team.find((c) => !c.isKnockedOut); slot = liv ? liv.slot : null; }
-  }
-  focusSlot = slot;
-  if (slot == null) return null;
-  const ch = team[slot];
+  // Only the active character takes a main action, and only on your turn — so the
+  // skill list is just the active character's normal/charged skills. Ultimates live
+  // as per-card buttons (any alive ally can ult), so they're excluded here.
+  if (!myTurn()) return null;
+  const team = state.battle.teams[mySide()] || [];
+  const ch = team[state.battle.activeSlot];
+  if (!ch) return null;
   const wrap = el('div', { class: 'tcg-controls' });
-  wrap.appendChild(el('p', { class: 'tcg-section-title' }, 'Skills — ' + ch.name + ' (slot ' + ch.slot + ')'));
+  if (ch.isKnockedOut) {
+    wrap.appendChild(el('p', { class: 'tcg-section-title' }, 'Active — ' + ch.name + ' (KO)'));
+    wrap.appendChild(el('div', { class: 'tcg-hand-empty' }, 'Active character is knocked out — end your turn.'));
+    return wrap;
+  }
+  wrap.appendChild(el('p', { class: 'tcg-section-title' }, 'Active — ' + ch.name + ' (slot ' + ch.slot + ')'));
   if (state.battle.mainActionUsedThisPhase) {
     wrap.appendChild(el('div', { class: 'tcg-mainaction-note' }, 'Main action used this phase — ultimates, items & end turn still available.'));
   }
+  const mainSkills = ch.skills.filter((s) => s.category !== 'ultimate');
   const list = el('div', { class: 'tcg-skill-list' });
-  for (const sk of ch.skills) {
+  for (const sk of mainSkills) {
     const btn = el('button', { type: 'button', class: 'tcg-skill' + (armedSkill && armedSkill.slot === ch.slot && armedSkill.index === sk.index ? ' armed' : '') }, [
       el('span', { class: 'sk-name' }, [
         el('span', null, sk.name),
