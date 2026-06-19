@@ -21,6 +21,8 @@ import { AiSlopPage } from '../pages/games/ai-slop';
 import { CyclicTicTacToePage } from '../pages/games/cyclic_tictactoe';
 import { BattleshipsPage } from '../pages/games/battleships';
 import { BottleFlipPage } from '../pages/games/bottleflip';
+import { PlaneSimPage } from '../pages/games/plane-sim';
+import { PlaneViewerPage } from '../pages/games/plane-viewer';
 import { canUseAiSlop } from '../guild-access';
 import { HomePage, type DashboardProfile } from '../pages/home';
 import {
@@ -160,6 +162,14 @@ export function registerPageRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
   }).toString()));
 
   app.get('/games/bottle-flip', (c) => c.html(BottleFlipPage({
+    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+  }).toString()));
+
+  app.get('/games/plane-sim', (c) => c.html(PlaneSimPage({
+    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+  }).toString()));
+
+  app.get('/games/plane-sim/inspect', (c) => c.html(PlaneViewerPage({
     nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
   }).toString()));
 

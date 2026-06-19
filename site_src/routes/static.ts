@@ -26,6 +26,10 @@ const STATIC_ASSETS: Record<string, StaticEntry> = {
   '/static/silverwolfLv.999.avif': { path: path.join(IMAGES_DIR, 'silverwolfLv.999.avif'), contentType: 'image/avif' },
   '/static/styles.css': { path: path.join(ASSETS_DIR, 'styles.css'), contentType: 'text/css; charset=utf-8' },
   '/static/app.js': { path: path.join(ASSETS_DIR, 'app.js'), contentType: 'text/javascript; charset=utf-8' },
+  // Plane Sim's bundled Three.js game + model inspector (built from
+  // plane-sim.src.js / plane-viewer.src.js, see Dockerfile).
+  '/static/plane-sim.js': { path: path.join(ASSETS_DIR, 'plane-sim.js'), contentType: 'text/javascript; charset=utf-8' },
+  '/static/plane-viewer.js': { path: path.join(ASSETS_DIR, 'plane-viewer.js'), contentType: 'text/javascript; charset=utf-8' },
 };
 // Hero responsive variants — emitted by scripts/build-images.ts. The about-page
 // <picture> picks the smallest width that covers its slot (sizes attribute).

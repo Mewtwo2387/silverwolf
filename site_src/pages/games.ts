@@ -113,6 +113,12 @@ export const GAMES = [
     info: 'The classic 2016 challenge. Swing, release, and stick the landing — with real water physics.',
     imageType: 'bottle' as const,
   },
+  {
+    name: 'plane sim',
+    href: '/games/plane-sim',
+    info: 'Fly a Spitfire-ish prop fighter in 3D. Take off, loop, roll, and buzz the airfield.',
+    imageType: 'plane' as const,
+  },
 ];
 
 const styles = raw(`
@@ -618,6 +624,49 @@ const styles = raw(`
     .bottle-flipper, .bottle-water { animation: none; }
   }
 
+  /* Plane Sim card: a top-down Spitfire planform (elliptical wings + roundels)
+     that banks gently, with a spinning propeller disc at the nose. */
+  .plane-thumb {
+    width: 78%;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .plane-thumb svg { width: 100%; height: 100%; overflow: visible; }
+  .plane-flyer { transform-origin: 50% 50%; animation: plane-bank 5.5s ease-in-out infinite; }
+  .plane-body, .plane-wing, .plane-tail, .plane-fin {
+    fill: color-mix(in oklab, var(--accent) 30%, transparent);
+    stroke: var(--accent-light);
+    stroke-width: 1.4;
+    vector-effect: non-scaling-stroke;
+  }
+  .plane-wing { fill: color-mix(in oklab, var(--accent) 22%, transparent); }
+  .plane-canopy { fill: color-mix(in oklab, var(--accent-light) 55%, transparent); stroke: var(--accent-light); stroke-width: 1; vector-effect: non-scaling-stroke; }
+  .plane-roundel-ring { fill: none; stroke: var(--accent-light); stroke-width: 1.4; vector-effect: non-scaling-stroke; }
+  .plane-roundel-dot { fill: var(--danger, #ff5d6c); }
+  .plane-prop {
+    fill: none;
+    stroke: var(--accent-light);
+    stroke-width: 1.4;
+    stroke-dasharray: 3 5;
+    opacity: 0.7;
+    transform-origin: 50px 16px;
+    animation: plane-prop-spin 0.5s linear infinite;
+    vector-effect: non-scaling-stroke;
+  }
+  @keyframes plane-bank {
+    0%, 100% { transform: rotate(-13deg) translateY(2px); }
+    50%      { transform: rotate(13deg) translateY(-2px); }
+  }
+  @keyframes plane-prop-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .plane-flyer, .plane-prop { animation: none; }
+  }
+
   /* Mini spinning coin for the flip card */
   .mini-coin-wrap {
     width: 120px;
@@ -887,6 +936,29 @@ function BottleImage() {
   `);
 }
 
+// Plane Sim card thumbnail: a stylised top-down Spitfire (nose up) with the
+// signature elliptical wings, RAF-ish roundels and a spinning propeller disc.
+function PlaneImage() {
+  return raw(`
+    <div class="plane-thumb" aria-hidden="true">
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <g class="plane-flyer">
+          <ellipse class="plane-tail" cx="50" cy="83" rx="17" ry="4.5" />
+          <ellipse class="plane-fin" cx="50" cy="85" rx="2.2" ry="7" />
+          <ellipse class="plane-wing" cx="50" cy="49" rx="41" ry="9" />
+          <ellipse class="plane-body" cx="50" cy="53" rx="5.2" ry="31" />
+          <ellipse class="plane-canopy" cx="50" cy="46" rx="3" ry="6" />
+          <circle class="plane-roundel-ring" cx="28" cy="49" r="5" />
+          <circle class="plane-roundel-dot" cx="28" cy="49" r="2" />
+          <circle class="plane-roundel-ring" cx="72" cy="49" r="5" />
+          <circle class="plane-roundel-dot" cx="72" cy="49" r="2" />
+          <circle class="plane-prop" cx="50" cy="16" r="9" />
+        </g>
+      </svg>
+    </div>
+  `);
+}
+
 const SVG_DIR = path.join(import.meta.dir, '..', 'Assets', 'svg');
 
 // Game icons ship as flat, multi-colour svgrepo art that reads too "comical"
@@ -1123,6 +1195,7 @@ export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import(
     if (game.imageType === 'ai-slop') return AiSlopImage();
     if (game.imageType === 'cyclic') return CyclicImage();
     if (game.imageType === 'bottle') return BottleImage();
+    if (game.imageType === 'plane') return PlaneImage();
     if (game.imageType === 'composite') {
       const overlaySrc = (game as any).overlaySrc as string;
       const overlay = overlaySrc.endsWith('.svg')

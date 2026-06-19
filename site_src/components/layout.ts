@@ -70,7 +70,30 @@ export function Layout(opts: {
   nonce: string;
   lv999?: boolean;
   user?: NavUser | null;
+  // Full-bleed mode: drop the navbar / footer / search and the centred <main>
+  // wrapper, and let the body own the whole viewport. Used by immersive pages
+  // like Plane Sim that need a fullscreen canvas.
+  fullscreen?: boolean;
 }) {
+  if (opts.fullscreen) {
+    return html`<!doctype html>
+      <html lang="en">
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+          <title>${opts.title}</title>
+          ${faviconLink(opts.lv999 ?? false)}
+          ${pageHead(opts.nonce)}
+          <style>
+            /* Own the viewport: no scroll, no margins — the page is the stage. */
+            html, body { height: 100%; margin: 0; overflow: hidden; overscroll-behavior: none; }
+          </style>
+          ${opts.extraHead ?? ''}
+        </head>
+        <body class="font-sans bg-ink-900 text-fog-100">${opts.body}</body>
+      </html>`;
+  }
+
   return html`<!doctype html>
     <html lang="en">
       <head>

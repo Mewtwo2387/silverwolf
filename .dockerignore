@@ -11,6 +11,8 @@ local_db_folder/
 # local artifact into the image.
 site_src/Assets/styles.css
 site_src/Assets/app.js
+site_src/Assets/plane-sim.js
+site_src/Assets/plane-viewer.js
 # Android app — client-side only, never part of the server image
 android/
 *.apk
