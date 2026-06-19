@@ -1132,6 +1132,17 @@ code, pre, kbd, .font-mono {
 .tcg-log-ko { color: var(--danger); font-weight: 800; }
 .tcg-log-dodge { color: var(--fog-400); font-style: italic; }
 .tcg-log-draw, .tcg-log-info { color: var(--fog-400); }
+/* Hoverable reference (effect/ability/item/skill name) — native title shows its description. */
+.tcg-log-ref { text-decoration: underline dotted; text-underline-offset: 2px; cursor: help; }
+.tcg-log-ref:hover { text-decoration-style: solid; }
+/* Wide screens: battle view on the left, battle log as a sticky right-hand column.
+   Below the breakpoint, .tcg-room-wrap's column layout keeps the log stacked underneath. */
+@media (min-width: 920px) {
+  #tcg-root { flex-direction: row; align-items: flex-start; }
+  #tcg-root > #tcg-view { flex: 1 1 auto; min-width: 0; }
+  #tcg-root > .tcg-log-panel { flex: 0 0 clamp(280px, 27%, 360px); position: sticky; top: 0.5rem; }
+  #tcg-root > .tcg-log-panel .tcg-log { max-height: 72vh; }
+}
 .tcg-section-title { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--fog-400); margin: 0 0 0.3rem; font-family: 'JetBrains Mono', monospace; }
 .tcg-invite { display: flex; flex-direction: column; gap: 0.5rem; align-items: center; }
 .tcg-invite-url { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--fog-200); background: var(--ink-900); border: 1px solid var(--ink-600); border-radius: 0.4rem; padding: 0.4rem 0.6rem; max-width: 100%; overflow-x: auto; white-space: nowrap; }

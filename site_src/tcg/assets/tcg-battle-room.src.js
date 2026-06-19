@@ -351,19 +351,38 @@ function endActions() {
   return wrap;
 }
 
+// Build one styled log line. When the entry carries a `detail` (effect/ability/item/
+// skill description), each [bracketed] reference becomes a hoverable tooltip.
+function logLineEl(e) {
+  const kind = (e && e.kind) || 'info';
+  const text = (e && e.text != null) ? e.text : String(e);
+  const div = el('div', { class: 'tcg-log-line tcg-log-' + kind });
+  const detail = e && e.detail;
+  if (detail && text.indexOf('[') !== -1) {
+    const re = /\[[^\]]+\]/g;
+    let last = 0;
+    let m = re.exec(text);
+    while (m !== null) {
+      if (m.index > last) div.appendChild(document.createTextNode(text.slice(last, m.index)));
+      div.appendChild(el('span', { class: 'tcg-log-ref', title: detail }, m[0]));
+      last = re.lastIndex;
+      m = re.exec(text);
+    }
+    if (last < text.length) div.appendChild(document.createTextNode(text.slice(last)));
+  } else {
+    div.textContent = text;
+  }
+  return div;
+}
+
 function logPanel() {
   if (logLines.length === 0) return null;
-  const panel = el('div', { class: 'tcg-panel' });
+  const panel = el('div', { class: 'tcg-panel tcg-log-panel' });
   panel.appendChild(el('p', { class: 'tcg-section-title' }, 'Battle Log'));
   const logEl = el('div', { class: 'tcg-log' });
   // column-reverse keeps newest pinned at the bottom; iterate newest→oldest so the
   // DOM order reads chronologically top→bottom. Each line is styled by its kind.
-  for (let i = logLines.length - 1; i >= 0; i--) {
-    const e = logLines[i];
-    const kind = (e && e.kind) || 'info';
-    const text = (e && e.text != null) ? e.text : String(e);
-    logEl.appendChild(el('div', { class: 'tcg-log-line tcg-log-' + kind }, text));
-  }
+  for (let i = logLines.length - 1; i >= 0; i--) logEl.appendChild(logLineEl(logLines[i]));
   panel.appendChild(logEl);
   return panel;
 }

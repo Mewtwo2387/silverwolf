@@ -35,6 +35,11 @@ export type BattleLogKind =
 export interface BattleLogEntry {
   kind: BattleLogKind;
   text: string;
+  /**
+   * Optional description of the thing the line references (the effect/ability/item/skill
+   * named in its `[brackets]`). Surfaces may show it on hover; text renderers ignore it.
+   */
+  detail?: string;
 }
 
 export const SKILL_POINTS_START = 2;
@@ -192,8 +197,8 @@ export class Battle {
    * `text` must be PLAIN (no markdown); `kind` drives per-surface styling.
    * Call sites: skill/item announcements, damage resolution, effect application, KOs, etc.
    */
-  logEvent(text: string, kind: BattleLogKind = 'info'): void {
-    const entry: BattleLogEntry = { kind, text };
+  logEvent(text: string, kind: BattleLogKind = 'info', detail?: string): void {
+    const entry: BattleLogEntry = detail ? { kind, text, detail } : { kind, text };
     this.currentActionLog.push(entry);
     this.turnHistory.push(entry);
     log(`[tcg] ${text}`);
@@ -397,7 +402,7 @@ export class Battle {
     }
 
     this.currentActionLog = [];
-    this.logEvent(`${character.character.name} used [${skill.name}]${this.describeSkillTarget(skill, target)}`, 'action');
+    this.logEvent(`${character.character.name} used [${skill.name}]${this.describeSkillTarget(skill, target)}`, 'action', skill.description);
     skill.useSkill(character, target);
     character.onSkillCompleted(skill, target);
 
@@ -445,7 +450,7 @@ export class Battle {
     }
 
     this.currentActionLog = [];
-    this.logEvent(`${character.character.name} unleashed [${skill.name}]${this.describeSkillTarget(skill, target)}`, 'action');
+    this.logEvent(`${character.character.name} unleashed [${skill.name}]${this.describeSkillTarget(skill, target)}`, 'action', skill.description);
     character.spendEnergy(energy);
     skill.useSkill(character, target);
     character.onSkillCompleted(skill, target);
@@ -485,7 +490,7 @@ export class Battle {
 
     this.currentActionLog = [];
     const turnHistoryLenBefore = this.turnHistory.length;
-    this.logEvent(`${side.toUpperCase()} played [${item.name}] on ${target.character.name}`, 'item');
+    this.logEvent(`${side.toUpperCase()} played [${item.name}] on ${target.character.name}`, 'item', item.description);
     const ok = item.apply(target, this);
     if (!ok) {
       // Roll back logs from this attempt (e.g. equipment cap); apply may have called logEvent too.

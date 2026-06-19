@@ -382,7 +382,7 @@ export class CharacterInBattle {
     this.effects.push(effect.clone());
     const verb = effect.positive ? 'gained' : 'was inflicted with';
     const dur = effect.duration < 999 ? ` (${effect.duration} turn${effect.duration === 1 ? '' : 's'})` : '';
-    this.battle.logEvent(`${this.character.name} ${verb} [${effect.name}]${dur}`, 'effect');
+    this.battle.logEvent(`${this.character.name} ${verb} [${effect.name}]${dur}`, 'effect', effect.description);
   }
 
   /**
@@ -410,20 +410,24 @@ export class CharacterInBattle {
     const dotStacks = this.effects.filter((effect) => effect.type === EffectType.Dot);
     if (dotStacks.length === 0) return;
 
-    const groups = new Map<string, { name: string; element: Element; total: number }>();
+    const groups = new Map<string, { name: string; element: Element; total: number; description: string }>();
     dotStacks.forEach((dot) => {
       const element = dot.metadata?.appliesToElement ?? Element.Physical;
       const key = `${dot.name}:${element}`;
-      const group = groups.get(key) ?? { name: dot.name, element, total: 0 };
+      const group = groups.get(key) ?? {
+        name: dot.name, element, total: 0, description: dot.description,
+      };
       group.total += dot.amount;
       groups.set(key, group);
     });
 
-    groups.forEach(({ name, element, total }) => {
+    groups.forEach(({
+      name, element, total, description,
+    }) => {
       const damage = round2(total);
       if (damage <= 0) return;
       const typeLabel = Element[element].toLowerCase();
-      this.battle.logEvent(`${this.character.name} took ${damage} ${typeLabel} damage from [${name}]`, 'damage');
+      this.battle.logEvent(`${this.character.name} took ${damage} ${typeLabel} damage from [${name}]`, 'damage', description);
       this.takeDamage(damage, element, null, { silent: true });
     });
   }
