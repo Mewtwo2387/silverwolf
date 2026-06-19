@@ -45,6 +45,14 @@ export interface SnapshotSkill {
   targetKind: 'opponent' | 'ally' | 'none';
 }
 
+export interface SnapshotEquip {
+  /** Item catalog id (used for the card PNG path). */
+  id: string;
+  name: string;
+  kind: ItemKind;
+  description: string;
+}
+
 export interface SnapshotCharacter {
   slot: number;
   name: string;
@@ -54,7 +62,8 @@ export interface SnapshotCharacter {
   energy: number;
   isKnockedOut: boolean;
   equipmentCount: number;
-  equipmentNames: string[];
+  /** Attached equipment, rich enough to render each item's card on click. */
+  equipments: SnapshotEquip[];
   effects: SnapshotEffect[];
   skills: SnapshotSkill[];
 }
@@ -112,7 +121,12 @@ function snapshotTeam(battle: Battle, side: BattleSide): SnapshotCharacter[] {
     energy: char.energy,
     isKnockedOut: char.isKnockedOut,
     equipmentCount: char.equipments.length,
-    equipmentNames: char.equipments.map((e) => e.name),
+    equipments: char.equipments.map((e) => ({
+      id: e.id,
+      name: e.name,
+      kind: e.kind,
+      description: e.description,
+    })),
     effects: char.effects.map((e) => ({
       name: e.name,
       description: e.description,

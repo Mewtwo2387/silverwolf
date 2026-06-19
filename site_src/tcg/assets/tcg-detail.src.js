@@ -260,13 +260,24 @@ import { formatBattleSide, formatItemKind, formatSkillCategory } from './tcg-lab
       ];
       if (ch.isKnockedOut) pairs.push(['', 'KO', true]);
       appendStatRow(meta, pairs);
-      if (ch.equipmentCount > 0) {
+      const equips = ch.equipments || [];
+      if (equips.length > 0) {
         const ul = document.createElement('ul');
         ul.className = 'tcg-detail-list';
-        for (const nm of ch.equipmentNames) {
-          ul.appendChild(buildListItem(nm, null, null));
+        for (const eq of equips) {
+          const li = buildListItem(eq.name, formatItemKind(eq.kind), eq.description);
+          li.classList.add('tcg-detail-clickable');
+          li.setAttribute('role', 'button');
+          li.tabIndex = 0;
+          li.title = 'View ' + eq.name;
+          const openIt = () => showBattleItem(eq, {});
+          li.addEventListener('click', openIt);
+          li.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openIt(); }
+          });
+          ul.appendChild(li);
         }
-        meta.appendChild(buildSection('Equipment (' + ch.equipmentCount + ')', ul));
+        meta.appendChild(buildSection('Equipment (' + equips.length + ')', ul));
       }
       meta.appendChild(buildSection('Status Effects', buildEffectList(ch.effects)));
       meta.appendChild(buildSection('Skills', buildSkillList(ch.skills, true)));

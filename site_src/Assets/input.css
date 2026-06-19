@@ -996,17 +996,53 @@ code, pre, kbd, .font-mono {
 .tcg-step[disabled] { opacity: 0.35; cursor: not-allowed; }
 .tcg-count { font-family: 'JetBrains Mono', monospace; font-weight: 800; color: var(--fog-100); min-width: 1.4rem; text-align: center; }
 .tcg-count.zero { color: var(--fog-500); }
-.tcg-players { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 0.75rem; }
-.tcg-player { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.7rem; background: color-mix(in oklab, var(--ink-900) 50%, transparent); border: 1px solid var(--ink-600); border-radius: 0.6rem; font-family: 'JetBrains Mono', monospace; }
-.tcg-player.right { flex-direction: row-reverse; text-align: right; }
-.tcg-player.you { border-color: color-mix(in oklab, var(--accent) 65%, transparent); box-shadow: 0 0 8px var(--glow-faint); }
-.tcg-player.turn { border-color: var(--accent); box-shadow: 0 0 14px var(--glow-bright); }
-.tcg-player.empty { opacity: 0.6; font-style: italic; color: var(--fog-400); }
-.tcg-player.disc { border-style: dashed; opacity: 0.7; }
-.tcg-avatar { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--accent); flex-shrink: 0; background: var(--ink-700); }
+/* ── Compact battle HUD (opponent · status/round/timer · you) ───────────── */
+.tcg-hud {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: stretch; gap: 0.6rem;
+  padding: 0.4rem; border-radius: 0.7rem;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--ink-900) 60%, transparent), color-mix(in oklab, var(--ink-900) 30%, transparent));
+  border: 1px solid color-mix(in oklab, var(--accent) 14%, var(--ink-600));
+}
+.tcg-hud-player {
+  display: flex; flex-direction: column; gap: 0.35rem; justify-content: center;
+  padding: 0.45rem 0.6rem; border-radius: 0.55rem; min-width: 0;
+  background: color-mix(in oklab, var(--ink-900) 45%, transparent); border: 1px solid transparent;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.tcg-hud-player.right { align-items: flex-end; }
+.tcg-hud-player.you { border-color: color-mix(in oklab, var(--accent) 45%, transparent); }
+.tcg-hud-player.turn { border-color: var(--accent); box-shadow: 0 0 14px var(--glow-faint); }
+.tcg-hud-player.empty { opacity: 0.6; font-style: italic; color: var(--fog-400); }
+.tcg-hud-player.disc { border-style: dashed; opacity: 0.72; }
+.tcg-hud-id { display: flex; align-items: center; gap: 0.55rem; min-width: 0; }
+.tcg-hud-player.right .tcg-hud-id { flex-direction: row-reverse; }
+.tcg-hud-namecol { display: flex; flex-direction: column; min-width: 0; }
+.tcg-hud-player.right .tcg-hud-namecol { align-items: flex-end; }
+.tcg-hud-name { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: var(--fog-100); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tcg-hud-side { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: var(--fog-400); letter-spacing: 0.05em; }
+.tcg-hud-stats { display: flex; align-items: center; gap: 0.7rem; }
+.tcg-hud-player.right .tcg-hud-stats { flex-direction: row-reverse; }
+.tcg-hud-cards { display: inline-flex; align-items: center; gap: 0.25rem; font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; color: var(--fog-300); }
+.tcg-hud-card-ico { font-size: 0.85rem; opacity: 0.85; }
+.tcg-sp-pips { display: inline-flex; gap: 3px; align-items: center; }
+.tcg-sp-pip { width: 9px; height: 9px; border-radius: 50%; background: transparent; border: 1px solid color-mix(in oklab, var(--accent) 40%, var(--ink-500)); box-sizing: border-box; }
+.tcg-sp-pip.on { background: radial-gradient(circle at 35% 30%, var(--accent-light), var(--accent)); border-color: var(--accent); box-shadow: 0 0 6px var(--glow-faint); }
+.tcg-hud-center { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.18rem; padding: 0 0.4rem; }
+.tcg-hud-round { display: flex; align-items: baseline; gap: 0.35rem; font-family: 'JetBrains Mono', monospace; }
+.tcg-hud-round .rl { font-size: 0.56rem; letter-spacing: 0.16em; color: var(--fog-400); }
+.tcg-hud-round b { font-size: 1.05rem; color: var(--accent-light); font-weight: 800; }
+.tcg-hud-center .tcg-status { margin: 0; min-height: 0; font-size: 0.92rem; }
+.tcg-hud-center .tcg-status.win, .tcg-hud-center .tcg-status.lose, .tcg-hud-center .tcg-status.draw { font-size: 1.25rem; }
+.tcg-hud-center .tcg-status.you { margin: 0; padding: 0.18rem 0.9rem; }
+.tcg-hud-center .tcg-timer { margin: 0; }
+.tcg-avatar { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--accent); flex-shrink: 0; background: var(--ink-700); }
 .tcg-avatar.ph { display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--fog-300); font-size: 0.9rem; }
-.tcg-pname { font-size: 0.85rem; color: var(--fog-100); max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tcg-vs { color: var(--fog-400); font-size: 0.85rem; letter-spacing: 0.1em; text-align: center; font-family: 'JetBrains Mono', monospace; }
+@media (max-width: 560px) {
+  .tcg-hud { grid-template-columns: 1fr; }
+  .tcg-hud-player.right { align-items: flex-start; }
+  .tcg-hud-player.right .tcg-hud-id, .tcg-hud-player.right .tcg-hud-stats { flex-direction: row; }
+  .tcg-hud-player.right .tcg-hud-namecol { align-items: flex-start; }
+}
 .tcg-status { text-align: center; font-size: 1.05rem; font-weight: 600; color: var(--accent-light); font-family: 'JetBrains Mono', monospace; margin: 0.6rem 0 0.2rem; min-height: 1.6rem; }
 .tcg-status.win { font-size: 1.6rem; font-weight: 800; color: #4ade80; }
 .tcg-status.lose { font-size: 1.6rem; font-weight: 800; color: var(--danger); }
@@ -1017,12 +1053,41 @@ code, pre, kbd, .font-mono {
   width: fit-content; margin: 0.6rem auto 0.2rem; padding: 0.25rem 1.2rem; border-radius: 999px;
   font-weight: 800; letter-spacing: 0.04em; box-shadow: 0 0 16px var(--glow-bright);
 }
-.tcg-timer { display: flex; justify-content: center; gap: 0.5rem; margin-top: 0.3rem; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: var(--fog-400); }
+.tcg-timer { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; font-family: 'JetBrains Mono', monospace; font-size: 0.74rem; color: var(--fog-400); }
 .tcg-timer .count { color: var(--accent-light); font-weight: 700; }
 .tcg-timer.urgent .count { color: var(--danger); }
-.tcg-board { display: flex; flex-direction: column; gap: 0.9rem; margin-top: 0.6rem; }
-.tcg-row { display: flex; justify-content: center; gap: 0.6rem; flex-wrap: wrap; }
-.tcg-side { display: flex; flex-direction: column; gap: 0.4rem; }
+.tcg-timer-ring {
+  --pct: 100; width: 14px; height: 14px; border-radius: 50%; flex: 0 0 auto;
+  background: conic-gradient(var(--accent) calc(var(--pct) * 1%), color-mix(in oklab, var(--ink-600) 80%, transparent) 0);
+  -webkit-mask: radial-gradient(circle, transparent 3.5px, #000 4px);
+  mask: radial-gradient(circle, transparent 3.5px, #000 4px);
+}
+.tcg-timer.urgent .tcg-timer-ring { background: conic-gradient(var(--danger) calc(var(--pct) * 1%), color-mix(in oklab, var(--ink-600) 80%, transparent) 0); }
+/* ── Arena: the focal battle area (opponent top, divider, your team bottom) ── */
+.tcg-arena {
+  position: relative; display: flex; flex-direction: column; gap: 0.5rem;
+  margin: 0.5rem 0; padding: 0.9rem 0.7rem; border-radius: 0.9rem;
+  background:
+    radial-gradient(120% 60% at 50% 0%, color-mix(in oklab, var(--danger) 9%, transparent), transparent 60%),
+    radial-gradient(120% 60% at 50% 100%, color-mix(in oklab, var(--accent) 11%, transparent), transparent 60%),
+    color-mix(in oklab, var(--ink-900) 55%, transparent);
+  border: 1px solid color-mix(in oklab, var(--accent) 16%, var(--ink-600));
+  box-shadow: inset 0 0 60px rgba(0,0,0,0.45);
+  overflow: hidden;
+}
+.tcg-arena-divider { display: flex; align-items: center; gap: 0.6rem; margin: 0.1rem 0; }
+.tcg-arena-divider::before, .tcg-arena-divider::after {
+  content: ''; flex: 1; height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--accent) 40%, transparent), transparent);
+}
+.tcg-arena-vs {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.18em;
+  color: var(--fog-400); padding: 0.1rem 0.55rem; border: 1px solid var(--ink-600); border-radius: 999px;
+  background: color-mix(in oklab, var(--ink-900) 60%, transparent);
+}
+/* Always three across — a team is three slots, never wrap to a second row. */
+.tcg-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; align-items: start; }
+.tcg-side { display: flex; flex-direction: column; gap: 0.35rem; }
 .tcg-side-label {
   display: flex; align-items: center; gap: 0.45rem; font-family: 'JetBrains Mono', monospace;
   font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--fog-400);
@@ -1059,28 +1124,32 @@ code, pre, kbd, .font-mono {
 @media (prefers-reduced-motion: reduce) { .tcg-target-banner { animation: none; } }
 .tcg-mainaction-note { text-align: center; font-size: 0.7rem; color: var(--fog-400); font-style: italic; margin: -0.1rem 0 0.1rem; }
 .tcg-char {
-  position: relative; width: clamp(152px, 23vw, 200px); flex: 0 0 auto;
+  position: relative; width: 100%; min-width: 0;
   border-radius: 0.7rem; overflow: hidden; border: 2px solid var(--ink-600);
   background: color-mix(in oklab, var(--ink-800) 85%, transparent);
   transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
 }
 .tcg-char.inspect { cursor: zoom-in; }
 .tcg-char.inspect:hover { transform: translateY(-3px); border-color: color-mix(in oklab, var(--accent) 45%, var(--ink-600)); box-shadow: 0 10px 26px rgba(0,0,0,0.45); }
-.tcg-char.active { border-color: var(--accent); animation: tcg-active-pulse 2.2s ease-in-out infinite; }
+.tcg-char.active { border-color: var(--accent); animation: tcg-active-pulse 2.2s ease-in-out infinite; z-index: 2; }
 .tcg-char.targetable { cursor: crosshair; border-color: var(--danger); animation: tcg-target-pulse 1.2s ease-in-out infinite; }
 .tcg-char.targetable.ally { border-color: #4ade80; animation: tcg-target-pulse-a 1.2s ease-in-out infinite; }
 .tcg-char.ko { filter: grayscale(0.85) brightness(0.55); }
+/* Attack choreography: attacker lunges toward the enemy; victim shakes on impact. */
+.tcg-char.lunge-up { animation: tcg-lunge-up 0.5s cubic-bezier(0.3, 0.8, 0.3, 1); z-index: 6; }
+.tcg-char.lunge-down { animation: tcg-lunge-down 0.5s cubic-bezier(0.3, 0.8, 0.3, 1); z-index: 6; }
+.tcg-char.hit { animation: tcg-shake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97); }
 
 .tcg-char-art { position: relative; aspect-ratio: 4 / 5; background: var(--ink-900); overflow: hidden; }
 .tcg-char-art .art { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; }
 .tcg-active-tag {
-  position: absolute; top: 6px; left: 6px; display: none; z-index: 3;
-  font-family: 'JetBrains Mono', monospace; font-size: 0.54rem; font-weight: 800; letter-spacing: 0.1em;
-  color: #04121a; background: var(--accent); padding: 0.1rem 0.42rem; border-radius: 999px; box-shadow: 0 0 10px var(--glow-bright);
+  position: absolute; top: 6px; left: 6px; display: none; z-index: 4;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.52rem; font-weight: 800; letter-spacing: 0.1em;
+  color: #04121a; background: var(--accent); padding: 0.08rem 0.4rem; border-radius: 999px; box-shadow: 0 0 10px var(--glow-bright);
 }
 .tcg-char.active .tcg-active-tag { display: block; }
 .tcg-ko-badge {
-  position: absolute; inset: 0; display: none; align-items: center; justify-content: center; z-index: 3;
+  position: absolute; inset: 0; display: none; align-items: center; justify-content: center; z-index: 7;
   font-family: 'JetBrains Mono', monospace; font-weight: 800; color: #fff; font-size: 1.5rem; letter-spacing: 0.15em;
   background: rgba(10,4,8,0.45); text-shadow: 0 2px 8px #000;
 }
@@ -1088,80 +1157,180 @@ code, pre, kbd, .font-mono {
 .tcg-flash { position: absolute; inset: 0; z-index: 5; pointer-events: none; opacity: 0; }
 .tcg-flash.dmg { animation: tcg-flash-dmg 0.55s ease-out; }
 .tcg-flash.heal { animation: tcg-flash-heal 0.55s ease-out; }
+/* Impact slash streak (diagonal) drawn over a hit victim. */
+.tcg-slash { position: absolute; inset: 0; z-index: 6; pointer-events: none; opacity: 0; overflow: hidden; }
+.tcg-slash.go::before {
+  content: ''; position: absolute; top: -20%; left: -30%; width: 160%; height: 12%;
+  background: linear-gradient(90deg, transparent, #fff, transparent);
+  transform: rotate(28deg); transform-origin: center;
+  animation: tcg-slash 0.4s ease-out;
+}
+/* Floating combat numbers. */
+.tcg-fx-layer { position: absolute; inset: 0; z-index: 8; pointer-events: none; }
+.tcg-floatnum {
+  position: absolute; left: 50%; top: 42%; transform: translate(-50%, 0);
+  font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 1.5rem;
+  text-shadow: 0 2px 5px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.7);
+  animation: tcg-floatnum 1.15s ease-out forwards;
+}
+.tcg-floatnum.dmg { color: #ff5d72; }
+.tcg-floatnum.heal { color: #5ee887; }
 
-.tcg-char-info { display: flex; flex-direction: column; gap: 0.32rem; padding: 0.45rem 0.5rem 0.55rem; background: color-mix(in oklab, var(--ink-900) 55%, transparent); }
+/* Equipment slot pips (top-right over art) — dark backing keeps them legible on any art. */
+.tcg-equip-pips {
+  position: absolute; top: 5px; right: 5px; z-index: 4; display: flex; gap: 4px; align-items: center;
+  padding: 3px 4px; border-radius: 7px;
+  background: rgba(6,9,15,0.66); border: 1px solid rgba(0,0,0,0.5);
+  backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+}
+.tcg-equip-pips.empty { display: none; }
+.tcg-equip-pip {
+  width: 9px; height: 9px; transform: rotate(45deg); border-radius: 2px; cursor: help;
+  background: rgba(255,255,255,0.12); border: 1px solid color-mix(in oklab, var(--fog-200) 50%, var(--ink-500));
+  transition: transform 0.1s, box-shadow 0.15s;
+}
+.tcg-equip-pip:hover { transform: rotate(45deg) scale(1.25); }
+.tcg-equip-pip.on { background: linear-gradient(135deg, #e3ecff, #8ea7ff); border-color: #dbe4ff; box-shadow: 0 0 8px rgba(150,170,255,0.95); }
+
+/* Ultimate energy orb (bottom-right over art). */
+.tcg-ult-orb {
+  position: absolute; bottom: 6px; right: 6px; z-index: 5;
+  width: 38px; height: 38px; border-radius: 50%; padding: 0; cursor: default;
+  border: 1.5px solid color-mix(in oklab, #ffd86b 30%, var(--ink-500));
+  background: rgba(8,10,16,0.7); display: flex; align-items: center; justify-content: center;
+  overflow: hidden; transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s;
+}
+.tcg-ult-orb .orb-fill {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(from 180deg, #ffd86b calc(var(--pct, 0) * 1%), transparent 0);
+  -webkit-mask: radial-gradient(circle, transparent 11px, #000 12px);
+  mask: radial-gradient(circle, transparent 11px, #000 12px);
+  opacity: 0.85;
+}
+.tcg-ult-orb .orb-glyph { position: relative; z-index: 1; font-size: 0.9rem; line-height: 1; filter: grayscale(0.6) brightness(0.85); }
+.tcg-ult-orb .orb-val {
+  position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%); z-index: 2;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.42rem; font-weight: 800; color: var(--fog-200);
+  background: rgba(0,0,0,0.6); padding: 0 2px; border-radius: 3px; white-space: nowrap;
+}
+.tcg-ult-orb.full { border-color: #ffd34d; box-shadow: 0 0 12px rgba(255,216,107,0.85); }
+.tcg-ult-orb.full .orb-fill { opacity: 1; }
+.tcg-ult-orb.full .orb-glyph { filter: none; text-shadow: 0 0 8px rgba(255,216,107,0.95); }
+.tcg-ult-orb.ready { cursor: pointer; animation: tcg-ult-glow 1.6s ease-in-out infinite; }
+.tcg-ult-orb.ready:hover { transform: scale(1.12); }
+.tcg-ult-orb.ready:active { transform: scale(0.96); }
+.tcg-ult-orb.armed { box-shadow: 0 0 0 2px #fff, 0 0 14px rgba(255,216,107,0.95); }
+.tcg-ult-orb.foe { width: 30px; height: 30px; border-width: 1px; }
+.tcg-ult-orb.foe .orb-fill { -webkit-mask: radial-gradient(circle, transparent 8px, #000 9px); mask: radial-gradient(circle, transparent 8px, #000 9px); }
+.tcg-ult-orb.foe .orb-glyph { font-size: 0.72rem; }
+
+.tcg-char-info { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.4rem 0.5rem 0.5rem; background: color-mix(in oklab, var(--ink-900) 55%, transparent); }
 .tcg-char-namerow { display: flex; align-items: center; justify-content: space-between; gap: 0.35rem; }
 .tcg-char-name { font-family: 'JetBrains Mono', monospace; font-size: 0.74rem; font-weight: 700; color: var(--fog-100); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tcg-equip-chip { font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; color: var(--fog-300); border: 1px solid var(--ink-600); border-radius: 999px; padding: 0.04rem 0.42rem; white-space: nowrap; flex: 0 0 auto; cursor: help; }
-.tcg-stat-row { display: flex; align-items: center; gap: 0.35rem; }
-.tcg-stat-label { font-family: 'JetBrains Mono', monospace; font-size: 0.52rem; font-weight: 700; letter-spacing: 0.06em; color: var(--fog-400); width: 1.4rem; flex: 0 0 auto; }
-.tcg-stat-bar { flex: 1 1 auto; min-width: 0; height: 8px; border-radius: 999px; background: rgba(255,255,255,0.1); overflow: hidden; border: 1px solid rgba(0,0,0,0.45); }
-.tcg-stat-val { font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; color: var(--fog-200); flex: 0 0 auto; min-width: 3.4rem; text-align: right; }
-.tcg-hp-fill { height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #4ade80, #22d3ee); transition: width 0.45s cubic-bezier(0.4, 1.2, 0.5, 1); }
+.tcg-hp-bar { position: relative; height: 14px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; border: 1px solid rgba(0,0,0,0.5); }
+.tcg-hp-fill { height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #4ade80, #22d3ee); transition: width 0.5s cubic-bezier(0.4, 1.1, 0.5, 1); }
 .tcg-hp-fill.low { background: linear-gradient(90deg, #f87171, #fb923c); }
-.tcg-energy-fill { height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #ffd86b, #ffb347); transition: width 0.45s cubic-bezier(0.4, 1.2, 0.5, 1); }
-.tcg-energy-bar.full .tcg-energy-fill { background: linear-gradient(90deg, #ffe08a, #ffd34d); box-shadow: 0 0 8px rgba(255,216,107,0.85); }
+.tcg-hp-val {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.56rem; font-weight: 700; color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.95); letter-spacing: 0.02em;
+}
 
-.tcg-effects { display: flex; flex-wrap: wrap; gap: 3px; }
-.tcg-eff { font-family: 'JetBrains Mono', monospace; font-size: 0.56rem; line-height: 1.5; padding: 0.04rem 0.32rem; border-radius: 4px; cursor: help; }
+.tcg-effects { display: flex; flex-wrap: wrap; gap: 3px; min-height: 0.9rem; }
+.tcg-eff { font-family: 'JetBrains Mono', monospace; font-size: 0.55rem; line-height: 1.5; padding: 0.02rem 0.3rem; border-radius: 4px; cursor: help; }
 .tcg-eff.buff { background: color-mix(in oklab, #4ade80 26%, transparent); color: #d6ffe6; border: 1px solid color-mix(in oklab, #4ade80 48%, transparent); }
 .tcg-eff.debuff { background: color-mix(in oklab, var(--danger) 26%, transparent); color: #ffe2e8; border: 1px solid color-mix(in oklab, var(--danger) 48%, transparent); }
 .tcg-eff.more { background: transparent; color: var(--fog-400); border: 1px dashed var(--ink-500); }
 
-.tcg-ult-btn {
-  margin-top: 0.05rem; width: 100%; font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; font-weight: 800;
-  letter-spacing: 0.08em; padding: 0.34rem 0.3rem; border-radius: 0.4rem; cursor: pointer;
-  background: color-mix(in oklab, var(--ink-700) 55%, transparent); border: 1px solid var(--ink-500); color: var(--fog-400);
-  transition: color 0.15s, border-color 0.15s, box-shadow 0.15s, background 0.15s, transform 0.1s;
-}
-.tcg-ult-btn.ready { color: #1a1206; background: linear-gradient(135deg, #ffe08a, #ffb347); border-color: #ffd34d; animation: tcg-ult-glow 1.8s ease-in-out infinite; }
-.tcg-ult-btn.ready:hover { transform: translateY(-1px); box-shadow: 0 0 18px rgba(255,216,107,0.95); }
-.tcg-ult-btn.ready:active { transform: translateY(1px); }
-.tcg-ult-btn.armed { box-shadow: 0 0 0 2px #fff, 0 0 14px rgba(255,216,107,0.95); }
-.tcg-ult-btn:disabled { cursor: default; opacity: 0.8; }
-
 @keyframes tcg-active-pulse { 0%, 100% { box-shadow: 0 0 0 1px var(--accent), 0 0 12px var(--glow-faint); } 50% { box-shadow: 0 0 0 1px var(--accent), 0 0 22px var(--glow-bright); } }
 @keyframes tcg-target-pulse { 0%, 100% { box-shadow: 0 0 8px var(--danger-glow); } 50% { box-shadow: 0 0 20px var(--danger-glow); } }
 @keyframes tcg-target-pulse-a { 0%, 100% { box-shadow: 0 0 8px rgba(74,222,128,0.4); } 50% { box-shadow: 0 0 20px rgba(74,222,128,0.7); } }
-@keyframes tcg-ult-glow { 0%, 100% { box-shadow: 0 0 9px rgba(255,216,107,0.5); } 50% { box-shadow: 0 0 16px rgba(255,216,107,0.95); } }
+@keyframes tcg-ult-glow { 0%, 100% { box-shadow: 0 0 9px rgba(255,216,107,0.5); } 50% { box-shadow: 0 0 18px rgba(255,216,107,0.95); } }
 @keyframes tcg-flash-dmg { 0% { opacity: 0.6; background: radial-gradient(circle at center, rgba(255,80,110,0.75), transparent 72%); } 100% { opacity: 0; } }
 @keyframes tcg-flash-heal { 0% { opacity: 0.55; background: radial-gradient(circle at center, rgba(74,222,128,0.7), transparent 72%); } 100% { opacity: 0; } }
+@keyframes tcg-lunge-up { 0% { transform: translateY(0); } 45% { transform: translateY(-26px) scale(1.05); } 100% { transform: translateY(0); } }
+@keyframes tcg-lunge-down { 0% { transform: translateY(0); } 45% { transform: translateY(26px) scale(1.05); } 100% { transform: translateY(0); } }
+@keyframes tcg-shake { 10%, 90% { transform: translateX(-2px); } 20%, 80% { transform: translateX(4px); } 30%, 50%, 70% { transform: translateX(-7px); } 40%, 60% { transform: translateX(7px); } }
+@keyframes tcg-slash { 0% { opacity: 0; transform: translateX(-40%) rotate(28deg); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateX(40%) rotate(28deg); } }
+@keyframes tcg-floatnum { 0% { opacity: 0; transform: translate(calc(-50% + var(--dx, 0px)), 10px) scale(0.7); } 18% { opacity: 1; transform: translate(calc(-50% + var(--dx, 0px)), -2px) scale(1.15); } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx, 0px)), -42px) scale(1); } }
+.tcg-slash.go { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
-  .tcg-char.active, .tcg-char.targetable, .tcg-char.targetable.ally, .tcg-ult-btn.ready { animation: none; }
-  .tcg-hp-fill, .tcg-energy-fill { transition: none; }
-  .tcg-flash.dmg, .tcg-flash.heal { animation: none; }
+  .tcg-char.active, .tcg-char.targetable, .tcg-char.targetable.ally, .tcg-ult-orb.ready { animation: none; }
+  .tcg-char.lunge-up, .tcg-char.lunge-down, .tcg-char.hit { animation: none; }
+  .tcg-hp-fill { transition: none; }
+  .tcg-flash.dmg, .tcg-flash.heal, .tcg-slash.go::before { animation: none; }
+  .tcg-floatnum { animation: tcg-floatnum-static 1.15s ease-out forwards; }
 }
-.tcg-controls { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.4rem; }
+@keyframes tcg-floatnum-static { 0% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+/* ── Controls dock (skills · hand · actions) below the arena ─────────────── */
+.tcg-dock {
+  display: flex; flex-direction: column; gap: 0.7rem; margin-top: 0.5rem;
+  padding: 0.7rem 0.8rem; border-radius: 0.75rem;
+  background: color-mix(in oklab, var(--ink-900) 40%, transparent);
+  border: 1px solid color-mix(in oklab, var(--accent) 12%, var(--ink-600));
+}
+.tcg-controls { display: flex; flex-direction: column; gap: 0.5rem; }
+.tcg-active-chip {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.52rem; font-weight: 800; letter-spacing: 0.1em;
+  color: #04121a; background: var(--accent); padding: 0.08rem 0.42rem; border-radius: 999px; margin-right: 0.2rem;
+}
+.tcg-count-badge {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; font-weight: 800; color: var(--accent-light);
+  border: 1px solid color-mix(in oklab, var(--accent) 45%, var(--ink-600)); border-radius: 999px;
+  padding: 0.02rem 0.42rem; margin-left: 0.4rem;
+}
 .tcg-skill-list { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
 .tcg-skill {
-  text-align: left; min-width: 180px; max-width: 240px; flex: 1 1 180px;
-  background: color-mix(in oklab, var(--ink-900) 50%, transparent); border: 1px solid var(--ink-600);
-  border-radius: 0.5rem; padding: 0.4rem 0.55rem; color: var(--fog-200); font: inherit; cursor: pointer;
-  display: flex; flex-direction: column; gap: 0.12rem; transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+  text-align: left; min-width: 200px; max-width: 260px; flex: 1 1 200px;
+  background: color-mix(in oklab, var(--ink-900) 55%, transparent); border: 1px solid var(--ink-600);
+  border-left: 3px solid var(--ink-500);
+  border-radius: 0.5rem; padding: 0.45rem 0.55rem; color: var(--fog-200); font: inherit; cursor: pointer;
+  display: flex; align-items: flex-start; gap: 0.5rem; transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
 }
+.tcg-skill.normal { border-left-color: color-mix(in oklab, var(--fog-300) 60%, var(--ink-500)); }
+.tcg-skill.charged { border-left-color: #67c7ff; }
 .tcg-skill:not(:disabled):hover { border-color: var(--accent); box-shadow: 0 0 10px var(--glow-faint); }
 .tcg-skill:not(:disabled):active { transform: translateY(1px); }
 .tcg-skill:disabled { opacity: 0.5; cursor: not-allowed; }
 .tcg-skill.armed { border-color: var(--accent); box-shadow: 0 0 14px var(--glow-bright); }
-.tcg-skill .sk-name { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; font-size: 0.78rem; color: var(--fog-100); }
-.tcg-skill .sk-cat { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.tcg-skill .sk-ico {
+  flex: 0 0 auto; width: 1.7rem; height: 1.7rem; border-radius: 0.4rem; display: flex; align-items: center; justify-content: center;
+  font-size: 0.95rem; background: color-mix(in oklab, var(--ink-800) 70%, transparent); border: 1px solid var(--ink-600);
+}
+.tcg-skill.charged .sk-ico { color: #67c7ff; border-color: color-mix(in oklab, #67c7ff 40%, var(--ink-600)); }
+.tcg-skill .sk-body { display: flex; flex-direction: column; gap: 0.12rem; min-width: 0; flex: 1 1 auto; }
+.tcg-skill .sk-name { display: flex; justify-content: space-between; align-items: baseline; gap: 0.4rem; font-weight: 700; font-size: 0.78rem; color: var(--fog-100); }
+.tcg-skill .sk-meta { display: flex; align-items: center; gap: 0.4rem; }
+.tcg-skill .sk-cat { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.06em; }
 .tcg-skill .sk-cat.normal { color: var(--fog-400); }
 .tcg-skill .sk-cat.charged { color: #67c7ff; }
-.tcg-skill .sk-cat.ultimate { color: #ff8a80; }
+.tcg-skill .sk-cost { font-family: 'JetBrains Mono', monospace; font-size: 0.56rem; font-weight: 700; padding: 0.02rem 0.36rem; border-radius: 4px; border: 1px solid var(--ink-600); }
+.tcg-skill .sk-cost.cost-sp { color: #ff9aa8; border-color: color-mix(in oklab, var(--danger) 40%, var(--ink-600)); }
+.tcg-skill .sk-cost.cost-spplus { color: #6ee7a0; border-color: color-mix(in oklab, #4ade80 40%, var(--ink-600)); }
 .tcg-skill .sk-dmg { color: var(--accent-light); font-weight: 800; }
 .tcg-skill .sk-desc { font-size: 0.64rem; color: var(--fog-400); line-height: 1.3; }
 .tcg-skill .sk-reason { font-size: 0.6rem; color: var(--danger); font-style: italic; }
-.tcg-hand { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: center; }
+.tcg-hand { display: flex; gap: 0.45rem; flex-wrap: wrap; justify-content: center; }
 .tcg-hand-card {
-  width: 88px; border-radius: 0.4rem; overflow: hidden; border: 1px solid var(--ink-600);
+  width: 84px; border-radius: 0.4rem; overflow: hidden; border: 1px solid var(--ink-600);
   background: var(--ink-900); cursor: pointer; position: relative; flex: 0 0 auto;
   transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
 }
-.tcg-hand-card:hover { border-color: var(--accent); transform: translateY(-3px); }
+.tcg-hand-card:hover { border-color: var(--accent); transform: translateY(-4px); box-shadow: 0 8px 18px rgba(0,0,0,0.5); }
 .tcg-hand-card.armed { border-color: var(--accent); box-shadow: 0 0 14px var(--glow-bright); }
 .tcg-hand-card img { width: 100%; aspect-ratio: 1080 / 1920; object-fit: cover; display: block; }
-.tcg-hand-empty { color: var(--fog-400); font-style: italic; font-size: 0.82rem; }
+.tcg-hand-kind {
+  position: absolute; top: 3px; left: 3px; font-family: 'JetBrains Mono', monospace; font-size: 0.46rem; font-weight: 800;
+  letter-spacing: 0.06em; padding: 0.05rem 0.26rem; border-radius: 3px; color: var(--fog-100);
+  background: rgba(0,0,0,0.66); border: 1px solid var(--ink-500);
+}
+.tcg-hand-kind.eq { color: #c7d2ff; }
+.tcg-hand-kind.con { color: #ffd9b3; }
+.tcg-hand-empty { color: var(--fog-400); font-style: italic; font-size: 0.82rem; text-align: center; }
 .tcg-actionbar { display: flex; justify-content: center; gap: 0.6rem; flex-wrap: wrap; }
+.tcg-actionbar .ab-ico { font-size: 0.95rem; line-height: 1; }
+.tcg-btn-end { box-shadow: 0 0 10px var(--glow-faint); }
+.tcg-btn-end:not([disabled]) { animation: tcg-ult-glow 2.4s ease-in-out infinite; }
 .tcg-log { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column-reverse; gap: 0.08rem; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--fog-300); }
 .tcg-log-line { line-height: 1.4; }
 .tcg-log-turn {
@@ -1187,13 +1356,10 @@ code, pre, kbd, .font-mono {
   #tcg-root > .tcg-log-panel { flex: 0 0 clamp(280px, 27%, 360px); position: sticky; top: 0.5rem; }
   #tcg-root > .tcg-log-panel .tcg-log { max-height: 72vh; }
 }
-.tcg-section-title { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--fog-400); margin: 0 0 0.3rem; font-family: 'JetBrains Mono', monospace; }
+.tcg-section-title { display: flex; align-items: center; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--fog-400); margin: 0 0 0.3rem; font-family: 'JetBrains Mono', monospace; }
 .tcg-invite { display: flex; flex-direction: column; gap: 0.5rem; align-items: center; }
 .tcg-invite-url { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--fog-200); background: var(--ink-900); border: 1px solid var(--ink-600); border-radius: 0.4rem; padding: 0.4rem 0.6rem; max-width: 100%; overflow-x: auto; white-space: nowrap; }
 .tcg-end-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.6rem; margin-top: 0.6rem; }
-.tcg-sp { display: flex; justify-content: center; gap: 1.5rem; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--fog-300); margin-top: 0.2rem; }
-.tcg-sp b { color: var(--accent-light); }
-@media (prefers-reduced-motion: reduce) { .tcg-hp-fill { transition: none; } }
 
 /* ── TCG detail modal + roster browser (html/tcg-detail-modal.html) ──────── */
 .tcg-detail-backdrop {
@@ -1271,6 +1437,10 @@ code, pre, kbd, .font-mono {
   border: 1px solid var(--ink-600);
 }
 .tcg-detail-list .li-name { font-weight: 700; font-size: 0.82rem; color: var(--fog-100); }
+.tcg-detail-list li.tcg-detail-clickable { cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s; }
+.tcg-detail-list li.tcg-detail-clickable:hover { border-color: var(--accent); box-shadow: 0 0 10px var(--glow-faint); transform: translateY(-1px); }
+.tcg-detail-list li.tcg-detail-clickable:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--glow-faint); }
+.tcg-detail-list li.tcg-detail-clickable .li-name::after { content: ' ↗'; color: var(--accent-light); font-size: 0.72rem; }
 .tcg-detail-list .li-meta { font-size: 0.68rem; color: var(--accent-light); font-family: 'JetBrains Mono', monospace; margin-top: 0.1rem; }
 .tcg-detail-list .li-meta[hidden] { display: none; }
 .tcg-detail-list .li-desc { font-size: 0.76rem; color: var(--fog-300); margin-top: 0.2rem; line-height: 1.35; }
