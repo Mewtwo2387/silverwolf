@@ -60,8 +60,6 @@ export function TcgBattleJoinPage(opts: TcgJoinPageOpts) {
   const firstThree = roster.slice(0, 3).map((r) => r.value);
 
   const teamPicker = renderTeamPicker({
-    prefix: 'tcg-join',
-    roster,
     deckLegal,
     submitId: 'tcg-join',
     submitLabel: '[ Join Battle ]',
@@ -74,7 +72,9 @@ export function TcgBattleJoinPage(opts: TcgJoinPageOpts) {
     ${tcgDetailAssets(nonce, characterCatalog)}
     ${tcgScriptAssets('tcg-join', nonce, {
     id: 'tcg-join-data',
-    payload: { csrf: csrf ?? '', matchId, defaults: firstThree },
+    payload: {
+      csrf: csrf ?? '', matchId, defaults: firstThree, deckLegal,
+    },
   })}
   `;
 

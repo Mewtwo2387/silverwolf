@@ -55,6 +55,7 @@ function renderActiveRoomsList(rooms: TcgActiveRoomBrief[]): string {
     return renderActiveRoomRow({
       id: r.id,
       status: formatRoomStatus(r.status),
+      statusClass: r.status,
       mode: formatRoomMode(r.mode),
       opponentHtml,
       copyButton,
@@ -86,8 +87,6 @@ export function TcgBattleLandingPage(opts: TcgLandingOpts) {
 
   const firstThree = roster.slice(0, 3).map((r) => r.value);
   const teamPicker = renderTeamPicker({
-    prefix: 'tcg-char',
-    roster,
     deckLegal,
     submitId: 'tcg-create',
     submitLabel: '[ Create Battle ]',
@@ -101,7 +100,7 @@ export function TcgBattleLandingPage(opts: TcgLandingOpts) {
   })}
     ${tcgDetailModalShell()}
     ${tcgDetailAssets(nonce, characterCatalog)}
-    ${tcgScriptAssets('tcg-landing', nonce, { id: 'tcg-landing-data', payload: { csrf: csrf ?? '', defaults: firstThree } })}
+    ${tcgScriptAssets('tcg-landing', nonce, { id: 'tcg-landing-data', payload: { csrf: csrf ?? '', defaults: firstThree, deckLegal } })}
   `;
 
   return Layout({

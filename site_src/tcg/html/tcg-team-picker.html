@@ -1,21 +1,29 @@
 <div class="tcg-field">
-  <label>Your Team</label>
-  <div class="tcg-team">{{TEAM_SELECTS}}</div>
+  <div class="tcg-team-head">
+    <label>Your Team</label>
+    <span class="tcg-team-count" id="tcg-team-count">0 / 3</span>
+  </div>
+  <div class="tcg-team-slots" id="tcg-team-slots"></div>
 </div>
 <div class="tcg-field">
-  <label>Browse Characters</label>
-  <p class="tcg-roster-hint">Click a card to view skills, abilities, and stats.</p>
-  <div class="tcg-roster-grid" id="tcg-roster-grid"></div>
+  <div class="tcg-roster-head">
+    <label>Roster</label>
+    <input type="search" class="tcg-roster-search" id="tcg-roster-search"
+      placeholder="Search characters…" aria-label="Search characters" autocomplete="off" spellcheck="false">
+  </div>
+  <p class="tcg-roster-hint">Tap a character to add them to your team. Tap <span class="tcg-info-glyph">ⓘ</span> to view skills &amp; stats.</p>
+  <div class="tcg-roster-grid" id="tcg-roster-grid" data-selectable="1"></div>
+  <p class="tcg-roster-empty" id="tcg-roster-empty">No characters match your search.</p>
 </div>
 <div class="tcg-field">
   <label>Deck</label>
   <div class="tcg-deck-row">
     <span class="tcg-badge {{DECK_BADGE_CLASS}}">{{DECK_BADGE_TEXT}}</span>
-    <a href="/games/tcg/deck" class="tcg-btn">[ edit deck ]</a>
+    <a href="/games/tcg/deck" class="tcg-btn tcg-btn-ghost">[ edit deck ]</a>
   </div>
   {{DECK_WARN}}
 </div>
 <div class="tcg-create-row">
-  <button id="{{SUBMIT_ID}}" type="button" class="tcg-btn" {{SUBMIT_DISABLED}}>{{SUBMIT_LABEL}}</button>
+  <button id="{{SUBMIT_ID}}" type="button" class="tcg-btn tcg-btn-primary" {{SUBMIT_DISABLED}}>{{SUBMIT_LABEL}}</button>
 </div>
 <div id="{{ERROR_ID}}" class="tcg-err" aria-live="polite"></div>

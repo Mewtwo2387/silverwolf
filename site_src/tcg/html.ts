@@ -54,25 +54,13 @@ export function tcgScriptAssets(
   return html`${dataIsland}${scriptTag}`;
 }
 
-export function buildTeamSelects(prefix: string, roster: { value: string; name: string }[]) {
-  const options = roster.map((r) => `<option value="${escapeAttr(r.value)}">${escapeText(r.name)}</option>`).join('');
-  return [0, 1, 2].map((i) => fillTcgHtml('tcg-team-select.html', {
-    ID: `${prefix}-${i}`,
-    LABEL: `Team slot ${i + 1}`,
-    OPTIONS: options,
-  })).join('\n');
-}
-
 export function renderTeamPicker(vars: {
-  prefix: string;
-  roster: { value: string; name: string }[];
   deckLegal: boolean;
   submitId: string;
   submitLabel: string;
   errorId: string;
 }) {
   return fillTcgHtml('tcg-team-picker.html', {
-    TEAM_SELECTS: buildTeamSelects(vars.prefix, vars.roster),
     DECK_BADGE_CLASS: vars.deckLegal ? 'legal' : 'illegal',
     DECK_BADGE_TEXT: vars.deckLegal ? 'legal deck' : 'illegal deck',
     DECK_WARN: vars.deckLegal ? '' : loadTcgHtml('tcg-deck-warn.html'),
@@ -86,6 +74,7 @@ export function renderTeamPicker(vars: {
 export interface ActiveRoomVars {
   id: string;
   status: string;
+  statusClass: string;
   mode: string;
   opponentHtml: string;
   copyButton: string;
@@ -95,6 +84,7 @@ export function renderActiveRoomRow(vars: ActiveRoomVars): string {
   return fillTcgHtml('tcg-active-room.html', {
     ID: escapeAttr(vars.id),
     STATUS: escapeText(vars.status),
+    STATUS_CLASS: escapeAttr(vars.statusClass),
     MODE: escapeText(vars.mode),
     OPPONENT: vars.opponentHtml,
     COPY_BUTTON: vars.copyButton,

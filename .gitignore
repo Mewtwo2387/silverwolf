@@ -26,3 +26,8 @@ site_src/Assets/styles.css
 site_src/Assets/app.js
 site_src/Assets/tcg-*.js
 site_src/tcg/assets/*.js
+# …but keep the *.src.js / *.lib.js client sources tracked (only the built *.js
+# outputs above are generated). Without these negations `*.js` swallows the
+# sources too, so a CI checkout would build with no TCG client JS.
+!site_src/tcg/assets/*.src.js
+!site_src/tcg/assets/*.lib.js

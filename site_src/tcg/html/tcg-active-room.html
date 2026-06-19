@@ -1,9 +1,11 @@
 <li class="tcg-room">
+  <span class="tcg-room-status {{STATUS_CLASS}}"><span class="tcg-room-led"></span>{{STATUS}}</span>
   <div class="tcg-room-meta">
-    <span class="room-status">{{STATUS}}</span>
-    <span class="room-mode">{{MODE}}</span> ·
-    {{OPPONENT}}
+    <span class="tcg-room-mode">{{MODE}}</span>
+    <span class="tcg-room-opp">{{OPPONENT}}</span>
   </div>
-  <a class="tcg-btn" href="/games/tcg/{{ID}}">[ open ]</a>
-  {{COPY_BUTTON}}
+  <div class="tcg-room-actions">
+    <a class="tcg-btn tcg-btn-ghost" href="/games/tcg/{{ID}}">[ open ]</a>
+    {{COPY_BUTTON}}
+  </div>
 </li>
