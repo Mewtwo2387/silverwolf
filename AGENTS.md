@@ -6,7 +6,7 @@ Bun process**. It serves fun/games both as slash commands and as web pages, plus
 **The website is public, so security and performance are first-class concerns — code defensively:
 validate every input, never trust client data, keep the CSP tight.**
 
-**Last updated: 2026-06-03**
+**Last updated: 2026-06-20**
 
 > **Maintenance rule.** Edit this file only on *substantive architectural* change — new
 > architecture, new auth, new data flows/services, schema or security-model changes, or when
@@ -22,6 +22,8 @@ validate every input, never trust client data, keep the CSP tight.**
   moduleResolution `bundler`, typeRoots `./types`. `any` is allowed by lint config.
 - **Bot:** `discord.js` ^14.26.
 - **Web:** `hono` ^4.12 + Tailwind v3. Server-rendered HTML via Hono's `html` tag (no React).
+- **3D:** `three` — powers the Plane Sim game + its model inspector; **self-hosted/bundled, never a
+  CDN** (the CSP is `script-src 'self'`) — see §5/§8.
 - **DB:** `bun:sqlite` (synchronous), file `persistence/database.db`.
 - **AI:** `@google/generative-ai` (Gemini), `openai`, OpenRouter; bot is also an **MCP client**
   (`@modelcontextprotocol/sdk`).
@@ -48,12 +50,16 @@ validate every input, never trust client data, keep the CSP tight.**
 Boot locally: `bun install` → create `.env` (keys below; values in `.env.example`) → `bun run dev`.
 
 `package.json` scripts (verbatim):
-- `start` = `bun index.ts` — production.
-- `dev` = `bun --watch index.ts` — hot-reload dev.
+- `start` = `bun run build:css && bun run build:js && bun index.ts` — production.
+- `dev` = builds CSS + JS, then `bun --watch index.ts` — hot-reload dev.
 - `test` / `test:watch` = `bun test [--watch] --preload ./tests/setup.ts`.
 - `lint` / `lint:fix` = `eslint . [--fix]`.
 - `typecheck` = `tsc --noEmit`.
 - `build:css` / `build:css:watch` = compile `site_src/Assets/input.css` → `styles.css` (`--minify`).
+- `build:js` = bundle+minify the self-hosted client-JS entrypoints: `app.src.js`→`app.js`, plus the
+  Three.js Plane Sim bundles `plane-sim.src.js`→`plane-sim.js` and
+  `plane-viewer.src.js`→`plane-viewer.js`. Outputs are **gitignored** (rebuilt in the Dockerfile);
+  a new entrypoint must be added here **and** in the `Dockerfile` build+overlay steps.
 - `build:images` = `bun scripts/build-images.ts` (WebP/AVIF variants).
 
 **Env keys** (names only — Bun reads `.env` automatically; see `.env.example`):
@@ -131,8 +137,13 @@ nonce**, HSTS, `X-Frame-Options: DENY`, `nosniff`, Referrer-Policy, Permissions-
 `html` tag, which **auto-escapes interpolated values**. Inline `<script>` needs the request nonce
 via `c.get('nonce')`. CSS: edit `Assets/input.css`, run `build:css` → minified `styles.css`, served
 `immutable, max-age=31536000` and cache-busted by content hash (`asset-version.ts`, `?v=<hash>`).
-Fonts are self-hosted woff2 (`font-src 'self'`, `font-display: swap`). Client JS is a single cached,
-hash-busted, `defer`-loaded `app.js`. Search index ships as a JSON `<script>` data-island; renders
+Fonts are self-hosted woff2 (`font-src 'self'`, `font-display: swap`). Client JS is the cached,
+hash-busted, `defer`-loaded `app.js`; a client-only game that needs a library (Plane Sim's `three`)
+is **self-hosted, bundled** by `build:js` into its own hash-busted `<script type=module>`
+(`plane-sim.js` / `plane-viewer.js`) — never a CDN (CSP `script-src 'self'`). `Layout({ fullscreen:
+true })` drops the navbar/footer/centred `<main>` for full-viewport pages (Plane Sim
+`/games/plane-sim` and its model inspector `/games/plane-sim/inspect`). Search index ships as a JSON
+`<script>` data-island; renders
 coalesce per animation frame; below-fold images lazy-load. HTML responses are
 `Cache-Control: private, no-store` (prevents per-request nonce leaking through a CDN).
 `PUBLIC_ORIGIN` pins absolute embed URLs so untrusted `x-forwarded-*` headers can't redirect link
@@ -170,9 +181,11 @@ website-facing data access and the leaderboard/birthday cache.
   are in `deploy.yml` — not duplicated here.)
 - `.github/workflows/claude_code*.yml`: `@claude` PR assistant, restricted to authorized actors.
 - **Docker** (`Dockerfile`): multi-stage — `oven/bun:1` builder with cairo/pango/jpeg/gif/rsvg dev
-  libs to compile `canvas`, then `oven/bun:1-slim` runtime as non-root user `bun`,
-  `CMD ["bun","index.ts"]`. `docker-compose.yaml` mounts `./persistence` (SQLite persistence),
-  publishes `127.0.0.1:8080:6769`, `mem_limit: 1g`.
+  libs to compile `canvas`; the builder also runs `build:css` + `build:js` (Tailwind + the bundled
+  client JS — `app.js` and the Three.js `plane-sim.js`/`plane-viewer.js`) and overlays those
+  artifacts into the runtime (they're `.dockerignore`d from the source copy). Then `oven/bun:1-slim`
+  runtime as non-root user `bun`, `CMD ["bun","index.ts"]`. `docker-compose.yaml` mounts
+  `./persistence` (SQLite persistence), publishes `127.0.0.1:8080:6769`, `mem_limit: 1g`.
 
 ## 9. Conventions, tooling & gotchas
 - **Lint:** `.eslintrc.json` = airbnb-base + node + promise. TS overrides: `no-explicit-any` off,
@@ -183,6 +196,10 @@ website-facing data access and the leaderboard/birthday cache.
 - **Adding things:** a new command = new file in `commands/` extending `Command`/`DevCommand`
   (auto-discovered on restart). A new page = `pages/` component wrapped in `Layout()` + a route in
   `routes/pages.ts`. A new game API = handler in `routes/games-api.ts` guarded by
-  `authedGameRequest`. CSS change = edit `input.css` + `build:css`.
+  `authedGameRequest`. CSS change = edit `input.css` + `build:css`. A client-bundled game (needs a
+  JS lib) = a `*.src.js` in `Assets/` (imports the lib) wired into `build:js` + the `Dockerfile` +
+  `routes/static.ts`, loaded as a hash-busted `<script type=module>`; put shared geometry/logic in a
+  plain module imported by both the game and any tooling (e.g. `plane-sim-models.js`, used by the
+  game and the model inspector). Immersive pages pass `Layout({ fullscreen: true })`.
 - **Gotchas:** the repo uses **CRLF** line endings; there are **no DB migrations** (see §4); a
   website crash is caught and logged while the bot continues; `persistence/` holds all runtime data.
