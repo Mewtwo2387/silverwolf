@@ -1,0 +1,34 @@
+<h1 class="text-center tcg-page-title">TCG Deck Builder</h1>
+<p class="text-center text-fog-300 tcg-page-lead">
+  Build a legal {{DECK_SIZE}}-card deck. It's shared with <code class="tcg-code">/tcgbattle</code> on Discord.
+</p>
+<div class="tcg-deck-wrap">
+  <div class="tcg-panel tcg-deck-summary" id="tcg-deck-summary">
+    <div class="tcg-deck-counts">
+      <span>Total <b id="dk-total">0</b>/{{DECK_SIZE}}</span>
+      <span>5★+ <b id="dk-five">0</b>/{{FIVE_MAX}}</span>
+      <span>4★+ <b id="dk-four">0</b>/{{FOUR_MAX}}</span>
+    </div>
+    <div class="tcg-deck-actions">
+      <span id="dk-legal" class="tcg-badge">—</span>
+      <a href="/games/tcg" class="tcg-btn">[ back ]</a>
+      <button id="dk-save" type="button" class="tcg-btn">[ save deck ]</button>
+    </div>
+    <div id="dk-msg" class="tcg-deck-msg" aria-live="polite"></div>
+  </div>
+  <div class="tcg-deck-grid" id="tcg-deck-grid"></div>
+</div>
+
+<template id="tcg-tpl-deck-card">
+  <div class="tcg-card">
+    <div class="tcg-card-img" title="View card details">
+      <img loading="lazy" decoding="async" alt="">
+      <span class="tcg-card-rarity"></span>
+    </div>
+    <div class="tcg-card-foot">
+      <button type="button" class="tcg-step tcg-step-minus">−</button>
+      <span class="tcg-count"></span>
+      <button type="button" class="tcg-step tcg-step-plus">+</button>
+    </div>
+  </div>
+</template>

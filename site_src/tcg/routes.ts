@@ -9,19 +9,21 @@ import {
   TcgBattleLandingPage,
   type TcgActiveRoomBrief,
   type TcgRoster,
-} from '../pages/games/tcg_battle_landing';
-import { TcgBattleRoomPage, TcgBattleJoinPage } from '../pages/games/tcg_battle_room';
+} from './pages/landing';
+import { TcgBattleRoomPage, TcgBattleJoinPage } from './pages/room';
 import {
   TcgDeckBuilderPage,
   type DeckBuilderItem,
-} from '../pages/games/tcg_deck_builder';
+} from './pages/deck-builder';
 import {
   tcgRoomManager,
   TCG_ROOMS_PER_USER_CAP,
   type TcgMode,
-} from '../multiplayer/tcgRooms';
-import { createTcgWsEvents } from '../multiplayer/tcgWs';
+} from './rooms';
+import { createTcgWsEvents } from './ws';
 import { buildTeamOfThree, CHARACTER_ROSTER_DISCORD_CHOICES } from '../../tcg/characterRoster';
+import { CHARACTERS } from '../../tcg/characters';
+import { buildCharacterCatalog } from './pages/detail';
 import {
   ALL_ITEMS,
   ITEMS_BY_ID,
@@ -39,6 +41,7 @@ import { loadDeckCompositionForUser, saveDeckCompositionForUser } from '../../tc
 const LANDING_PATH = '/games/tcg';
 
 const ROSTER: TcgRoster[] = CHARACTER_ROSTER_DISCORD_CHOICES.map((c) => ({ value: c.value, name: c.name }));
+const CHARACTER_CATALOG = buildCharacterCatalog(CHARACTERS);
 
 const DECK_BUILDER_ITEMS: DeckBuilderItem[] = [...ALL_ITEMS]
   .map((it) => ({
@@ -86,6 +89,7 @@ export function registerTcgBattleRoutes(
           user: nav,
           csrf: null,
           roster: ROSTER,
+          characterCatalog: CHARACTER_CATALOG,
           deckLegal: false,
           activeRooms: [],
           loginReturnPath: LANDING_PATH,
@@ -116,6 +120,7 @@ export function registerTcgBattleRoutes(
         user: nav,
         csrf: user.csrfToken,
         roster: ROSTER,
+        characterCatalog: CHARACTER_CATALOG,
         deckLegal,
         activeRooms: briefs,
         loginReturnPath: LANDING_PATH,
@@ -327,7 +332,14 @@ export function registerTcgBattleRoutes(
       const composition = await loadDeckCompositionForUser(silverwolf.db, user.discordId);
       return c.html(
         TcgBattleJoinPage({
-          nonce, lv999, user: nav, matchId, csrf: user.csrfToken, roster: ROSTER, deckLegal: isLegalDeck(composition),
+          nonce,
+          lv999,
+          user: nav,
+          matchId,
+          csrf: user.csrfToken,
+          roster: ROSTER,
+          characterCatalog: CHARACTER_CATALOG,
+          deckLegal: isLegalDeck(composition),
         }).toString(),
       );
     }

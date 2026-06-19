@@ -5,7 +5,7 @@ import {
   tcgRoomManager,
   type TcgRoom,
   type TcgUserInfo,
-} from './tcgRooms';
+} from './rooms';
 
 interface AuthedUser extends TcgUserInfo {
   csrfToken: string;

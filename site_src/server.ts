@@ -13,7 +13,7 @@ import { registerPageRoutes } from './routes/pages';
 import { registerGameApiRoutes } from './routes/games-api';
 import { registerAiSlopApiRoutes } from './routes/ai-slop-api';
 import { registerCyclicTttMpRoutes } from './routes/cyclic-tictactoe-mp';
-import { registerTcgBattleRoutes } from './routes/tcg-battle';
+import { registerTcgBattleRoutes } from './tcg/routes';
 import type { AppEnv } from './shared';
 
 const PORT = 6769;

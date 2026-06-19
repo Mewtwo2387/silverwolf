@@ -6,7 +6,7 @@ Bun process**. It serves fun/games both as slash commands and as web pages, plus
 **The website is public, so security and performance are first-class concerns — code defensively:
 validate every input, never trust client data, keep the CSP tight.**
 
-**Last updated: 2026-06-17**
+**Last updated: 2026-06-19**
 
 > **Maintenance rules.** Edit this file when something here becomes factually wrong, or when you
 > make a qualifying structural change. Rules differ by area:
@@ -43,7 +43,7 @@ validate every input, never trust client data, keep the CSP tight.**
 | `commands/` | One file per slash command; `classes/` (base classes), `commandgroups/` (subcommand containers). |
 | `database/` | `Database.ts` orchestrator; `tables/` (schema), `models/` (DAOs), `queries/` (SQL), `types.ts`. |
 | `tcg/` | Card-battle subsystem (`/tcgbattle`, card rendering, item/character catalogs). |
-| `site_src/` | The Hono website: `server.ts`, `routes/`, `middleware/`, `auth/`, `pages/`, `components/`, `multiplayer/`, `Assets/`, `bot-bridge.ts`. |
+| `site_src/` | The Hono website: `server.ts`, `routes/`, `middleware/`, `auth/`, `pages/`, `components/`, `multiplayer/`, `tcg/` (web TCG), `Assets/`, `bot-bridge.ts`. |
 | `utils/` | Shared logic + infra: `log.ts`, `accessControl.ts`, `mcp.ts`, game math/betting/etc. |
 | `data/` | Static JSON (`keywords.json`, personas, status, config). |
 | `persistence/` | Runtime SQLite DB + log files. **Docker volume — the data lives here.** |
@@ -133,7 +133,7 @@ nonce**, HSTS, `X-Frame-Options: DENY`, `nosniff`, Referrer-Policy, Permissions-
 **Routes** (registered in `server.ts`): `routes/static.ts`, `routes/auth.ts` (Discord OAuth),
 `routes/pages.ts` (HTML), `routes/games-api.ts` (JSON POST game actions), `routes/ai-slop-api.ts`,
 `routes/cyclic-tictactoe-mp.ts` (multiplayer WebSocket; game logic in `multiplayer/`),
-`routes/tcg-battle.ts` (web TCG: deck builder, PvP/solo battle rooms over WS — see §6.11). Pages: `/`,
+`site_src/tcg/routes.ts` (web TCG: deck builder, PvP/solo battle rooms over WS — see §6.11). Pages: `/`,
 `/me`, `/about`, `/games/*`, `/leaderboards`, `/birthdays`. `static.ts` also serves pre-generated TCG
 card PNGs at `/static/tcg/char/:slug.png` and `/static/tcg/item/:id.png`, **path-validated** against
 the `CHARACTERS` slugs / `ITEMS_BY_ID` catalogs (no traversal).
@@ -504,29 +504,30 @@ The website exposes the TCG as a dynamic, WebSocket-driven experience built **on
 core/snapshot contract** (§6.8) — it never re-implements battle rules. Mirrors the
 cyclic-tic-tac-toe multiplayer pattern.
 
-- **Rooms** — `site_src/multiplayer/tcgRooms.ts` (`tcgRoomManager`, in-memory; a restart
+- **Rooms** — `site_src/tcg/rooms.ts` (`tcgRoomManager`, in-memory; a restart
  drops rooms). Modes: `pvp` (creator seats p1 at create; the 2nd player picks a team and
  joins to seat p2 + start) and `solo` (one user drives both sides; `sideForUser` returns
  `battle.currentPlayer`). **Teams and decks are always rebuilt server-side** from validated
  roster values (`buildTeamOfThree`) and the user's saved `User.tcg_deck` (`expandDeckComposition`);
  client card data is never trusted. PvP has a turn timer (`TCG_TURN_TIMER_MS`) and a
  disconnect grace window; GC sweeps lobby/ended/abandoned rooms.
-- **WebSocket** — `site_src/multiplayer/tcgWs.ts` (`createTcgWsEvents`). First message must be
+- **WebSocket** — `site_src/tcg/ws.ts` (`createTcgWsEvents`). First message must be
  `join` carrying the CSRF token (`constantTimeEqual`); then `use_skill` / `use_item` /
  `end_turn` / `rematch_request` / `leave` / `ping`, each routed through the `battleCore`
  executors. Broadcasts are **per-socket viewer-aware snapshots** (hands stay private). Same
  burst rate-limit as the cyclic socket.
-- **Routes** — `site_src/routes/tcg-battle.ts` (`registerTcgBattleRoutes`, wired in `server.ts`
+- **Routes** — `site_src/tcg/routes.ts` (`registerTcgBattleRoutes`, wired in `server.ts`
  with `upgradeWebSocket` + `tcgRoomManager.init`): `GET /games/tcg` (landing),
  `POST /games/tcg/create`, `GET /games/tcg/:id` (room — renders the battle client for seated
  players, a team-picker for an eligible PvP joiner, or a not-found notice otherwise),
  `POST /games/tcg/:id/join`, `GET /games/tcg/ws/:id` (origin pre-check + upgrade),
  `GET /games/tcg/deck` + `POST /games/tcg/deck/save` (deck builder). All POSTs use
  `authedGameRequest` (CSRF); deck save re-runs `validateDeckComposition` server-side.
-- **Pages** — `pages/games/tcg_battle_landing.ts`, `tcg_battle_room.ts` (client renderer over
- WS: card-PNG board with live HP/energy/effect overlays, active-slot glow, availability-driven
- skill buttons with targeting, hand tray, end-turn, action log, result banner, rematch/leave),
- `tcg_deck_builder.ts`. Decks persist via `tcg/deckStorage.ts` — the **same** `User.tcg_deck`
+- **Pages** — `site_src/tcg/pages/` (`landing.ts`, `room.ts`, `deck-builder.ts`, `detail.ts`;
+ HTML templates in `site_src/tcg/html/`; client JS in `site_src/tcg/assets/`). Battle client
+ renders over WS: card-PNG board with live HP/energy/effect overlays, active-slot glow,
+ availability-driven skill buttons with targeting, hand tray, end-turn, action log, result
+ banner, rematch/leave). Decks persist via `tcg/deckStorage.ts` — the **same** `User.tcg_deck`
  the Discord `/tcgbattle deckset` uses.
 
 ---
@@ -631,8 +632,8 @@ add a new persona, drop a system prompt into `data/aiPersonas.json` /
 | Add a DB model method | `database/queries/<x>Queries.ts` and `database/models/<X>Model.ts` |
 | Add a TCG character | `tcg/characters/<name>.ts` (use `characterBuilder` helpers); append to `ROSTER_ENTRIES` in `roster.ts`. |
 | Add a TCG item | Matching file under `tcg/items/`; append to that module's `*Items` catalog array (e.g. `elementalDamageItems`). |
-| Change a web-battle action/snapshot field | `tcg/battleCore.ts` (action) / `tcg/battleSnapshot.ts` (DTO); render in `pages/games/tcg_battle_room.ts` (§6.8, §6.11). |
-| Change web TCG rooms/WS/routes | `site_src/multiplayer/tcgRooms.ts`, `tcgWs.ts`, `routes/tcg-battle.ts` (§6.11). |
+| Change a web-battle action/snapshot field | `tcg/battleCore.ts` (action) / `tcg/battleSnapshot.ts` (DTO); render in `site_src/tcg/assets/tcg-battle-room.src.js` (§6.8, §6.11). |
+| Change web TCG rooms/WS/routes | `site_src/tcg/rooms.ts`, `ws.ts`, `routes.ts` (§6.11). |
 | Add a battle rule | `tcg/battle.ts` (turn loop, victory, draws). |
 | Add a passive trigger | `tcg/battleEvents.ts` + emission in `Battle` + subscriber in an `Ability`. |
 | Add a status effect kind | `tcg/effectType.ts` + the relevant resolver(s) in `characterInBattle.ts`/`battle.ts`. |

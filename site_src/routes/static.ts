@@ -7,6 +7,7 @@ import { ITEMS_BY_ID } from '../../tcg/items';
 
 const ROOT_DIR = path.resolve(import.meta.dir, '..', '..');
 const ASSETS_DIR = path.join(import.meta.dir, '..', 'Assets');
+const TCG_ASSETS_DIR = path.join(import.meta.dir, '..', 'tcg', 'assets');
 const IMAGES_DIR = path.join(ASSETS_DIR, 'Images');
 const SVG_DIR = path.join(ASSETS_DIR, 'svg');
 const FONTS_DIR = path.join(ASSETS_DIR, 'fonts');
@@ -28,6 +29,11 @@ const STATIC_ASSETS: Record<string, StaticEntry> = {
   '/static/silverwolfLv.999.avif': { path: path.join(IMAGES_DIR, 'silverwolfLv.999.avif'), contentType: 'image/avif' },
   '/static/styles.css': { path: path.join(ASSETS_DIR, 'styles.css'), contentType: 'text/css; charset=utf-8' },
   '/static/app.js': { path: path.join(ASSETS_DIR, 'app.js'), contentType: 'text/javascript; charset=utf-8' },
+  '/static/tcg-detail.js': { path: path.join(TCG_ASSETS_DIR, 'tcg-detail.js'), contentType: 'text/javascript; charset=utf-8' },
+  '/static/tcg-landing.js': { path: path.join(TCG_ASSETS_DIR, 'tcg-landing.js'), contentType: 'text/javascript; charset=utf-8' },
+  '/static/tcg-join.js': { path: path.join(TCG_ASSETS_DIR, 'tcg-join.js'), contentType: 'text/javascript; charset=utf-8' },
+  '/static/tcg-deck-builder.js': { path: path.join(TCG_ASSETS_DIR, 'tcg-deck-builder.js'), contentType: 'text/javascript; charset=utf-8' },
+  '/static/tcg-battle-room.js': { path: path.join(TCG_ASSETS_DIR, 'tcg-battle-room.js'), contentType: 'text/javascript; charset=utf-8' },
 };
 // Hero responsive variants — emitted by scripts/build-images.ts. The about-page
 // <picture> picks the smallest width that covers its slot (sizes attribute).
