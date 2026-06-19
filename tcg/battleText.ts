@@ -5,7 +5,7 @@
  *
  * Action execution and target resolution live in {@link ./battleCore}.
  */
-import { Battle, BattleStatus } from './battle';
+import { Battle, BattleStatus, type BattleLogEntry } from './battle';
 import { SkillCategory } from './skillCategory';
 import type { Skill } from './skill';
 import type { CharacterInBattle } from './characterInBattle';
@@ -75,17 +75,38 @@ function formatSkillAvailabilityLine(
   return style === 'markdown' ? 'AVAILABLE (main action)' : '[MAIN ACTION — AVAILABLE]';
 }
 
+/** Style one structured log line for a text surface (Discord markdown or CLI). */
+function renderLogEntry(entry: BattleLogEntry, style: BattleTextStyle): string {
+  const { kind, text } = entry;
+  if (style === 'markdown') {
+    switch (kind) {
+      case 'turn': return `### ${text}`;
+      case 'action':
+      case 'item': return `**${text}**`;
+      case 'ko': return `**${text}**`;
+      case 'dodge': return `*${text}*`;
+      default: return text;
+    }
+  }
+  if (kind === 'turn') return `=== ${text} ===`;
+  return text;
+}
+
+function renderLogEntries(entries: BattleLogEntry[], style: BattleTextStyle): string {
+  return entries.map((e) => renderLogEntry(e, style)).join('\n');
+}
+
 export function formatUseSkillMessage(
   detail: UseSkillSuccessDetail,
   style: BattleTextStyle,
 ): string {
-  const header = style === 'markdown'
-    ? `**${detail.characterName}** used **${detail.skillName}** on **${detail.targetName}**!`
-    : `${detail.characterName} used ${detail.skillName} on ${detail.targetName}!`;
-  if (detail.logLines.length === 0) {
-    return header;
+  if (detail.logEntries.length === 0) {
+    // Fallback: no log captured (shouldn't happen on success) — synthesize a header.
+    return style === 'markdown'
+      ? `**${detail.characterName}** used **${detail.skillName}** on **${detail.targetName}**!`
+      : `${detail.characterName} used ${detail.skillName} on ${detail.targetName}!`;
   }
-  return [header, ...detail.logLines].join('\n');
+  return renderLogEntries(detail.logEntries, style);
 }
 
 export function formatUseSkillFailureMessage(result: Extract<ExecuteUseSkillResult, { ok: false }>): string {
@@ -101,13 +122,12 @@ function describeItem(item: Item): string {
 }
 
 export function formatUseItemMessage(detail: UseItemSuccessDetail, style: BattleTextStyle): string {
-  const header = style === 'markdown'
-    ? `Played **${detail.itemName}** on **${detail.targetName}**!`
-    : `Played ${detail.itemName} on ${detail.targetName}!`;
-  if (detail.logLines.length === 0) {
-    return header;
+  if (detail.logEntries.length === 0) {
+    return style === 'markdown'
+      ? `Played **${detail.itemName}** on **${detail.targetName}**!`
+      : `Played ${detail.itemName} on ${detail.targetName}!`;
   }
-  return [header, ...detail.logLines].join('\n');
+  return renderLogEntries(detail.logEntries, style);
 }
 
 export function formatUseItemFailureMessage(result: Extract<ExecuteUseItemResult, { ok: false }>): string {
@@ -275,7 +295,7 @@ export function formatBattleForDiscord(
 
 /** Last rotation line from turn history (CLI banner helper). */
 export function getLatestPhaseSummary(battle: Battle): string | null {
-  const rows = battle.turnHistory.filter((h) => h.startsWith('Round '));
+  const rows = battle.turnHistory.filter((h) => h.kind === 'turn');
   if (rows.length === 0) return null;
-  return rows[rows.length - 1];
+  return rows[rows.length - 1].text;
 }

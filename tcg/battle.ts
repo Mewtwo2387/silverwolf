@@ -4,6 +4,7 @@ import { SkillCategory } from './skillCategory';
 import type { Skill } from './skill';
 import type { BattleEvent } from './battleEvents';
 import { EffectType } from './effectType';
+import { RangeType } from './rangeType';
 import { Item } from './item';
 import { log } from '../utils/log';
 
@@ -12,6 +13,28 @@ export enum BattleStatus {
   P1Won = 'p1_won',
   P2Won = 'p2_won',
   Draw = 'draw',
+}
+
+/**
+ * Category of a battle-log line. Drives styling on each surface (website CSS class,
+ * Discord markdown, CLI). The `text` is always PLAIN (no markup) so it renders
+ * correctly everywhere — never embed `**`/`#`/etc. into it.
+ */
+export type BattleLogKind =
+  | 'turn' // round/phase header ("Round 3 · P1 — Mystic")
+  | 'action' // a character used a skill
+  | 'item' // an item was played
+  | 'damage' // HP lost from an attack or DoT
+  | 'heal' // HP recovered
+  | 'effect' // a status effect was applied
+  | 'ko' // a character was knocked out
+  | 'dodge' // an attack was avoided
+  | 'draw' // cards drawn
+  | 'info'; // anything else (equips, energy, etc.)
+
+export interface BattleLogEntry {
+  kind: BattleLogKind;
+  text: string;
 }
 
 export const SKILL_POINTS_START = 2;
@@ -40,9 +63,9 @@ export class Battle {
   mainActionUsedThisPhase: boolean;
   slotsPerSide: number;
   status: BattleStatus;
-  turnHistory: string[];
-  /** Event lines produced during the most recent useMainAction / useUltimate call. */
-  currentActionLog: string[];
+  turnHistory: BattleLogEntry[];
+  /** Event lines produced during the most recent useMainAction / useUltimate / endTurn call. */
+  currentActionLog: BattleLogEntry[];
   /** Per-side item deck; cards are drawn from index 0 (top). */
   p1Deck: Item[];
   p2Deck: Item[];
@@ -80,9 +103,7 @@ export class Battle {
     this.drawCards('p2', STARTING_HAND);
 
     this.activateAllAbilities();
-    this.turnHistory.push(
-      `Round ${this.currentTurn} — ${this.currentPlayer.toUpperCase()}'s active slot ${this.getCurrentActiveSlot()} (${this.getActiveCharacterForCurrentPhase()?.character.name ?? 'none'})`,
-    );
+    this.logTurnHeader();
   }
 
   private static shuffle<T>(arr: T[]): T[] {
@@ -124,7 +145,7 @@ export class Battle {
       this.p2HandNextSlot = slot;
     }
     if (drawn > 0) {
-      this.logEvent(`${side.toUpperCase()} drew ${drawn} card${drawn === 1 ? '' : 's'}`);
+      this.logEvent(`${side.toUpperCase()} drew ${drawn} card${drawn === 1 ? '' : 's'}`, 'draw');
     }
     return drawn;
   }
@@ -168,17 +189,46 @@ export class Battle {
 
   /**
    * Append a line to the currently-accumulating action log (and the full turn history).
-   * Call sites: damage resolution, effect application, knockouts, etc.
+   * `text` must be PLAIN (no markdown); `kind` drives per-surface styling.
+   * Call sites: skill/item announcements, damage resolution, effect application, KOs, etc.
    */
-  logEvent(message: string): void {
-    this.currentActionLog.push(message);
-    this.turnHistory.push(message);
-    log(`[tcg] ${message}`);
+  logEvent(text: string, kind: BattleLogKind = 'info'): void {
+    const entry: BattleLogEntry = { kind, text };
+    this.currentActionLog.push(entry);
+    this.turnHistory.push(entry);
+    log(`[tcg] ${text}`);
   }
 
-  /** Snapshot of the lines produced during the most recent action. */
+  /** Header line marking the start of the acting character's turn. */
+  private logTurnHeader(): void {
+    const active = this.getActiveCharacterForCurrentPhase();
+    const who = active ? active.character.name : 'none';
+    this.logEvent(
+      `Round ${this.currentTurn} · ${this.currentPlayer.toUpperCase()} — ${who} (slot ${this.getCurrentActiveSlot()})`,
+      'turn',
+    );
+  }
+
+  /** " on <target>" suffix for a skill announcement (empty for self-only skills). */
+  private describeSkillTarget(skill: Skill, target: CharacterInBattle | null): string {
+    if (target) return ` on ${target.character.name}`;
+    switch (skill.damageRange) {
+      case RangeType.AllOpponents: return ' on all enemies';
+      case RangeType.AdjacentOpponents: return ' on adjacent enemies';
+      case RangeType.AllAllies: return ' on the team';
+      case RangeType.AllCards: return ' on everyone';
+      default: return '';
+    }
+  }
+
+  /** Snapshot of the plain-text lines produced during the most recent action. */
   getLastActionLog(): string[] {
-    return [...this.currentActionLog];
+    return this.currentActionLog.map((e) => e.text);
+  }
+
+  /** Structured snapshot of the most recent action's log (text + kind per line). */
+  getLastActionLogEntries(): BattleLogEntry[] {
+    return this.currentActionLog.map((e) => ({ ...e }));
   }
 
   /**
@@ -347,6 +397,7 @@ export class Battle {
     }
 
     this.currentActionLog = [];
+    this.logEvent(`${character.character.name} used [${skill.name}]${this.describeSkillTarget(skill, target)}`, 'action');
     skill.useSkill(character, target);
     character.onSkillCompleted(skill, target);
 
@@ -362,7 +413,6 @@ export class Battle {
     }
 
     this.mainActionUsedThisPhase = true;
-    this.turnHistory.push(`${character.character.name} used ${skill.category} skill [${skillIndex}] ${skill.name}`);
     this.status = this.checkVictory();
     this.clampSkillPointsToCaps();
     return true;
@@ -395,6 +445,7 @@ export class Battle {
     }
 
     this.currentActionLog = [];
+    this.logEvent(`${character.character.name} unleashed [${skill.name}]${this.describeSkillTarget(skill, target)}`, 'action');
     character.spendEnergy(energy);
     skill.useSkill(character, target);
     character.onSkillCompleted(skill, target);
@@ -407,7 +458,6 @@ export class Battle {
       });
     }
 
-    this.turnHistory.push(`${character.character.name} used ultimate [${skillIndex}] ${skill.name}`);
     this.status = this.checkVictory();
     this.clampSkillPointsToCaps();
     return true;
@@ -435,7 +485,7 @@ export class Battle {
 
     this.currentActionLog = [];
     const turnHistoryLenBefore = this.turnHistory.length;
-    this.logEvent(`${side.toUpperCase()} used [${item.name}] on ${target.character.name}`);
+    this.logEvent(`${side.toUpperCase()} played [${item.name}] on ${target.character.name}`, 'item');
     const ok = item.apply(target, this);
     if (!ok) {
       // Roll back logs from this attempt (e.g. equipment cap); apply may have called logEvent too.
@@ -457,6 +507,10 @@ export class Battle {
       return;
     }
 
+    // Fresh action log for this transition: end-of-round ticks/draws (if any),
+    // then the next turn's header — so surfaces show just this turn's start.
+    this.currentActionLog = [];
+
     const phasesPerRound = this.slotsPerSide * 2;
     const previousPhase = this.phaseIndex;
     this.phaseIndex = (this.phaseIndex + 1) % phasesPerRound;
@@ -475,9 +529,7 @@ export class Battle {
       this.drawCards('p2', DRAW_PER_ROUND);
     }
 
-    this.turnHistory.push(
-      `Round ${this.currentTurn} — ${this.currentPlayer.toUpperCase()}'s active slot ${this.getCurrentActiveSlot()} (${this.getActiveCharacterForCurrentPhase()?.character.name ?? 'none'})`,
-    );
+    this.logTurnHeader();
     this.status = this.checkVictory();
   }
 

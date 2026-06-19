@@ -6,7 +6,7 @@
  * Presentation lives in {@link ./battleText} (CLI + Discord strings) and
  * {@link ./battleSnapshot} (serializable DTO for the website).
  */
-import { Battle, BattleStatus } from './battle';
+import { Battle, BattleStatus, type BattleLogEntry } from './battle';
 import { CharacterInBattle } from './characterInBattle';
 import { CHARACTERS } from './characters';
 import type { Skill } from './skill';
@@ -214,8 +214,8 @@ export interface UseSkillSuccessDetail {
   characterName: string;
   skillName: string;
   targetName: string;
-  /** Battle events (damage, effects applied, KOs) produced during the skill's resolution. */
-  logLines: string[];
+  /** Structured battle-log lines (announcement, damage, effects, KOs) produced by the skill. */
+  logEntries: BattleLogEntry[];
 }
 
 export type ExecuteUseSkillResult =
@@ -272,7 +272,7 @@ export function executeUseSkill(
         characterName: character.character.name,
         skillName,
         targetName,
-        logLines: battle.getLastActionLog(),
+        logEntries: battle.getLastActionLogEntries(),
       },
     };
   }
@@ -323,8 +323,8 @@ export interface UseItemSuccessDetail {
   itemName: string;
   itemKind: ItemKind;
   targetName: string;
-  /** Battle events produced during the item's resolution (equip lines, heals, etc.). */
-  logLines: string[];
+  /** Structured battle-log lines produced during the item's resolution (equip, heals, etc.). */
+  logEntries: BattleLogEntry[];
 }
 
 export type ExecuteUseItemResult =
@@ -387,7 +387,7 @@ export function executeUseItem(
       itemName: item.name,
       itemKind: item.kind,
       targetName: formatCharWithSlot(battle, target),
-      logLines: battle.getLastActionLog(),
+      logEntries: battle.getLastActionLogEntries(),
     },
   };
 }

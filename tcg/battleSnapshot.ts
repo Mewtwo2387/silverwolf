@@ -6,7 +6,7 @@
  * Discord/CLI render text via {@link ./battleText}; the website renders HTML from
  * the {@link BattleSnapshot} produced here.
  */
-import { Battle, BattleStatus } from './battle';
+import { Battle, BattleStatus, type BattleLogEntry } from './battle';
 import type { CharacterInBattle } from './characterInBattle';
 import { ItemKind } from './item';
 import { type BattleSide, computeSkillAvailability, skillTargetKind } from './battleCore';
@@ -88,7 +88,8 @@ export interface BattleSnapshot {
   teams: { p1: SnapshotCharacter[]; p2: SnapshotCharacter[] };
   /** The viewer's hand only — never the opponent's. */
   hand: SnapshotHandCard[];
-  lastActionLog: string[];
+  /** Structured log lines from the most recent action (text + kind for styling). */
+  lastActionLog: BattleLogEntry[];
 }
 
 function snapshotSideMeta(battle: Battle, side: BattleSide): SnapshotSideMeta {
@@ -170,6 +171,6 @@ export function buildBattleSnapshot(battle: Battle, viewerSide: BattleSide): Bat
       p2: snapshotTeam(battle, 'p2'),
     },
     hand,
-    lastActionLog: battle.getLastActionLog(),
+    lastActionLog: battle.getLastActionLogEntries(),
   };
 }

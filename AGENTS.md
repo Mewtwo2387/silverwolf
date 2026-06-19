@@ -481,14 +481,27 @@ and returns a discord.js message payload.
 
 ### 6.9 Logging in battle
 
-Every meaningful battle event goes through `Battle.logEvent(message)`:
+Every meaningful battle event goes through `Battle.logEvent(text, kind?)`. The log is a list of
+**structured `BattleLogEntry { kind, text }`** (defined in `tcg/battle.ts`), not raw strings:
 
+- `text` must be **plain** (no markdown / `#` / `**`) — each surface styles by `kind`, so embedded
+  markup would leak. `kind` is one of: `turn` (round/phase header), `action` (skill used), `item`,
+  `damage`, `heal`, `effect`, `ko`, `dodge`, `draw`, `info` (default). Pick the closest kind when
+  adding a log line; add a new kind (and style it on every surface) only if none fits.
 - Pushes onto `currentActionLog` (cleared at the start of each `useMainAction`/`useUltimate`/
-  `useItem` call) and `turnHistory`.
-- Calls the global `log()` so it lands in `persistence/logs.txt`.
+  `useItem`/`endTurn`) and `turnHistory`; also calls global `log()` → `persistence/logs.txt`.
+- **Self-contained log:** the action announcement ("X used [Skill] on Y", kind `action`) is logged
+  by `useMainAction`/`useUltimate` themselves, and a `turn` header is logged at the start of every
+  phase (`endTurn` + construction via `logTurnHeader`). So the log alone tells the whole story —
+  surfaces do **not** synthesize their own headers.
+- Damage is logged element-aware ("X took N pyro damage"); multi-hit skills aggregate into one line
+  per victim in `Skill.useSkill` (`takeDamage(..., { silent, silentKo })` suppresses its own
+  per-hit/KO lines so the caller can summarise, then log KO after the damage line).
 
-`getLastActionLog()` returns the lines from the most recent action, which the Discord layer
-formats into the battle update message.
+`getLastActionLog()` (plain strings) and `getLastActionLogEntries()` (structured) return the most
+recent action's lines. Rendering: website styles each entry by kind via `tcg-log-<kind>` CSS
+(`tcg-battle-room.src.js`); `battleText.ts` maps entries to Discord markdown / CLI; the snapshot DTO
+carries `lastActionLog: BattleLogEntry[]`.
 
 ### 6.10 Tests and demos
 

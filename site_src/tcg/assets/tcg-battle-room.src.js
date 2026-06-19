@@ -70,8 +70,8 @@ function ingest(room) {
   state = room;
   const b = room.battle;
   if (b && b.lastActionLog && b.lastActionLog.length) {
-    const sig = b.currentTurn + '|' + b.lastActionLog.join('\u241f');
-    if (sig !== lastLogSig) { lastLogSig = sig; for (const ln of b.lastActionLog) logLines.push(ln); if (logLines.length > 200) logLines.splice(0, logLines.length - 200); }
+    const sig = b.currentTurn + '|' + b.lastActionLog.map((e) => (e && e.text != null ? e.text : String(e))).join('\u241f');
+    if (sig !== lastLogSig) { lastLogSig = sig; for (const e of b.lastActionLog) logLines.push(e); if (logLines.length > 200) logLines.splice(0, logLines.length - 200); }
   }
   // Reset stale selections if it's not actionable.
   if (!myTurn()) { armedSkill = null; armedItem = null; }
@@ -356,8 +356,14 @@ function logPanel() {
   const panel = el('div', { class: 'tcg-panel' });
   panel.appendChild(el('p', { class: 'tcg-section-title' }, 'Battle Log'));
   const logEl = el('div', { class: 'tcg-log' });
-  // column-reverse: newest first visually; iterate normally.
-  for (let i = logLines.length - 1; i >= 0; i--) logEl.appendChild(el('div', null, logLines[i]));
+  // column-reverse keeps newest pinned at the bottom; iterate newest→oldest so the
+  // DOM order reads chronologically top→bottom. Each line is styled by its kind.
+  for (let i = logLines.length - 1; i >= 0; i--) {
+    const e = logLines[i];
+    const kind = (e && e.kind) || 'info';
+    const text = (e && e.text != null) ? e.text : String(e);
+    logEl.appendChild(el('div', { class: 'tcg-log-line tcg-log-' + kind }, text));
+  }
   panel.appendChild(logEl);
   return panel;
 }

@@ -1118,8 +1118,20 @@ code, pre, kbd, .font-mono {
 .tcg-hand-card img { width: 100%; aspect-ratio: 1080 / 1920; object-fit: cover; display: block; }
 .tcg-hand-empty { color: var(--fog-400); font-style: italic; font-size: 0.82rem; }
 .tcg-actionbar { display: flex; justify-content: center; gap: 0.6rem; flex-wrap: wrap; }
-.tcg-log { max-height: 180px; overflow-y: auto; display: flex; flex-direction: column-reverse; gap: 0.15rem; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--fog-300); }
-.tcg-log div { line-height: 1.35; }
+.tcg-log { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column-reverse; gap: 0.08rem; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--fog-300); }
+.tcg-log-line { line-height: 1.4; }
+.tcg-log-turn {
+  font-weight: 800; color: var(--accent-light); text-transform: uppercase; letter-spacing: 0.05em;
+  font-size: 0.74rem; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid var(--ink-600);
+}
+.tcg-log-action { color: var(--fog-100); font-weight: 700; margin-top: 0.15rem; }
+.tcg-log-item { color: var(--accent-pale); font-weight: 700; margin-top: 0.15rem; }
+.tcg-log-damage { color: #ff9aa8; }
+.tcg-log-heal { color: #6ee7a0; }
+.tcg-log-effect { color: #c4b5fd; }
+.tcg-log-ko { color: var(--danger); font-weight: 800; }
+.tcg-log-dodge { color: var(--fog-400); font-style: italic; }
+.tcg-log-draw, .tcg-log-info { color: var(--fog-400); }
 .tcg-section-title { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--fog-400); margin: 0 0 0.3rem; font-family: 'JetBrains Mono', monospace; }
 .tcg-invite { display: flex; flex-direction: column; gap: 0.5rem; align-items: center; }
 .tcg-invite-url { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--fog-200); background: var(--ink-900); border: 1px solid var(--ink-600); border-radius: 0.4rem; padding: 0.4rem 0.6rem; max-width: 100%; overflow-x: auto; white-space: nowrap; }
