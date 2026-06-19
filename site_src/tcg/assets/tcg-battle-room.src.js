@@ -27,6 +27,14 @@ let armedItem = null;               // hand slotId
 const logLines = [];
 let lastLogSig = '';
 
+// Persistent battle board: card DOM is built once per battle and updated in place
+// so HP/energy bars animate and damage/heal flashes can fire across state updates.
+let boardEl = null;
+let boardSig = '';
+const boardCards = { p1: [], p2: [] };
+const sideLabels = {};
+const prevHp = {};
+
 function el(tag, attrs, children) {
   const e = document.createElement(tag);
   if (attrs) for (const k in attrs) {
@@ -69,7 +77,7 @@ function ingest(room) {
   state = room;
   const b = room.battle;
   if (b && b.lastActionLog && b.lastActionLog.length) {
-    const sig = b.currentTurn + '|' + b.lastActionLog.map((e) => (e && e.text != null ? e.text : String(e))).join('\u241f');
+    const sig = b.currentTurn + '|' + b.lastActionLog.map((e) => (e && e.text != null ? e.text : String(e))).join('␟');
     if (sig !== lastLogSig) { lastLogSig = sig; for (const e of b.lastActionLog) logLines.push(e); if (logLines.length > 200) logLines.splice(0, logLines.length - 200); }
   }
   // Reset stale selections if it's not actionable.
@@ -101,87 +109,187 @@ function playersRow() {
   return el('div', { class: 'tcg-players' }, [playerCard(state.players.p1, 'p1', 'left'), el('div', { class: 'tcg-vs' }, 'vs'), playerCard(state.players.p2, 'p2', 'right')]);
 }
 
-function ultButton(ch) {
-  const ult = ch.skills.find((s) => s.category === 'ultimate');
-  if (!ult) return null;
-  const armed = !!(armedSkill && armedSkill.slot === ch.slot && armedSkill.index === ult.index);
-  const ready = myTurn() && ult.available;
-  const btn = el('button', {
-    type: 'button',
-    class: 'tcg-ult-btn' + (armed ? ' armed' : '') + (ready ? ' ready' : ''),
-    title: ult.name + (!ult.available && ult.reason ? ' \u2014 ' + ult.reason : ''),
-  }, 'ULT');
-  btn.disabled = !ready;
-  btn.addEventListener('click', (ev) => { ev.stopPropagation(); onSkillClick(ch, ult); });
-  return btn;
+// ── persistent battle board ────────────────────────────────────────────────
+function curCh(side, slot) {
+  return ((state.battle && state.battle.teams[side]) || [])[slot] || null;
+}
+function ultSkillOf(ch) {
+  return ch && ch.skills ? ch.skills.find((s) => s.category === 'ultimate') : null;
 }
 
-function charCard(ch, side) {
+function statRow(label, barCls, fillCls) {
+  const fill = el('div', { class: fillCls });
+  const bar = el('div', { class: 'tcg-stat-bar ' + barCls }, fill);
+  const val = el('span', { class: 'tcg-stat-val' });
+  const row = el('div', { class: 'tcg-stat-row' }, [el('span', { class: 'tcg-stat-label' }, label), bar, val]);
+  return { row, bar, fill, val };
+}
+
+function makeCardNode(side, slot) {
+  const root = el('div', { class: 'tcg-char' });
+  const img = el('img', { class: 'art', loading: 'lazy', decoding: 'async', alt: '' });
+  const activeTag = el('span', { class: 'tcg-active-tag' }, 'ACTIVE');
+  const ko = el('div', { class: 'tcg-ko-badge' }, 'KO');
+  const art = el('div', { class: 'tcg-char-art' }, [img, activeTag, ko]);
+
+  const name = el('span', { class: 'tcg-char-name' });
+  const equip = el('span', { class: 'tcg-equip-chip' });
+  const nameRow = el('div', { class: 'tcg-char-namerow' }, [name, equip]);
+  const hp = statRow('HP', 'tcg-hp-bar', 'tcg-hp-fill');
+  const en = statRow('EN', 'tcg-energy-bar', 'tcg-energy-fill');
+  const fx = el('div', { class: 'tcg-effects' });
+  const ult = el('button', { type: 'button', class: 'tcg-ult-btn' }, 'ULTIMATE');
+  const info = el('div', { class: 'tcg-char-info' }, [nameRow, hp.row, en.row, fx, ult]);
+
+  const flash = el('div', { class: 'tcg-flash' });
+  root.appendChild(art);
+  root.appendChild(info);
+  root.appendChild(flash);
+
+  root.addEventListener('click', () => {
+    const ch = curCh(side, slot);
+    if (ch) onCharClick(ch, side, side === mySide());
+  });
+  ult.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    const ch = curCh(side, slot);
+    const u = ultSkillOf(ch);
+    if (u) onSkillClick(ch, u);
+  });
+
+  return {
+    root, img, activeTag, ko, flash, name, equip,
+    hpFill: hp.fill, hpVal: hp.val, enBar: en.bar, enFill: en.fill, enVal: en.val, fx, ult, slug: null,
+  };
+}
+
+function flashCard(node, type) {
+  node.flash.classList.remove('dmg', 'heal');
+  void node.flash.offsetWidth; // restart the animation
+  node.flash.classList.add(type);
+}
+
+function updateEffects(container, effects) {
+  clear(container);
+  const max = 8;
+  effects.slice(0, max).forEach((e) => {
+    const dur = e.duration < 999 ? ' ' + e.duration : '';
+    container.appendChild(el('span', {
+      class: 'tcg-eff ' + (e.positive ? 'buff' : 'debuff'),
+      title: e.name + ': ' + e.description,
+    }, e.name + dur));
+  });
+  if (effects.length > max) {
+    container.appendChild(el('span', { class: 'tcg-eff more' }, '+' + (effects.length - max)));
+  }
+}
+
+function updateCard(node, ch, side) {
   const mine = side === mySide();
   const b = state.battle;
-  const isActiveSlot = b.currentPlayer === side && b.activeSlot === ch.slot && !ch.isKnockedOut;
-  const cls = ['tcg-char'];
-  if (isActiveSlot) cls.push('active');
-  if (ch.isKnockedOut) cls.push('ko');
 
-  // Targeting affordances
+  if (node.slug !== ch.slug) {
+    node.img.src = '/static/tcg/char/' + encodeURIComponent(ch.slug) + '.png';
+    node.img.alt = ch.name;
+    node.slug = ch.slug;
+  }
+  node.name.textContent = ch.name;
+
+  const isActive = state.status === 'active' && b.currentPlayer === side && b.activeSlot === ch.slot && !ch.isKnockedOut;
   let targetable = false;
   if (armedSkill && myTurn() && !ch.isKnockedOut) {
-    if (armedSkill.targetKind === 'opponent' && !mine) { targetable = true; cls.push('targetable'); }
-    else if (armedSkill.targetKind === 'ally' && mine) { targetable = true; cls.push('targetable', 'ally'); }
+    if (armedSkill.targetKind === 'opponent' && !mine) targetable = true;
+    else if (armedSkill.targetKind === 'ally' && mine) targetable = true;
   }
-  if (armedItem != null && myTurn() && mine && !ch.isKnockedOut) { targetable = true; cls.push('targetable', 'ally'); }
-  if (!targetable) cls.push('inspect');
+  if (armedItem != null && myTurn() && mine && !ch.isKnockedOut) targetable = true;
+  node.root.classList.toggle('active', isActive);
+  node.root.classList.toggle('ko', ch.isKnockedOut);
+  node.root.classList.toggle('targetable', targetable);
+  node.root.classList.toggle('ally', targetable && mine);
+  node.root.classList.toggle('inspect', !targetable);
 
-  const card = el('div', { class: cls.join(' ') });
-  const img = el('img', { class: 'art', src: '/static/tcg/char/' + encodeURIComponent(ch.slug) + '.png', alt: ch.name, loading: 'lazy', decoding: 'async' });
-  card.appendChild(img);
+  const hpPct = Math.max(0, Math.min(100, (100 * ch.currentHp) / Math.max(1, ch.maxHp)));
+  node.hpFill.style.width = hpPct + '%';
+  node.hpFill.classList.toggle('low', hpPct <= 30);
+  node.hpVal.textContent = ch.currentHp + ' / ' + ch.maxHp;
 
-  card.appendChild(el('div', { class: 'tcg-char-top' }, [
-    el('span', { class: 'tcg-char-name' }, ch.name),
-  ]));
+  const key = side + ':' + ch.slot;
+  const prev = prevHp[key];
+  if (prev != null && ch.currentHp !== prev) flashCard(node, ch.currentHp < prev ? 'dmg' : 'heal');
+  prevHp[key] = ch.currentHp;
 
-  const bottom = el('div', { class: 'tcg-char-bottom' });
-  const pct = Math.max(0, Math.min(100, Math.round((100 * ch.currentHp) / Math.max(1, ch.maxHp))));
-  const bar = el('div', { class: 'tcg-hp-bar' });
-  const fill = el('div', { class: 'tcg-hp-fill' + (pct <= 30 ? ' low' : '') });
-  fill.style.width = pct + '%';
-  bar.appendChild(fill);
-  bottom.appendChild(bar);
-  bottom.appendChild(el('div', { class: 'tcg-hp-text' }, ch.currentHp + ' / ' + ch.maxHp));
+  const ult = ultSkillOf(ch);
+  const cost = ult ? ult.energyCost : 0;
+  const enPct = cost > 0 ? Math.max(0, Math.min(100, (100 * ch.energy) / cost)) : 100;
+  node.enFill.style.width = enPct + '%';
+  node.enBar.classList.toggle('full', enPct >= 100);
+  node.enVal.textContent = (cost > 0 ? Math.min(ch.energy, cost) : ch.energy) + (cost > 0 ? ' / ' + cost : '');
 
-  // Energy bar fills toward the ultimate's requirement (assume one ult/char);
-  // overflow shows as full. A separate ULT button on your own alive cards fires it.
-  const ult = ch.skills.find((s) => s.category === 'ultimate');
-  const ultCost = ult ? ult.energyCost : 0;
-  const ePct = ultCost > 0 ? Math.max(0, Math.min(100, Math.round((100 * ch.energy) / ultCost))) : 100;
-  const eBar = el('div', { class: 'tcg-energy-bar' + (ePct >= 100 ? ' full' : '') });
-  const eFill = el('div', { class: 'tcg-energy-fill' });
-  eFill.style.width = ePct + '%';
-  eBar.appendChild(eFill);
-  bottom.appendChild(eBar);
-  const shownEnergy = ultCost > 0 ? Math.min(ch.energy, ultCost) : ch.energy;
-  bottom.appendChild(el('div', { class: 'tcg-energy-text' }, '⚡ ' + shownEnergy + (ultCost > 0 ? ' / ' + ultCost : '')));
-  if (mine && !ch.isKnockedOut) { const ub = ultButton(ch); if (ub) bottom.appendChild(ub); }
-
-  if (ch.effects && ch.effects.length) {
-    const fx = el('div', { class: 'tcg-effects' });
-    for (const e of ch.effects.slice(0, 6)) {
-      const dur = e.duration < 999 ? ' ' + e.duration : '';
-      fx.appendChild(el('span', { class: 'tcg-eff ' + (e.positive ? 'buff' : 'debuff'), title: e.name + ': ' + e.description }, e.name + dur));
-    }
-    bottom.appendChild(fx);
+  if (ch.equipmentCount > 0) {
+    node.equip.style.display = '';
+    node.equip.textContent = '⚙ ' + ch.equipmentCount + '/3';
+    node.equip.title = (ch.equipmentNames || []).join(', ');
+  } else {
+    node.equip.style.display = 'none';
   }
-  card.appendChild(bottom);
-  if (ch.isKnockedOut) card.appendChild(el('div', { class: 'tcg-ko-badge' }, 'KO'));
 
-  card.addEventListener('click', () => onCharClick(ch, side, mine));
-  return card;
+  updateEffects(node.fx, ch.effects || []);
+
+  if (ult && mine && !ch.isKnockedOut) {
+    node.ult.style.display = '';
+    const armed = !!(armedSkill && armedSkill.slot === ch.slot && armedSkill.index === ult.index);
+    const ready = myTurn() && ult.available;
+    node.ult.className = 'tcg-ult-btn' + (armed ? ' armed' : '') + (ready ? ' ready' : '');
+    node.ult.disabled = !ready;
+    node.ult.title = ult.name + (!ult.available && ult.reason ? ' — ' + ult.reason : '');
+  } else {
+    node.ult.style.display = 'none';
+  }
 }
 
-function rowFor(side) {
-  const team = state.battle.teams[side] || [];
-  return el('div', { class: 'tcg-row' }, team.map((ch) => charCard(ch, side)));
+function boardSignature() {
+  const sl = (side) => ((state.battle && state.battle.teams[side]) || []).map((c) => c.slug).join(',');
+  return oppSide() + ':' + sl(oppSide()) + '|' + mySide() + ':' + sl(mySide());
+}
+
+function buildBoard() {
+  boardEl = el('div', { class: 'tcg-board' });
+  boardCards.p1 = [];
+  boardCards.p2 = [];
+  for (const k in prevHp) delete prevHp[k];
+  for (const side of [oppSide(), mySide()]) {
+    const team = state.battle.teams[side] || [];
+    const turn = el('span', { class: 'tcg-side-turn' }, '');
+    const label = el('div', { class: 'tcg-side-label' }, [
+      el('span', { class: 'tcg-side-dot' }),
+      el('span', null, side === mySide() ? 'Your team' : oppLabel()),
+      turn,
+    ]);
+    sideLabels[side] = { label, turn };
+    const row = el('div', { class: 'tcg-row' });
+    boardCards[side] = team.map((ch, slot) => {
+      const node = makeCardNode(side, slot);
+      row.appendChild(node.root);
+      return node;
+    });
+    boardEl.appendChild(el('div', { class: 'tcg-side' + (side === mySide() ? ' mine' : '') }, [label, row]));
+  }
+  boardSig = boardSignature();
+}
+
+function updateBoard() {
+  const b = state.battle;
+  for (const side of ['p1', 'p2']) {
+    const lab = sideLabels[side];
+    if (lab) {
+      const acting = state.status === 'active' && b.currentPlayer === side;
+      lab.label.classList.toggle('acting', acting);
+      lab.turn.textContent = acting ? (side === mySide() ? 'your turn' : 'their turn') : '';
+    }
+    const team = b.teams[side] || [];
+    const nodes = boardCards[side] || [];
+    team.forEach((ch, slot) => { if (nodes[slot]) updateCard(nodes[slot], ch, side); });
+  }
 }
 
 function onCharClick(ch, side, mine) {
@@ -241,7 +349,7 @@ function skillPanel() {
 }
 
 function costLabel(sk) {
-  if (sk.category === 'ultimate' && sk.energyCost > 0) return ' · ' + sk.energyCost + '\u26a1';
+  if (sk.category === 'ultimate' && sk.energyCost > 0) return ' · ' + sk.energyCost + '⚡';
   if (sk.category === 'charged' && sk.spCost > 0) return ' · ' + sk.spCost + ' SP';
   if (sk.category === 'normal' && sk.spGranted > 0) return ' · +' + sk.spGranted + ' SP';
   return '';
@@ -420,18 +528,6 @@ function oppLabel() {
   return opp && opp.username ? '@' + opp.username : 'Opponent';
 }
 
-function labeledRow(side, label) {
-  const b = state.battle;
-  const acting = !!(b && state.status === 'active' && b.currentPlayer === side);
-  const mine = side === mySide();
-  const lab = el('div', { class: 'tcg-side-label' + (acting ? ' acting' : '') }, [
-    el('span', { class: 'tcg-side-dot' }),
-    el('span', null, label),
-    acting ? el('span', { class: 'tcg-side-turn' }, mine ? 'your turn' : 'their turn') : null,
-  ]);
-  return el('div', { class: 'tcg-side' + (mine ? ' mine' : '') }, [lab, rowFor(side)]);
-}
-
 function targetingBanner() {
   if (!myTurn()) return null;
   let ally = false;
@@ -480,7 +576,6 @@ function render() {
 
   if (state.status === 'lobby') {
     if (state.mode === 'pvp') viewEl.appendChild(inviteBlock());
-    // refresh the root panel container
     const extra = logPanel(); attachExtra(extra);
     return;
   }
@@ -488,12 +583,11 @@ function render() {
   if (state.battle) {
     const tb = targetingBanner();
     if (tb) viewEl.appendChild(tb);
-    // Opponent team on top, your team on the bottom (your-perspective board).
-    const board = el('div', { class: 'tcg-board' }, [
-      labeledRow(oppSide(), oppLabel()),
-      labeledRow(mySide(), 'Your team'),
-    ]);
-    viewEl.appendChild(board);
+    // Persistent board (opponent on top, your team on the bottom). Attach BEFORE
+    // updating so the bars are connected and their width changes animate.
+    if (!boardEl || boardSig !== boardSignature()) buildBoard();
+    viewEl.appendChild(boardEl);
+    updateBoard();
     viewEl.appendChild(spLine());
 
     if (state.status === 'active') {
@@ -510,7 +604,7 @@ function render() {
   attachExtra(logPanel());
 }
 
-// Keep the battle log in its own panel below the main view.
+// Keep the battle log in its own panel (right column on wide screens).
 let extraPanel = null;
 function attachExtra(node) {
   const root = document.getElementById('tcg-root');
