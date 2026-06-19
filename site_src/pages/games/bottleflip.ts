@@ -632,7 +632,6 @@ export function BottleFlipPage(opts: {
     // glossy vertical highlight down one side
     ctx.strokeStyle = 'rgba(255,255,255,0.28)'; ctx.lineWidth = 3;
     seg(-22, -56, -22, 100);
-    ctx.restore();
 
     // cap (with knurled vertical ridges)
     ctx.save();
@@ -737,8 +736,11 @@ export function BottleFlipPage(opts: {
   const slider = document.getElementById('bf-water');
   const pct = document.getElementById('bf-water-pct');
   slider.addEventListener('input', () => {
-    waterFrac = (+slider.value) / 100;
-    pct.textContent = slider.value + '%';
+    const v = +slider.value;
+    if (Number.isFinite(v)) {
+      waterFrac = Math.max(0, Math.min(1, v / 100));
+      pct.textContent = Math.round(waterFrac * 100) + '%';
+    }
   });
 
   // mode toggle
@@ -754,10 +756,13 @@ export function BottleFlipPage(opts: {
     resetGame();
   }));
 
+  const VALID_TIMES = [15, 30, 60, 90];
   const timeBtns = document.querySelectorAll('[data-time]');
   timeBtns.forEach(b => b.addEventListener('click', () => {
+    const t = +b.dataset.time;
+    if (!VALID_TIMES.includes(t)) return;
     timeBtns.forEach(x => x.classList.toggle('active', x === b));
-    timeLimit = +b.dataset.time;
+    timeLimit = t;
   }));
 
   function resetGame() {
