@@ -107,6 +107,12 @@ export const GAMES = [
     imageType: 'img' as const,
     imageSrc: '/static/svg/battleship-badge.svg',
   },
+  {
+    name: 'bottle flip',
+    href: '/games/bottle-flip',
+    info: 'The classic 2016 challenge. Swing, release, and stick the landing — with real water physics.',
+    imageType: 'bottle' as const,
+  },
 ];
 
 const styles = raw(`
@@ -572,6 +578,46 @@ const styles = raw(`
     .cyc-thumb .fade { animation: none; opacity: 0.4; }
   }
 
+  /* Bottle Flip card: an SVG replica of the in-game bottle (same profile,
+     water, frosted label, grip ridges, gloss + knurled cap) that flips
+     end-over-end with a sloshing water level. */
+  .bottle-thumb {
+    width: 62%;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .bottle-flipper {
+    width: 58%;
+    height: 92%;
+    animation: bottle-flip 3.4s cubic-bezier(0.5, 0, 0.4, 1) infinite;
+    transform-origin: 50% 78%;
+  }
+  .bottle-flipper svg { width: 100%; height: 100%; overflow: visible; }
+  .bottle-shadow { fill: #000; opacity: 0.22; }
+  .bottle-body   { fill: url(#bf-body-grad); }
+  .bottle-outline { fill: none; stroke: rgba(200, 235, 255, 0.7); stroke-width: 2.4; stroke-linejoin: round; }
+  .bottle-water  { fill: url(#bf-water-grad); animation: bottle-slosh 3.4s cubic-bezier(0.5, 0, 0.4, 1) infinite; }
+  .bottle-label  { fill: rgba(225, 245, 255, 0.14); stroke: rgba(205, 238, 255, 0.5); stroke-width: 1; }
+  .bottle-ridges line { stroke: rgba(120, 165, 200, 0.55); stroke-width: 1.4; }
+  .bottle-gloss  { stroke: rgba(255, 255, 255, 0.28); stroke-width: 3.4; stroke-linecap: round; }
+  .bottle-cap    { fill: #2bb6d6; stroke: rgba(220, 245, 255, 0.7); stroke-width: 1.4; }
+  .bottle-cap-ridges line { stroke: rgba(255, 255, 255, 0.32); stroke-width: 1; }
+  @keyframes bottle-flip {
+    0%   { transform: translateY(0) rotate(0deg); }
+    35%  { transform: translateY(-22%) rotate(220deg); }
+    70%  { transform: translateY(-22%) rotate(360deg); }
+    100% { transform: translateY(0) rotate(360deg); }
+  }
+  @keyframes bottle-slosh {
+    0%, 100% { transform: translateY(0); }
+    35%, 70% { transform: translateY(-5px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bottle-flipper, .bottle-water { animation: none; }
+  }
+
   /* Mini spinning coin for the flip card */
   .mini-coin-wrap {
     width: 120px;
@@ -781,6 +827,62 @@ function CyclicImage() {
       <span class="x">X</span><span class="o">O</span><span></span>
       <span></span><span class="x">X</span><span class="o">O</span>
       <span class="o">O</span><span></span><span class="x fade">X</span>
+    </div>
+  `);
+}
+
+// Bottle Flip card thumbnail. This is a faithful SVG copy of the bottle the
+// game actually renders on its canvas — same silhouette, water, frosted label,
+// moulded grip ridges, side gloss and knurled cap — just drawn declaratively
+// and animated with a flip + slosh so the card previews the real thing.
+// Coordinates mirror the game's local-space geometry (origin at the centre).
+const BOTTLE_OUTLINE_D = 'M13 -132 L13 -112 L10 -112 L10 -90 L34 -60 L34 104 L27 116 L0 118 '
+  + 'L-27 116 L-34 104 L-34 -60 L-10 -90 L-10 -112 L-13 -112 L-13 -132 Z';
+const BOTTLE_INTERIOR_D = 'M6 -86 L28 -54 L28 102 L21 112 L0 114 L-21 112 L-28 102 L-28 -54 L-6 -86 Z';
+function bottleRidges() {
+  let lines = '';
+  for (let y = 40; y <= 96; y += 8) lines += `<line x1="-33" y1="${y}" x2="33" y2="${y}" />`;
+  for (let y = -54; y <= -42; y += 6) lines += `<line x1="-27" y1="${y}" x2="27" y2="${y}" />`;
+  return lines;
+}
+function bottleCapRidges() {
+  let lines = '';
+  for (let x = -11; x <= 11; x += 3.5) lines += `<line x1="${x}" y1="-129" x2="${x}" y2="-113" />`;
+  return lines;
+}
+function BottleImage() {
+  return raw(`
+    <div class="bottle-thumb" aria-hidden="true">
+      <div class="bottle-flipper">
+        <svg viewBox="-52 -144 104 288" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <clipPath id="bf-interior"><path d="${BOTTLE_INTERIOR_D}" /></clipPath>
+            <clipPath id="bf-outline"><path d="${BOTTLE_OUTLINE_D}" /></clipPath>
+            <linearGradient id="bf-water-grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#8be7ff" stop-opacity="0.9" />
+              <stop offset="1" stop-color="#2a96d2" stop-opacity="0.95" />
+            </linearGradient>
+            <linearGradient id="bf-body-grad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#b4d2eb" stop-opacity="0.12" />
+              <stop offset="0.5" stop-color="#dcf0ff" stop-opacity="0.26" />
+              <stop offset="1" stop-color="#b4d2eb" stop-opacity="0.12" />
+            </linearGradient>
+          </defs>
+          <ellipse class="bottle-shadow" cx="0" cy="121" rx="34" ry="7" />
+          <path class="bottle-body" d="${BOTTLE_OUTLINE_D}" />
+          <g clip-path="url(#bf-interior)">
+            <rect class="bottle-water" x="-30" y="44" width="60" height="80" />
+          </g>
+          <g clip-path="url(#bf-outline)">
+            <rect class="bottle-label" x="-34" y="-26" width="68" height="42" />
+            <g class="bottle-ridges">${bottleRidges()}</g>
+            <line class="bottle-gloss" x1="-22" y1="-56" x2="-22" y2="100" />
+          </g>
+          <path class="bottle-outline" d="${BOTTLE_OUTLINE_D}" />
+          <rect class="bottle-cap" x="-13" y="-132" width="26" height="20" rx="3" />
+          <g class="bottle-cap-ridges">${bottleCapRidges()}</g>
+        </svg>
+      </div>
     </div>
   `);
 }
@@ -1020,6 +1122,7 @@ export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import(
     if (game.imageType === 'coin') return CoinImage();
     if (game.imageType === 'ai-slop') return AiSlopImage();
     if (game.imageType === 'cyclic') return CyclicImage();
+    if (game.imageType === 'bottle') return BottleImage();
     if (game.imageType === 'composite') {
       const overlaySrc = (game as any).overlaySrc as string;
       const overlay = overlaySrc.endsWith('.svg')
