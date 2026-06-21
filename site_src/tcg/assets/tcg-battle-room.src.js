@@ -40,8 +40,12 @@ let boardSig = '';
 const boardCards = { p1: [], p2: [] };
 const nodeByName = {};              // name -> card node[] (arrays: a mirror match can field same-named chars on both sides)
 const sideLabels = {};
+// HP baseline keyed by ABSOLUTE side:slot (stable across the solo perspective flip, which
+// rebuilds the board). Used to identify which card actually changed this action — reliable
+// even when two same-named characters sit on opposite sides. Reset only on a new battle.
 const prevHp = {};
-const prevKo = {};
+let prevTeamsKey = '';
+let prevTurn = 0;
 
 function el(tag, attrs, children) {
   const e = document.createElement(tag);
@@ -294,28 +298,79 @@ function lungeCard(node) {
   setTimeout(() => node.root.classList.remove(dir), 560);
 }
 
-// Orchestrate one action's animation: attacker lunges, victims react on impact,
-// and a freshly KO'd victim only greys out *after* the hit lands.
-function animateAction(actorNode, hits) {
+function fireImpact(node, amt, reduce) {
+  floatNum(node, amt);
+  if (amt < 0) {
+    flashCard(node, 'dmg');
+    if (!reduce) { shakeCard(node); slashCard(node); }
+  } else if (amt > 0) {
+    flashCard(node, 'heal');
+  }
+}
+
+// Perspective-independent identity of the two teams (fixed p1/p2 order) — changes only
+// when the actual characters change, not when the solo viewer flips sides.
+function teamsKey(b) {
+  const sl = (s) => ((b.teams && b.teams[s]) || []).map((c) => c.slug).join(',');
+  return 'p1:' + sl('p1') + '|p2:' + sl('p2');
+}
+
+// Per-victim signed amounts (one entry per logged hit/stack) for the cards that actually
+// changed HP this action. The CHANGED card identifies the victim (side-precise, so a DoT
+// on your own mirror-match character resolves correctly); the log supplies the per-hit
+// breakdown. If a name maps to more than one changed card (both same-named chars took
+// damage at once) we can't split reliably, so that card just shows its net delta.
+//   `changed` = [{ node, name, delta }]
+function amountsForChanged(changed, entries) {
+  const countByName = new Map();
+  for (const c of changed) countByName.set(c.name, (countByName.get(c.name) || 0) + 1);
+
+  const logByName = new Map();
+  for (const e of (entries || [])) {
+    if (!e || typeof e.text !== 'string') continue;
+    const heal = e.kind === 'heal';
+    if (!heal && e.kind !== 'damage') continue;
+    const m = e.text.match(heal ? /^(.+?) recovered ([0-9]+(?:\.[0-9]+)?) / : /^(.+?) took ([0-9]+(?:\.[0-9]+)?) /);
+    if (!m) continue;
+    const nm = m[1].trim();
+    const amt = (heal ? 1 : -1) * parseFloat(m[2]);
+    if (!logByName.has(nm)) logByName.set(nm, []);
+    logByName.get(nm).push(amt);
+  }
+
+  const byNode = new Map();
+  for (const c of changed) {
+    const lines = logByName.get(c.name);
+    byNode.set(c.node, (lines && lines.length && countByName.get(c.name) === 1) ? lines : [c.delta]);
+  }
+  return byNode;
+}
+
+// Orchestrate one action's animation: attacker lunges, then each victim reacts once
+// per logged hit (staggered), and a freshly KO'd victim only greys out after its last hit.
+function animateAction(actorNode, byNode, koNodes) {
   const reduce = reduceMotion();
   if (actorNode && !reduce) lungeCard(actorNode);
-  const fire = () => {
-    for (const h of hits) {
-      if (h.delta !== 0) floatNum(h.node, h.delta);
-      if (h.delta < 0) {
-        flashCard(h.node, 'dmg');
-        if (!reduce) { shakeCard(h.node); slashCard(h.node); }
-      } else if (h.delta > 0) {
-        flashCard(h.node, 'heal');
-      }
-      if (h.ko) {
-        const koNode = h.node;
-        setTimeout(() => koNode.root.classList.add('ko'), reduce ? 0 : 430);
-      }
+  const baseDelay = (actorNode && !reduce) ? 160 : 0;
+  const STAGGER = 140;
+  const nodes = new Set([...byNode.keys(), ...koNodes]);
+  for (const node of nodes) {
+    let amounts = byNode.get(node) || [];
+    // Reduced motion: collapse a multi-hit flurry into a single net number.
+    if (reduce && amounts.length > 1) amounts = [amounts.reduce((a, b) => a + b, 0)];
+    let lastAt = baseDelay;
+    amounts.forEach((amt, i) => {
+      const at = baseDelay + i * STAGGER;
+      lastAt = at;
+      if (at === 0) fireImpact(node, amt, reduce);
+      else setTimeout(() => fireImpact(node, amt, reduce), at);
+    });
+    if (koNodes.has(node)) {
+      const koAt = reduce ? 0 : lastAt + 300;
+      if (koAt === 0) node.root.classList.add('ko');
+      else setTimeout(() => node.root.classList.add('ko'), koAt);
     }
-  };
-  if (actorNode && !reduce && hits.length) setTimeout(fire, 160);
-  else fire();
+  }
 }
 
 function updateEffects(container, effects) {
@@ -404,8 +459,6 @@ function buildBoard() {
   boardEl = el('div', { class: 'tcg-arena' });
   boardCards.p1 = [];
   boardCards.p2 = [];
-  for (const k in prevHp) delete prevHp[k];
-  for (const k in prevKo) delete prevKo[k];
   for (const k in nodeByName) delete nodeByName[k];
   const sideEls = [];
   for (const side of [oppSide(), mySide()]) {
@@ -434,7 +487,15 @@ function buildBoard() {
 
 function updateBoard() {
   const b = state.battle;
-  const hits = [];
+  // Drop the HP baseline only on a genuine new battle (teams changed, or a rematch reset
+  // the turn counter) — NOT on the solo per-turn perspective flip, whose keys are stable.
+  const tk = teamsKey(b);
+  if (tk !== prevTeamsKey || b.currentTurn < prevTurn) { for (const k in prevHp) delete prevHp[k]; }
+  prevTeamsKey = tk;
+  prevTurn = b.currentTurn;
+
+  const changed = [];   // [{ node, name, delta }] — cards whose HP moved this action
+  const koNodes = new Set();
   for (const side of ['p1', 'p2']) {
     const lab = sideLabels[side];
     if (lab) {
@@ -449,29 +510,26 @@ function updateBoard() {
       if (!node) return;
       const key = side + ':' + slot;
       const prev = prevHp[key];
-      const wasKo = prevKo[key];
       updateCard(node, ch, side);
-      const freshKo = newLogThisIngest && ch.isKnockedOut && !wasKo;
-      if (newLogThisIngest && ((prev != null && ch.currentHp !== prev) || freshKo)) {
-        const delta = prev != null ? Math.round(ch.currentHp - prev) : 0;
-        hits.push({ node, delta, ko: freshKo });
-        // Hold the grey-out / KO badge so the hit lands on a still-standing card;
-        // animateAction re-applies `.ko` once the damage has played.
-        if (freshKo) node.root.classList.remove('ko');
+      if (newLogThisIngest && prev != null && ch.currentHp !== prev) {
+        changed.push({ node, name: ch.name, delta: Math.round(ch.currentHp - prev) });
+        if (ch.isKnockedOut) {
+          koNodes.add(node);
+          node.root.classList.remove('ko'); // defer grey-out until the hit lands
+        }
       }
       prevHp[key] = ch.currentHp;
-      prevKo[key] = ch.isKnockedOut;
     });
   }
-  if (newLogThisIngest && (hits.length || pendingActorName)) {
-    // The attacker is always on the side currently acting, so prefer the
-    // same-named card on b.currentPlayer's side (disambiguates mirror matches).
+
+  if (newLogThisIngest && (changed.length || pendingActorName)) {
+    const actorSide = b.currentPlayer;
     let actor = null;
     if (pendingActorName) {
       const cands = nodeByName[pendingActorName] || [];
-      actor = cands.find((n) => n._side === b.currentPlayer) || cands[0] || null;
+      actor = cands.find((n) => n._side === actorSide) || cands[0] || null;
     }
-    animateAction(actor, hits);
+    animateAction(actor, amountsForChanged(changed, b.lastActionLog), koNodes);
   }
   // consume so re-renders triggered by UI (arming/targeting) don't replay it
   newLogThisIngest = false;

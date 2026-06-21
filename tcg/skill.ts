@@ -13,7 +13,6 @@ import type { SkillBattleCost } from './skillBattleCost';
 import { Normal } from './skillBattleCost';
 import { Element, randomElement } from './element';
 import { tcgAssetPaths } from './assetPaths';
-import { round2 } from '../utils/math';
 
 /** Character-specific logic when a skill resolves (effects, damage, etc. still run unless omitted). */
 export type SkillOnUse = (caster: CharacterInBattle, target: CharacterInBattle | null) => void;
@@ -432,49 +431,32 @@ export class Skill implements DrawableBlock {
         damageContext = undefined;
       }
       const victims = Skill.resolveSkillRangeTargets(this.damageRange, character, target);
-      // Aggregate hits per victim so a multi-hit skill logs one summary line each
-      // ("X took 16 pyro damage (4 hits)") instead of one noisy line per hit. KO is
-      // logged after the damage line (silentKo) so the order reads damage → knockout.
-      interface HitTally {
-        damage: number; hits: number; dodged: number; wasAlive: boolean; elements: Set<Element>;
-      }
-      const tally = new Map<CharacterInBattle, HitTally>();
-      victims.forEach((v) => tally.set(v, {
-        damage: 0, hits: 0, dodged: 0, wasAlive: !v.isKnockedOut, elements: new Set<Element>(),
-      }));
+      // Each landed hit is logged on its own line (and drives its own damage indicator
+      // on the web client) so a multi-hit skill reads as N separate hits rather than one
+      // summary. takeDamage's own per-hit/KO lines are suppressed (silent/silentKo) so
+      // Skill.useSkill controls ordering: each hit's damage, then KO after the lethal hit.
+      const wasAlive = new Map<CharacterInBattle, boolean>();
+      victims.forEach((v) => wasAlive.set(v, !v.isKnockedOut));
       for (let hit = 0; hit < this.hitCount; hit += 1) {
         const hitElement = this.resolveDamageElementForHit(character);
         victims.forEach((victim) => {
-          const t = tally.get(victim)!;
+          if (victim.isKnockedOut) return;
           if (victim.side !== character.side && victim.rollDodge()) {
-            t.dodged += 1;
+            character.battle.logEvent(`${victim.character.name} dodged the attack!`, 'dodge');
             return;
           }
           const dealtDamage = character.dealDamage(this.damage, hitElement, damageContext);
           const applied = victim.takeDamage(dealtDamage, hitElement, character, { silent: true, silentKo: true });
-          t.damage = round2(t.damage + applied);
-          t.hits += 1;
-          t.elements.add(hitElement);
+          if (applied > 0) {
+            const elLabel = Element[hitElement].toLowerCase();
+            character.battle.logEvent(`${victim.character.name} took ${applied} ${elLabel} damage`, 'damage');
+          }
+          if (victim.isKnockedOut && wasAlive.get(victim)) {
+            character.battle.logEvent(`${victim.character.name} was knocked out!`, 'ko');
+            wasAlive.set(victim, false);
+          }
         });
       }
-      victims.forEach((victim) => {
-        const t = tally.get(victim)!;
-        if (t.hits > 0) {
-          const elLabel = t.elements.size === 1
-            ? Element[[...t.elements][0]].toLowerCase()
-            : 'mixed';
-          const hitSuffix = this.hitCount > 1 ? ` (${t.hits} hit${t.hits === 1 ? '' : 's'})` : '';
-          character.battle.logEvent(
-            `${victim.character.name} took ${round2(t.damage)} ${elLabel} damage${hitSuffix}`,
-            'damage',
-          );
-          if (victim.isKnockedOut && t.wasAlive) {
-            character.battle.logEvent(`${victim.character.name} was knocked out!`, 'ko');
-          }
-        } else if (t.dodged > 0) {
-          character.battle.logEvent(`${victim.character.name} dodged the attack!`, 'dodge');
-        }
-      });
     }
   }
 

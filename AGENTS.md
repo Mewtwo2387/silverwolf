@@ -494,9 +494,12 @@ Every meaningful battle event goes through `Battle.logEvent(text, kind?)`. The l
   by `useMainAction`/`useUltimate` themselves, and a `turn` header is logged at the start of every
   phase (`endTurn` + construction via `logTurnHeader`). So the log alone tells the whole story —
   surfaces do **not** synthesize their own headers.
-- Damage is logged element-aware ("X took N pyro damage"); multi-hit skills aggregate into one line
-  per victim in `Skill.useSkill` (`takeDamage(..., { silent, silentKo })` suppresses its own
-  per-hit/KO lines so the caller can summarise, then log KO after the damage line).
+- Damage is logged element-aware and **per hit** ("X took N pyro damage") — a multi-hit skill logs
+  one line per landed hit in `Skill.useSkill` (`takeDamage(..., { silent: true, silentKo: true })`
+  suppresses its own per-hit/KO lines so the caller controls ordering: each hit's damage line, then
+  the KO line after the lethal hit). The web client mirrors this — it spawns one floating
+  damage/heal indicator per `damage`/`heal` log line (parsed in `tcg-battle-room.src.js`), so each
+  hit flashes separately rather than showing one aggregated number.
 
 `getLastActionLog()` (plain strings) and `getLastActionLogEntries()` (structured) return the most
 recent action's lines. Rendering: website styles each entry by kind via `tcg-log-<kind>` CSS

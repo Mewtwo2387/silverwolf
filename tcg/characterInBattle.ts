@@ -403,42 +403,31 @@ export class CharacterInBattle {
     this.effects = this.effects.filter((effect) => effect.duration > 0);
   }
 
-  /** Sum fixed per-stack {@link EffectType.Dot} damage by label + element, then tick each group. */
+  /** Tick each {@link EffectType.Dot} stack individually — its own damage line + indicator. */
   private processDotTicks(): void {
     if (this.isKnockedOut) return;
 
     const dotStacks = this.effects.filter((effect) => effect.type === EffectType.Dot);
     if (dotStacks.length === 0) return;
 
-    const groups = new Map<string, { name: string; element: Element; total: number; description: string }>();
-    dotStacks.forEach((dot) => {
+    for (const dot of dotStacks) {
+      if (this.isKnockedOut) break;
+      const damage = round2(dot.amount);
+      if (damage <= 0) continue;
       const element = dot.metadata?.appliesToElement ?? Element.Physical;
-      const key = `${dot.name}:${element}`;
-      const group = groups.get(key) ?? {
-        name: dot.name, element, total: 0, description: dot.description,
-      };
-      group.total += dot.amount;
-      groups.set(key, group);
-    });
-
-    groups.forEach(({
-      name, element, total, description,
-    }) => {
-      const damage = round2(total);
-      if (damage <= 0) return;
       // Apply first so the logged number reflects incoming-damage mitigation. Suppress
-      // takeDamage's own lines so the DoT keeps its richer "[name]" damage line, with KO
+      // takeDamage's own lines so each stack keeps its richer "[name]" damage line, with KO
       // logged after it (damage → knockout order), mirroring Skill.useSkill.
       const wasAlive = !this.isKnockedOut;
       const applied = this.takeDamage(damage, element, null, { silent: true, silentKo: true });
       if (applied > 0) {
         const typeLabel = Element[element].toLowerCase();
-        this.battle.logEvent(`${this.character.name} took ${applied} ${typeLabel} damage from [${name}]`, 'damage', description);
+        this.battle.logEvent(`${this.character.name} took ${applied} ${typeLabel} damage from [${dot.name}]`, 'damage', dot.description);
       }
       if (this.isKnockedOut && wasAlive) {
         this.battle.logEvent(`${this.character.name} was knocked out!`, 'ko');
       }
-    });
+    }
   }
 
   /**
