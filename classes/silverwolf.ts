@@ -18,6 +18,7 @@ import {
 import scriptHandlers from './handlers/keywordsBehaviorHandler';
 import quoteDefault from '../utils/quote';
 import { loadAllowedServers } from '../utils/accessControl';
+import { loadResolvedServerConfig } from '../utils/serverConfig';
 
 const FONT_INDEX: string[] = (quoteDefault as any).FONT_INDEX;
 const MAX_MESSAGE_HISTORY = 100;
@@ -28,8 +29,6 @@ const handlers: Record<string, any> = {
   HalloweenHandler,
   AprilFoolsHandler,
 };
-
-const SERIOUS_CHANNELS = ['1262239871758766221'];
 
 /** Given a list of .ts and .js filenames, prefer .ts; only keep a .js file when no .ts counterpart exists. */
 function preferTsOverJs(files: string[]): string[] {
@@ -245,10 +244,15 @@ All wrongs reserved.
 
     log(`> Message received from ${message.author.username} (${message.author.id}) in ${message.channel.name} (${message.channel.id}) in ${message.guild.name} (${message.guild.id}): ${message.content}`);
 
-    if (Math.random() < 0.01 && !SERIOUS_CHANNELS.includes(message.channel.id)) {
+    const guildConfig = await loadResolvedServerConfig(this.db, message.guild.id);
+
+    if (
+      Math.random() < guildConfig.pokemonSpawnRate
+      && !guildConfig.seriousChannelIds.includes(message.channel.id)
+    ) {
       log('Summoning a pokemon...');
-      const handler = await this.getHandler(); // Fetch the handler based on the current season
-      await handler.summonPokemon(message); // Use the season-specific summonPokemon method
+      const handler = await this.getHandler();
+      await handler.summonPokemon(message, 'normal', guildConfig);
     }
 
     if (message.author.id === '993614772354416673' && Math.random() < 0.1) {
@@ -368,7 +372,7 @@ All wrongs reserved.
 
     if (matchedEntries.length > 0) {
       const promises = matchedEntries.map(async (matchedEntry: any) => {
-        if (matchedEntry.excludeSerious && SERIOUS_CHANNELS.includes(message.channel.id)) {
+        if (matchedEntry.excludeSerious && guildConfig.seriousChannelIds.includes(message.channel.id)) {
           return;
         }
 

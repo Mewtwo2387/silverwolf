@@ -1,11 +1,6 @@
 import serverConfigQueries from '../queries/serverConfigQueries';
+import { SERVER_CHANNEL_KEY_PREFIX, serverChannelKey, serverRoleKey, SERVER_ROLE_KEY_PREFIX } from '../../utils/serverConfig';
 import type Database from '../Database';
-
-export const SERVER_ROLE_KEY_PREFIX = 'role:';
-
-export function serverRoleKey(roleName: string): string {
-  return `${SERVER_ROLE_KEY_PREFIX}${roleName}`;
-}
 
 class ServerConfigModel {
   private db: Database;
@@ -63,6 +58,28 @@ class ServerConfigModel {
       }
       return true;
     });
+  }
+
+  async setServerChannel(serverId: string, channelName: string, channelId: string): Promise<void> {
+    await this.setServerConfig(serverId, serverChannelKey(channelName), channelId);
+  }
+
+  async getServerChannel(serverId: string, channelName: string): Promise<string | null> {
+    return this.getServerConfig(serverId, serverChannelKey(channelName));
+  }
+
+  async removeServerChannel(serverId: string, channelName: string): Promise<void> {
+    await this.deleteServerConfig(serverId, serverChannelKey(channelName));
+  }
+
+  async getAllServerChannels(serverId: string): Promise<{ channelName: string; channelId: string }[]> {
+    const rows = await this.getAllServerConfig(serverId);
+    return rows
+      .filter((row) => typeof row.key === 'string' && row.key.startsWith(SERVER_CHANNEL_KEY_PREFIX))
+      .map((row) => ({
+        channelName: row.key.slice(SERVER_CHANNEL_KEY_PREFIX.length),
+        channelId: row.value,
+      }));
   }
 
   async setServerRole(serverId: string, roleName: string, roleId: string): Promise<void> {

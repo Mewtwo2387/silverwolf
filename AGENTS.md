@@ -108,7 +108,9 @@ Rules an agent must follow:
   there. Legacy `ServerRoles` rows auto-migrate into `ServerConfig` (`role:<name>` keys) on boot.
 - Multi-statement atomicity: `db.executeTransaction((rawDb) => { ... })`.
 - Per-guild settings: `ServerConfig` (`db.serverConfig`, keyed by `server_id` + `key`) — named roles
-  use `role:<name>` keys; `CommandConfig` remains separate for per-guild command blacklists.
+  use `role:<name>` keys; gameplay tuning via `/serverconfig setvalue`, `/serverconfig setchannel`,
+  and `/serverconfig setrole`; `CommandConfig` remains
+  separate for per-guild command blacklists.
 
 ## 5. Website architecture (`site_src/`)
 **Server** (`server.ts`): a Hono app served by `Bun.serve` on **`PORT 6769` / host `0.0.0.0`**
