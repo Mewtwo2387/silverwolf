@@ -1,14 +1,21 @@
 import { DevCommand } from './classes/DevCommand';
-import { isServerChannelListKey } from '../utils/serverConfig';
+import {
+  SERVER_CHANNEL_LIST_KEYS,
+  validateSettableChannelKey,
+} from '../utils/serverConfig';
 
 class ServerConfigSetChannel extends DevCommand {
   constructor(client: any) {
-    super(client, 'setchannel', 'Set or toggle a channel config for this server', [
+    super(client, 'setchannel', 'Toggle a channel in a server channel list', [
       {
         name: 'key',
-        description: 'Config key (e.g. serious_channels, or a custom name for a single channel)',
+        description: 'Channel list config key',
         type: 3,
         required: true,
+        choices: SERVER_CHANNEL_LIST_KEYS.map((key) => ({
+          name: key,
+          value: key,
+        })),
       },
       {
         name: 'channel',
@@ -26,35 +33,30 @@ class ServerConfigSetChannel extends DevCommand {
       return;
     }
 
-    const key = interaction.options.getString('key').trim();
+    const key = interaction.options.getString('key');
     const channel = interaction.options.getChannel('channel');
     const serverId = interaction.guild.id;
 
-    if (!key) {
-      await interaction.editReply('Key cannot be empty.');
+    const validationError = validateSettableChannelKey(key);
+    if (validationError) {
+      await interaction.editReply(validationError);
       return;
     }
 
-    if (isServerChannelListKey(key)) {
-      const added = await this.client.db.serverConfig.appendUniqueToList(serverId, key, channel.id);
+    const added = await this.client.db.serverConfig.appendUniqueToList(serverId, key, channel.id);
 
-      if (added) {
-        await interaction.editReply(`Added <#${channel.id}> to \`${key}\`.`);
-        return;
-      }
-
-      const removed = await this.client.db.serverConfig.removeFromList(serverId, key, channel.id);
-      if (removed) {
-        await interaction.editReply(`Removed <#${channel.id}> from \`${key}\`.`);
-        return;
-      }
-
-      await interaction.editReply(`<#${channel.id}> is not in \`${key}\`.`);
+    if (added) {
+      await interaction.editReply(`Added <#${channel.id}> to \`${key}\`.`);
       return;
     }
 
-    await this.client.db.serverConfig.setServerChannel(serverId, key, channel.id);
-    await interaction.editReply(`\`${key}\` set to <#${channel.id}> for **${interaction.guild.name}**.`);
+    const removed = await this.client.db.serverConfig.removeFromList(serverId, key, channel.id);
+    if (removed) {
+      await interaction.editReply(`Removed <#${channel.id}> from \`${key}\`.`);
+      return;
+    }
+
+    await interaction.editReply(`<#${channel.id}> is not in \`${key}\`.`);
   }
 }
 

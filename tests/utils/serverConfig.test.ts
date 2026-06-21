@@ -5,6 +5,8 @@ import {
   loadResolvedServerConfig,
   SERVER_CONFIG_KEYS,
   validateServerConfigValue,
+  validateSettableChannelKey,
+  validateSettableRoleName,
 } from '../../utils/serverConfig';
 
 describe('serverConfig utils', () => {
@@ -54,47 +56,56 @@ describe('serverConfig utils', () => {
   });
 
   describe('validateServerConfigValue', () => {
-    it('accepts valid rates and channel lists', () => {
+    it('accepts valid rate values', () => {
       expect(validateServerConfigValue(SERVER_CONFIG_KEYS.POKEMON_SPAWN_RATE, '0.02')).toBeNull();
-      expect(validateServerConfigValue(SERVER_CONFIG_KEYS.SERIOUS_CHANNELS, '123,456')).toBeNull();
-      expect(validateServerConfigValue(SERVER_CONFIG_KEYS.SERIOUS_CHANNELS, '')).toBeNull();
     });
 
-    it('rejects invalid values', () => {
+    it('rejects invalid keys and values', () => {
       expect(validateServerConfigValue(SERVER_CONFIG_KEYS.POKEMON_SPAWN_RATE, '1.5')).not.toBeNull();
-      expect(validateServerConfigValue(SERVER_CONFIG_KEYS.SERIOUS_CHANNELS, 'abc')).not.toBeNull();
+      expect(validateServerConfigValue(SERVER_CONFIG_KEYS.SERIOUS_CHANNELS, '0.1')).not.toBeNull();
       expect(validateServerConfigValue('unknown_key', '0.1')).not.toBeNull();
     });
   });
 
+  describe('validateSettableRoleName and validateSettableChannelKey', () => {
+    it('accepts functional keys only', () => {
+      expect(validateSettableRoleName('girl')).toBeNull();
+      expect(validateSettableChannelKey('serious_channels')).toBeNull();
+    });
+
+    it('rejects unknown keys', () => {
+      expect(validateSettableRoleName('egirl')).not.toBeNull();
+      expect(validateSettableChannelKey('announcements')).not.toBeNull();
+    });
+  });
+
   describe('formatServerConfigOverview', () => {
-    it('shows none for unset values and formats roles and channels', () => {
+    it('shows defaults for unset values and formats set roles and channels', () => {
       const overview = formatServerConfigOverview([
         { key: 'pokemon_spawn_rate', value: '0.05' },
         { key: 'role:girl', value: '111111111' },
-        { key: 'channel:announcements', value: '222222222' },
         { key: 'serious_channels', value: '333333333,444444444' },
       ]);
 
       expect(overview).toContain('pokemon_spawn_rate: 0.05');
-      expect(overview).toContain('pokemon_shiny_chance: none');
+      expect(overview).toContain('pokemon_shiny_chance: None (default: 0.03)');
       expect(overview).toContain('serious_channels: <#333333333>, <#444444444>');
       expect(overview).toContain('girl: <@&111111111>');
-      expect(overview).toContain('announcements: <#222222222>');
+      expect(overview).not.toContain('channel:');
     });
 
-    it('shows none for empty role and channel sections', () => {
+    it('shows defaults when nothing is configured', () => {
       const overview = formatServerConfigOverview([]);
-      expect(overview).toContain('**Roles**\nnone');
-      expect(overview).toContain('**Channels**\nnone');
-      expect(overview).toContain('serious_channels: none');
+      expect(overview).toContain('pokemon_spawn_rate: None (default: 0.01)');
+      expect(overview).toContain('serious_channels: None (default: none)');
+      expect(overview).toContain('girl: None (default: none)');
     });
   });
 
   describe('formatChannelListValue', () => {
-    it('returns none for empty values', () => {
-      expect(formatChannelListValue(null)).toBe('none');
-      expect(formatChannelListValue('')).toBe('none');
+    it('returns default display for empty values', () => {
+      expect(formatChannelListValue(null)).toBe('None (default: none)');
+      expect(formatChannelListValue('')).toBe('None (default: none)');
     });
   });
 });

@@ -1,14 +1,19 @@
 import { EmbedBuilder } from 'discord.js';
 import { DevCommand } from './classes/DevCommand';
+import { SETTABLE_ROLE_NAMES, validateSettableRoleName } from '../utils/serverConfig';
 
 class ServerConfigSetRole extends DevCommand {
   constructor(client: any) {
     super(client, 'setrole', 'Set a named role for this server', [
       {
         name: 'role_name',
-        description: 'Logical name for the role (e.g. girl)',
+        description: 'Logical name for the role',
         type: 3,
         required: true,
+        choices: SETTABLE_ROLE_NAMES.map((name) => ({
+          name,
+          value: name,
+        })),
       },
       {
         name: 'role',
@@ -27,6 +32,12 @@ class ServerConfigSetRole extends DevCommand {
 
     const roleName = interaction.options.getString('role_name');
     const role = interaction.options.getRole('role');
+
+    const validationError = validateSettableRoleName(roleName);
+    if (validationError) {
+      await interaction.editReply(validationError);
+      return;
+    }
 
     await this.client.db.serverConfig.setServerRole(interaction.guild.id, roleName, role.id);
 

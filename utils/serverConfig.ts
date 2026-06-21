@@ -13,13 +13,14 @@ export const SERVER_CHANNEL_LIST_KEYS = [
 
 export type ServerChannelListKey = typeof SERVER_CHANNEL_LIST_KEYS[number];
 
-export const SERVER_CHANNEL_KEY_PREFIX = 'channel:';
+/** Role names referenced by bot commands (`role:<name>` keys). */
+export const SETTABLE_ROLE_NAMES = [
+  'girl',
+] as const;
+
+export type SettableRoleName = typeof SETTABLE_ROLE_NAMES[number];
 
 export const SERVER_ROLE_KEY_PREFIX = 'role:';
-
-export function serverChannelKey(channelName: string): string {
-  return `${SERVER_CHANNEL_KEY_PREFIX}${channelName}`;
-}
 
 export function serverRoleKey(roleName: string): string {
   return `${SERVER_ROLE_KEY_PREFIX}${roleName}`;
@@ -27,6 +28,24 @@ export function serverRoleKey(roleName: string): string {
 
 export function isServerChannelListKey(key: string): key is ServerChannelListKey {
   return (SERVER_CHANNEL_LIST_KEYS as readonly string[]).includes(key);
+}
+
+export function isSettableRoleName(name: string): name is SettableRoleName {
+  return (SETTABLE_ROLE_NAMES as readonly string[]).includes(name);
+}
+
+export function validateSettableRoleName(name: string): string | null {
+  if (!isSettableRoleName(name)) {
+    return `Unknown role name. Supported names: ${SETTABLE_ROLE_NAMES.join(', ')}`;
+  }
+  return null;
+}
+
+export function validateSettableChannelKey(key: string): string | null {
+  if (!isServerChannelListKey(key)) {
+    return `Unknown channel key. Supported keys: ${SERVER_CHANNEL_LIST_KEYS.join(', ')}`;
+  }
+  return null;
 }
 
 export type DocumentedServerConfigKey = typeof SERVER_CONFIG_KEYS[keyof typeof SERVER_CONFIG_KEYS];
@@ -53,8 +72,8 @@ export const DOCUMENTED_SERVER_CONFIG_KEYS: {
   },
   {
     key: SERVER_CONFIG_KEYS.SERIOUS_CHANNELS,
-    description: 'Comma-separated channel IDs excluded from spawns and some keyword triggers',
-    defaultValue: '(none)',
+    description: 'Channels excluded from spawns and some keyword triggers',
+    defaultValue: 'none',
   },
 ];
 
@@ -96,17 +115,17 @@ export function isDocumentedServerConfigKey(key: string): key is DocumentedServe
   return DOCUMENTED_KEY_SET.has(key);
 }
 
-export function validateServerConfigValue(key: string, value: string): string | null {
-  if (!isDocumentedServerConfigKey(key)) {
-    return `Unknown key. Supported keys: ${DOCUMENTED_SERVER_CONFIG_KEYS.map((entry) => entry.key).join(', ')}`;
-  }
+function documentedDefault(key: DocumentedServerConfigKey): string {
+  return DOCUMENTED_SERVER_CONFIG_KEYS.find((entry) => entry.key === key)!.defaultValue;
+}
 
-  if (key === SERVER_CONFIG_KEYS.SERIOUS_CHANNELS) {
-    if (!value.trim()) return null;
-    const ids = parseChannelIds(value);
-    if (ids.length === 0) return 'serious_channels must be a comma-separated list of numeric channel IDs';
-    if (ids.some((id) => !/^\d+$/.test(id))) return 'serious_channels must contain only numeric channel IDs';
-    return null;
+function formatUnsetDisplay(defaultValue: string): string {
+  return `None (default: ${defaultValue})`;
+}
+
+export function validateServerConfigValue(key: string, value: string): string | null {
+  if (!SETTABLE_VALUE_KEYS.some((entry) => entry.key === key)) {
+    return `Unknown key. Supported keys: ${SETTABLE_VALUE_KEYS.map((entry) => entry.key).join(', ')}`;
   }
 
   const numeric = Number(value);
@@ -117,9 +136,11 @@ export function validateServerConfigValue(key: string, value: string): string | 
 }
 
 export function formatChannelListValue(raw: string | null | undefined): string {
-  if (!raw?.trim()) return 'none';
+  if (!raw?.trim()) return formatUnsetDisplay(documentedDefault(SERVER_CONFIG_KEYS.SERIOUS_CHANNELS));
   const ids = parseChannelIds(raw);
-  return ids.length > 0 ? ids.map((id) => `<#${id}>`).join(', ') : 'none';
+  return ids.length > 0
+    ? ids.map((id) => `<#${id}>`).join(', ')
+    : formatUnsetDisplay(documentedDefault(SERVER_CONFIG_KEYS.SERIOUS_CHANNELS));
 }
 
 export function formatServerConfigOverview(rows: { key: string; value: string }[]): string {
@@ -130,7 +151,8 @@ export function formatServerConfigOverview(rows: { key: string; value: string }[
   lines.push('**Values**');
   SETTABLE_VALUE_KEYS.forEach((entry) => {
     const raw = valueByKey.get(entry.key);
-    lines.push(`${entry.key}: ${raw?.trim() ? raw : 'none'}`);
+    const display = raw?.trim() ? raw : formatUnsetDisplay(entry.defaultValue);
+    lines.push(`${entry.key}: ${display}`);
   });
 
   lines.push('', '**Channel lists**');
@@ -138,27 +160,12 @@ export function formatServerConfigOverview(rows: { key: string; value: string }[
     lines.push(`${listKey}: ${formatChannelListValue(valueByKey.get(listKey))}`);
   });
 
-  const roleRows = rows.filter((row) => row.key.startsWith(SERVER_ROLE_KEY_PREFIX));
   lines.push('', '**Roles**');
-  if (roleRows.length === 0) {
-    lines.push('none');
-  } else {
-    roleRows.forEach((row) => {
-      const name = row.key.slice(SERVER_ROLE_KEY_PREFIX.length);
-      lines.push(`${name}: <@&${row.value}>`);
-    });
-  }
-
-  const channelRows = rows.filter((row) => row.key.startsWith(SERVER_CHANNEL_KEY_PREFIX));
-  lines.push('', '**Channels**');
-  if (channelRows.length === 0) {
-    lines.push('none');
-  } else {
-    channelRows.forEach((row) => {
-      const name = row.key.slice(SERVER_CHANNEL_KEY_PREFIX.length);
-      lines.push(`${name}: <#${row.value}>`);
-    });
-  }
+  SETTABLE_ROLE_NAMES.forEach((roleName) => {
+    const raw = valueByKey.get(serverRoleKey(roleName));
+    const display = raw?.trim() ? `<@&${raw}>` : formatUnsetDisplay('none');
+    lines.push(`${roleName}: ${display}`);
+  });
 
   return lines.join('\n');
 }
