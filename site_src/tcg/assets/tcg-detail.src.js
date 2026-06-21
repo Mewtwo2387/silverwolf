@@ -308,7 +308,7 @@ import { formatBattleSide, formatItemKind, formatSkillCategory } from './tcg-lab
   }
 
   function init(catalog) {
-    catalogByValue = catalog ? Object.fromEntries(catalog.map((c) => [c.value, c])) : null;
+    catalogByValue = Array.isArray(catalog) ? Object.fromEntries(catalog.map((c) => [c.value, c])) : null;
     initDetailModal();
   }
 
@@ -330,7 +330,7 @@ import { formatBattleSide, formatItemKind, formatSkillCategory } from './tcg-lab
     if (dataEl) {
       try {
         const parsed = JSON.parse(dataEl.textContent);
-        catalog = parsed && parsed.catalog ? parsed.catalog : null;
+        catalog = parsed && Array.isArray(parsed.catalog) ? parsed.catalog : null;
       } catch (e) { /* ignore */ }
     }
     init(catalog);

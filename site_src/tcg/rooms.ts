@@ -431,7 +431,6 @@ class TcgRoomManager {
     const p2Public = room.mode === 'solo'
       ? this.publicPlayer(room.p1, 'p2')
       : this.publicPlayer(room.p2, 'p2');
-    const battleViewer: BattleSide = viewerSide ?? 'p1';
     return {
       id: room.id,
       mode: room.mode,
@@ -448,7 +447,9 @@ class TcgRoomManager {
         username: room.creatorUsername,
         avatarURL: room.creatorAvatarURL,
       },
-      battle: room.battle ? buildBattleSnapshot(room.battle, battleViewer) : null,
+      // A null viewerSide means a non-player viewer — never build the snapshot, since
+      // it embeds the viewer's private hand. Only seated players get the battle DTO.
+      battle: room.battle && viewerSide ? buildBattleSnapshot(room.battle, viewerSide) : null,
     };
   }
 

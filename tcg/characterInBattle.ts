@@ -426,9 +426,18 @@ export class CharacterInBattle {
     }) => {
       const damage = round2(total);
       if (damage <= 0) return;
-      const typeLabel = Element[element].toLowerCase();
-      this.battle.logEvent(`${this.character.name} took ${damage} ${typeLabel} damage from [${name}]`, 'damage', description);
-      this.takeDamage(damage, element, null, { silent: true });
+      // Apply first so the logged number reflects incoming-damage mitigation. Suppress
+      // takeDamage's own lines so the DoT keeps its richer "[name]" damage line, with KO
+      // logged after it (damage → knockout order), mirroring Skill.useSkill.
+      const wasAlive = !this.isKnockedOut;
+      const applied = this.takeDamage(damage, element, null, { silent: true, silentKo: true });
+      if (applied > 0) {
+        const typeLabel = Element[element].toLowerCase();
+        this.battle.logEvent(`${this.character.name} took ${applied} ${typeLabel} damage from [${name}]`, 'damage', description);
+      }
+      if (this.isKnockedOut && wasAlive) {
+        this.battle.logEvent(`${this.character.name} was knocked out!`, 'ko');
+      }
     });
   }
 

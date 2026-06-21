@@ -38,7 +38,7 @@ let pendingActorName = null;        // attacker name parsed from the action log
 let boardEl = null;
 let boardSig = '';
 const boardCards = { p1: [], p2: [] };
-const nodeByName = {};              // name -> card node (for attacker lookup)
+const nodeByName = {};              // name -> card node[] (arrays: a mirror match can field same-named chars on both sides)
 const sideLabels = {};
 const prevHp = {};
 const prevKo = {};
@@ -198,7 +198,7 @@ function ultSkillOf(ch) {
 }
 
 function makeCardNode(side, slot) {
-  const root = el('div', { class: 'tcg-char' });
+  const root = el('div', { class: 'tcg-char', tabindex: '0', role: 'button' });
   const img = el('img', { class: 'art', loading: 'lazy', decoding: 'async', alt: '' });
   const activeTag = el('span', { class: 'tcg-active-tag' }, 'ACTIVE');
   const ko = el('div', { class: 'tcg-ko-badge' }, 'KO');
@@ -230,9 +230,20 @@ function makeCardNode(side, slot) {
   root.appendChild(art);
   root.appendChild(info);
 
-  root.addEventListener('click', () => {
+  const activateCard = () => {
     const ch = curCh(side, slot);
     if (ch) onCharClick(ch, side, side === mySide());
+  };
+  root.addEventListener('click', activateCard);
+  // Keyboard activation: the card is a focusable role=button, so Enter/Space must
+  // trigger the same selection/inspect logic as a click (preventDefault stops Space
+  // from scrolling the page). The nested ult <button> handles its own keys.
+  root.addEventListener('keydown', (ev) => {
+    if (ev.target !== root) return;
+    if (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar') {
+      ev.preventDefault();
+      activateCard();
+    }
   });
   ult.addEventListener('click', (ev) => {
     ev.stopPropagation();
@@ -409,7 +420,7 @@ function buildBoard() {
     const row = el('div', { class: 'tcg-row' });
     boardCards[side] = team.map((ch, slot) => {
       const node = makeCardNode(side, slot);
-      nodeByName[ch.name] = node;
+      (nodeByName[ch.name] = nodeByName[ch.name] || []).push(node);
       row.appendChild(node.root);
       return node;
     });
@@ -453,7 +464,13 @@ function updateBoard() {
     });
   }
   if (newLogThisIngest && (hits.length || pendingActorName)) {
-    const actor = pendingActorName ? nodeByName[pendingActorName] : null;
+    // The attacker is always on the side currently acting, so prefer the
+    // same-named card on b.currentPlayer's side (disambiguates mirror matches).
+    let actor = null;
+    if (pendingActorName) {
+      const cands = nodeByName[pendingActorName] || [];
+      actor = cands.find((n) => n._side === b.currentPlayer) || cands[0] || null;
+    }
     animateAction(actor, hits);
   }
   // consume so re-renders triggered by UI (arming/targeting) don't replay it

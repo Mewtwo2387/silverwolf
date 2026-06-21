@@ -1129,6 +1129,7 @@ code, pre, kbd, .font-mono {
   background: color-mix(in oklab, var(--ink-800) 85%, transparent);
   transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
 }
+.tcg-char:focus-visible { outline: 2px solid var(--accent-light); outline-offset: 2px; }
 .tcg-char.inspect { cursor: zoom-in; }
 .tcg-char.inspect:hover { transform: translateY(-3px); border-color: color-mix(in oklab, var(--accent) 45%, var(--ink-600)); box-shadow: 0 10px 26px rgba(0,0,0,0.45); }
 .tcg-char.active { border-color: var(--accent); animation: tcg-active-pulse 2.2s ease-in-out infinite; z-index: 2; }

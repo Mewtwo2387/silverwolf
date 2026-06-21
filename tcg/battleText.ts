@@ -69,8 +69,8 @@ function formatSkillAvailabilityLine(
   if (skill.category === SkillCategory.Charged && battle.skillPointsForSide(side) < skill.skillPointsCost) {
     const spCap = battle.skillPointsCapForSide(side);
     return style === 'markdown'
-      ? `LOCKED (need 1 skill point, have ${battle.skillPointsForSide(side)}/${spCap})`
-      : '[CHARGED — need 1 team skill point]';
+      ? `LOCKED (need ${skill.skillPointsCost} skill point, have ${battle.skillPointsForSide(side)}/${spCap})`
+      : `[CHARGED — need ${skill.skillPointsCost} team skill point]`;
   }
   return style === 'markdown' ? 'AVAILABLE (main action)' : '[MAIN ACTION — AVAILABLE]';
 }

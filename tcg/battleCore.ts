@@ -133,6 +133,12 @@ export function resolveTargetForSkill(
   }
 
   const targetIndex = parseInt((targetRaw?.trim() || '0'), 10);
+  // Untrusted callers (e.g. the WS client) can send a non-numeric target, which
+  // parseInt turns into NaN. NaN slips past `< 0` / `>= length` bounds checks (both
+  // false), so reject it up front rather than indexing the array with NaN.
+  if (!Number.isInteger(targetIndex)) {
+    return { ok: false, error: `Invalid target slot: ${targetRaw}` };
+  }
   // Target indices are ABSOLUTE slot indices — they never shift when a character is KO'd.
   // Slot 1 is always slot 1 even if slot 0 is gone.
   if (skillWantsAllyIndex(skill)) {

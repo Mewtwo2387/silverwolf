@@ -197,8 +197,13 @@ export class Battle {
    * `text` must be PLAIN (no markdown); `kind` drives per-surface styling.
    * Call sites: skill/item announcements, damage resolution, effect application, KOs, etc.
    */
-  logEvent(text: string, kind: BattleLogKind = 'info', detail?: string): void {
-    const entry: BattleLogEntry = detail ? { kind, text, detail } : { kind, text };
+  logEvent(text: string, kind?: BattleLogKind, detail?: string): void {
+    // `kind` is optional rather than defaulted in the signature so it can sit before
+    // the optional `detail` without tripping default-param-last; default applied here.
+    const resolvedKind: BattleLogKind = kind ?? 'info';
+    const entry: BattleLogEntry = detail
+      ? { kind: resolvedKind, text, detail }
+      : { kind: resolvedKind, text };
     this.currentActionLog.push(entry);
     this.turnHistory.push(entry);
     log(`[tcg] ${text}`);
