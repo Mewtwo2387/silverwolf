@@ -1,5 +1,6 @@
 import { EmbedBuilder } from 'discord.js';
 import { Command } from './classes/Command';
+import { loadResolvedServerConfig } from '../utils/serverConfig';
 
 class Sacrifice extends Command {
   constructor(client: any) {
@@ -61,7 +62,8 @@ class Sacrifice extends Command {
     await this.client.db.pokemon.sacrificePokemon(userId, pokemon3);
 
     const handler = await this.client.getHandler();
-    await handler.summonPokemon(interaction);
+    const guildConfig = await loadResolvedServerConfig(this.client.db, interaction.guild.id);
+    await handler.summonPokemon(interaction, 'normal', guildConfig);
   }
 }
 

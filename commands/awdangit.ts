@@ -9,7 +9,7 @@ class Awdangit extends Command {
 
   async run(interaction: any): Promise<void> {
     if (Math.random() < 0.01) {
-      const roleId = await this.client.db.serverRoles.getServerRole(interaction.guild.id, 'girl');
+      const roleId = await this.client.db.serverConfig.getServerRole(interaction.guild.id, 'girl');
       const role = interaction.member.guild.roles.cache.find((r: any) => r.id === roleId);
 
       log(`${interaction.user.username} became a girl`);

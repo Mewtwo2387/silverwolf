@@ -1,5 +1,5 @@
-const SHINY_CHANCE = 0.03;
-const MYSTERY_CHANCE = 0.3;
+import type { ResolvedServerConfig } from '../../utils/serverConfig';
+
 const GUILD_MEMBER_CACHE_TTL_MS = 60 * 1000;
 
 interface CachedGuildMembers {
@@ -24,16 +24,23 @@ class Handler {
     return members;
   }
 
-  async summonPokemon(message: any, mode = 'normal'): Promise<void> {
+  async summonPokemon(
+    message: any,
+    mode = 'normal',
+    config?: Pick<ResolvedServerConfig, 'pokemonShinyChance' | 'pokemonMysteryChance'>,
+  ): Promise<void> {
     const allMembers = await this.getGuildMembers(message);
     const members = allMembers.filter((member: any) => !member.user.bot);
     const member = members.random();
     const { client } = message;
 
+    const shinyChance = config?.pokemonShinyChance ?? 0.03;
+    const mysteryChance = config?.pokemonMysteryChance ?? 0.3;
+
     const pfp = await member.user.displayAvatarURL({ extension: 'png', size: 512 });
-    if (mode === 'shiny' || (mode === 'normal' && Math.random() < SHINY_CHANCE)) {
+    if (mode === 'shiny' || (mode === 'normal' && Math.random() < shinyChance)) {
       await this.summonShinyPokemon(client, message, member, pfp);
-    } else if (mode === 'mystery' || (mode === 'normal' && Math.random() < MYSTERY_CHANCE)) {
+    } else if (mode === 'mystery' || (mode === 'normal' && Math.random() < mysteryChance)) {
       await this.summonMysteryPokemon(client, message, member, pfp);
     } else {
       await this.summonNormalPokemon(client, message, member, pfp);

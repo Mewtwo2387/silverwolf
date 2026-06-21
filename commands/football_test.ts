@@ -41,7 +41,7 @@ class FootballTest extends DevCommand {
     const channelIds = await getFootballChannelIds(this.client.db);
     if (channelIds.length === 0) {
       await interaction.editReply(
-        'No football channels configured. Use `/football channel` or set `FOOTBALL_CHANNELS` in the environment.',
+        'No football channels configured. Use `/football register` or set `FOOTBALL_CHANNELS` in the environment.',
       );
       return;
     }
