@@ -13,7 +13,7 @@ import marriageTable from './marriageTable';
 import pokemonTable from './pokemonTable';
 import poopEntryTable from './poopEntryTable';
 import poopProfileTable from './poopProfileTable';
-import serverRolesTable from './serverRolesTable';
+import serverConfigTable from './serverConfigTable';
 import userTable from './userTable';
 import webSessionTable from './webSessionTable';
 
@@ -33,7 +33,7 @@ export {
   pokemonTable,
   poopEntryTable,
   poopProfileTable,
-  serverRolesTable,
+  serverConfigTable,
   userTable,
   webSessionTable,
 };
@@ -52,6 +52,6 @@ export type { ImageGenLogRow } from './imageGenLogTable';
 export type { MarriageRow } from './marriageTable';
 export type { PokemonRow } from './pokemonTable';
 export type { PoopEntryRow } from './poopEntryTable';
-export type { ServerRolesRow } from './serverRolesTable';
+export type { ServerConfigRow } from './serverConfigTable';
 export type { UserRow, UserStatsRow } from './userTable';
 export type { WebSessionRow } from './webSessionTable';

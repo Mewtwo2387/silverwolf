@@ -11,7 +11,7 @@ import ImageGenModel from './ImageGenModel';
 import MarriageModel from './MarriageModel';
 import PokemonModel from './PokemonModel';
 import PoopModel from './PoopModel';
-import ServerRolesModel from './ServerRolesModel';
+import ServerConfigModel from './ServerConfigModel';
 import UserModel from './UserModel';
 import WebSessionModel from './WebSessionModel';
 
@@ -29,7 +29,7 @@ export {
   MarriageModel,
   PokemonModel,
   PoopModel,
-  ServerRolesModel,
+  ServerConfigModel,
   UserModel,
   WebSessionModel,
 };

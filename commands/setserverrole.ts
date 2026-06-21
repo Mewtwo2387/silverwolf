@@ -23,7 +23,7 @@ class SetServerRole extends DevCommand {
     const roleName = interaction.options.getString('role_name');
     const role = interaction.options.getRole('role');
 
-    this.client.db.serverRoles.setServerRole(interaction.guild.id, roleName, role.id);
+    await this.client.db.serverConfig.setServerRole(interaction.guild.id, roleName, role.id);
 
     await interaction.editReply({
       embeds: [

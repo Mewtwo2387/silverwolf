@@ -5,7 +5,7 @@ import gameUIDQueries from './gameUIDQueries';
 import globalConfigQueries from './globalConfigQueries';
 import marriageQueries from './marriageQueries';
 import pokemonQueries from './pokemonQueries';
-import serverRolesQueries from './serverRolesQueries';
+import serverConfigQueries from './serverConfigQueries';
 import userQueries from './userQueries';
 import webSessionQueries from './webSessionQueries';
 
@@ -17,7 +17,7 @@ export {
   globalConfigQueries,
   marriageQueries,
   pokemonQueries,
-  serverRolesQueries,
+  serverConfigQueries,
   userQueries,
   webSessionQueries,
 };
