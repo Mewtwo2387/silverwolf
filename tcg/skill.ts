@@ -440,8 +440,10 @@ export class Skill implements DrawableBlock {
       for (let hit = 0; hit < this.hitCount; hit += 1) {
         const hitElement = this.resolveDamageElementForHit(character);
         victims.forEach((victim) => {
-          if (victim.isKnockedOut) return;
-          if (victim.side !== character.side && victim.rollDodge()) {
+          // Corpse hits still resolve: every hit in the sequence fires dealDamage (so the
+          // caster's damage-dealt total counts overkill) even after the victim is KO'd. The
+          // dead can't dodge, and takeDamage no-ops on a corpse so no "took"/"dodged" line is logged.
+          if (!victim.isKnockedOut && victim.side !== character.side && victim.rollDodge()) {
             character.battle.logEvent(`${victim.character.name} dodged the attack!`, 'dodge');
             return;
           }

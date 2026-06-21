@@ -534,7 +534,9 @@ function updateBoard() {
       const prev = prevHp[key];
       updateCard(node, ch, side);
       if (newLogThisIngest && prev != null && ch.currentHp !== prev) {
-        changed.push({ node, name: ch.name, delta: Math.round(ch.currentHp - prev) });
+        // Keep 2-decimal precision (matches the log's fractional damage) — Math.round would
+        // drop fractions like 6.4 and turn a -0.4 delta into a "-0" indicator.
+        changed.push({ node, name: ch.name, delta: Math.round((ch.currentHp - prev) * 100) / 100 });
         if (ch.isKnockedOut) {
           koNodes.add(node);
           node.root.classList.remove('ko'); // defer grey-out until the hit lands

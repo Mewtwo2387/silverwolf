@@ -46,17 +46,24 @@ console.log(`Built ${BUNDLES.length} JS bundles.`);
 if (process.argv.includes('--watch')) {
   const dirs = [...new Set(BUNDLES.map((b) => path.dirname(path.join(ROOT, b.entry))))];
   let timer: ReturnType<typeof setTimeout> | null = null;
-  for (const dir of dirs) {
-    watch(dir, (_evt, file) => {
-      // Only react to tracked sources; ignore generated `.js` outputs to avoid a rebuild loop.
-      if (!file || !(file.endsWith('.src.js') || file.endsWith('.lib.js'))) return;
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        buildAll()
-          .then(() => console.log(`[${new Date().toLocaleTimeString()}] rebuilt ${BUNDLES.length} bundles`))
-          .catch((e) => console.error(e));
-      }, 80);
-    });
-  }
+
+  const rebuild = async (): Promise<void> => {
+    try {
+      await buildAll();
+      console.log(`[${new Date().toLocaleTimeString()}] rebuilt ${BUNDLES.length} bundles`);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Defined once (not inside the loop) so it doesn't capture loop-scoped state — debounces
+  // bursts of file events into a single rebuild, ignoring generated `.js` to avoid a loop.
+  const onChange = (_evt: string, file: string | null): void => {
+    if (!file || !(file.endsWith('.src.js') || file.endsWith('.lib.js'))) return;
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(rebuild, 80); // rebuild() swallows its own errors
+  };
+
+  for (const dir of dirs) watch(dir, onChange);
   console.log(`Watching ${dirs.length} dirs for *.src.js / *.lib.js changes…`);
 }

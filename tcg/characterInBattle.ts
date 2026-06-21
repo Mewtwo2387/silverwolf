@@ -224,7 +224,9 @@ export class CharacterInBattle {
   }
 
   /**
-   * Apply damage and return the actual HP lost (after incoming-damage modifiers).
+   * Apply damage and return the mitigated incoming damage (after incoming-damage modifiers).
+   * This is the damage *dealt*, which may EXCEED the HP actually removed on an overkill hit —
+   * do not treat the return value as an HP delta. A KO'd target takes nothing and returns 0.
    * @param opts.silent suppress the "took N damage" log line (the caller logs its own,
    *   e.g. an aggregated multi-hit total or a DoT line).
    * @param opts.silentKo suppress the knockout line (caller logs it after its damage line
@@ -238,7 +240,8 @@ export class CharacterInBattle {
   ): number {
     if (this.isKnockedOut) return 0;
 
-    const element = damageElement || this.character.element;
+    // `??` not `||`: Element.Fairy === 0 is falsy, so `||` would drop an explicit Fairy hit.
+    const element = damageElement ?? this.character.element;
 
     let damage = amount;
     this.effects
@@ -288,7 +291,8 @@ export class CharacterInBattle {
     damageElement?: Element,
     context?: DamageCalculationContext,
   ): number {
-    const element = damageElement || this.character.element;
+    // `??` not `||`: Element.Fairy === 0 is falsy, so `||` would drop an explicit Fairy element.
+    const element = damageElement ?? this.character.element;
 
     let damage = amount;
     this.effects
