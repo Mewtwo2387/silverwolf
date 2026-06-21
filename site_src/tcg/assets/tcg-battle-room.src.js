@@ -15,6 +15,21 @@ import { formatBattleSide, formatSkillCategory } from './tcg-labels.lib.js';
   const MAX_EQUIP = 3;
   const TURN_TIMER_MS = 90000; // mirrors server TCG_TURN_TIMER_MS (for the timer ring)
   const reduceMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Floating damage-number tint per element (lowercased Element name, as it appears in the
+  // log: "X took N <element> damage"). Unknown/absent element → default .dmg red via CSS.
+  const ELEMENT_COLORS = {
+    fairy: 'hsl(320 85% 70%)',
+    quantum: 'hsl(265 90% 74%)',
+    imaginary: 'hsl(45 95% 62%)',
+    physical: 'hsl(210 12% 82%)',
+    anemo: 'hsl(160 70% 62%)',
+    electro: 'hsl(285 85% 74%)',
+    cryo: 'hsl(190 85% 66%)',
+    pyro: 'hsl(8 90% 66%)',
+    geo: 'hsl(40 88% 60%)',
+    dendro: 'hsl(110 62% 58%)',
+    hydro: 'hsl(205 88% 66%)',
+  };
 
 const viewEl = document.getElementById('tcg-view');
 if (!viewEl) return;
@@ -280,9 +295,11 @@ function slashCard(node) {
   void node.slash.offsetWidth;
   node.slash.classList.add('go');
 }
-function floatNum(node, delta) {
-  const heal = delta > 0;
-  const n = el('div', { class: 'tcg-floatnum ' + (heal ? 'heal' : 'dmg') }, (heal ? '+' : '−') + Math.abs(delta));
+function floatNum(node, value, element) {
+  const heal = value > 0;
+  const n = el('div', { class: 'tcg-floatnum ' + (heal ? 'heal' : 'dmg') }, (heal ? '+' : '−') + Math.abs(value));
+  // Damage numbers are tinted by their element; heals keep the green .heal class.
+  if (!heal && element && ELEMENT_COLORS[element]) n.style.color = ELEMENT_COLORS[element];
   // small horizontal jitter so stacked hits don't overlap perfectly
   n.style.setProperty('--dx', (Math.round((node.fx.childElementCount % 3) - 1) * 22) + 'px');
   node.fx.appendChild(n);
@@ -298,12 +315,12 @@ function lungeCard(node) {
   setTimeout(() => node.root.classList.remove(dir), 560);
 }
 
-function fireImpact(node, amt, reduce) {
-  floatNum(node, amt);
-  if (amt < 0) {
+function fireImpact(node, a, reduce) {
+  floatNum(node, a.value, a.element);
+  if (a.value < 0) {
     flashCard(node, 'dmg');
     if (!reduce) { shakeCard(node); slashCard(node); }
-  } else if (amt > 0) {
+  } else if (a.value > 0) {
     flashCard(node, 'heal');
   }
 }
@@ -330,18 +347,19 @@ function amountsForChanged(changed, entries) {
     if (!e || typeof e.text !== 'string') continue;
     const heal = e.kind === 'heal';
     if (!heal && e.kind !== 'damage') continue;
-    const m = e.text.match(heal ? /^(.+?) recovered ([0-9]+(?:\.[0-9]+)?) / : /^(.+?) took ([0-9]+(?:\.[0-9]+)?) /);
+    // Damage: "<name> took <n> <element> damage" (element optional). Heal: "<name> recovered <n> HP".
+    const m = e.text.match(heal ? /^(.+?) recovered ([0-9]+(?:\.[0-9]+)?) / : /^(.+?) took ([0-9]+(?:\.[0-9]+)?) (?:(\w+) )?damage/);
     if (!m) continue;
     const nm = m[1].trim();
-    const amt = (heal ? 1 : -1) * parseFloat(m[2]);
+    const entry = { value: (heal ? 1 : -1) * parseFloat(m[2]), element: heal ? null : (m[3] || null) };
     if (!logByName.has(nm)) logByName.set(nm, []);
-    logByName.get(nm).push(amt);
+    logByName.get(nm).push(entry);
   }
 
   const byNode = new Map();
   for (const c of changed) {
     const lines = logByName.get(c.name);
-    byNode.set(c.node, (lines && lines.length && countByName.get(c.name) === 1) ? lines : [c.delta]);
+    byNode.set(c.node, (lines && lines.length && countByName.get(c.name) === 1) ? lines : [{ value: c.delta, element: null }]);
   }
   return byNode;
 }
@@ -356,14 +374,18 @@ function animateAction(actorNode, byNode, koNodes) {
   const nodes = new Set([...byNode.keys(), ...koNodes]);
   for (const node of nodes) {
     let amounts = byNode.get(node) || [];
-    // Reduced motion: collapse a multi-hit flurry into a single net number.
-    if (reduce && amounts.length > 1) amounts = [amounts.reduce((a, b) => a + b, 0)];
+    // Reduced motion: collapse a multi-hit flurry into one number (keep the element tint if uniform).
+    if (reduce && amounts.length > 1) {
+      const el0 = amounts[0].element;
+      const uniform = amounts.every((a) => a.element === el0);
+      amounts = [{ value: amounts.reduce((s, a) => s + a.value, 0), element: uniform ? el0 : null }];
+    }
     let lastAt = baseDelay;
-    amounts.forEach((amt, i) => {
+    amounts.forEach((a, i) => {
       const at = baseDelay + i * STAGGER;
       lastAt = at;
-      if (at === 0) fireImpact(node, amt, reduce);
-      else setTimeout(() => fireImpact(node, amt, reduce), at);
+      if (at === 0) fireImpact(node, a, reduce);
+      else setTimeout(() => fireImpact(node, a, reduce), at);
     });
     if (koNodes.has(node)) {
       const koAt = reduce ? 0 : lastAt + 300;
