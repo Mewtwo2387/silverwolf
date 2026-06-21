@@ -1,0 +1,39 @@
+<div id="tcg-detail-backdrop" class="tcg-detail-backdrop" aria-hidden="true">
+  <div class="tcg-detail" role="dialog" aria-modal="true" aria-labelledby="tcg-detail-title">
+    <div class="tcg-detail-head">
+      <h2 id="tcg-detail-title">Details</h2>
+      <button type="button" class="tcg-detail-close" id="tcg-detail-close" aria-label="Close">✕</button>
+    </div>
+    <div class="tcg-detail-body" id="tcg-detail-body"></div>
+  </div>
+</div>
+
+<template id="tcg-tpl-detail-layout">
+  <div class="tcg-detail-art"><img loading="lazy" decoding="async" alt=""></div>
+  <div class="tcg-detail-meta"></div>
+</template>
+
+<template id="tcg-tpl-list-item">
+  <li>
+    <div class="li-name"></div>
+    <div class="li-meta"></div>
+    <div class="li-desc"></div>
+    <div class="li-reason"></div>
+  </li>
+</template>
+
+<template id="tcg-tpl-empty-msg">
+  <p class="tcg-detail-desc"></p>
+</template>
+
+<template id="tcg-tpl-section">
+  <div class="tcg-detail-section">
+    <h3></h3>
+  </div>
+</template>
+
+<template id="tcg-tpl-action-btn">
+  <div class="tcg-detail-actions">
+    <button type="button" class="tcg-btn"></button>
+  </div>
+</template>

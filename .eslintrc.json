@@ -101,6 +101,7 @@
     "coverage/",
     "dist/",
     ".git/",
-    "site_src/Assets/"
+    "site_src/Assets/",
+    "site_src/tcg/assets/"
   ]
 }

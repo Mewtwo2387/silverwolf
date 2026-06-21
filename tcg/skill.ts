@@ -431,15 +431,32 @@ export class Skill implements DrawableBlock {
         damageContext = undefined;
       }
       const victims = Skill.resolveSkillRangeTargets(this.damageRange, character, target);
+      // Each landed hit is logged on its own line (and drives its own damage indicator
+      // on the web client) so a multi-hit skill reads as N separate hits rather than one
+      // summary. takeDamage's own per-hit/KO lines are suppressed (silent/silentKo) so
+      // Skill.useSkill controls ordering: each hit's damage, then KO after the lethal hit.
+      const wasAlive = new Map<CharacterInBattle, boolean>();
+      victims.forEach((v) => wasAlive.set(v, !v.isKnockedOut));
       for (let hit = 0; hit < this.hitCount; hit += 1) {
         const hitElement = this.resolveDamageElementForHit(character);
         victims.forEach((victim) => {
-          if (victim.side !== character.side && victim.rollDodge()) {
-            character.battle.logEvent(`${victim.character.name} dodged the attack!`);
+          // Corpse hits still resolve: every hit in the sequence fires dealDamage (so the
+          // caster's damage-dealt total counts overkill) even after the victim is KO'd. The
+          // dead can't dodge, and takeDamage no-ops on a corpse so no "took"/"dodged" line is logged.
+          if (!victim.isKnockedOut && victim.side !== character.side && victim.rollDodge()) {
+            character.battle.logEvent(`${victim.character.name} dodged the attack!`, 'dodge');
             return;
           }
           const dealtDamage = character.dealDamage(this.damage, hitElement, damageContext);
-          victim.takeDamage(dealtDamage, hitElement, character);
+          const applied = victim.takeDamage(dealtDamage, hitElement, character, { silent: true, silentKo: true });
+          if (applied > 0) {
+            const elLabel = Element[hitElement].toLowerCase();
+            character.battle.logEvent(`${victim.character.name} took ${applied} ${elLabel} damage`, 'damage');
+          }
+          if (victim.isKnockedOut && wasAlive.get(victim)) {
+            character.battle.logEvent(`${victim.character.name} was knocked out!`, 'ko');
+            wasAlive.set(victim, false);
+          }
         });
       }
     }

@@ -30,6 +30,11 @@ RUN --mount=type=cache,target=/root/.bun/install/cache \
 COPY site_src ./site_src
 COPY tailwind.config.js ./
 RUN bun build ./site_src/Assets/app.src.js --minify --outfile ./site_src/Assets/app.js \
+    && bun build ./site_src/tcg/assets/tcg-detail.src.js --minify --outfile ./site_src/tcg/assets/tcg-detail.js \
+    && bun build ./site_src/tcg/assets/tcg-landing.src.js --minify --outfile ./site_src/tcg/assets/tcg-landing.js \
+    && bun build ./site_src/tcg/assets/tcg-join.src.js --minify --outfile ./site_src/tcg/assets/tcg-join.js \
+    && bun build ./site_src/tcg/assets/tcg-deck-builder.src.js --minify --outfile ./site_src/tcg/assets/tcg-deck-builder.js \
+    && bun build ./site_src/tcg/assets/tcg-battle-room.src.js --minify --outfile ./site_src/tcg/assets/tcg-battle-room.js \
     && bunx --bun tailwindcss@3 -i ./site_src/Assets/input.css -o ./site_src/Assets/styles.css --minify
 
 # --- STAGE 2: Run ---
@@ -62,6 +67,11 @@ COPY --chown=bun:bun . .
 # runtime are the ones the builder just produced.
 COPY --from=builder --chown=bun:bun /app/site_src/Assets/styles.css ./site_src/Assets/styles.css
 COPY --from=builder --chown=bun:bun /app/site_src/Assets/app.js ./site_src/Assets/app.js
+COPY --from=builder --chown=bun:bun /app/site_src/tcg/assets/tcg-detail.js ./site_src/tcg/assets/tcg-detail.js
+COPY --from=builder --chown=bun:bun /app/site_src/tcg/assets/tcg-landing.js ./site_src/tcg/assets/tcg-landing.js
+COPY --from=builder --chown=bun:bun /app/site_src/tcg/assets/tcg-join.js ./site_src/tcg/assets/tcg-join.js
+COPY --from=builder --chown=bun:bun /app/site_src/tcg/assets/tcg-deck-builder.js ./site_src/tcg/assets/tcg-deck-builder.js
+COPY --from=builder --chown=bun:bun /app/site_src/tcg/assets/tcg-battle-room.js ./site_src/tcg/assets/tcg-battle-room.js
 
 # Refresh font cache
 RUN fc-cache -f

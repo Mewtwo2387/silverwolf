@@ -6,7 +6,7 @@ Bun process**. It serves fun/games both as slash commands and as web pages, plus
 **The website is public, so security and performance are first-class concerns — code defensively:
 validate every input, never trust client data, keep the CSP tight.**
 
-**Last updated: 2026-06-17**
+**Last updated: 2026-06-19**
 
 > **Maintenance rules.** Edit this file when something here becomes factually wrong, or when you
 > make a qualifying structural change. Rules differ by area:
@@ -43,7 +43,7 @@ validate every input, never trust client data, keep the CSP tight.**
 | `commands/` | One file per slash command; `classes/` (base classes), `commandgroups/` (subcommand containers). |
 | `database/` | `Database.ts` orchestrator; `tables/` (schema), `models/` (DAOs), `queries/` (SQL), `types.ts`. |
 | `tcg/` | Card-battle subsystem (`/tcgbattle`, card rendering, item/character catalogs). |
-| `site_src/` | The Hono website: `server.ts`, `routes/`, `middleware/`, `auth/`, `pages/`, `components/`, `multiplayer/`, `Assets/`, `bot-bridge.ts`. |
+| `site_src/` | The Hono website: `server.ts`, `routes/`, `middleware/`, `auth/`, `pages/`, `components/`, `multiplayer/`, `tcg/` (web TCG), `Assets/`, `bot-bridge.ts`. |
 | `utils/` | Shared logic + infra: `log.ts`, `accessControl.ts`, `mcp.ts`, game math/betting/etc. |
 | `data/` | Static JSON (`keywords.json`, personas, status, config). |
 | `persistence/` | Runtime SQLite DB + log files. **Docker volume — the data lives here.** |
@@ -132,8 +132,11 @@ nonce**, HSTS, `X-Frame-Options: DENY`, `nosniff`, Referrer-Policy, Permissions-
 
 **Routes** (registered in `server.ts`): `routes/static.ts`, `routes/auth.ts` (Discord OAuth),
 `routes/pages.ts` (HTML), `routes/games-api.ts` (JSON POST game actions), `routes/ai-slop-api.ts`,
-`routes/cyclic-tictactoe-mp.ts` (multiplayer WebSocket; game logic in `multiplayer/`). Pages: `/`,
-`/me`, `/about`, `/games/*`, `/leaderboards`, `/birthdays`.
+`routes/cyclic-tictactoe-mp.ts` (multiplayer WebSocket; game logic in `multiplayer/`),
+`site_src/tcg/routes.ts` (web TCG: deck builder, PvP/solo battle rooms over WS — see §6.11). Pages: `/`,
+`/me`, `/about`, `/games/*`, `/leaderboards`, `/birthdays`. `static.ts` also serves pre-generated TCG
+card PNGs at `/static/tcg/char/:slug.png` and `/static/tcg/item/:id.png`, **path-validated** against
+the `CHARACTERS` slugs / `ITEMS_BY_ID` catalogs (no traversal).
 
 **Rendering & assets.** Pages are composed with `Layout()` (`components/layout.ts`) using Hono's
 `html` tag, which **auto-escapes interpolated values**. Inline `<script>` needs the request nonce
@@ -441,34 +444,67 @@ don't draw your own background from scratch.
 | `tcg/assets/items/cards/` | Generated item card PNGs (`bun run card:generate-items`) |
 | `tcg/assets/common/`, `tcg/assets/types/` | Shared UI icons (stars, skill points, element badges) |
 
-### 6.8 Battle interface
+### 6.8 Battle interface (core / text / snapshot split)
 
-`tcg/battleInterface.ts` is the **shared** layer between the CLI battle harness and the
-Discord commands. It exposes:
+The shared layer between CLI, Discord, and Website is split by concern. **Keep the
+dependency direction one-way: `battleCore` → (`battleText`, `battleSnapshot`); never make
+`battleCore` import the other two.**
 
-- `executeUseSkill`, `executeUseItem`, `executeEndTurn`, etc. — return result objects with
-  `success`, `failureReason`, and (on success) `logLines` from `battle.getLastActionLog()`.
-- Formatters: `formatSkillsForSide`, `formatAllyStatusForDiscord`, `statusLine`,
-  `formatHandForSide`, `formatActiveSlotLabel`.
-- `resolveTargetForSkill` — converts an absolute slot index to a `CharacterInBattle`,
-  rejecting KO'd targets. **Use absolute slot indices, never compacted "alive only"
-  indices**, or targeting will desync when characters die.
+- **`tcg/battleCore.ts`** — transport-agnostic engine actions and helpers. No rendering.
+ - `executeUseSkill`, `executeUseItem`, `endTurnAsCurrentPlayer` — return result objects
+ (`{ ok, error?, hints?, ... }`); on success the caller reads `battle.getLastActionLog()`.
+ - `resolveTargetForSkill` — converts an absolute slot index to a `CharacterInBattle`,
+ rejecting KO'd targets. **Use absolute slot indices, never compacted "alive only"
+ indices**, or targeting desyncs when characters die.
+ - `computeSkillAvailability(battle, side, charIndex, char, skill)` → `{ available, reason }`
+ — the single source of truth for "can this skill be used and why" (drives both the
+ Discord text and the web buttons).
+ - `skillTargetKind` / `skillNeedsExplicitTarget`, `parseBattleSide`, `createDemoBattle`,
+ `debugMaxEnergy`, and minimal slot/label formatters used by the executors.
+- **`tcg/battleText.ts`** — CLI + Markdown formatters (`formatSkillsForSide`,
+ `formatHandForSide`, `formatAllyStatusForDiscord`, `statusLine`, `formatBattleForDiscord`,
+ `formatUseSkillMessage/Failure`, `formatUseItemMessage/Failure`, `getLatestPhaseSummary`).
+ Depends on `battleCore`.
+- **`tcg/battleSnapshot.ts`** — `buildBattleSnapshot(battle, viewerSide)` returns a JSON-safe,
+ **viewer-aware** DTO (`BattleSnapshot`): status/turn/active, per-side SP/hand/deck sizes,
+ both teams with hp/energy/effects and per-skill `{available, reason, needsTarget,
+ targetKind, …}`, and **only the viewer's hand** (never leaks the opponent's). This DTO is
+ the single contract the website client renders from.
+- **`tcg/battleInterface.ts`** — thin re-export barrel of `battleCore` + `battleText` so the
+ `commands/tcgbattle_*.ts` files keep working unchanged. New code should import from the
+ specific module instead.
 
-`tcg/discordBattle.ts` then wraps these helpers with channel-keyed session state
-(`DiscordBattleSession`, `DiscordBattlePending`, `setSession`, `getSession`,
-`setPending`, etc.) and provides `battleDisplayPayload(session, description)` which renders
-the board PNG and returns a discord.js message payload.
+`tcg/discordBattle.ts` wraps the core/text helpers with channel-keyed session state
+(`DiscordBattleSession`, `DiscordBattlePending`, `setSession`, `getSession`, `setPending`,
+etc.) and provides `battleDisplayPayload(session, description)` which renders the board PNG
+and returns a discord.js message payload.
 
 ### 6.9 Logging in battle
 
-Every meaningful battle event goes through `Battle.logEvent(message)`:
+Every meaningful battle event goes through `Battle.logEvent(text, kind?)`. The log is a list of
+**structured `BattleLogEntry { kind, text }`** (defined in `tcg/battle.ts`), not raw strings:
 
+- `text` must be **plain** (no markdown / `#` / `**`) — each surface styles by `kind`, so embedded
+  markup would leak. `kind` is one of: `turn` (round/phase header), `action` (skill used), `item`,
+  `damage`, `heal`, `effect`, `ko`, `dodge`, `draw`, `info` (default). Pick the closest kind when
+  adding a log line; add a new kind (and style it on every surface) only if none fits.
 - Pushes onto `currentActionLog` (cleared at the start of each `useMainAction`/`useUltimate`/
-  `useItem` call) and `turnHistory`.
-- Calls the global `log()` so it lands in `persistence/logs.txt`.
+  `useItem`/`endTurn`) and `turnHistory`; also calls global `log()` → `persistence/logs.txt`.
+- **Self-contained log:** the action announcement ("X used [Skill] on Y", kind `action`) is logged
+  by `useMainAction`/`useUltimate` themselves, and a `turn` header is logged at the start of every
+  phase (`endTurn` + construction via `logTurnHeader`). So the log alone tells the whole story —
+  surfaces do **not** synthesize their own headers.
+- Damage is logged element-aware and **per hit** ("X took N pyro damage") — a multi-hit skill logs
+  one line per landed hit in `Skill.useSkill` (`takeDamage(..., { silent: true, silentKo: true })`
+  suppresses its own per-hit/KO lines so the caller controls ordering: each hit's damage line, then
+  the KO line after the lethal hit). The web client mirrors this — it spawns one floating
+  damage/heal indicator per `damage`/`heal` log line (parsed in `tcg-battle-room.src.js`), so each
+  hit flashes separately rather than showing one aggregated number.
 
-`getLastActionLog()` returns the lines from the most recent action, which the Discord layer
-formats into the battle update message.
+`getLastActionLog()` (plain strings) and `getLastActionLogEntries()` (structured) return the most
+recent action's lines. Rendering: website styles each entry by kind via `tcg-log-<kind>` CSS
+(`tcg-battle-room.src.js`); `battleText.ts` maps entries to Discord markdown / CLI; the snapshot DTO
+carries `lastActionLog: BattleLogEntry[]`.
 
 ### 6.10 Tests and demos
 
@@ -477,6 +513,38 @@ formats into the battle update message.
 - `tcg/tests/testGenerateItemCard.ts` — renders every item card to `tcg/assets/items/cards/`.
 
 Use these as smoke tests when you change rendering logic.
+
+### 6.11 Website TCG (PvP + solo battles, web deck builder)
+
+The website exposes the TCG as a dynamic, WebSocket-driven experience built **on top of the
+core/snapshot contract** (§6.8) — it never re-implements battle rules. Mirrors the
+cyclic-tic-tac-toe multiplayer pattern.
+
+- **Rooms** — `site_src/tcg/rooms.ts` (`tcgRoomManager`, in-memory; a restart
+ drops rooms). Modes: `pvp` (creator seats p1 at create; the 2nd player picks a team and
+ joins to seat p2 + start) and `solo` (one user drives both sides; `sideForUser` returns
+ `battle.currentPlayer`). **Teams and decks are always rebuilt server-side** from validated
+ roster values (`buildTeamOfThree`) and the user's saved `User.tcg_deck` (`expandDeckComposition`);
+ client card data is never trusted. PvP has a turn timer (`TCG_TURN_TIMER_MS`) and a
+ disconnect grace window; GC sweeps lobby/ended/abandoned rooms.
+- **WebSocket** — `site_src/tcg/ws.ts` (`createTcgWsEvents`). First message must be
+ `join` carrying the CSRF token (`constantTimeEqual`); then `use_skill` / `use_item` /
+ `end_turn` / `rematch_request` / `leave` / `ping`, each routed through the `battleCore`
+ executors. Broadcasts are **per-socket viewer-aware snapshots** (hands stay private). Same
+ burst rate-limit as the cyclic socket.
+- **Routes** — `site_src/tcg/routes.ts` (`registerTcgBattleRoutes`, wired in `server.ts`
+ with `upgradeWebSocket` + `tcgRoomManager.init`): `GET /games/tcg` (landing),
+ `POST /games/tcg/create`, `GET /games/tcg/:id` (room — renders the battle client for seated
+ players, a team-picker for an eligible PvP joiner, or a not-found notice otherwise),
+ `POST /games/tcg/:id/join`, `GET /games/tcg/ws/:id` (origin pre-check + upgrade),
+ `GET /games/tcg/deck` + `POST /games/tcg/deck/save` (deck builder). All POSTs use
+ `authedGameRequest` (CSRF); deck save re-runs `validateDeckComposition` server-side.
+- **Pages** — `site_src/tcg/pages/` (`landing.ts`, `room.ts`, `deck-builder.ts`, `detail.ts`;
+ HTML templates in `site_src/tcg/html/`; client JS in `site_src/tcg/assets/`). Battle client
+ renders over WS: card-PNG board with live HP/energy/effect overlays, active-slot glow,
+ availability-driven skill buttons with targeting, hand tray, end-turn, action log, result
+ banner, rematch/leave). Decks persist via `tcg/deckStorage.ts` — the **same** `User.tcg_deck`
+ the Discord `/tcgbattle deckset` uses.
 
 ---
 
@@ -580,6 +648,8 @@ add a new persona, drop a system prompt into `data/aiPersonas.json` /
 | Add a DB model method | `database/queries/<x>Queries.ts` and `database/models/<X>Model.ts` |
 | Add a TCG character | `tcg/characters/<name>.ts` (use `characterBuilder` helpers); append to `ROSTER_ENTRIES` in `roster.ts`. |
 | Add a TCG item | Matching file under `tcg/items/`; append to that module's `*Items` catalog array (e.g. `elementalDamageItems`). |
+| Change a web-battle action/snapshot field | `tcg/battleCore.ts` (action) / `tcg/battleSnapshot.ts` (DTO); render in `site_src/tcg/assets/tcg-battle-room.src.js` (§6.8, §6.11). |
+| Change web TCG rooms/WS/routes | `site_src/tcg/rooms.ts`, `ws.ts`, `routes.ts` (§6.11). |
 | Add a battle rule | `tcg/battle.ts` (turn loop, victory, draws). |
 | Add a passive trigger | `tcg/battleEvents.ts` + emission in `Battle` + subscriber in an `Ability`. |
 | Add a status effect kind | `tcg/effectType.ts` + the relevant resolver(s) in `characterInBattle.ts`/`battle.ts`. |

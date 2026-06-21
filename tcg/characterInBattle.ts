@@ -223,10 +223,25 @@ export class CharacterInBattle {
     return chance > 0 && Math.random() < chance;
   }
 
-  takeDamage(amount: number, damageElement?: Element, attacker?: CharacterInBattle | null) {
-    if (this.isKnockedOut) return;
+  /**
+   * Apply damage and return the mitigated incoming damage (after incoming-damage modifiers).
+   * This is the damage *dealt*, which may EXCEED the HP actually removed on an overkill hit —
+   * do not treat the return value as an HP delta. A KO'd target takes nothing and returns 0.
+   * @param opts.silent suppress the "took N damage" log line (the caller logs its own,
+   *   e.g. an aggregated multi-hit total or a DoT line).
+   * @param opts.silentKo suppress the knockout line (caller logs it after its damage line
+   *   so ordering reads damage-then-KO).
+   */
+  takeDamage(
+    amount: number,
+    damageElement?: Element,
+    attacker?: CharacterInBattle | null,
+    opts?: { silent?: boolean; silentKo?: boolean },
+  ): number {
+    if (this.isKnockedOut) return 0;
 
-    const element = damageElement || this.character.element;
+    // `??` not `||`: Element.Fairy === 0 is falsy, so `||` would drop an explicit Fairy hit.
+    const element = damageElement ?? this.character.element;
 
     let damage = amount;
     this.effects
@@ -238,18 +253,22 @@ export class CharacterInBattle {
     damage = round2(Math.max(0, damage));
     this.currentHp = round2(this.currentHp - damage);
     this.stats.damageReceived = round2(this.stats.damageReceived + damage);
-    if (damage > 0) {
-      this.battle.logEvent(`${this.character.name} lost ${damage} HP`);
+    if (damage > 0 && !opts?.silent) {
+      const typeLabel = Element[element].toLowerCase();
+      this.battle.logEvent(`${this.character.name} took ${damage} ${typeLabel} damage`, 'damage');
     }
     if (this.currentHp <= 0) {
       this.currentHp = 0;
       this.isKnockedOut = true;
-      this.battle.logEvent(`${this.character.name} fainted`);
+      if (!opts?.silentKo) {
+        this.battle.logEvent(`${this.character.name} was knocked out!`, 'ko');
+      }
     }
 
     if (attacker && attacker !== this) {
       this.gainEnergy(5);
     }
+    return damage;
   }
 
   heal(amount: number) {
@@ -259,7 +278,7 @@ export class CharacterInBattle {
     if (this.currentHp > this.character.hp) this.currentHp = this.character.hp;
     const gained = round2(this.currentHp - before);
     if (gained > 0) {
-      this.battle.logEvent(`${this.character.name} recovered ${gained} HP`);
+      this.battle.logEvent(`${this.character.name} recovered ${gained} HP`, 'heal');
     }
   }
 
@@ -272,7 +291,8 @@ export class CharacterInBattle {
     damageElement?: Element,
     context?: DamageCalculationContext,
   ): number {
-    const element = damageElement || this.character.element;
+    // `??` not `||`: Element.Fairy === 0 is falsy, so `||` would drop an explicit Fairy element.
+    const element = damageElement ?? this.character.element;
 
     let damage = amount;
     this.effects
@@ -365,7 +385,8 @@ export class CharacterInBattle {
     }
     this.effects.push(effect.clone());
     const verb = effect.positive ? 'gained' : 'was inflicted with';
-    this.battle.logEvent(`${this.character.name} ${verb} [${effect.name}]`);
+    const dur = effect.duration < 999 ? ` (${effect.duration} turn${effect.duration === 1 ? '' : 's'})` : '';
+    this.battle.logEvent(`${this.character.name} ${verb} [${effect.name}]${dur}`, 'effect', effect.description);
   }
 
   /**
@@ -386,29 +407,31 @@ export class CharacterInBattle {
     this.effects = this.effects.filter((effect) => effect.duration > 0);
   }
 
-  /** Sum fixed per-stack {@link EffectType.Dot} damage by label + element, then tick each group. */
+  /** Tick each {@link EffectType.Dot} stack individually — its own damage line + indicator. */
   private processDotTicks(): void {
     if (this.isKnockedOut) return;
 
     const dotStacks = this.effects.filter((effect) => effect.type === EffectType.Dot);
     if (dotStacks.length === 0) return;
 
-    const groups = new Map<string, { name: string; element: Element; total: number }>();
-    dotStacks.forEach((dot) => {
+    for (const dot of dotStacks) {
+      if (this.isKnockedOut) break;
+      const damage = round2(dot.amount);
+      if (damage <= 0) continue;
       const element = dot.metadata?.appliesToElement ?? Element.Physical;
-      const key = `${dot.name}:${element}`;
-      const group = groups.get(key) ?? { name: dot.name, element, total: 0 };
-      group.total += dot.amount;
-      groups.set(key, group);
-    });
-
-    groups.forEach(({ name, element, total }) => {
-      const damage = round2(total);
-      if (damage <= 0) return;
-      const typeLabel = Element[element].toLowerCase();
-      this.battle.logEvent(`${this.character.name} took ${damage} ${typeLabel} damage from [${name}]`);
-      this.takeDamage(damage, element, null);
-    });
+      // Apply first so the logged number reflects incoming-damage mitigation. Suppress
+      // takeDamage's own lines so each stack keeps its richer "[name]" damage line, with KO
+      // logged after it (damage → knockout order), mirroring Skill.useSkill.
+      const wasAlive = !this.isKnockedOut;
+      const applied = this.takeDamage(damage, element, null, { silent: true, silentKo: true });
+      if (applied > 0) {
+        const typeLabel = Element[element].toLowerCase();
+        this.battle.logEvent(`${this.character.name} took ${applied} ${typeLabel} damage from [${dot.name}]`, 'damage', dot.description);
+      }
+      if (this.isKnockedOut && wasAlive) {
+        this.battle.logEvent(`${this.character.name} was knocked out!`, 'ko');
+      }
+    }
   }
 
   /**

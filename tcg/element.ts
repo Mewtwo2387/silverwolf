@@ -31,3 +31,9 @@ export function randomElement(): Element {
   const idx = Math.floor(Math.random() * ALL_ELEMENTS.length);
   return ALL_ELEMENTS[idx];
 }
+
+/** User-facing element name (e.g. `Element.Pyro` → `"Pyro"`, not `"6"`). */
+export function elementDisplayName(element: Element): string {
+  const name = Element[element];
+  return typeof name === 'string' ? name : String(element);
+}

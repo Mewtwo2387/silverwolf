@@ -2,9 +2,12 @@ import path from 'path';
 import type { Hono } from 'hono';
 import type { AppEnv } from '../shared';
 import { ALL_STICKER_STEMS } from '../stickers';
+import { CHARACTERS } from '../../tcg/characters';
+import { ITEMS_BY_ID } from '../../tcg/items';
 
 const ROOT_DIR = path.resolve(import.meta.dir, '..', '..');
 const ASSETS_DIR = path.join(import.meta.dir, '..', 'Assets');
+const TCG_ASSETS_DIR = path.join(import.meta.dir, '..', 'tcg', 'assets');
 const IMAGES_DIR = path.join(ASSETS_DIR, 'Images');
 const SVG_DIR = path.join(ASSETS_DIR, 'svg');
 const FONTS_DIR = path.join(ASSETS_DIR, 'fonts');
@@ -26,6 +29,11 @@ const STATIC_ASSETS: Record<string, StaticEntry> = {
   '/static/silverwolfLv.999.avif': { path: path.join(IMAGES_DIR, 'silverwolfLv.999.avif'), contentType: 'image/avif' },
   '/static/styles.css': { path: path.join(ASSETS_DIR, 'styles.css'), contentType: 'text/css; charset=utf-8' },
   '/static/app.js': { path: path.join(ASSETS_DIR, 'app.js'), contentType: 'text/javascript; charset=utf-8' },
+  '/static/tcg-detail.js': { path: path.join(TCG_ASSETS_DIR, 'tcg-detail.js'), contentType: 'text/javascript; charset=utf-8' },
+  '/static/tcg-landing.js': { path: path.join(TCG_ASSETS_DIR, 'tcg-landing.js'), contentType: 'text/javascript; charset=utf-8' },
+  '/static/tcg-join.js': { path: path.join(TCG_ASSETS_DIR, 'tcg-join.js'), contentType: 'text/javascript; charset=utf-8' },
+  '/static/tcg-deck-builder.js': { path: path.join(TCG_ASSETS_DIR, 'tcg-deck-builder.js'), contentType: 'text/javascript; charset=utf-8' },
+  '/static/tcg-battle-room.js': { path: path.join(TCG_ASSETS_DIR, 'tcg-battle-room.js'), contentType: 'text/javascript; charset=utf-8' },
 };
 // Hero responsive variants — emitted by scripts/build-images.ts. The about-page
 // <picture> picks the smallest width that covers its slot (sizes attribute).
@@ -92,8 +100,39 @@ async function serveStatic(entry: StaticEntry) {
   return new Response(file, { headers });
 }
 
+// Pre-generated TCG card PNGs (bun run card:generate / card:generate-items).
+// Served on demand because the catalogs are large and grow over time; each request
+// is validated against the known slug/id catalog so a crafted `:file` can never
+// escape the cards directory (no path traversal — only exact catalog members resolve).
+const TCG_CHAR_CARDS_DIR = path.join(ROOT_DIR, 'tcg', 'assets', 'characters', 'cards');
+const TCG_ITEM_CARDS_DIR = path.join(ROOT_DIR, 'tcg', 'assets', 'items', 'cards');
+const VALID_CHAR_SLUGS = new Set(CHARACTERS.map((c) => c.slug));
+const VALID_ITEM_IDS = new Set(Object.keys(ITEMS_BY_ID));
+
+/** Extract a `<key>.png` filename's key, or null if not a plain `.png` name. */
+function pngKey(file: string): string | null {
+  if (!file.endsWith('.png')) return null;
+  return file.slice(0, -'.png'.length);
+}
+
+async function serveCardPng(dir: string, key: string): Promise<Response> {
+  return serveStatic({ path: path.join(dir, `${key}.png`), contentType: 'image/png' });
+}
+
 export function registerStaticRoutes(app: Hono<AppEnv>) {
   for (const [route, entry] of Object.entries(STATIC_ASSETS)) {
     app.get(route, () => serveStatic(entry));
   }
+
+  app.get('/static/tcg/char/:file', (c) => {
+    const key = pngKey(c.req.param('file'));
+    if (!key || !VALID_CHAR_SLUGS.has(key)) return c.notFound();
+    return serveCardPng(TCG_CHAR_CARDS_DIR, key);
+  });
+
+  app.get('/static/tcg/item/:file', (c) => {
+    const key = pngKey(c.req.param('file'));
+    if (!key || !VALID_ITEM_IDS.has(key)) return c.notFound();
+    return serveCardPng(TCG_ITEM_CARDS_DIR, key);
+  });
 }

@@ -1,0 +1,58 @@
+<h1 class="text-center tcg-page-title">TCG Deck Builder</h1>
+<p class="text-center text-fog-300 tcg-page-lead">
+  Build a legal {{DECK_SIZE}}-card deck. It's shared with <code class="tcg-code">/tcgbattle</code> on Discord.
+</p>
+<div class="tcg-deck-wrap">
+  <div class="tcg-panel tcg-deck-summary" id="tcg-deck-summary">
+    <div class="tcg-deck-summary-row">
+      <div class="tcg-deck-counts">
+        <span>Total <b id="dk-total">0</b>/{{DECK_SIZE}}</span>
+        <span>5★+ <b id="dk-five">0</b>/{{FIVE_MAX}}</span>
+        <span>4★+ <b id="dk-four">0</b>/{{FOUR_MAX}}</span>
+      </div>
+      <div class="tcg-deck-actions">
+        <span id="dk-legal" class="tcg-badge">—</span>
+        <a href="/games/tcg" class="tcg-btn tcg-btn-ghost">[ back ]</a>
+        <button id="dk-save" type="button" class="tcg-btn tcg-btn-primary">[ save deck ]</button>
+      </div>
+    </div>
+    <div class="tcg-deck-fill" aria-hidden="true"><div class="tcg-deck-fill-bar" id="dk-fill"></div></div>
+    <div id="dk-msg" class="tcg-deck-msg" aria-live="polite"></div>
+  </div>
+
+  <div class="tcg-deck-toolbar">
+    <input type="search" id="dk-search" class="tcg-roster-search" placeholder="Search items…"
+      aria-label="Search items" autocomplete="off" spellcheck="false">
+    <div class="tcg-chips" id="dk-kind" role="group" aria-label="Filter by type">
+      <button type="button" class="tcg-chip active" data-kind="all">All</button>
+      <button type="button" class="tcg-chip" data-kind="equipment">Equipment</button>
+      <button type="button" class="tcg-chip" data-kind="consumable">Consumable</button>
+    </div>
+    <div class="tcg-chips" id="dk-rarity" role="group" aria-label="Filter by rarity"></div>
+    <label class="tcg-toggle"><input type="checkbox" id="dk-indeck"> In deck</label>
+    <select id="dk-sort" class="tcg-deck-sort" aria-label="Sort items">
+      <option value="rarity">Sort: Rarity</option>
+      <option value="name">Sort: Name</option>
+      <option value="count">Sort: In deck</option>
+    </select>
+  </div>
+
+  <div class="tcg-deck-grid" id="tcg-deck-grid"></div>
+  <p class="tcg-roster-empty" id="dk-empty">No items match your filters.</p>
+</div>
+
+<template id="tcg-tpl-deck-card">
+  <div class="tcg-card">
+    <div class="tcg-card-img" title="View card details">
+      <img loading="lazy" decoding="async" alt="">
+      <span class="tcg-card-kind"></span>
+      <span class="tcg-card-rarity"></span>
+    </div>
+    <div class="tcg-card-name"></div>
+    <div class="tcg-card-foot">
+      <button type="button" class="tcg-step tcg-step-minus" aria-label="Remove one">−</button>
+      <span class="tcg-count"></span>
+      <button type="button" class="tcg-step tcg-step-plus" aria-label="Add one">+</button>
+    </div>
+  </div>
+</template>
