@@ -15,6 +15,9 @@ import { formatBattleSide, formatSkillCategory } from './tcg-labels.lib.js';
   const MAX_EQUIP = 3;
   const TURN_TIMER_MS = 90000; // mirrors server TCG_TURN_TIMER_MS (for the timer ring)
   const reduceMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Wide layout breakpoint (mirrors the CSS @media min-width:920px). Above it the
+  // Log/Chat panel sits inline as a right column; below it, it opens as a modal.
+  const mq = window.matchMedia('(min-width: 920px)');
   // Floating damage-number tint per element (lowercased Element name, as it appears in the
   // log: "X took N <element> damage"). Unknown/absent element → default .dmg red via CSS.
   const ELEMENT_COLORS = {
@@ -42,8 +45,17 @@ let serverError = null;
 let countdownTimer = null;
 let armedSkill = null;              // { slot, index, targetKind }
 let armedItem = null;               // hand slotId
-const logLines = [];
 let lastLogSig = '';
+// Combined Log + Chat panel: one chronological feed of action-log entries and chat
+// messages, appended in arrival order. Entries: { kind:'log', e } | { kind:'chat', m }.
+const feed = [];
+// Seed with existing chat history from the initial snapshot (counts as already-seen).
+let lastFeedChatId = 0;
+if (CTX.initial && Array.isArray(CTX.initial.chat)) {
+  for (const m of CTX.initial.chat) { feed.push({ kind: 'chat', m }); lastFeedChatId = m.id; }
+}
+let chatUnread = 0;                // unread incoming chat count (narrow launcher badge)
+let logModalOpen = false;          // narrow-screen modal open?
 // Action animation hints derived from the most recent ingest.
 let newLogThisIngest = false;       // a brand-new action arrived this state update
 let pendingActorName = null;        // attacker name parsed from the action log
@@ -121,12 +133,22 @@ function ingest(room) {
     const sig = b.currentTurn + '|' + b.lastActionLog.map((e) => (e && e.text != null ? e.text : String(e))).join('␟');
     if (sig !== lastLogSig) {
       lastLogSig = sig;
-      for (const e of b.lastActionLog) logLines.push(e);
-      if (logLines.length > 200) logLines.splice(0, logLines.length - 200);
+      for (const e of b.lastActionLog) feed.push({ kind: 'log', e });
       newLogThisIngest = true;
       pendingActorName = parseActor(b.lastActionLog);
     }
   }
+  // Append any new chat messages to the same feed; badge unread while not visible.
+  const visible = mq.matches || logModalOpen;
+  const chat = Array.isArray(room.chat) ? room.chat : [];
+  for (const m of chat) {
+    if (m.id <= lastFeedChatId) continue;
+    feed.push({ kind: 'chat', m });
+    lastFeedChatId = m.id;
+    if (!visible && !chatIsMine(m)) chatUnread += 1;
+  }
+  if (visible) chatUnread = 0;
+  if (feed.length > 250) feed.splice(0, feed.length - 250);
   // Reset stale selections if it's not actionable.
   if (!myTurn()) { armedSkill = null; armedItem = null; }
 }
@@ -783,16 +805,146 @@ function logLineEl(e) {
   return div;
 }
 
-function logPanel() {
-  if (logLines.length === 0) return null;
-  const panel = el('div', { class: 'tcg-panel tcg-log-panel' });
-  panel.appendChild(el('p', { class: 'tcg-section-title' }, 'Battle Log'));
-  const logEl = el('div', { class: 'tcg-log' });
-  // column-reverse keeps newest pinned at the bottom; iterate newest→oldest so the
-  // DOM order reads chronologically top→bottom. Each line is styled by its kind.
-  for (let i = logLines.length - 1; i >= 0; i--) logEl.appendChild(logLineEl(logLines[i]));
-  panel.appendChild(logEl);
-  return panel;
+// ── Side panel: Battle Log + Chat ─────────────────────────────────────────
+// Built once and updated in place (like the board) so the chat input keeps focus
+// and typed text across the frequent state-driven re-renders. On wide screens it
+// docks as a right-hand column; on narrow screens it lives inside a modal opened
+// from a floating launcher button.
+const side = {
+  panel: null, feedBox: null, chatInput: null, modalClose: null,
+};
+let launcherEl = null;   // floating button (narrow)
+let launcherBadge = null;
+let modalEl = null;      // backdrop (narrow)
+let modalBodyEl = null;
+
+// In solo one user drives both sides (mySide() flips per turn), so every message is
+// the viewer's own. In pvp, "mine" is the stable seated side.
+function chatIsMine(m) {
+  if (!state) return false;
+  if (state.mode === 'solo') return true;
+  return m.side === mySide();
+}
+
+function sendChat() {
+  if (!side.chatInput) return;
+  const text = side.chatInput.value.replace(/\s+/g, ' ').trim();
+  if (!text) return;
+  if (send({ type: 'chat', text })) side.chatInput.value = '';
+  try { side.chatInput.focus(); } catch (e) { /* */ }
+}
+
+function buildSidePanel() {
+  const title = el('span', { class: 'tcg-side-title' }, 'Battle Log & Chat');
+  side.modalClose = el('button', { type: 'button', class: 'tcg-side-close', title: 'Close' }, '✕');
+  side.modalClose.addEventListener('click', closeLogModal);
+  const head = el('div', { class: 'tcg-side-head' }, [title, side.modalClose]);
+
+  // One combined chronological feed: action-log entries and chat messages interleaved.
+  side.feedBox = el('div', { class: 'tcg-feed' });
+
+  side.chatInput = el('input', {
+    type: 'text', class: 'tcg-chat-input', maxlength: '300',
+    placeholder: 'Message opponent…', autocomplete: 'off',
+  });
+  side.chatInput.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); sendChat(); } });
+  const sendBtn = el('button', { type: 'button', class: 'tcg-chat-send', title: 'Send' }, '➤');
+  sendBtn.addEventListener('click', sendChat);
+  const composer = el('div', { class: 'tcg-chat-composer' }, [side.chatInput, sendBtn]);
+
+  side.panel = el('div', { class: 'tcg-panel tcg-side-panel' }, [head, side.feedBox, composer]);
+}
+
+function chatMsgEl(m) {
+  const mine = chatIsMine(m);
+  // A plain "name: message" line (not a bubble), styled like the rest of the feed.
+  return el('div', { class: 'tcg-chat-line' + (mine ? ' me' : '') }, [
+    el('span', { class: 'tcg-chat-author' }, m.username + ': '),
+    el('span', { class: 'tcg-chat-text' }, m.text),
+  ]);
+}
+
+function renderFeedInto(box) {
+  // Preserve the "stick to bottom" behaviour unless the user has scrolled up to read.
+  const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  clear(box);
+  if (feed.length === 0) { box.appendChild(el('div', { class: 'tcg-side-empty' }, 'No activity yet — say hi!')); return; }
+  for (const item of feed) {
+    box.appendChild(item.kind === 'chat' ? chatMsgEl(item.m) : logLineEl(item.e));
+  }
+  if (nearBottom) box.scrollTop = box.scrollHeight;
+}
+
+function setBadge(node, n) {
+  if (!node) return;
+  if (n > 0) { node.textContent = n > 9 ? '9+' : String(n); node.hidden = false; }
+  else { node.hidden = true; }
+}
+
+function updateSidePanel() {
+  if (!side.panel) buildSidePanel();
+  if (side.chatInput) side.chatInput.placeholder = (state && state.mode === 'solo') ? 'Type a message…' : 'Message opponent…';
+  renderFeedInto(side.feedBox);
+  setBadge(launcherBadge, logModalOpen ? 0 : chatUnread);
+}
+
+function buildLauncherAndModal() {
+  launcherBadge = el('span', { class: 'tcg-tab-badge', hidden: true }, '');
+  launcherEl = el('button', { type: 'button', class: 'tcg-log-launch', title: 'Battle log & chat' }, [
+    el('span', { class: 'll-ico' }, '💬'),
+    el('span', { class: 'll-label' }, 'Log'),
+    launcherBadge,
+  ]);
+  launcherEl.addEventListener('click', openLogModal);
+  document.body.appendChild(launcherEl);
+
+  modalBodyEl = el('div', { class: 'tcg-logmodal-body' });
+  modalEl = el('div', { class: 'tcg-logmodal' }, [modalBodyEl]);
+  modalEl.addEventListener('click', (e) => { if (e.target === modalEl) closeLogModal(); });
+  document.body.appendChild(modalEl);
+}
+
+function openLogModal() {
+  logModalOpen = true;
+  chatUnread = 0;
+  if (modalEl) modalEl.classList.add('open');
+  updateSidePanel();
+}
+
+function closeLogModal() {
+  if (!logModalOpen) return;
+  logModalOpen = false;
+  if (modalEl) modalEl.classList.remove('open');
+  updateSidePanel();
+}
+
+// Place the (single) side panel either inline as a right column (wide) or inside
+// the modal (narrow). Called every render and on breakpoint changes.
+function syncExtras() {
+  if (!side.panel) buildSidePanel();
+  if (!launcherEl) buildLauncherAndModal();
+  const root = document.getElementById('tcg-root');
+  if (!root) return;
+  const wide = mq.matches;
+  if (wide) {
+    if (logModalOpen) closeLogModal();
+    launcherEl.style.display = 'none';
+    side.modalClose.style.display = 'none';
+    side.panel.classList.remove('in-modal');
+    if (side.panel.parentNode !== root) root.appendChild(side.panel);
+  } else {
+    launcherEl.style.display = '';
+    side.modalClose.style.display = '';
+    side.panel.classList.add('in-modal');
+    if (side.panel.parentNode !== modalBodyEl) modalBodyEl.appendChild(side.panel);
+  }
+  updateSidePanel();
+}
+
+function hideExtras() {
+  if (launcherEl) launcherEl.style.display = 'none';
+  if (logModalOpen) closeLogModal();
+  if (side.panel && side.panel.parentNode) side.panel.parentNode.removeChild(side.panel);
 }
 
 function connectingEl() {
@@ -842,15 +994,15 @@ function renderError() {
 
 function render() {
   if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
-  if (wsClosedByServer && serverError) { renderError(); return; }
-  if (!state) { clear(viewEl); viewEl.appendChild(connectingEl()); return; }
+  if (wsClosedByServer && serverError) { hideExtras(); renderError(); return; }
+  if (!state) { hideExtras(); clear(viewEl); viewEl.appendChild(connectingEl()); return; }
 
   clear(viewEl);
   viewEl.appendChild(hudBar());
 
   if (state.status === 'lobby') {
     if (state.mode === 'pvp') viewEl.appendChild(inviteBlock());
-    const extra = logPanel(); attachExtra(extra);
+    syncExtras();
     return;
   }
 
@@ -876,24 +1028,19 @@ function render() {
 
   if (serverError) viewEl.appendChild(el('div', { class: 'tcg-err' }, 'Server: ' + serverError));
 
-  attachExtra(logPanel());
-}
-
-// Keep the battle log in its own panel (right column on wide screens).
-let extraPanel = null;
-function attachExtra(node) {
-  const root = document.getElementById('tcg-root');
-  if (extraPanel && extraPanel.parentNode) extraPanel.parentNode.removeChild(extraPanel);
-  extraPanel = node;
-  if (root && node) root.appendChild(node);
+  syncExtras();
 }
 
 render();
 openWS();
 
+// Re-place the Log/Chat panel when crossing the wide/narrow breakpoint.
+mq.addEventListener('change', () => { if (state) syncExtras(); });
+
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if (globalThis.TcgDetail && globalThis.TcgDetail.close()) return;
+    if (logModalOpen) { closeLogModal(); return; }
     armedSkill = null; armedItem = null; render();
   }
 });

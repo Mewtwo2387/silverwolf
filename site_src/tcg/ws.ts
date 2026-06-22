@@ -124,6 +124,12 @@ export function createTcgWsEvents(roomId: string, user: AuthedUser): WSEvents {
           tcgRoomManager.leaveRoom(r, user);
           tcgRoomManager.broadcast(r);
           try { ws.close(1000, 'left'); } catch { /* */ }
+        } else if (type === 'chat') {
+          const text = typeof parsed.text === 'string' ? parsed.text : '';
+          const res = tcgRoomManager.postChat(r, user, text);
+          // An empty message after sanitising is dropped silently (no error banner).
+          if (!res.ok) { if (res.reason !== 'empty') send(ws, { type: 'error', code: res.reason }); return; }
+          tcgRoomManager.broadcast(r);
         } else if (type === 'ping') {
           send(ws, { type: 'pong' });
         } else {

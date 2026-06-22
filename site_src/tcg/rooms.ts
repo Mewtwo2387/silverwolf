@@ -38,6 +38,14 @@ export interface TcgPlayerSlot {
   rematchAccepted: boolean;
 }
 
+export interface TcgChatMessage {
+  id: number;
+  side: BattleSide;
+  username: string;
+  text: string;
+  ts: number;
+}
+
 export interface TcgRoom {
   id: string;
   mode: TcgMode;
@@ -57,6 +65,8 @@ export interface TcgRoom {
   turnDeadline: number | null;
   turnTimer: ReturnType<typeof setTimeout> | null;
   disconnectTimers: Map<string, ReturnType<typeof setTimeout>>;
+  chat: TcgChatMessage[];
+  chatSeq: number;
   createdAt: number;
   endedAt: number | null;
   lastActivityAt: number;
@@ -82,6 +92,7 @@ export interface TcgRoomSnapshot {
   players: { p1: TcgPublicPlayer | null; p2: TcgPublicPlayer | null };
   creator: { discordId: string; username: string; avatarURL: string | null };
   battle: BattleSnapshot | null;
+  chat: TcgChatMessage[];
 }
 
 export interface TcgUserInfo {
@@ -110,6 +121,9 @@ const ENDED_TTL_MS = 5 * 60_000;
 export const TCG_ROOMS_PER_USER_CAP = 5;
 export const TCG_MAX_ACTIVE_ROOMS_GLOBAL = 2_000;
 const GC_SWEEP_MS = 60_000;
+// Chat: max characters per message, and how many recent messages a room retains.
+export const TCG_CHAT_MAX_LEN = 300;
+export const TCG_CHAT_HISTORY = 60;
 
 export type TcgCreateResult =
   | { ok: true; room: TcgRoom }
@@ -169,6 +183,8 @@ class TcgRoomManager {
       turnDeadline: null,
       turnTimer: null,
       disconnectTimers: new Map(),
+      chat: [],
+      chatSeq: 0,
       createdAt: now,
       endedAt: null,
       lastActivityAt: now,
@@ -344,6 +360,35 @@ class TcgRoomManager {
     return { ok: true };
   }
 
+  /**
+   * Append a chat message from a seated player. Any participant may chat regardless of
+   * whose turn it is (or whether the battle has ended). Text is sanitised + length-capped;
+   * the chat ring buffer keeps only the most recent {@link TCG_CHAT_HISTORY} messages.
+   * Returns `empty` when nothing remains after sanitising — callers should drop it silently.
+   */
+  postChat(room: TcgRoom, user: TcgUserInfo, textRaw: string):
+    { ok: true } | { ok: false; reason: string } {
+    const slot = this.slotForUser(room, user.discordId);
+    if (!slot) return { ok: false, reason: 'not_a_player' };
+    const text = String(textRaw)
+      .replace(/\p{Cc}/gu, ' ') // strip control chars (incl. newlines)
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, TCG_CHAT_MAX_LEN);
+    if (!text) return { ok: false, reason: 'empty' };
+    // Stable side label (p1/p2) by seat — not the solo per-turn acting side.
+    const side: BattleSide = room.p2?.discordId === user.discordId ? 'p2' : 'p1';
+    room.chatSeq += 1;
+    room.chat.push({
+      id: room.chatSeq, side, username: slot.username, text, ts: Date.now(),
+    });
+    if (room.chat.length > TCG_CHAT_HISTORY) {
+      room.chat.splice(0, room.chat.length - TCG_CHAT_HISTORY);
+    }
+    room.lastActivityAt = Date.now();
+    return { ok: true };
+  }
+
   leaveRoom(room: TcgRoom, user: TcgUserInfo) {
     const slot = this.slotForUser(room, user.discordId);
     if (!slot) return;
@@ -450,6 +495,7 @@ class TcgRoomManager {
       // A null viewerSide means a non-player viewer — never build the snapshot, since
       // it embeds the viewer's private hand. Only seated players get the battle DTO.
       battle: room.battle && viewerSide ? buildBattleSnapshot(room.battle, viewerSide) : null,
+      chat: room.chat,
     };
   }
 

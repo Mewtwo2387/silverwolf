@@ -6,7 +6,7 @@ Bun process**. It serves fun/games both as slash commands and as web pages, plus
 **The website is public, so security and performance are first-class concerns — code defensively:
 validate every input, never trust client data, keep the CSP tight.**
 
-**Last updated: 2026-06-19**
+**Last updated: 2026-06-22**
 
 > **Maintenance rules.** Edit this file when something here becomes factually wrong, or when you
 > make a qualifying structural change. Rules differ by area:
@@ -529,9 +529,12 @@ cyclic-tic-tac-toe multiplayer pattern.
  disconnect grace window; GC sweeps lobby/ended/abandoned rooms.
 - **WebSocket** — `site_src/tcg/ws.ts` (`createTcgWsEvents`). First message must be
  `join` carrying the CSRF token (`constantTimeEqual`); then `use_skill` / `use_item` /
- `end_turn` / `rematch_request` / `leave` / `ping`, each routed through the `battleCore`
- executors. Broadcasts are **per-socket viewer-aware snapshots** (hands stay private). Same
- burst rate-limit as the cyclic socket.
+ `end_turn` / `rematch_request` / `chat` / `leave` / `ping`, each routed through the `battleCore`
+ executors (except `chat` → `tcgRoomManager.postChat`). Broadcasts are **per-socket viewer-aware
+ snapshots** (hands stay private). Same burst rate-limit as the cyclic socket. `chat` is open to any
+ seated player regardless of turn; text is control-char-stripped + length-capped
+ (`TCG_CHAT_MAX_LEN`) and kept in a per-room ring buffer (`TCG_CHAT_HISTORY`) surfaced on the room
+ snapshot as `chat: TcgChatMessage[]`.
 - **Routes** — `site_src/tcg/routes.ts` (`registerTcgBattleRoutes`, wired in `server.ts`
  with `upgradeWebSocket` + `tcgRoomManager.init`): `GET /games/tcg` (landing),
  `POST /games/tcg/create`, `GET /games/tcg/:id` (room — renders the battle client for seated
@@ -543,8 +546,11 @@ cyclic-tic-tac-toe multiplayer pattern.
  HTML templates in `site_src/tcg/html/`; client JS in `site_src/tcg/assets/`). Battle client
  renders over WS: card-PNG board with live HP/energy/effect overlays, active-slot glow,
  availability-driven skill buttons with targeting, hand tray, end-turn, action log, result
- banner, rematch/leave). Decks persist via `tcg/deckStorage.ts` — the **same** `User.tcg_deck`
- the Discord `/tcgbattle deckset` uses.
+ banner, rematch/leave). The **Log/Chat panel** is a single persistent, tabbed element (built once,
+ updated in place so the chat input keeps focus across re-renders): a wide right-hand column
+ ≥920px, and a floating-launcher modal below that width (so the board + skills stay above the fold).
+ Decks persist via `tcg/deckStorage.ts` — the **same** `User.tcg_deck` the Discord
+ `/tcgbattle deckset` uses.
 
 ---
 
