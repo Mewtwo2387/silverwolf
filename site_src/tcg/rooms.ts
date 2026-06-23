@@ -40,10 +40,22 @@ export interface TcgPlayerSlot {
 
 export interface TcgChatMessage {
   id: number;
-  side: BattleSide;
+  /** 'chat' = a user message; 'system' = a join/leave/spectator notice. */
+  kind: 'chat' | 'system';
+  /** Discord id of the sender ('' for system messages). */
+  senderId: string;
   username: string;
   text: string;
+  /** Sender is a seated player (UI shows a player icon); false for spectators/system. */
+  isPlayer: boolean;
   ts: number;
+}
+
+export interface TcgSpectatorSlot {
+  discordId: string;
+  username: string;
+  avatarURL: string | null;
+  sockets: Set<WSContext>;
 }
 
 export interface TcgRoom {
@@ -65,6 +77,7 @@ export interface TcgRoom {
   turnDeadline: number | null;
   turnTimer: ReturnType<typeof setTimeout> | null;
   disconnectTimers: Map<string, ReturnType<typeof setTimeout>>;
+  spectators: Map<string, TcgSpectatorSlot>;
   chat: TcgChatMessage[];
   chatSeq: number;
   createdAt: number;
@@ -93,6 +106,10 @@ export interface TcgRoomSnapshot {
   creator: { discordId: string; username: string; avatarURL: string | null };
   battle: BattleSnapshot | null;
   chat: TcgChatMessage[];
+  /** True when this snapshot is for a spectator (not seated; hand omitted, no actions). */
+  spectator: boolean;
+  /** Number of distinct spectators currently watching. */
+  spectatorCount: number;
 }
 
 export interface TcgUserInfo {
@@ -124,6 +141,8 @@ const GC_SWEEP_MS = 60_000;
 // Chat: max characters per message, and how many recent messages a room retains.
 export const TCG_CHAT_MAX_LEN = 300;
 export const TCG_CHAT_HISTORY = 60;
+// Cap concurrent spectators per room (guards memory / broadcast fan-out).
+export const TCG_MAX_SPECTATORS = 50;
 
 export type TcgCreateResult =
   | { ok: true; room: TcgRoom }
@@ -183,6 +202,7 @@ class TcgRoomManager {
       turnDeadline: null,
       turnTimer: null,
       disconnectTimers: new Map(),
+      spectators: new Map(),
       chat: [],
       chatSeq: 0,
       createdAt: now,
@@ -258,16 +278,36 @@ class TcgRoomManager {
     return null;
   }
 
-  /** Seat (or re-seat) a user's socket. PvP: a non-creator with no p2 yet must join first. */
+  /**
+   * Attach a socket. Seated players (p1/p2, or the solo creator) reconnect into their
+   * slot; any other logged-in user attaches as a **spectator** (read-only, can chat).
+   * A spectator's first socket logs a "joined" system message.
+   */
   attachSocket(room: TcgRoom, user: TcgUserInfo, ws: WSContext):
     { ok: true } | { ok: false; reason: string } {
     const slot = this.slotForUser(room, user.discordId);
-    if (!slot) {
-      // Not seated. In PvP, the join HTTP step seats p2; spectating isn't supported.
-      return { ok: false, reason: 'not_a_player' };
+    if (slot) {
+      slot.sockets.add(ws);
+      this.cancelDisconnect(room, user.discordId);
+      room.lastActivityAt = Date.now();
+      return { ok: true };
     }
-    slot.sockets.add(ws);
-    this.cancelDisconnect(room, user.discordId);
+    // Spectator path.
+    const existing = room.spectators.get(user.discordId);
+    if (!existing && room.spectators.size >= TCG_MAX_SPECTATORS) {
+      return { ok: false, reason: 'too_many_spectators' };
+    }
+    if (existing) {
+      existing.sockets.add(ws);
+    } else {
+      room.spectators.set(user.discordId, {
+        discordId: user.discordId,
+        username: user.username,
+        avatarURL: user.avatarURL,
+        sockets: new Set([ws]),
+      });
+      this.logSystem(room, `${user.username} joined as a spectator`);
+    }
     room.lastActivityAt = Date.now();
     return { ok: true };
   }
@@ -275,10 +315,21 @@ class TcgRoomManager {
   detachSocket(room: TcgRoom, ws: WSContext, discordId: string) {
     if (!this.rooms.has(room.id)) return;
     const slot = this.slotForUser(room, discordId);
-    if (!slot) return;
-    slot.sockets.delete(ws);
-    if (slot.sockets.size === 0 && room.status === 'active' && room.mode === 'pvp') {
-      this.startDisconnectTimer(room, discordId);
+    if (slot) {
+      slot.sockets.delete(ws);
+      if (slot.sockets.size === 0 && room.status === 'active' && room.mode === 'pvp') {
+        this.startDisconnectTimer(room, discordId);
+      }
+      room.lastActivityAt = Date.now();
+      return;
+    }
+    // Spectator: drop their socket; on the last one, remove them + log a "left" notice.
+    const spec = room.spectators.get(discordId);
+    if (!spec) return;
+    spec.sockets.delete(ws);
+    if (spec.sockets.size === 0) {
+      room.spectators.delete(discordId);
+      this.logSystem(room, `${spec.username} stopped spectating`);
     }
     room.lastActivityAt = Date.now();
   }
@@ -368,25 +419,36 @@ class TcgRoomManager {
    */
   postChat(room: TcgRoom, user: TcgUserInfo, textRaw: string):
     { ok: true } | { ok: false; reason: string } {
-    const slot = this.slotForUser(room, user.discordId);
-    if (!slot) return { ok: false, reason: 'not_a_player' };
+    const isPlayer = !!this.slotForUser(room, user.discordId);
+    const isSpectator = room.spectators.has(user.discordId);
+    if (!isPlayer && !isSpectator) return { ok: false, reason: 'not_a_player' };
     const text = String(textRaw)
       .replace(/\p{Cc}/gu, ' ') // strip control chars (incl. newlines)
       .replace(/\s+/g, ' ')
       .trim()
       .slice(0, TCG_CHAT_MAX_LEN);
     if (!text) return { ok: false, reason: 'empty' };
-    // Stable side label (p1/p2) by seat — not the solo per-turn acting side.
-    const side: BattleSide = room.p2?.discordId === user.discordId ? 'p2' : 'p1';
-    room.chatSeq += 1;
-    room.chat.push({
-      id: room.chatSeq, side, username: slot.username, text, ts: Date.now(),
+    this.appendChat(room, {
+      kind: 'chat', senderId: user.discordId, username: user.username, text, isPlayer,
     });
+    room.lastActivityAt = Date.now();
+    return { ok: true };
+  }
+
+  /** Push a chat/system entry onto the room's chat ring buffer. */
+  private appendChat(room: TcgRoom, m: Omit<TcgChatMessage, 'id' | 'ts'>) {
+    room.chatSeq += 1;
+    room.chat.push({ id: room.chatSeq, ts: Date.now(), ...m });
     if (room.chat.length > TCG_CHAT_HISTORY) {
       room.chat.splice(0, room.chat.length - TCG_CHAT_HISTORY);
     }
-    room.lastActivityAt = Date.now();
-    return { ok: true };
+  }
+
+  /** Append a system notice (join/leave) to the chat stream. */
+  private logSystem(room: TcgRoom, text: string) {
+    this.appendChat(room, {
+      kind: 'system', senderId: '', username: '', text, isPlayer: false,
+    });
   }
 
   leaveRoom(room: TcgRoom, user: TcgUserInfo) {
@@ -470,18 +532,26 @@ class TcgRoomManager {
     };
   }
 
+  /**
+   * Build a snapshot for a viewer. `viewerSide` is the seated side for a player, or
+   * null for a spectator — spectators render p1 at the bottom and get **no hand**
+   * (the battle DTO is built with `spectator: true`).
+   */
   snapshotFor(room: TcgRoom, viewerSide: BattleSide | null): TcgRoomSnapshot {
+    const spectator = viewerSide == null;
     // In solo, both public players are the creator; the battle DTO uses the
     // currently-acting side so the right hand is shown.
     const p2Public = room.mode === 'solo'
       ? this.publicPlayer(room.p1, 'p2')
       : this.publicPlayer(room.p2, 'p2');
+    // Spectators have no side of their own; lay the board out from p1's perspective.
+    const layoutSide: BattleSide = viewerSide ?? 'p1';
     return {
       id: room.id,
       mode: room.mode,
       status: room.status,
       result: room.result,
-      yourSide: viewerSide,
+      yourSide: layoutSide,
       turnDeadline: room.turnDeadline,
       players: {
         p1: this.publicPlayer(room.p1, 'p1'),
@@ -492,10 +562,10 @@ class TcgRoomManager {
         username: room.creatorUsername,
         avatarURL: room.creatorAvatarURL,
       },
-      // A null viewerSide means a non-player viewer — never build the snapshot, since
-      // it embeds the viewer's private hand. Only seated players get the battle DTO.
-      battle: room.battle && viewerSide ? buildBattleSnapshot(room.battle, viewerSide) : null,
+      battle: room.battle ? buildBattleSnapshot(room.battle, layoutSide, spectator) : null,
       chat: room.chat,
+      spectator,
+      spectatorCount: room.spectators.size,
     };
   }
 
@@ -512,6 +582,15 @@ class TcgRoomManager {
     };
     sendTo(room.p1, 'p1');
     if (room.mode === 'pvp') sendTo(room.p2, 'p2');
+    // Spectators all share one hand-less snapshot.
+    if (room.spectators.size > 0) {
+      const specMsg = JSON.stringify({ type: 'state', room: this.snapshotFor(room, null) });
+      for (const spec of room.spectators.values()) {
+        for (const ws of spec.sockets) {
+          try { ws.send(specMsg); } catch { /* closing */ }
+        }
+      }
+    }
   }
 
   private sweep() {

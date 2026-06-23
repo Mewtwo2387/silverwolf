@@ -527,14 +527,22 @@ cyclic-tic-tac-toe multiplayer pattern.
  roster values (`buildTeamOfThree`) and the user's saved `User.tcg_deck` (`expandDeckComposition`);
  client card data is never trusted. PvP has a turn timer (`TCG_TURN_TIMER_MS`) and a
  disconnect grace window; GC sweeps lobby/ended/abandoned rooms.
+- **Spectators** — any other logged-in user who opens a room link (and isn't the PvP joiner offered
+ the team-picker) attaches as a **spectator** (`room.spectators`, capped at `TCG_MAX_SPECTATORS`).
+ `attachSocket` routes non-seated users here; their snapshot is built with `buildBattleSnapshot(…,
+ spectator: true)` so **no hand is included** and `yourSide` is just the layout side. Spectators
+ can't act (`actionGuard` rejects them) but **can chat**; first-socket-join / last-socket-leave emit
+ a `system` chat notice. The room snapshot carries `spectator: boolean` + `spectatorCount`.
 - **WebSocket** — `site_src/tcg/ws.ts` (`createTcgWsEvents`). First message must be
  `join` carrying the CSRF token (`constantTimeEqual`); then `use_skill` / `use_item` /
  `end_turn` / `rematch_request` / `chat` / `leave` / `ping`, each routed through the `battleCore`
  executors (except `chat` → `tcgRoomManager.postChat`). Broadcasts are **per-socket viewer-aware
- snapshots** (hands stay private). Same burst rate-limit as the cyclic socket. `chat` is open to any
- seated player regardless of turn; text is control-char-stripped + length-capped
- (`TCG_CHAT_MAX_LEN`) and kept in a per-room ring buffer (`TCG_CHAT_HISTORY`) surfaced on the room
- snapshot as `chat: TcgChatMessage[]`.
+ snapshots** (hands stay private; spectators share one hand-less snapshot). Same burst rate-limit as
+ the cyclic socket. `chat` is open to any seated player **or spectator** regardless of turn; text is
+ control-char-stripped + length-capped (`TCG_CHAT_MAX_LEN`) and kept in a per-room ring buffer
+ (`TCG_CHAT_HISTORY`). Each `TcgChatMessage` carries `{ kind: 'chat'|'system', senderId, username,
+ isPlayer, … }`; the client interleaves chat + action-log into one feed and marks `isPlayer` chatters
+ with an icon.
 - **Routes** — `site_src/tcg/routes.ts` (`registerTcgBattleRoutes`, wired in `server.ts`
  with `upgradeWebSocket` + `tcgRoomManager.init`): `GET /games/tcg` (landing),
  `POST /games/tcg/create`, `GET /games/tcg/:id` (room — renders the battle client for seated

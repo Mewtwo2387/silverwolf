@@ -145,7 +145,7 @@ function ingest(room) {
     if (m.id <= lastFeedChatId) continue;
     feed.push({ kind: 'chat', m });
     lastFeedChatId = m.id;
-    if (!visible && !chatIsMine(m)) chatUnread += 1;
+    if (!visible && m.kind === 'chat' && !chatIsMine(m)) chatUnread += 1;
   }
   if (visible) chatUnread = 0;
   if (feed.length > 250) feed.splice(0, feed.length - 250);
@@ -153,9 +153,13 @@ function ingest(room) {
   if (!myTurn()) { armedSkill = null; armedItem = null; }
 }
 
+function isSpectator() { return !!(state && state.spectator); }
+// For spectators `yourSide` is just the layout side (p1 at the bottom); it does NOT
+// mean the viewer owns that side, so myTurn()/"you" checks must exclude spectators.
 function mySide() { return state ? state.yourSide : null; }
 function oppSide() { const s = mySide(); return s === 'p1' ? 'p2' : 'p1'; }
 function myTurn() {
+  if (isSpectator()) return false;
   const b = state && state.battle;
   return !!(b && state.status === 'active' && mySide() && b.currentPlayer === mySide());
 }
@@ -212,6 +216,10 @@ function hudCenter() {
   if (st) center.appendChild(st);
   const t = timerLine();
   if (t) center.appendChild(t);
+  const watching = state.spectatorCount || 0;
+  if (watching > 0) {
+    center.appendChild(el('span', { class: 'tcg-watchers', title: watching + ' watching' }, '👁 ' + watching));
+  }
   return center;
 }
 
@@ -510,7 +518,7 @@ function buildBoard() {
     const turn = el('span', { class: 'tcg-side-turn' }, '');
     const label = el('div', { class: 'tcg-side-label' }, [
       el('span', { class: 'tcg-side-dot' }),
-      el('span', null, side === mySide() ? 'Your team' : oppLabel()),
+      el('span', null, isSpectator() ? sideName(side) : (side === mySide() ? 'Your team' : oppLabel())),
       turn,
     ]);
     sideLabels[side] = { label, turn };
@@ -545,7 +553,7 @@ function updateBoard() {
     if (lab) {
       const acting = state.status === 'active' && b.currentPlayer === side;
       lab.label.classList.toggle('acting', acting);
-      lab.turn.textContent = acting ? (side === mySide() ? 'your turn' : 'their turn') : '';
+      lab.turn.textContent = acting ? (isSpectator() ? 'turn' : (side === mySide() ? 'your turn' : 'their turn')) : '';
     }
     const team = b.teams[side] || [];
     const nodes = boardCards[side] || [];
@@ -710,10 +718,24 @@ function actionBar() {
   return bar;
 }
 
+// Spectators have no actions — just a "watching" note + a way to leave.
+function spectatorBar() {
+  const bar = el('div', { class: 'tcg-actionbar tcg-spectate-bar' });
+  bar.appendChild(el('span', { class: 'tcg-spectate-note' }, [
+    el('span', { class: 'ab-ico' }, '👁'),
+    el('span', null, 'Spectating — you can chat but not play.'),
+  ]));
+  const leave = el('button', { type: 'button', class: 'tcg-btn danger' }, [el('span', { class: 'ab-ico' }, '✕'), el('span', null, 'Leave')]);
+  leave.addEventListener('click', () => { send({ type: 'leave' }); setTimeout(() => { window.location.href = '/games/tcg'; }, 200); });
+  bar.appendChild(leave);
+  return bar;
+}
+
 function statusLine() {
   const b = state.battle;
   if (state.status === 'lobby') return el('div', { class: 'tcg-status' }, state.mode === 'pvp' ? 'Waiting for an opponent to join…' : 'Setting up…');
   if (state.status === 'active') {
+    if (isSpectator()) return el('div', { class: 'tcg-status' }, sideName(b.currentPlayer) + '’s turn…');
     if (myTurn()) return el('div', { class: 'tcg-status you' }, 'Your turn');
     const opp = state.players[oppSide()];
     if (opp && !opp.connected) return el('div', { class: 'tcg-status warn' }, 'Opponent reconnecting…');
@@ -722,6 +744,7 @@ function statusLine() {
   if (state.status === 'ended') {
     const r = state.result || {};
     if (r.winner === 'draw' || r.winner == null) return el('div', { class: 'tcg-status draw' }, r.winner === 'draw' ? 'Draw!' : 'Battle ended');
+    if (isSpectator()) return el('div', { class: 'tcg-status win' }, sideName(r.winner) + ' wins');
     const won = r.winner === mySide();
     const tail = r.reason === 'timeout' ? ' (timeout)' : r.reason === 'disconnect' ? ' (disconnect)' : r.reason === 'forfeit' ? ' (forfeit)' : '';
     if (state.mode === 'solo') return el('div', { class: 'tcg-status win' }, formatBattleSide(r.winner) + ' wins' + tail);
@@ -818,12 +841,8 @@ let launcherBadge = null;
 let modalEl = null;      // backdrop (narrow)
 let modalBodyEl = null;
 
-// In solo one user drives both sides (mySide() flips per turn), so every message is
-// the viewer's own. In pvp, "mine" is the stable seated side.
 function chatIsMine(m) {
-  if (!state) return false;
-  if (state.mode === 'solo') return true;
-  return m.side === mySide();
+  return !!(m && m.senderId && CTX.selfId && m.senderId === CTX.selfId);
 }
 
 function sendChat() {
@@ -856,10 +875,18 @@ function buildSidePanel() {
 }
 
 function chatMsgEl(m) {
+  // System notices (spectator joined/left) render as a muted, italic feed line.
+  if (m.kind === 'system') {
+    return el('div', { class: 'tcg-feed-system' }, m.text);
+  }
   const mine = chatIsMine(m);
-  // A plain "name: message" line (not a bubble), styled like the rest of the feed.
+  // A plain "name: message" line. Players get a small icon before their name;
+  // spectators don't — that's how you tell who's actually in the match.
+  const author = el('span', { class: 'tcg-chat-author' });
+  if (m.isPlayer) author.appendChild(el('span', { class: 'tcg-chat-pico', title: 'Player' }, '⚔'));
+  author.appendChild(document.createTextNode(m.username + ': '));
   return el('div', { class: 'tcg-chat-line' + (mine ? ' me' : '') }, [
-    el('span', { class: 'tcg-chat-author' }, m.username + ': '),
+    author,
     el('span', { class: 'tcg-chat-text' }, m.text),
   ]);
 }
@@ -956,6 +983,13 @@ function oppLabel() {
   return opp && opp.username ? '@' + opp.username : 'Opponent';
 }
 
+// Display name for a side (spectator board labels): the seated player's username,
+// falling back to "Player 1"/"Player 2".
+function sideName(side) {
+  const p = state.players && state.players[side];
+  return p && p.username ? '@' + p.username : formatBattleSide(side);
+}
+
 function targetingBanner() {
   if (!myTurn()) return null;
   let ally = false;
@@ -1015,7 +1049,9 @@ function render() {
     viewEl.appendChild(boardEl);
     updateBoard();
 
-    if (state.status === 'active') {
+    if (isSpectator()) {
+      viewEl.appendChild(spectatorBar());
+    } else if (state.status === 'active') {
       const dock = el('div', { class: 'tcg-dock' });
       const sp = skillPanel(); if (sp) dock.appendChild(sp);
       dock.appendChild(handTray());

@@ -1404,6 +1404,24 @@ code, pre, kbd, .font-mono {
 .tcg-chat-author { font-weight: 800; color: var(--accent-light); }
 .tcg-chat-line.me .tcg-chat-author { color: #6ee7a0; }
 .tcg-chat-text { color: var(--fog-100); }
+/* Player marker before a chatter's name (spectators have none). */
+.tcg-chat-pico { margin-right: 0.22rem; color: var(--accent-light); font-size: 0.85em; }
+.tcg-chat-line.me .tcg-chat-pico { color: #6ee7a0; }
+/* System notices (spectator joined/left). */
+.tcg-feed-system {
+  margin: 0.1rem 0; text-align: center; font-style: italic; font-size: 0.68rem;
+  color: var(--fog-500); line-height: 1.4;
+}
+/* Spectator action bar + watcher count. */
+.tcg-spectate-bar { align-items: center; }
+.tcg-spectate-note {
+  display: inline-flex; align-items: center; gap: 0.4rem; color: var(--fog-300);
+  font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
+}
+.tcg-watchers {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; font-weight: 700; color: var(--fog-300);
+  border: 1px solid var(--ink-600); border-radius: 999px; padding: 0.05rem 0.45rem;
+}
 .tcg-chat-composer { display: flex; gap: 0.4rem; }
 .tcg-chat-input {
   flex: 1 1 auto; min-width: 0; padding: 0.45rem 0.65rem; font: inherit; font-size: 0.82rem;

@@ -327,7 +327,7 @@ export function registerTcgBattleRoutes(
       );
     }
 
-    // Not a participant: offer to join an open PvP lobby; otherwise it's not viewable.
+    // Not a participant: offer to join an open PvP lobby…
     if (room.mode === 'pvp' && room.status === 'lobby' && !room.p2) {
       const composition = await loadDeckCompositionForUser(silverwolf.db, user.discordId);
       return c.html(
@@ -344,6 +344,8 @@ export function registerTcgBattleRoutes(
       );
     }
 
+    // …otherwise let them spectate (read-only; no hand, can chat). The snapshot is
+    // built with a null viewer side, which the manager renders as a spectator view.
     return c.html(
       TcgBattleRoomPage({
         nonce,
@@ -352,11 +354,9 @@ export function registerTcgBattleRoutes(
         matchId,
         selfDiscordId: user.discordId,
         csrf: user.csrfToken,
-        snapshot: null,
-        roomMissing: true,
+        snapshot: tcgRoomManager.snapshotFor(room, null),
         loginReturnPath,
       }).toString(),
-      404,
     );
   });
 
