@@ -104,8 +104,15 @@ function isMissedPenalty(detail: string): boolean {
   return detail.toLowerCase().includes('missed penalty');
 }
 
-function isOwnGoal(detail: string): boolean {
-  return detail.toLowerCase().includes('own goal');
+function goalCreditedToHome(
+  event: ApiFootballEvent,
+  homeId: number,
+  awayId: number,
+  homeName: string,
+): boolean {
+  if (event.team.id === homeId) return true;
+  if (event.team.id === awayId) return false;
+  return normalizeTeamName(event.team.name) === homeName;
 }
 
 export function mapApiFootballFixture(item: ApiFootballFixtureItem): WorldCupMatch {
@@ -140,20 +147,11 @@ export function mapApiFootballFixture(item: ApiFootballFixtureItem): WorldCupMat
       penalty: isPenaltyGoal(event.detail),
     };
 
-    const ownGoal = isOwnGoal(event.detail);
-    let forHome: boolean;
-    if (ownGoal) {
-      if (event.team.id === item.teams.home.id) forHome = false;
-      else if (event.team.id === item.teams.away.id) forHome = true;
-      else if (normalizeTeamName(event.team.name) === team1) forHome = false;
-      else forHome = true;
-    } else if (event.team.id === item.teams.home.id) forHome = true;
-    else if (event.team.id === item.teams.away.id) forHome = false;
-    else if (normalizeTeamName(event.team.name) === team1) forHome = true;
-    else forHome = false;
-
-    if (forHome) goals1.push(entry);
-    else goals2.push(entry);
+    if (goalCreditedToHome(event, item.teams.home.id, item.teams.away.id, team1)) {
+      goals1.push(entry);
+    } else {
+      goals2.push(entry);
+    }
   }
 
   const venue = item.fixture.venue?.name ?? item.fixture.venue?.city ?? undefined;
@@ -189,13 +187,24 @@ function collectFixtureIdsNeedingEvents(fixtures: ApiFootballFixtureItem[]): num
   return [...ids];
 }
 
-function mergeFixtureEvents(
+function mergeFixtureDetail(
   item: ApiFootballFixtureItem,
+  detailsById: Map<number, ApiFootballFixtureItem>,
   eventsById: Map<number, ApiFootballEvent[]>,
 ): ApiFootballFixtureItem {
-  const events = eventsById.get(item.fixture.id);
-  if (!events) return item;
-  return { ...item, events };
+  const detail = detailsById.get(item.fixture.id);
+  const events = detail?.events ?? eventsById.get(item.fixture.id);
+  if (!detail && !events) return item;
+
+  return {
+    ...item,
+    goals: detail?.goals ?? item.goals,
+    score: detail?.score ?? item.score,
+    events: events ?? item.events,
+    fixture: detail
+      ? { ...item.fixture, status: detail.fixture.status }
+      : item.fixture,
+  };
 }
 
 async function apiFootballRequest<T>(path: string, key: string): Promise<T> {
@@ -246,22 +255,25 @@ export async function fetchWorldCupMatches(): Promise<WorldCupMatch[]> {
   );
 
   const idsToFetch = collectFixtureIdsNeedingEvents(fixtures ?? []);
-  const fetchedEventsById = new Map<number, ApiFootballEvent[]>();
+  const fetchedDetailsById = new Map<number, ApiFootballFixtureItem>();
   for (const chunk of chunkIds(idsToFetch)) {
     const batch = await fetchFixtureBatch(chunk, key);
     for (const item of batch) {
-      if (!item.events) continue;
-      fetchedEventsById.set(item.fixture.id, item.events);
-      if (FINISHED_STATUSES.has(item.fixture.status.short)) {
+      fetchedDetailsById.set(item.fixture.id, item);
+      if (item.events && FINISHED_STATUSES.has(item.fixture.status.short)) {
         finishedEventsByFixtureId.set(item.fixture.id, item.events);
       }
     }
   }
 
   const eventsById = new Map<number, ApiFootballEvent[]>(finishedEventsByFixtureId);
-  for (const [id, events] of fetchedEventsById) eventsById.set(id, events);
+  for (const [id, detail] of fetchedDetailsById) {
+    if (detail.events) eventsById.set(id, detail.events);
+  }
 
-  const matches = (fixtures ?? []).map((item) => mapApiFootballFixture(mergeFixtureEvents(item, eventsById)));
+  const matches = (fixtures ?? []).map((item) => mapApiFootballFixture(
+    mergeFixtureDetail(item, fetchedDetailsById, eventsById),
+  ));
 
   cachedMatches = matches;
   cacheExpiresAt = now + CACHE_TTL_MS;

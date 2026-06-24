@@ -49,6 +49,12 @@ export function isFinished(match: WorldCupMatch): boolean {
   return Boolean(match.score?.ft);
 }
 
+const LIVE_MATCH_STATUSES = new Set(['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE', 'INT']);
+
+export function isLiveMatch(match: WorldCupMatch): boolean {
+  return Boolean(match.status && LIVE_MATCH_STATUSES.has(match.status));
+}
+
 export function getDisplayedScore(match: WorldCupMatch): { home: number; away: number } | null {
   if (match.score?.ft) {
     return { home: match.score.ft[0], away: match.score.ft[1] };

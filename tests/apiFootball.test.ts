@@ -119,32 +119,70 @@ describe('apiFootball', () => {
     expect(mapped.goals2).toBeUndefined();
   });
 
-  test('mapApiFootballFixture credits own goals to the opposing side', () => {
+  test('mapApiFootballFixture credits own goals to event.team (benefiting side)', () => {
     const mapped = mapApiFootballFixture({
       fixture: { id: 4, date: '2026-06-12T19:00:00+00:00', status: { short: 'FT' } },
       league: { round: 'Group Stage - 1' },
       teams: {
-        home: { id: 1, name: 'Argentina' },
-        away: { id: 2, name: 'France' },
+        home: { id: 1113, name: 'Bosnia & Herzegovina' },
+        away: { id: 1569, name: 'Qatar' },
+      },
+      goals: { home: 2, away: 1 },
+      score: {
+        halftime: { home: 2, away: 1 },
+        fulltime: { home: null, away: null },
+      },
+      events: [{
+        time: { elapsed: 29, extra: null },
+        team: { id: 1113, name: 'Bosnia & Herzegovina' },
+        player: { id: 1, name: 'K. Alajbegovic' },
+        type: 'Goal',
+        detail: 'Normal Goal',
+      }, {
+        time: { elapsed: 34, extra: null },
+        team: { id: 1113, name: 'Bosnia & Herzegovina' },
+        player: { id: 2, name: 'S. Al Brake' },
+        type: 'Goal',
+        detail: 'Own Goal',
+      }, {
+        time: { elapsed: 42, extra: null },
+        team: { id: 1569, name: 'Qatar' },
+        player: { id: 3, name: 'H. Al Haydos' },
+        type: 'Goal',
+        detail: 'Normal Goal',
+      }],
+    });
+
+    expect(mapped.goals1).toHaveLength(2);
+    expect(mapped.goals1?.[1].name).toBe('S. Al Brake');
+    expect(mapped.goals2).toHaveLength(1);
+    expect(mapped.score?.ft).toEqual([2, 1]);
+  });
+
+  test('mapApiFootballFixture uses API goals for official score', () => {
+    const mapped = mapApiFootballFixture({
+      fixture: { id: 5, date: '2026-06-12T19:00:00+00:00', status: { short: '1H' } },
+      league: { round: 'Group Stage - 1' },
+      teams: {
+        home: { id: 2384, name: 'USA' },
+        away: { id: 2380, name: 'Paraguay' },
       },
       goals: { home: 1, away: 0 },
       score: {
-        halftime: { home: 1, away: 0 },
-        fulltime: { home: 1, away: 0 },
+        halftime: { home: 0, away: 0 },
+        fulltime: { home: null, away: null },
       },
       events: [{
-        time: { elapsed: 33, extra: null },
-        team: { id: 2, name: 'France' },
-        player: { id: 20, name: 'Defender' },
+        time: { elapsed: 7, extra: null },
+        team: { id: 2384, name: 'USA' },
+        player: { id: 1, name: 'D. Bobadilla' },
         type: 'Goal',
         detail: 'Own Goal',
       }],
     });
 
     expect(mapped.goals1).toHaveLength(1);
-    expect(mapped.goals1?.[0].name).toBe('Defender');
-    expect(mapped.goals1?.[0].penalty).toBe(false);
-    expect(mapped.goals2).toBeUndefined();
+    expect(mapped.score?.ft).toEqual([1, 0]);
   });
 
   test('fetchWorldCupMatches requires API_FOOTBALL_KEY', async () => {
