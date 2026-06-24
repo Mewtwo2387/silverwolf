@@ -95,7 +95,17 @@ export function mapApiFootballStatus(short: string): string {
 }
 
 function isPenaltyGoal(detail: string): boolean {
-  return detail.toLowerCase().includes('penalty');
+  const lower = detail.toLowerCase();
+  if (lower.includes('missed penalty')) return false;
+  return lower.includes('penalty');
+}
+
+function isMissedPenalty(detail: string): boolean {
+  return detail.toLowerCase().includes('missed penalty');
+}
+
+function isOwnGoal(detail: string): boolean {
+  return detail.toLowerCase().includes('own goal');
 }
 
 export function mapApiFootballFixture(item: ApiFootballFixtureItem): WorldCupMatch {
@@ -120,6 +130,7 @@ export function mapApiFootballFixture(item: ApiFootballFixtureItem): WorldCupMat
   const goals2: NonNullable<WorldCupMatch['goals2']> = [];
   for (const event of item.events ?? []) {
     if (event.type !== 'Goal') continue;
+    if (isMissedPenalty(event.detail)) continue;
     const scorerName = event.player?.name?.trim();
     if (!scorerName) continue;
 
@@ -128,9 +139,20 @@ export function mapApiFootballFixture(item: ApiFootballFixtureItem): WorldCupMat
       minute: formatEventMinute(event.time.elapsed, event.time.extra),
       penalty: isPenaltyGoal(event.detail),
     };
-    if (event.team.id === item.teams.home.id) goals1.push(entry);
-    else if (event.team.id === item.teams.away.id) goals2.push(entry);
-    else if (normalizeTeamName(event.team.name) === team1) goals1.push(entry);
+
+    const ownGoal = isOwnGoal(event.detail);
+    let forHome: boolean;
+    if (ownGoal) {
+      if (event.team.id === item.teams.home.id) forHome = false;
+      else if (event.team.id === item.teams.away.id) forHome = true;
+      else if (normalizeTeamName(event.team.name) === team1) forHome = false;
+      else forHome = true;
+    } else if (event.team.id === item.teams.home.id) forHome = true;
+    else if (event.team.id === item.teams.away.id) forHome = false;
+    else if (normalizeTeamName(event.team.name) === team1) forHome = true;
+    else forHome = false;
+
+    if (forHome) goals1.push(entry);
     else goals2.push(entry);
   }
 
