@@ -51,6 +51,7 @@
     "skia-canvas"
   ],
   "overrides": {
-    "canvas": "^3.2.3"
+    "canvas": "^3.2.3",
+    "ws": "^8.21.0"
   }
 }
