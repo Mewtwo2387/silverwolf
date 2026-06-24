@@ -880,9 +880,9 @@ function chatMsgEl(m) {
     return el('div', { class: 'tcg-feed-system' }, m.text);
   }
   const mine = chatIsMine(m);
-  // A plain "name: message" line. Players get a small icon before their name;
-  // spectators don't — that's how you tell who's actually in the match.
+  // Name icons (independent): ⭐ dev, ⚔ player.
   const author = el('span', { class: 'tcg-chat-author' });
+  if (m.isDev) author.appendChild(el('span', { class: 'tcg-chat-pico dev', title: 'Developer' }, '★'));
   if (m.isPlayer) author.appendChild(el('span', { class: 'tcg-chat-pico', title: 'Player' }, '⚔'));
   author.appendChild(document.createTextNode(m.username + ': '));
   return el('div', { class: 'tcg-chat-line' + (mine ? ' me' : '') }, [

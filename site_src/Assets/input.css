@@ -1404,9 +1404,8 @@ code, pre, kbd, .font-mono {
 .tcg-chat-author { font-weight: 800; color: var(--accent-light); }
 .tcg-chat-line.me .tcg-chat-author { color: #6ee7a0; }
 .tcg-chat-text { color: var(--fog-100); }
-/* Player marker before a chatter's name (spectators have none). */
-.tcg-chat-pico { margin-right: 0.22rem; color: var(--accent-light); font-size: 0.85em; }
-.tcg-chat-line.me .tcg-chat-pico { color: #6ee7a0; }
+/* Name icons (★ dev, ⚔ player) inherit the name's colour. */
+.tcg-chat-pico { margin-right: 0.18rem; color: inherit; font-size: 0.85em; }
 /* System notices (spectator joined/left). */
 .tcg-feed-system {
   margin: 0.1rem 0; text-align: center; font-style: italic; font-size: 0.68rem;

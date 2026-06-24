@@ -24,6 +24,7 @@ import {
   endTurnAsCurrentPlayer,
 } from '../../tcg/battleCore';
 import { buildBattleSnapshot, type BattleSnapshot } from '../../tcg/battleSnapshot';
+import { isDevId } from '../../utils/accessControl';
 
 export type TcgMode = 'pvp' | 'solo';
 export type TcgRoomStatus = 'lobby' | 'active' | 'ended';
@@ -48,6 +49,8 @@ export interface TcgChatMessage {
   text: string;
   /** Sender is a seated player (UI shows a player icon); false for spectators/system. */
   isPlayer: boolean;
+  /** Sender is a bot dev (UI shows a star icon); independent of isPlayer. */
+  isDev: boolean;
   ts: number;
 }
 
@@ -429,7 +432,12 @@ class TcgRoomManager {
       .slice(0, TCG_CHAT_MAX_LEN);
     if (!text) return { ok: false, reason: 'empty' };
     this.appendChat(room, {
-      kind: 'chat', senderId: user.discordId, username: user.username, text, isPlayer,
+      kind: 'chat',
+      senderId: user.discordId,
+      username: user.username,
+      text,
+      isPlayer,
+      isDev: isDevId(user.discordId),
     });
     room.lastActivityAt = Date.now();
     return { ok: true };
@@ -447,7 +455,7 @@ class TcgRoomManager {
   /** Append a system notice (join/leave) to the chat stream. */
   private logSystem(room: TcgRoom, text: string) {
     this.appendChat(room, {
-      kind: 'system', senderId: '', username: '', text, isPlayer: false,
+      kind: 'system', senderId: '', username: '', text, isPlayer: false, isDev: false,
     });
   }
 

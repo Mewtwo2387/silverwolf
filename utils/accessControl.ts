@@ -38,6 +38,11 @@ function isDev(interaction: ChatInputCommandInteraction): boolean {
   return ALLOWED_USERS.includes(interaction.user.id);
 }
 
+/** Dev check by raw Discord user id (for the website, which has no interaction). */
+function isDevId(discordId: string): boolean {
+  return ALLOWED_USERS.includes(discordId);
+}
+
 function isAdmin(interaction: ChatInputCommandInteraction): boolean {
   // eslint-disable-next-line max-len
   return (interaction.member?.permissions as PermissionsBitField)?.has(PermissionsBitField.Flags.Administrator) || isDev(interaction);
@@ -54,6 +59,7 @@ function isAllowedServer(interaction: ChatInputCommandInteraction): boolean {
 
 export {
   isDev,
+  isDevId,
   isAdmin,
   isBasement,
   isAllowedServer,
