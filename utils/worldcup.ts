@@ -1,6 +1,6 @@
 import { formatFootballTeam } from './footballTeams';
 
-export { fetchWorldCupMatches, clearFootballDataCache } from './footballData';
+export { fetchWorldCupMatches, clearFootballDataCache } from './apiFootball';
 
 export const MATCH_WINDOW_MS = 3 * 60 * 60 * 1000;
 export const PRE_MATCH_LEAD_MS = 5 * 60 * 1000;
