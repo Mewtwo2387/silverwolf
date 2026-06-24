@@ -5,6 +5,7 @@ export const SERVER_CONFIG_KEYS = {
   POKEMON_SHINY_CHANCE: 'pokemon_shiny_chance',
   POKEMON_MYSTERY_CHANCE: 'pokemon_mystery_chance',
   SERIOUS_CHANNELS: 'serious_channels',
+  MESSAGE_REACTS_ENABLED: 'message_reacts_enabled',
 } as const;
 
 export const SERVER_CHANNEL_LIST_KEYS = [
@@ -75,12 +76,28 @@ export const DOCUMENTED_SERVER_CONFIG_KEYS: {
     description: 'Channels excluded from spawns and some keyword triggers',
     defaultValue: 'none',
   },
+  {
+    key: SERVER_CONFIG_KEYS.MESSAGE_REACTS_ENABLED,
+    description: 'Keyword/script replies on messages (e.g. @grok, nya). 0 = off, 1 = on',
+    defaultValue: '1',
+  },
 ];
 
 /** Keys managed via `/serverconfig setvalue`. */
 export const SETTABLE_VALUE_KEYS = DOCUMENTED_SERVER_CONFIG_KEYS.filter(
   (entry) => entry.key !== SERVER_CONFIG_KEYS.SERIOUS_CHANNELS,
 );
+
+function parseEnabledFlag(raw: string | null | undefined, defaultEnabled: boolean): boolean {
+  if (raw === null || raw === undefined || raw === '') return defaultEnabled;
+  if (raw === '1') return true;
+  if (raw === '0') return false;
+  return defaultEnabled;
+}
+
+const BOOLEAN_VALUE_KEYS = new Set<string>([
+  SERVER_CONFIG_KEYS.MESSAGE_REACTS_ENABLED,
+]);
 
 const DOCUMENTED_KEY_SET = new Set<string>(DOCUMENTED_SERVER_CONFIG_KEYS.map((entry) => entry.key));
 
@@ -96,6 +113,7 @@ export interface ResolvedServerConfig {
   pokemonShinyChance: number;
   pokemonMysteryChance: number;
   seriousChannelIds: string[];
+  messageReactsEnabled: boolean;
 }
 
 type ServerConfigReader = {
@@ -126,6 +144,13 @@ function formatUnsetDisplay(defaultValue: string): string {
 export function validateServerConfigValue(key: string, value: string): string | null {
   if (!SETTABLE_VALUE_KEYS.some((entry) => entry.key === key)) {
     return `Unknown key. Supported keys: ${SETTABLE_VALUE_KEYS.map((entry) => entry.key).join(', ')}`;
+  }
+
+  if (BOOLEAN_VALUE_KEYS.has(key)) {
+    if (value !== '0' && value !== '1') {
+      return `${key} must be 0 or 1`;
+    }
+    return null;
   }
 
   const numeric = Number(value);
@@ -178,9 +203,19 @@ export async function loadResolvedServerConfig(
   const values = new Map(rows.map((row) => [row.key, row.value]));
 
   return {
-    pokemonSpawnRate: parseRate(values.get(SERVER_CONFIG_KEYS.POKEMON_SPAWN_RATE), DEFAULT_RATES[SERVER_CONFIG_KEYS.POKEMON_SPAWN_RATE]),
-    pokemonShinyChance: parseRate(values.get(SERVER_CONFIG_KEYS.POKEMON_SHINY_CHANCE), DEFAULT_RATES[SERVER_CONFIG_KEYS.POKEMON_SHINY_CHANCE]),
-    pokemonMysteryChance: parseRate(values.get(SERVER_CONFIG_KEYS.POKEMON_MYSTERY_CHANCE), DEFAULT_RATES[SERVER_CONFIG_KEYS.POKEMON_MYSTERY_CHANCE]),
+    pokemonSpawnRate: parseRate(
+      values.get(SERVER_CONFIG_KEYS.POKEMON_SPAWN_RATE),
+      DEFAULT_RATES[SERVER_CONFIG_KEYS.POKEMON_SPAWN_RATE],
+    ),
+    pokemonShinyChance: parseRate(
+      values.get(SERVER_CONFIG_KEYS.POKEMON_SHINY_CHANCE),
+      DEFAULT_RATES[SERVER_CONFIG_KEYS.POKEMON_SHINY_CHANCE],
+    ),
+    pokemonMysteryChance: parseRate(
+      values.get(SERVER_CONFIG_KEYS.POKEMON_MYSTERY_CHANCE),
+      DEFAULT_RATES[SERVER_CONFIG_KEYS.POKEMON_MYSTERY_CHANCE],
+    ),
     seriousChannelIds: parseChannelIds(values.get(SERVER_CONFIG_KEYS.SERIOUS_CHANNELS)),
+    messageReactsEnabled: parseEnabledFlag(values.get(SERVER_CONFIG_KEYS.MESSAGE_REACTS_ENABLED), true),
   };
 }
