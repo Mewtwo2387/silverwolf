@@ -31,6 +31,7 @@ describe('serverConfig utils', () => {
     expect(config.pokemonShinyChance).toBe(0.03);
     expect(config.pokemonMysteryChance).toBe(0.3);
     expect(config.seriousChannelIds).toEqual([]);
+    expect(config.messageReactsEnabled).toBe(true);
   });
 
   it('loads configured values for a server', async () => {
@@ -45,6 +46,15 @@ describe('serverConfig utils', () => {
     expect(config.pokemonShinyChance).toBe(0.1);
     expect(config.pokemonMysteryChance).toBe(0.2);
     expect(config.seriousChannelIds).toEqual(['111', '222']);
+    expect(config.messageReactsEnabled).toBe(true);
+  });
+
+  it('loads message_reacts_enabled flag', async () => {
+    const serverId = '123456789';
+    await db.serverConfig.setServerConfig(serverId, SERVER_CONFIG_KEYS.MESSAGE_REACTS_ENABLED, '0');
+
+    const config = await loadResolvedServerConfig(db, serverId);
+    expect(config.messageReactsEnabled).toBe(false);
   });
 
   it('falls back to defaults for invalid numeric values', async () => {
@@ -58,6 +68,12 @@ describe('serverConfig utils', () => {
   describe('validateServerConfigValue', () => {
     it('accepts valid rate values', () => {
       expect(validateServerConfigValue(SERVER_CONFIG_KEYS.POKEMON_SPAWN_RATE, '0.02')).toBeNull();
+    });
+
+    it('accepts boolean flags as 0 or 1', () => {
+      expect(validateServerConfigValue(SERVER_CONFIG_KEYS.MESSAGE_REACTS_ENABLED, '0')).toBeNull();
+      expect(validateServerConfigValue(SERVER_CONFIG_KEYS.MESSAGE_REACTS_ENABLED, '1')).toBeNull();
+      expect(validateServerConfigValue(SERVER_CONFIG_KEYS.MESSAGE_REACTS_ENABLED, '0.5')).not.toBeNull();
     });
 
     it('rejects invalid keys and values', () => {
@@ -89,6 +105,7 @@ describe('serverConfig utils', () => {
 
       expect(overview).toContain('pokemon_spawn_rate: 0.05');
       expect(overview).toContain('pokemon_shiny_chance: None (default: 0.03)');
+      expect(overview).toContain('message_reacts_enabled: None (default: 1)');
       expect(overview).toContain('serious_channels: <#333333333>, <#444444444>');
       expect(overview).toContain('girl: <@&111111111>');
       expect(overview).not.toContain('channel:');

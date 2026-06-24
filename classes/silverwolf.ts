@@ -370,7 +370,7 @@ All wrongs reserved.
       return msg.includes(trigger);
     }));
 
-    if (matchedEntries.length > 0) {
+    if (matchedEntries.length > 0 && guildConfig.messageReactsEnabled) {
       const promises = matchedEntries.map(async (matchedEntry: any) => {
         if (matchedEntry.excludeSerious && guildConfig.seriousChannelIds.includes(message.channel.id)) {
           return;
