@@ -93,6 +93,23 @@ export function PlaneSimPage(opts: {
     font-size: 0.6rem; font-weight: 800; color: var(--fog-200, #dfe9ef);
   }
 
+  /* Combat status (top-centre): bandits-down board + hull HP bar. */
+  .ps-combat { left: 50%; top: 1.1rem; transform: translateX(-50%); text-align: center; min-width: 134px; }
+  .ps-combat .ps-val { font-size: 1.5rem; }
+  .ps-hp-track {
+    width: 134px; height: 8px; border-radius: 4px; margin: 0.4rem auto 0.2rem; overflow: hidden;
+    background: color-mix(in oklab, var(--ink-700, #1a2230) 80%, transparent);
+    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 30%, transparent);
+  }
+  #ps-hp-fill { height: 100%; width: 100%; background: #37d67a; transition: width 0.15s linear, background 0.15s linear; }
+
+  /* Red screen pulse when the player takes a hit. */
+  #ps-damage {
+    position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0;
+    background: radial-gradient(ellipse at center, transparent 38%, rgba(255, 28, 28, 0.6) 100%);
+    transition: opacity 0.09s linear;
+  }
+
   /* Gun crosshair (fixed centre) + the virtual-stick reticle (tracks mouse). */
   .ps-center {
     position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
@@ -100,6 +117,10 @@ export function PlaneSimPage(opts: {
   }
   .ps-center::before, .ps-center::after {
     content: ''; position: absolute; background: var(--accent, #22d3ff); box-shadow: 0 0 6px var(--accent, #22d3ff);
+  }
+  /* Pipper turns red when a bandit is in the gun line. */
+  #ps-pipper.ps-lock::before, #ps-pipper.ps-lock::after {
+    background: #ff5d6c; box-shadow: 0 0 9px #ff5d6c;
   }
   .ps-center::before { left: 50%; top: 0; width: 2px; height: 100%; transform: translateX(-50%); }
   .ps-center::after { top: 50%; left: 0; height: 2px; width: 100%; transform: translateY(-50%); }
@@ -118,8 +139,8 @@ export function PlaneSimPage(opts: {
     position: absolute; left: 50%; transform: translateX(-50%); text-align: center;
     font-weight: 800; letter-spacing: 0.12em; opacity: 0; transition: opacity 0.15s;
   }
-  .ps-stall { top: 8%; font-size: 1.4rem; color: #ff5d6c; text-shadow: 0 0 12px rgba(255, 93, 108, 0.7); }
-  .ps-warning { top: 14%; font-size: 1.05rem; color: #ffc24a; text-shadow: 0 0 12px rgba(255, 194, 74, 0.6); }
+  .ps-stall { top: 16%; font-size: 1.4rem; color: #ff5d6c; text-shadow: 0 0 12px rgba(255, 93, 108, 0.7); }
+  .ps-warning { top: 22%; font-size: 1.05rem; color: #ffc24a; text-shadow: 0 0 12px rgba(255, 194, 74, 0.6); }
   .ps-stall.ps-show { opacity: 1; animation: ps-blink 0.6s steps(2, start) infinite; }
   .ps-warning.ps-show { opacity: 1; }
   @keyframes ps-blink { 50% { opacity: 0.25; } }
@@ -166,6 +187,22 @@ export function PlaneSimPage(opts: {
   .ps-go { margin-top: 0.4rem; font-size: 1.05rem; font-weight: 800; color: var(--accent, #22d3ff); animation: ps-pulse 1.6s ease-in-out infinite; }
   @keyframes ps-pulse { 50% { opacity: 0.5; } }
 
+  /* Difficulty picker on the start overlay. */
+  .ps-diff-row { display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap; margin: 0.2rem 0 0.5rem; }
+  .ps-diff-lbl { font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fog-400, #8aa0ad); }
+  .ps-diff-btn {
+    pointer-events: auto; cursor: pointer; font-family: 'JetBrains Mono', monospace;
+    padding: 0.3rem 0.75rem; font-size: 0.82rem; border-radius: 0.4rem; color: var(--fog-200, #dfe9ef);
+    background: color-mix(in oklab, var(--ink-900, #06080f) 55%, transparent);
+    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 30%, transparent);
+  }
+  .ps-diff-btn:hover { border-color: var(--accent, #22d3ff); color: var(--accent-light, #7fdfff); }
+  .ps-diff-btn.ps-diff-active {
+    color: var(--ink-900, #06080f); font-weight: 800;
+    background: var(--accent, #22d3ff); border-color: var(--accent, #22d3ff);
+  }
+  .ps-hint { margin: 0 0 0.2rem; font-size: 0.74rem; line-height: 1.4; color: var(--fog-400, #8aa0ad); }
+
   @media (prefers-reduced-motion: reduce) {
     .ps-stall.ps-show, .ps-go { animation: none; }
   }
@@ -179,6 +216,7 @@ export function PlaneSimPage(opts: {
   const body = html`
     <div id="ps-stage">
       <canvas id="ps-canvas" aria-label="Plane Sim flight simulator"></canvas>
+      <div id="ps-damage"></div>
 
       <div class="ps-corner">
         <a class="ps-exit" href="/games/plane-sim/inspect">🔧 Inspect models</a>
@@ -190,6 +228,14 @@ export function PlaneSimPage(opts: {
         <div class="ps-panel ps-map-wrap">
           <canvas id="ps-map" width="150" height="150"></canvas>
           <span class="ps-map-n">N</span>
+        </div>
+
+        <!-- Combat status (top-centre): bandits-down board + hull HP -->
+        <div class="ps-panel ps-combat">
+          <div class="ps-lbl">Bandits down</div>
+          <div class="ps-val"><span id="ps-kills">0 / 3</span></div>
+          <div class="ps-hp-track"><div id="ps-hp-fill"></div></div>
+          <div class="ps-unit">HULL <span id="ps-hp">100</span> &middot; <span id="ps-diff">REGULAR</span></div>
         </div>
 
         <!-- Airspeed (left) -->
@@ -234,7 +280,7 @@ export function PlaneSimPage(opts: {
         </div>
 
         <!-- Centre crosshair + stick reticle -->
-        <div class="ps-center"></div>
+        <div class="ps-center" id="ps-pipper"></div>
         <div id="ps-reticle"></div>
 
         <!-- Warnings -->
@@ -246,15 +292,22 @@ export function PlaneSimPage(opts: {
       <div id="ps-overlay">
         <div class="ps-card">
           <h1>Plane Sim</h1>
-          <p class="ps-sub">Take off from the demo airfield in a Spitfire-ish prop fighter. Build speed down the runway, then ease back to climb away.</p>
+          <p class="ps-sub">Take off from the airfield in a Spitfire-ish prop fighter, then hunt down the <strong>3 bandits</strong> already airborne. Watch your hull — they shoot back.</p>
           <dl class="ps-keys">
             <dt><span class="ps-key">W</span> / <span class="ps-key">S</span></dt><dd>Throttle up / down</dd>
             <dt><span class="ps-key">A</span> / <span class="ps-key">D</span></dt><dd>Rudder (yaw left / right)</dd>
             <dt>Mouse</dt><dd>Pitch (up/down) &amp; roll (left/right)</dd>
             <dt><span class="ps-key">G</span></dt><dd>Raise / lower undercarriage (less drag up)</dd>
-            <dt>Right-click</dt><dd>Fire guns (demo)</dd>
-            <dt><span class="ps-key">Space</span></dt><dd>Respawn after a crash</dd>
+            <dt>Right-click</dt><dd>Fire guns (pipper turns red on target)</dd>
+            <dt><span class="ps-key">Space</span></dt><dd>Restart after a crash, shoot-down or win</dd>
           </dl>
+          <div class="ps-diff-row">
+            <span class="ps-diff-lbl">Bandit skill</span>
+            <button type="button" class="ps-diff-btn" data-diff="easy">Rookie</button>
+            <button type="button" class="ps-diff-btn" data-diff="normal">Regular</button>
+            <button type="button" class="ps-diff-btn" data-diff="hard">Ace</button>
+          </div>
+          <p class="ps-hint">They turn-fight but <strong>break off</strong> if you press them. Switch skill anytime with <span class="ps-key">1</span> <span class="ps-key">2</span> <span class="ps-key">3</span>.</p>
           <div class="ps-go">▸ Click to fly</div>
         </div>
       </div>

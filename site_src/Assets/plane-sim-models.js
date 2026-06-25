@@ -90,8 +90,13 @@ const setShadows = (obj) => obj.traverse((o) => {
 });
 
 // ---- The Spitfire-ish prop fighter. Returns { group, surf }, where surf holds
-//      the animatable handles (control-surface pivots, prop, gear). ----
-export function buildAircraft() {
+//      the animatable handles (control-surface pivots, prop, gear).
+//      opts.paint overrides the airframe colour and opts.markings === false drops
+//      the RAF roundels + fin flash — used to build visually distinct AI enemies
+//      from the very same geometry the player flies. ----
+export function buildAircraft(opts = {}) {
+  const PAINT = opts.paint ?? 0x586a39; // default: RAF olive
+  const markings = opts.markings !== false; // default: RAF roundels + fin flash
   const plane = new THREE.Group();
   const surf = {
     aileronL: null, aileronR: null, elevator: null, rudder: null, prop: null, gear: null,
@@ -100,10 +105,10 @@ export function buildAircraft() {
   const mkPaint = (hex, side) => new THREE.MeshStandardMaterial({
     color: hex, roughness: 0.55, metalness: 0.12, side: side || THREE.FrontSide,
   });
-  const camo1 = mkPaint(0x586a39); // olive — wings, tail, control surfaces
-  // Fuselage shell: same olive but DOUBLE-SIDED so the thin lathe can never
+  const camo1 = mkPaint(PAINT); // airframe paint — wings, tail, control surfaces
+  // Fuselage shell: same paint but DOUBLE-SIDED so the thin lathe can never
   // read as see-through (a single-sided open shell shows the interior/through).
-  const body = mkPaint(0x586a39, THREE.DoubleSide);
+  const body = mkPaint(PAINT, THREE.DoubleSide);
   const metal = new THREE.MeshStandardMaterial({ color: 0x33373d, roughness: 0.4, metalness: 0.7 });
   const glass = new THREE.MeshStandardMaterial({
     color: 0xa9dcec, roughness: 0.08, metalness: 0.0, transparent: true, opacity: 0.62,
@@ -166,9 +171,11 @@ export function buildAircraft() {
   plane.add(wing);
   const ailHingeZ = wing.position.z + 0.30; // straight spanwise hinge line
   for (const side of [-1, 1]) {
-    const r = roundel(0.78);
-    r.position.set(side * 3.25, 0.0, wing.position.z);
-    plane.add(r);
+    if (markings) {
+      const r = roundel(0.78);
+      r.position.set(side * 3.25, 0.0, wing.position.z);
+      plane.add(r);
+    }
 
     // Aileron whose planform follows the wing's elliptical trailing edge so it
     // blends into the wing (same colour) instead of being a bolted-on box.
@@ -234,14 +241,16 @@ export function buildAircraft() {
   plane.add(rPivot);
   surf.rudder = rPivot;
 
-  // RAF fin flash — pure flavour.
-  const flash = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.45, 1.3),
-    new THREE.MeshStandardMaterial({ color: 0xc01a2b, roughness: 0.8, side: THREE.DoubleSide }),
-  );
-  flash.position.set(0.06, 0.9, TAIL_Z + 0.95);
-  flash.rotation.y = Math.PI / 2;
-  plane.add(flash);
+  // RAF fin flash — pure flavour (player only).
+  if (markings) {
+    const flash = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.45, 1.3),
+      new THREE.MeshStandardMaterial({ color: 0xc01a2b, roughness: 0.8, side: THREE.DoubleSide }),
+    );
+    flash.position.set(0.06, 0.9, TAIL_Z + 0.95);
+    flash.rotation.y = Math.PI / 2;
+    plane.add(flash);
+  }
 
   // Nose: pointed spinner + backplate + 3 pitched blades on a spin pivot.
   const prop = new THREE.Group();
