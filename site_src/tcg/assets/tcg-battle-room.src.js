@@ -45,15 +45,22 @@ let serverError = null;
 let countdownTimer = null;
 let armedSkill = null;              // { slot, index, targetKind }
 let armedItem = null;               // hand slotId
-let lastLogSig = '';
-// Combined Log + Chat panel: one chronological feed of action-log entries and chat
-// messages, appended in arrival order. Entries: { kind:'log', e } | { kind:'chat', m }.
-const feed = [];
-// Seed with existing chat history from the initial snapshot (counts as already-seen).
-let lastFeedChatId = 0;
-if (CTX.initial && Array.isArray(CTX.initial.chat)) {
-  for (const m of CTX.initial.chat) { feed.push({ kind: 'chat', m }); lastFeedChatId = m.id; }
+// The combined Log + Chat feed is server-provided (state.feed): a chronological list of
+// { kind:'log', e } | { kind:'chat', m }. We render straight from it, so a rejoining client
+// shows the full prior history and never re-accumulates or replays it.
+function feedSig(b) {
+  if (!b || !b.lastActionLog || !b.lastActionLog.length) return '';
+  return b.currentTurn + '|' + b.lastActionLog.map((e) => (e && e.text != null ? e.text : String(e))).join('␟');
 }
+function maxChatId(fd) {
+  let m = 0;
+  for (const it of (fd || [])) if (it && it.kind === 'chat' && it.m && it.m.id > m) m = it.m.id;
+  return m;
+}
+// Seed from the initial snapshot so the first live update isn't mistaken for a brand-new
+// action (which would replay the last attack's animation on load/rejoin).
+let lastLogSig = feedSig(CTX.initial && CTX.initial.battle);
+let lastProcessedChatId = maxChatId(CTX.initial && CTX.initial.feed); // existing chat = already seen
 let chatUnread = 0;                // unread incoming chat count (narrow launcher badge)
 let logModalOpen = false;          // narrow-screen modal open?
 // Action animation hints derived from the most recent ingest.
@@ -129,26 +136,22 @@ function ingest(room) {
   const b = room.battle;
   newLogThisIngest = false;
   pendingActorName = null;
-  if (b && b.lastActionLog && b.lastActionLog.length) {
-    const sig = b.currentTurn + '|' + b.lastActionLog.map((e) => (e && e.text != null ? e.text : String(e))).join('␟');
-    if (sig !== lastLogSig) {
-      lastLogSig = sig;
-      for (const e of b.lastActionLog) feed.push({ kind: 'log', e });
-      newLogThisIngest = true;
-      pendingActorName = parseActor(b.lastActionLog);
-    }
+  // A genuinely new action (vs the last one we've seen) drives the attack animation.
+  const sig = feedSig(b);
+  if (sig && sig !== lastLogSig) {
+    lastLogSig = sig;
+    newLogThisIngest = true;
+    pendingActorName = parseActor(b.lastActionLog);
   }
-  // Append any new chat messages to the same feed; badge unread while not visible.
+  // Unread chat badge: count new incoming chat in the server feed while it's not visible.
   const visible = mq.matches || logModalOpen;
-  const chat = Array.isArray(room.chat) ? room.chat : [];
-  for (const m of chat) {
-    if (m.id <= lastFeedChatId) continue;
-    feed.push({ kind: 'chat', m });
-    lastFeedChatId = m.id;
-    if (!visible && m.kind === 'chat' && !chatIsMine(m)) chatUnread += 1;
+  for (const it of (Array.isArray(room.feed) ? room.feed : [])) {
+    if (!it || it.kind !== 'chat' || !it.m || it.m.kind !== 'chat') continue;
+    if (it.m.id <= lastProcessedChatId) continue;
+    lastProcessedChatId = it.m.id;
+    if (!visible && !chatIsMine(it.m)) chatUnread += 1;
   }
   if (visible) chatUnread = 0;
-  if (feed.length > 250) feed.splice(0, feed.length - 250);
   // Reset stale selections if it's not actionable.
   if (!myTurn()) { armedSkill = null; armedItem = null; }
 }
@@ -895,8 +898,10 @@ function renderFeedInto(box) {
   // Preserve the "stick to bottom" behaviour unless the user has scrolled up to read.
   const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
   clear(box);
-  if (feed.length === 0) { box.appendChild(el('div', { class: 'tcg-side-empty' }, 'No activity yet — say hi!')); return; }
-  for (const item of feed) {
+  const fd = (state && Array.isArray(state.feed)) ? state.feed : [];
+  if (fd.length === 0) { box.appendChild(el('div', { class: 'tcg-side-empty' }, 'No activity yet — say hi!')); return; }
+  for (const item of fd) {
+    if (!item) continue;
     box.appendChild(item.kind === 'chat' ? chatMsgEl(item.m) : logLineEl(item.e));
   }
   if (nearBottom) box.scrollTop = box.scrollHeight;

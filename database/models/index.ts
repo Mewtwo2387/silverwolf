@@ -10,6 +10,7 @@ import MarriageModel from './MarriageModel';
 import PokemonModel from './PokemonModel';
 import PoopModel from './PoopModel';
 import ServerRolesModel from './ServerRolesModel';
+import TcgMatchModel from './TcgMatchModel';
 import UserModel from './UserModel';
 import WebSessionModel from './WebSessionModel';
 
@@ -26,6 +27,7 @@ export {
   PokemonModel,
   PoopModel,
   ServerRolesModel,
+  TcgMatchModel,
   UserModel,
   WebSessionModel,
 };

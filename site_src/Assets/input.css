@@ -912,6 +912,41 @@ code, pre, kbd, .font-mono {
 .tcg-room-opp { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tcg-room-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
 .tcg-empty { color: var(--fog-400); font-style: italic; text-align: center; font-size: 0.9rem; margin: 0.75rem 0; }
+/* ── Browse page (in-progress battles + match history) ─────────────────────── */
+.tcg-browse-actions { display: flex; justify-content: center; gap: 0.6rem; flex-wrap: wrap; }
+/* These are two distinct actions, not a tab group: kill the resting glow (which read as
+   an "active tab") and make Create a solid CTA vs Deck Builder's plain outline. */
+.tcg-browse-actions .tcg-btn { box-shadow: none; }
+.tcg-browse-actions .tcg-btn:hover { box-shadow: 0 0 14px var(--glow-bright); }
+.tcg-browse-actions .tcg-btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-pale));
+  border-color: var(--accent); color: #04121a;
+}
+.tcg-browse-actions .tcg-btn-primary:hover { color: #04121a; }
+.tcg-vs { color: var(--fog-500); font-size: 0.78em; margin: 0 0.15rem; }
+.tcg-link { color: var(--accent-light); text-decoration: none; }
+.tcg-link:hover { color: #fff; text-decoration: underline; }
+.tcg-room-watch {
+  flex: 0 0 auto; font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; color: var(--fog-400);
+  border: 1px solid var(--ink-600); border-radius: 999px; padding: 0.04rem 0.42rem;
+}
+/* Match-history rows (clickable → /games/tcg/match/:id) */
+.tcg-hist { gap: 0.5rem 0.7rem; text-decoration: none; color: inherit; cursor: pointer; }
+.tcg-hist-matchup { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fog-100); }
+.tcg-hist-result { font-size: 0.78rem; }
+.tcg-hist-result.win { color: #6ee7a0; }
+.tcg-hist-result.draw { color: var(--fog-400); }
+.tcg-hist-time { flex: 0 0 auto; font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: var(--fog-500); }
+/* Match detail page */
+.tcg-match-summary {
+  display: flex; align-items: baseline; justify-content: center; flex-wrap: wrap;
+  gap: 0.5rem 0.9rem; margin: 0 0 0.6rem; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;
+}
+.tcg-match-matchup { color: var(--fog-100); font-weight: 700; }
+.tcg-match-meta { color: var(--fog-400); font-size: 0.78rem; }
+.tcg-feed-static { max-height: 340px; }
+/* Static board (match detail): no hover/cursor affordances. */
+.tcg-arena-static .tcg-char { cursor: default; }
 .tcg-deck-summary {
   position: sticky; top: 0.5rem; z-index: 5;
   display: flex; flex-direction: column; gap: 0.6rem;

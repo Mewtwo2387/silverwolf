@@ -539,26 +539,44 @@ cyclic-tic-tac-toe multiplayer pattern.
  executors (except `chat` → `tcgRoomManager.postChat`). Broadcasts are **per-socket viewer-aware
  snapshots** (hands stay private; spectators share one hand-less snapshot). Same burst rate-limit as
  the cyclic socket. `chat` is open to any seated player **or spectator** regardless of turn; text is
- control-char-stripped + length-capped (`TCG_CHAT_MAX_LEN`) and kept in a per-room ring buffer
- (`TCG_CHAT_HISTORY`). Each `TcgChatMessage` carries `{ kind: 'chat'|'system', senderId, username,
- isPlayer, … }`; the client interleaves chat + action-log into one feed and marks `isPlayer` chatters
- with an icon.
+ control-char-stripped + length-capped (`TCG_CHAT_MAX_LEN`). The room maintains the single source of
+ truth `room.feed` (combined log + chat in arrival order); the snapshot ships a recent slice as
+ `feed: TcgFeedItem[]` and the client **renders straight from `state.feed`** (so a re-joining client
+ shows full history and never replays the last action). Each chat `TcgChatMessage` carries
+ `{ kind: 'chat'|'system', senderId, username, isPlayer, isDev, … }`; the client marks `isPlayer`/`isDev`
+ chatters with icons.
+- **Room lifecycle** — a battle *ending* (`endBattle`: victory/timeout/forfeit/disconnect) only sets
+ `status:'ended'` + result; the **room stays open** for rematch/chat. The room **closes** (→ history)
+ only once it's empty — every player *and* spectator has left — after a `TCG_EMPTY_CLOSE_MS` grace
+ (`maybeScheduleClose`/`closeRoom`; a `sweep` backstop closes long-idle empty rooms). Presence drives
+ `system` chat lines: `joined` (first connect), `reconnected`, `disconnected` (drop; mid-battle PvP
+ also arms the disconnect-forfeit grace), `left` (explicit Leave), and spectator `started/stopped
+ spectating`. `listActive()` returns **all** in-memory rooms (any status) for the browse list.
+- **Match history** — `closeRoom` → `db.tcgMatch.recordMatch` persists the **final, un-editable**
+ state (table `TcgMatch`: mode, both players' id/username/team-slugs, winner side, end reason, rounds,
+ timestamps, plus `final_state` — JSON `{ snapshot: hand-less BattleSnapshot, feed: TcgFeedItem[] }`:
+ the final board + the cumulative combined log/chat feed, so the record renders **identically to the
+ live battle**). The match id **is the room id**, so a closed room's old `/games/tcg/:id` link
+ redirects to `/games/tcg/match/:id`. This is the **only** durable TCG state (rooms are in-memory).
+ `getRecent` feeds the browse history list; `getById` feeds the clickable match-detail page (static
+ board + feed re-rendered server-side). Rooms that never started a battle aren't recorded.
 - **Routes** — `site_src/tcg/routes.ts` (`registerTcgBattleRoutes`, wired in `server.ts`
- with `upgradeWebSocket` + `tcgRoomManager.init`): `GET /games/tcg` (landing),
- `POST /games/tcg/create`, `GET /games/tcg/:id` (room — renders the battle client for seated
- players, a team-picker for an eligible PvP joiner, or a not-found notice otherwise),
- `POST /games/tcg/:id/join`, `GET /games/tcg/ws/:id` (origin pre-check + upgrade),
- `GET /games/tcg/deck` + `POST /games/tcg/deck/save` (deck builder). All POSTs use
+ with `upgradeWebSocket` + `tcgRoomManager.init`): `GET /games/tcg` (**browse** — all in-progress
+ rooms via `tcgRoomManager.listActive()` + recent history, the default page), `GET /games/tcg/create`
+ (create form — registered before `:id`), `POST /games/tcg/create`, `GET /games/tcg/match/:id`
+ (permanent match-detail view, before `:id`), `GET /games/tcg/:id` (room —
+ renders the battle client for seated players, a team-picker for an eligible PvP joiner, else a
+ read-only **spectator** view), `POST /games/tcg/:id/join`, `GET /games/tcg/ws/:id` (origin pre-check
+ + upgrade), `GET /games/tcg/deck` + `POST /games/tcg/deck/save` (deck builder). All POSTs use
  `authedGameRequest` (CSRF); deck save re-runs `validateDeckComposition` server-side.
-- **Pages** — `site_src/tcg/pages/` (`landing.ts`, `room.ts`, `deck-builder.ts`, `detail.ts`;
- HTML templates in `site_src/tcg/html/`; client JS in `site_src/tcg/assets/`). Battle client
- renders over WS: card-PNG board with live HP/energy/effect overlays, active-slot glow,
- availability-driven skill buttons with targeting, hand tray, end-turn, action log, result
- banner, rematch/leave). The **Log/Chat panel** is a single persistent, tabbed element (built once,
- updated in place so the chat input keeps focus across re-renders): a wide right-hand column
- ≥920px, and a floating-launcher modal below that width (so the board + skills stay above the fold).
- Decks persist via `tcg/deckStorage.ts` — the **same** `User.tcg_deck` the Discord
- `/tcgbattle deckset` uses.
+- **Pages** — `site_src/tcg/pages/` (`landing.ts` = `TcgBrowsePage` + `TcgCreatePage`, `room.ts`,
+ `deck-builder.ts`, `detail.ts`; HTML templates in `site_src/tcg/html/`; client JS in
+ `site_src/tcg/assets/`). Battle client renders over WS: card-PNG board with live HP/energy/effect
+ overlays, active-slot glow, availability-driven skill buttons with targeting, hand tray, end-turn,
+ action log, result banner, rematch/leave). The **Log/Chat panel** is a single persistent element
+ (built once, updated in place so the chat input keeps focus across re-renders): a wide right-hand
+ column ≥920px, and a floating-launcher modal below that width. Decks persist via
+ `tcg/deckStorage.ts` — the **same** `User.tcg_deck` the Discord `/tcgbattle deckset` uses.
 
 ---
 

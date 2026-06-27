@@ -16,7 +16,7 @@ import type { WSContext } from 'hono/ws';
 import type { Silverwolf } from '../../classes/silverwolf';
 import type { Character } from '../../tcg/character';
 import type { Item } from '../../tcg/item';
-import { Battle, BattleStatus } from '../../tcg/battle';
+import { Battle, BattleStatus, type BattleLogEntry } from '../../tcg/battle';
 import {
   type BattleSide,
   executeUseSkill,
@@ -25,6 +25,7 @@ import {
 } from '../../tcg/battleCore';
 import { buildBattleSnapshot, type BattleSnapshot } from '../../tcg/battleSnapshot';
 import { isDevId } from '../../utils/accessControl';
+import { logError } from '../../utils/log';
 
 export type TcgMode = 'pvp' | 'solo';
 export type TcgRoomStatus = 'lobby' | 'active' | 'ended';
@@ -37,6 +38,10 @@ export interface TcgPlayerSlot {
   avatarURL: string | null;
   sockets: Set<WSContext>;
   rematchAccepted: boolean;
+  /** Has ever connected (drives "joined" vs "reconnected" system messages). */
+  connectedOnce: boolean;
+  /** Set while an explicit Leave is in flight (so detach logs "left", not "disconnected"). */
+  leaving: boolean;
 }
 
 export interface TcgChatMessage {
@@ -61,6 +66,14 @@ export interface TcgSpectatorSlot {
   sockets: Set<WSContext>;
 }
 
+/**
+ * One entry in the combined feed (battle-log lines + chat interleaved in arrival order).
+ * Mirrors the shape the live client builds, so a recorded match renders identically.
+ */
+export type TcgFeedItem =
+  | { kind: 'log'; e: BattleLogEntry }
+  | { kind: 'chat'; m: TcgChatMessage };
+
 export interface TcgRoom {
   id: string;
   mode: TcgMode;
@@ -80,9 +93,13 @@ export interface TcgRoom {
   turnDeadline: number | null;
   turnTimer: ReturnType<typeof setTimeout> | null;
   disconnectTimers: Map<string, ReturnType<typeof setTimeout>>;
+  /** Fires after the room goes empty; closes + persists the room. */
+  closeTimer: ReturnType<typeof setTimeout> | null;
   spectators: Map<string, TcgSpectatorSlot>;
   chat: TcgChatMessage[];
   chatSeq: number;
+  /** Combined log+chat feed in arrival order, captured for the permanent match record. */
+  feed: TcgFeedItem[];
   createdAt: number;
   endedAt: number | null;
   lastActivityAt: number;
@@ -108,7 +125,8 @@ export interface TcgRoomSnapshot {
   players: { p1: TcgPublicPlayer | null; p2: TcgPublicPlayer | null };
   creator: { discordId: string; username: string; avatarURL: string | null };
   battle: BattleSnapshot | null;
-  chat: TcgChatMessage[];
+  /** Combined log+chat feed (recent slice) so a (re)joining client shows full history. */
+  feed: TcgFeedItem[];
   /** True when this snapshot is for a spectator (not seated; hand omitted, no actions). */
   spectator: boolean;
   /** Number of distinct spectators currently watching. */
@@ -135,9 +153,11 @@ export interface TcgJoinInput {
 // PvP turn timer (solo has no timer — you control both sides at your own pace).
 export const TCG_TURN_TIMER_MS = 90_000;
 export const TCG_DISCONNECT_GRACE_MS = 45_000;
+// A room closes (→ permanent history) this long after the last person leaves.
+const TCG_EMPTY_CLOSE_MS = 60_000;
+// Backstop: an empty room with no activity for this long is closed even if its
+// close timer was never scheduled (e.g. created but never joined).
 const ABANDONED_MS = 5 * 60_000;
-const LOBBY_TTL_MS = 10 * 60_000;
-const ENDED_TTL_MS = 5 * 60_000;
 export const TCG_ROOMS_PER_USER_CAP = 5;
 export const TCG_MAX_ACTIVE_ROOMS_GLOBAL = 2_000;
 const GC_SWEEP_MS = 60_000;
@@ -162,6 +182,8 @@ function newSlot(user: TcgUserInfo, ws?: WSContext): TcgPlayerSlot {
     avatarURL: user.avatarURL,
     sockets: ws ? new Set([ws]) : new Set(),
     rematchAccepted: false,
+    connectedOnce: false,
+    leaving: false,
   };
 }
 
@@ -205,9 +227,11 @@ class TcgRoomManager {
       turnDeadline: null,
       turnTimer: null,
       disconnectTimers: new Map(),
+      closeTimer: null,
       spectators: new Map(),
       chat: [],
       chatSeq: 0,
+      feed: [],
       createdAt: now,
       endedAt: null,
       lastActivityAt: now,
@@ -248,7 +272,17 @@ class TcgRoomManager {
     room.status = 'active';
     room.result = null;
     room.endedAt = null;
+    // Feed is cumulative across the room's life (incl. rematches), mirroring the live
+    // client; just append the new battle's opening turn header.
+    this.appendActionToFeed(room);
     this.setTurnTimer(room);
+  }
+
+  /** Append the most recent action's log lines to the combined feed (same as the live client). */
+  private appendActionToFeed(room: TcgRoom) {
+    if (!room.battle) return;
+    for (const e of room.battle.getLastActionLogEntries()) room.feed.push({ kind: 'log', e });
+    if (room.feed.length > 2000) room.feed.splice(0, room.feed.length - 2000);
   }
 
   getRoom(id: string): TcgRoom | null {
@@ -262,6 +296,14 @@ class TcgRoomManager {
           || r.p1?.discordId === discordId
           || r.p2?.discordId === discordId),
     );
+  }
+
+  /**
+   * All open rooms (any status) — every in-memory room is "live" until it closes and
+   * becomes history. Newest activity first.
+   */
+  listActive(): TcgRoom[] {
+    return [...this.rooms.values()].sort((a, b) => b.lastActivityAt - a.lastActivityAt);
   }
 
   /** Which battle side this user acts as. Solo → the currently-acting side. */
@@ -288,10 +330,17 @@ class TcgRoomManager {
    */
   attachSocket(room: TcgRoom, user: TcgUserInfo, ws: WSContext):
     { ok: true } | { ok: false; reason: string } {
+    this.cancelClose(room); // someone's here again
     const slot = this.slotForUser(room, user.discordId);
     if (slot) {
+      const firstEver = !slot.connectedOnce;
+      const wasAbsent = slot.sockets.size === 0;
       slot.sockets.add(ws);
+      slot.connectedOnce = true;
+      slot.leaving = false;
       this.cancelDisconnect(room, user.discordId);
+      if (firstEver) this.logSystem(room, `${slot.username} joined`);
+      else if (wasAbsent) this.logSystem(room, `${slot.username} reconnected`);
       room.lastActivityAt = Date.now();
       return { ok: true };
     }
@@ -309,7 +358,7 @@ class TcgRoomManager {
         avatarURL: user.avatarURL,
         sockets: new Set([ws]),
       });
-      this.logSystem(room, `${user.username} joined as a spectator`);
+      this.logSystem(room, `${user.username} started spectating`);
     }
     room.lastActivityAt = Date.now();
     return { ok: true };
@@ -320,10 +369,18 @@ class TcgRoomManager {
     const slot = this.slotForUser(room, discordId);
     if (slot) {
       slot.sockets.delete(ws);
-      if (slot.sockets.size === 0 && room.status === 'active' && room.mode === 'pvp') {
-        this.startDisconnectTimer(room, discordId);
+      if (slot.sockets.size === 0) {
+        if (slot.leaving) {
+          this.logSystem(room, `${slot.username} left`);
+          slot.leaving = false;
+        } else {
+          this.logSystem(room, `${slot.username} disconnected`);
+          // Mid-battle PvP drop: grace window, then the opponent wins by disconnect.
+          if (room.status === 'active' && room.mode === 'pvp') this.startDisconnectTimer(room, discordId);
+        }
       }
       room.lastActivityAt = Date.now();
+      this.maybeScheduleClose(room);
       return;
     }
     // Spectator: drop their socket; on the last one, remove them + log a "left" notice.
@@ -335,6 +392,7 @@ class TcgRoomManager {
       this.logSystem(room, `${spec.username} stopped spectating`);
     }
     room.lastActivityAt = Date.now();
+    this.maybeScheduleClose(room);
   }
 
   useSkill(room: TcgRoom, user: TcgUserInfo, charIndex: number, skillIndex: number, targetRaw: string | null):
@@ -375,12 +433,14 @@ class TcgRoomManager {
     return { ok: true, side };
   }
 
-  /** Post-action: settle victory, refresh PvP turn timer, bump activity. */
+  /** Post-action: capture the log into the feed, settle victory, refresh timer, bump activity. */
   private afterAction(room: TcgRoom) {
+    this.appendActionToFeed(room);
     room.lastActivityAt = Date.now();
     const battle = room.battle!;
     if (battle.status !== BattleStatus.Ongoing) {
-      this.endRoom(room, this.winnerFromStatus(battle.status), 'victory');
+      // Battle over — but the room stays open (rematch/chat) until everyone leaves.
+      this.endBattle(room, this.winnerFromStatus(battle.status), 'victory');
       return;
     }
     this.setTurnTimer(room);
@@ -443,13 +503,16 @@ class TcgRoomManager {
     return { ok: true };
   }
 
-  /** Push a chat/system entry onto the room's chat ring buffer. */
+  /** Push a chat/system entry onto the room's chat ring buffer + the combined feed. */
   private appendChat(room: TcgRoom, m: Omit<TcgChatMessage, 'id' | 'ts'>) {
     room.chatSeq += 1;
-    room.chat.push({ id: room.chatSeq, ts: Date.now(), ...m });
+    const msg: TcgChatMessage = { id: room.chatSeq, ts: Date.now(), ...m };
+    room.chat.push(msg);
     if (room.chat.length > TCG_CHAT_HISTORY) {
       room.chat.splice(0, room.chat.length - TCG_CHAT_HISTORY);
     }
+    room.feed.push({ kind: 'chat', m: msg });
+    if (room.feed.length > 2000) room.feed.splice(0, room.feed.length - 2000);
   }
 
   /** Append a system notice (join/leave) to the chat stream. */
@@ -459,20 +522,29 @@ class TcgRoomManager {
     });
   }
 
+  /**
+   * Explicit Leave. Forfeits an active PvP battle (the battle ends, opponent wins) but
+   * the room stays open for whoever remains; closing the player's sockets triggers
+   * `detachSocket`, which logs "left" and closes the room once it's empty.
+   */
   leaveRoom(room: TcgRoom, user: TcgUserInfo) {
     const slot = this.slotForUser(room, user.discordId);
-    if (!slot) return;
-    if (room.status === 'active' && room.mode === 'pvp') {
-      const side = this.sideForUser(room, user.discordId);
-      const winner: TcgWinner = side === 'p1' ? 'p2' : 'p1';
-      this.endRoom(room, winner, 'forfeit');
-    } else if (room.status !== 'ended') {
-      this.endRoom(room, null, 'disconnect');
+    if (slot) {
+      slot.leaving = true;
+      if (room.status === 'active' && room.mode === 'pvp') {
+        const side = this.sideForUser(room, user.discordId);
+        this.endBattle(room, side === 'p1' ? 'p2' : 'p1', 'forfeit');
+      }
+      for (const ws of [...slot.sockets]) {
+        try { ws.close(1000, 'left'); } catch { /* already closed */ }
+      }
+      return;
     }
-    const sockets = [...slot.sockets];
-    slot.sockets.clear();
-    for (const ws of sockets) {
-      try { ws.close(1000, 'left'); } catch { /* already closed */ }
+    const spec = room.spectators.get(user.discordId);
+    if (spec) {
+      for (const ws of [...spec.sockets]) {
+        try { ws.close(1000, 'left'); } catch { /* already closed */ }
+      }
     }
   }
 
@@ -484,7 +556,7 @@ class TcgRoomManager {
       if (room.status !== 'active' || !room.battle) return;
       const loser = room.battle.currentPlayer;
       const winner: TcgWinner = loser === 'p1' ? 'p2' : 'p1';
-      this.endRoom(room, winner, 'timeout');
+      this.endBattle(room, winner, 'timeout');
       this.broadcast(room);
     }, TCG_TURN_TIMER_MS);
   }
@@ -503,7 +575,7 @@ class TcgRoomManager {
       if (room.status !== 'active') return;
       const side = this.sideForUser(room, discordId);
       const winner: TcgWinner = side === 'p1' ? 'p2' : 'p1';
-      this.endRoom(room, winner, 'disconnect');
+      this.endBattle(room, winner, 'disconnect');
       this.broadcast(room);
     }, TCG_DISCONNECT_GRACE_MS);
     room.disconnectTimers.set(discordId, timer);
@@ -517,7 +589,8 @@ class TcgRoomManager {
     }
   }
 
-  private endRoom(room: TcgRoom, winner: TcgWinner, reason: TcgEndReason) {
+  /** End the *battle* (set result/status). The room stays open until everyone leaves. */
+  private endBattle(room: TcgRoom, winner: TcgWinner, reason: TcgEndReason) {
     if (room.status === 'ended') return;
     this.clearTurnTimer(room);
     for (const t of room.disconnectTimers.values()) clearTimeout(t);
@@ -526,6 +599,82 @@ class TcgRoomManager {
     room.status = 'ended';
     room.endedAt = Date.now();
     room.lastActivityAt = room.endedAt;
+  }
+
+  private isOccupied(room: TcgRoom): boolean {
+    if ((room.p1?.sockets.size ?? 0) > 0) return true;
+    if ((room.p2?.sockets.size ?? 0) > 0) return true;
+    for (const s of room.spectators.values()) if (s.sockets.size > 0) return true;
+    return false;
+  }
+
+  /** When the room empties, arm a timer to close + persist it (cancelled if anyone returns). */
+  private maybeScheduleClose(room: TcgRoom) {
+    if (this.isOccupied(room)) { this.cancelClose(room); return; }
+    if (room.closeTimer) return;
+    room.closeTimer = setTimeout(() => {
+      room.closeTimer = null;
+      if (this.isOccupied(room)) return;
+      this.closeRoom(room);
+    }, TCG_EMPTY_CLOSE_MS);
+  }
+
+  private cancelClose(room: TcgRoom) {
+    if (room.closeTimer) { clearTimeout(room.closeTimer); room.closeTimer = null; }
+  }
+
+  /** Everyone left: freeze the game to permanent history (if a battle happened) and drop the room. */
+  private closeRoom(room: TcgRoom) {
+    if (!this.rooms.has(room.id)) return;
+    // A battle abandoned mid-game (everyone gone) is settled now as a no-winner disconnect.
+    if (room.status === 'active' && room.battle) this.endBattle(room, null, 'disconnect');
+    this.cancelClose(room);
+    this.clearTurnTimer(room);
+    for (const t of room.disconnectTimers.values()) clearTimeout(t);
+    room.disconnectTimers.clear();
+    this.recordMatchHistory(room);
+    this.rooms.delete(room.id);
+  }
+
+  /** Persist the final, un-editable state to the match-history table (fire-and-forget). */
+  private recordMatchHistory(room: TcgRoom) {
+    const db = this.silverwolf?.db;
+    // Only persist rooms where a battle actually started (skip empty lobbies).
+    if (!db || !room.battle) return;
+    const p1Slot = room.p1;
+    const p2Slot = room.mode === 'solo' ? room.p1 : room.p2;
+    if (!p1Slot || !p2Slot) return;
+    const result = room.result ?? { winner: null as TcgWinner, reason: 'disconnect' as TcgEndReason };
+    const slugs = (team: Character[] | undefined) => (team ?? []).map((c) => c.slug);
+    // Permanent post-game state: the final board (hand-less) + the combined log/chat
+    // feed in arrival order, so the match page renders exactly like a live battle.
+    let finalState: string | null = null;
+    try {
+      finalState = JSON.stringify({
+        snapshot: buildBattleSnapshot(room.battle, 'p1', true),
+        feed: room.feed,
+      });
+    } catch (err) {
+      logError('tcg final-state serialize failed:', err);
+    }
+    db.tcgMatch.recordMatch({
+      // One record per room, keyed by room id, so a closed room's old /:id link
+      // resolves to /match/:id (the route redirects on miss).
+      id: room.id,
+      mode: room.mode,
+      p1DiscordId: p1Slot.discordId,
+      p1Username: p1Slot.username,
+      p1Team: slugs(room.p1Team),
+      p2DiscordId: p2Slot.discordId,
+      p2Username: p2Slot.username,
+      p2Team: slugs(room.p2Team ?? room.p1Team),
+      winner: result.winner,
+      endReason: result.reason,
+      rounds: room.battle.currentTurn,
+      createdAt: room.createdAt,
+      endedAt: room.endedAt ?? Date.now(),
+      finalState,
+    }).catch((err: unknown) => logError('tcg match record failed:', err));
   }
 
   private publicPlayer(slot: TcgPlayerSlot | undefined, side: BattleSide): TcgPublicPlayer | null {
@@ -571,7 +720,8 @@ class TcgRoomManager {
         avatarURL: room.creatorAvatarURL,
       },
       battle: room.battle ? buildBattleSnapshot(room.battle, layoutSide, spectator) : null,
-      chat: room.chat,
+      // Recent slice keeps the payload bounded; the full feed is persisted at close.
+      feed: room.feed.slice(-250),
       spectator,
       spectatorCount: room.spectators.size,
     };
@@ -603,18 +753,11 @@ class TcgRoomManager {
 
   private sweep() {
     const now = Date.now();
-    for (const [id, room] of this.rooms.entries()) {
-      if (room.status === 'lobby' && now - room.createdAt > LOBBY_TTL_MS) {
-        this.endRoom(room, null, 'disconnect');
-        this.rooms.delete(id);
-      } else if (room.status === 'ended' && room.endedAt && now - room.endedAt > ENDED_TTL_MS) {
-        this.rooms.delete(id);
-      } else if (room.status === 'active') {
-        const anyConnected = (room.p1?.sockets.size ?? 0) > 0 || (room.p2?.sockets.size ?? 0) > 0;
-        if (!anyConnected && now - room.lastActivityAt > ABANDONED_MS) {
-          this.endRoom(room, null, 'disconnect');
-          this.rooms.delete(id);
-        }
+    for (const [, room] of this.rooms.entries()) {
+      // Backstop: close any room that's been empty and idle too long (covers rooms
+      // whose close timer was never armed, e.g. created but never joined).
+      if (!this.isOccupied(room) && now - room.lastActivityAt > ABANDONED_MS) {
+        this.closeRoom(room);
       }
     }
   }

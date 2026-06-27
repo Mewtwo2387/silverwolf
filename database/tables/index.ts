@@ -12,6 +12,7 @@ import pokemonTable from './pokemonTable';
 import poopEntryTable from './poopEntryTable';
 import poopProfileTable from './poopProfileTable';
 import serverRolesTable from './serverRolesTable';
+import tcgMatchTable from './tcgMatchTable';
 import userTable from './userTable';
 import webSessionTable from './webSessionTable';
 
@@ -30,6 +31,7 @@ export {
   poopEntryTable,
   poopProfileTable,
   serverRolesTable,
+  tcgMatchTable,
   userTable,
   webSessionTable,
 };
@@ -47,5 +49,6 @@ export type { MarriageRow } from './marriageTable';
 export type { PokemonRow } from './pokemonTable';
 export type { PoopEntryRow } from './poopEntryTable';
 export type { ServerRolesRow } from './serverRolesTable';
+export type { TcgMatchRow } from './tcgMatchTable';
 export type { UserRow, UserStatsRow } from './userTable';
 export type { WebSessionRow } from './webSessionTable';
