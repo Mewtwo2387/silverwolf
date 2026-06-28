@@ -1435,7 +1435,7 @@ code, pre, kbd, .font-mono {
   font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--fog-300);
 }
 /* Chat shows as a plain "name: message" line in the feed (not a bubble). */
-.tcg-chat-line { line-height: 1.4; margin: 0.06rem 0; word-break: break-word; overflow-wrap: anywhere; }
+.tcg-chat-line { line-height: 1.4; margin: 0.06rem 0; overflow-wrap: anywhere; }
 .tcg-chat-author { font-weight: 800; color: var(--accent-light); }
 .tcg-chat-line.me .tcg-chat-author { color: #6ee7a0; }
 .tcg-chat-text { color: var(--fog-100); }

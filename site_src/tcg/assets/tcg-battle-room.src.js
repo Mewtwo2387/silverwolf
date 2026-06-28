@@ -843,6 +843,7 @@ let launcherEl = null;   // floating button (narrow)
 let launcherBadge = null;
 let modalEl = null;      // backdrop (narrow)
 let modalBodyEl = null;
+let lastFocusedBeforeModal = null; // restore focus to this when the drawer closes
 
 function chatIsMine(m) {
   return !!(m && m.senderId && CTX.selfId && m.senderId === CTX.selfId);
@@ -858,7 +859,7 @@ function sendChat() {
 
 function buildSidePanel() {
   const title = el('span', { class: 'tcg-side-title' }, 'Battle Log & Chat');
-  side.modalClose = el('button', { type: 'button', class: 'tcg-side-close', title: 'Close' }, '✕');
+  side.modalClose = el('button', { type: 'button', class: 'tcg-side-close', title: 'Close', 'aria-label': 'Close log and chat' }, '✕');
   side.modalClose.addEventListener('click', closeLogModal);
   const head = el('div', { class: 'tcg-side-head' }, [title, side.modalClose]);
 
@@ -867,10 +868,10 @@ function buildSidePanel() {
 
   side.chatInput = el('input', {
     type: 'text', class: 'tcg-chat-input', maxlength: '300',
-    placeholder: 'Message opponent…', autocomplete: 'off',
+    placeholder: 'Message opponent…', autocomplete: 'off', 'aria-label': 'Message',
   });
   side.chatInput.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); sendChat(); } });
-  const sendBtn = el('button', { type: 'button', class: 'tcg-chat-send', title: 'Send' }, '➤');
+  const sendBtn = el('button', { type: 'button', class: 'tcg-chat-send', title: 'Send', 'aria-label': 'Send message' }, '➤');
   sendBtn.addEventListener('click', sendChat);
   const composer = el('div', { class: 'tcg-chat-composer' }, [side.chatInput, sendBtn]);
 
@@ -931,7 +932,10 @@ function buildLauncherAndModal() {
   document.body.appendChild(launcherEl);
 
   modalBodyEl = el('div', { class: 'tcg-logmodal-body' });
-  modalEl = el('div', { class: 'tcg-logmodal' }, [modalBodyEl]);
+  modalEl = el('div', {
+    class: 'tcg-logmodal', role: 'dialog', 'aria-modal': 'true',
+    'aria-label': 'Battle log and chat', 'aria-hidden': 'true',
+  }, [modalBodyEl]);
   modalEl.addEventListener('click', (e) => { if (e.target === modalEl) closeLogModal(); });
   document.body.appendChild(modalEl);
 }
@@ -939,15 +943,21 @@ function buildLauncherAndModal() {
 function openLogModal() {
   logModalOpen = true;
   chatUnread = 0;
-  if (modalEl) modalEl.classList.add('open');
+  lastFocusedBeforeModal = document.activeElement;
+  if (modalEl) { modalEl.classList.add('open'); modalEl.setAttribute('aria-hidden', 'false'); }
   updateSidePanel();
+  // Move focus into the drawer so keyboard/screen-reader users land in the chat input.
+  try { (side.chatInput || side.modalClose).focus(); } catch (e) { /* */ }
 }
 
 function closeLogModal() {
   if (!logModalOpen) return;
   logModalOpen = false;
-  if (modalEl) modalEl.classList.remove('open');
+  if (modalEl) { modalEl.classList.remove('open'); modalEl.setAttribute('aria-hidden', 'true'); }
   updateSidePanel();
+  // Restore focus to whatever opened the drawer (the launcher).
+  try { if (lastFocusedBeforeModal && lastFocusedBeforeModal.focus) lastFocusedBeforeModal.focus(); } catch (e) { /* */ }
+  lastFocusedBeforeModal = null;
 }
 
 // Place the (single) side panel either inline as a right column (wide) or inside

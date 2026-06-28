@@ -166,6 +166,8 @@ export const TCG_CHAT_MAX_LEN = 300;
 export const TCG_CHAT_HISTORY = 60;
 // Cap concurrent spectators per room (guards memory / broadcast fan-out).
 export const TCG_MAX_SPECTATORS = 50;
+// Cap sockets a single spectator may hold (stops one user opening unlimited tabs/sockets).
+export const TCG_MAX_SOCKETS_PER_SPECTATOR = 4;
 
 export type TcgCreateResult =
   | { ok: true; room: TcgRoom }
@@ -257,6 +259,16 @@ class TcgRoomManager {
     if (room.status !== 'lobby') return { ok: false, reason: 'not_lobby' };
     if (room.p2) return { ok: false, reason: 'already_full' };
 
+    // If they were spectating this room, drop the spectator entry and close those
+    // sockets so they reconnect as p2 (otherwise they'd keep getting hand-less
+    // spectator snapshots and couldn't act).
+    const spec = room.spectators.get(user.discordId);
+    if (spec) {
+      room.spectators.delete(user.discordId);
+      for (const ws of spec.sockets) {
+        try { ws.close(1000, 'seated'); } catch { /* already closed */ }
+      }
+    }
     room.p2 = newSlot(user);
     room.p2Team = input.team;
     room.p2Deck = input.deck;
@@ -350,6 +362,9 @@ class TcgRoomManager {
       return { ok: false, reason: 'too_many_spectators' };
     }
     if (existing) {
+      if (existing.sockets.size >= TCG_MAX_SOCKETS_PER_SPECTATOR) {
+        return { ok: false, reason: 'too_many_sockets' };
+      }
       existing.sockets.add(ws);
     } else {
       room.spectators.set(user.discordId, {
@@ -485,7 +500,10 @@ class TcgRoomManager {
     const isPlayer = !!this.slotForUser(room, user.discordId);
     const isSpectator = room.spectators.has(user.discordId);
     if (!isPlayer && !isSpectator) return { ok: false, reason: 'not_a_player' };
+    // Bound the raw input *before* the Unicode regex so an oversized payload can't
+    // be normalized first; the final length is still enforced by the trailing slice.
     const text = String(textRaw)
+      .slice(0, TCG_CHAT_MAX_LEN * 8)
       .replace(/\p{Cc}/gu, ' ') // strip control chars (incl. newlines)
       .replace(/\s+/g, ' ')
       .trim()
@@ -632,18 +650,25 @@ class TcgRoomManager {
     this.clearTurnTimer(room);
     for (const t of room.disconnectTimers.values()) clearTimeout(t);
     room.disconnectTimers.clear();
-    this.recordMatchHistory(room);
-    this.rooms.delete(room.id);
+    // Only drop the in-memory room once the history write has durably succeeded; on
+    // failure keep it so the sweep backstop retries (avoids permanently losing a match).
+    this.recordMatchHistory(room)
+      .then(() => { this.rooms.delete(room.id); })
+      .catch((err: unknown) => logError('tcg closeRoom persist failed; keeping room for retry:', err));
   }
 
-  /** Persist the final, un-editable state to the match-history table (fire-and-forget). */
-  private recordMatchHistory(room: TcgRoom) {
+  /**
+   * Persist the final, un-editable state to the match-history table. Resolves once the
+   * write succeeds (or there's nothing to persist); rejects on DB failure so the caller
+   * can keep the room for retry rather than dropping it.
+   */
+  private recordMatchHistory(room: TcgRoom): Promise<void> {
     const db = this.silverwolf?.db;
     // Only persist rooms where a battle actually started (skip empty lobbies).
-    if (!db || !room.battle) return;
+    if (!db || !room.battle) return Promise.resolve();
     const p1Slot = room.p1;
     const p2Slot = room.mode === 'solo' ? room.p1 : room.p2;
-    if (!p1Slot || !p2Slot) return;
+    if (!p1Slot || !p2Slot) return Promise.resolve();
     const result = room.result ?? { winner: null as TcgWinner, reason: 'disconnect' as TcgEndReason };
     const slugs = (team: Character[] | undefined) => (team ?? []).map((c) => c.slug);
     // Permanent post-game state: the final board (hand-less) + the combined log/chat
@@ -657,7 +682,7 @@ class TcgRoomManager {
     } catch (err) {
       logError('tcg final-state serialize failed:', err);
     }
-    db.tcgMatch.recordMatch({
+    return db.tcgMatch.recordMatch({
       // One record per room, keyed by room id, so a closed room's old /:id link
       // resolves to /match/:id (the route redirects on miss).
       id: room.id,
@@ -674,7 +699,7 @@ class TcgRoomManager {
       createdAt: room.createdAt,
       endedAt: room.endedAt ?? Date.now(),
       finalState,
-    }).catch((err: unknown) => logError('tcg match record failed:', err));
+    });
   }
 
   private publicPlayer(slot: TcgPlayerSlot | undefined, side: BattleSide): TcgPublicPlayer | null {

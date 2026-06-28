@@ -27,7 +27,9 @@ class TcgMatchModel {
   }
 
   async recordMatch(input: RecordTcgMatchInput): Promise<void> {
-    await this.db.executeQuery(
+    // executeQuery swallows SQL errors and reports changes:0, so inspect the result
+    // and throw — otherwise callers' .catch (e.g. closeRoom) never sees the failure.
+    const res = await this.db.executeQuery(
       tcgMatchQueries.INSERT_MATCH,
       [
         input.id,
@@ -46,6 +48,9 @@ class TcgMatchModel {
         input.finalState,
       ],
     );
+    if (!res || res.changes < 1) {
+      throw new Error(`TcgMatch insert affected no rows (id=${input.id}, mode=${input.mode})`);
+    }
   }
 
   /** Most recent matches across everyone (for the public history list). */
