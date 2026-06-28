@@ -1,0 +1,21 @@
+<h1 class="text-center tcg-page-title">Create a Battle</h1>
+<p class="text-center text-fog-300 tcg-page-lead"><a class="tcg-link" href="/games/tcg">&larr; all battles</a></p>
+<div class="tcg-wrap">
+  <div class="tcg-panel">
+    <p class="tcg-subtitle">New Battle</p>
+    <div class="tcg-field">
+      <label>Mode</label>
+      <div class="tcg-modes" id="tcg-modes" role="group" aria-label="Battle mode">
+        <button type="button" class="tcg-mode active" data-mode="pvp" aria-pressed="true">
+          <span class="tcg-mode-title">PvP</span>
+          <span class="tcg-mode-sub">invite a friend</span>
+        </button>
+        <button type="button" class="tcg-mode" data-mode="solo" aria-pressed="false">
+          <span class="tcg-mode-title">Solo</span>
+          <span class="tcg-mode-sub">practice vs yourself</span>
+        </button>
+      </div>
+    </div>
+    {{TEAM_PICKER}}
+  </div>
+</div>

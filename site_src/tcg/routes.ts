@@ -6,11 +6,14 @@ import {
   type AppEnv, authedGameRequest, navUser, readGameBody,
 } from '../shared';
 import {
-  TcgBattleLandingPage,
-  type TcgActiveRoomBrief,
+  TcgBrowsePage,
+  TcgCreatePage,
+  type TcgBrowseRoom,
+  type TcgHistoryEntry,
   type TcgRoster,
 } from './pages/landing';
 import { TcgBattleRoomPage, TcgBattleJoinPage } from './pages/room';
+import { TcgMatchDetailPage } from './pages/match';
 import {
   TcgDeckBuilderPage,
   type DeckBuilderItem,
@@ -74,7 +77,7 @@ export function registerTcgBattleRoutes(
 ) {
   tcgRoomManager.init(silverwolf);
 
-  // ── Landing ───────────────────────────────────────────────────────────────
+  // ── Browse (default): all in-progress battles + recent match history ────────
   app.get(LANDING_PATH, async (c) => {
     const user = c.get('user');
     const nav = navUser(c);
@@ -83,47 +86,40 @@ export function registerTcgBattleRoutes(
 
     if (!user) {
       return c.html(
-        TcgBattleLandingPage({
-          nonce,
-          lv999,
-          user: nav,
-          csrf: null,
-          roster: ROSTER,
-          characterCatalog: CHARACTER_CATALOG,
-          deckLegal: false,
-          activeRooms: [],
-          loginReturnPath: LANDING_PATH,
+        TcgBrowsePage({
+          nonce, lv999, user: nav, rooms: [], history: [], loginReturnPath: LANDING_PATH,
         }).toString(),
       );
     }
 
-    const composition = await loadDeckCompositionForUser(silverwolf.db, user.discordId);
-    const deckLegal = isLegalDeck(composition);
-    const rooms = tcgRoomManager.listForUser(user.discordId);
-    const briefs: TcgActiveRoomBrief[] = rooms.map((r) => {
-      const youAreCreator = r.creatorDiscordId === user.discordId;
-      const other = youAreCreator ? r.p2 : r.p1;
-      const opp = (other && other.discordId !== user.discordId) ? other.username : null;
-      return {
-        id: r.id,
-        mode: r.mode,
-        status: r.status,
-        opponentUsername: opp,
-        youAreCreator,
-      };
-    });
+    const rooms: TcgBrowseRoom[] = tcgRoomManager.listActive().map((r) => ({
+      id: r.id,
+      mode: r.mode,
+      status: r.status,
+      p1: r.p1?.username ?? null,
+      p2: r.mode === 'solo' ? (r.p1?.username ?? null) : (r.p2?.username ?? null),
+      spectators: r.spectators.size,
+      you: r.creatorDiscordId === user.discordId
+        || r.p1?.discordId === user.discordId
+        || r.p2?.discordId === user.discordId,
+      openLobby: r.mode === 'pvp' && r.status === 'lobby' && !r.p2,
+    }));
+
+    const historyRows = await silverwolf.db.tcgMatch.getRecent(40);
+    const history: TcgHistoryEntry[] = historyRows.map((row: Record<string, any>) => ({
+      id: row.id,
+      mode: row.mode === 'solo' ? 'solo' : 'pvp',
+      p1: row.p1Username,
+      p2: row.p2Username,
+      winner: row.winner ?? null,
+      endReason: row.endReason,
+      rounds: row.rounds,
+      endedAt: row.endedAt,
+    }));
 
     return c.html(
-      TcgBattleLandingPage({
-        nonce,
-        lv999,
-        user: nav,
-        csrf: user.csrfToken,
-        roster: ROSTER,
-        characterCatalog: CHARACTER_CATALOG,
-        deckLegal,
-        activeRooms: briefs,
-        loginReturnPath: LANDING_PATH,
+      TcgBrowsePage({
+        nonce, lv999, user: nav, rooms, history, loginReturnPath: LANDING_PATH,
       }).toString(),
     );
   });
@@ -272,6 +268,108 @@ export function registerTcgBattleRoutes(
     return c.json({ ok: true });
   });
 
+  // ── Create page (registered before :id so "create" isn't captured) ──────────
+  app.get('/games/tcg/create', async (c) => {
+    const user = c.get('user');
+    const nav = navUser(c);
+    const nonce = c.get('nonce');
+    const lv999 = c.req.query('lv') === '999';
+    const loginReturnPath = '/games/tcg/create';
+
+    if (!user) {
+      return c.html(
+        TcgCreatePage({
+          nonce,
+          lv999,
+          user: nav,
+          csrf: null,
+          roster: ROSTER,
+          characterCatalog: CHARACTER_CATALOG,
+          deckLegal: false,
+          loginReturnPath,
+        }).toString(),
+      );
+    }
+
+    const composition = await loadDeckCompositionForUser(silverwolf.db, user.discordId);
+    return c.html(
+      TcgCreatePage({
+        nonce,
+        lv999,
+        user: nav,
+        csrf: user.csrfToken,
+        roster: ROSTER,
+        characterCatalog: CHARACTER_CATALOG,
+        deckLegal: isLegalDeck(composition),
+        loginReturnPath,
+      }).toString(),
+    );
+  });
+
+  // ── Match detail (permanent post-game state; before :id) ────────────────────
+  app.get('/games/tcg/match/:id', async (c) => {
+    const user = c.get('user');
+    const nav = navUser(c);
+    const nonce = c.get('nonce');
+    const lv999 = c.req.query('lv') === '999';
+    const matchId = c.req.param('id');
+
+    const base = {
+      nonce, lv999, user: nav, id: matchId,
+    } as const;
+
+    const blank = {
+      mode: 'pvp' as const,
+      p1: '',
+      p2: '',
+      winner: null,
+      endReason: '',
+      rounds: 0,
+      endedAt: 0,
+      snapshot: null,
+      feed: [],
+    };
+
+    if (!user) {
+      return c.html(TcgMatchDetailPage({ ...base, ...blank }).toString());
+    }
+
+    const row = await silverwolf.db.tcgMatch.getById(matchId);
+    if (!row) {
+      return c.html(TcgMatchDetailPage({ ...base, ...blank, notFound: true }).toString(), 404);
+    }
+
+    let snapshot = null;
+    let feed: any[] = [];
+    if (row.finalState) {
+      try {
+        const parsed = JSON.parse(row.finalState);
+        snapshot = parsed.snapshot ?? null;
+        if (Array.isArray(parsed.feed)) {
+          feed = parsed.feed;
+        } else {
+          // Fallback for any pre-feed rows: log lines, then chat.
+          const log = Array.isArray(parsed.log) ? parsed.log : [];
+          const chat = Array.isArray(parsed.chat) ? parsed.chat : [];
+          feed = [...log.map((e: any) => ({ kind: 'log', e })), ...chat.map((m: any) => ({ kind: 'chat', m }))];
+        }
+      } catch { /* corrupt blob → show summary only */ }
+    }
+
+    return c.html(TcgMatchDetailPage({
+      ...base,
+      mode: row.mode === 'solo' ? 'solo' : 'pvp',
+      p1: row.p1Username,
+      p2: row.p2Username,
+      winner: row.winner ?? null,
+      endReason: row.endReason,
+      rounds: row.rounds,
+      endedAt: row.endedAt,
+      snapshot,
+      feed,
+    }).toString());
+  });
+
   // ── Room page (play or join variant) ────────────────────────────────────────
   app.get('/games/tcg/:id', async (c) => {
     const matchId = c.req.param('id');
@@ -291,6 +389,9 @@ export function registerTcgBattleRoutes(
 
     const room = tcgRoomManager.getRoom(matchId);
     if (!room) {
+      // Closed rooms become permanent history under the same id — send old live links there.
+      const record = await silverwolf.db.tcgMatch.getById(matchId);
+      if (record) return c.redirect(`/games/tcg/match/${encodeURIComponent(matchId)}`);
       return c.html(
         TcgBattleRoomPage({
           nonce,
@@ -327,7 +428,7 @@ export function registerTcgBattleRoutes(
       );
     }
 
-    // Not a participant: offer to join an open PvP lobby; otherwise it's not viewable.
+    // Not a participant: offer to join an open PvP lobby…
     if (room.mode === 'pvp' && room.status === 'lobby' && !room.p2) {
       const composition = await loadDeckCompositionForUser(silverwolf.db, user.discordId);
       return c.html(
@@ -344,6 +445,8 @@ export function registerTcgBattleRoutes(
       );
     }
 
+    // …otherwise let them spectate (read-only; no hand, can chat). The snapshot is
+    // built with a null viewer side, which the manager renders as a spectator view.
     return c.html(
       TcgBattleRoomPage({
         nonce,
@@ -352,11 +455,9 @@ export function registerTcgBattleRoutes(
         matchId,
         selfDiscordId: user.discordId,
         csrf: user.csrfToken,
-        snapshot: null,
-        roomMissing: true,
+        snapshot: tcgRoomManager.snapshotFor(room, null),
         loginReturnPath,
       }).toString(),
-      404,
     );
   });
 

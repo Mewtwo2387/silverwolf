@@ -743,7 +743,15 @@ code, pre, kbd, .font-mono {
   background: linear-gradient(90deg, transparent, var(--accent), var(--accent-pale), transparent);
 }
 .tcg-wrap { max-width: 760px; margin: 1.5rem auto 0; display: flex; flex-direction: column; gap: 1.25rem; }
-.tcg-room-wrap { max-width: 1080px; margin: 1.25rem auto 0; display: flex; flex-direction: column; gap: 1rem; }
+/* Compact battle-room header: title + match id on one tight line to save vertical
+   space (so the board + skills fit with less scrolling). */
+.tcg-room-header {
+  max-width: 1340px; margin: 1rem auto 0; display: flex; align-items: baseline;
+  justify-content: center; gap: 0.7rem; flex-wrap: wrap;
+}
+.tcg-room-title { margin: 0; font-size: 1.5rem; }
+.tcg-room-match { font-size: 0.8rem; font-family: 'JetBrains Mono', monospace; }
+.tcg-room-wrap { max-width: 1340px; margin: 0.6rem auto 0; display: flex; flex-direction: column; gap: 1rem; }
 .tcg-deck-wrap { max-width: 1100px; margin: 1.25rem auto 0; display: flex; flex-direction: column; gap: 1rem; }
 .tcg-panel {
   background: color-mix(in oklab, var(--ink-800) 50%, transparent);
@@ -904,6 +912,41 @@ code, pre, kbd, .font-mono {
 .tcg-room-opp { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tcg-room-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
 .tcg-empty { color: var(--fog-400); font-style: italic; text-align: center; font-size: 0.9rem; margin: 0.75rem 0; }
+/* ── Browse page (in-progress battles + match history) ─────────────────────── */
+.tcg-browse-actions { display: flex; justify-content: center; gap: 0.6rem; flex-wrap: wrap; }
+/* These are two distinct actions, not a tab group: kill the resting glow (which read as
+   an "active tab") and make Create a solid CTA vs Deck Builder's plain outline. */
+.tcg-browse-actions .tcg-btn { box-shadow: none; }
+.tcg-browse-actions .tcg-btn:hover { box-shadow: 0 0 14px var(--glow-bright); }
+.tcg-browse-actions .tcg-btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-pale));
+  border-color: var(--accent); color: #04121a;
+}
+.tcg-browse-actions .tcg-btn-primary:hover { color: #04121a; }
+.tcg-vs { color: var(--fog-500); font-size: 0.78em; margin: 0 0.15rem; }
+.tcg-link { color: var(--accent-light); text-decoration: none; }
+.tcg-link:hover { color: #fff; text-decoration: underline; }
+.tcg-room-watch {
+  flex: 0 0 auto; font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; color: var(--fog-400);
+  border: 1px solid var(--ink-600); border-radius: 999px; padding: 0.04rem 0.42rem;
+}
+/* Match-history rows (clickable → /games/tcg/match/:id) */
+.tcg-hist { gap: 0.5rem 0.7rem; text-decoration: none; color: inherit; cursor: pointer; }
+.tcg-hist-matchup { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fog-100); }
+.tcg-hist-result { font-size: 0.78rem; }
+.tcg-hist-result.win { color: #6ee7a0; }
+.tcg-hist-result.draw { color: var(--fog-400); }
+.tcg-hist-time { flex: 0 0 auto; font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: var(--fog-500); }
+/* Match detail page */
+.tcg-match-summary {
+  display: flex; align-items: baseline; justify-content: center; flex-wrap: wrap;
+  gap: 0.5rem 0.9rem; margin: 0 0 0.6rem; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;
+}
+.tcg-match-matchup { color: var(--fog-100); font-weight: 700; }
+.tcg-match-meta { color: var(--fog-400); font-size: 0.78rem; }
+.tcg-feed-static { max-height: 340px; }
+/* Static board (match detail): no hover/cursor affordances. */
+.tcg-arena-static .tcg-char { cursor: default; }
 .tcg-deck-summary {
   position: sticky; top: 0.5rem; z-index: 5;
   display: flex; flex-direction: column; gap: 0.6rem;
@@ -1065,8 +1108,8 @@ code, pre, kbd, .font-mono {
 .tcg-timer.urgent .tcg-timer-ring { background: conic-gradient(var(--danger) calc(var(--pct) * 1%), color-mix(in oklab, var(--ink-600) 80%, transparent) 0); }
 /* ── Arena: the focal battle area (opponent top, divider, your team bottom) ── */
 .tcg-arena {
-  position: relative; display: flex; flex-direction: column; gap: 0.5rem;
-  margin: 0.5rem 0; padding: 0.9rem 0.7rem; border-radius: 0.9rem;
+  position: relative; display: flex; flex-direction: column; gap: 0.35rem;
+  margin: 0.4rem 0; padding: 0.7rem 0.6rem; border-radius: 0.9rem;
   background:
     radial-gradient(120% 60% at 50% 0%, color-mix(in oklab, var(--danger) 9%, transparent), transparent 60%),
     radial-gradient(120% 60% at 50% 100%, color-mix(in oklab, var(--accent) 11%, transparent), transparent 60%),
@@ -1085,8 +1128,9 @@ code, pre, kbd, .font-mono {
   color: var(--fog-400); padding: 0.1rem 0.55rem; border: 1px solid var(--ink-600); border-radius: 999px;
   background: color-mix(in oklab, var(--ink-900) 60%, transparent);
 }
-/* Always three across — a team is three slots, never wrap to a second row. */
-.tcg-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; align-items: start; }
+/* Always three across — a team is three slots, never wrap to a second row.
+   Capped + centred so the board stays compact (skills reachable without scrolling). */
+.tcg-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.55rem; align-items: start; max-width: 540px; margin: 0 auto; width: 100%; }
 .tcg-side { display: flex; flex-direction: column; gap: 0.35rem; }
 .tcg-side-label {
   display: flex; align-items: center; gap: 0.45rem; font-family: 'JetBrains Mono', monospace;
@@ -1141,7 +1185,7 @@ code, pre, kbd, .font-mono {
 .tcg-char.lunge-down { animation: tcg-lunge-down 0.5s cubic-bezier(0.3, 0.8, 0.3, 1); z-index: 6; }
 .tcg-char.hit { animation: tcg-shake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97); }
 
-.tcg-char-art { position: relative; aspect-ratio: 4 / 5; background: var(--ink-900); overflow: hidden; }
+.tcg-char-art { position: relative; aspect-ratio: 1 / 1.1; background: var(--ink-900); overflow: hidden; }
 .tcg-char-art .art { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; }
 .tcg-active-tag {
   position: absolute; top: 6px; left: 6px; display: none; z-index: 4;
@@ -1265,8 +1309,8 @@ code, pre, kbd, .font-mono {
 @keyframes tcg-floatnum-static { 0% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
 /* ── Controls dock (skills · hand · actions) below the arena ─────────────── */
 .tcg-dock {
-  display: flex; flex-direction: column; gap: 0.7rem; margin-top: 0.5rem;
-  padding: 0.7rem 0.8rem; border-radius: 0.75rem;
+  display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.4rem;
+  padding: 0.6rem 0.7rem; border-radius: 0.75rem;
   background: color-mix(in oklab, var(--ink-900) 40%, transparent);
   border: 1px solid color-mix(in oklab, var(--accent) 12%, var(--ink-600));
 }
@@ -1313,7 +1357,7 @@ code, pre, kbd, .font-mono {
 .tcg-skill .sk-reason { font-size: 0.6rem; color: var(--danger); font-style: italic; }
 .tcg-hand { display: flex; gap: 0.45rem; flex-wrap: wrap; justify-content: center; }
 .tcg-hand-card {
-  width: 84px; border-radius: 0.4rem; overflow: hidden; border: 1px solid var(--ink-600);
+  width: 66px; border-radius: 0.4rem; overflow: hidden; border: 1px solid var(--ink-600);
   background: var(--ink-900); cursor: pointer; position: relative; flex: 0 0 auto;
   transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
 }
@@ -1333,6 +1377,7 @@ code, pre, kbd, .font-mono {
 .tcg-btn-end { box-shadow: 0 0 10px var(--glow-faint); }
 .tcg-btn-end:not([disabled]) { animation: tcg-ult-glow 2.4s ease-in-out infinite; }
 .tcg-log { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column-reverse; gap: 0.08rem; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--fog-300); }
+.tcg-side-empty { color: var(--fog-500); font-style: italic; font-size: 0.78rem; text-align: center; padding: 0.6rem 0; }
 .tcg-log-line { line-height: 1.4; }
 .tcg-log-turn {
   font-weight: 800; color: var(--accent-light); text-transform: uppercase; letter-spacing: 0.05em;
@@ -1349,14 +1394,109 @@ code, pre, kbd, .font-mono {
 /* Hoverable reference (effect/ability/item/skill name) — native title shows its description. */
 .tcg-log-ref { text-decoration: underline dotted; text-underline-offset: 2px; cursor: help; }
 .tcg-log-ref:hover { text-decoration-style: solid; }
-/* Wide screens: battle view on the left, battle log as a sticky right-hand column.
-   Below the breakpoint, .tcg-room-wrap's column layout keeps the log stacked underneath. */
+/* Wide screens: battle view on the left, a wide Log+Chat panel as a sticky right
+   column. Below the breakpoint the panel is hidden inline and opens as a modal
+   instead (driven by the floating launcher button) — see .tcg-logmodal. */
 @media (min-width: 920px) {
   #tcg-root { flex-direction: row; align-items: flex-start; }
   #tcg-root > #tcg-view { flex: 1 1 auto; min-width: 0; }
-  #tcg-root > .tcg-log-panel { flex: 0 0 clamp(280px, 27%, 360px); position: sticky; top: 0.5rem; }
-  #tcg-root > .tcg-log-panel .tcg-log { max-height: 72vh; }
+  #tcg-root > .tcg-side-panel {
+    flex: 0 0 clamp(360px, 34%, 480px); position: sticky; top: 0.5rem;
+    display: flex; flex-direction: column; max-height: calc(100vh - 1rem);
+  }
+  #tcg-root > .tcg-side-panel .tcg-feed { max-height: none; flex: 1 1 auto; }
 }
+
+/* ── Combined Log + Chat side panel (feed, composer, narrow modal + launcher) ── */
+.tcg-side-panel { padding: 0.75rem 0.85rem; display: flex; flex-direction: column; gap: 0.55rem; min-height: 0; }
+.tcg-side-head { display: flex; align-items: center; gap: 0.5rem; }
+.tcg-side-title {
+  flex: 1 1 auto; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em; color: var(--fog-400);
+}
+.tcg-tab-badge {
+  min-width: 1.05rem; height: 1.05rem; padding: 0 0.28rem; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; font-weight: 800; line-height: 1;
+  color: #1a0410; background: var(--accent-light); box-shadow: 0 0 8px var(--glow-bright);
+}
+.tcg-side-close {
+  flex: 0 0 auto; width: 1.7rem; height: 1.7rem; display: none; align-items: center; justify-content: center;
+  background: transparent; border: 1px solid var(--ink-600); border-radius: 4px;
+  color: var(--fog-300); cursor: pointer; font: inherit; font-size: 0.85rem;
+}
+.tcg-side-close:hover { color: #fff; border-color: var(--accent); }
+.tcg-side-panel.in-modal .tcg-side-close { display: inline-flex; }
+
+/* The feed: action-log entries + chat bubbles interleaved, newest at the bottom. */
+.tcg-feed {
+  flex: 1 1 auto; overflow-y: auto; display: flex; flex-direction: column; gap: 0.18rem;
+  max-height: 300px; min-height: 0;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--fog-300);
+}
+/* Chat shows as a plain "name: message" line in the feed (not a bubble). */
+.tcg-chat-line { line-height: 1.4; margin: 0.06rem 0; overflow-wrap: anywhere; }
+.tcg-chat-author { font-weight: 800; color: var(--accent-light); }
+.tcg-chat-line.me .tcg-chat-author { color: #6ee7a0; }
+.tcg-chat-text { color: var(--fog-100); }
+/* Name icons (★ dev, ⚔ player) inherit the name's colour. */
+.tcg-chat-pico { margin-right: 0.18rem; color: inherit; font-size: 0.85em; }
+/* System notices (spectator joined/left). */
+.tcg-feed-system {
+  margin: 0.1rem 0; text-align: center; font-style: italic; font-size: 0.68rem;
+  color: var(--fog-500); line-height: 1.4;
+}
+/* Spectator action bar + watcher count. */
+.tcg-spectate-bar { align-items: center; }
+.tcg-spectate-note {
+  display: inline-flex; align-items: center; gap: 0.4rem; color: var(--fog-300);
+  font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
+}
+.tcg-watchers {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; font-weight: 700; color: var(--fog-300);
+  border: 1px solid var(--ink-600); border-radius: 999px; padding: 0.05rem 0.45rem;
+}
+.tcg-chat-composer { display: flex; gap: 0.4rem; }
+.tcg-chat-input {
+  flex: 1 1 auto; min-width: 0; padding: 0.45rem 0.65rem; font: inherit; font-size: 0.82rem;
+  background: var(--ink-900); color: var(--fog-100); border: 1px solid var(--ink-600); border-radius: 0.45rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.tcg-chat-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--glow-faint); }
+.tcg-chat-input::placeholder { color: var(--fog-500); }
+.tcg-chat-send {
+  flex: 0 0 auto; width: 2.4rem; border-radius: 0.45rem; cursor: pointer; font-size: 0.9rem;
+  background: color-mix(in oklab, var(--accent) 14%, transparent); border: 1px solid var(--accent);
+  color: var(--accent-light); transition: color 0.15s, box-shadow 0.15s;
+}
+.tcg-chat-send:hover { color: #fff; box-shadow: 0 0 12px var(--glow-bright); }
+
+/* Floating launcher (narrow screens only — JS toggles display). */
+.tcg-log-launch {
+  position: fixed; right: 1rem; bottom: 1rem; z-index: 8500; display: none;
+  align-items: center; gap: 0.4rem; padding: 0.6rem 0.95rem; border-radius: 999px; cursor: pointer;
+  font: inherit; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 700;
+  color: var(--accent-light); background: color-mix(in oklab, var(--ink-800) 92%, transparent);
+  border: 1px solid var(--accent); box-shadow: 0 6px 20px rgba(0,0,0,0.5), 0 0 14px var(--glow-faint);
+}
+.tcg-log-launch .ll-ico { font-size: 1rem; }
+.tcg-log-launch:hover { color: #fff; box-shadow: 0 6px 22px rgba(0,0,0,0.55), 0 0 18px var(--glow-bright); }
+@media (min-width: 920px) { .tcg-log-launch { display: none !important; } }
+
+/* Narrow-screen modal wrapping the side panel. */
+.tcg-logmodal {
+  position: fixed; inset: 0; z-index: 9000; display: none;
+  align-items: flex-end; justify-content: center;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+  padding: 0; overflow: hidden;
+}
+.tcg-logmodal.open { display: flex; }
+.tcg-logmodal-body { width: 100%; max-height: 82vh; display: flex; }
+.tcg-logmodal-body .tcg-side-panel {
+  width: 100%; border-radius: 0.9rem 0.9rem 0 0; max-height: 82vh;
+}
+.tcg-logmodal-body .tcg-feed { max-height: none; flex: 1 1 auto; }
+@media (min-width: 920px) { .tcg-logmodal { display: none !important; } }
 .tcg-section-title { display: flex; align-items: center; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--fog-400); margin: 0 0 0.3rem; font-family: 'JetBrains Mono', monospace; }
 .tcg-invite { display: flex; flex-direction: column; gap: 0.5rem; align-items: center; }
 .tcg-invite-url { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--fog-200); background: var(--ink-900); border: 1px solid var(--ink-600); border-radius: 0.4rem; padding: 0.4rem 0.6rem; max-width: 100%; overflow-x: auto; white-space: nowrap; }
