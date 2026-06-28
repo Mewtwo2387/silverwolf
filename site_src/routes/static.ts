@@ -1,5 +1,6 @@
 import path from 'path';
-import type { Hono } from 'hono';
+import { brotliCompressSync, gzipSync, constants } from 'node:zlib';
+import type { Context, Hono } from 'hono';
 import type { AppEnv } from '../shared';
 import { ALL_STICKER_STEMS } from '../stickers';
 
@@ -78,9 +79,28 @@ for (const rarity of ['gold', 'silver', 'bronze']) {
   };
 }
 
-async function serveStatic(entry: StaticEntry) {
+// Text assets benefit hugely from compression (CSS ≈77%, JS ≈63%, SVG high).
+// They are immutable + cache-busted, so compress once at the best ratio (brotli
+// q11 / gzip q9) and cache the buffers in-process — the work never repeats.
+// Binary assets (webp/avif/png/jpeg/woff2) are already compressed; serve raw.
+const COMPRESSIBLE_TYPE = /^(?:text\/css|text\/javascript|image\/svg\+xml)/i;
+const BR_OPTS = { params: { [constants.BROTLI_PARAM_QUALITY]: 11 } };
+
+interface CompressedAsset { raw: Buffer; br: Buffer; gz: Buffer; }
+const compressedCache = new Map<string, CompressedAsset | null>();
+
+async function buildCompressed(entry: StaticEntry): Promise<CompressedAsset | null> {
   const file = Bun.file(entry.path);
-  if (!(await file.exists())) return new Response('not found', { status: 404 });
+  if (!(await file.exists())) return null;
+  const raw = Buffer.from(await file.arrayBuffer());
+  return {
+    raw,
+    br: brotliCompressSync(raw, BR_OPTS),
+    gz: gzipSync(raw, { level: 9 }),
+  };
+}
+
+async function serveStatic(entry: StaticEntry, c: Context<AppEnv>) {
   const headers: Record<string, string> = {
     'content-type': entry.contentType,
     'cache-control': IMMUTABLE_CACHE,
@@ -90,11 +110,34 @@ async function serveStatic(entry: StaticEntry) {
   if (entry.contentType === 'image/svg+xml') {
     headers['content-security-policy'] = "default-src 'none'; style-src 'unsafe-inline'; sandbox";
   }
+
+  if (COMPRESSIBLE_TYPE.test(entry.contentType)) {
+    let asset = compressedCache.get(entry.path);
+    if (asset === undefined) {
+      asset = await buildCompressed(entry);
+      compressedCache.set(entry.path, asset);
+    }
+    if (!asset) return new Response('not found', { status: 404 });
+    headers.vary = 'Accept-Encoding';
+    const accept = c.req.header('accept-encoding') ?? '';
+    if (accept.includes('br')) {
+      headers['content-encoding'] = 'br';
+      return new Response(asset.br as unknown as BodyInit, { headers });
+    }
+    if (accept.includes('gzip')) {
+      headers['content-encoding'] = 'gzip';
+      return new Response(asset.gz as unknown as BodyInit, { headers });
+    }
+    return new Response(asset.raw as unknown as BodyInit, { headers });
+  }
+
+  const file = Bun.file(entry.path);
+  if (!(await file.exists())) return new Response('not found', { status: 404 });
   return new Response(file, { headers });
 }
 
 export function registerStaticRoutes(app: Hono<AppEnv>) {
   for (const [route, entry] of Object.entries(STATIC_ASSETS)) {
-    app.get(route, () => serveStatic(entry));
+    app.get(route, (c) => serveStatic(entry, c));
   }
 }
