@@ -5,6 +5,7 @@ import {
   formatMatchScoreTitle,
   formatMatchTeams,
   getDisplayedScore,
+  getPenaltyShootoutTally,
   isFinished,
   parseKickoffUtc,
   PRE_MATCH_LEAD_MS,
@@ -155,6 +156,37 @@ export function buildFullTimeEmbed(
     .setColor(0x228B22);
 }
 
+function formatShootoutKickLine(kick: NonNullable<WorldCupMatch['shootoutKicks']>[number]): string {
+  const icon = kick.scored ? '✅' : '❌';
+  return `${icon} **${kick.player}** · ${formatFootballTeam(kick.team)}`;
+}
+
+export function buildPenaltyShootoutEmbed(
+  match: WorldCupMatch,
+  options: { finished?: boolean } = {},
+): EmbedBuilder {
+  const regulation = getDisplayedScore(match);
+  const penalties = getPenaltyShootoutTally(match);
+  const context = formatMatchContext(match);
+  const header = options.finished ? 'Full Time · Penalties' : 'Penalty Shootout';
+  const kickLines = (match.shootoutKicks ?? []).map(formatShootoutKickLine);
+  const regulationLine = regulation
+    ? `${formatMatchScoreTitle(match, regulation)} · Pens **${penalties.home}–${penalties.away}**`
+    : `Pens **${penalties.home}–${penalties.away}**`;
+  const descriptionParts = [
+    context ? `${header} · ${context}` : header,
+    '',
+    regulationLine,
+  ];
+  if (kickLines.length > 0) {
+    descriptionParts.push('', ...kickLines);
+  }
+  return new EmbedBuilder()
+    .setTitle(`⚽ ${formatMatchTeams(match)}`)
+    .setDescription(descriptionParts.join('\n'))
+    .setColor(options.finished ? 0x228B22 : 0xFFD700);
+}
+
 export function announcedGoalCount(state: FootballMatchAnnouncementState | null): number {
   return (state?.lastHomeScore ?? 0) + (state?.lastAwayScore ?? 0);
 }
@@ -183,7 +215,11 @@ export function buildReplayEmbedsForMatch(match: WorldCupMatch): EmbedBuilder[] 
 
   if (isFinished(match)) {
     const finalScore = getDisplayedScore(match);
-    if (finalScore) embeds.push(buildFullTimeEmbed(match, finalScore));
+    if (match.score?.penalty) {
+      embeds.push(buildPenaltyShootoutEmbed(match, { finished: true }));
+    } else if (finalScore) {
+      embeds.push(buildFullTimeEmbed(match, finalScore));
+    }
   } else {
     const liveScore = getDisplayedScore(match);
     if (liveScore && (liveScore.home > 0 || liveScore.away > 0) && getGoalEvents(match).length === 0) {

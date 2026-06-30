@@ -185,6 +185,69 @@ describe('apiFootball', () => {
     expect(mapped.score?.ft).toEqual([1, 0]);
   });
 
+  test('mapApiFootballFixture skips penalty-shootout kicks', () => {
+    const mapped = mapApiFootballFixture({
+      fixture: { id: 6, date: '2026-06-20T19:00:00+00:00', status: { short: 'PEN' } },
+      league: { round: 'Round of 32' },
+      teams: {
+        home: { id: 1, name: 'Germany' },
+        away: { id: 2, name: 'Paraguay' },
+      },
+      goals: { home: 1, away: 1 },
+      score: {
+        halftime: { home: 0, away: 1 },
+        fulltime: { home: 1, away: 1 },
+        penalty: { home: 1, away: 1 },
+      },
+      events: [{
+        time: { elapsed: 42, extra: null },
+        team: { id: 2, name: 'Paraguay' },
+        player: { id: 1, name: 'Scorer' },
+        type: 'Goal',
+        detail: 'Normal Goal',
+      }, {
+        time: { elapsed: 54, extra: null },
+        team: { id: 1, name: 'Germany' },
+        player: { id: 2, name: 'K. Havertz' },
+        type: 'Goal',
+        detail: 'Normal Goal',
+      }, {
+        time: { elapsed: 54, extra: null },
+        team: { id: 1, name: 'Germany' },
+        player: { id: 3, name: 'K. Havertz' },
+        type: 'Goal',
+        detail: 'Penalty',
+      }, {
+        time: { elapsed: 120, extra: 1 },
+        team: { id: 2, name: 'Paraguay' },
+        player: { id: 4, name: 'Taker' },
+        type: 'Goal',
+        detail: 'Penalty',
+      }, {
+        time: { elapsed: 120, extra: 2 },
+        team: { id: 1, name: 'Germany' },
+        player: { id: 5, name: 'Taker' },
+        type: 'Goal',
+        detail: 'Penalty',
+      }],
+    });
+
+    expect(mapped.status).toBe('FINISHED');
+    expect(mapped.goals1).toHaveLength(2);
+    expect(mapped.goals1?.[1].penalty).toBe(true);
+    expect(mapped.goals2).toHaveLength(1);
+    expect(mapped.score?.ft).toEqual([1, 1]);
+    expect(mapped.score?.penalty).toEqual([1, 1]);
+    expect(mapped.shootoutKicks).toHaveLength(2);
+    expect(mapped.shootoutKicks?.[0]).toMatchObject({ team: 'Paraguay', scored: true });
+    expect(mapped.shootoutKicks?.[1]).toMatchObject({ team: 'Germany', scored: true });
+  });
+
+  test('mapApiFootballStatus preserves penalty shootout live status', () => {
+    expect(mapApiFootballStatus('P')).toBe('P');
+    expect(mapApiFootballStatus('PEN')).toBe('FINISHED');
+  });
+
   test('fetchWorldCupMatches requires API_FOOTBALL_KEY', async () => {
     const previous = process.env.API_FOOTBALL_KEY;
     delete process.env.API_FOOTBALL_KEY;

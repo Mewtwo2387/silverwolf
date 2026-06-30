@@ -3,6 +3,7 @@ import { logError } from '../utils/log';
 import { getFootballChannelIds } from '../utils/footballChannels';
 import {
   buildFullTimeEmbed,
+  buildPenaltyShootoutEmbed,
   buildPreMatchEmbed,
   buildScoreUpdateEmbed,
   formatReplayWindow,
@@ -80,7 +81,13 @@ class FootballTest extends DevCommand {
 
         if (isFinished(match)) {
           const finalScore = getDisplayedScore(match);
-          if (finalScore) {
+          if (match.score?.penalty) {
+            messageCount += await this.broadcastEmbed(
+              channelIds,
+              failedChannels,
+              buildPenaltyShootoutEmbed(match, { finished: true }),
+            );
+          } else if (finalScore) {
             messageCount += await this.broadcastEmbed(
               channelIds,
               failedChannels,

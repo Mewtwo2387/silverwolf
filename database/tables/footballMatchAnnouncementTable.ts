@@ -6,6 +6,8 @@ export interface FootballMatchAnnouncementRow {
   last_home_score: number | null;
   last_away_score: number | null;
   full_time_sent: number;
+  last_shootout_kick_count: number | null;
+  shootout_message_ids: string | null;
 }
 
 const footballMatchAnnouncementTable: TableDefinition = {
@@ -16,6 +18,8 @@ const footballMatchAnnouncementTable: TableDefinition = {
     { name: 'last_home_score', type: 'INTEGER' },
     { name: 'last_away_score', type: 'INTEGER' },
     { name: 'full_time_sent', type: 'INTEGER NOT NULL DEFAULT 0' },
+    { name: 'last_shootout_kick_count', type: 'INTEGER' },
+    { name: 'shootout_message_ids', type: 'TEXT' },
   ],
   primaryKey: ['match_id'],
   specialConstraints: ['PRIMARY KEY (match_id)'],

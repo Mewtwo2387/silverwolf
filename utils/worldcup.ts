@@ -11,9 +11,10 @@ export interface WorldCupMatch {
   time: string;
   team1: string;
   team2: string;
-  score?: { ft?: [number, number]; ht?: [number, number] };
+  score?: { ft?: [number, number]; ht?: [number, number]; penalty?: [number, number] };
   goals1?: { name: string; minute: string; penalty?: boolean }[];
   goals2?: { name: string; minute: string; penalty?: boolean }[];
+  shootoutKicks?: { team: string; player: string; scored: boolean }[];
   group?: string;
   ground?: string;
   kickoffUtc?: string;
@@ -53,6 +54,36 @@ const LIVE_MATCH_STATUSES = new Set(['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE', 
 
 export function isLiveMatch(match: WorldCupMatch): boolean {
   return Boolean(match.status && LIVE_MATCH_STATUSES.has(match.status));
+}
+
+/** Penalty shootout in progress (after extra time). */
+export function isPenaltyShootout(match: WorldCupMatch): boolean {
+  return match.status === 'P';
+}
+
+export function hasPenaltyShootoutScore(match: WorldCupMatch): boolean {
+  const pen = match.score?.penalty;
+  return pen != null && pen[0] != null && pen[1] != null;
+}
+
+/** Live shootout or a result decided on penalties. */
+export function isPenaltyShootoutPhase(match: WorldCupMatch): boolean {
+  return isPenaltyShootout(match) || (isFinished(match) && hasPenaltyShootoutScore(match));
+}
+
+export function getPenaltyShootoutTally(match: WorldCupMatch): { home: number; away: number } {
+  const pen = match.score?.penalty;
+  if (pen != null && pen[0] != null && pen[1] != null) {
+    return { home: pen[0], away: pen[1] };
+  }
+  let home = 0;
+  let away = 0;
+  for (const kick of match.shootoutKicks ?? []) {
+    if (!kick.scored) continue;
+    if (kick.team === match.team1) home += 1;
+    else away += 1;
+  }
+  return { home, away };
 }
 
 export function getDisplayedScore(match: WorldCupMatch): { home: number; away: number } | null {

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import {
   buildGoalEmbed,
+  buildPenaltyShootoutEmbed,
   buildReplayEmbedsForMatch,
   buildScoreUpdateEmbed,
   formatGoalTitle,
@@ -12,7 +13,13 @@ import {
   getNewGoalEvents,
   replayWindowMsFromHours,
 } from '../utils/footballAnnouncements';
-import { parseKickoffUtc, type WorldCupMatch } from '../utils/worldcup';
+import {
+  getPenaltyShootoutTally,
+  isPenaltyShootout,
+  isPenaltyShootoutPhase,
+  parseKickoffUtc,
+  type WorldCupMatch,
+} from '../utils/worldcup';
 
 const sampleMatch: WorldCupMatch = {
   round: 'Matchday 1',
@@ -120,5 +127,59 @@ describe('footballAnnouncements', () => {
     expect(formatReplayWindow(24)).toBe('the last 24 hours');
     expect(formatReplayWindow(48)).toBe('the last 48 hours');
     expect(formatReplayWindow(1)).toBe('the last 1 hour');
+  });
+
+  test('isPenaltyShootout detects live shootout status', () => {
+    const match: WorldCupMatch = { ...sampleMatch, status: 'P' };
+    expect(isPenaltyShootout(match)).toBe(true);
+    expect(isPenaltyShootout({ ...sampleMatch, status: 'ET' })).toBe(false);
+    expect(isPenaltyShootout({ ...sampleMatch, status: 'FINISHED' })).toBe(false);
+  });
+
+  test('buildPenaltyShootoutEmbed uses regulation score and penalty tally', () => {
+    const match: WorldCupMatch = {
+      ...sampleMatch,
+      status: 'P',
+      score: { ft: [1, 1], penalty: [2, 3] },
+      shootoutKicks: [
+        { team: 'Mexico', player: 'A', scored: true },
+        { team: 'South Africa', player: 'B', scored: false },
+      ],
+    };
+    const embed = buildPenaltyShootoutEmbed(match);
+    expect(embed.data.description).toContain('1 – 1');
+    expect(embed.data.description).toContain('Pens **2–3**');
+    expect(embed.data.description).toContain('✅ **A**');
+    expect(embed.data.description).toContain('❌ **B**');
+    expect(getPenaltyShootoutTally(match)).toEqual({ home: 2, away: 3 });
+  });
+
+  test('buildReplayEmbedsForMatch uses penalty shootout embed for decided matches', () => {
+    const match: WorldCupMatch = {
+      ...sampleMatch,
+      status: 'FINISHED',
+      score: { ft: [1, 1], penalty: [4, 5] },
+      shootoutKicks: [{ team: 'Mexico', player: 'A', scored: true }],
+    };
+    const embeds = buildReplayEmbedsForMatch(match);
+    expect(embeds[embeds.length - 1].data.description).toContain('Penalties');
+    expect(embeds[embeds.length - 1].data.description).toContain('Pens **4–5**');
+  });
+
+  test('isPenaltyShootoutPhase includes finished penalty results', () => {
+    expect(isPenaltyShootoutPhase({
+      ...sampleMatch,
+      status: 'P',
+    })).toBe(true);
+    expect(isPenaltyShootoutPhase({
+      ...sampleMatch,
+      status: 'FINISHED',
+      score: { ft: [1, 1], penalty: [3, 4] },
+    })).toBe(true);
+    expect(isPenaltyShootoutPhase({
+      ...sampleMatch,
+      status: 'FINISHED',
+      score: { ft: [2, 0] },
+    })).toBe(false);
   });
 });

@@ -7,11 +7,14 @@ import {
   buildScoreUpdateEmbed,
   getNewGoalEvents,
 } from '../utils/footballAnnouncements';
-import { broadcastGoalAnnouncement } from '../utils/footballBroadcast';
+import { broadcastGoalAnnouncement, upsertPenaltyShootoutEmbed } from '../utils/footballBroadcast';
 import {
   fetchWorldCupMatches,
   getDisplayedScore,
+  getPenaltyShootoutTally,
   isFinished,
+  isPenaltyShootout,
+  isPenaltyShootoutPhase,
   matchId,
   MATCH_WINDOW_MS,
   needsAnnouncementBaseline,
@@ -79,18 +82,32 @@ class FootballScheduler {
     const score = getDisplayedScore(match);
 
     if (needsAnnouncementBaseline(Boolean(state), kickoffMs, now)) {
-      await this.client.db.footballMatchAnnouncement.seedBaseline(
-        id,
-        score?.home ?? null,
-        score?.away ?? null,
-        finished,
-      );
+      if (isPenaltyShootoutPhase(match)) {
+        const pen = getPenaltyShootoutTally(match);
+        const kickCount = match.shootoutKicks?.length ?? 0;
+        if (finished) {
+          await this.client.db.footballMatchAnnouncement.markShootoutFinished(
+            id, kickCount, {}, pen.home, pen.away,
+          );
+        } else {
+          await this.client.db.footballMatchAnnouncement.markShootoutSynced(
+            id, kickCount, {}, pen.home, pen.away,
+          );
+        }
+      } else {
+        await this.client.db.footballMatchAnnouncement.seedBaseline(
+          id,
+          score?.home ?? null,
+          score?.away ?? null,
+          finished,
+        );
+      }
       return;
     }
 
-    if (!finished && now < kickoffMs - PRE_MATCH_LEAD_MS) return;
-    if (!finished && now > kickoffMs + MATCH_WINDOW_MS) return;
-    if (finished && state?.fullTimeSent) return;
+    if (!finished && !isPenaltyShootout(match) && now < kickoffMs - PRE_MATCH_LEAD_MS) return;
+    if (!finished && !isPenaltyShootout(match) && now > kickoffMs + MATCH_WINDOW_MS) return;
+    if (state?.fullTimeSent) return;
 
     if (!state?.preMatchSent && now >= kickoffMs - PRE_MATCH_LEAD_MS && now < kickoffMs) {
       await this.announcePreMatch(match, kickoff, channelIds);
@@ -99,6 +116,12 @@ class FootballScheduler {
     }
 
     const inLiveWindow = now >= kickoffMs && now <= kickoffMs + MATCH_WINDOW_MS;
+
+    if (isPenaltyShootoutPhase(match)) {
+      await this.syncPenaltyShootout(match, id, channelIds, state, finished);
+      return;
+    }
+
     state = await this.announcePendingGoals(match, id, channelIds, state, finished ? true : inLiveWindow);
 
     if (finished && !state?.fullTimeSent && score) {
@@ -134,6 +157,52 @@ class FootballScheduler {
       currentState = await this.client.db.footballMatchAnnouncement.getState(id);
     }
     return currentState;
+  }
+
+  private async syncPenaltyShootout(
+    match: WorldCupMatch,
+    id: string,
+    channelIds: string[],
+    state: FootballMatchAnnouncementState | null,
+    finished: boolean,
+  ): Promise<void> {
+    const kickCount = match.shootoutKicks?.length ?? 0;
+    const pen = getPenaltyShootoutTally(match);
+    const lastKickCount = state?.lastShootoutKickCount ?? 0;
+    const messageIds = { ...(state?.shootoutMessageIds ?? {}) };
+    const hasMessages = Object.keys(messageIds).length > 0;
+    const needsUpdate = kickCount !== lastKickCount
+      || (finished && !state?.fullTimeSent)
+      || (!hasMessages && isPenaltyShootout(match));
+
+    if (!needsUpdate) return;
+
+    for (const channelId of channelIds) {
+      const updatedId = await upsertPenaltyShootoutEmbed(
+        this.client,
+        channelId,
+        match,
+        messageIds[channelId] ?? null,
+        finished,
+      );
+      if (updatedId) messageIds[channelId] = updatedId;
+    }
+
+    if (finished) {
+      await this.client.db.footballMatchAnnouncement.markShootoutFinished(
+        id, kickCount, messageIds, pen.home, pen.away,
+      );
+      log(
+        `Football penalties finished: ${match.team1} ${match.score?.ft?.[0] ?? 0}-`
+        + `${match.score?.ft?.[1] ?? 0} ${match.team2} (${pen.home}-${pen.away} pens)`,
+      );
+      return;
+    }
+
+    await this.client.db.footballMatchAnnouncement.markShootoutSynced(
+      id, kickCount, messageIds, pen.home, pen.away,
+    );
+    log(`Football penalty shootout update: ${match.team1} ${pen.home}-${pen.away} ${match.team2}`);
   }
 
   private shouldAnnounceScore(

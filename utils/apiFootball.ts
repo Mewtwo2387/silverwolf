@@ -65,6 +65,8 @@ interface ApiFootballFixtureItem {
   score: {
     halftime: { home: number | null; away: number | null };
     fulltime: { home: number | null; away: number | null };
+    extratime?: { home: number | null; away: number | null };
+    penalty?: { home: number | null; away: number | null };
   };
   events?: ApiFootballEvent[];
 }
@@ -104,6 +106,13 @@ function isMissedPenalty(detail: string): boolean {
   return detail.toLowerCase().includes('missed penalty');
 }
 
+/** Penalty-shootout kicks are logged at 120+1, 120+2, … — not in-play penalties. */
+function isShootoutEvent(event: ApiFootballEvent): boolean {
+  if (event.time.elapsed !== 120 || event.time.extra == null) return false;
+  const lower = event.detail.toLowerCase();
+  return lower.includes('penalty');
+}
+
 function goalCreditedToHome(
   event: ApiFootballEvent,
   homeId: number,
@@ -113,6 +122,29 @@ function goalCreditedToHome(
   if (event.team.id === homeId) return true;
   if (event.team.id === awayId) return false;
   return normalizeTeamName(event.team.name) === homeName;
+}
+
+function parseShootoutKicks(
+  events: ApiFootballEvent[] | undefined,
+  item: ApiFootballFixtureItem,
+  team1: string,
+  team2: string,
+): NonNullable<WorldCupMatch['shootoutKicks']> {
+  const shootoutEvents = (events ?? [])
+    .filter(isShootoutEvent)
+    .sort((a, b) => (a.time.extra ?? 0) - (b.time.extra ?? 0));
+
+  return shootoutEvents.map((event) => {
+    const player = event.player?.name?.trim() || 'Unknown';
+    const team = goalCreditedToHome(event, item.teams.home.id, item.teams.away.id, team1)
+      ? team1
+      : team2;
+    return {
+      team,
+      player,
+      scored: isPenaltyGoal(event.detail),
+    };
+  });
 }
 
 export function mapApiFootballFixture(item: ApiFootballFixtureItem): WorldCupMatch {
@@ -132,11 +164,19 @@ export function mapApiFootballFixture(item: ApiFootballFixtureItem): WorldCupMat
   if (halftime.home != null && halftime.away != null) {
     score.ht = [halftime.home, halftime.away];
   }
+  const penHome = item.score.penalty?.home;
+  const penAway = item.score.penalty?.away;
+  if (penHome != null && penAway != null) {
+    score.penalty = [penHome, penAway];
+  }
+
+  const shootoutKicks = parseShootoutKicks(item.events, item, team1, team2);
 
   const goals1: NonNullable<WorldCupMatch['goals1']> = [];
   const goals2: NonNullable<WorldCupMatch['goals2']> = [];
   for (const event of item.events ?? []) {
     if (event.type !== 'Goal') continue;
+    if (isShootoutEvent(event)) continue;
     if (isMissedPenalty(event.detail)) continue;
     const scorerName = event.player?.name?.trim();
     if (!scorerName) continue;
@@ -165,6 +205,7 @@ export function mapApiFootballFixture(item: ApiFootballFixtureItem): WorldCupMat
     score: Object.keys(score).length > 0 ? score : undefined,
     goals1: goals1.length > 0 ? goals1 : undefined,
     goals2: goals2.length > 0 ? goals2 : undefined,
+    shootoutKicks: shootoutKicks.length > 0 ? shootoutKicks : undefined,
     group: item.league.round ?? undefined,
     ground: venue ?? undefined,
     kickoffUtc: kickoff.toISOString(),

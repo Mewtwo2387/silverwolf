@@ -35,6 +35,33 @@ const footballMatchAnnouncementQueries = {
       last_away_score = excluded.last_away_score,
       full_time_sent = 1
   `,
+  UPSERT_SHOOTOUT_SYNC: `
+    INSERT INTO FootballMatchAnnouncement (
+      match_id, last_shootout_kick_count, shootout_message_ids, last_home_score, last_away_score
+    )
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(match_id)
+    DO UPDATE SET
+      last_shootout_kick_count = excluded.last_shootout_kick_count,
+      shootout_message_ids = excluded.shootout_message_ids,
+      last_home_score = excluded.last_home_score,
+      last_away_score = excluded.last_away_score
+  `,
+  UPSERT_SHOOTOUT_FINISHED: `
+    INSERT INTO FootballMatchAnnouncement (
+      match_id, pre_match_sent, last_shootout_kick_count, shootout_message_ids,
+      last_home_score, last_away_score, full_time_sent
+    )
+    VALUES (?, 1, ?, ?, ?, ?, 1)
+    ON CONFLICT(match_id)
+    DO UPDATE SET
+      pre_match_sent = 1,
+      last_shootout_kick_count = excluded.last_shootout_kick_count,
+      shootout_message_ids = excluded.shootout_message_ids,
+      last_home_score = excluded.last_home_score,
+      last_away_score = excluded.last_away_score,
+      full_time_sent = 1
+  `,
 };
 
 export default footballMatchAnnouncementQueries;
