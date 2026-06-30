@@ -7,7 +7,9 @@ import Database from '../database/Database';
 import BirthdayScheduler from './birthdayScheduler';
 import BabyScheduler from './babyScheduler';
 import FootballScheduler from './footballScheduler';
+import RpScheduler from './rpScheduler';
 import { log, logError } from '../utils/log';
+import { handleRpMessage, recomputeActiveRpChannels } from '../utils/rpRuntime';
 // Note: Bun automatically reads .env files
 import seasonConfig from '../data/config/skin/pokemon.json';
 import keywordsJson from '../data/keywords.json';
@@ -52,6 +54,7 @@ class Silverwolf extends Client {
   birthdayScheduler: BirthdayScheduler;
   babyScheduler: BabyScheduler;
   footballScheduler: FootballScheduler;
+  rpScheduler: RpScheduler;
   games: string[];
   chat: any;
   sexSessions: any[];
@@ -69,6 +72,7 @@ class Silverwolf extends Client {
     this.birthdayScheduler = new BirthdayScheduler(this);
     this.babyScheduler = new BabyScheduler(this);
     this.footballScheduler = new FootballScheduler(this);
+    this.rpScheduler = new RpScheduler(this);
     this.init();
     this.games = [];
     this.loadGames(); // Initialize the games list from the JSON file
@@ -92,6 +96,10 @@ class Silverwolf extends Client {
     log('Baby scheduler started.');
     this.footballScheduler.start();
     log('Football scheduler started.');
+
+    await recomputeActiveRpChannels(this.db);
+    this.rpScheduler.start();
+    log('Roleplay scheduler started.');
 
     log(`Silverwolf initialized.
 ----------------------------------------------
@@ -201,6 +209,10 @@ All wrongs reserved.
   }
 
   async processInteraction(interaction: any): Promise<void> {
+    if (interaction.isAutocomplete()) {
+      await this.handleAutocomplete(interaction);
+      return;
+    }
     if (interaction.isCommand()) {
       if (!interaction.guild) {
         await interaction.reply('commands can only be used in servers.');
@@ -231,6 +243,22 @@ All wrongs reserved.
     }
   }
 
+  async handleAutocomplete(interaction: any): Promise<void> {
+    try {
+      let command = this.commands.get(interaction.commandName);
+      const sub = interaction.options.getSubcommand(false);
+      if (sub) command = this.commands.get(`${interaction.commandName}.${sub}`);
+      if (command && typeof command.autocomplete === 'function') {
+        await command.autocomplete(interaction);
+      } else {
+        await interaction.respond([]);
+      }
+    } catch (error) {
+      logError('Error handling autocomplete:', error);
+      try { await interaction.respond([]); } catch { /* interaction already closed */ }
+    }
+  }
+
   async processMessage(message: any): Promise<void> {
     if (!message.guild) {
       log(`> Message received from ${message.author.username} (${message.author.id}) in DM: ${message.content}`);
@@ -243,6 +271,10 @@ All wrongs reserved.
     }
 
     log(`> Message received from ${message.author.username} (${message.author.id}) in ${message.channel.name} (${message.channel.id}) in ${message.guild.name} (${message.guild.id}): ${message.content}`);
+
+    // Roleplay: route to any characters spawned in this channel. Fire-and-forget;
+    // returns immediately (in-memory check) unless the channel actually has spawns.
+    handleRpMessage(this, message).catch((err) => logError('Rp: message handling failed:', err));
 
     const guildConfig = await loadResolvedServerConfig(this.db, message.guild.id);
 
