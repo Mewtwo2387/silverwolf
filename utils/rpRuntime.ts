@@ -41,6 +41,8 @@ export async function refreshRpChannel(db: any, channelId: string): Promise<void
 interface RespondOpts {
   replyToUrl?: string | null;
   replyToLabel?: string | null;
+  /** Self-mode: the spawner's name for `{user}` substitution. Null in all-mode. */
+  userVar?: string | null;
   /** Surface a notice to the user (router uses message.reply); omit to stay silent on errors. */
   notify?: (text: string) => Promise<void>;
 }
@@ -70,7 +72,7 @@ async function respondAsCharacter(
     name: row.charName,
     details: row.charDetails,
     startingMessage: row.charStartingMessage,
-  });
+  }, opts.userVar ?? null);
 
   if (result.ok) {
     await db.rp.addHistory(row.spawnId, 'model', result.text);
@@ -171,10 +173,13 @@ export async function handleRpMessage(client: any, message: any): Promise<void> 
       await db.rp.touchSpawnActivity(spawn.spawnId);
     }
     const jump = `https://discord.com/channels/${message.guildId}/${channelId}/${message.id}`;
+    // Self-mode substitutes {user} with the spawner (who is the only one talking to it).
+    const userVar = spawn.interactability === 'self' ? speakerName : null;
     // eslint-disable-next-line no-await-in-loop
     await respondAsCharacter(client, db, message.channel as TextChannel, spawn, {
       replyToUrl: jump,
       replyToLabel: speakerName,
+      userVar,
       notify: (t: string) => message.reply({ content: t, allowedMentions: { repliedUser: false } })
         .then(() => {}).catch(() => {}),
     });

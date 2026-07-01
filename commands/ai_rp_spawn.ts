@@ -1,5 +1,5 @@
 import { Command } from './classes/Command';
-import { MAX_SPAWNS_PER_CHANNEL } from '../utils/rpIdentity';
+import { MAX_SPAWNS_PER_CHANNEL, applyUserVar } from '../utils/rpIdentity';
 import { resolveCharOption, buildCharSearchChoices } from '../utils/rpCommand';
 import { markRpChannelActive } from '../utils/rpRuntime';
 import { sendAsCharacter } from '../utils/rpDelivery';
@@ -97,6 +97,11 @@ class AiRpSpawn extends Command {
 
       // Brand-new conversation → post the opening message as the character.
       if (historyCount === 0 && character.startingMessage) {
+        // Self-mode resolves {user} to the spawner; all-mode leaves it literal.
+        const spawnerName = interaction.member?.displayName || interaction.user.username;
+        const startingText = interactability === 'self'
+          ? applyUserVar(character.startingMessage, spawnerName)
+          : character.startingMessage;
         await sendAsCharacter({
           client: this.client,
           db: this.client.db,
@@ -108,7 +113,7 @@ class AiRpSpawn extends Command {
             pfpMessageId: character.pfpMessageId,
             pfpChannelId: character.pfpChannelId,
           },
-          text: character.startingMessage,
+          text: startingText,
         });
       }
     } catch (err) {

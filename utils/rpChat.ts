@@ -1,5 +1,6 @@
 import { getOpenRouterClient } from './ai';
 import { countTokensOpenRouterMessages } from './tokenizer';
+import { applyUserVar } from './rpIdentity';
 import { logError, log } from './log';
 
 /**
@@ -50,16 +51,18 @@ export interface RpHistoryTurn {
 
 type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
-function buildSystemPrompt(character: RpCharacterDef, memory: string | null): string {
+function buildSystemPrompt(character: RpCharacterDef, memory: string | null, userVar: string | null): string {
+  const details = applyUserVar(character.details, userVar);
+  const startingMessage = applyUserVar(character.startingMessage, userVar);
   let prompt = `You are roleplaying as ${character.name}, a character in a Discord channel. Stay fully in character at all times. Never break character, never mention being an AI, and never describe the actions or speech of the people you are talking to. Respond only as ${character.name}.
 
 Character details:
-${character.details}
+${details}
 
 You may be talking with one or more people at once. Each incoming line is prefixed with the speaker's name as "Name: message". Address people naturally by name when it fits. Do not prefix your own reply with your name or a timestamp. Keep replies reasonably concise for a chat.`;
 
-  if (character.startingMessage) {
-    prompt += `\n\nThe conversation opened with you saying:\n"${character.startingMessage}"`;
+  if (startingMessage) {
+    prompt += `\n\nThe conversation opened with you saying:\n"${startingMessage}"`;
   }
   if (memory) {
     prompt += `\n\nThis is your memory of everything that has happened so far, experienced from your own perspective. Treat it as established history and stay consistent with it:\n${memory}`;
@@ -200,13 +203,14 @@ export async function generateRpReply(
   db: any,
   spawn: RpSpawnState,
   character: RpCharacterDef,
+  userVar: string | null = null,
 ): Promise<RpReplyResult> {
   try {
     const wasFailed = spawn.compactionFailed;
     let memory = spawn.compactedMemory;
     let uptoId = spawn.compactedUptoId ?? 0;
     let tail = await loadTail(db, spawn.spawnId, uptoId);
-    let systemPrompt = buildSystemPrompt(character, memory);
+    let systemPrompt = buildSystemPrompt(character, memory, userVar);
 
     if (estimateTokens(systemPrompt, tail) > COMPACTION_TRIGGER_TOKENS) {
       if (spawn.compactionEnabled) {
@@ -215,7 +219,7 @@ export async function generateRpReply(
           memory = res.memory;
           uptoId = res.uptoId ?? uptoId;
           tail = await loadTail(db, spawn.spawnId, uptoId);
-          systemPrompt = buildSystemPrompt(character, memory);
+          systemPrompt = buildSystemPrompt(character, memory, userVar);
         } else if (!res.ok) {
           if (wasFailed) {
             // It failed before and is failing again — don't dead-end the character.

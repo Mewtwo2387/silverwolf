@@ -1,6 +1,6 @@
 import { Command } from './classes/Command';
 import { isAdmin } from '../utils/accessControl';
-import { resolveCharOption } from '../utils/rpCommand';
+import { resolveCharOption, resolveCreatorLabel } from '../utils/rpCommand';
 import { refreshRpChannel } from '../utils/rpRuntime';
 import { logError } from '../utils/log';
 
@@ -55,6 +55,7 @@ class AiRpRemove extends Command {
 
     const clearHistory = interaction.options.getBoolean('clear_history') ?? false;
     try {
+      const spawnerLabel = await resolveCreatorLabel(this.client, spawn.spawnerId);
       await this.client.db.rp.deactivateSpawn(spawn.spawnId);
       if (clearHistory) {
         await this.client.db.rp.deleteHistoryBySpawn(spawn.spawnId);
@@ -63,7 +64,7 @@ class AiRpRemove extends Command {
       await refreshRpChannel(this.client.db, interaction.channelId);
 
       await interaction.editReply(
-        `Removed **${character.name}** from this channel.${
+        `Removed **${character.name}** (spawned by ${spawnerLabel}) from this channel.${
           clearHistory
             ? ' Its memory of this channel was wiped — a fresh spawn will start over.'
             : ' Its conversation is kept and will resume if you spawn it here again.'}`,

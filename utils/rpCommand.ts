@@ -1,6 +1,9 @@
-import { EmbedBuilder } from 'discord.js';
+import { EmbedBuilder, AttachmentBuilder } from 'discord.js';
 import { resolveAvatarUrl } from './rpAvatar';
 import { formatCharHandle } from './rpIdentity';
+
+const DETAILS_PREVIEW_CHARS = 1000;
+const EMBED_FIELD_MAX = 1024;
 
 /**
  * Shared helpers for the `/ai rp-*` commands: resolving the `char` option (whether
@@ -47,13 +50,17 @@ export async function resolveCreatorLabel(client: any, creatorId: string): Promi
   }
 }
 
-/** Renders a character's full detail card (used by rp-details and the create/edit confirmations). */
-export async function characterEmbed(
+/**
+ * Renders a character's detail card. Because `details` can now run to thousands of
+ * tokens, the embed shows a preview and the full `details` / long `starting_message`
+ * ride along as `.txt` attachments. Returns a reply payload ({ embeds, files }).
+ */
+export async function buildCharacterView(
   client: any,
   db: any,
   character: Record<string, any>,
   creatorLabel: string,
-): Promise<EmbedBuilder> {
+): Promise<{ embeds: EmbedBuilder[]; files: AttachmentBuilder[] }> {
   const freshPfp = await resolveAvatarUrl(client, db, {
     charId: character.charId,
     pfpUrl: character.pfpUrl,
@@ -61,21 +68,40 @@ export async function characterEmbed(
     pfpChannelId: character.pfpChannelId,
   });
 
+  const details = character.details || '—';
+  const startingMessage = character.startingMessage || '—';
+  const files: AttachmentBuilder[] = [];
+
+  const detailsPreview = details.length > DETAILS_PREVIEW_CHARS
+    ? `${details.slice(0, DETAILS_PREVIEW_CHARS)}…\n\n*(full details attached as \`details.txt\`)*`
+    : details;
+
   const embed = new EmbedBuilder()
     .setColor('#9B59B6')
     .setTitle(character.name)
-    .setDescription((character.details || '—').slice(0, 4000))
+    .setDescription(detailsPreview)
     .addFields(
       { name: 'ID', value: character.charId, inline: true },
       { name: 'Creator', value: creatorLabel, inline: true },
       { name: 'Mention', value: `\`${formatCharHandle(character.name, character.charId)}\``, inline: true },
-      { name: 'Starting message', value: (character.startingMessage || '—').slice(0, 1024) },
     );
+
+  if (details.length > DETAILS_PREVIEW_CHARS) {
+    files.push(new AttachmentBuilder(Buffer.from(details, 'utf8'), { name: 'details.txt' }));
+  }
+
+  if (startingMessage.length > EMBED_FIELD_MAX) {
+    embed.addFields({ name: 'Starting message', value: '*(attached as `starting_message.txt`)*' });
+    files.push(new AttachmentBuilder(Buffer.from(startingMessage, 'utf8'), { name: 'starting_message.txt' }));
+  } else {
+    embed.addFields({ name: 'Starting message', value: startingMessage });
+  }
+
   if (freshPfp) embed.setThumbnail(freshPfp);
   if (!character.pfpMessageId) {
     embed.setFooter({ text: 'No pfp set — using the default avatar.' });
   } else if (!freshPfp) {
     embed.setFooter({ text: 'pfp is broken (asset message gone) — re-upload with /ai rp-edit.' });
   }
-  return embed;
+  return { embeds: [embed], files };
 }

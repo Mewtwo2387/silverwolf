@@ -1,12 +1,15 @@
 import { Command } from './classes/Command';
 import {
-  validateCharName, DETAILS_MAX_LENGTH, STARTING_MESSAGE_MAX_LENGTH, formatCharHandle,
+  DETAILS_OPTION_MAX_LENGTH, STARTING_MESSAGE_MAX_LENGTH, NAME_MAX_LENGTH, formatCharHandle,
 } from '../utils/rpIdentity';
 import { processAvatar, hostAvatar } from '../utils/rpAvatar';
-import { resolveCharOption, buildCharSearchChoices, characterEmbed } from '../utils/rpCommand';
+import { resolveCharOption, buildCharSearchChoices, buildCharacterView } from '../utils/rpCommand';
+import {
+  loadCharacterJson, validateName, validateDetails, validateStartingMessage,
+} from '../utils/rpCharInput';
 import { logError } from '../utils/log';
 
-/** Edits a character you own. Only the creator can edit; others are rejected. */
+/** Edits a character you own (individual fields, or a full .json replacement). */
 class AiRpEdit extends Command {
   constructor(client: any) {
     super(client, 'rp-edit', 'Edit a roleplay character you created', [
@@ -14,16 +17,19 @@ class AiRpEdit extends Command {
         name: 'char', description: 'One of your characters (search by name or id)', type: 3, required: true, autocomplete: true,
       },
       {
-        name: 'name', description: 'New name', type: 3, required: false,
+        name: 'name', description: 'New name', type: 3, required: false, max_length: NAME_MAX_LENGTH,
       },
       {
-        name: 'details', description: 'New personality / background', type: 3, required: false,
+        name: 'details', description: 'New personality / system prompt', type: 3, required: false, max_length: DETAILS_OPTION_MAX_LENGTH,
       },
       {
-        name: 'starting_message', description: 'New opening message', type: 3, required: false,
+        name: 'starting_message', description: 'New opening message', type: 3, required: false, max_length: STARTING_MESSAGE_MAX_LENGTH,
       },
       {
         name: 'pfp', description: 'New avatar image (auto-cropped to 128×128)', type: 11, required: false,
+      },
+      {
+        name: 'json', description: 'Replace name+details+starting_message from a .json (larger details allowed)', type: 11, required: false,
       },
     ], { isSubcommandOf: 'ai', blame: 'xei', ephemeral: true });
   }
@@ -32,7 +38,7 @@ class AiRpEdit extends Command {
     try {
       const focused = interaction.options.getFocused();
       const all = await buildCharSearchChoices(this.client.db, this.client, focused);
-      // Only suggest the user's own characters (the id is the trailing token in the label).
+      // Only suggest the user's own characters.
       const owned = await this.client.db.rp.searchCharacters(focused);
       const ownIds = new Set(owned.filter((r: any) => r.creatorId === interaction.user.id).map((r: any) => r.charId));
       await interaction.respond(all.filter((c) => ownIds.has(c.value)));
@@ -54,25 +60,43 @@ class AiRpEdit extends Command {
       return;
     }
 
-    const newName = interaction.options.getString('name') ?? character.name;
-    const newDetails = interaction.options.getString('details') ?? character.details;
-    const newStarting = interaction.options.getString('starting_message') ?? character.startingMessage;
-    const attachment = interaction.options.getAttachment('pfp');
+    const nameOpt = interaction.options.getString('name');
+    const detailsOpt = interaction.options.getString('details');
+    const startingOpt = interaction.options.getString('starting_message');
+    const jsonAttachment = interaction.options.getAttachment('json');
+    const pfpAttachment = interaction.options.getAttachment('pfp');
 
-    if (interaction.options.getString('name')) {
-      const nameError = validateCharName(newName);
-      if (nameError) { await interaction.editReply(nameError); return; }
+    const hasTextOptions = !!(nameOpt || detailsOpt || startingOpt);
+    if (jsonAttachment && hasTextOptions) {
+      await interaction.editReply('Use **either** the fields **or** a `.json` — not both. (The `pfp` is separate.)');
+      return;
     }
-    if (newDetails.length > DETAILS_MAX_LENGTH) {
-      await interaction.editReply(`Details are too long (max ${DETAILS_MAX_LENGTH} characters).`); return;
+    if (!jsonAttachment && !hasTextOptions && !pfpAttachment) {
+      await interaction.editReply('Nothing to change — provide a new name / details / starting_message, a `.json`, or a `pfp`.');
+      return;
     }
-    if (newStarting.length > STARTING_MESSAGE_MAX_LENGTH) {
-      await interaction.editReply(`Starting message is too long (max ${STARTING_MESSAGE_MAX_LENGTH} characters).`); return;
+
+    let newName = character.name;
+    let newDetails = character.details;
+    let newStarting = character.startingMessage;
+    if (jsonAttachment) {
+      const loaded = await loadCharacterJson(jsonAttachment);
+      if (!loaded.ok) { await interaction.editReply(loaded.error); return; }
+      ({ name: newName, details: newDetails, startingMessage: newStarting } = loaded.fields);
+    } else {
+      if (nameOpt) newName = nameOpt;
+      if (detailsOpt) newDetails = detailsOpt;
+      if (startingOpt) newStarting = startingOpt;
+      let err: string | null = null;
+      if (nameOpt) err = validateName(newName);
+      if (!err && detailsOpt) err = validateDetails(newDetails);
+      if (!err && startingOpt) err = validateStartingMessage(newStarting);
+      if (err) { await interaction.editReply(err); return; }
     }
 
     let processedBuffer: Buffer | null = null;
-    if (attachment) {
-      const processed = await processAvatar(attachment);
+    if (pfpAttachment) {
+      const processed = await processAvatar(pfpAttachment);
       if (!processed.ok) { await interaction.editReply(processed.error); return; }
       processedBuffer = processed.buffer;
     }
@@ -101,10 +125,10 @@ class AiRpEdit extends Command {
       }
 
       const fresh = await this.client.db.rp.getCharacter(character.charId);
-      const embed = await characterEmbed(this.client, this.client.db, fresh, `@${interaction.user.username}`);
+      const view = await buildCharacterView(this.client, this.client.db, fresh, `@${interaction.user.username}`);
       await interaction.editReply({
         content: `Updated **${newName}** \`${formatCharHandle(newName, character.charId)}\`. Live spawns pick up the change on their next reply.${pfpWarning}`,
-        embeds: [embed],
+        ...view,
       });
     } catch (err) {
       logError('AiRpEdit error:', err);

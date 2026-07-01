@@ -11,8 +11,16 @@ export const MAX_SPAWNS_PER_CHANNEL = 5;
 export const MAX_CHARS_PER_USER = 25;
 export const CHAR_ID_LENGTH = 6;
 export const NAME_MAX_LENGTH = 32;
-export const DETAILS_MAX_LENGTH = 4000;
-export const STARTING_MESSAGE_MAX_LENGTH = 2000;
+/** Token budget for `details` (the system prompt); enforced via the char/4 estimator. */
+export const DETAILS_MAX_TOKENS = 4000;
+/** Discord caps a string option at 6000 chars — the large path is the .json upload. */
+export const DETAILS_OPTION_MAX_LENGTH = 6000;
+export const STARTING_MESSAGE_MAX_LENGTH = 6000;
+/** Hard cap on an uploaded character .json before we even parse it. */
+export const MAX_CHAR_JSON_BYTES = 128 * 1024;
+
+/** Substituted with the spawner's name in self-mode; left literal in all-mode. */
+export const USER_VAR = '{user}';
 
 const ID_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
 const NAME_RE = /^[A-Za-z0-9_]{1,32}$/;
@@ -47,6 +55,15 @@ export function validateCharName(name: string): string | null {
 /** `@aventurine-a2e4se` — the always-unique disambiguated handle for a character. */
 export function formatCharHandle(name: string, charId: string): string {
   return `@${name}-${charId}`;
+}
+
+/**
+ * Substitutes the `{user}` variable. In self-mode `userName` is the spawner's name;
+ * in all-mode `userName` is null and the token is left literal (there's no single user).
+ */
+export function applyUserVar(text: string, userName: string | null): string {
+  if (!userName || !text.includes(USER_VAR)) return text;
+  return text.split(USER_VAR).join(userName);
 }
 
 export interface SpawnLike {

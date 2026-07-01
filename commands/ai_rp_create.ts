@@ -1,45 +1,69 @@
 import { Command } from './classes/Command';
 import {
-  validateCharName, MAX_CHARS_PER_USER, DETAILS_MAX_LENGTH, STARTING_MESSAGE_MAX_LENGTH,
+  MAX_CHARS_PER_USER, DETAILS_OPTION_MAX_LENGTH, STARTING_MESSAGE_MAX_LENGTH, NAME_MAX_LENGTH,
   formatCharHandle,
 } from '../utils/rpIdentity';
 import { processAvatar, hostAvatar } from '../utils/rpAvatar';
-import { characterEmbed } from '../utils/rpCommand';
+import { buildCharacterView } from '../utils/rpCommand';
+import {
+  loadCharacterJson, validateName, validateDetails, validateStartingMessage, JSON_HELP,
+} from '../utils/rpCharInput';
 import { logError } from '../utils/log';
 
-/** Creates a roleplay character owned by the invoking user. */
+/** Creates a roleplay character — via individual fields, or a single uploaded .json. */
 class AiRpCreate extends Command {
   constructor(client: any) {
-    super(client, 'rp-create-char', 'Create a roleplay character', [
+    super(client, 'rp-create-char', 'Create a roleplay character (fill the fields, or upload a .json)', [
       {
-        name: 'name', description: 'Short name (letters/numbers/underscore, no spaces)', type: 3, required: true,
+        name: 'name', description: 'Short name (letters/numbers/underscore, no spaces)', type: 3, required: false, max_length: NAME_MAX_LENGTH,
       },
       {
-        name: 'details', description: 'Personality / background the character role-plays with', type: 3, required: true,
+        name: 'details', description: 'Personality / system prompt (use a .json for longer)', type: 3, required: false, max_length: DETAILS_OPTION_MAX_LENGTH,
       },
       {
-        name: 'starting_message', description: 'The message the character opens with when spawned', type: 3, required: true,
+        name: 'starting_message', description: 'Opening message (up to 6000 chars)', type: 3, required: false, max_length: STARTING_MESSAGE_MAX_LENGTH,
       },
       {
         name: 'pfp', description: 'Avatar image (auto-cropped to 128×128)', type: 11, required: false,
+      },
+      {
+        name: 'json', description: 'Upload a character .json instead of the fields (allows larger details)', type: 11, required: false,
       },
     ], { isSubcommandOf: 'ai', blame: 'xei', ephemeral: true });
   }
 
   async run(interaction: any): Promise<void> {
     const userId = interaction.user.id;
-    const name = interaction.options.getString('name');
-    const details = interaction.options.getString('details');
-    const startingMessage = interaction.options.getString('starting_message');
-    const attachment = interaction.options.getAttachment('pfp');
+    const nameOpt = interaction.options.getString('name');
+    const detailsOpt = interaction.options.getString('details');
+    const startingOpt = interaction.options.getString('starting_message');
+    const jsonAttachment = interaction.options.getAttachment('json');
+    const pfpAttachment = interaction.options.getAttachment('pfp');
 
-    const nameError = validateCharName(name);
-    if (nameError) { await interaction.editReply(nameError); return; }
-    if (details.length > DETAILS_MAX_LENGTH) {
-      await interaction.editReply(`Details are too long (max ${DETAILS_MAX_LENGTH} characters).`); return;
+    const hasTextOptions = !!(nameOpt || detailsOpt || startingOpt);
+    if (jsonAttachment && hasTextOptions) {
+      await interaction.editReply('Provide **either** the individual fields **or** a `.json` file — not both. (The `pfp` is separate and can go with either.)');
+      return;
     }
-    if (startingMessage.length > STARTING_MESSAGE_MAX_LENGTH) {
-      await interaction.editReply(`Starting message is too long (max ${STARTING_MESSAGE_MAX_LENGTH} characters).`); return;
+
+    // Resolve the definition from whichever method was used.
+    let fields: { name: string; details: string; startingMessage: string };
+    if (jsonAttachment) {
+      const loaded = await loadCharacterJson(jsonAttachment);
+      if (!loaded.ok) { await interaction.editReply(loaded.error); return; }
+      fields = loaded.fields;
+    } else {
+      const missing: string[] = [];
+      if (!nameOpt) missing.push('name');
+      if (!detailsOpt) missing.push('details');
+      if (!startingOpt) missing.push('starting_message');
+      if (missing.length > 0) {
+        await interaction.editReply(`Missing: **${missing.join(', ')}**. Fill those in, or upload a \`.json\`:\n${JSON_HELP}`);
+        return;
+      }
+      const err = validateName(nameOpt) || validateDetails(detailsOpt) || validateStartingMessage(startingOpt);
+      if (err) { await interaction.editReply(err); return; }
+      fields = { name: nameOpt, details: detailsOpt, startingMessage: startingOpt };
     }
 
     const count = await this.client.db.rp.countCharactersByCreator(userId);
@@ -50,15 +74,15 @@ class AiRpCreate extends Command {
 
     // Validate the image before creating anything.
     let processedBuffer: Buffer | null = null;
-    if (attachment) {
-      const processed = await processAvatar(attachment);
+    if (pfpAttachment) {
+      const processed = await processAvatar(pfpAttachment);
       if (!processed.ok) { await interaction.editReply(processed.error); return; }
       processedBuffer = processed.buffer;
     }
 
     try {
       const character = await this.client.db.rp.createCharacter({
-        creatorId: userId, name, details, startingMessage,
+        creatorId: userId, name: fields.name, details: fields.details, startingMessage: fields.startingMessage,
       });
       if (!character) { await interaction.editReply('Failed to create the character. Please try again.'); return; }
 
@@ -81,10 +105,10 @@ class AiRpCreate extends Command {
       }
 
       const fresh = await this.client.db.rp.getCharacter(character.charId);
-      const embed = await characterEmbed(this.client, this.client.db, fresh, `@${interaction.user.username}`);
+      const view = await buildCharacterView(this.client, this.client.db, fresh, `@${interaction.user.username}`);
       await interaction.editReply({
-        content: `Created **${name}** \`${formatCharHandle(name, character.charId)}\`. Spawn it with \`/ai rp-spawn\`.${pfpWarning}`,
-        embeds: [embed],
+        content: `Created **${fields.name}** \`${formatCharHandle(fields.name, character.charId)}\`. Spawn it with \`/ai rp-spawn\`.${pfpWarning}`,
+        ...view,
       });
     } catch (err) {
       logError('AiRpCreate error:', err);

@@ -106,7 +106,11 @@ private history** with auto-compaction (oldest ~80% folded into a first-person m
 window. Spawns are **soft-deleted** so history survives removal/re-spawn. `@name` / `@id` /
 `@name-id` mentions route in `messageCreate`; `all`-mode characters also chime in via the scheduler
 (≤1 reply/channel/tick; bot/webhook messages are never heard → no bot-to-bot loops). An in-memory
-active-channel set keeps non-RP traffic off the DB.
+active-channel set keeps non-RP traffic off the DB. Characters are defined via command fields **or** an
+uploaded `.json` (`utils/rpCharInput.ts` — size-capped, parsed in a try/catch, only the three known
+string fields read, never spread — the upload attack surface); `details` is token-capped (~4k),
+`starting_message` char-capped (6k, split on delivery). `{user}` in details/starting-message is
+substituted with the spawner's name in **self**-mode only (left literal in `all`-mode).
 
 **Database** (`bun:sqlite`, `persistence/database.db`). Layered: `tables/` (TableDefinition schema
 objects) → `models/` (DAOs) → `queries/` (SQL strings). **Access pattern:**

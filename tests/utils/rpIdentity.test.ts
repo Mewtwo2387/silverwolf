@@ -1,7 +1,22 @@
 import { describe, it, expect } from 'bun:test';
 import {
-  generateCharId, validateCharName, matchMentions, type SpawnLike,
+  generateCharId, validateCharName, matchMentions, applyUserVar, type SpawnLike,
 } from '../../utils/rpIdentity';
+
+describe('rpIdentity.applyUserVar', () => {
+  it('substitutes {user} when a name is given (self-mode)', () => {
+    expect(applyUserVar('Hello {user}!', 'Finch')).toBe('Hello Finch!');
+    expect(applyUserVar('{user} and {user}', 'Finch')).toBe('Finch and Finch');
+  });
+
+  it('leaves the token literal when name is null (all-mode)', () => {
+    expect(applyUserVar('Hello {user}!', null)).toBe('Hello {user}!');
+  });
+
+  it('is a no-op when there is no token', () => {
+    expect(applyUserVar('no variables here', 'Finch')).toBe('no variables here');
+  });
+});
 
 describe('rpIdentity.generateCharId', () => {
   it('produces 6-char lowercase alphanumeric ids', () => {

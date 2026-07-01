@@ -1,10 +1,10 @@
 import { Command } from './classes/Command';
 import {
-  resolveCharOption, buildCharSearchChoices, resolveCreatorLabel, characterEmbed,
+  resolveCharOption, buildCharSearchChoices, resolveCreatorLabel, buildCharacterView,
 } from '../utils/rpCommand';
 import { logError } from '../utils/log';
 
-/** Shows a character's full details (same view as create), including its avatar. */
+/** Shows a character's full details (preview + attached .txt for long fields). */
 class AiRpDetails extends Command {
   constructor(client: any) {
     super(client, 'rp-details', 'View a roleplay character\'s details', [
@@ -33,8 +33,8 @@ class AiRpDetails extends Command {
       return;
     }
     const creatorLabel = await resolveCreatorLabel(this.client, character.creatorId);
-    const embed = await characterEmbed(this.client, this.client.db, character, creatorLabel);
-    await interaction.editReply({ embeds: [embed] });
+    const view = await buildCharacterView(this.client, this.client.db, character, creatorLabel);
+    await interaction.editReply(view);
   }
 }
 
