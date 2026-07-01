@@ -3,7 +3,7 @@ import {
   DETAILS_OPTION_MAX_LENGTH, STARTING_MESSAGE_MAX_LENGTH, NAME_MAX_LENGTH, formatCharHandle,
 } from '../utils/rpIdentity';
 import { processAvatar, hostAvatar } from '../utils/rpAvatar';
-import { resolveCharOption, buildCharSearchChoices, buildCharacterView } from '../utils/rpCommand';
+import { resolveCharOption, buildCharacterView } from '../utils/rpCommand';
 import {
   loadCharacterJson, validateName, validateDetails, validateStartingMessage,
 } from '../utils/rpCharInput';
@@ -37,11 +37,14 @@ class AiRpEdit extends Command {
   async autocomplete(interaction: any): Promise<void> {
     try {
       const focused = interaction.options.getFocused();
-      const all = await buildCharSearchChoices(this.client.db, this.client, focused);
-      // Only suggest the user's own characters.
-      const owned = await this.client.db.rp.searchCharacters(focused);
-      const ownIds = new Set(owned.filter((r: any) => r.creatorId === interaction.user.id).map((r: any) => r.charId));
-      await interaction.respond(all.filter((c) => ownIds.has(c.value)));
+      // Scope the search to the caller's own characters up front, so their matches
+      // aren't dropped when other users' characters fill the global top-25.
+      const owned = await this.client.db.rp.searchOwnCharacters(interaction.user.id, focused);
+      const choices = owned.slice(0, 25).map((r: any) => ({
+        name: `${r.name} · ${r.charId}`.slice(0, 100),
+        value: r.charId,
+      }));
+      await interaction.respond(choices);
     } catch (err) {
       logError('AiRpEdit autocomplete error:', err);
       await interaction.respond([]).catch(() => {});

@@ -220,6 +220,11 @@ export async function generateRpReply(
           uptoId = res.uptoId ?? uptoId;
           tail = await loadTail(db, spawn.spawnId, uptoId);
           systemPrompt = buildSystemPrompt(character, memory, userVar);
+          // Compaction can still leave us over budget (a huge memory or character bio),
+          // so re-check and hard-truncate rather than firing an over-limit request.
+          if (estimateTokens(systemPrompt, tail) > COMPACTION_TRIGGER_TOKENS) {
+            tail = truncateToFit(tail, systemPrompt);
+          }
         } else if (!res.ok) {
           if (wasFailed) {
             // It failed before and is failing again — don't dead-end the character.

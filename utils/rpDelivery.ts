@@ -40,9 +40,11 @@ export function splitMessage(text: string): string[] {
     if (remaining.length <= MAX_LENGTH) { chunks.push(remaining); break; }
     let chunk = remaining.slice(0, MAX_LENGTH);
     const breakIndex = Math.max(chunk.lastIndexOf('\n'), chunk.lastIndexOf(' '));
-    if (breakIndex > 0) chunk = remaining.slice(0, breakIndex);
+    // Keep the break character with the current chunk and don't trim the remainder,
+    // so spaces/newlines at chunk boundaries survive (splitting is lossless).
+    if (breakIndex > 0) chunk = remaining.slice(0, breakIndex + 1);
     chunks.push(chunk);
-    remaining = remaining.slice(chunk.length).trimStart();
+    remaining = remaining.slice(chunk.length);
   }
   return chunks;
 }

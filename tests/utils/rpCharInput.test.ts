@@ -9,7 +9,10 @@ import {
 
 const realFetch = globalThis.fetch;
 function stubFetch(body: string, ok = true): void {
-  globalThis.fetch = (async () => ({ ok, text: async () => body })) as any;
+  globalThis.fetch = (async () => ({
+    ok,
+    arrayBuffer: async () => new TextEncoder().encode(body).buffer,
+  })) as any;
 }
 afterEach(() => { globalThis.fetch = realFetch; });
 

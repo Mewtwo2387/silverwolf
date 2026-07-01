@@ -18,6 +18,12 @@ import { logError } from './log';
 
 const activeRpChannels = new Set<string>();
 
+// Spawn ids currently generating/delivering a reply. The message router (fire-and-
+// forget) and the 30s proactive scheduler can both target the same spawn at once;
+// this serializes them so they can't read the same last user turn and post duplicate
+// or out-of-order replies. Single process, so an in-memory lock suffices.
+const inFlightSpawns = new Set<number>();
+
 /** Rebuilds the active-channel set from the DB (call on boot). */
 export async function recomputeActiveRpChannels(db: any): Promise<void> {
   try {
@@ -61,63 +67,85 @@ async function respondAsCharacter(
   row: any,
   opts: RespondOpts = {},
 ): Promise<void> {
-  const character = {
-    charId: row.charId,
-    name: row.charName,
-    pfpUrl: row.charPfpUrl,
-    pfpMessageId: row.charPfpMessageId,
-    pfpChannelId: row.charPfpChannelId,
-  };
+  const spawnId: number = row.spawnId;
+  // Drop overlapping triggers for the same spawn (see inFlightSpawns above). The
+  // skipped trigger's message is already in history, so the in-flight reply picks it up.
+  if (inFlightSpawns.has(spawnId)) return;
+  inFlightSpawns.add(spawnId);
+  try {
+    const character = {
+      charId: row.charId,
+      name: row.charName,
+      pfpUrl: row.charPfpUrl,
+      pfpMessageId: row.charPfpMessageId,
+      pfpChannelId: row.charPfpChannelId,
+    };
 
-  // Post "typing.  .  ." as the character right away, then edit it into the reply —
-  // the wait reads as the character thinking rather than "Silverwolf is typing".
-  const typing = await postCharacterPlaceholder({
-    client, db, channel, character,
-  });
+    // Post "typing.  .  ." as the character right away, then edit it into the reply —
+    // the wait reads as the character thinking rather than "Silverwolf is typing".
+    const typing = await postCharacterPlaceholder({
+      client, db, channel, character,
+    });
 
-  const result = await generateRpReply(db, {
-    spawnId: row.spawnId,
-    compactionEnabled: row.compactionEnabled === 1,
-    compactedMemory: row.compactedMemory ?? null,
-    compactedUptoId: row.compactedUptoId ?? null,
-    compactionFailed: row.compactionFailed === 1,
-  }, {
-    charId: row.charId,
-    name: row.charName,
-    details: row.charDetails,
-    startingMessage: row.charStartingMessage,
-  }, opts.userVar ?? null);
+    const result = await generateRpReply(db, {
+      spawnId,
+      compactionEnabled: row.compactionEnabled === 1,
+      compactedMemory: row.compactedMemory ?? null,
+      compactedUptoId: row.compactedUptoId ?? null,
+      compactionFailed: row.compactionFailed === 1,
+    }, {
+      charId: row.charId,
+      name: row.charName,
+      details: row.charDetails,
+      startingMessage: row.charStartingMessage,
+    }, opts.userVar ?? null);
 
-  if (result.ok) {
-    await db.rp.addHistory(row.spawnId, 'model', result.text);
-    await db.rp.touchSpawnActivity(row.spawnId);
-    if (typing) {
-      await editCharacterReply(typing, {
-        text: result.text, replyToUrl: opts.replyToUrl, replyToLabel: opts.replyToLabel,
-      });
-    } else {
-      // Placeholder couldn't be posted (raced/perms) — fall back to a plain send.
-      await sendAsCharacter({
-        client, db, channel, character, text: result.text, replyToUrl: opts.replyToUrl, replyToLabel: opts.replyToLabel,
-      });
+    if (result.ok) {
+      // Deliver first; only persist the model turn once it actually reached the
+      // channel, so a webhook failure can't seed history with a line nobody saw.
+      const delivered = typing
+        ? await editCharacterReply(typing, {
+          text: result.text, replyToUrl: opts.replyToUrl, replyToLabel: opts.replyToLabel,
+        })
+        : await sendAsCharacter({
+          client,
+          db,
+          channel,
+          character,
+          text: result.text,
+          replyToUrl: opts.replyToUrl,
+          replyToLabel: opts.replyToLabel,
+        });
+      if (delivered) {
+        await db.rp.addHistory(spawnId, 'model', result.text);
+        await db.rp.touchSpawnActivity(spawnId);
+        return;
+      }
+      // Delivery failed — clear any dangling placeholder and don't record the turn.
+      if (typing) await deleteCharacterPlaceholder(typing);
+      if (opts.notify) {
+        await opts.notify(`⚠️ **${row.charName}** couldn't post its reply right now. Try again in a moment.`);
+      }
+      return;
     }
-    return;
-  }
 
-  // Generation failed — clear the dangling "typing…" before surfacing anything.
-  if (typing) await deleteCharacterPlaceholder(typing);
+    // Generation failed — clear the dangling "typing…" before surfacing anything.
+    if (typing) await deleteCharacterPlaceholder(typing);
 
-  if (result.reason === 'compaction_failed') {
-    const notice = `⚠️ **${row.charName}** has run out of context and automatic compaction failed. `
-      + 'Mention them again to retry — if it keeps failing the oldest messages will be dropped instead.';
-    if (opts.notify) await opts.notify(notice);
-    else await channel.send({ content: notice, allowedMentions: { parse: [] } }).catch(() => {});
-    return;
-  }
+    if (result.reason === 'compaction_failed') {
+      const notice = `⚠️ **${row.charName}** has run out of context and automatic compaction failed. `
+        + 'Mention them again to retry — if it keeps failing the oldest messages will be dropped instead.';
+      if (opts.notify) await opts.notify(notice);
+      else await channel.send({ content: notice, allowedMentions: { parse: [] } }).catch(() => {});
+      return;
+    }
 
-  // Generic error: surface only when a user is waiting (mention path), else stay quiet.
-  if (opts.notify) {
-    await opts.notify(`⚠️ **${row.charName}** couldn't respond right now. Try again in a moment.`);
+    // Generic error: surface only when a user is waiting (mention path), else stay quiet.
+    if (opts.notify) {
+      await opts.notify(`⚠️ **${row.charName}** couldn't respond right now. Try again in a moment.`);
+    }
+  } finally {
+    inFlightSpawns.delete(spawnId);
   }
 }
 

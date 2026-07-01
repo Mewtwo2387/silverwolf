@@ -73,13 +73,16 @@ export async function loadCharacterJson(attachment: {
   try {
     const res = await fetch(attachment.url);
     if (!res.ok) return { ok: false, error: 'Could not download the .json file. Try re-uploading.' };
-    text = await res.text();
+    // Cap on the raw byte length (not text.length, which counts UTF-16 units) so a
+    // multibyte payload can't slip past the limit when attachment.size is missing.
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    if (bytes.byteLength > MAX_CHAR_JSON_BYTES) {
+      return { ok: false, error: `That .json is too large (max ${MAX_CHAR_JSON_BYTES / 1024} KB).` };
+    }
+    text = new TextDecoder().decode(bytes);
   } catch (err) {
     logError('Rp: failed to download character json:', err);
     return { ok: false, error: 'Could not download the .json file. Try re-uploading.' };
-  }
-  if (text.length > MAX_CHAR_JSON_BYTES) {
-    return { ok: false, error: `That .json is too large (max ${MAX_CHAR_JSON_BYTES / 1024} KB).` };
   }
 
   let parsed: any;

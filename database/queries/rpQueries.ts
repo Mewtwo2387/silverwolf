@@ -27,6 +27,15 @@ const rpQueries = {
     ORDER BY name_lower ASC
     LIMIT 25
   `,
+  // Same search, scoped to one creator — so the owner's matches aren't crowded out of
+  // the top-25 by other users' characters. Caller passes (creatorId, '%term%', 'term%').
+  SEARCH_OWN_CHARACTERS: `
+    SELECT char_id, creator_id, name, name_lower
+    FROM RpCharacter
+    WHERE creator_id = ? AND (name_lower LIKE ? OR char_id LIKE ?)
+    ORDER BY name_lower ASC
+    LIMIT 25
+  `,
 
   // ── Spawns ────────────────────────────────────────────────────────────────
   GET_SPAWN: 'SELECT * FROM RpSpawn WHERE channel_id = ? AND char_id = ?',
@@ -37,9 +46,13 @@ const rpQueries = {
   `,
   // Re-spawn / reconfigure: reactivate and overwrite the live params (never the
   // character definition). Compaction state and history are left untouched.
+  // A deliberate re-spawn also clears a stale compaction_failed flag, so an all-mode
+  // character that previously hit a compaction failure can re-enter the proactive
+  // scheduler (GET_ACTIVE_ALL_SPAWNS filters out compaction_failed = 1).
   REACTIVATE_SPAWN: `
     UPDATE RpSpawn
     SET active = 1, spawner_id = ?, interactability = ?, compaction_enabled = ?,
+        compaction_failed = 0,
         last_activity_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
     WHERE spawn_id = ?
   `,

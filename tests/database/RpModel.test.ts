@@ -29,10 +29,11 @@ describe('RpModel', () => {
   });
 
   async function makeChar(creatorId: string, name: string): Promise<string> {
-    const c = await rp.createCharacter({
+    const res = await rp.createCharacter({
       creatorId, name, details: `${name} details`, startingMessage: `hi from ${name}`,
     });
-    return c!.charId;
+    if (!res.ok) throw new Error('unexpected quota rejection while seeding a test character');
+    return res.character.charId;
   }
 
   it('creates characters with unique ids and allows same name for different creators', async () => {
@@ -44,6 +45,39 @@ describe('RpModel', () => {
     const fetched = await rp.getCharacter(a);
     expect(fetched!.name).toBe('aventurine');
     expect(fetched!.nameLower).toBe('aventurine');
+  });
+
+  it('enforces the per-creator cap atomically and reports a limit result', async () => {
+    for (let i = 0; i < 3; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      const res = await rp.createCharacter({
+        creatorId: 'capped', name: `cap${i}`, details: 'd', startingMessage: 's',
+      }, 3);
+      expect(res.ok).toBe(true);
+    }
+    const over = await rp.createCharacter({
+      creatorId: 'capped', name: 'capX', details: 'd', startingMessage: 's',
+    }, 3);
+    expect(over.ok).toBe(false);
+    if (!over.ok) expect(over.reason).toBe('limit');
+    expect(await rp.countCharactersByCreator('capped')).toBe(3);
+  });
+
+  it('removeSpawn deactivates and (optionally) clears history + compaction in one op', async () => {
+    const id = await makeChar('user-1', 'atomic');
+    const spawn = await rp.trySpawn({
+      channelId: CHANNEL, guildId: GUILD, charId: id, spawnerId: 'user-1', interactability: 'all', compactionEnabled: true,
+    });
+    const spawnId = spawn.spawnId!;
+    await rp.addHistory(spawnId, 'user', 'hi', { id: 'user-2', name: 'Finch' });
+    await rp.setCompactionState(spawnId, 'a memory', 1);
+
+    await rp.removeSpawn(spawnId, true);
+    expect(await rp.countActiveSpawnsInChannel(CHANNEL)).toBe(0);
+    expect(await rp.countHistory(spawnId)).toBe(0);
+    const row = await rp.getSpawnById(spawnId);
+    expect(row!.compactedMemory).toBeNull();
+    expect(row!.compactionFailed).toBe(0);
   });
 
   it('only the owner can update a character', async () => {

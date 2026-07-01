@@ -73,6 +73,12 @@ describe('rpIdentity.matchMentions', () => {
     expect(ambiguous).toHaveLength(0);
   });
 
+  it('disambiguates a mixed-case name-idprefix handle', () => {
+    const { matched, ambiguous } = matchMentions('@Aventurine-A2E are you there', spawns);
+    expect(matched.map((m) => m.spawnId)).toEqual([1]);
+    expect(ambiguous).toHaveLength(0);
+  });
+
   it('matches by id (full or prefix)', () => {
     expect(matchMentions('@a2e4se', spawns).matched.map((m) => m.spawnId)).toEqual([1]);
     expect(matchMentions('@zzz', spawns).matched.map((m) => m.spawnId)).toEqual([3]);

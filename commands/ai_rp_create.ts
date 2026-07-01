@@ -66,6 +66,8 @@ class AiRpCreate extends Command {
       fields = { name: nameOpt, details: detailsOpt, startingMessage: startingOpt };
     }
 
+    // Cheap advisory check so we can reject before processing an avatar; the real
+    // guard is enforced atomically inside createCharacter (below) to close the race.
     const count = await this.client.db.rp.countCharactersByCreator(userId);
     if (count >= MAX_CHARS_PER_USER) {
       await interaction.editReply(`You've hit the limit of ${MAX_CHARS_PER_USER} characters. Delete or reuse one first.`);
@@ -81,10 +83,14 @@ class AiRpCreate extends Command {
     }
 
     try {
-      const character = await this.client.db.rp.createCharacter({
+      const created = await this.client.db.rp.createCharacter({
         creatorId: userId, name: fields.name, details: fields.details, startingMessage: fields.startingMessage,
-      });
-      if (!character) { await interaction.editReply('Failed to create the character. Please try again.'); return; }
+      }, MAX_CHARS_PER_USER);
+      if (!created.ok) {
+        await interaction.editReply(`You've hit the limit of ${MAX_CHARS_PER_USER} characters. Delete or reuse one first.`);
+        return;
+      }
+      const { character } = created;
 
       let pfpWarning = '';
       if (processedBuffer) {

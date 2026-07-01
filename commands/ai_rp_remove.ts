@@ -56,11 +56,9 @@ class AiRpRemove extends Command {
     const clearHistory = interaction.options.getBoolean('clear_history') ?? false;
     try {
       const spawnerLabel = await resolveCreatorLabel(this.client, spawn.spawnerId);
-      await this.client.db.rp.deactivateSpawn(spawn.spawnId);
-      if (clearHistory) {
-        await this.client.db.rp.deleteHistoryBySpawn(spawn.spawnId);
-        await this.client.db.rp.resetCompaction(spawn.spawnId);
-      }
+      // One atomic op: deactivate (+ optionally wipe history & compaction) together,
+      // so a mid-way failure can't leave the spawn half-cleared.
+      await this.client.db.rp.removeSpawn(spawn.spawnId, clearHistory);
       await refreshRpChannel(this.client.db, interaction.channelId);
 
       await interaction.editReply(

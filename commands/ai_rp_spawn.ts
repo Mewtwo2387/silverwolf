@@ -90,19 +90,16 @@ class AiRpSpawn extends Command {
       }
 
       const historyCount = await this.client.db.rp.countHistory(result.spawnId);
-      await interaction.editReply(
-        `Spawned **${character.name}** here — interactability **${interactability}**, compaction **${compactionLabel}**.${
-          historyCount > 0 ? ' Resumed its existing conversation.' : ''}`,
-      );
 
       // Brand-new conversation → post the opening message as the character.
+      let openerWarning = '';
       if (historyCount === 0 && character.startingMessage) {
         // Self-mode resolves {user} to the spawner; all-mode leaves it literal.
         const spawnerName = interaction.member?.displayName || interaction.user.username;
         const startingText = interactability === 'self'
           ? applyUserVar(character.startingMessage, spawnerName)
           : character.startingMessage;
-        await sendAsCharacter({
+        const delivered = await sendAsCharacter({
           client: this.client,
           db: this.client.db,
           channel,
@@ -115,7 +112,16 @@ class AiRpSpawn extends Command {
           },
           text: startingText,
         });
+        if (!delivered) {
+          openerWarning = '\n\n⚠️ The spawn is active, but I couldn\'t post its opening message here — '
+            + 'check that I have the **Manage Webhooks** permission in this channel.';
+        }
       }
+
+      await interaction.editReply(
+        `Spawned **${character.name}** here — interactability **${interactability}**, compaction **${compactionLabel}**.${
+          historyCount > 0 ? ' Resumed its existing conversation.' : ''}${openerWarning}`,
+      );
     } catch (err) {
       logError('AiRpSpawn error:', err);
       await interaction.editReply('Failed to spawn the character. Please try again.');

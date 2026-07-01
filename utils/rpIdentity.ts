@@ -81,8 +81,9 @@ export interface MentionMatchResult {
 
 // `@` + (name|id) optionally followed by `-idprefix`. Names exclude `-`, so the
 // dash unambiguously starts the id part. Leading char must not be part of a word
-// (so emails like name@host don't trigger).
-const MENTION_RE = /(?:^|[^\w])@([A-Za-z0-9_]+)(?:-([a-z0-9]+))?/g;
+// (so emails like name@host don't trigger). The id prefix accepts either case and
+// is lowercased before matching, so `@Aventurine-A2E` disambiguates too.
+const MENTION_RE = /(?:^|[^\w])@([A-Za-z0-9_]+)(?:-([A-Za-z0-9]+))?/g;
 
 /**
  * Routes a message to spawned characters by parsing its `@mentions`. A bare token

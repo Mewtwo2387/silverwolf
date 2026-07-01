@@ -11,6 +11,10 @@ export interface SpawnResult {
   spawnId?: number;
 }
 
+export type CreateCharacterResult =
+  | { ok: true; character: Record<string, any> }
+  | { ok: false; reason: 'limit' };
+
 /** DAO for roleplay characters, their per-channel spawns, and private history. */
 class RpModel {
   private db: Database;
@@ -32,6 +36,12 @@ class RpModel {
     throw new Error('Could not allocate a unique character id');
   }
 
+  /**
+   * Creates a character. When `maxPerCreator` is given, the per-creator quota is
+   * enforced **inside the same transaction** as the insert, so two concurrent
+   * creates can't both slip past the limit. Throws (rather than silently returning a
+   * phantom "not found") if the insert doesn't actually persist.
+   */
   async createCharacter(params: {
     creatorId: string;
     name: string;
@@ -40,22 +50,36 @@ class RpModel {
     pfpUrl?: string | null;
     pfpMessageId?: string | null;
     pfpChannelId?: string | null;
-  }): Promise<Record<string, any> | null> {
+  }, maxPerCreator?: number): Promise<CreateCharacterResult> {
     await this.db.user.getUser(params.creatorId);
     const charId = await this.generateUniqueCharId();
-    await this.db.executeQuery(rpQueries.INSERT_CHARACTER, [
-      charId,
-      params.creatorId,
-      params.name,
-      params.name.toLowerCase(),
-      params.details,
-      params.startingMessage,
-      params.pfpUrl ?? null,
-      params.pfpMessageId ?? null,
-      params.pfpChannelId ?? null,
-    ]);
+    const outcome: { limited: boolean } = await this.db.executeTransaction((rawDb: any) => {
+      if (typeof maxPerCreator === 'number') {
+        const countRow = rawDb.query(rpQueries.COUNT_CHARACTERS_BY_CREATOR).get(params.creatorId) as any;
+        if ((countRow?.count ?? 0) >= maxPerCreator) return { limited: true };
+      }
+      const res = rawDb.query(rpQueries.INSERT_CHARACTER).run(
+        charId,
+        params.creatorId,
+        params.name,
+        params.name.toLowerCase(),
+        params.details,
+        params.startingMessage,
+        params.pfpUrl ?? null,
+        params.pfpMessageId ?? null,
+        params.pfpChannelId ?? null,
+      );
+      if ((res?.changes ?? 0) !== 1) {
+        throw new Error(`Failed to create RP character ${params.name} (${charId})`);
+      }
+      return { limited: false };
+    });
+
+    if (outcome.limited) return { ok: false, reason: 'limit' };
+    const created = await this.getCharacter(charId);
+    if (!created) throw new Error(`RP character ${charId} was inserted but could not be reloaded`);
     log(`Rp: created character ${params.name} (${charId}) by ${params.creatorId}`);
-    return this.getCharacter(charId);
+    return { ok: true, character: created };
   }
 
   async getCharacter(charId: string): Promise<Record<string, any> | null> {
@@ -102,6 +126,15 @@ class RpModel {
   async searchCharacters(term: string): Promise<Record<string, any>[]> {
     const cleaned = term.toLowerCase().replace(/[%_]/g, '');
     return this.db.executeSelectAllQuery(rpQueries.SEARCH_CHARACTERS, [`%${cleaned}%`, `${cleaned}%`]);
+  }
+
+  /** Search scoped to one creator, so the owner's matches aren't crowded out of the top-25. */
+  async searchOwnCharacters(creatorId: string, term: string): Promise<Record<string, any>[]> {
+    const cleaned = term.toLowerCase().replace(/[%_]/g, '');
+    return this.db.executeSelectAllQuery(
+      rpQueries.SEARCH_OWN_CHARACTERS,
+      [creatorId, `%${cleaned}%`, `${cleaned}%`],
+    );
   }
 
   // ── Spawns ──────────────────────────────────────────────────────────────
@@ -190,6 +223,21 @@ class RpModel {
 
   async deactivateSpawn(spawnId: number): Promise<void> {
     await this.db.executeQuery(rpQueries.DEACTIVATE_SPAWN, [spawnId]);
+  }
+
+  /**
+   * Removes a spawn (soft-delete), optionally wiping its history + compaction state,
+   * as one atomic transaction so a mid-way failure can't leave it half-cleared.
+   */
+  async removeSpawn(spawnId: number, clearHistory: boolean): Promise<void> {
+    await this.db.executeTransaction((rawDb: any) => {
+      rawDb.query(rpQueries.DEACTIVATE_SPAWN).run(spawnId);
+      if (clearHistory) {
+        rawDb.query(rpQueries.DELETE_HISTORY_BY_SPAWN).run(spawnId);
+        rawDb.query(rpQueries.RESET_COMPACTION).run(spawnId);
+      }
+      return undefined;
+    });
   }
 
   async touchSpawnActivity(spawnId: number): Promise<void> {
