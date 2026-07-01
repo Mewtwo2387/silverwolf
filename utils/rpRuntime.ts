@@ -1,7 +1,9 @@
 import type { TextChannel } from 'discord.js';
 import { matchMentions, formatCharHandle } from './rpIdentity';
 import { generateRpReply } from './rpChat';
-import { sendAsCharacter } from './rpDelivery';
+import {
+  sendAsCharacter, postCharacterPlaceholder, editCharacterReply, deleteCharacterPlaceholder,
+} from './rpDelivery';
 import { logError } from './log';
 
 /**
@@ -59,7 +61,19 @@ async function respondAsCharacter(
   row: any,
   opts: RespondOpts = {},
 ): Promise<void> {
-  channel.sendTyping?.().catch(() => {});
+  const character = {
+    charId: row.charId,
+    name: row.charName,
+    pfpUrl: row.charPfpUrl,
+    pfpMessageId: row.charPfpMessageId,
+    pfpChannelId: row.charPfpChannelId,
+  };
+
+  // Post "typing.  .  ." as the character right away, then edit it into the reply —
+  // the wait reads as the character thinking rather than "Silverwolf is typing".
+  const typing = await postCharacterPlaceholder({
+    client, db, channel, character,
+  });
 
   const result = await generateRpReply(db, {
     spawnId: row.spawnId,
@@ -77,23 +91,21 @@ async function respondAsCharacter(
   if (result.ok) {
     await db.rp.addHistory(row.spawnId, 'model', result.text);
     await db.rp.touchSpawnActivity(row.spawnId);
-    await sendAsCharacter({
-      client,
-      db,
-      channel,
-      character: {
-        charId: row.charId,
-        name: row.charName,
-        pfpUrl: row.charPfpUrl,
-        pfpMessageId: row.charPfpMessageId,
-        pfpChannelId: row.charPfpChannelId,
-      },
-      text: result.text,
-      replyToUrl: opts.replyToUrl,
-      replyToLabel: opts.replyToLabel,
-    });
+    if (typing) {
+      await editCharacterReply(typing, {
+        text: result.text, replyToUrl: opts.replyToUrl, replyToLabel: opts.replyToLabel,
+      });
+    } else {
+      // Placeholder couldn't be posted (raced/perms) — fall back to a plain send.
+      await sendAsCharacter({
+        client, db, channel, character, text: result.text, replyToUrl: opts.replyToUrl, replyToLabel: opts.replyToLabel,
+      });
+    }
     return;
   }
+
+  // Generation failed — clear the dangling "typing…" before surfacing anything.
+  if (typing) await deleteCharacterPlaceholder(typing);
 
   if (result.reason === 'compaction_failed') {
     const notice = `⚠️ **${row.charName}** has run out of context and automatic compaction failed. `

@@ -13,6 +13,25 @@ import { logError } from './log';
 const WEBHOOK_NAME = process.env.WEBHOOK_NAME || 'grok-webhook';
 const MAX_LENGTH = 2000;
 
+// Webhooks can't emit a Discord typing indicator (and the bot's own would show as
+// "Silverwolf", breaking character), so we post this as the character and then edit
+// it into the reply once the model returns.
+export const TYPING_PLACEHOLDER = '*typing.  .  .*';
+
+/** The "↩ Replying to" link button, or [] when there's nothing to link. */
+function replyButtonRow(
+  replyToUrl?: string | null,
+  replyToLabel?: string | null,
+): ActionRowBuilder<ButtonBuilder>[] {
+  if (!replyToUrl) return [];
+  return [new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setLabel(`↩ Replying to: ${replyToLabel || 'message'}`.slice(0, 80))
+      .setStyle(ButtonStyle.Link)
+      .setURL(replyToUrl),
+  )];
+}
+
 /** Splits text into <=2000-char chunks, breaking on whitespace where possible. */
 export function splitMessage(text: string): string[] {
   const chunks: string[] = [];
@@ -75,21 +94,12 @@ export async function sendAsCharacter(opts: {
 
   try {
     for (let i = 0; i < chunks.length; i += 1) {
-      const components: ActionRowBuilder<ButtonBuilder>[] = [];
-      if (i === 0 && opts.replyToUrl) {
-        components.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder()
-            .setLabel(`↩ Replying to: ${opts.replyToLabel || 'message'}`.slice(0, 80))
-            .setStyle(ButtonStyle.Link)
-            .setURL(opts.replyToUrl),
-        ));
-      }
       // eslint-disable-next-line no-await-in-loop
       await webhook.send({
         content: chunks[i],
         username: character.name,
         avatarURL,
-        components,
+        components: i === 0 ? replyButtonRow(opts.replyToUrl, opts.replyToLabel) : [],
         allowedMentions: { parse: [] },
       });
     }
@@ -97,5 +107,85 @@ export async function sendAsCharacter(opts: {
   } catch (err) {
     logError(`Rp: failed to send as character ${character.charId}:`, err);
     return false;
+  }
+}
+
+/** Handles to a posted "typing" placeholder so it can be edited into the reply. */
+export interface CharacterTyping {
+  webhook: any;
+  messageId: string;
+  name: string;
+  avatarURL: string;
+}
+
+/**
+ * Posts the character's "typing" placeholder immediately (so the wait reads as the
+ * character thinking, not the bot). Returns handles to edit it, or null if delivery
+ * is impossible (e.g. missing Manage Webhooks).
+ */
+export async function postCharacterPlaceholder(opts: {
+  client: any;
+  db: any;
+  channel: TextChannel;
+  character: CharacterDelivery;
+}): Promise<CharacterTyping | null> {
+  const {
+    client, db, channel, character,
+  } = opts;
+  const webhook = await getRpWebhook(channel, client);
+  if (!webhook) return null;
+  const avatarURL = (await resolveAvatarUrl(client, db, character))
+    ?? client.user?.displayAvatarURL();
+  try {
+    const msg = await webhook.send({
+      content: TYPING_PLACEHOLDER,
+      username: character.name,
+      avatarURL,
+      allowedMentions: { parse: [] },
+    });
+    return {
+      webhook, messageId: msg.id, name: character.name, avatarURL,
+    };
+  } catch (err) {
+    logError(`Rp: failed to post typing placeholder for ${character.charId}:`, err);
+    return null;
+  }
+}
+
+/** Edits the placeholder into the reply's first chunk; overflow follows as new messages. */
+export async function editCharacterReply(typing: CharacterTyping, opts: {
+  text: string;
+  replyToUrl?: string | null;
+  replyToLabel?: string | null;
+}): Promise<boolean> {
+  const chunks = splitMessage(opts.text || '…');
+  try {
+    await typing.webhook.editMessage(typing.messageId, {
+      content: chunks[0],
+      components: replyButtonRow(opts.replyToUrl, opts.replyToLabel),
+      allowedMentions: { parse: [] },
+    });
+    for (let i = 1; i < chunks.length; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await typing.webhook.send({
+        content: chunks[i],
+        username: typing.name,
+        avatarURL: typing.avatarURL,
+        allowedMentions: { parse: [] },
+      });
+    }
+    return true;
+  } catch (err) {
+    logError('Rp: failed to edit typing placeholder into reply:', err);
+    return false;
+  }
+}
+
+/** Removes the placeholder (used when generation fails, so no "typing…" is left dangling). */
+export async function deleteCharacterPlaceholder(typing: CharacterTyping): Promise<void> {
+  try {
+    await typing.webhook.deleteMessage(typing.messageId);
+  } catch {
+    /* already gone / no perms — nothing to do */
   }
 }
