@@ -6,7 +6,7 @@ Bun process**. It serves fun/games both as slash commands and as web pages, plus
 **The website is public, so security and performance are first-class concerns — code defensively:
 validate every input, never trust client data, keep the CSP tight.**
 
-**Last updated: 2026-06-21**
+**Last updated: 2026-06-30**
 
 > **Maintenance rule.** Edit this file only on *substantive architectural* change — new
 > architecture, new auth, new data flows/services, schema or security-model changes, or when
@@ -89,11 +89,28 @@ plus a global `banned` flag as an emergency kill-switch. `DevCommand` enforces `
 running. **There is no website admin panel — all bot administration is via these Discord commands.**
 
 **Events** (wired in `classes/silverwolf.ts`): `messageCreate` → keyword triggers
-(`data/keywords.json`, each maps to a script in `utils/`) and a ~1% random seasonal Pokémon summon
-(`classes/handlers/*` — normal/Christmas/Halloween/April-Fools); `interactionCreate` → command
-dispatch + button handlers; message delete/edit tracked for history.
+(`data/keywords.json`, each maps to a script in `utils/`), a ~1% random seasonal Pokémon summon
+(`classes/handlers/*` — normal/Christmas/Halloween/April-Fools), and the roleplay mention router
+(`utils/rpRuntime.ts`); `interactionCreate` → command dispatch + button handlers + autocomplete
+dispatch; message delete/edit tracked for history.
 
-**Schedulers** (`Bun.cron`): birthday announcer (hourly), baby automation (daily + every 10 min).
+**Schedulers**: `Bun.cron` jobs — birthday announcer (hourly), baby automation (daily + every 10
+min); plus a 30s `setInterval` roleplay scheduler (`classes/rpScheduler.ts`).
+
+**Roleplay** (`utils/rp*.ts`, `commands/ai_rp_*.ts`, `db.rp` → `RpCharacter`/`RpSpawn`/`RpHistory`):
+user-defined characters (`/ai rp-create-char`) spawned per-channel (`/ai rp-spawn`, ≤5/channel) that
+reply through the shared AI webhook as themselves — name + a 128×128 avatar re-hosted in a per-server
+asset channel (ServerConfig key `rp_asset_channel`, set via `/ai rp-setasset`; signed CDN URLs are
+refreshed from the stored message id). Model `deepseek/deepseek-v3.2`, no tools, **per-character
+private history** with auto-compaction (oldest ~80% folded into a first-person memory) near the 128k
+window. Spawns are **soft-deleted** so history survives removal/re-spawn. `@name` / `@id` /
+`@name-id` mentions route in `messageCreate`; `all`-mode characters also chime in via the scheduler
+(≤1 reply/channel/tick; bot/webhook messages are never heard → no bot-to-bot loops). An in-memory
+active-channel set keeps non-RP traffic off the DB. Characters are defined via command fields **or** an
+uploaded `.json` (`utils/rpCharInput.ts` — size-capped, parsed in a try/catch, only the three known
+string fields read, never spread — the upload attack surface); `details` is token-capped (~4k),
+`starting_message` char-capped (6k, split on delivery). `{user}` in details/starting-message is
+substituted with the spawner's name in **self**-mode only (left literal in `all`-mode).
 
 **Database** (`bun:sqlite`, `persistence/database.db`). Layered: `tables/` (TableDefinition schema
 objects) → `models/` (DAOs) → `queries/` (SQL strings). **Access pattern:**

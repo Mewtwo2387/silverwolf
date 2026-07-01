@@ -5,6 +5,7 @@ import * as tables from './tables';
 import serverConfigQueries from './queries/serverConfigQueries';
 import imageGenQueries from './queries/imageGenQueries';
 import battleshipsMatchQueries from './queries/battleshipsMatchQueries';
+import rpQueries from './queries/rpQueries';
 import * as modelClasses from './models';
 import type { TableDefinition, QueryResult } from './types';
 import type UserModel from './models/UserModel';
@@ -22,6 +23,7 @@ import type ServerConfigModel from './models/ServerConfigModel';
 import type BirthdayReminderModel from './models/BirthdayReminderModel';
 import type FootballMatchAnnouncementModel from './models/FootballMatchAnnouncementModel';
 import type PoopModel from './models/PoopModel';
+import type RpModel from './models/RpModel';
 import type WebSessionModel from './models/WebSessionModel';
 
 class Database {
@@ -174,6 +176,13 @@ class Database {
     // Back the per-user recent battleships-match lookup (GET_RECENT_FOR_USER).
     this.db.run(battleshipsMatchQueries.CREATE_INDEX_X_RECENT);
     this.db.run(battleshipsMatchQueries.CREATE_INDEX_O_RECENT);
+
+    // Roleplay: mention routing, the proactive "all"-mode scan, and search.
+    this.db.run(rpQueries.CREATE_INDEX_SPAWN_CHANNEL);
+    this.db.run(rpQueries.CREATE_INDEX_SPAWN_ALL);
+    this.db.run(rpQueries.CREATE_INDEX_HISTORY_SPAWN);
+    this.db.run(rpQueries.CREATE_INDEX_CHAR_NAME);
+    this.db.run(rpQueries.CREATE_INDEX_CHAR_CREATOR);
 
     // Migrate legacy ServerRoles into ServerConfig when opening an older database.
     this.migrateLegacyServerRolesIfNeeded();
@@ -332,6 +341,7 @@ class Database {
   get marriage(): MarriageModel { return this.models.MarriageModel; }
   get pokemon(): PokemonModel { return this.models.PokemonModel; }
   get poop(): PoopModel { return this.models.PoopModel; }
+  get rp(): RpModel { return this.models.RpModel; }
   get serverConfig(): ServerConfigModel { return this.models.ServerConfigModel; }
   get user(): UserModel { return this.models.UserModel; }
   get webSession(): WebSessionModel { return this.models.WebSessionModel; }

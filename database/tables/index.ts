@@ -13,6 +13,9 @@ import marriageTable from './marriageTable';
 import pokemonTable from './pokemonTable';
 import poopEntryTable from './poopEntryTable';
 import poopProfileTable from './poopProfileTable';
+import rpCharacterTable from './rpCharacterTable';
+import rpSpawnTable from './rpSpawnTable';
+import rpHistoryTable from './rpHistoryTable';
 import serverConfigTable from './serverConfigTable';
 import userTable from './userTable';
 import webSessionTable from './webSessionTable';
@@ -33,6 +36,9 @@ export {
   pokemonTable,
   poopEntryTable,
   poopProfileTable,
+  rpCharacterTable,
+  rpSpawnTable,
+  rpHistoryTable,
   serverConfigTable,
   userTable,
   webSessionTable,
@@ -52,6 +58,9 @@ export type { ImageGenLogRow } from './imageGenLogTable';
 export type { MarriageRow } from './marriageTable';
 export type { PokemonRow } from './pokemonTable';
 export type { PoopEntryRow } from './poopEntryTable';
+export type { RpCharacterRow } from './rpCharacterTable';
+export type { RpSpawnRow } from './rpSpawnTable';
+export type { RpHistoryRow } from './rpHistoryTable';
 export type { ServerConfigRow } from './serverConfigTable';
 export type { UserRow, UserStatsRow } from './userTable';
 export type { WebSessionRow } from './webSessionTable';
