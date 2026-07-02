@@ -15,7 +15,7 @@ class AiRpCreate extends Command {
   constructor(client: any) {
     super(client, 'rp-create-char', 'Create a roleplay character (fill the fields, or upload a .json)', [
       {
-        name: 'name', description: 'Short name (letters/numbers/underscore, no spaces)', type: 3, required: false, max_length: NAME_MAX_LENGTH,
+        name: 'name', description: 'Name — letters, numbers, spaces, underscores (no dashes)', type: 3, required: false, max_length: NAME_MAX_LENGTH,
       },
       {
         name: 'details', description: 'Personality / system prompt (use a .json for longer)', type: 3, required: false, max_length: DETAILS_OPTION_MAX_LENGTH,
@@ -29,7 +29,7 @@ class AiRpCreate extends Command {
       {
         name: 'json', description: 'Upload a character .json instead of the fields (allows larger details)', type: 11, required: false,
       },
-    ], { isSubcommandOf: 'ai', blame: 'xei', ephemeral: true });
+    ], { isSubcommandOf: 'ai', blame: 'xei' });
   }
 
   async run(interaction: any): Promise<void> {

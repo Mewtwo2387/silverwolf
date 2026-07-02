@@ -32,7 +32,7 @@ class AiRpSpawn extends Command {
           { name: 'disabled', value: 'disabled' },
         ],
       },
-    ], { isSubcommandOf: 'ai', blame: 'xei', ephemeral: true });
+    ], { isSubcommandOf: 'ai', blame: 'xei' });
   }
 
   async autocomplete(interaction: any): Promise<void> {

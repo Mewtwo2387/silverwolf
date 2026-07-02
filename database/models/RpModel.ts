@@ -168,6 +168,16 @@ class RpModel {
   }
 
   /**
+   * True when a human (non-bot) user turn is still waiting on a reply. Bot/webhook
+   * turns never count, so a character hears other bots/characters without the
+   * proactive scheduler triggering an endless back-and-forth.
+   */
+  async hasUnansweredHumanTurn(spawnId: number): Promise<boolean> {
+    const row = await this.db.executeSelectQuery(rpQueries.HAS_UNANSWERED_HUMAN_TURN, [spawnId, spawnId]);
+    return !!(row?.has);
+  }
+
+  /**
    * Spawns (or reactivates/reconfigures) a character in a channel, enforcing the
    * per-channel cap transactionally. Reactivating a removed spawn or a brand-new
    * one counts against the cap; a pure reconfigure of an already-active spawn does not.
@@ -263,9 +273,10 @@ class RpModel {
     role: 'user' | 'model',
     message: string,
     speaker?: { id: string | null; name: string | null },
+    fromBot = false,
   ): Promise<void> {
     await this.db.executeQuery(rpQueries.ADD_HISTORY, [
-      spawnId, role, speaker?.id ?? null, speaker?.name ?? null, message,
+      spawnId, role, speaker?.id ?? null, speaker?.name ?? null, message, fromBot ? 1 : 0,
     ]);
   }
 

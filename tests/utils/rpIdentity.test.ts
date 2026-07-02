@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'bun:test';
 import {
-  generateCharId, validateCharName, matchMentions, applyUserVar, type SpawnLike,
+  generateCharId, validateCharName, matchMentions, applyUserVar, formatCharHandle, type SpawnLike,
 } from '../../utils/rpIdentity';
 
 describe('rpIdentity.applyUserVar', () => {
@@ -32,11 +32,17 @@ describe('rpIdentity.validateCharName', () => {
     expect(validateCharName('Aven_2')).toBeNull();
   });
 
-  it('rejects spaces, dashes, and overlong names', () => {
-    expect(validateCharName('aven turine')).not.toBeNull();
+  it('rejects dashes, overlong names, and malformed spacing', () => {
     expect(validateCharName('aven-turine')).not.toBeNull();
     expect(validateCharName('a'.repeat(33))).not.toBeNull();
     expect(validateCharName('')).not.toBeNull();
+    expect(validateCharName('aven  turine')).not.toBeNull(); // doubled space
+  });
+
+  it('allows single spaces between words', () => {
+    expect(validateCharName('Silver Wolf')).toBeNull();
+    expect(validateCharName('a b c')).toBeNull();
+    expect(validateCharName('a'.repeat(32))).toBeNull();
   });
 
   it('rejects Discord-reserved names', () => {
@@ -100,5 +106,32 @@ describe('rpIdentity.matchMentions', () => {
   it('matches multiple distinct characters in one message', () => {
     const { matched } = matchMentions('@bob and @aventurine-d23 hi', spawns);
     expect(matched.map((m) => m.spawnId).sort()).toEqual([2, 3]);
+  });
+});
+
+describe('rpIdentity.formatCharHandle', () => {
+  it('strips spaces so the handle stays a single parseable token', () => {
+    expect(formatCharHandle('Silver Wolf', 'silw01')).toBe('@SilverWolf-silw01');
+    expect(formatCharHandle('bob', 'bob123')).toBe('@bob-bob123');
+  });
+});
+
+describe('rpIdentity.matchMentions with spaced names', () => {
+  const spawns: SpawnLike[] = [
+    { spawnId: 1, charId: 'silw01', nameLower: 'silver wolf' },
+    { spawnId: 2, charId: 'bob123', nameLower: 'bob' },
+  ];
+
+  it('matches a spaced name written as one token (any case)', () => {
+    expect(matchMentions('hey @SilverWolf', spawns).matched.map((m) => m.spawnId)).toEqual([1]);
+    expect(matchMentions('yo @silverwolf ok', spawns).matched.map((m) => m.spawnId)).toEqual([1]);
+  });
+
+  it('matches a spaced name by its first-word prefix', () => {
+    expect(matchMentions('@Silver you there', spawns).matched.map((m) => m.spawnId)).toEqual([1]);
+  });
+
+  it('disambiguates a spaced name with the stripped id handle', () => {
+    expect(matchMentions('@SilverWolf-silw01 hi', spawns).matched.map((m) => m.spawnId)).toEqual([1]);
   });
 });

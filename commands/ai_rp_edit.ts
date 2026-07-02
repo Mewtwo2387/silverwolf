@@ -31,7 +31,7 @@ class AiRpEdit extends Command {
       {
         name: 'json', description: 'Replace name+details+starting_message from a .json (larger details allowed)', type: 11, required: false,
       },
-    ], { isSubcommandOf: 'ai', blame: 'xei', ephemeral: true });
+    ], { isSubcommandOf: 'ai', blame: 'xei' });
   }
 
   async autocomplete(interaction: any): Promise<void> {

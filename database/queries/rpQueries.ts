@@ -95,13 +95,24 @@ const rpQueries = {
 
   // ── History ───────────────────────────────────────────────────────────────
   ADD_HISTORY: `
-    INSERT INTO RpHistory (spawn_id, role, speaker_id, speaker_name, message)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO RpHistory (spawn_id, role, speaker_id, speaker_name, message, from_bot)
+    VALUES (?, ?, ?, ?, ?, ?)
   `,
   // The un-compacted tail (rows newer than compacted_upto_id), oldest first.
   GET_HISTORY_AFTER: 'SELECT * FROM RpHistory WHERE spawn_id = ? AND id > ? ORDER BY id ASC',
   // Role of the newest turn — 'user' means the character has something to respond to.
   GET_LAST_HISTORY_ROLE: 'SELECT role FROM RpHistory WHERE spawn_id = ? ORDER BY id DESC LIMIT 1',
+  // Is there a *human* (from_bot = 0) user turn the character hasn't replied to yet?
+  // Bot/webhook turns (other characters, other apps) are context only — they never
+  // count as unanswered, so the proactive scheduler can't set off a bot-to-bot loop.
+  // Params: (spawnId, spawnId).
+  HAS_UNANSWERED_HUMAN_TURN: `
+    SELECT EXISTS(
+      SELECT 1 FROM RpHistory
+      WHERE spawn_id = ? AND role = 'user' AND from_bot = 0
+        AND id > COALESCE((SELECT MAX(id) FROM RpHistory WHERE spawn_id = ? AND role = 'model'), 0)
+    ) AS has
+  `,
   COUNT_HISTORY: 'SELECT COUNT(*) AS count FROM RpHistory WHERE spawn_id = ?',
   DELETE_HISTORY_BY_SPAWN: 'DELETE FROM RpHistory WHERE spawn_id = ?',
 

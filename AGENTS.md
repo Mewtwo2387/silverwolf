@@ -6,7 +6,7 @@ Bun process**. It serves fun/games both as slash commands and as web pages, plus
 **The website is public, so security and performance are first-class concerns — code defensively:
 validate every input, never trust client data, keep the CSP tight.**
 
-**Last updated: 2026-06-30**
+**Last updated: 2026-07-02**
 
 > **Maintenance rule.** Edit this file only on *substantive architectural* change — new
 > architecture, new auth, new data flows/services, schema or security-model changes, or when
@@ -103,14 +103,19 @@ reply through the shared AI webhook as themselves — name + a 128×128 avatar r
 asset channel (ServerConfig key `rp_asset_channel`, set via `/ai rp-setasset`; signed CDN URLs are
 refreshed from the stored message id). Model `deepseek/deepseek-v3.2`, no tools, **per-character
 private history** with auto-compaction (oldest ~80% folded into a first-person memory) near the 128k
-window. Spawns are **soft-deleted** so history survives removal/re-spawn. `@name` / `@id` /
-`@name-id` mentions route in `messageCreate`; `all`-mode characters also chime in via the scheduler
-(≤1 reply/channel/tick; bot/webhook messages are never heard → no bot-to-bot loops). An in-memory
-active-channel set keeps non-RP traffic off the DB. Characters are defined via command fields **or** an
-uploaded `.json` (`utils/rpCharInput.ts` — size-capped, parsed in a try/catch, only the three known
-string fields read, never spread — the upload attack surface); `details` is token-capped (~4k),
-`starting_message` char-capped (6k, split on delivery). `{user}` in details/starting-message is
-substituted with the spawner's name in **self**-mode only (left literal in `all`-mode).
+window. Spawns are **soft-deleted** so history survives removal/re-spawn. Names allow letters,
+numbers, underscores and single spaces (no dashes); `@name` / `@id` / `@name-id` mentions route in
+`messageCreate` and match the name with spaces stripped (`@SilverWolf` / `@Silver`). `all`-mode
+characters also chime in via the scheduler (≤1 reply/channel/tick). Bot/webhook/app messages **are**
+heard as context (`RpHistory.from_bot`) — including other characters, whose replies are fed to the
+rest of the channel at generation time (`propagateReplyToChannel`) — but only an **unanswered human
+turn** ever triggers a reply, so characters can react to each other without an infinite bot-to-bot
+loop. An in-memory active-channel set keeps non-RP traffic off the DB. Characters are defined via
+command fields **or** an uploaded `.json` (`utils/rpCharInput.ts` — size-capped, parsed in a
+try/catch, only the three known string fields read, never spread — the upload attack surface);
+`details` is token-capped (~4k), `starting_message` char-capped (6k, split on delivery). `{user}` in
+details/starting-message is substituted with the spawner's name in **self**-mode only (left literal
+in `all`-mode). The `/ai rp-*` command replies are non-ephemeral (public) except admin `rp-setasset`.
 
 **Database** (`bun:sqlite`, `persistence/database.db`). Layered: `tables/` (TableDefinition schema
 objects) → `models/` (DAOs) → `queries/` (SQL strings). **Access pattern:**
