@@ -2,7 +2,7 @@ import type { TextChannel } from 'discord.js';
 import { matchMentions, formatCharHandle } from './rpIdentity';
 import { generateRpReply } from './rpChat';
 import {
-  sendAsCharacter, postCharacterPlaceholder, editCharacterReply, deleteCharacterPlaceholder,
+  sendAsCharacter, postCharacterPlaceholder, editCharacterReply, deleteCharacterPlaceholder, isRpWebhookId,
 } from './rpDelivery';
 import { logError } from './log';
 
@@ -86,8 +86,15 @@ async function propagateReplyToChannel(
     spawns
       .filter((s) => s.interactability === 'all' && s.spawnId !== authoringSpawnId)
       .map(async (s) => {
-        await db.rp.addHistory(s.spawnId, 'user', text, { id: null, name: charName }, true);
-        await db.rp.touchSpawnActivity(s.spawnId);
+        // Isolate per-spawn: a transient DB error while sharing context with one
+        // character must not reject back into respondAsCharacter (which only has a
+        // finally), or it would abort the rest of the mention loop / scheduler tick.
+        try {
+          await db.rp.addHistory(s.spawnId, 'user', text, { id: null, name: charName }, true);
+          await db.rp.touchSpawnActivity(s.spawnId);
+        } catch (err) {
+          logError(`Rp: failed to propagate reply to spawn ${s.spawnId}:`, err);
+        }
       }),
   );
 }
@@ -214,8 +221,10 @@ export async function handleRpMessage(client: any, message: any): Promise<void> 
   // Our own character output arrives here as a webhook message too. Skip it — the
   // reply is fed to the other characters at generation time (propagateReplyToChannel)
   // with the real text, so echoing the raw "*typing*" placeholder would only pollute
-  // their context. Identify it by webhook + a username matching a spawned character.
-  const isOwnRpOutput = !!message.webhookId
+  // their context. Identify it by *our* RP webhook id (only we can post through it)
+  // plus a username matching a spawned character, so another app that reuses a
+  // character's name (a different webhook) is still heard normally.
+  const isOwnRpOutput = isRpWebhookId(message.webhookId)
     && spawns.some((s) => s.charName === message.author?.username);
 
   // All-mode characters hear the whole channel — humans AND other bots/apps — as
