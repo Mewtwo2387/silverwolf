@@ -265,16 +265,18 @@ All wrongs reserved.
       return;
     }
 
+    // Roleplay hears the whole channel — including other bots/apps — as context, but
+    // only human messages can trigger a reply (enforced in handleRpMessage). Route it
+    // before the bot short-circuit and the human-only behaviours below. Fire-and-forget;
+    // returns immediately (in-memory check) unless the channel actually has spawns.
+    handleRpMessage(this, message).catch((err) => logError('Rp: message handling failed:', err));
+
     if (message.author.bot) {
       log(`Bot message received from ${message.author.username} (${message.author.id}) in ${message.channel.name} (${message.channel.id}) in ${message.guild.name} (${message.guild.id}): ${message.content}`);
       return;
     }
 
     log(`> Message received from ${message.author.username} (${message.author.id}) in ${message.channel.name} (${message.channel.id}) in ${message.guild.name} (${message.guild.id}): ${message.content}`);
-
-    // Roleplay: route to any characters spawned in this channel. Fire-and-forget;
-    // returns immediately (in-memory check) unless the channel actually has spawns.
-    handleRpMessage(this, message).catch((err) => logError('Rp: message handling failed:', err));
 
     const guildConfig = await loadResolvedServerConfig(this.db, message.guild.id);
 

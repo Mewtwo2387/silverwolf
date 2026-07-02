@@ -11,7 +11,7 @@ class AiRpDetails extends Command {
       {
         name: 'char', description: 'Character (search by name or id)', type: 3, required: true, autocomplete: true,
       },
-    ], { isSubcommandOf: 'ai', blame: 'xei', ephemeral: true });
+    ], { isSubcommandOf: 'ai', blame: 'xei' });
   }
 
   async autocomplete(interaction: any): Promise<void> {

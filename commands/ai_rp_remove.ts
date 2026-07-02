@@ -17,7 +17,7 @@ class AiRpRemove extends Command {
         type: 5,
         required: false,
       },
-    ], { isSubcommandOf: 'ai', blame: 'xei', ephemeral: true });
+    ], { isSubcommandOf: 'ai', blame: 'xei' });
   }
 
   async autocomplete(interaction: any): Promise<void> {

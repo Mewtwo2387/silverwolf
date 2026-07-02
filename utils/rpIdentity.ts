@@ -3,8 +3,10 @@
  * the `@mention` grammar that routes channel messages to spawned characters.
  *
  * A character is identified by a 6-char lowercase-alphanumeric `char_id` plus its
- * `name`. Because names are restricted to `[A-Za-z0-9_]` (no `-`), the dash is a
- * safe separator for the disambiguated form `@name-idprefix`.
+ * `name`. Names allow letters, numbers, underscores and single spaces but never `-`,
+ * so the dash stays a safe separator for the disambiguated form `@name-idprefix`.
+ * Mentions and handles ignore spaces (a "Silver Wolf" is `@SilverWolf` / `@Silver`),
+ * since a raw `@Silver Wolf` can't be told apart from the surrounding sentence.
  */
 
 export const MAX_SPAWNS_PER_CHANNEL = 5;
@@ -23,10 +25,15 @@ export const MAX_CHAR_JSON_BYTES = 128 * 1024;
 export const USER_VAR = '{user}';
 
 const ID_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
-const NAME_RE = /^[A-Za-z0-9_]{1,32}$/;
+// Letters/numbers/underscores in words, single spaces between them (no leading,
+// trailing, or doubled spaces, and no dashes). Length is checked separately.
+const NAME_RE = /^[A-Za-z0-9_]+( [A-Za-z0-9_]+)*$/;
 // Discord rejects these substrings/values in webhook usernames.
 const RESERVED_NAME_SUBSTRINGS = ['discord', 'clyde'];
 const RESERVED_NAMES = ['everyone', 'here'];
+
+/** Strips whitespace so a spaced name collapses to a single mention token / handle. */
+const stripSpaces = (s: string): string => s.replace(/\s+/g, '');
 
 /** Generates a random 6-char lowercase-alphanumeric character id. */
 export function generateCharId(): string {
@@ -41,8 +48,8 @@ export function generateCharId(): string {
 export function validateCharName(name: string): string | null {
   const trimmed = (name ?? '').trim();
   if (!trimmed) return 'Name is required.';
-  if (!NAME_RE.test(trimmed)) {
-    return 'Name must be 1–32 characters, letters/numbers/underscores only (no spaces or dashes).';
+  if (trimmed.length > NAME_MAX_LENGTH || !NAME_RE.test(trimmed)) {
+    return `Name must be 1–${NAME_MAX_LENGTH} characters — letters, numbers, underscores and single spaces (no dashes).`;
   }
   const lower = trimmed.toLowerCase();
   if (RESERVED_NAMES.includes(lower)) return `"${trimmed}" is a reserved name.`;
@@ -52,9 +59,12 @@ export function validateCharName(name: string): string | null {
   return null;
 }
 
-/** `@aventurine-a2e4se` — the always-unique disambiguated handle for a character. */
+/**
+ * `@aventurine-a2e4se` — the always-unique disambiguated handle. Spaces are stripped
+ * so the handle stays a single parseable token (a "Silver Wolf" → `@SilverWolf-<id>`).
+ */
 export function formatCharHandle(name: string, charId: string): string {
-  return `@${name}-${charId}`;
+  return `@${stripSpaces(name)}-${charId}`;
 }
 
 /**
@@ -82,7 +92,9 @@ export interface MentionMatchResult {
 // `@` + (name|id) optionally followed by `-idprefix`. Names exclude `-`, so the
 // dash unambiguously starts the id part. Leading char must not be part of a word
 // (so emails like name@host don't trigger). The id prefix accepts either case and
-// is lowercased before matching, so `@Aventurine-A2E` disambiguates too.
+// is lowercased before matching, so `@Aventurine-A2E` disambiguates too. Names can
+// contain spaces, but a mention is a single token, so we match against the name with
+// its spaces removed (`@SilverWolf`, or the first-word prefix `@Silver`).
 const MENTION_RE = /(?:^|[^\w])@([A-Za-z0-9_]+)(?:-([A-Za-z0-9]+))?/g;
 
 /**
@@ -94,6 +106,8 @@ export function matchMentions(content: string, spawns: SpawnLike[]): MentionMatc
   const matchedById = new Map<number, SpawnLike>();
   const ambiguous: { token: string; candidates: SpawnLike[] }[] = [];
   const seenAmbiguousTokens = new Set<string>();
+  // Compare against the space-stripped name, since a mention is a single token.
+  const nameKey = (s: SpawnLike): string => stripSpaces(s.nameLower);
 
   let m: RegExpExecArray | null;
   // eslint-disable-next-line no-cond-assign
@@ -104,9 +118,9 @@ export function matchMentions(content: string, spawns: SpawnLike[]): MentionMatc
 
     let candidates: SpawnLike[];
     if (idPart) {
-      candidates = spawns.filter((s) => s.nameLower.startsWith(main) && s.charId.startsWith(idPart));
+      candidates = spawns.filter((s) => nameKey(s).startsWith(main) && s.charId.startsWith(idPart));
     } else {
-      candidates = spawns.filter((s) => s.nameLower.startsWith(main) || s.charId.startsWith(main));
+      candidates = spawns.filter((s) => nameKey(s).startsWith(main) || s.charId.startsWith(main));
     }
 
     // Dedup candidates by char (a name and id prefix could hit the same spawn twice).

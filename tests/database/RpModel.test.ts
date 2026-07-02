@@ -159,6 +159,27 @@ describe('RpModel', () => {
     expect(await rp.getLastHistoryRole(spawnId)).toBeNull();
   });
 
+  it('only counts unanswered HUMAN turns (bot turns never trigger — the loop guard)', async () => {
+    const id = await makeChar('user-1', 'listener');
+    const spawn = await rp.trySpawn({
+      channelId: CHANNEL, guildId: GUILD, charId: id, spawnerId: 'user-1', interactability: 'all', compactionEnabled: true,
+    });
+    const spawnId = spawn.spawnId!;
+    expect(await rp.hasUnansweredHumanTurn(spawnId)).toBe(false);
+
+    // A human message → unanswered.
+    await rp.addHistory(spawnId, 'user', 'hello', { id: 'user-2', name: 'Finch' });
+    expect(await rp.hasUnansweredHumanTurn(spawnId)).toBe(true);
+
+    // The character replies → answered.
+    await rp.addHistory(spawnId, 'model', 'hi Finch');
+    expect(await rp.hasUnansweredHumanTurn(spawnId)).toBe(false);
+
+    // Another character's line (from_bot) is context only — it must NOT re-trigger a reply.
+    await rp.addHistory(spawnId, 'user', 'Aventurine: evening', { id: null, name: 'Aventurine' }, true);
+    expect(await rp.hasUnansweredHumanTurn(spawnId)).toBe(false);
+  });
+
   it('tracks distinct active channels for the router fast-path', async () => {
     const id = await makeChar('user-1', 'router');
     const res = await rp.trySpawn({

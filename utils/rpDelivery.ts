@@ -18,6 +18,16 @@ const MAX_LENGTH = 2000;
 // it into the reply once the model returns.
 export const TYPING_PLACEHOLDER = '*typing.  .  .*';
 
+// Ids of the webhook(s) we post RP output through. A message from one of these whose
+// username matches an active character is our own echo — and since only we hold this
+// webhook's token, another app that merely reuses a character's name posts through a
+// *different* webhook, so it can't be misclassified. The router uses this to skip our
+// own posts (incl. the "*typing*" placeholder) out of the "heard" context.
+const rpWebhookIds = new Set<string>();
+export function isRpWebhookId(id: string | null | undefined): boolean {
+  return !!id && rpWebhookIds.has(id);
+}
+
 /** The "↩ Replying to" link button, or [] when there's nothing to link. */
 function replyButtonRow(
   replyToUrl?: string | null,
@@ -59,6 +69,9 @@ async function getRpWebhook(channel: TextChannel, client: any): Promise<any | nu
         avatar: client.user?.displayAvatarURL(),
       });
     }
+    // Remember this webhook's id so the router can recognise our own output. Recorded
+    // before we post through it, so a placeholder's messageCreate can't race ahead.
+    if (webhook?.id) rpWebhookIds.add(webhook.id);
     return webhook;
   } catch (err) {
     logError('Rp: failed to get/create webhook (missing Manage Webhooks?):', err);

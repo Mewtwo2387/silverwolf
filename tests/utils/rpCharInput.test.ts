@@ -33,7 +33,9 @@ describe('rpCharInput validators', () => {
 
   it('validateCharacterFields rejects a bad name', () => {
     expect(validateCharacterFields({ name: 'ok_name', details: 'd', startingMessage: 's' })).toBeNull();
-    expect(validateCharacterFields({ name: 'bad name', details: 'd', startingMessage: 's' })).not.toBeNull();
+    // Spaces are allowed now; a dash (the id separator) is the invalid case.
+    expect(validateCharacterFields({ name: 'Silver Wolf', details: 'd', startingMessage: 's' })).toBeNull();
+    expect(validateCharacterFields({ name: 'bad-name', details: 'd', startingMessage: 's' })).not.toBeNull();
   });
 });
 

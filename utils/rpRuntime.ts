@@ -2,15 +2,22 @@ import type { TextChannel } from 'discord.js';
 import { matchMentions, formatCharHandle } from './rpIdentity';
 import { generateRpReply } from './rpChat';
 import {
-  sendAsCharacter, postCharacterPlaceholder, editCharacterReply, deleteCharacterPlaceholder,
+  sendAsCharacter, postCharacterPlaceholder, editCharacterReply, deleteCharacterPlaceholder, isRpWebhookId,
 } from './rpDelivery';
 import { logError } from './log';
 
 /**
  * Runtime glue for roleplay: routes channel messages to spawned characters and runs
  * the proactive "all"-mode replies. Generation is throttled (only on a direct mention,
- * or one proactive reply per channel per scheduler tick); bot/webhook messages never
- * reach here (processMessage drops them), so characters never hear each other.
+ * or one proactive reply per channel per scheduler tick).
+ *
+ * Bot/webhook/app messages ARE heard (recorded as context, tagged from_bot) so a
+ * character is aware of what other bots — including other RP characters — said, but
+ * they can never *trigger* a reply: only an unanswered human turn does. That's the
+ * loop guard (a character replying can't set off another character replying forever).
+ * A character's own webhook output isn't echoed back into history here — it's fed to
+ * the other characters directly at generation time (see propagateReplyToChannel), so
+ * they get the real reply text rather than the "*typing*" placeholder.
  *
  * `activeRpChannels` is an in-memory fast-path: the message router returns instantly
  * unless the channel actually has a spawn, so normal traffic never touches the DB.
@@ -53,6 +60,43 @@ interface RespondOpts {
   userVar?: string | null;
   /** Surface a notice to the user (router uses message.reply); omit to stay silent on errors. */
   notify?: (text: string) => Promise<void>;
+}
+
+/**
+ * After a character speaks, feed its reply to the OTHER "all"-mode characters in the
+ * same channel as context (from_bot, so it never triggers them → no bot loop). Done
+ * here rather than from the webhook echo so they get the final reply text — correctly
+ * attributed and free of the "*typing*" placeholder.
+ */
+async function propagateReplyToChannel(
+  db: any,
+  channelId: string,
+  authoringSpawnId: number,
+  charName: string,
+  text: string,
+): Promise<void> {
+  let spawns: any[];
+  try {
+    spawns = await db.rp.getActiveSpawnsInChannel(channelId);
+  } catch (err) {
+    logError('Rp: failed to propagate reply to channel:', err);
+    return;
+  }
+  await Promise.all(
+    spawns
+      .filter((s) => s.interactability === 'all' && s.spawnId !== authoringSpawnId)
+      .map(async (s) => {
+        // Isolate per-spawn: a transient DB error while sharing context with one
+        // character must not reject back into respondAsCharacter (which only has a
+        // finally), or it would abort the rest of the mention loop / scheduler tick.
+        try {
+          await db.rp.addHistory(s.spawnId, 'user', text, { id: null, name: charName }, true);
+          await db.rp.touchSpawnActivity(s.spawnId);
+        } catch (err) {
+          logError(`Rp: failed to propagate reply to spawn ${s.spawnId}:`, err);
+        }
+      }),
+  );
 }
 
 /**
@@ -119,6 +163,8 @@ async function respondAsCharacter(
       if (delivered) {
         await db.rp.addHistory(spawnId, 'model', result.text);
         await db.rp.touchSpawnActivity(spawnId);
+        // Let the other "all"-mode characters here hear what this one just said.
+        await propagateReplyToChannel(db, channel.id, spawnId, row.charName, result.text);
         return;
       }
       // Delivery failed — clear any dangling placeholder and don't record the turn.
@@ -171,14 +217,29 @@ export async function handleRpMessage(client: any, message: any): Promise<void> 
   const content = message.content ?? '';
   const authorId = message.author.id;
   const speakerName = message.member?.displayName || message.author.username;
+  const isBot = !!(message.author?.bot || message.webhookId);
+  // Our own character output arrives here as a webhook message too. Skip it — the
+  // reply is fed to the other characters at generation time (propagateReplyToChannel)
+  // with the real text, so echoing the raw "*typing*" placeholder would only pollute
+  // their context. Identify it by *our* RP webhook id (only we can post through it)
+  // plus a username matching a spawned character, so another app that reuses a
+  // character's name (a different webhook) is still heard normally.
+  const isOwnRpOutput = isRpWebhookId(message.webhookId)
+    && spawns.some((s) => s.charName === message.author?.username);
 
-  // All-mode characters hear the whole channel; record every message as context.
-  // Self-mode characters only register their spawner's directed mentions (below).
-  const heard = spawns.filter((s) => s.interactability === 'all');
-  await Promise.all(heard.map(async (s) => {
-    await db.rp.addHistory(s.spawnId, 'user', content, { id: authorId, name: speakerName });
-    await db.rp.touchSpawnActivity(s.spawnId);
-  }));
+  // All-mode characters hear the whole channel — humans AND other bots/apps — as
+  // context (bot turns tagged so they can't trigger a reply). Self-mode characters
+  // only register their spawner's directed mentions (below).
+  if (!isOwnRpOutput) {
+    const heard = spawns.filter((s) => s.interactability === 'all');
+    await Promise.all(heard.map(async (s) => {
+      await db.rp.addHistory(s.spawnId, 'user', content, { id: authorId, name: speakerName }, isBot);
+      await db.rp.touchSpawnActivity(s.spawnId);
+    }));
+  }
+
+  // Bots/webhooks/apps are heard but can never trigger a reply — the loop guard.
+  if (isBot) return;
 
   if (!content.includes('@')) return;
 
@@ -227,9 +288,10 @@ export async function handleRpMessage(client: any, message: any): Promise<void> 
 }
 
 /**
- * One scheduler tick: each active "all"-mode character with an un-answered user turn
- * is a candidate; we fire at most one proactive reply per channel (so 5 characters
- * don't all pile on). Channels with nothing new stay dormant (hibernation).
+ * One scheduler tick: each active "all"-mode character with an un-answered *human*
+ * message is a candidate; we fire at most one proactive reply per channel (so 5
+ * characters don't all pile on). Bot/character chatter never makes a candidate, so
+ * idle channels stay dormant (hibernation) instead of looping forever.
  */
 export async function runProactiveRpTick(client: any): Promise<void> {
   if (typeof client.isReady === 'function' && !client.isReady()) return;
@@ -255,8 +317,8 @@ export async function runProactiveRpTick(client: any): Promise<void> {
     const candidates: any[] = [];
     for (const s of list) {
       // eslint-disable-next-line no-await-in-loop
-      const lastRole = await db.rp.getLastHistoryRole(s.spawnId);
-      if (lastRole === 'user') candidates.push(s);
+      const hasUnanswered = await db.rp.hasUnansweredHumanTurn(s.spawnId);
+      if (hasUnanswered) candidates.push(s);
     }
     if (candidates.length === 0) continue;
 

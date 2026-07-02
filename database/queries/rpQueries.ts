@@ -95,13 +95,24 @@ const rpQueries = {
 
   // ── History ───────────────────────────────────────────────────────────────
   ADD_HISTORY: `
-    INSERT INTO RpHistory (spawn_id, role, speaker_id, speaker_name, message)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO RpHistory (spawn_id, role, speaker_id, speaker_name, message, from_bot)
+    VALUES (?, ?, ?, ?, ?, ?)
   `,
   // The un-compacted tail (rows newer than compacted_upto_id), oldest first.
   GET_HISTORY_AFTER: 'SELECT * FROM RpHistory WHERE spawn_id = ? AND id > ? ORDER BY id ASC',
   // Role of the newest turn — 'user' means the character has something to respond to.
   GET_LAST_HISTORY_ROLE: 'SELECT role FROM RpHistory WHERE spawn_id = ? ORDER BY id DESC LIMIT 1',
+  // Is there a *human* (from_bot = 0) user turn the character hasn't replied to yet?
+  // Bot/webhook turns (other characters, other apps) are context only — they never
+  // count as unanswered, so the proactive scheduler can't set off a bot-to-bot loop.
+  // Params: (spawnId, spawnId).
+  HAS_UNANSWERED_HUMAN_TURN: `
+    SELECT EXISTS(
+      SELECT 1 FROM RpHistory
+      WHERE spawn_id = ? AND role = 'user' AND from_bot = 0
+        AND id > COALESCE((SELECT MAX(id) FROM RpHistory WHERE spawn_id = ? AND role = 'model'), 0)
+    ) AS has
+  `,
   COUNT_HISTORY: 'SELECT COUNT(*) AS count FROM RpHistory WHERE spawn_id = ?',
   DELETE_HISTORY_BY_SPAWN: 'DELETE FROM RpHistory WHERE spawn_id = ?',
 
@@ -109,6 +120,8 @@ const rpQueries = {
   CREATE_INDEX_SPAWN_CHANNEL: 'CREATE INDEX IF NOT EXISTS idx_rpspawn_channel_active ON RpSpawn (channel_id, active)',
   CREATE_INDEX_SPAWN_ALL: 'CREATE INDEX IF NOT EXISTS idx_rpspawn_active_interact ON RpSpawn (active, interactability)',
   CREATE_INDEX_HISTORY_SPAWN: 'CREATE INDEX IF NOT EXISTS idx_rphistory_spawn_id ON RpHistory (spawn_id, id)',
+  // Covers HAS_UNANSWERED_HUMAN_TURN (filters by role, runs per all-mode spawn each tick).
+  CREATE_INDEX_HISTORY_SPAWN_ROLE: 'CREATE INDEX IF NOT EXISTS idx_rphistory_spawn_role_id ON RpHistory (spawn_id, role, id)',
   CREATE_INDEX_CHAR_NAME: 'CREATE INDEX IF NOT EXISTS idx_rpcharacter_name_lower ON RpCharacter (name_lower)',
   CREATE_INDEX_CHAR_CREATOR: 'CREATE INDEX IF NOT EXISTS idx_rpcharacter_creator ON RpCharacter (creator_id)',
 };
