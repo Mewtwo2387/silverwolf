@@ -32,6 +32,9 @@ const NAME_RE = /^[A-Za-z0-9_]+( [A-Za-z0-9_]+)*$/;
 const RESERVED_NAME_SUBSTRINGS = ['discord', 'clyde'];
 const RESERVED_NAMES = ['everyone', 'here'];
 
+/** Strips whitespace so a spaced name collapses to a single mention token / handle. */
+const stripSpaces = (s: string): string => s.replace(/\s+/g, '');
+
 /** Generates a random 6-char lowercase-alphanumeric character id. */
 export function generateCharId(): string {
   let out = '';
@@ -61,7 +64,7 @@ export function validateCharName(name: string): string | null {
  * so the handle stays a single parseable token (a "Silver Wolf" → `@SilverWolf-<id>`).
  */
 export function formatCharHandle(name: string, charId: string): string {
-  return `@${name.replace(/\s+/g, '')}-${charId}`;
+  return `@${stripSpaces(name)}-${charId}`;
 }
 
 /**
@@ -104,7 +107,7 @@ export function matchMentions(content: string, spawns: SpawnLike[]): MentionMatc
   const ambiguous: { token: string; candidates: SpawnLike[] }[] = [];
   const seenAmbiguousTokens = new Set<string>();
   // Compare against the space-stripped name, since a mention is a single token.
-  const nameKey = (s: SpawnLike): string => s.nameLower.replace(/\s+/g, '');
+  const nameKey = (s: SpawnLike): string => stripSpaces(s.nameLower);
 
   let m: RegExpExecArray | null;
   // eslint-disable-next-line no-cond-assign

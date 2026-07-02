@@ -120,6 +120,8 @@ const rpQueries = {
   CREATE_INDEX_SPAWN_CHANNEL: 'CREATE INDEX IF NOT EXISTS idx_rpspawn_channel_active ON RpSpawn (channel_id, active)',
   CREATE_INDEX_SPAWN_ALL: 'CREATE INDEX IF NOT EXISTS idx_rpspawn_active_interact ON RpSpawn (active, interactability)',
   CREATE_INDEX_HISTORY_SPAWN: 'CREATE INDEX IF NOT EXISTS idx_rphistory_spawn_id ON RpHistory (spawn_id, id)',
+  // Covers HAS_UNANSWERED_HUMAN_TURN (filters by role, runs per all-mode spawn each tick).
+  CREATE_INDEX_HISTORY_SPAWN_ROLE: 'CREATE INDEX IF NOT EXISTS idx_rphistory_spawn_role_id ON RpHistory (spawn_id, role, id)',
   CREATE_INDEX_CHAR_NAME: 'CREATE INDEX IF NOT EXISTS idx_rpcharacter_name_lower ON RpCharacter (name_lower)',
   CREATE_INDEX_CHAR_CREATOR: 'CREATE INDEX IF NOT EXISTS idx_rpcharacter_creator ON RpCharacter (creator_id)',
 };

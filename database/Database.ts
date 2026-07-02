@@ -181,6 +181,7 @@ class Database {
     this.db.run(rpQueries.CREATE_INDEX_SPAWN_CHANNEL);
     this.db.run(rpQueries.CREATE_INDEX_SPAWN_ALL);
     this.db.run(rpQueries.CREATE_INDEX_HISTORY_SPAWN);
+    this.db.run(rpQueries.CREATE_INDEX_HISTORY_SPAWN_ROLE);
     this.db.run(rpQueries.CREATE_INDEX_CHAR_NAME);
     this.db.run(rpQueries.CREATE_INDEX_CHAR_CREATOR);
 

@@ -105,7 +105,7 @@ refreshed from the stored message id). Model `deepseek/deepseek-v3.2`, no tools,
 private history** with auto-compaction (oldest ~80% folded into a first-person memory) near the 128k
 window. Spawns are **soft-deleted** so history survives removal/re-spawn. Names allow letters,
 numbers, underscores and single spaces (no dashes); `@name` / `@id` / `@name-id` mentions route in
-`messageCreate` and match the name with spaces stripped (`@SilverWolf` / `@Silver`). `all`-mode
+`messageCreate` and match the space-stripped name by prefix (`@SilverWolf` / `@Silver`). `all`-mode
 characters also chime in via the scheduler (≤1 reply/channel/tick). Bot/webhook/app messages **are**
 heard as context (`RpHistory.from_bot`) — including other characters, whose replies are fed to the
 rest of the channel at generation time (`propagateReplyToChannel`) — but only an **unanswered human
