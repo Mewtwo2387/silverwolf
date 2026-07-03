@@ -56,6 +56,7 @@ import quote, {
   FAKEQUOTE_BACKGROUND_VALUES,
   FAKEQUOTE_PROFILE_COLOR_VALUES,
   FAKEQUOTE_FONT_VALUES,
+  FAKEQUOTE_FORMAT_VALUES,
 } from '../utils/quote';
 import { gamblerBoardTitle } from '../utils/leaderboards';
 import { getNextBirthdayInfo } from '../utils/birthdays';
@@ -1240,6 +1241,7 @@ export interface FakeQuoteParams {
   textColor?: string | null;
   profileColor?: string | null;
   fontStyle?: string | null;
+  format?: string | null;
 }
 
 export async function generateFakeQuoteWeb(
@@ -1268,6 +1270,10 @@ export async function generateFakeQuoteWeb(
   if (!FAKEQUOTE_FONT_VALUES.includes(fontStyle)) {
     return { ok: false, error: 'invalid_options' };
   }
+  const format = params.format ?? 'landscape';
+  if (!FAKEQUOTE_FORMAT_VALUES.includes(format)) {
+    return { ok: false, error: 'invalid_options' };
+  }
 
   let person;
   try {
@@ -1292,6 +1298,7 @@ export async function generateFakeQuoteWeb(
       profileColor,
       'global',
       fontStyle,
+      format,
     );
     const base64 = buffer.toString('base64');
     return { ok: true, image: `data:image/png;base64,${base64}` };

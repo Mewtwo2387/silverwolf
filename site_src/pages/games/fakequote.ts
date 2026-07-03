@@ -4,6 +4,7 @@ import type { NavUser } from '../../components/navbar';
 import { inlineJSON } from '../../inline';
 import {
   FAKEQUOTE_FONTS as FONTS,
+  FAKEQUOTE_FORMATS as FORMATS,
   FAKEQUOTE_PROFILE_COLORS as PROFILE_COLOURS,
 } from '../../../utils/quote';
 
@@ -38,6 +39,12 @@ export function FakeQuotePage(opts: { nonce: string; lv999?: boolean; user?: Nav
     font-size: 0.95rem;
     text-align: center;
     padding: 1rem;
+  }
+  .fq-viewport.portrait {
+    aspect-ratio: 4 / 5;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
   }
   .fq-viewport img {
     display: block;
@@ -212,6 +219,9 @@ export function FakeQuotePage(opts: { nonce: string; lv999?: boolean; user?: Nav
   const profileOptions = PROFILE_COLOURS.map(
     (p) => html`<option value="${p.value}">${p.label}</option>`,
   );
+  const formatOptions = FORMATS.map(
+    (f) => html`<option value="${f.value}">${f.label}</option>`,
+  );
 
   const formScript = raw(`
 <script nonce="${nonce}">
@@ -349,6 +359,7 @@ export function FakeQuotePage(opts: { nonce: string; lv999?: boolean; user?: Nav
       textColor: textColourHex.value.trim() || null,
       profileColor: form.elements.namedItem('profileColor').value,
       fontStyle: form.elements.namedItem('fontStyle').value,
+      format: form.elements.namedItem('format').value,
     };
 
     let res;
@@ -396,6 +407,8 @@ export function FakeQuotePage(opts: { nonce: string; lv999?: boolean; user?: Nav
     imageEl.style.display = 'block';
     placeholder.style.display = 'none';
     viewport.classList.add('has-image');
+    // Match the preview box to the rendered image's orientation.
+    viewport.classList.toggle('portrait', body.format === 'vertical');
     setMessage('Done.', false);
     startCooldown();
   }
@@ -425,6 +438,11 @@ export function FakeQuotePage(opts: { nonce: string; lv999?: boolean; user?: Nav
       <label>
         Profile colour
         <select name="profileColor">${profileOptions}</select>
+      </label>
+
+      <label class="full">
+        Format
+        <select name="format">${formatOptions}</select>
       </label>
 
       <label class="full">
