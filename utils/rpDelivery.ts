@@ -28,7 +28,7 @@ export function isRpWebhookId(id: string | null | undefined): boolean {
   return !!id && rpWebhookIds.has(id);
 }
 
-/** Size of the remembered webhook-id set, for /memstats diagnostics. */
+/** Size of the remembered webhook-id set, for /dev ramstats diagnostics. */
 export function getRpWebhookIdCount(): number {
   return rpWebhookIds.size;
 }

@@ -5,17 +5,13 @@ import { getRpWebhookIdCount } from './rpDelivery';
 import { getAvatarUrlCacheSize } from './rpAvatar';
 
 /**
- * Memory diagnostics for the /memstats dev command. Collects process memory,
+ * Memory diagnostics for the /dev ramstats command. Collects process memory,
  * discord.js cache sizes, the RP feature's in-memory state, and DB footprint so a
  * leak can be localised (JS heap vs native, which cache, or just DB/log growth)
  * without attaching an inspector to the prod container.
  */
 
 const DB_PATH = path.join(import.meta.dir, '../persistence/database.db');
-
-function mb(bytes: number): string {
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
 
 function fileSize(filePath: string): number {
   try {
@@ -25,7 +21,30 @@ function fileSize(filePath: string): number {
   }
 }
 
-export async function collectMemStats(client: any, forceGc = false): Promise<string> {
+export interface MemStats {
+  forceGc: boolean;
+  /** process.memoryUsage() after the optional GC */
+  mem: NodeJS.MemoryUsage;
+  /** process.memoryUsage() before the GC (equal to mem when forceGc is false) */
+  before: NodeJS.MemoryUsage;
+  guilds: number;
+  channels: number;
+  users: number;
+  messageCacheTotal: number;
+  memberCacheTotal: number;
+  rp: {
+    activeChannels: number;
+    inFlightSpawns: number;
+    webhookIds: number;
+    avatarUrlCache: number;
+  };
+  deletedMessages: number;
+  editedMessages: number;
+  dbFileBytes: number;
+  rpHistory: { count: number; bytes: number };
+}
+
+export async function collectMemStats(client: any, forceGc = false): Promise<MemStats> {
   const before = process.memoryUsage();
   if (forceGc) Bun.gc(true);
   const mem = forceGc ? process.memoryUsage() : before;
@@ -43,30 +62,24 @@ export async function collectMemStats(client: any, forceGc = false): Promise<str
   const rp = getRpRuntimeStats();
   const rpHistory = await client.db.rp.getHistoryStats();
 
-  const lines = [
-    `**Process memory**${forceGc ? ' (after forced GC)' : ''}`,
-    `rss: ${mb(mem.rss)} | heapUsed: ${mb(mem.heapUsed)} | heapTotal: ${mb(mem.heapTotal)}`,
-    `external: ${mb(mem.external)} | arrayBuffers: ${mb(mem.arrayBuffers)}`,
-  ];
-  if (forceGc) {
-    lines.push(`freed by GC: rss ${mb(before.rss - mem.rss)}, heapUsed ${mb(before.heapUsed - mem.heapUsed)}`);
-  }
-  lines.push(
-    '',
-    '**discord.js caches**',
-    `guilds: ${client.guilds.cache.size} | channels: ${client.channels.cache.size} | users: ${client.users.cache.size}`,
-    `messages (all channels): ${messageCacheTotal} | members (all guilds): ${memberCacheTotal}`,
-    '',
-    '**Roleplay in-memory state**',
-    `activeRpChannels: ${rp.activeChannels} | inFlightSpawns: ${rp.inFlightSpawns}`
-      + ` | rpWebhookIds: ${getRpWebhookIdCount()} | avatarUrlCache: ${getAvatarUrlCacheSize()}`,
-    '',
-    '**Tracked message history**',
-    `deletedMessages: ${client.deletedMessages?.length ?? 0} | editedMessages: ${client.editedMessages?.length ?? 0}`,
-    '',
-    '**Persistence**',
-    `database.db: ${mb(fileSize(DB_PATH))}`
-      + ` | RpHistory rows: ${rpHistory.count.toLocaleString()} (${mb(rpHistory.bytes)} of message text)`,
-  );
-  return lines.join('\n');
+  return {
+    forceGc,
+    mem,
+    before,
+    guilds: client.guilds.cache.size,
+    channels: client.channels.cache.size,
+    users: client.users.cache.size,
+    messageCacheTotal,
+    memberCacheTotal,
+    rp: {
+      activeChannels: rp.activeChannels,
+      inFlightSpawns: rp.inFlightSpawns,
+      webhookIds: getRpWebhookIdCount(),
+      avatarUrlCache: getAvatarUrlCacheSize(),
+    },
+    deletedMessages: client.deletedMessages?.length ?? 0,
+    editedMessages: client.editedMessages?.length ?? 0,
+    dbFileBytes: fileSize(DB_PATH),
+    rpHistory,
+  };
 }
