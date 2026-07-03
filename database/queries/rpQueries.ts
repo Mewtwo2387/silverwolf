@@ -114,6 +114,8 @@ const rpQueries = {
     ) AS has
   `,
   COUNT_HISTORY: 'SELECT COUNT(*) AS count FROM RpHistory WHERE spawn_id = ?',
+  // Whole-table footprint (row count + total message bytes) for /memstats diagnostics.
+  HISTORY_STATS: 'SELECT COUNT(*) AS count, COALESCE(SUM(LENGTH(message)), 0) AS bytes FROM RpHistory',
   DELETE_HISTORY_BY_SPAWN: 'DELETE FROM RpHistory WHERE spawn_id = ?',
 
   // ── Indexes (run on init) ─────────────────────────────────────────────────

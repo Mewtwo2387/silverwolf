@@ -285,6 +285,12 @@ class RpModel {
     return this.db.executeSelectAllQuery(rpQueries.GET_HISTORY_AFTER, [spawnId, afterId]);
   }
 
+  /** Whole-table history footprint (row count + total message bytes) for diagnostics. */
+  async getHistoryStats(): Promise<{ count: number; bytes: number }> {
+    const row = await this.db.executeSelectQuery(rpQueries.HISTORY_STATS, []);
+    return { count: row?.count ?? 0, bytes: row?.bytes ?? 0 };
+  }
+
   async countHistory(spawnId: number): Promise<number> {
     const row = await this.db.executeSelectQuery(rpQueries.COUNT_HISTORY, [spawnId]);
     return row?.count ?? 0;

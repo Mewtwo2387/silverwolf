@@ -19,6 +19,11 @@ const URL_REFRESH_MS = 12 * 60 * 60 * 1000;
 // charId -> last good signed URL + when we fetched it.
 const urlCache = new Map<string, { url: string; at: number }>();
 
+/** Size of the avatar-url cache, for /memstats diagnostics. */
+export function getAvatarUrlCacheSize(): number {
+  return urlCache.size;
+}
+
 export type ProcessResult =
   | { ok: true; buffer: Buffer }
   | { ok: false; error: string };
