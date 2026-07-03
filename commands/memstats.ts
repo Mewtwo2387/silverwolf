@@ -14,7 +14,7 @@ class MemStats extends DevCommand {
     super(client, 'memstats', 'Show process memory and cache diagnostics.', [
       {
         name: 'gc',
-        description: 'Force a full garbage collection before measuring',
+        description: 'Force a full GC before measuring (synchronous — briefly stalls the bot)',
         type: 5,
         required: false,
       },
@@ -24,7 +24,16 @@ class MemStats extends DevCommand {
   async run(interaction: any): Promise<void> {
     try {
       const report = await collectMemStats(this.client, interaction.options.getBoolean('gc') ?? false);
-      await interaction.editReply({ content: report });
+      // The report is normally a few hundred chars, but never let it hit Discord's
+      // 2000-char content limit right when the numbers get interesting.
+      if (report.length > 1900) {
+        await interaction.editReply({
+          content: 'Report too long for a message — attached instead.',
+          files: [{ attachment: Buffer.from(report, 'utf8'), name: 'memstats.txt' }],
+        });
+      } else {
+        await interaction.editReply({ content: report });
+      }
     } catch (error) {
       logError('memstats failed:', error);
       await interaction.editReply({ content: 'Failed to collect memory stats.' });
