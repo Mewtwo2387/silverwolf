@@ -31,6 +31,11 @@ const activeRpChannels = new Set<string>();
 // or out-of-order replies. Single process, so an in-memory lock suffices.
 const inFlightSpawns = new Set<number>();
 
+/** Sizes of the runtime's in-memory sets, for /memstats diagnostics. */
+export function getRpRuntimeStats(): { activeChannels: number; inFlightSpawns: number } {
+  return { activeChannels: activeRpChannels.size, inFlightSpawns: inFlightSpawns.size };
+}
+
 /** Rebuilds the active-channel set from the DB (call on boot). */
 export async function recomputeActiveRpChannels(db: any): Promise<void> {
   try {

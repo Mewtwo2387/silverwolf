@@ -28,6 +28,11 @@ export function isRpWebhookId(id: string | null | undefined): boolean {
   return !!id && rpWebhookIds.has(id);
 }
 
+/** Size of the remembered webhook-id set, for /memstats diagnostics. */
+export function getRpWebhookIdCount(): number {
+  return rpWebhookIds.size;
+}
+
 /** The "↩ Replying to" link button, or [] when there's nothing to link. */
 function replyButtonRow(
   replyToUrl?: string | null,
