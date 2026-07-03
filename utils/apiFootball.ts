@@ -20,7 +20,7 @@ const TEAM_NAME_ALIASES: Record<string, string> = {
   'IR Iran': 'Iran',
   Iran: 'Iran',
   'Cabo Verde': 'Cape Verde',
-  'Cape Verde': 'Cape Verde',
+  'Cape Verde Islands': 'Cape Verde',
   'Congo DR': 'DR Congo',
   'DR Congo': 'DR Congo',
   'Bosnia-Herzegovina': 'Bosnia & Herzegovina',
