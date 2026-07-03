@@ -147,6 +147,7 @@ export function registerGameApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf)
         textColor: get('textColor'),
         profileColor: get('profileColor'),
         fontStyle: get('fontStyle'),
+        format: get('format'),
       });
       if (!result.ok && result.error === 'rate_limited') {
         const headers: Record<string, string> = {};

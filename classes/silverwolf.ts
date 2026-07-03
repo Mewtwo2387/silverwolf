@@ -350,6 +350,11 @@ All wrongs reserved.
           }
         }
 
+        // format:v / format:vertical → portrait layout (default landscape)
+        const formatParam = getParam('format') || getParam('fmt');
+        let quoteFormat = 'landscape';
+        if (formatParam && /^v(ertical)?$/i.test(formatParam)) quoteFormat = 'vertical';
+
         // txt:#hex → text colour
         const txtParam = getParam('txt');
         let textColor = null;
@@ -376,7 +381,7 @@ All wrongs reserved.
 
         log(`original message: ${originalMessage}`);
         log(`quote params: ${JSON.stringify({
-          background, avatarSource, profileColor, fontStyle, textColor,
+          background, avatarSource, profileColor, fontStyle, textColor, quoteFormat,
         })}`);
 
         const result = await (quoteDefault as any)(
@@ -389,6 +394,7 @@ All wrongs reserved.
           profileColor,
           avatarSource,
           fontStyle,
+          quoteFormat,
         );
 
         await sentMessage.edit({ content: null, files: [result] });
