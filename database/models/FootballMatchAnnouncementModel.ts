@@ -6,6 +6,7 @@ export interface FootballMatchAnnouncementState {
   preMatchSent: boolean;
   lastHomeScore: number | null;
   lastAwayScore: number | null;
+  lastAnnouncedGoalCount: number;
   fullTimeSent: boolean;
   lastShootoutKickCount: number;
   shootoutMessageIds: Record<string, string>;
@@ -36,6 +37,7 @@ class FootballMatchAnnouncementModel {
       preMatchSent: Boolean(row.preMatchSent),
       lastHomeScore: row.lastHomeScore ?? null,
       lastAwayScore: row.lastAwayScore ?? null,
+      lastAnnouncedGoalCount: row.lastAnnouncedGoalCount ?? 0,
       fullTimeSent: Boolean(row.fullTimeSent),
       lastShootoutKickCount: row.lastShootoutKickCount ?? 0,
       shootoutMessageIds: parseShootoutMessageIds(row.shootoutMessageIds),
@@ -50,8 +52,23 @@ class FootballMatchAnnouncementModel {
     await this.db.executeQuery(footballMatchAnnouncementQueries.UPSERT_SCORE, [matchId, home, away]);
   }
 
-  async markFullTimeSent(matchId: string, home: number, away: number): Promise<void> {
-    await this.db.executeQuery(footballMatchAnnouncementQueries.UPSERT_FULL_TIME, [matchId, home, away]);
+  async markGoalAnnounced(
+    matchId: string,
+    home: number,
+    away: number,
+    goalCount: number,
+  ): Promise<void> {
+    await this.db.executeQuery(
+      footballMatchAnnouncementQueries.UPSERT_GOAL_ANNOUNCED,
+      [matchId, home, away, goalCount],
+    );
+  }
+
+  async markFullTimeSent(matchId: string, home: number, away: number, goalCount: number): Promise<void> {
+    await this.db.executeQuery(
+      footballMatchAnnouncementQueries.UPSERT_FULL_TIME,
+      [matchId, home, away, goalCount],
+    );
   }
 
   async markShootoutSynced(
@@ -85,15 +102,16 @@ class FootballMatchAnnouncementModel {
     home: number | null,
     away: number | null,
     fullTime: boolean,
+    goalCount = 0,
   ): Promise<void> {
     if (fullTime && home != null && away != null) {
-      await this.markFullTimeSent(matchId, home, away);
+      await this.markFullTimeSent(matchId, home, away, goalCount);
       return;
     }
     if (home != null && away != null) {
       await this.db.executeQuery(
         footballMatchAnnouncementQueries.UPSERT_BASELINE_WITH_SCORE,
-        [matchId, home, away],
+        [matchId, home, away, goalCount],
       );
       return;
     }

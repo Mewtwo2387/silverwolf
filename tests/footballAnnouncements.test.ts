@@ -92,8 +92,49 @@ describe('footballAnnouncements', () => {
       preMatchSent: true,
       lastHomeScore: 1,
       lastAwayScore: 0,
+      lastAnnouncedGoalCount: 1,
       fullTimeSent: false,
+      lastShootoutKickCount: 0,
+      shootoutMessageIds: {},
     })).toEqual([events[1]]);
+  });
+
+  test('getNewGoalEvents uses goal count not score totals during extra time', () => {
+    const etMatch: WorldCupMatch = {
+      round: 'Round of 16',
+      date: '2026-07-04',
+      time: '19:00 UTC+0',
+      team1: 'Argentina',
+      team2: 'Cape Verde',
+      status: 'ET',
+      score: { ft: [2, 1] },
+      goals1: [
+        { name: 'L. Messi', minute: '29' },
+        { name: 'L. Martinez', minute: '92' },
+      ],
+      goals2: [{ name: 'D. Duarte', minute: '59' }],
+    };
+    const events = getGoalEvents(etMatch);
+    expect(getNewGoalEvents(etMatch, {
+      matchId: 'x',
+      preMatchSent: true,
+      lastHomeScore: 1,
+      lastAwayScore: 1,
+      lastAnnouncedGoalCount: 2,
+      fullTimeSent: false,
+      lastShootoutKickCount: 0,
+      shootoutMessageIds: {},
+    })).toEqual([events[2]]);
+    expect(getNewGoalEvents(etMatch, {
+      matchId: 'x',
+      preMatchSent: true,
+      lastHomeScore: 2,
+      lastAwayScore: 1,
+      lastAnnouncedGoalCount: 3,
+      fullTimeSent: false,
+      lastShootoutKickCount: 0,
+      shootoutMessageIds: {},
+    })).toEqual([]);
   });
 
   test('buildReplayEmbedsForMatch includes pre-match, goals, and full time', () => {

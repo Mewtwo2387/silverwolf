@@ -5,6 +5,8 @@ import {
   buildFullTimeEmbed,
   buildPreMatchEmbed,
   buildScoreUpdateEmbed,
+  announcedGoalCount,
+  getGoalEvents,
   getNewGoalEvents,
 } from '../utils/footballAnnouncements';
 import { broadcastGoalAnnouncement, upsertPenaltyShootoutEmbed } from '../utils/footballBroadcast';
@@ -13,6 +15,7 @@ import {
   getDisplayedScore,
   getPenaltyShootoutTally,
   isFinished,
+  isLiveMatch,
   isPenaltyShootout,
   isPenaltyShootoutPhase,
   matchId,
@@ -95,11 +98,13 @@ class FootballScheduler {
           );
         }
       } else {
+        const goalCount = (match.goals1?.length ?? 0) + (match.goals2?.length ?? 0);
         await this.client.db.footballMatchAnnouncement.seedBaseline(
           id,
           score?.home ?? null,
           score?.away ?? null,
           finished,
+          goalCount,
         );
       }
       return;
@@ -125,12 +130,17 @@ class FootballScheduler {
     state = await this.announcePendingGoals(match, id, channelIds, state, finished ? true : inLiveWindow);
 
     if (finished && !state?.fullTimeSent && score) {
+      const goalCount = getGoalEvents(match).length;
       await this.announceFullTime(match, score, channelIds);
-      await this.client.db.footballMatchAnnouncement.markFullTimeSent(id, score.home, score.away);
+      await this.client.db.footballMatchAnnouncement.markFullTimeSent(
+        id, score.home, score.away, goalCount,
+      );
     } else if (
       !finished
+      && !isLiveMatch(match)
       && inLiveWindow
       && score
+      && getGoalEvents(match).length === 0
       && getNewGoalEvents(match, state).length === 0
       && this.shouldAnnounceScore(score, state, false)
     ) {
@@ -149,11 +159,18 @@ class FootballScheduler {
     if (!allowAnnounce) return state;
 
     let currentState = state;
+    let announcedGoals = announcedGoalCount(currentState);
     for (const goal of getNewGoalEvents(match, currentState)) {
       for (const channelId of channelIds) {
         await broadcastGoalAnnouncement(this.client, channelId, match, goal);
       }
-      await this.client.db.footballMatchAnnouncement.markScoreAnnounced(id, goal.home, goal.away);
+      announcedGoals += 1;
+      await this.client.db.footballMatchAnnouncement.markGoalAnnounced(
+        id,
+        goal.home,
+        goal.away,
+        announcedGoals,
+      );
       currentState = await this.client.db.footballMatchAnnouncement.getState(id);
     }
     return currentState;

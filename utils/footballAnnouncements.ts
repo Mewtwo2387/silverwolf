@@ -188,7 +188,7 @@ export function buildPenaltyShootoutEmbed(
 }
 
 export function announcedGoalCount(state: FootballMatchAnnouncementState | null): number {
-  return (state?.lastHomeScore ?? 0) + (state?.lastAwayScore ?? 0);
+  return state?.lastAnnouncedGoalCount ?? 0;
 }
 
 export function getNewGoalEvents(

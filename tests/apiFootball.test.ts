@@ -185,6 +185,45 @@ describe('apiFootball', () => {
     expect(mapped.score?.ft).toEqual([1, 0]);
   });
 
+  test('mapApiFootballFixture prefers live goals over stale fulltime during extra time', () => {
+    const mapped = mapApiFootballFixture({
+      fixture: { id: 7, date: '2026-07-04T19:00:00+00:00', status: { short: 'ET' } },
+      league: { round: 'Round of 16' },
+      teams: {
+        home: { id: 1, name: 'Argentina' },
+        away: { id: 2, name: 'Cape Verde' },
+      },
+      goals: { home: 2, away: 1 },
+      score: {
+        halftime: { home: 1, away: 0 },
+        fulltime: { home: 1, away: 1 },
+        extratime: { home: 1, away: 0 },
+      },
+      events: [{
+        time: { elapsed: 29, extra: null },
+        team: { id: 1, name: 'Argentina' },
+        player: { id: 1, name: 'L. Messi' },
+        type: 'Goal',
+        detail: 'Normal Goal',
+      }, {
+        time: { elapsed: 59, extra: null },
+        team: { id: 2, name: 'Cape Verde' },
+        player: { id: 2, name: 'D. Duarte' },
+        type: 'Goal',
+        detail: 'Normal Goal',
+      }, {
+        time: { elapsed: 92, extra: null },
+        team: { id: 1, name: 'Argentina' },
+        player: { id: 3, name: 'L. Martinez' },
+        type: 'Goal',
+        detail: 'Normal Goal',
+      }],
+    });
+
+    expect(mapped.status).toBe('ET');
+    expect(mapped.score?.ft).toEqual([2, 1]);
+  });
+
   test('mapApiFootballFixture skips penalty-shootout kicks', () => {
     const mapped = mapApiFootballFixture({
       fixture: { id: 6, date: '2026-06-20T19:00:00+00:00', status: { short: 'PEN' } },

@@ -155,8 +155,9 @@ export function mapApiFootballFixture(item: ApiFootballFixtureItem): WorldCupMat
   const time = `${String(kickoff.getUTCHours()).padStart(2, '0')}:${String(kickoff.getUTCMinutes()).padStart(2, '0')} UTC+0`;
 
   const score: WorldCupMatch['score'] = {};
-  const ftHome = item.score.fulltime.home ?? item.goals.home;
-  const ftAway = item.score.fulltime.away ?? item.goals.away;
+  // goals.home/away is the live official total; fulltime can lag behind during ET.
+  const ftHome = item.goals.home ?? item.score.fulltime.home;
+  const ftAway = item.goals.away ?? item.score.fulltime.away;
   if (ftHome != null && ftAway != null) {
     score.ft = [ftHome, ftAway];
   }
