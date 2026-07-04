@@ -24,6 +24,8 @@ describe('RpModel', () => {
     // Child → parent order to respect foreign keys.
     await db.executeQuery('DELETE FROM RpHistory');
     await db.executeQuery('DELETE FROM RpSpawn');
+    await db.executeQuery('DELETE FROM RpLorebook');
+    await db.executeQuery('DELETE FROM RpPersona');
     await db.executeQuery('DELETE FROM RpCharacter');
     await db.executeQuery('DELETE FROM User');
   });
@@ -197,5 +199,44 @@ describe('RpModel', () => {
     expect(byName.some((r) => r.nameLower === 'aventurine')).toBe(true);
     const byNamePartial = await rp.searchCharacters('robin');
     expect(byNamePartial.some((r) => r.nameLower === 'robinbird')).toBe(true);
+  });
+
+  it('creates, lists and deletes lorebooks with cap + duplicate enforcement', async () => {
+    const id = await makeChar('user-1', 'lorekeeper');
+    const add = (name: string): Promise<any> => rp.createLorebook({
+      charId: id, name, type: 'keywords', description: '', content: '[]',
+    }, 2);
+
+    expect((await add('world lore')).ok).toBe(true);
+    // Duplicate name (case-insensitive) is rejected.
+    const dup = await rp.createLorebook({
+      charId: id, name: 'World Lore', type: 'skill', description: 'd', content: 'x',
+    }, 2);
+    expect(dup).toEqual({ ok: false, reason: 'duplicate' });
+
+    expect((await add('second')).ok).toBe(true);
+    expect(await add('third')).toEqual({ ok: false, reason: 'limit' });
+
+    const books = await rp.getLorebooksByChar(id);
+    expect(books.map((b) => b.name)).toEqual(['second', 'world lore']);
+    expect(await rp.getLorebook(id, 'WORLD LORE')).not.toBeNull();
+
+    expect(await rp.deleteLorebook(id, 'world lore')).toBe(true);
+    expect(await rp.deleteLorebook(id, 'world lore')).toBe(false);
+    expect(await rp.getLorebooksByChar(id)).toHaveLength(1);
+  });
+
+  it('upserts and removes personas per user', async () => {
+    expect(await rp.getPersona('user-1')).toBeNull();
+    await rp.setPersona('user-1', 'a wandering bard');
+    expect((await rp.getPersona('user-1'))!.details).toBe('a wandering bard');
+
+    // Re-adding overwrites (add = update).
+    await rp.setPersona('user-1', 'a retired bard');
+    expect((await rp.getPersona('user-1'))!.details).toBe('a retired bard');
+
+    expect(await rp.deletePersona('user-1')).toBe(true);
+    expect(await rp.deletePersona('user-1')).toBe(false);
+    expect(await rp.getPersona('user-1')).toBeNull();
   });
 });

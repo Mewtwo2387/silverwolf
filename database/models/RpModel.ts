@@ -266,6 +266,71 @@ class RpModel {
     await this.db.executeQuery(rpQueries.RESET_COMPACTION, [spawnId]);
   }
 
+  // ── Lorebooks ───────────────────────────────────────────────────────────
+
+  /**
+   * Attaches a lorebook to a character, enforcing the per-character cap and the
+   * unique-name constraint inside one transaction (two concurrent adds can't both
+   * slip past either).
+   */
+  async createLorebook(params: {
+    charId: string;
+    name: string;
+    type: 'keywords' | 'skill';
+    description: string;
+    content: string;
+  }, maxPerChar: number): Promise<{ ok: true } | { ok: false; reason: 'limit' | 'duplicate' }> {
+    const outcome = await this.db.executeTransaction((rawDb: any) => {
+      const existing = rawDb.query(rpQueries.GET_LOREBOOK).get(params.charId, params.name.toLowerCase());
+      if (existing) return { ok: false, reason: 'duplicate' };
+      const countRow = rawDb.query(rpQueries.COUNT_LOREBOOKS_BY_CHAR).get(params.charId) as any;
+      if ((countRow?.count ?? 0) >= maxPerChar) return { ok: false, reason: 'limit' };
+      rawDb.query(rpQueries.INSERT_LOREBOOK).run(
+        params.charId,
+        params.name,
+        params.name.toLowerCase(),
+        params.type,
+        params.description,
+        params.content,
+      );
+      return { ok: true };
+    });
+    if (outcome.ok) log(`Rp: added ${params.type} lorebook "${params.name}" to character ${params.charId}`);
+    return outcome;
+  }
+
+  async getLorebooksByChar(charId: string): Promise<Record<string, any>[]> {
+    return this.db.executeSelectAllQuery(rpQueries.GET_LOREBOOKS_BY_CHAR, [charId]);
+  }
+
+  async getLorebook(charId: string, name: string): Promise<Record<string, any> | null> {
+    return this.db.executeSelectQuery(rpQueries.GET_LOREBOOK, [charId, name.toLowerCase()]);
+  }
+
+  /** Returns false when no lorebook with that name existed. */
+  async deleteLorebook(charId: string, name: string): Promise<boolean> {
+    const res = await this.db.executeQuery(rpQueries.DELETE_LOREBOOK, [charId, name.toLowerCase()]);
+    return (res.changes ?? 0) > 0;
+  }
+
+  // ── Personas ────────────────────────────────────────────────────────────
+
+  /** Creates or overwrites the user's persona (add = update). */
+  async setPersona(userId: string, details: string): Promise<void> {
+    await this.db.user.getUser(userId); // ensure the User row exists for the FK
+    await this.db.executeQuery(rpQueries.UPSERT_PERSONA, [userId, details]);
+  }
+
+  async getPersona(userId: string): Promise<Record<string, any> | null> {
+    return this.db.executeSelectQuery(rpQueries.GET_PERSONA, [userId]);
+  }
+
+  /** Returns false when the user had no persona. */
+  async deletePersona(userId: string): Promise<boolean> {
+    const res = await this.db.executeQuery(rpQueries.DELETE_PERSONA, [userId]);
+    return (res.changes ?? 0) > 0;
+  }
+
   // ── History ─────────────────────────────────────────────────────────────
 
   async addHistory(
