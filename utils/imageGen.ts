@@ -3,7 +3,7 @@ import { log, logError } from './log';
 
 export const IMAGE_GEN_TOOL_NAME = 'generate_image';
 export const IMAGE_GEN_DAILY_LIMIT = 5;
-export const IMAGE_GEN_FALLBACK_MODEL = 'black-forest-labs/flux.2-pro';
+export const IMAGE_GEN_FALLBACK_MODEL = 'google/gemini-3.1-flash-lite-image';
 
 const IMAGE_GEN_TIMEOUT_MS = 60_000;
 const MAX_PROMPT_CHARS = 2_000;

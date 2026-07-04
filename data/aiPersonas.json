@@ -55,7 +55,7 @@
       "name": "Imgen",
       "triggers": [],
       "provider": "openrouter",
-      "model": "black-forest-labs/flux.2-pro",
+      "model": "google/gemini-3.1-flash-lite-image",
       "responseModalities": ["image"]
     },
     {
