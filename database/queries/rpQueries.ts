@@ -93,6 +93,25 @@ const rpQueries = {
     WHERE spawn_id = ?
   `,
 
+  // ── Lorebooks ─────────────────────────────────────────────────────────────
+  INSERT_LOREBOOK: `
+    INSERT INTO RpLorebook (char_id, name, name_lower, type, description, content)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `,
+  GET_LOREBOOKS_BY_CHAR: 'SELECT * FROM RpLorebook WHERE char_id = ? ORDER BY name_lower ASC',
+  GET_LOREBOOK: 'SELECT * FROM RpLorebook WHERE char_id = ? AND name_lower = ?',
+  COUNT_LOREBOOKS_BY_CHAR: 'SELECT COUNT(*) AS count FROM RpLorebook WHERE char_id = ?',
+  DELETE_LOREBOOK: 'DELETE FROM RpLorebook WHERE char_id = ? AND name_lower = ?',
+
+  // ── Personas ──────────────────────────────────────────────────────────────
+  UPSERT_PERSONA: `
+    INSERT INTO RpPersona (user_id, details)
+    VALUES (?, ?)
+    ON CONFLICT(user_id) DO UPDATE SET details = excluded.details, updated_at = CURRENT_TIMESTAMP
+  `,
+  GET_PERSONA: 'SELECT * FROM RpPersona WHERE user_id = ?',
+  DELETE_PERSONA: 'DELETE FROM RpPersona WHERE user_id = ?',
+
   // ── History ───────────────────────────────────────────────────────────────
   ADD_HISTORY: `
     INSERT INTO RpHistory (spawn_id, role, speaker_id, speaker_name, message, from_bot)

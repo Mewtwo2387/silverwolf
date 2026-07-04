@@ -97,13 +97,14 @@ dispatch; message delete/edit tracked for history.
 **Schedulers**: `Bun.cron` jobs — birthday announcer (hourly), baby automation (daily + every 10
 min); plus a 30s `setInterval` roleplay scheduler (`classes/rpScheduler.ts`).
 
-**Roleplay** (`utils/rp*.ts`, `commands/ai_rp_*.ts`, `db.rp` → `RpCharacter`/`RpSpawn`/`RpHistory`):
+**Roleplay** (`utils/rp*.ts`, `commands/ai_rp_*.ts`, `db.rp` →
+`RpCharacter`/`RpSpawn`/`RpHistory`/`RpLorebook`/`RpPersona`):
 user-defined characters (`/ai rp-create-char`) spawned per-channel (`/ai rp-spawn`, ≤5/channel) that
 reply through the shared AI webhook as themselves — name + a 128×128 avatar re-hosted in a per-server
 asset channel (ServerConfig key `rp_asset_channel`, set via `/ai rp-setasset`; signed CDN URLs are
-refreshed from the stored message id). Model `deepseek/deepseek-v3.2`, no tools, **per-character
-private history** with auto-compaction (oldest ~80% folded into a first-person memory) near the 128k
-window. Spawns are **soft-deleted** so history survives removal/re-spawn. Names allow letters,
+refreshed from the stored message id). Model `deepseek/deepseek-v3.2` (reasoning on), no
+function-calling, **per-character private history** with auto-compaction (oldest ~80% folded into a
+first-person memory) near the 128k window. Spawns are **soft-deleted** so history survives removal/re-spawn. Names allow letters,
 numbers, underscores and single spaces (no dashes); `@name` / `@id` / `@name-id` mentions route in
 `messageCreate` and match the space-stripped name by prefix (`@SilverWolf` / `@Silver`). `all`-mode
 characters also chime in via the scheduler (≤1 reply/channel/tick). Bot/webhook/app messages **are**
@@ -115,7 +116,17 @@ command fields **or** an uploaded `.json` (`utils/rpCharInput.ts` — size-cappe
 try/catch, only the three known string fields read, never spread — the upload attack surface);
 `details` is token-capped (~4k), `starting_message` char-capped (6k, split on delivery). `{user}` in
 details/starting-message is substituted with the spawner's name in **self**-mode only (left literal
-in `all`-mode). The `/ai rp-*` command replies are non-ephemeral (public) except admin `rp-setasset`.
+in `all`-mode). **Lorebooks** (`utils/rpLorebook.ts`, `RpLorebook`, `/ai rp-lorebook-add/-remove/-view`,
+≤5/character, creator/dev-only editing): `keywords` (.json of `{triggers, context}` entries; plain
+word-boundary triggers matched against the un-replied human turns — **no user regex, deliberate ReDoS
+stance**) and `skill` (.md note recalled on demand via a `<recall:name>` marker → one regeneration; no
+function-calling dependency). Both inject **ephemerally into the system prompt only** — never into
+`RpHistory`, so nothing leaks into compaction (which uses the raw character details). Budgets: 200
+tokens/keyword context, 1k/skill, 4k total injected per generation. **Personas** (`RpPersona`,
+`/ai rp-persona-add/-remove`, ≤1k tokens, one per user, add = overwrite): the spawner's
+self-description injected in a `<userPersona>` block for **self-mode spawns only** (also visible to
+the compaction prompt). The `/ai rp-*` command replies are non-ephemeral (public) except admin
+`rp-setasset`, `rp-lorebook-view` (content dump is creator/dev-only) and the `rp-persona-*` pair.
 
 **Database** (`bun:sqlite`, `persistence/database.db`). Layered: `tables/` (TableDefinition schema
 objects) → `models/` (DAOs) → `queries/` (SQL strings). **Access pattern:**

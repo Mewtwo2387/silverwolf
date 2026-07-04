@@ -38,6 +38,25 @@ export async function buildCharSearchChoices(
   });
 }
 
+/**
+ * Autocomplete choices for a `lorebook_name` option, scoped to the already-picked
+ * `char` option (empty when the char can't be resolved yet).
+ */
+export async function buildLorebookNameChoices(
+  db: any,
+  charValue: string | null,
+  term: string,
+): Promise<{ name: string; value: string }[]> {
+  const character = await resolveCharOption(db, charValue);
+  if (!character) return [];
+  const books = await db.rp.getLorebooksByChar(character.charId);
+  const t = (term || '').toLowerCase();
+  return books
+    .filter((b: any) => !t || b.nameLower.includes(t))
+    .slice(0, 25)
+    .map((b: any) => ({ name: `${b.name} · ${b.type}`.slice(0, 100), value: b.name }));
+}
+
 /** Resolves a creator id to a `@username` label (fetches if not cached). */
 export async function resolveCreatorLabel(client: any, creatorId: string): Promise<string> {
   const cached = client.users.cache.get(creatorId);
@@ -95,6 +114,17 @@ export async function buildCharacterView(
     files.push(new AttachmentBuilder(Buffer.from(startingMessage, 'utf8'), { name: 'starting_message.txt' }));
   } else {
     embed.addFields({ name: 'Starting message', value: startingMessage });
+  }
+
+  // Lorebooks are listed by name only — the content is deliberately not shown here
+  // (use /ai rp-lorebook-view; full dumps are creator/dev-only).
+  const lorebooks = await db.rp.getLorebooksByChar(character.charId);
+  if (lorebooks.length > 0) {
+    const list = lorebooks.map((b: any) => `• **${b.name}** — ${b.type}`).join('\n');
+    embed.addFields({
+      name: `Lorebooks (${lorebooks.length})`,
+      value: `${list}\n*(view with \`/ai rp-lorebook-view\`)*`.slice(0, EMBED_FIELD_MAX),
+    });
   }
 
   if (freshPfp) embed.setThumbnail(freshPfp);

@@ -136,6 +136,18 @@ async function respondAsCharacter(
       client, db, channel, character,
     });
 
+    // Personas apply to self-mode only (1-1 roleplay): the spawner is the one person
+    // the character talks to, so their persona is unambiguous. All-mode has no single
+    // "the user", so personas are skipped there.
+    let persona: string | null = null;
+    if (row.interactability === 'self') {
+      try {
+        persona = (await db.rp.getPersona(row.spawnerId))?.details ?? null;
+      } catch (err) {
+        logError(`Rp: failed to load persona for user ${row.spawnerId}:`, err);
+      }
+    }
+
     const result = await generateRpReply(db, {
       spawnId,
       compactionEnabled: row.compactionEnabled === 1,
@@ -147,7 +159,7 @@ async function respondAsCharacter(
       name: row.charName,
       details: row.charDetails,
       startingMessage: row.charStartingMessage,
-    }, opts.userVar ?? null);
+    }, opts.userVar ?? null, persona);
 
     if (result.ok) {
       // Deliver first; only persist the model turn once it actually reached the

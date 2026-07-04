@@ -5,6 +5,8 @@ export default class Ai extends CommandGroup {
     super(client, 'ai', 'Manage your AI chat sessions', [
       'view', 'chatnew', 'chatswitch', 'chatdelete', 'retitle',
       'rp-create-char', 'rp-details', 'rp-edit', 'rp-spawn', 'rp-remove', 'rp-setasset',
+      'rp-lorebook-add', 'rp-lorebook-remove', 'rp-lorebook-view',
+      'rp-persona-add', 'rp-persona-remove',
     ]);
   }
 }
