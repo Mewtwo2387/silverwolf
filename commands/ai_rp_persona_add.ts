@@ -3,7 +3,9 @@ import { countTokensOpenRouter } from '../utils/tokenizer';
 import { PERSONA_MAX_TOKENS } from '../utils/rpLorebook';
 import { logError } from '../utils/log';
 
-const PERSONA_OPTION_MAX_LENGTH = 6000;
+// PERSONA_MAX_TOKENS × ~4 chars/token, so Discord's own field limit matches the
+// server-side token budget instead of accepting text that gets rejected later.
+const PERSONA_OPTION_MAX_LENGTH = 4000;
 
 /**
  * Sets your roleplay persona (issue #197) — a self-description characters see

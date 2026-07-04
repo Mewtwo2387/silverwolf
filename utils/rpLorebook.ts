@@ -177,7 +177,8 @@ export async function loadLorebookFile(
     return { ok: false, error: `That file is too large (max ${MAX_LOREBOOK_FILE_BYTES / 1024} KB).` };
   }
   try {
-    const res = await fetch(attachment.url);
+    // Timeout so a stalled CDN connection can't leave the Discord interaction hanging.
+    const res = await fetch(attachment.url, { signal: AbortSignal.timeout(10_000) });
     if (!res.ok) return { ok: false, error: 'Could not download the file. Try re-uploading.' };
     const bytes = new Uint8Array(await res.arrayBuffer());
     if (bytes.byteLength > MAX_LOREBOOK_FILE_BYTES) {

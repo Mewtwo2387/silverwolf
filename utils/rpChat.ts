@@ -24,6 +24,10 @@ import { logError, log } from './log';
 
 export const RP_MODEL = 'deepseek/deepseek-v3.2';
 const RP_MAX_OUTPUT = 8192;
+// With reasoning enabled, thinking tokens draw from the same max_tokens budget as
+// the visible reply, so every call reserves this much extra headroom on top of its
+// intended output size — otherwise a long think can truncate (or empty) the content.
+const RP_REASONING_HEADROOM = 4096;
 const RP_CONTEXT_LIMIT = 128_000;
 // Reduce context once the assembled prompt would exceed ~85% of the window.
 const COMPACTION_TRIGGER_TOKENS = Math.floor(RP_CONTEXT_LIMIT * 0.85);
@@ -161,7 +165,7 @@ async function callDeepseek(messages: ChatMessage[], maxTokens: number): Promise
   const completion = await openrouter.chat.completions.create({
     model: RP_MODEL,
     messages,
-    max_tokens: maxTokens,
+    max_tokens: maxTokens + RP_REASONING_HEADROOM,
     reasoning: { enabled: true },
   } as any);
   return completion.choices?.[0]?.message?.content ?? '';
@@ -405,6 +409,15 @@ export async function generateRpReply(
           text = await generate(recallPrompt);
         }
         text = stripRecallMarkers(text);
+        if (!text) {
+          // Marker-only output with nothing (valid) to recall — e.g. a misspelled
+          // skill name or an over-budget note. Regenerate once with the skill index
+          // suppressed so the model must answer plainly instead of dropping the turn.
+          const plainPrompt = buildSystemPrompt(character, memory, userVar, {
+            ...extras, skills: [], recalledSkills: recalled,
+          });
+          text = stripRecallMarkers(await generate(plainPrompt));
+        }
       }
     }
 
