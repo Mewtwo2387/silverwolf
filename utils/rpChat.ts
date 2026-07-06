@@ -22,7 +22,7 @@ import { logError, log } from './log';
  * A self-mode spawner's persona is injected inside <userPersona> (issue #197).
  */
 
-export const RP_MODEL = 'deepseek/deepseek-v3.2';
+export const RP_MODEL = 'deepseek/deepseek-v4-flash';
 const RP_MAX_OUTPUT = 8192;
 // With reasoning enabled, thinking tokens draw from the same max_tokens budget as
 // the visible reply, so every call reserves this much extra headroom on top of its

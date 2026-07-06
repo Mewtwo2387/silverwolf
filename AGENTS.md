@@ -102,7 +102,7 @@ min); plus a 30s `setInterval` roleplay scheduler (`classes/rpScheduler.ts`).
 user-defined characters (`/ai rp-create-char`) spawned per-channel (`/ai rp-spawn`, ≤5/channel) that
 reply through the shared AI webhook as themselves — name + a 128×128 avatar re-hosted in a per-server
 asset channel (ServerConfig key `rp_asset_channel`, set via `/ai rp-setasset`; signed CDN URLs are
-refreshed from the stored message id). Model `deepseek/deepseek-v3.2` (reasoning on), no
+refreshed from the stored message id). Model `deepseek/deepseek-v4-flash` (reasoning on), no
 function-calling, **per-character private history** with auto-compaction (oldest ~80% folded into a
 first-person memory) near the 128k window. Spawns are **soft-deleted** so history survives removal/re-spawn. Names allow letters,
 numbers, underscores and single spaces (no dashes); `@name` / `@id` / `@name-id` mentions route in
