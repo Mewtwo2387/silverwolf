@@ -7,6 +7,7 @@ import { resolvePersona, generateContent, generateTitleForHistory } from '../../
 import { IMAGE_GEN_TOOL_NAME } from '../../utils/imageGen';
 import { trimHistoryToFit } from '../../utils/tokenizer';
 import { extractPdfsFromMessage } from '../../utils/pdf';
+import { collectMediaFromMessage, tryAcquireMediaSlot, releaseMediaSlot } from '../../utils/aiMedia';
 
 const WEBHOOK_NAME = process.env.WEBHOOK_NAME || 'grok-webhook';
 
@@ -114,12 +115,41 @@ const scriptHandlers = {
     }
 
     const { blocks: pdfBlocks, notices: pdfNotices } = await extractPdfsFromMessage(message);
-    for (const notice of pdfNotices) {
+
+    // Media (image/video/audio) attachments — persona-gated, openrouter-only.
+    // Base64 buffers live in mediaParts for the duration of this generation
+    // and are never persisted; only text placeholders enter the prompt/history.
+    let mediaParts: any[] = [];
+    let mediaPlaceholders: string[] = [];
+    const mediaNotices: string[] = [];
+    let mediaSlotHeld = false;
+    const hasMediaCandidates = message.attachments.size > 0 || (contextMsg?.attachments.size ?? 0) > 0;
+    if (persona.mediaInput && persona.provider === 'openrouter' && hasMediaCandidates) {
+      if (!tryAcquireMediaSlot()) {
+        mediaNotices.push('⚠ Too many attachment-reading requests in flight right now — answering without your attachments. Try again in a moment.');
+      } else {
+        mediaSlotHeld = true;
+        try {
+          const collected = await collectMediaFromMessage(message, contextMsg);
+          mediaParts = collected.parts;
+          mediaPlaceholders = collected.placeholders;
+          mediaNotices.push(...collected.notices);
+        } catch (mediaErr) {
+          logError('AiChat: media collection failed, proceeding without attachments:', mediaErr);
+          mediaNotices.push('⚠ Couldn\'t process your attachments — answering without them.');
+          mediaParts = [];
+          mediaPlaceholders = [];
+        }
+      }
+    }
+
+    for (const notice of [...pdfNotices, ...mediaNotices]) {
       // eslint-disable-next-line no-await-in-loop
       await message.reply({ content: notice, allowedMentions: { repliedUser: false } })
-        .catch((e) => { logError('PDF notice reply failed:', e); });
+        .catch((e) => { logError('Attachment notice reply failed:', e); });
     }
     const pdfPrefix = pdfBlocks.length > 0 ? `${pdfBlocks.join('\n\n')}\n\n` : '';
+    const mediaSuffix = mediaPlaceholders.length > 0 ? `\n${mediaPlaceholders.join('\n')}` : '';
 
     let prompt = '';
 
@@ -127,9 +157,9 @@ const scriptHandlers = {
       const promptName = (contextMsg.author.username === displayName) ? 'You' : contextMsg.author.username;
       prompt = `${pdfPrefix}Previous message by ${promptName}: "${contextMsg.content}"
 
-      User ${username} said: ${query}`;
+      User ${username} said: ${query}${mediaSuffix}`;
     } else {
-      prompt = `${pdfPrefix}User ${username} said: ${query}`;
+      prompt = `${pdfPrefix}User ${username} said: ${query}${mediaSuffix}`;
     }
 
     log(`Prompt: ${prompt}`);
@@ -179,19 +209,43 @@ const scriptHandlers = {
       const webhooks = await (message.channel as TextChannel).fetchWebhooks();
       let webhook = webhooks.find((wh: any) => wh.name === WEBHOOK_NAME && wh.token);
 
-      const { text, images, toolCalls } = await generateContent({
+      const generateOnce = (withMedia: boolean) => generateContent({
         provider: persona.provider,
         model: persona.model,
         systemPrompt: persona.systemPrompt ?? '',
         prompt,
         history,
         webSearchEnabled: persona.webSearchEnabled,
+        mediaParts: withMedia ? mediaParts : [],
+        providerRouting: persona.providerRouting,
         // Image generation is Discord-only (delivery rides this webhook); the
         // rate limit is keyed to the requesting Discord user.
         imageGen: hasMemory
           ? { userId: message.author.id, db: (message.client as any).db }
           : undefined,
       });
+
+      let genResult;
+      let mediaDropped = false;
+      try {
+        genResult = await generateOnce(mediaParts.length > 0);
+      } catch (genErr) {
+        // A provider rejecting the media (bad codec, too long, …) shouldn't eat
+        // the whole reply — drop attachments and answer text-only.
+        if (mediaParts.length === 0) throw genErr;
+        logError('AiChat: generation with media failed, retrying text-only:', genErr);
+        mediaDropped = true;
+        genResult = await generateOnce(false);
+      } finally {
+        // Buffers are only referenced by mediaParts; free the slot as soon as
+        // the provider round-trip is over.
+        mediaParts = [];
+        if (mediaSlotHeld) {
+          releaseMediaSlot();
+          mediaSlotHeld = false;
+        }
+      }
+      const { text, images, toolCalls } = genResult;
 
       if (!webhook) {
         webhook = await (message.channel as TextChannel).createWebhook({
@@ -223,7 +277,13 @@ const scriptHandlers = {
         ? `-# 🔎 searched the web (${searchCallCount})\n`
         : '';
       const imagePrefix = imageCallHappened ? '-# 🎨 generated an image\n' : '';
-      let remainingText = `${searchPrefix}${imagePrefix}${(text || '').toString()}`;
+      const mediaReadPrefix = mediaPlaceholders.length > 0 && !mediaDropped
+        ? `-# 📎 read ${mediaPlaceholders.length} attachment${mediaPlaceholders.length === 1 ? '' : 's'}\n`
+        : '';
+      const mediaFailPrefix = mediaDropped
+        ? '-# ⚠ the model rejected the attachments — answered without them\n'
+        : '';
+      let remainingText = `${searchPrefix}${imagePrefix}${mediaReadPrefix}${mediaFailPrefix}${(text || '').toString()}`;
       let previousMsg: any = null;
       let filesToAttach: any[] = images || [];
 
@@ -364,6 +424,10 @@ const scriptHandlers = {
         }
       }
     } catch (err) {
+      if (mediaSlotHeld) {
+        releaseMediaSlot();
+        mediaSlotHeld = false;
+      }
       logError('AI unified handler error', err);
       await message.reply(
         'Either, our code is fucked, their API is fucked, or you are just fucked. Please try again later.',
