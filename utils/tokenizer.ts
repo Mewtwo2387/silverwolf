@@ -60,6 +60,9 @@ const CONTEXT_LIMITS: Record<string, number> = {
   'nvidia/nemotron-3-ultra-550b-a55b:free': 1_000_000,
   'deepseek/deepseek-v4-flash': 1_000_000,
   'xiaomi/mimo-v2-flash:nitro': 256_000,
+  // 1M on the pinned Xiaomi endpoint; media (base64 parts) is not counted by
+  // the tokenizer, so leave the standard reserve headroom to absorb it.
+  'xiaomi/mimo-v2.5': 1_000_000,
   // Default for unknown models
   default: 128_000,
 };

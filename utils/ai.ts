@@ -44,6 +44,10 @@ export interface Persona {
   responseModalities?: string[];
   avatarURL?: string;
   webSearchEnabled?: boolean;
+  /** OpenRouter provider-routing object (e.g. { only: ['xiaomi'], allow_fallbacks: false }). */
+  providerRouting?: Record<string, any>;
+  /** When true, Discord image/video/audio attachments are sent to the model (openrouter only). */
+  mediaInput?: boolean;
 }
 
 export interface ToolCallRecord {
@@ -131,6 +135,14 @@ interface GenerateContentOptions {
   webSearchEnabled?: boolean;
   /** When set, the model is offered the generate_image tool (Discord-only delivery). */
   imageGen?: ImageGenContext;
+  /**
+   * Multimodal content parts (image_url / video_url / input_audio) appended to
+   * the current user turn. OpenRouter provider only; base64 data — never
+   * persisted to history by callers (see utils/aiMedia.ts).
+   */
+  mediaParts?: any[];
+  /** OpenRouter provider-routing body field (pin/exclude providers). */
+  providerRouting?: Record<string, any>;
 }
 
 interface ImageAttachment {
@@ -222,6 +234,7 @@ function getImageGenConfig(): { model: string; modalities: string[] } {
 
 async function generateContent({
   provider, model, systemPrompt, prompt, history = [], webSearchEnabled = false, imageGen,
+  mediaParts = [], providerRouting,
 }: GenerateContentOptions): Promise<GenerateContentResult> {
   const now = new Date();
   const nowUTC = formatUtcTimestamp(now);
@@ -268,10 +281,16 @@ ${systemPrompt || ''}
     const useTools = toolDefs.length > 0;
     const toolNote = searchToolNote + imageGenNote;
 
+    // With media the current turn becomes a content-part array; the base64
+    // parts live only in this request body and are dropped when it completes.
+    const userText = formatMessageWithTimestamp(prompt, now);
+    const userContent = mediaParts.length > 0
+      ? [{ type: 'text', text: userText }, ...mediaParts]
+      : userText;
     const requestMessages: any[] = [
       { role: 'system' as const, content: systemPrompt + toolNote },
       ...historyMessages,
-      { role: 'user' as const, content: formatMessageWithTimestamp(prompt, now) },
+      { role: 'user' as const, content: userContent },
     ];
 
     const toolCalls: ToolCallRecord[] = [];
@@ -286,6 +305,9 @@ ${systemPrompt || ''}
         messages: requestMessages,
         max_tokens: 8192,
       };
+      if (providerRouting) {
+        requestBody.provider = providerRouting;
+      }
       if (toolsAvailable && !isLastForcedClose) {
         requestBody.tools = toolDefs;
       } else if (toolsAvailable && isLastForcedClose
@@ -319,8 +341,21 @@ ${systemPrompt || ''}
 
       const actualPromptTokens = completion.usage?.prompt_tokens;
       if (actualPromptTokens && actualPromptTokens > 0) {
+        // Array content (multimodal turns): count the text part, not the media
+        // — otherwise calibration learns an inflated multiplier from media turns.
         const estimated = countTokensOpenRouterMessages(
-          requestMessages.map((m: any) => ({ role: m.role, content: typeof m.content === 'string' ? m.content : '' })),
+          requestMessages.map((m: any) => {
+            let contentText = '';
+            if (typeof m.content === 'string') {
+              contentText = m.content;
+            } else if (Array.isArray(m.content)) {
+              contentText = m.content
+                .filter((p: any) => p?.type === 'text' && typeof p.text === 'string')
+                .map((p: any) => p.text)
+                .join('\n');
+            }
+            return { role: m.role, content: contentText };
+          }),
         );
         recordUsage(model, estimated, actualPromptTokens);
       }
