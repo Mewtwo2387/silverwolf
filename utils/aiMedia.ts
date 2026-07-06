@@ -61,7 +61,9 @@ const VIDEO_TYPES: Record<string, string> = {
   'video/mp4': 'video/mp4',
   'video/mpeg': 'video/mpeg',
   'video/webm': 'video/webm',
-  'video/quicktime': 'video/mov',
+  // OpenRouter's docs list "video/mov" as a supported *format*, but the data
+  // URL must carry the real MIME type for providers that validate it.
+  'video/quicktime': 'video/quicktime',
 };
 // contentType → OpenRouter input_audio `format` value. Discord voice messages
 // are audio/ogg (opus) — verified accepted as format "ogg".
@@ -100,6 +102,17 @@ function classify(att: Attachment): { kind: MediaKind; mime: string } | null {
 
 function fmtMB(bytes: number): string {
   return `${Math.round(bytes / (1024 * 1024))}MB`;
+}
+
+/**
+ * Cheap pre-check: does this message (or the replied-to message) carry at
+ * least one attachment collectMediaFromMessage would actually process?
+ * Used by callers to avoid burning a concurrency slot on e.g. a PDF-only
+ * message.
+ */
+export function hasQualifyingMedia(message: Message, contextMsg: Message | null = null): boolean {
+  const check = (msg: Message) => [...msg.attachments.values()].some((att) => classify(att) !== null);
+  return check(message) || (contextMsg ? check(contextMsg) : false);
 }
 
 async function downloadAttachment(att: Attachment, cap: number): Promise<Buffer | null> {
@@ -186,6 +199,12 @@ export async function collectMediaFromMessage(
     const buf = await downloadAttachment(att, cap);
     if (!buf) {
       notices.push(`⚠ Couldn't download **${att.name}** — continuing without it.`);
+      continue;
+    }
+    // Re-check the total budget against real bytes — the pre-download check
+    // used Discord metadata, which the per-file cap already refuses to trust.
+    if (totalBytes + buf.byteLength > TOTAL_MEDIA_BYTES) {
+      notices.push(`⚠ Skipped **${att.name}** — total media budget of ${fmtMB(TOTAL_MEDIA_BYTES)} per request reached.`);
       continue;
     }
     totalBytes += buf.byteLength;

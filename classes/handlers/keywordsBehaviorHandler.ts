@@ -7,7 +7,9 @@ import { resolvePersona, generateContent, generateTitleForHistory } from '../../
 import { IMAGE_GEN_TOOL_NAME } from '../../utils/imageGen';
 import { trimHistoryToFit } from '../../utils/tokenizer';
 import { extractPdfsFromMessage } from '../../utils/pdf';
-import { collectMediaFromMessage, tryAcquireMediaSlot, releaseMediaSlot } from '../../utils/aiMedia';
+import {
+  collectMediaFromMessage, hasQualifyingMedia, tryAcquireMediaSlot, releaseMediaSlot,
+} from '../../utils/aiMedia';
 
 const WEBHOOK_NAME = process.env.WEBHOOK_NAME || 'grok-webhook';
 
@@ -123,8 +125,8 @@ const scriptHandlers = {
     let mediaPlaceholders: string[] = [];
     const mediaNotices: string[] = [];
     let mediaSlotHeld = false;
-    const hasMediaCandidates = message.attachments.size > 0 || (contextMsg?.attachments.size ?? 0) > 0;
-    if (persona.mediaInput && persona.provider === 'openrouter' && hasMediaCandidates) {
+    if (persona.mediaInput && persona.provider === 'openrouter'
+      && hasQualifyingMedia(message, contextMsg)) {
       if (!tryAcquireMediaSlot()) {
         mediaNotices.push('⚠ Too many attachment-reading requests in flight right now — answering without your attachments. Try again in a moment.');
       } else {

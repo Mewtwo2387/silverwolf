@@ -341,8 +341,21 @@ ${systemPrompt || ''}
 
       const actualPromptTokens = completion.usage?.prompt_tokens;
       if (actualPromptTokens && actualPromptTokens > 0) {
+        // Array content (multimodal turns): count the text part, not the media
+        // — otherwise calibration learns an inflated multiplier from media turns.
         const estimated = countTokensOpenRouterMessages(
-          requestMessages.map((m: any) => ({ role: m.role, content: typeof m.content === 'string' ? m.content : '' })),
+          requestMessages.map((m: any) => {
+            let contentText = '';
+            if (typeof m.content === 'string') {
+              contentText = m.content;
+            } else if (Array.isArray(m.content)) {
+              contentText = m.content
+                .filter((p: any) => p?.type === 'text' && typeof p.text === 'string')
+                .map((p: any) => p.text)
+                .join('\n');
+            }
+            return { role: m.role, content: contentText };
+          }),
         );
         recordUsage(model, estimated, actualPromptTokens);
       }
