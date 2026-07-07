@@ -126,6 +126,18 @@ describe('parseComposition', () => {
     if (res.ok) expect(res.comp.programs).toEqual([{ channel: 0, program: 40 }]);
   });
 
+  test('rejects a second drums track', () => {
+    const res = parseComposition(JSON.stringify({
+      tempo: 120,
+      tracks: [
+        { instrument: 'drums', notes: [{ time: 0, pitch: 'kick', dur: 0.1 }] },
+        { instrument: 'drums', notes: [{ time: 1, pitch: 'snare', dur: 0.1 }] },
+      ],
+    }));
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error).toContain('only one "drums" track');
+  });
+
   test('rejects unknown drum names', () => {
     const res = parseComposition(JSON.stringify({
       tempo: 120,

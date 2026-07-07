@@ -556,6 +556,13 @@ ${systemPrompt || ''}
     if (useTools) {
       modelClientOptions.tools = geminiTools;
     }
+    if (musicGen && !isImageModel) {
+      // Mirror the OpenRouter composing budget: generate_music arguments are a
+      // large composition JSON that can truncate under the model's default
+      // output cap. The SDK only takes generationConfig per model/chat session,
+      // so the raised cap applies to the whole music-enabled session.
+      modelClientOptions.generationConfig = { maxOutputTokens: 32768 };
+    }
 
     const modelClient = genAI.getGenerativeModel(modelClientOptions);
 

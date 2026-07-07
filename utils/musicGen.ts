@@ -30,6 +30,8 @@ const SOUNDFONT_PATH = process.env.MUSIC_SOUNDFONT_PATH || `${import.meta.dir}/.
 
 const SAMPLE_RATE = 44100;
 const RENDER_BLOCK = 128;
+/** Yield to the event loop every this many render blocks (~0.75s of audio). */
+const YIELD_EVERY_BLOCKS = 256;
 /** Extra render time after the last note-off so releases/reverb don't cut. */
 const RELEASE_TAIL_SECONDS = 1.5;
 const MAX_TITLE_CHARS = 60;
@@ -256,6 +258,7 @@ export function parseComposition(raw: any): ParseResult {
   let maxEndSec = 0;
   const maxSongBeats = (MUSIC_MAX_SECONDS / secPerBeat) + 0.001;
 
+  let drumsTrackSeen = false;
   for (let t = 0; t < data.tracks.length; t += 1) {
     const track = data.tracks[t];
     if (!track || typeof track !== 'object') {
@@ -266,6 +269,10 @@ export function parseComposition(raw: any): ParseResult {
     const isDrums = instRaw === 'drums';
     let channel: number;
     if (isDrums) {
+      if (drumsTrackSeen) {
+        return { ok: false, error: `Error: track ${t} — only one "drums" track is allowed. Merge all drum notes into a single track.` };
+      }
+      drumsTrackSeen = true;
       channel = DRUM_CHANNEL;
     } else {
       let program: number;
@@ -399,6 +406,7 @@ async function renderComposition(comp: ParsedComposition): Promise<Buffer | null
 
   let filled = 0;
   let evIdx = 0;
+  let blocksSinceYield = 0;
   while (filled < totalSamples) {
     const now = filled / SAMPLE_RATE;
     while (evIdx < timeline.length && timeline[evIdx].timeSec <= now) {
@@ -408,6 +416,14 @@ async function renderComposition(comp: ParsedComposition): Promise<Buffer | null
     const n = Math.min(RENDER_BLOCK, totalSamples - filled);
     synth.process(left, right, filled, n);
     filled += n;
+    // The render is CPU-bound on the shared bot process — yield to the event
+    // loop every ~0.75s of audio (~20ms of work) so Discord events keep flowing.
+    blocksSinceYield += 1;
+    if (blocksSinceYield >= YIELD_EVERY_BLOCKS) {
+      blocksSinceYield = 0;
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => { setImmediate(resolve); });
+    }
   }
 
   // Peak-normalize: dense arrangements clip 16-bit WAV otherwise.
@@ -461,57 +477,60 @@ export async function runMusicGeneration(opts: {
   if (inFlightRenders >= MAX_CONCURRENT_RENDERS) {
     return { ok: false, error: 'Error: too many music renders in flight right now. Tell the user to try again in a moment.' };
   }
+  // Claim the slot synchronously — no await between the guard and this line,
+  // so concurrent tool calls cannot all pass the check before it takes effect.
+  inFlightRenders += 1;
 
   const title = sanitizeTitle(args?.title);
-
-  // Atomically count + insert the quota row (fail closed: DB errors block generation).
-  let reservationId: number | null = null;
-  try {
-    reservationId = await ctx.db.musicGen.reserveGeneration(ctx.userId, title, MUSIC_GEN_DAILY_LIMIT);
-  } catch (err) {
-    logError('[musicgen] quota reservation failed:', err);
-    return { ok: false, error: 'Error: music generation is temporarily unavailable.' };
-  }
-  if (reservationId === null) {
-    return {
-      ok: false,
-      error: `Error: this user has reached the music generation limit (${MUSIC_GEN_DAILY_LIMIT} per 24 hours). Tell them to try again later.`,
-    };
-  }
-  const reservedId = reservationId;
-  const releaseQuota = async () => {
-    await ctx.db.musicGen.markFailed(reservedId).catch((err: any) => {
-      logError('[musicgen] failed to release quota slot:', err);
-    });
-  };
-
-  log(`[musicgen] user ${ctx.userId} rendering "${title}": ${comp.noteCount} notes, `
-    + `${comp.instrumentSummary.length} track(s) [${comp.instrumentSummary.join(', ')}], `
-    + `${comp.totalSeconds.toFixed(1)}s @ ${comp.tempo} BPM`);
-
   let wav: Buffer | null = null;
-  inFlightRenders += 1;
   try {
-    wav = await renderComposition(comp);
-  } catch (err) {
-    logError('[musicgen] render failed:', err);
-    await releaseQuota();
-    return { ok: false, error: 'Error: music rendering failed. Tell the user to try again later.' };
+    // Atomically count + insert the quota row (fail closed: DB errors block generation).
+    let reservationId: number | null = null;
+    try {
+      reservationId = await ctx.db.musicGen.reserveGeneration(ctx.userId, title, MUSIC_GEN_DAILY_LIMIT);
+    } catch (err) {
+      logError('[musicgen] quota reservation failed:', err);
+      return { ok: false, error: 'Error: music generation is temporarily unavailable.' };
+    }
+    if (reservationId === null) {
+      return {
+        ok: false,
+        error: `Error: this user has reached the music generation limit (${MUSIC_GEN_DAILY_LIMIT} per 24 hours). Tell them to try again later.`,
+      };
+    }
+    const reservedId = reservationId;
+    const releaseQuota = async () => {
+      await ctx.db.musicGen.markFailed(reservedId).catch((err: any) => {
+        logError('[musicgen] failed to release quota slot:', err);
+      });
+    };
+
+    log(`[musicgen] user ${ctx.userId} rendering "${title}": ${comp.noteCount} notes, `
+      + `${comp.instrumentSummary.length} track(s) [${comp.instrumentSummary.join(', ')}], `
+      + `${comp.totalSeconds.toFixed(1)}s @ ${comp.tempo} BPM`);
+
+    try {
+      wav = await renderComposition(comp);
+    } catch (err) {
+      logError('[musicgen] render failed:', err);
+      await releaseQuota();
+      return { ok: false, error: 'Error: music rendering failed. Tell the user to try again later.' };
+    }
+
+    if (!wav) {
+      await releaseQuota();
+      return { ok: false, error: 'Error: music generation is unavailable or produced silence. Tell the user to try again later.' };
+    }
+
+    return {
+      ok: true,
+      attachment: { attachment: wav, name: `${title}.wav` },
+      resultText: `Music generated successfully: "${title}" — ${comp.totalSeconds.toFixed(1)}s at ${comp.tempo} BPM, `
+        + `${comp.noteCount} notes across ${comp.instrumentSummary.length} track(s) (${comp.instrumentSummary.join(', ')}). `
+        + 'The audio file is attached to your reply automatically — do not write a link or placeholder for it; just '
+        + 'describe the piece briefly.',
+    };
   } finally {
     inFlightRenders -= 1;
   }
-
-  if (!wav) {
-    await releaseQuota();
-    return { ok: false, error: 'Error: music generation is unavailable or produced silence. Tell the user to try again later.' };
-  }
-
-  return {
-    ok: true,
-    attachment: { attachment: wav, name: `${title}.wav` },
-    resultText: `Music generated successfully: "${title}" — ${comp.totalSeconds.toFixed(1)}s at ${comp.tempo} BPM, `
-      + `${comp.noteCount} notes across ${comp.instrumentSummary.length} track(s) (${comp.instrumentSummary.join(', ')}). `
-      + 'The audio file is attached to your reply automatically — do not write a link or placeholder for it; just '
-      + 'describe the piece briefly.',
-  };
 }
