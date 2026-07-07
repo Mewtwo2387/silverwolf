@@ -4,6 +4,7 @@ import { snakeToCamelJSON } from '../utils/caseConvert';
 import * as tables from './tables';
 import serverConfigQueries from './queries/serverConfigQueries';
 import imageGenQueries from './queries/imageGenQueries';
+import musicGenQueries from './queries/musicGenQueries';
 import battleshipsMatchQueries from './queries/battleshipsMatchQueries';
 import rpQueries from './queries/rpQueries';
 import * as modelClasses from './models';
@@ -19,6 +20,7 @@ import type CyclicTttMatchModel from './models/CyclicTttMatchModel';
 import type GameUIDModel from './models/GameUIDModel';
 import type GlobalConfigModel from './models/GlobalConfigModel';
 import type ImageGenModel from './models/ImageGenModel';
+import type MusicGenModel from './models/MusicGenModel';
 import type ServerConfigModel from './models/ServerConfigModel';
 import type BirthdayReminderModel from './models/BirthdayReminderModel';
 import type FootballMatchAnnouncementModel from './models/FootballMatchAnnouncementModel';
@@ -162,6 +164,9 @@ class Database {
 
     // Back the per-user rolling-24h image-generation rate-limit count.
     this.db.run(imageGenQueries.CREATE_USER_CREATED_INDEX);
+
+    // Back the per-user rolling-24h music-generation rate-limit count.
+    this.db.run(musicGenQueries.CREATE_USER_CREATED_INDEX);
 
     // Back the per-user recent-match lookup (GET_RECENT_FOR_USER).
     this.db.run(`
@@ -340,6 +345,7 @@ class Database {
   get globalConfig(): GlobalConfigModel { return this.models.GlobalConfigModel; }
   get imageGen(): ImageGenModel { return this.models.ImageGenModel; }
   get marriage(): MarriageModel { return this.models.MarriageModel; }
+  get musicGen(): MusicGenModel { return this.models.MusicGenModel; }
   get pokemon(): PokemonModel { return this.models.PokemonModel; }
   get poop(): PoopModel { return this.models.PoopModel; }
   get rp(): RpModel { return this.models.RpModel; }

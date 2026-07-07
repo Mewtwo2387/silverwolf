@@ -5,6 +5,7 @@ import {
 import { log, logError } from '../../utils/log';
 import { resolvePersona, generateContent, generateTitleForHistory } from '../../utils/ai';
 import { IMAGE_GEN_TOOL_NAME, IMAGE_EDIT_MAX_SOURCES } from '../../utils/imageGen';
+import { MUSIC_GEN_TOOL_NAME, MUSIC_GUIDE_TOOL_NAME } from '../../utils/musicGen';
 import { trimHistoryToFit } from '../../utils/tokenizer';
 import { extractPdfsFromMessage } from '../../utils/pdf';
 import {
@@ -253,6 +254,11 @@ const scriptHandlers = {
         imageGen: hasMemory
           ? { userId: message.author.id, db: (message.client as any).db, imageParts: imageEditParts }
           : undefined,
+        // Music generation rides the same webhook delivery; rate limit keyed
+        // to the requesting Discord user.
+        musicGen: hasMemory
+          ? { userId: message.author.id, db: (message.client as any).db }
+          : undefined,
       });
 
       let genResult;
@@ -302,19 +308,22 @@ const scriptHandlers = {
       }
 
       const MAX_LENGTH = 2000;
-      const searchCallCount = (toolCalls ?? []).filter((tc: any) => tc.name !== IMAGE_GEN_TOOL_NAME).length;
+      const nonSearchTools = [IMAGE_GEN_TOOL_NAME, MUSIC_GEN_TOOL_NAME, MUSIC_GUIDE_TOOL_NAME];
+      const searchCallCount = (toolCalls ?? []).filter((tc: any) => !nonSearchTools.includes(tc.name)).length;
       const imageCallHappened = (toolCalls ?? []).some((tc: any) => tc.name === IMAGE_GEN_TOOL_NAME && tc.ok);
+      const musicCallHappened = (toolCalls ?? []).some((tc: any) => tc.name === MUSIC_GEN_TOOL_NAME && tc.ok);
       const searchPrefix = searchCallCount > 0
         ? `-# 🔎 searched the web (${searchCallCount})\n`
         : '';
       const imagePrefix = imageCallHappened ? '-# 🎨 generated an image\n' : '';
+      const musicPrefix = musicCallHappened ? '-# 🎵 composed music\n' : '';
       const mediaReadPrefix = mediaPlaceholders.length > 0 && !mediaDropped
         ? `-# 📎 read ${mediaPlaceholders.length} attachment${mediaPlaceholders.length === 1 ? '' : 's'}\n`
         : '';
       const mediaFailPrefix = mediaDropped
         ? '-# ⚠ the model rejected the attachments — answered without them\n'
         : '';
-      let remainingText = `${searchPrefix}${imagePrefix}${mediaReadPrefix}${mediaFailPrefix}${(text || '').toString()}`;
+      let remainingText = `${searchPrefix}${imagePrefix}${musicPrefix}${mediaReadPrefix}${mediaFailPrefix}${(text || '').toString()}`;
       let previousMsg: any = null;
       let filesToAttach: any[] = images || [];
 
@@ -426,14 +435,14 @@ const scriptHandlers = {
             await (message.client as any).db.aiChat.addHistory(
               aiSession.sessionId,
               aiRole,
-              `[image-only response] ${imageMeta}`,
+              `[attachment-only response] ${imageMeta}`,
             );
           }
           if (hasImages && imageCdnUrls.length > 0) {
             await (message.client as any).db.aiChat.addHistory(
               aiSession.sessionId,
               aiRole,
-              `[generated image attached: ${imageCdnUrls.join(' ')}] (note: this link expires within ~24 hours)`,
+              `[generated file attached: ${imageCdnUrls.join(' ')}] (note: this link expires within ~24 hours)`,
             );
           }
 
