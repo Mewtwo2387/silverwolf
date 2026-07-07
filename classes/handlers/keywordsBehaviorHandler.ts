@@ -4,7 +4,7 @@ import {
 } from 'discord.js';
 import { log, logError } from '../../utils/log';
 import { resolvePersona, generateContent, generateTitleForHistory } from '../../utils/ai';
-import { IMAGE_GEN_TOOL_NAME } from '../../utils/imageGen';
+import { IMAGE_GEN_TOOL_NAME, IMAGE_EDIT_MAX_SOURCES } from '../../utils/imageGen';
 import { trimHistoryToFit } from '../../utils/tokenizer';
 import { extractPdfsFromMessage } from '../../utils/pdf';
 import {
@@ -153,7 +153,7 @@ const scriptHandlers = {
             // single attached image is editable (tool hard cap), so with
             // several the placeholders stay plain and the system note tells
             // the model to refuse edits.
-            editOnlyPlaceholders = imageEditParts.length === 1
+            editOnlyPlaceholders = imageEditParts.length <= IMAGE_EDIT_MAX_SOURCES
               ? collected.placeholders.map(
                 (p) => `${p} (you cannot view this image, but your generate_image tool can edit it)`,
               )

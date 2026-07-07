@@ -8,6 +8,7 @@ import { listSearchTools, listSearchToolsGemini, callSearchTool } from './mcp';
 import {
   IMAGE_GEN_TOOL_NAME,
   IMAGE_GEN_DAILY_LIMIT,
+  IMAGE_EDIT_MAX_SOURCES,
   IMAGE_GEN_FALLBACK_MODEL,
   imageGenToolDef,
   imageGenGeminiDecl,
@@ -66,10 +67,10 @@ function buildImageGenNote(imageGen?: ImageGenContext): string {
   if (!imageGen) return '';
   let note = `\n\nYou have a ${IMAGE_GEN_TOOL_NAME} tool. Call it ONLY when the user explicitly asks you to generate, create, draw, or edit an image. The image is attached to your reply automatically — never claim you cannot generate images, and never invent image links. Limit: ${IMAGE_GEN_DAILY_LIMIT} generations per user per 24 hours.`;
   const attachedCount = imageGen.imageParts?.length ?? 0;
-  if (attachedCount === 1) {
-    note += ` The user's current message has 1 attached image; if they ask you to edit, modify, restyle, or transform it, call ${IMAGE_GEN_TOOL_NAME} with use_attached_images=true and a prompt describing the desired change.`;
-  } else if (attachedCount > 1) {
-    note += ` The user's current message has ${attachedCount} attached images, but ${IMAGE_GEN_TOOL_NAME} accepts only ONE attached image per edit. If the user asks for an edit, do NOT call the tool — politely tell them to send a message with exactly one image attached.`;
+  if (attachedCount > 0 && attachedCount <= IMAGE_EDIT_MAX_SOURCES) {
+    note += ` The user's current message has ${attachedCount} attached image${attachedCount === 1 ? '' : 's'}; if they ask you to edit, modify, restyle, or transform ${attachedCount === 1 ? 'it' : 'them'}, call ${IMAGE_GEN_TOOL_NAME} with use_attached_images=true and a prompt describing the desired change.`;
+  } else if (attachedCount > IMAGE_EDIT_MAX_SOURCES) {
+    note += ` The user's current message has ${attachedCount} attached images, but ${IMAGE_GEN_TOOL_NAME} accepts only ${IMAGE_EDIT_MAX_SOURCES} attached image${IMAGE_EDIT_MAX_SOURCES === 1 ? '' : 's'} per edit. If the user asks for an edit, do NOT call the tool — politely tell them to send a message with at most ${IMAGE_EDIT_MAX_SOURCES} image${IMAGE_EDIT_MAX_SOURCES === 1 ? '' : 's'} attached.`;
   }
   return note;
 }

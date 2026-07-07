@@ -22,8 +22,8 @@ const TOOL_DESCRIPTION = 'Generate an image from a text prompt, or edit the sing
 
 const USE_ATTACHED_DESCRIPTION = 'Set to true to use the image attached to the user\'s current message as the '
   + 'base for an edit/transformation (the prompt then describes the desired change). Only valid when the current '
-  + 'message has EXACTLY ONE image attachment — calls are rejected when the message has none or several; in the '
-  + 'multi-image case, refuse the edit and ask the user to attach a single image.';
+  + `message has EXACTLY ${IMAGE_EDIT_MAX_SOURCES} image attachment(s) — calls are rejected when the message has `
+  + 'none or more than that; in the multi-image case, refuse the edit and ask the user to attach a single image.';
 
 export interface ImageGenContext {
   /** Discord user id of the requester (rate-limit key). */
