@@ -17,6 +17,27 @@ async function sha256Hex(data: ArrayBuffer): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+/** Docker builds run this on every cold cache — don't let one transient
+ * network blip fail the whole image build. */
+async function downloadWithRetry(url: string, attempts: number): Promise<ArrayBuffer> {
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Download failed: HTTP ${res.status}`);
+      return await res.arrayBuffer();
+    } catch (err) {
+      lastErr = err;
+      if (attempt < attempts) {
+        const delayMs = attempt * 2000;
+        console.log(`Attempt ${attempt} failed (${err instanceof Error ? err.message : err}) — retrying in ${delayMs / 1000}s...`);
+        await new Promise((resolve) => { setTimeout(resolve, delayMs); });
+      }
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+}
+
 async function main(): Promise<void> {
   const existing = Bun.file(DEST);
   if (await existing.exists()) {
@@ -29,11 +50,7 @@ async function main(): Promise<void> {
   }
 
   console.log(`Downloading GeneralUser GS (~31 MB) from ${URL} ...`);
-  const res = await fetch(URL);
-  if (!res.ok) {
-    throw new Error(`Download failed: HTTP ${res.status}`);
-  }
-  const data = await res.arrayBuffer();
+  const data = await downloadWithRetry(URL, 3);
   const hash = await sha256Hex(data);
   if (hash !== SHA256) {
     throw new Error(`Checksum mismatch!\n  expected ${SHA256}\n  got      ${hash}`);

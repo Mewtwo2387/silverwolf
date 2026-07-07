@@ -70,6 +70,23 @@ export interface ToolCallRecord {
 
 const MAX_TOOL_ITERATIONS = 5;
 const MAX_TITLE_CHARS = 80;
+const MAX_RECORDED_COMPOSITION_CHARS = 500;
+
+/**
+ * ToolCallRecords are persisted as audit rows in chat history; a generate_music
+ * composition can be tens of KB, so truncate it — keep enough to identify the
+ * piece without bloating the DB.
+ */
+function redactToolCallArgs(name: string, args: Record<string, any>): Record<string, any> {
+  if (name === MUSIC_GEN_TOOL_NAME && typeof args.composition === 'string'
+    && args.composition.length > MAX_RECORDED_COMPOSITION_CHARS) {
+    return {
+      ...args,
+      composition: `${args.composition.slice(0, MAX_RECORDED_COMPOSITION_CHARS)}… [truncated, ${args.composition.length} chars total]`,
+    };
+  }
+  return args;
+}
 
 /** System-prompt note advertising the generate_image tool (and, when the
  * triggering message carried images, the attached-image edit path). */
@@ -488,7 +505,7 @@ ${systemPrompt || ''}
               : `<<MCP_TOOL_RESULT>>\n${r.resultText}\n<</MCP_TOOL_RESULT>>`,
           });
           toolCalls.push({
-            name: r.callName, args: r.parsedArgs, resultText: r.resultText, ok: r.ok,
+            name: r.callName, args: redactToolCallArgs(r.callName, r.parsedArgs), resultText: r.resultText, ok: r.ok,
           });
           if (r.callName === MUSIC_GUIDE_TOOL_NAME && r.ok) musicGuideRead = true;
         }
@@ -632,7 +649,7 @@ ${systemPrompt || ''}
             const genContent = genRes.ok ? genRes.resultText : genRes.error;
             if (genRes.ok) generatedImages.push(genRes.attachment);
             toolCalls.push({
-              name: fc.name, args, resultText: genContent, ok: genRes.ok,
+              name: fc.name, args: redactToolCallArgs(fc.name, args), resultText: genContent, ok: genRes.ok,
             });
             return {
               functionResponse: {
@@ -648,7 +665,7 @@ ${systemPrompt || ''}
             const genContent = genRes.ok ? genRes.resultText : genRes.error;
             if (genRes.ok) generatedImages.push(genRes.attachment);
             toolCalls.push({
-              name: fc.name, args, resultText: genContent, ok: genRes.ok,
+              name: fc.name, args: redactToolCallArgs(fc.name, args), resultText: genContent, ok: genRes.ok,
             });
             return {
               functionResponse: {
