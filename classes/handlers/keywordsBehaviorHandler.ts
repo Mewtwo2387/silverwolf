@@ -118,29 +118,55 @@ const scriptHandlers = {
 
     const { blocks: pdfBlocks, notices: pdfNotices } = await extractPdfsFromMessage(message);
 
-    // Media (image/video/audio) attachments — persona-gated, openrouter-only.
-    // Base64 buffers live in mediaParts for the duration of this generation
+    // Media (image/video/audio) attachments. Two consumers:
+    //  - vision input (mediaParts → the chat model's user turn): persona-gated
+    //    (mediaInput), openrouter-only;
+    //  - image editing (imageEditParts → the generate_image tool as edit
+    //    sources): any persona with imageGen enabled, images only.
+    // Base64 buffers live in these arrays for the duration of this generation
     // and are never persisted; only text placeholders enter the prompt/history.
     let mediaParts: any[] = [];
+    let imageEditParts: any[] = [];
     let mediaPlaceholders: string[] = [];
+    let editOnlyPlaceholders: string[] = [];
     const mediaNotices: string[] = [];
     let mediaSlotHeld = false;
-    if (persona.mediaInput && persona.provider === 'openrouter'
-      && hasQualifyingMedia(message, contextMsg)) {
+    const visionCapable = !!persona.mediaInput && persona.provider === 'openrouter';
+    const imageGenEnabled = hasMemory;
+    const shouldCollectMedia = (visionCapable && hasQualifyingMedia(message, contextMsg))
+      || (imageGenEnabled && hasQualifyingMedia(message, contextMsg, true));
+    if (shouldCollectMedia) {
       if (!tryAcquireMediaSlot()) {
         mediaNotices.push('⚠ Too many attachment-reading requests in flight right now — answering without your attachments. Try again in a moment.');
       } else {
         mediaSlotHeld = true;
         try {
-          const collected = await collectMediaFromMessage(message, contextMsg);
-          mediaParts = collected.parts;
-          mediaPlaceholders = collected.placeholders;
+          // Non-vision personas only ever need the images (for editing).
+          const collected = await collectMediaFromMessage(message, contextMsg, !visionCapable);
+          imageEditParts = collected.parts.filter((p: any) => p?.type === 'image_url');
+          if (visionCapable) {
+            mediaParts = collected.parts;
+            mediaPlaceholders = collected.placeholders;
+          } else {
+            // The chat model can't see these — placeholders tell it the images
+            // exist so it can offer/perform edits via generate_image. Only a
+            // single attached image is editable (tool hard cap), so with
+            // several the placeholders stay plain and the system note tells
+            // the model to refuse edits.
+            editOnlyPlaceholders = imageEditParts.length === 1
+              ? collected.placeholders.map(
+                (p) => `${p} (you cannot view this image, but your generate_image tool can edit it)`,
+              )
+              : collected.placeholders.map((p) => `${p} (you cannot view this image)`);
+          }
           mediaNotices.push(...collected.notices);
         } catch (mediaErr) {
           logError('AiChat: media collection failed, proceeding without attachments:', mediaErr);
           mediaNotices.push('⚠ Couldn\'t process your attachments — answering without them.');
           mediaParts = [];
+          imageEditParts = [];
           mediaPlaceholders = [];
+          editOnlyPlaceholders = [];
         }
       }
     }
@@ -151,7 +177,8 @@ const scriptHandlers = {
         .catch((e) => { logError('Attachment notice reply failed:', e); });
     }
     const pdfPrefix = pdfBlocks.length > 0 ? `${pdfBlocks.join('\n\n')}\n\n` : '';
-    const mediaSuffix = mediaPlaceholders.length > 0 ? `\n${mediaPlaceholders.join('\n')}` : '';
+    const allPlaceholders = [...mediaPlaceholders, ...editOnlyPlaceholders];
+    const mediaSuffix = allPlaceholders.length > 0 ? `\n${allPlaceholders.join('\n')}` : '';
 
     let prompt = '';
 
@@ -221,9 +248,10 @@ const scriptHandlers = {
         mediaParts: withMedia ? mediaParts : [],
         providerRouting: persona.providerRouting,
         // Image generation is Discord-only (delivery rides this webhook); the
-        // rate limit is keyed to the requesting Discord user.
+        // rate limit is keyed to the requesting Discord user. Attached images
+        // ride along as edit sources for the generate_image tool.
         imageGen: hasMemory
-          ? { userId: message.author.id, db: (message.client as any).db }
+          ? { userId: message.author.id, db: (message.client as any).db, imageParts: imageEditParts }
           : undefined,
       });
 
@@ -239,9 +267,10 @@ const scriptHandlers = {
         mediaDropped = true;
         genResult = await generateOnce(false);
       } finally {
-        // Buffers are only referenced by mediaParts; free the slot as soon as
-        // the provider round-trip is over.
+        // Buffers are only referenced by these arrays; free the slot as soon
+        // as the provider round-trip is over.
         mediaParts = [];
+        imageEditParts = [];
         if (mediaSlotHeld) {
           releaseMediaSlot();
           mediaSlotHeld = false;

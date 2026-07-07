@@ -60,6 +60,20 @@ export interface ToolCallRecord {
 const MAX_TOOL_ITERATIONS = 5;
 const MAX_TITLE_CHARS = 80;
 
+/** System-prompt note advertising the generate_image tool (and, when the
+ * triggering message carried images, the attached-image edit path). */
+function buildImageGenNote(imageGen?: ImageGenContext): string {
+  if (!imageGen) return '';
+  let note = `\n\nYou have a ${IMAGE_GEN_TOOL_NAME} tool. Call it ONLY when the user explicitly asks you to generate, create, draw, or edit an image. The image is attached to your reply automatically — never claim you cannot generate images, and never invent image links. Limit: ${IMAGE_GEN_DAILY_LIMIT} generations per user per 24 hours.`;
+  const attachedCount = imageGen.imageParts?.length ?? 0;
+  if (attachedCount === 1) {
+    note += ` The user's current message has 1 attached image; if they ask you to edit, modify, restyle, or transform it, call ${IMAGE_GEN_TOOL_NAME} with use_attached_images=true and a prompt describing the desired change.`;
+  } else if (attachedCount > 1) {
+    note += ` The user's current message has ${attachedCount} attached images, but ${IMAGE_GEN_TOOL_NAME} accepts only ONE attached image per edit. If the user asks for an edit, do NOT call the tool — politely tell them to send a message with exactly one image attached.`;
+  }
+  return note;
+}
+
 /**
  * Some open models (Qwen/Hermes/DeepSeek lineage) emit tool calls as plain text
  * — e.g. `<tool_call><function=web_search><parameter=query>…` — instead of via the
@@ -217,6 +231,13 @@ function getPersonaInvokeLabel(personaName: string): string {
   return String(trigger).replace(/^@/, '').toUpperCase();
 }
 
+/** Model id configured for a persona (empty string when the persona is unknown). */
+function getPersonaModelName(personaName: string): string {
+  const personas: Persona[] = personasConfig.personas || [];
+  const found = personas.find((p) => p.name.toLowerCase() === String(personaName).toLowerCase());
+  return found?.model || '';
+}
+
 /**
  * Generates content (text and/or images) from the specified AI provider and model.
  */
@@ -275,9 +296,7 @@ ${systemPrompt || ''}
     if (imageGen) {
       toolDefs = [...toolDefs, imageGenToolDef()];
     }
-    const imageGenNote = imageGen
-      ? `\n\nYou have a ${IMAGE_GEN_TOOL_NAME} tool. Call it ONLY when the user explicitly asks you to generate, create, or draw an image. The image is attached to your reply automatically — never claim you cannot generate images, and never invent image links. Limit: ${IMAGE_GEN_DAILY_LIMIT} generations per user per 24 hours.`
-      : '';
+    const imageGenNote = buildImageGenNote(imageGen);
     const useTools = toolDefs.length > 0;
     const toolNote = searchToolNote + imageGenNote;
 
@@ -461,9 +480,7 @@ ${systemPrompt || ''}
       if (geminiTools.length === 0) geminiTools = [{ functionDeclarations: [] }];
       geminiTools[0].functionDeclarations.push(imageGenGeminiDecl());
     }
-    const imageGenNote = imageGen && !isImageModel
-      ? `\n\nYou have a ${IMAGE_GEN_TOOL_NAME} tool. Call it ONLY when the user explicitly asks you to generate, create, or draw an image. The image is attached to your reply automatically — never claim you cannot generate images, and never invent image links. Limit: ${IMAGE_GEN_DAILY_LIMIT} generations per user per 24 hours.`
-      : '';
+    const imageGenNote = !isImageModel ? buildImageGenNote(imageGen) : '';
     const useTools = geminiTools.length > 0;
     const toolNote = searchToolNote + imageGenNote;
 
@@ -783,4 +800,5 @@ export {
   getOpenRouterClient,
   getPersonaByName,
   getPersonaInvokeLabel,
+  getPersonaModelName,
 };

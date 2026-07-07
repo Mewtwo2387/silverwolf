@@ -108,10 +108,18 @@ function fmtMB(bytes: number): string {
  * Cheap pre-check: does this message (or the replied-to message) carry at
  * least one attachment collectMediaFromMessage would actually process?
  * Used by callers to avoid burning a concurrency slot on e.g. a PDF-only
- * message.
+ * message. With `imagesOnly`, only image attachments qualify (the imageGen
+ * edit-source path — video/audio are irrelevant there).
  */
-export function hasQualifyingMedia(message: Message, contextMsg: Message | null = null): boolean {
-  const check = (msg: Message) => [...msg.attachments.values()].some((att) => classify(att) !== null);
+export function hasQualifyingMedia(
+  message: Message,
+  contextMsg: Message | null = null,
+  imagesOnly = false,
+): boolean {
+  const check = (msg: Message) => [...msg.attachments.values()].some((att) => {
+    const cls = classify(att);
+    return cls !== null && (!imagesOnly || cls.kind === 'image');
+  });
   return check(message) || (contextMsg ? check(contextMsg) : false);
 }
 
@@ -139,11 +147,14 @@ async function downloadAttachment(att: Attachment, cap: number): Promise<Buffer 
  * Gathers media from `message` first, then from the replied-to message (so a
  * "@mi what's in this?" reply to a voice message / image works). Enforces
  * per-type counts, per-file and total byte budgets; everything over a cap is
- * skipped with a notice rather than failing the request.
+ * skipped with a notice rather than failing the request. With `imagesOnly`,
+ * video/audio attachments are silently ignored (imageGen edit-source path for
+ * personas whose chat model has no media input).
  */
 export async function collectMediaFromMessage(
   message: Message,
   contextMsg: Message | null = null,
+  imagesOnly = false,
 ): Promise<MediaCollectionResult> {
   const parts: any[] = [];
   const placeholders: string[] = [];
@@ -168,6 +179,8 @@ export async function collectMediaFromMessage(
         skippedUnsupported += 1;
         continue;
       }
+      // imagesOnly: non-image media simply isn't relevant, not "unsupported".
+      if (imagesOnly && cls.kind !== 'image') continue;
       candidates.push({
         att, kind: cls.kind, mime: cls.mime, fromReply,
       });
@@ -226,7 +239,7 @@ export async function collectMediaFromMessage(
       notices.push(`⚠ Only the first ${maxCounts[kind]} ${kind}${maxCounts[kind] === 1 ? '' : 's'} per request ${maxCounts[kind] === 1 ? 'is' : 'are'} processed — skipped ${skippedOverCount[kind]} extra.`);
     }
   }
-  if (skippedUnsupported > 0 && parts.length === 0 && candidates.length === 0) {
+  if (!imagesOnly && skippedUnsupported > 0 && parts.length === 0 && candidates.length === 0) {
     notices.push('⚠ Attachment type not supported — I can read images (png/jpg/webp/gif/bmp), video (mp4/webm/mov) and audio (ogg/mp3/wav/flac/m4a).');
   }
 
