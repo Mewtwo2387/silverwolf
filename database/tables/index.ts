@@ -10,6 +10,7 @@ import gameUIDTable from './gameUIDTable';
 import globalConfigTable from './globalConfigTable';
 import imageGenLogTable from './imageGenLogTable';
 import marriageTable from './marriageTable';
+import musicGenLogTable from './musicGenLogTable';
 import pokemonTable from './pokemonTable';
 import poopEntryTable from './poopEntryTable';
 import poopProfileTable from './poopProfileTable';
@@ -35,6 +36,7 @@ export {
   globalConfigTable,
   imageGenLogTable,
   marriageTable,
+  musicGenLogTable,
   pokemonTable,
   poopEntryTable,
   poopProfileTable,
@@ -60,6 +62,7 @@ export type { GameUIDRow } from './gameUIDTable';
 export type { GlobalConfigRow } from './globalConfigTable';
 export type { ImageGenLogRow } from './imageGenLogTable';
 export type { MarriageRow } from './marriageTable';
+export type { MusicGenLogRow } from './musicGenLogTable';
 export type { PokemonRow } from './pokemonTable';
 export type { PoopEntryRow } from './poopEntryTable';
 export type { RpCharacterRow } from './rpCharacterTable';

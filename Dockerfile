@@ -32,6 +32,11 @@ COPY tailwind.config.js ./
 RUN bun build ./site_src/Assets/app.src.js --minify --outfile ./site_src/Assets/app.js \
     && bunx --bun tailwindcss@3 -i ./site_src/Assets/input.css -o ./site_src/Assets/styles.css --minify
 
+# 5. Fetch the GM soundfont for the JAYDON music generator (checksum-verified,
+#    cached as a layer — only re-downloads when the fetch script changes).
+COPY scripts/fetch-soundfont.ts ./scripts/fetch-soundfont.ts
+RUN bun scripts/fetch-soundfont.ts
+
 # --- STAGE 2: Run ---
 # Use 'slim' (Debian) for a smaller final image that is still compatible with Stage 1
 FROM oven/bun:1-slim
@@ -62,6 +67,8 @@ COPY --chown=bun:bun . .
 # runtime are the ones the builder just produced.
 COPY --from=builder --chown=bun:bun /app/site_src/Assets/styles.css ./site_src/Assets/styles.css
 COPY --from=builder --chown=bun:bun /app/site_src/Assets/app.js ./site_src/Assets/app.js
+# Soundfont downloaded + checksum-verified in the builder stage.
+COPY --from=builder --chown=bun:bun /app/data/soundfonts ./data/soundfonts
 
 # Refresh font cache
 RUN fc-cache -f
