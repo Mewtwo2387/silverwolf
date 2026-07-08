@@ -3,7 +3,13 @@ import {
   type TextChannel,
 } from 'discord.js';
 import { log, logError } from '../../utils/log';
-import { resolvePersona, generateContent, generateTitleForHistory } from '../../utils/ai';
+import {
+  resolvePersona,
+  generateContent,
+  generateTitleForHistory,
+  DAILY_LIMIT,
+  WEEKLY_LIMIT,
+} from '../../utils/ai';
 import { IMAGE_GEN_TOOL_NAME, IMAGE_EDIT_MAX_SOURCES } from '../../utils/imageGen';
 import { MUSIC_GEN_TOOL_NAME, MUSIC_GUIDE_TOOL_NAME } from '../../utils/musicGen';
 import { trimHistoryToFit } from '../../utils/tokenizer';
@@ -240,6 +246,8 @@ const scriptHandlers = {
       let webhook = webhooks.find((wh: any) => wh.name === WEBHOOK_NAME && wh.token);
 
       const generateOnce = (withMedia: boolean) => generateContent({
+        db: (message.client as any).db,
+        userId: message.author.id,
         provider: persona.provider,
         model: persona.model,
         systemPrompt: persona.systemPrompt ?? '',
@@ -463,10 +471,25 @@ const scriptHandlers = {
           logError('AiChat: Failed to save history:', saveErr);
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       if (mediaSlotHeld) {
         releaseMediaSlot();
         mediaSlotHeld = false;
+      }
+      if (err?.message === 'RATE_LIMIT_EXCEEDED') {
+        const db = (message.client as any).db;
+        const dailyUsage = await db.aiUsage.getDailyUsage(message.author.id);
+        const weeklyUsage = await db.aiUsage.getWeeklyUsage(message.author.id);
+        const reachedDaily = dailyUsage >= DAILY_LIMIT;
+
+        const limitLabel = reachedDaily ? 'Daily' : 'Weekly';
+        const usageVal = reachedDaily ? dailyUsage : weeklyUsage;
+        const limitVal = reachedDaily ? DAILY_LIMIT : WEEKLY_LIMIT;
+
+        await message.reply(
+          `⚠️ **${limitLabel} AI Rate Limit Reached**\nYou have consumed **${usageVal.toLocaleString()}** / **${limitVal.toLocaleString()}** tokens in the last ${reachedDaily ? '24 hours' : '7 days'}. Please wait for your token pool to cool down.`,
+        );
+        return;
       }
       logError('AI unified handler error', err);
       await message.reply(
