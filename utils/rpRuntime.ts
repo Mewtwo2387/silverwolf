@@ -195,6 +195,13 @@ async function respondAsCharacter(
     // Generation failed — clear the dangling "typing…" before surfacing anything.
     if (typing) await deleteCharacterPlaceholder(typing);
 
+    if (result.reason === 'rate_limited') {
+      const notice = `⚠️ **${row.charName}** cannot respond because the triggering user has exceeded their AI usage limit (daily or weekly).`;
+      if (opts.notify) await opts.notify(notice);
+      else await channel.send({ content: notice, allowedMentions: { parse: [] } }).catch(() => {});
+      return;
+    }
+
     if (result.reason === 'compaction_failed') {
       const notice = `⚠️ **${row.charName}** has run out of context and automatic compaction failed. `
         + 'Mention them again to retry — if it keeps failing the oldest messages will be dropped instead.';
@@ -335,7 +342,16 @@ export async function runProactiveRpTick(client: any): Promise<void> {
     for (const s of list) {
       // eslint-disable-next-line no-await-in-loop
       const hasUnanswered = await db.rp.hasUnansweredHumanTurn(s.spawnId);
-      if (hasUnanswered) candidates.push(s);
+      if (hasUnanswered) {
+        const lastSpeaker = await db.rp.getLastHumanSpeaker(s.spawnId);
+        if (lastSpeaker) {
+          const isLimited = await db.aiUsage.isRateLimited(lastSpeaker);
+          if (isLimited) {
+            continue;
+          }
+        }
+        candidates.push(s);
+      }
     }
     if (candidates.length === 0) continue;
 

@@ -2,6 +2,7 @@ import { html, raw } from 'hono/html';
 import type { HtmlEscapedString } from 'hono/utils/html';
 import { Layout } from '../components/layout';
 import type { NavUser } from '../components/navbar';
+import { DAILY_LIMIT, WEEKLY_LIMIT } from '../../utils/ai';
 import { numSpan, numSpanSuffix } from '../format';
 import { getMaxLevel, getBekiCooldown } from '../../utils/upgrades';
 import {
@@ -31,6 +32,8 @@ export interface DashboardProfile {
   marriageBenefits: number;
   poopStats: Record<string, any> | null;
   poopProfile: Record<string, any> | null;
+  aiUsageDaily: number;
+  aiUsageWeekly: number;
 }
 
 const styles = raw(`
@@ -272,6 +275,21 @@ export function HomePage(opts: {
   const commonPoopType = poopStats?.commonType ?? 'N/A';
   const commonPoopColour = poopStats?.commonColour ?? 'N/A';
 
+  const reachedDaily = profile.aiUsageDaily >= DAILY_LIMIT;
+  const reachedWeekly = profile.aiUsageWeekly >= WEEKLY_LIMIT;
+  const isAiRateLimited = reachedDaily || reachedWeekly;
+
+  const aiStatusLabel = isAiRateLimited
+    ? html`<span style="color: #ef4444;">Rate Limited</span>`
+    : html`<span style="color: #10b981;">Active</span>`;
+
+  let aiStatusDetail = 'Token pool is cool';
+  if (reachedDaily) {
+    aiStatusDetail = 'Daily limit exceeded';
+  } else if (reachedWeekly) {
+    aiStatusDetail = 'Weekly limit exceeded';
+  }
+
   const body = html`
     ${styles}
     <div class="me-header">
@@ -297,6 +315,33 @@ export function HomePage(opts: {
           <div class="me-card">
             <div class="label">Heavenly Nuggies</div>
             <div class="value">${numSpan(stats.heavenlyNuggies ?? 0)}</div>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details>
+      <summary>AI Usage</summary>
+      <div class="details-content">
+        <div class="me-grid">
+          <div class="me-card">
+            <div class="label">Daily Usage (24h)</div>
+            <div class="value">${numSpan(profile.aiUsageDaily)}</div>
+            <div class="label" style="margin-top:0.25rem">of ${DAILY_LIMIT.toLocaleString()} tokens</div>
+          </div>
+          <div class="me-card">
+            <div class="label">Weekly Usage (7d)</div>
+            <div class="value">${numSpan(profile.aiUsageWeekly)}</div>
+            <div class="label" style="margin-top:0.25rem">of ${WEEKLY_LIMIT.toLocaleString()} tokens</div>
+          </div>
+          <div class="me-card">
+            <div class="label">Status</div>
+            <div class="value" style="font-size: 1.5rem; font-weight: 600;">
+              ${aiStatusLabel}
+            </div>
+            <div class="label" style="margin-top:0.25rem">
+              ${aiStatusDetail}
+            </div>
           </div>
         </div>
       </div>

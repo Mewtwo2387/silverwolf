@@ -3,7 +3,12 @@ import {
   type TextChannel,
 } from 'discord.js';
 import { log, logError } from '../../utils/log';
-import { resolvePersona, generateContent, generateTitleForHistory } from '../../utils/ai';
+import {
+  resolvePersona,
+  generateContent,
+  generateTitleForHistory,
+} from '../../utils/ai';
+import { getRateLimitErrorMessage } from '../../utils/discordRateLimit';
 import { IMAGE_GEN_TOOL_NAME, IMAGE_EDIT_MAX_SOURCES } from '../../utils/imageGen';
 import { MUSIC_GEN_TOOL_NAME, MUSIC_GUIDE_TOOL_NAME } from '../../utils/musicGen';
 import { trimHistoryToFit } from '../../utils/tokenizer';
@@ -240,6 +245,8 @@ const scriptHandlers = {
       let webhook = webhooks.find((wh: any) => wh.name === WEBHOOK_NAME && wh.token);
 
       const generateOnce = (withMedia: boolean) => generateContent({
+        db: (message.client as any).db,
+        userId: message.author.id,
         provider: persona.provider,
         model: persona.model,
         systemPrompt: persona.systemPrompt ?? '',
@@ -265,7 +272,8 @@ const scriptHandlers = {
       let mediaDropped = false;
       try {
         genResult = await generateOnce(mediaParts.length > 0);
-      } catch (genErr) {
+      } catch (genErr: any) {
+        if (genErr?.message === 'RATE_LIMIT_EXCEEDED') throw genErr;
         // A provider rejecting the media (bad codec, too long, …) shouldn't eat
         // the whole reply — drop attachments and answer text-only.
         if (mediaParts.length === 0) throw genErr;
@@ -463,10 +471,16 @@ const scriptHandlers = {
           logError('AiChat: Failed to save history:', saveErr);
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       if (mediaSlotHeld) {
         releaseMediaSlot();
         mediaSlotHeld = false;
+      }
+      if (err?.message === 'RATE_LIMIT_EXCEEDED') {
+        const db = (message.client as any).db;
+        const content = await getRateLimitErrorMessage(message.author.id, db);
+        await message.reply(content);
+        return;
       }
       logError('AI unified handler error', err);
       await message.reply(

@@ -70,6 +70,7 @@ export interface RpSpawnState {
 export interface RpHistoryTurn {
   id: number;
   role: 'user' | 'model';
+  speakerId?: string | null;
   speakerName: string | null;
   message: string;
   fromBot: boolean;
@@ -157,7 +158,10 @@ function estimateTokens(systemPrompt: string, tail: RpHistoryTurn[]): number {
   return countTokensOpenRouterMessages(msgs);
 }
 
-async function callDeepseek(messages: ChatMessage[], maxTokens: number): Promise<string> {
+async function callDeepseek(
+  messages: ChatMessage[],
+  maxTokens: number,
+): Promise<{ text: string; promptTokens: number; completionTokens: number }> {
   if (!process.env.OPENROUTER_API_KEY) {
     throw new Error('OPENROUTER_API_KEY is not set');
   }
@@ -168,7 +172,10 @@ async function callDeepseek(messages: ChatMessage[], maxTokens: number): Promise
     max_tokens: maxTokens + RP_REASONING_HEADROOM,
     reasoning: { enabled: true },
   } as any);
-  return completion.choices?.[0]?.message?.content ?? '';
+  const text = completion.choices?.[0]?.message?.content ?? '';
+  const promptTokens = completion.usage?.prompt_tokens ?? 0;
+  const completionTokens = completion.usage?.completion_tokens ?? 0;
+  return { text, promptTokens, completionTokens };
 }
 
 /** Drops oldest rows until the tail fits the truncation target, keeping the newest. */
@@ -243,10 +250,11 @@ Output ONLY the updated memory wrapped exactly as ${MEMORY_OPEN}...${MEMORY_CLOS
 
   let raw = '';
   try {
-    raw = await callDeepseek(
+    const res = await callDeepseek(
       [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
       4096,
     );
+    raw = res.text;
   } catch (err) {
     logError(`Rp: compaction request failed for spawn ${spawnId}:`, err);
     return { ok: false };
@@ -265,7 +273,7 @@ Output ONLY the updated memory wrapped exactly as ${MEMORY_OPEN}...${MEMORY_CLOS
 
 export type RpReplyResult =
   | { ok: true; text: string }
-  | { ok: false; reason: 'compaction_failed' }
+  | { ok: false; reason: 'compaction_failed' | 'rate_limited' }
   | { ok: false; reason: 'error' };
 
 async function loadTail(db: any, spawnId: number, afterId: number): Promise<RpHistoryTurn[]> {
@@ -273,6 +281,7 @@ async function loadTail(db: any, spawnId: number, afterId: number): Promise<RpHi
   return rows.map((r: any) => ({
     id: r.id,
     role: r.role,
+    speakerId: r.speakerId ?? null,
     speakerName: r.speakerName ?? null,
     message: r.message,
     fromBot: r.fromBot === 1,
@@ -329,6 +338,26 @@ export async function generateRpReply(
     let uptoId = spawn.compactedUptoId ?? 0;
     let tail = await loadTail(db, spawn.spawnId, uptoId);
 
+    // Identify triggering user (last human turn author in tail) and check rate limit
+    let lastUserTurn: RpHistoryTurn | undefined;
+    for (let i = tail.length - 1; i >= 0; i -= 1) {
+      const t = tail[i];
+      if (t.role === 'user' && !t.fromBot) {
+        lastUserTurn = t;
+        break;
+      }
+    }
+    const triggeringUserId = lastUserTurn?.speakerId;
+    if (triggeringUserId) {
+      const isLimited = await db.aiUsage.isRateLimited(triggeringUserId);
+      if (isLimited) {
+        return { ok: false, reason: 'rate_limited' };
+      }
+    }
+
+    let totalPromptTokens = 0;
+    let totalCompletionTokens = 0;
+
     let lorebooks: any[] = [];
     try {
       lorebooks = await db.rp.getLorebooksByChar(character.charId);
@@ -377,7 +406,10 @@ export async function generateRpReply(
         { role: 'system', content: prompt },
         ...tail.map(turnToMessage),
       ];
-      return (await callDeepseek(messages, RP_MAX_OUTPUT)).trim();
+      const res = await callDeepseek(messages, RP_MAX_OUTPUT);
+      totalPromptTokens += res.promptTokens;
+      totalCompletionTokens += res.completionTokens;
+      return res.text.trim();
     };
 
     let text = await generate(systemPrompt);
@@ -422,6 +454,20 @@ export async function generateRpReply(
     }
 
     if (!text) return { ok: false, reason: 'error' };
+
+    // Log AI usage for all active human users involved in the tail
+    const activeUsers = [...new Set(
+      tail
+        .filter((t) => t.role === 'user' && !t.fromBot && t.speakerId)
+        .map((t) => t.speakerId!),
+    )];
+    if (activeUsers.length === 0 && triggeringUserId) {
+      activeUsers.push(triggeringUserId);
+    }
+    for (const userId of activeUsers) {
+      await db.aiUsage.addUsage(userId, RP_MODEL, totalPromptTokens, totalCompletionTokens);
+    }
+
     return { ok: true, text };
   } catch (err) {
     logError(`Rp: generation failed for spawn ${spawn.spawnId}:`, err);

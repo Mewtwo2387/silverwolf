@@ -3,6 +3,7 @@ import { Command } from './classes/Command';
 import { log, logError } from '../utils/log';
 import { getPersonaByName, generateContent, generateTitleForHistory } from '../utils/ai';
 import { trimHistoryToFit } from '../utils/tokenizer';
+import { handleRateLimitError } from '../utils/discordRateLimit';
 
 const PERSONA_NAME = 'Silverwolf';
 
@@ -59,6 +60,8 @@ class AskSilverwolfAI extends Command {
       );
 
       const { text, toolCalls } = await generateContent({
+        db: this.client.db,
+        userId: interaction.user.id,
         provider: persona.provider,
         model: persona.model,
         systemPrompt: persona.systemPrompt ?? '',
@@ -119,7 +122,11 @@ class AskSilverwolfAI extends Command {
             logError('AiChat: Failed to generate session title:', titleErr);
           });
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.message === 'RATE_LIMIT_EXCEEDED') {
+        await handleRateLimitError(interaction, this.client.db);
+        return;
+      }
       logError('Error generating text:', error);
       await interaction.editReply({ content: 'Failed to retrieve response from the AI. Please try again later.' });
     }
