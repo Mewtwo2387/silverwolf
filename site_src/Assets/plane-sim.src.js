@@ -1,4 +1,4 @@
-// Plane Sim — a small Three.js prop-plane flight simulator, modelled after a
+// Plane Sim — a Three.js prop-plane flight simulator, modelled after a
 // Supermarine Spitfire. Bundled (with three) into a self-hosted static asset
 // (`plane-sim.js`) via `bun build`, exactly like app.src.js → app.js, because
 // the site CSP is `script-src 'self'` and forbids CDNs. Loaded by
@@ -11,20 +11,26 @@
 // Flight model (arcade but plausible): a single world-space velocity vector is
 // pushed each frame by thrust (along the nose), gravity, drag (against
 // velocity) and lift (along the wing's up axis). Lift uses a real-ish lift
-// curve driven by angle-of-attack — the angle between where the nose points
-// and where the plane is actually going — which is what makes a too-slow or
-// over-pulled wing STALL, and what sets the takeoff/stall speeds emergently
-// rather than by hand. Attitude is rate-controlled and the rates fade with
-// airspeed, so the controls are mushy on the runway and crisp at speed.
+// curve driven by angle-of-attack, which is what makes a too-slow or
+// over-pulled wing STALL. On top of that sits the "instructor": the mouse
+// points AT something on screen and a pursuit controller (the same one the AI
+// uses) works the virtual stick to fly the nose there — so the plane goes
+// where you point, banking into coordinated turns by itself, instead of the
+// player juggling raw roll/pitch rates.
 //
-// TUNING: all the feel constants live in the CFG block below. If any axis feels
-// inverted during playtest, flip the sign on its rotate call (search ROLL_RATE
-// / PITCH_RATE / YAW_RATE in update()).
+// The world is a ~12×12 km bordered box of procedural terrain (see
+// plane-sim-terrain.js): a flat airfield valley in the middle rising to ridged
+// mountains near the border, with lakes, instanced forests and rock fields.
+//
+// TUNING: all the feel constants live in the CFG block below.
 
 import * as THREE from 'three';
 import {
-  buildAircraft, applyControlSurfaces, makeTree, makeHangar, makeControlTower,
+  buildAircraft, applyControlSurfaces, setPropBlur, makeHangar, makeControlTower,
 } from './plane-sim-models.js';
+import {
+  TERRAIN, terrainHeight, forestMask, buildTerrain, buildWater, smoothstep,
+} from './plane-sim-terrain.js';
 
 (() => {
   'use strict';
@@ -47,50 +53,52 @@ import {
   const CFG = {
     G: 9.81, // gravity (m/s^2)
 
-    // Engine / aero — see the sanity figures in the header comment.
-    THRUST_MAX: 34, // full-throttle acceleration (m/s^2)
-    THROTTLE_RATE: 0.55, // throttle units per second while holding W/S
+    // Engine / aero. Stall ~64 kn, top speed ~330 kn.
+    THRUST_MAX: 38, // full-throttle acceleration (m/s^2)
+    THROTTLE_RATE: 0.6, // throttle units per second while holding W/S
 
-    LIFT: 0.0052, // lift accel = LIFT * speed^2 * CL
-    CL_SLOPE: 5.0, // lift-curve slope (per radian of AoA)
-    A_STALL: 0.30, // stall angle of attack (rad, ~17°)
+    LIFT: 0.0054, // lift accel = LIFT * speed^2 * CL
+    CL_SLOPE: 5.2, // lift-curve slope (per radian of AoA)
+    A_STALL: 0.32, // stall angle of attack (rad, ~18°)
 
-    DRAG0: 0.0014, // parasitic drag coefficient (sets top speed ~155 m/s)
+    DRAG0: 0.0013, // parasitic drag coefficient (sets top speed)
     DRAG_IND: 0.0008, // induced drag (× CL²) — bleeds speed in hard turns
     DRAG_GEAR: 0.00060, // extra parasitic drag while the undercarriage is down
 
     // Control authority (rad/s at full effectiveness) and the speed at which
-    // the controls reach full effectiveness.
-    PITCH_RATE: 1.30,
-    ROLL_RATE: 2.60,
-    YAW_RATE: 0.75,
-    CONTROL_V: 46, // airspeed (m/s) at which the controls reach full authority
+    // the controls reach full effectiveness. Generous on purpose — the old
+    // rates made just pointing at a bandit a workout.
+    PITCH_RATE: 1.6,
+    ROLL_RATE: 3.4,
+    YAW_RATE: 1.0,
+    CONTROL_V: 42, // airspeed (m/s) at which the controls reach full authority
 
-    // Handling feel (see flightAssist) — the "tight arcade" fix for floaty,
-    // drifty turns. GRIP rotates the velocity vector toward where the nose points
-    // (so the plane goes where you aim instead of sliding sideways and bleeding
-    // speed); TURN_COUPLING makes a bank carve a coordinated turn. Raise GRIP for
-    // even less drift, lower it for a heavier / more sim-like feel.
-    GRIP: 3.2, // velocity-vector alignment rate (1/s)
-    TURN_COUPLING: 1.4, // bank-to-turn yaw authority (rad/s, scaled by bank & airspeed)
+    // Handling feel (see flightAssist) — GRIP rotates the velocity vector
+    // toward where the nose points (so the plane goes where you aim instead of
+    // sliding sideways); TURN_COUPLING makes a bank carve a coordinated turn.
+    GRIP: 4.4, // velocity-vector alignment rate (1/s)
+    TURN_COUPLING: 0.7, // bank-to-turn yaw authority (rad/s, scaled by bank & airspeed)
 
     // World
-    BORDER: 2200, // half-extent of the play area (a 4.4 km box)
-    GROUND_Y: 1.35, // plane-origin height when the wheels are on the deck
+    BORDER: 6000, // half-extent of the play area (a 12 km box)
+    CEIL: 2600, // altitude cap (m)
+    GROUND_Y: 1.35, // plane-origin height above the deck when the wheels touch
     RUNWAY_LEN: 760,
     RUNWAY_W: 38,
 
     // Camera chase rig (local offset behind/above the plane)
-    CAM_BACK: 17,
-    CAM_UP: 5.2,
-    CAM_LERP: 0.10,
+    CAM_BACK: 17.5,
+    CAM_UP: 5.4,
+    CAM_LERP: 0.12,
 
     // Guns (player)
-    FIRE_INTERVAL: 0.08, // seconds between tracer pairs
-    TRACER_SPEED: 480, // m/s muzzle velocity relative to the plane
-    TRACER_LIFE: 0.9,
-    GUN_RANGE: 750, // hitscan reach (m)
+    FIRE_INTERVAL: 0.085, // seconds between tracer pairs
+    TRACER_SPEED: 520, // m/s muzzle velocity relative to the plane
+    TRACER_LIFE: 1.3,
+    GUN_RANGE: 900, // hitscan reach (m)
     GUN_DMG: 3, // damage per round that connects
+    GUN_SPREAD: 0.006, // rad of random spread per round
+    LEAD_MAX: 1250, // show the lead pipper for targets within this range
 
     // Combat / AI enemies. The bandits fly the SAME flight model + CFG as the
     // player (same thrust, lift, drag, turn rates) so they're bound by the same
@@ -100,11 +108,11 @@ import {
     ENEMY_COUNT: 3,
     ENEMY_HP: 100,
     PLAYER_HP: 100,
-    HITBOX_R: 6.5, // simplified spherical hitbox radius around any plane (m)
-    RADAR_RANGE: 1400, // within this, radar shows true relative pos; beyond -> rim blip
+    HITBOX_R: 8, // simplified spherical hitbox radius around any plane (m)
+    RADAR_RANGE: 1700, // within this, radar shows true relative pos; beyond -> rim blip
     AI_AIM_JITTER: 0.012, // base rad of spread per shot (scaled by difficulty + personality)
-    AI_LEAD: 480, // m/s used to lead the target while STEERING (~tracer speed)
-    ENEMY_PAINT: 0x6e7378, // gunmetal grey — clearly not the player's olive
+    AI_LEAD: 520, // m/s used to lead the target while STEERING (~tracer speed)
+    ENEMY_PAINT: 0x6e7378, // any non-null paint -> bandit grey camo scheme
   };
 
   const KT = 1.94384; // m/s -> knots
@@ -113,12 +121,12 @@ import {
 
   // ============================================================ SCENE =====
   const scene = new THREE.Scene();
-  const SKY_TOP = new THREE.Color(0x4a93d4);
-  const SKY_HAZE = new THREE.Color(0xbcd6e8);
+  const SKY_TOP = new THREE.Color(0x3f87cc);
+  const SKY_HAZE = new THREE.Color(0xc3d9e8);
   scene.background = SKY_TOP.clone();
-  scene.fog = new THREE.Fog(SKY_HAZE.getHex(), 700, CFG.BORDER * 1.7);
+  scene.fog = new THREE.Fog(SKY_HAZE.getHex(), 900, 9000);
 
-  const camera = new THREE.PerspectiveCamera(62, 1, 0.5, CFG.BORDER * 3);
+  const camera = new THREE.PerspectiveCamera(62, 1, 0.5, 26000);
   camera.position.set(0, CFG.GROUND_Y + CFG.CAM_UP, 320 + CFG.CAM_BACK);
 
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -146,62 +154,54 @@ import {
   }
   scene.add(sun);
   scene.add(sun.target);
-  const backFill = new THREE.DirectionalLight(0x9fc4ff, 0.35);
+  const backFill = new THREE.DirectionalLight(0x9fc4ff, 0.55);
   backFill.position.set(0.6, 0.4, -0.5);
   scene.add(backFill);
-  scene.add(new THREE.HemisphereLight(0xbfd8ff, 0x55633f, 0.9));
+  scene.add(new THREE.HemisphereLight(0xbfd8ff, 0x55633f, 1.15));
 
-  // ---- A gradient sky dome (top deep-blue -> pale horizon haze) ----
+  // ---- A gradient sky dome (top deep-blue -> pale horizon haze) + sun disc ----
   (function buildSky() {
     const c = document.createElement('canvas');
     c.width = 8; c.height = 256;
-    const g = c.getContext('2d').createLinearGradient(0, 0, 0, 256);
-    g.addColorStop(0.0, '#2f6fb0');
-    g.addColorStop(0.55, '#6aa6d8');
-    g.addColorStop(1.0, '#cfe2ee');
     const ctx = c.getContext('2d');
+    const g = ctx.createLinearGradient(0, 0, 0, 256);
+    g.addColorStop(0.0, '#2b66a8');
+    g.addColorStop(0.55, '#68a4d6');
+    g.addColorStop(1.0, '#d5e4ee');
     ctx.fillStyle = g; ctx.fillRect(0, 0, 8, 256);
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
     const dome = new THREE.Mesh(
-      new THREE.SphereGeometry(CFG.BORDER * 2.4, 24, 16),
+      new THREE.SphereGeometry(15500, 24, 16),
       new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide, fog: false, depthWrite: false }),
     );
     scene.add(dome);
+
+    // The sun itself: a bright additive sprite hung out along the light vector.
+    const sc = document.createElement('canvas');
+    sc.width = sc.height = 128;
+    const sctx = sc.getContext('2d');
+    const sg = sctx.createRadialGradient(64, 64, 2, 64, 64, 64);
+    sg.addColorStop(0, 'rgba(255,252,240,1)');
+    sg.addColorStop(0.18, 'rgba(255,246,214,0.95)');
+    sg.addColorStop(0.5, 'rgba(255,232,170,0.25)');
+    sg.addColorStop(1, 'rgba(255,225,150,0)');
+    sctx.fillStyle = sg; sctx.fillRect(0, 0, 128, 128);
+    const sunSpr = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: new THREE.CanvasTexture(sc), depthWrite: false, fog: false, blending: THREE.AdditiveBlending,
+    }));
+    sunSpr.position.copy(SUN_DIR).multiplyScalar(12500);
+    sunSpr.scale.setScalar(2400);
+    scene.add(sunSpr);
   }());
 
-  // ---- Ground: large green plane with soft tonal patches + a faint grid for
-  //      motion/altitude cues. Receives the aircraft's shadow. ----
-  (function buildGround() {
-    const c = document.createElement('canvas');
-    c.width = c.height = 256;
-    const ctx = c.getContext('2d');
-    ctx.fillStyle = '#466431'; ctx.fillRect(0, 0, 256, 256);
-    for (let i = 0; i < 70; i++) {
-      const x = Math.random() * 256; const y = Math.random() * 256; const rad = 14 + Math.random() * 46;
-      const g = ctx.createRadialGradient(x, y, 0, x, y, rad);
-      g.addColorStop(0, Math.random() < 0.5 ? 'rgba(98,128,62,0.5)' : 'rgba(42,62,30,0.5)');
-      g.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill();
-    }
-    ctx.strokeStyle = 'rgba(28,42,18,0.3)'; ctx.lineWidth = 1;
-    ctx.strokeRect(0.5, 0.5, 255, 255);
-    const tex = new THREE.CanvasTexture(c);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(150, 150);
-    tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-    const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(CFG.BORDER * 6, CFG.BORDER * 6),
-      new THREE.MeshStandardMaterial({ map: tex, roughness: 0.96, metalness: 0 }),
-    );
-    ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = true;
-    scene.add(ground);
-  }());
+  // ---- Terrain: procedural mountains/valleys/lakes (plane-sim-terrain.js).
+  //      The airfield sits on a flattened disc at the origin. ----
+  scene.add(buildTerrain(renderer));
+  scene.add(buildWater());
 
   // ---- Demo airfield: tarmac runway (centreline, threshold + edge lines), a
-  //      glazed control tower, Quonset-hut hangars, and scattered trees. ----
+  //      glazed control tower and Quonset-hut hangars. ----
   (function buildAirfield() {
     const field = new THREE.Group(); // 3D structures (cast + receive shadow)
     const markings = new THREE.Group(); // flat ground paint (receive only)
@@ -211,14 +211,14 @@ import {
       new THREE.MeshStandardMaterial({ color: 0x2b2f36, roughness: 0.95 }),
     );
     tarmac.rotation.x = -Math.PI / 2;
-    tarmac.position.y = 0.03;
+    tarmac.position.y = 0.12;
     tarmac.receiveShadow = true;
     markings.add(tarmac);
 
     const paint = new THREE.MeshStandardMaterial({ color: 0xe8edf2, roughness: 0.8 });
     const flat = (geo, x, z) => {
       const m = new THREE.Mesh(geo, paint);
-      m.rotation.x = -Math.PI / 2; m.position.set(x, 0.05, z); m.receiveShadow = true;
+      m.rotation.x = -Math.PI / 2; m.position.set(x, 0.18, z); m.receiveShadow = true;
       markings.add(m);
     };
     for (const sx of [-1, 1]) flat(new THREE.PlaneGeometry(0.8, CFG.RUNWAY_LEN - 20), sx * (CFG.RUNWAY_W / 2 - 1.2), 0);
@@ -227,8 +227,6 @@ import {
       for (let i = -4; i <= 4; i++) flat(new THREE.PlaneGeometry(2.2, 9), i * 3.2, end * (CFG.RUNWAY_LEN / 2 - 9));
     }
 
-    // Scenery (shared builders — see plane-sim-models.js): a control tower,
-    // Quonset-hut hangars, and a ring of trees around the field.
     const tower = makeControlTower();
     tower.position.set(46, 0, 150);
     field.add(tower);
@@ -239,41 +237,127 @@ import {
       field.add(hut);
     }
 
-    for (let i = 0; i < 70; i++) {
-      const a = Math.random() * Math.PI * 2;
-      const rr = 240 + Math.random() * (CFG.BORDER - 340);
-      const x = Math.cos(a) * rr; const z = Math.sin(a) * rr;
-      if (Math.abs(x) < CFG.RUNWAY_W + 20 && Math.abs(z) < CFG.RUNWAY_LEN / 2) continue;
-      const tree = makeTree();
-      tree.position.set(x, 0, z);
-      field.add(tree);
-    }
-
     scene.add(markings);
     scene.add(field);
   }());
 
-  // ---- A few drifting cloud sprites for altitude/speed reference ----
+  // ---- Instanced forests + rock fields across the whole terrain. Instancing
+  //      keeps this at four draw calls no matter how many trees. ----
+  (function scatterVegetation() {
+    const spots = [];
+    let guard = 0;
+    while (spots.length < 600 && guard++ < 30000) {
+      const x = (Math.random() * 2 - 1) * (CFG.BORDER + 1200);
+      const z = (Math.random() * 2 - 1) * (CFG.BORDER + 1200);
+      const h = terrainHeight(x, z);
+      if (h < TERRAIN.WATER_Y + 6 || h > 330) continue;
+      const e = 14;
+      const slope = Math.hypot(
+        terrainHeight(x + e, z) - terrainHeight(x - e, z),
+        terrainHeight(x, z + e) - terrainHeight(x, z - e),
+      ) / (2 * e);
+      if (slope > 0.35) continue;
+      const near = Math.hypot(x, z);
+      if (near < 240) continue; // keep the apron clear
+      if (Math.abs(x) < CFG.RUNWAY_W + 30 && Math.abs(z) < CFG.RUNWAY_LEN / 2 + 60) continue;
+      // Cluster into forests via the shared mask (looser near the airfield so
+      // the immediate scenery isn't bare).
+      const thresh = near < 1600 ? 0.45 : 0.53;
+      if (forestMask(x, z) < thresh) continue;
+      spots.push([x, h, z]);
+    }
+
+    const trunkGeo = new THREE.CylinderGeometry(0.35, 0.65, 4.2, 5);
+    trunkGeo.translate(0, 2.1, 0);
+    const coneGeo = new THREE.ConeGeometry(3.2, 9.5, 6);
+    coneGeo.translate(0, 8.2, 0);
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x54381f, roughness: 1 });
+    const leafMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 });
+    const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, spots.length);
+    const cones = new THREE.InstancedMesh(coneGeo, leafMat, spots.length);
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const up = new THREE.Vector3(0, 1, 0);
+    const sc = new THREE.Vector3();
+    const p = new THREE.Vector3();
+    const col = new THREE.Color();
+    for (let i = 0; i < spots.length; i++) {
+      const [x, h, z] = spots[i];
+      const s = 0.8 + Math.random() * 1.5;
+      q.setFromAxisAngle(up, Math.random() * Math.PI * 2);
+      m.compose(p.set(x, h - 0.3, z), q, sc.set(s, s * (0.85 + Math.random() * 0.35), s));
+      trunks.setMatrixAt(i, m);
+      cones.setMatrixAt(i, m);
+      col.setHSL(0.26 + Math.random() * 0.07, 0.42 + Math.random() * 0.15, 0.2 + Math.random() * 0.1);
+      cones.setColorAt(i, col);
+    }
+    trunks.castShadow = true; cones.castShadow = true; cones.receiveShadow = true;
+    scene.add(trunks); scene.add(cones);
+
+    // Rocks: on the steeps and the high ground.
+    const rocks = [];
+    guard = 0;
+    while (rocks.length < 170 && guard++ < 22000) {
+      const x = (Math.random() * 2 - 1) * (CFG.BORDER + 1200);
+      const z = (Math.random() * 2 - 1) * (CFG.BORDER + 1200);
+      const h = terrainHeight(x, z);
+      if (h < 60) continue;
+      const e = 14;
+      const slope = Math.hypot(
+        terrainHeight(x + e, z) - terrainHeight(x - e, z),
+        terrainHeight(x, z + e) - terrainHeight(x, z - e),
+      ) / (2 * e);
+      if (slope < 0.3 && h < 300) continue;
+      rocks.push([x, h, z]);
+    }
+    const rockGeo = new THREE.DodecahedronGeometry(1, 0);
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95 });
+    const rockMesh = new THREE.InstancedMesh(rockGeo, rockMat, rocks.length);
+    for (let i = 0; i < rocks.length; i++) {
+      const [x, h, z] = rocks[i];
+      const s = 2 + Math.random() * 7;
+      q.setFromEuler(new THREE.Euler(Math.random(), Math.random() * Math.PI * 2, Math.random()));
+      m.compose(p.set(x, h + s * 0.15, z), q, sc.set(s, s * (0.6 + Math.random() * 0.5), s));
+      rockMesh.setMatrixAt(i, m);
+      col.setHSL(0.09, 0.06 + Math.random() * 0.06, 0.32 + Math.random() * 0.14);
+      rockMesh.setColorAt(i, col);
+    }
+    rockMesh.castShadow = true;
+    scene.add(rockMesh);
+  }());
+
+  // ---- Clouds: puffy clusters of overlapping sprites for altitude/speed
+  //      reference (one material per cluster so opacity can vary). ----
   (function buildClouds() {
     const c = document.createElement('canvas');
     c.width = c.height = 128;
     const ctx = c.getContext('2d');
     const g = ctx.createRadialGradient(64, 64, 4, 64, 64, 64);
     g.addColorStop(0, 'rgba(255,255,255,0.95)');
+    g.addColorStop(0.6, 'rgba(250,252,255,0.55)');
     g.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 128);
     const tex = new THREE.CanvasTexture(c);
-    const mat = new THREE.SpriteMaterial({ map: tex, depthWrite: false, opacity: 0.85, fog: true });
-    for (let i = 0; i < 26; i++) {
-      const s = new THREE.Sprite(mat);
-      s.position.set(
-        (Math.random() - 0.5) * CFG.BORDER * 2,
-        180 + Math.random() * 520,
-        (Math.random() - 0.5) * CFG.BORDER * 2,
-      );
-      const sc = 90 + Math.random() * 180;
-      s.scale.set(sc, sc * 0.62, 1);
-      scene.add(s);
+    for (let i = 0; i < 34; i++) {
+      const mat = new THREE.SpriteMaterial({
+        map: tex, depthWrite: false, opacity: 0.5 + Math.random() * 0.35, fog: true,
+      });
+      const cx = (Math.random() - 0.5) * CFG.BORDER * 2.2;
+      const cy = 260 + Math.random() * 1100;
+      const cz = (Math.random() - 0.5) * CFG.BORDER * 2.2;
+      const base = 120 + Math.random() * 220;
+      const n = 4 + Math.floor(Math.random() * 4);
+      for (let k = 0; k < n; k++) {
+        const s = new THREE.Sprite(mat);
+        s.position.set(
+          cx + (Math.random() - 0.5) * base * 1.6,
+          cy + (Math.random() - 0.5) * base * 0.35,
+          cz + (Math.random() - 0.5) * base * 1.2,
+        );
+        const scl = base * (0.55 + Math.random() * 0.7);
+        s.scale.set(scl, scl * 0.55, 1);
+        scene.add(s);
+      }
     }
   }());
 
@@ -287,7 +371,7 @@ import {
     ctx.clearRect(0, 0, 64, 64);
     ctx.fillStyle = 'rgba(80,210,255,0.9)';
     for (let x = 0; x < 64; x += 16) ctx.fillRect(x, 0, 7, 64);
-    const B = CFG.BORDER; const H = 1000;
+    const B = CFG.BORDER; const H = 1800;
     const sides = [
       { pos: [0, H / 2, -B], rotY: 0 },
       { pos: [0, H / 2, B], rotY: Math.PI },
@@ -299,7 +383,7 @@ import {
       tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
       tex.repeat.set((B * 2) / 80, H / 80);
       const mat = new THREE.MeshBasicMaterial({
-        map: tex, transparent: true, opacity: 0.32, side: THREE.DoubleSide,
+        map: tex, transparent: true, opacity: 0.3, side: THREE.DoubleSide,
         depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
       });
       borderMats.push(mat);
@@ -333,6 +417,7 @@ import {
   let started = false;
   let crashed = false;
   let onGround = true;
+  let fov = 62;
 
   // Combat state
   let playerHP = CFG.PLAYER_HP;
@@ -346,7 +431,7 @@ import {
 
   // Inputs
   const keys = Object.create(null);
-  let stickX = 0; let stickY = 0; // virtual stick from the mouse, [-1, 1]
+  let mouseNX = 0; let mouseNY = 0; // raw mouse in [-1, 1] from the stage centre
   let firing = false;
   let fireCooldown = 0;
 
@@ -365,6 +450,10 @@ import {
   const getForward = () => _fwd.set(0, 0, -1).applyQuaternion(plane.quaternion);
   const getUp = () => _up.set(0, 1, 0).applyQuaternion(plane.quaternion);
   const getRight = () => _right.set(1, 0, 0).applyQuaternion(plane.quaternion);
+
+  // Ground height under a world position (the terrain module returns exactly 0
+  // on the flattened airfield disc, so the runway Just Works).
+  const groundAt = (x, z) => terrainHeight(x, z);
 
   // Velocity-vector "grip" + coordinated bank-to-turn — the arcade trick that
   // stops a plane sliding sideways. The velocity DIRECTION is eased toward where
@@ -386,8 +475,77 @@ import {
     // -_faRight.y = sin(bank): >0 when the right wing is down (banked right) ->
     // yaw right (group.rotateY negative is a nose-right yaw, per the controls).
     const sinBank = clamp(-_faRight.y, -1, 1);
-    group.rotateY(-sinBank * CFG.TURN_COUPLING * eff * dt);
+    const yawStep = sinBank * CFG.TURN_COUPLING * eff * dt;
+    group.rotateY(-yawStep);
+    // A body-frame yaw at bank angle φ drops the nose below the horizon by
+    // yaw·sin(φ); compensating body pitch-up of yaw·tan(φ) (capped) keeps the
+    // turn level — the classic back-pressure of a coordinated turn, applied
+    // automatically so turning doesn't secretly trade away all your altitude.
+    const cosBank = Math.sqrt(Math.max(1 - sinBank * sinBank, 0.41)); // cap tan at ~50°
+    group.rotateX(Math.abs(yawStep) * Math.abs(sinBank / cosBank) * 0.92);
   }
+
+  // ======================================================== AUDIO =========
+  // Fully procedural WebAudio: an engine drone (two detuned saws through a
+  // lowpass, pitched by throttle + airspeed), noise-burst guns/hits/booms. No
+  // audio assets needed, so the CSP stays untouched. Created lazily on the
+  // first user gesture (the click that starts the game). M toggles mute.
+  const audio = (() => {
+    let ctx = null; let master = null; let engine = null;
+    let muted = false;
+    try { muted = localStorage.getItem('ps-muted') === '1'; } catch (_) { /* private mode */ }
+    function ensure() {
+      if (ctx) return;
+      try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) { return; }
+      master = ctx.createGain();
+      master.gain.value = muted ? 0 : 0.5;
+      master.connect(ctx.destination);
+      const g = ctx.createGain(); g.gain.value = 0;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 260;
+      const o1 = ctx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = 52;
+      const o2 = ctx.createOscillator(); o2.type = 'sawtooth'; o2.frequency.value = 52.6;
+      o1.connect(lp); o2.connect(lp); lp.connect(g); g.connect(master);
+      o1.start(); o2.start();
+      engine = {
+        g, lp, o1, o2,
+      };
+    }
+    function setEngine(thr, speed) {
+      if (!engine) return;
+      const f = 42 + thr * 68 + speed * 0.1;
+      engine.o1.frequency.value = f;
+      engine.o2.frequency.value = f * 1.012;
+      engine.lp.frequency.value = 220 + thr * 780;
+      engine.g.gain.value = 0.1 + thr * 0.22;
+    }
+    function burst(dur, freq, vol, type) {
+      if (!ctx || muted) return;
+      const len = Math.max(1, Math.floor(ctx.sampleRate * dur));
+      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) { const k = 1 - i / len; d[i] = (Math.random() * 2 - 1) * k * k; }
+      const n = ctx.createBufferSource(); n.buffer = buf;
+      const f = ctx.createBiquadFilter(); f.type = type || 'bandpass'; f.frequency.value = freq; f.Q.value = 0.7;
+      const g = ctx.createGain(); g.gain.value = vol;
+      n.connect(f); f.connect(g); g.connect(master);
+      n.start();
+    }
+    function toggleMute() {
+      muted = !muted;
+      if (master) master.gain.value = muted ? 0 : 0.5;
+      try { localStorage.setItem('ps-muted', muted ? '1' : '0'); } catch (_) { /* private mode */ }
+      return muted;
+    }
+    return {
+      ensure,
+      setEngine,
+      gun: () => burst(0.05, 950, 0.5),
+      hit: () => burst(0.09, 380, 0.6),
+      boom: () => burst(0.9, 130, 1.6, 'lowpass'),
+      toggleMute,
+      isMuted: () => muted,
+    };
+  })();
 
   // ======================================================== TRACERS =======
   const tracerGeo = new THREE.BoxGeometry(0.12, 0.12, 3.2);
@@ -431,7 +589,7 @@ import {
     return d2 > radius * radius ? -1 : t;
   }
 
-  // ---- Impact sparks / explosions: cheap additive sprites that pop and fade. ----
+  // ---- Impact sparks / muzzle flashes: additive sprites that pop and fade. ----
   const sparkTex = (() => {
     const c = document.createElement('canvas');
     c.width = c.height = 64;
@@ -473,26 +631,108 @@ import {
     }
   }
 
-  // The player's wing guns: two amber tracers + a single centreline hitscan that
-  // damages the nearest bandit it passes through.
+  // ---- Smoke: soft grey sprites that drift up, expand and fade. Used for
+  //      damaged-engine trails and explosion aftermath. ----
+  const smokeTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(32, 32, 3, 32, 32, 32);
+    g.addColorStop(0, 'rgba(70,70,74,0.85)');
+    g.addColorStop(0.7, 'rgba(60,60,64,0.35)');
+    g.addColorStop(1, 'rgba(55,55,58,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
+    return new THREE.CanvasTexture(c);
+  })();
+  const smokes = [];
+  function spawnSmoke(pos, size, life) {
+    const m = new THREE.SpriteMaterial({ map: smokeTex, depthWrite: false, transparent: true });
+    const s = new THREE.Sprite(m);
+    s.position.copy(pos);
+    s.scale.setScalar(size);
+    s.userData = { life, maxLife: life, size };
+    scene.add(s);
+    smokes.push(s);
+  }
+  function stepSmokes(dt) {
+    for (let i = smokes.length - 1; i >= 0; i--) {
+      const s = smokes[i];
+      s.userData.life -= dt;
+      const k = s.userData.life / s.userData.maxLife;
+      if (k <= 0) {
+        scene.remove(s); s.material.dispose(); smokes.splice(i, 1);
+        continue;
+      }
+      s.position.y += dt * 2.5;
+      s.material.opacity = k * 0.8;
+      s.scale.setScalar(s.userData.size * (1 + (1 - k) * 2.2));
+    }
+  }
+
+  // ---- Debris: tumbling chunks thrown by a kill, falling under gravity. ----
+  const debris = [];
+  const debrisMat = new THREE.MeshStandardMaterial({ color: 0x2c2c30, roughness: 0.9 });
+  function spawnDebris(pos, baseVel) {
+    for (let i = 0; i < 6; i++) {
+      const s = 0.3 + Math.random() * 0.9;
+      const d = new THREE.Mesh(new THREE.BoxGeometry(s, s * 0.5, s * 1.4), debrisMat);
+      d.position.copy(pos);
+      d.userData.vel = baseVel.clone().multiplyScalar(0.6).add(new THREE.Vector3(
+        (Math.random() - 0.5) * 45, Math.random() * 30, (Math.random() - 0.5) * 45,
+      ));
+      d.userData.rot = new THREE.Vector3(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+      d.userData.life = 2.6;
+      scene.add(d);
+      debris.push(d);
+    }
+  }
+  function stepDebris(dt) {
+    for (let i = debris.length - 1; i >= 0; i--) {
+      const d = debris[i];
+      d.userData.life -= dt;
+      d.userData.vel.y -= CFG.G * 2 * dt;
+      d.position.addScaledVector(d.userData.vel, dt);
+      d.rotation.x += d.userData.rot.x * dt;
+      d.rotation.y += d.userData.rot.y * dt;
+      d.rotation.z += d.userData.rot.z * dt;
+      if (d.userData.life <= 0 || d.position.y < groundAt(d.position.x, d.position.z)) {
+        scene.remove(d);
+        d.geometry.dispose();
+        debris.splice(i, 1);
+      }
+    }
+  }
+
+  // The player's wing guns: two amber tracers + a centreline hitscan (with the
+  // same random spread the tracers show) that damages the nearest bandit.
+  const _shot = new THREE.Vector3();
   function fireGuns() {
     // Clone the basis vectors — addScaledVector/clone below must not alias the
     // shared _fwd/_right temps (that bug fired tracers backwards at 4.5 m/s).
     const fwd = getForward().clone();
     const right = getRight().clone();
+    const up = getUp().clone();
+    _shot.copy(fwd)
+      .addScaledVector(up, (Math.random() - 0.5) * 2 * CFG.GUN_SPREAD)
+      .addScaledVector(right, (Math.random() - 0.5) * 2 * CFG.GUN_SPREAD)
+      .normalize();
     const muzzle = plane.position.clone().addScaledVector(fwd, 4.5);
     for (const sx of [-1, 1]) {
-      spawnTracer(muzzle.clone().addScaledVector(right, sx * 3.0), fwd, CFG.TRACER_SPEED, vel, tracerMat);
+      const mpos = muzzle.clone().addScaledVector(right, sx * 3.0);
+      spawnTracer(mpos, _shot, CFG.TRACER_SPEED, vel, tracerMat);
+      spawnSpark(mpos, 1.1, 0.06); // muzzle flash
     }
-    // Hitscan along the nose: damage the closest bandit within range.
+    audio.gun();
+    // Hitscan along the (spread-jittered) shot line: damage the closest bandit.
     let bestT = CFG.GUN_RANGE; let bestE = null;
     for (const e of enemies) {
       if (!e.alive) continue;
-      const t = rayHitsSphere(muzzle, fwd, e.group.position, CFG.HITBOX_R, CFG.GUN_RANGE);
+      const t = rayHitsSphere(muzzle, _shot, e.group.position, CFG.HITBOX_R, CFG.GUN_RANGE);
       if (t >= 0 && t < bestT) { bestT = t; bestE = e; }
     }
     if (bestE) {
-      spawnSpark(muzzle.clone().addScaledVector(fwd, bestT), 4, 0.18);
+      spawnSpark(muzzle.clone().addScaledVector(_shot, bestT), 4, 0.18);
+      audio.hit();
       damageEnemy(bestE, CFG.GUN_DMG);
     }
   }
@@ -513,9 +753,9 @@ import {
     muzzle: new THREE.Vector3(), shotDir: new THREE.Vector3(), dirP: new THREE.Vector3(),
   };
   const ENEMY_SPAWN = [
-    { ang: -0.7, dist: 900, alt: 230 },
-    { ang: 0.15, dist: 1150, alt: 320 },
-    { ang: 0.95, dist: 780, alt: 180 },
+    { ang: -0.7, dist: 1500, alt: 300 },
+    { ang: 0.15, dist: 2000, alt: 420 },
+    { ang: 0.95, dist: 1300, alt: 240 },
   ];
 
   // ---- Difficulty. Scales the bandits' turn performance (turn = multiplier on
@@ -525,13 +765,13 @@ import {
   //      1/2/3; remembered across sessions. ----
   const DIFFS = {
     easy: {
-      label: 'ROOKIE', turn: 0.70, jitterMul: 2.6, fireInt: 0.22, range: 520, cone: 0.990, breakAfter: 3.0, breakMin: 3.2, breakMax: 5.0,
+      label: 'ROOKIE', turn: 0.55, jitterMul: 2.6, fireInt: 0.22, range: 520, cone: 0.990, breakAfter: 3.0, breakMin: 3.2, breakMax: 5.0,
     },
     normal: {
-      label: 'REGULAR', turn: 0.86, jitterMul: 1.6, fireInt: 0.17, range: 600, cone: 0.994, breakAfter: 4.5, breakMin: 2.4, breakMax: 4.0,
+      label: 'REGULAR', turn: 0.72, jitterMul: 1.6, fireInt: 0.17, range: 620, cone: 0.994, breakAfter: 4.5, breakMin: 2.4, breakMax: 4.0,
     },
     hard: {
-      label: 'ACE', turn: 1.00, jitterMul: 1.0, fireInt: 0.13, range: 660, cone: 0.997, breakAfter: 6.5, breakMin: 1.6, breakMax: 2.8,
+      label: 'ACE', turn: 0.90, jitterMul: 1.0, fireInt: 0.13, range: 700, cone: 0.997, breakAfter: 6.5, breakMin: 1.6, breakMax: 2.8,
     },
   };
   const validDiff = (n) => n === 'easy' || n === 'normal' || n === 'hard';
@@ -551,6 +791,7 @@ import {
   function makeEnemy(spec) {
     const { group, surf: esurf } = buildAircraft({ paint: CFG.ENEMY_PAINT, markings: false });
     applyControlSurfaces(esurf, { gear: 0 }); // bandits fly gear-up
+    setPropBlur(esurf, 0.85); // airborne -> prop is a blur disc
     scene.add(group);
     return {
       group,
@@ -560,6 +801,7 @@ import {
       hp: CFG.ENEMY_HP,
       alive: true,
       fireCd: Math.random() * 0.25,
+      smokeCd: 0,
       propSpin: 0,
       defl: { ail: 0, elev: 0, rud: 0 },
       spec,
@@ -576,7 +818,7 @@ import {
         jitterBias: 0.85 + Math.random() * 0.4, // 0.85..1.25 (gunnery spread)
         breakBias: 0.8 + Math.random() * 0.5, // 0.8..1.3 (how long before they extend)
         leadBias: 0.85 + Math.random() * 0.35, // 0.85..1.20 (how much they lead)
-        alt: 150 + Math.random() * 220, // preferred working altitude when repositioning
+        alt: 180 + Math.random() * 260, // preferred working altitude when repositioning
       },
     };
   }
@@ -643,11 +885,11 @@ import {
       // Extend: run away from the player and climb to rebuild energy.
       EN.dirP.copy(EN.toP).multiplyScalar(-1 / Math.max(dist, 0.001));
       EN.aim.copy(g.position).addScaledVector(EN.dirP, 900);
-      EN.aim.y = e.pers.alt + 120;
+      EN.aim.y = e.pers.alt + 150;
     }
     // Stay in the box + off the deck: near a wall, steer back toward the centre.
-    if (Math.max(Math.abs(g.position.x), Math.abs(g.position.z)) > CFG.BORDER - 350) {
-      EN.aim.set(0, Math.max(e.pers.alt, 200), 0);
+    if (Math.max(Math.abs(g.position.x), Math.abs(g.position.z)) > CFG.BORDER - 400) {
+      EN.aim.set(0, Math.max(e.pers.alt, 260), 0);
     }
     EN.desired.copy(EN.aim).sub(g.position);
     if (EN.desired.lengthSq() < 1e-6) EN.desired.copy(FWD_REF);
@@ -661,8 +903,14 @@ import {
     let rollInput = clamp(yawErr * 1.5, -1, 1); // bank toward the target
     let pitchInput = clamp(pitchErr * 1.5 + Math.abs(yawErr) * 0.35, -1, 1); // pull into the turn
     const yawInput = clamp(yawErr * 0.4, -1, 1); // a little coordinating rudder
-    if (g.position.y < 70) { pitchInput = Math.max(pitchInput, 0.7); rollInput *= 0.3; } // ground avoid
-    if (g.position.y < 35) { pitchInput = 1; rollInput = 0; }
+
+    // Terrain avoidance: probe the ground here and ~2.5 s ahead; if we're
+    // sinking toward it, level the wings and pull.
+    const ghHere = groundAt(g.position.x, g.position.z);
+    const ghAhead = groundAt(g.position.x + e.vel.x * 2.5, g.position.z + e.vel.z * 2.5);
+    const floor = Math.max(ghHere, ghAhead);
+    if (g.position.y < floor + 90) { pitchInput = Math.max(pitchInput, 0.7); rollInput *= 0.3; }
+    if (g.position.y < floor + 45) { pitchInput = 1; rollInput = 0; }
 
     let thrTarget = 0.9;
     const speed = e.vel.length();
@@ -705,9 +953,10 @@ import {
     if (stalled && fwdSpeed > 0) g.rotateX(-(Math.abs(aoa) - CFG.A_STALL) * 1.6 * dt);
     flightAssist(g, e.vel, eff, dt); // same grip + coordinated turn as the player
 
-    if (g.position.y < 12) { g.position.y = 12; if (e.vel.y < 0) e.vel.y = 0; } // soft floor
+    // hard floor: never tunnel into the terrain
+    if (g.position.y < ghHere + 12) { g.position.y = ghHere + 12; if (e.vel.y < 0) e.vel.y = 0; }
 
-    // ---- Visual: prop spin + control-surface deflection ----
+    // ---- Visual: prop spin + control-surface deflection + damage smoke ----
     e.propSpin -= (0.2 + e.throttle * 0.8) * 60 * dt;
     if (e.surf.prop) e.surf.prop.rotation.z = e.propSpin;
     e.defl.ail += (rollInput * 0.4 - e.defl.ail) * 0.2;
@@ -716,6 +965,14 @@ import {
     applyControlSurfaces(e.surf, {
       ail: e.defl.ail, elev: e.defl.elev, rud: e.defl.rud, gear: 0,
     });
+    if (e.hp < 40) {
+      e.smokeCd -= dt;
+      if (e.smokeCd <= 0) {
+        e.smokeCd = 0.07;
+        EN.muzzle.copy(g.position).addScaledVector(EN.fwd, -3); // tail
+        spawnSmoke(EN.muzzle, 2.2 + Math.random(), 1.2);
+      }
+    }
 
     // ---- Gunnery: fire along the nose (+ jitter) when close and roughly lined
     //      up. Accuracy falls off with range because the same angular jitter
@@ -746,7 +1003,14 @@ import {
     if (e.hp <= 0) {
       e.alive = false;
       e.group.visible = false;
-      spawnSpark(e.group.position, 16, 0.6); // explosion puff
+      spawnSpark(e.group.position, 22, 0.7); // fireball
+      spawnDebris(e.group.position, e.vel);
+      for (let i = 0; i < 7; i++) {
+        spawnSmoke(e.group.position.clone().add(new THREE.Vector3(
+          (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 10,
+        )), 5 + Math.random() * 5, 1.6 + Math.random());
+      }
+      audio.boom();
       kills += 1;
       updateCombatHUD();
       if (kills >= CFG.ENEMY_COUNT && !won) victory();
@@ -754,9 +1018,10 @@ import {
   }
 
   function damagePlayer(dmg, at) {
-    if (crashed || won) return;
+    if (crashed || won || dev.god) return;
     playerHP -= dmg;
     flashDamage();
+    audio.hit();
     if (at) spawnSpark(at, 2.6, 0.14);
     if (playerHP <= 0) { playerHP = 0; updateCombatHUD(); crash('Shot down'); return; }
     updateCombatHUD();
@@ -789,6 +1054,7 @@ import {
   function start() {
     if (started) return;
     started = true;
+    audio.ensure(); // user gesture -> AudioContext allowed
     if (overlay) overlay.classList.add('ps-hidden');
   }
 
@@ -798,6 +1064,7 @@ import {
     if (k === '1') { setDifficulty('easy'); return; }
     if (k === '2') { setDifficulty('normal'); return; }
     if (k === '3') { setDifficulty('hard'); return; }
+    if (k === 'm') { audio.toggleMute(); return; }
     if (['w', 'a', 's', 'd', 'g', ' '].includes(k)) {
       if (started) e.preventDefault();
       if (k === 'g') gearDown = !gearDown; // toggle on key-down edge
@@ -806,25 +1073,19 @@ import {
   });
   window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
-  // Virtual stick: mouse offset from the stage centre, normalised + dead-zoned.
+  // The mouse is an AIM POINT, not a stick: its screen position is unprojected
+  // through the camera each frame and the instructor flies the nose there.
   function onMove(e) {
     const r = stage.getBoundingClientRect();
-    const nx = ((e.clientX - r.left) / r.width) * 2 - 1;
-    const ny = ((e.clientY - r.top) / r.height) * 2 - 1;
-    const dead = 0.05;
-    const shape = (v) => {
-      const s = Math.sign(v); const a = Math.abs(v);
-      return a < dead ? 0 : s * ((a - dead) / (1 - dead));
-    };
-    stickX = clamp(shape(nx), -1, 1);
-    stickY = clamp(shape(ny), -1, 1);
+    mouseNX = clamp(((e.clientX - r.left) / r.width) * 2 - 1, -1, 1);
+    mouseNY = clamp(((e.clientY - r.top) / r.height) * 2 - 1, -1, 1);
     if (reticle) {
       reticle.style.left = `${e.clientX - r.left}px`;
       reticle.style.top = `${e.clientY - r.top}px`;
     }
   }
   stage.addEventListener('mousemove', onMove);
-  stage.addEventListener('mouseleave', () => { stickX = 0; stickY = 0; });
+  stage.addEventListener('mouseleave', () => { mouseNX = 0; mouseNY = 0; });
 
   stage.addEventListener('mousedown', (e) => {
     start();
@@ -836,13 +1097,8 @@ import {
 
   // ======================================================== HUD ===========
   const hud = {
-    spd: document.getElementById('ps-airspeed'),
-    alt: document.getElementById('ps-altitude'),
-    thr: document.getElementById('ps-throttle'),
-    thrFill: document.getElementById('ps-throttle-fill'),
-    hdg: document.getElementById('ps-heading'),
-    vsi: document.getElementById('ps-vspeed'),
     gear: document.getElementById('ps-gear'),
+    gearBox: document.getElementById('ps-gear-box'),
     stall: document.getElementById('ps-stall'),
     warn: document.getElementById('ps-warning'),
     kills: document.getElementById('ps-kills'),
@@ -853,6 +1109,7 @@ import {
   const mapCanvas = document.getElementById('ps-map');
   const mapCtx = mapCanvas ? mapCanvas.getContext('2d') : null;
   const pipper = document.getElementById('ps-pipper');
+  const leadEl = document.getElementById('ps-lead');
   const dmgVignette = document.getElementById('ps-damage');
   let dmgFlash = 0; // 1 -> 0 red screen pulse when hit
 
@@ -867,6 +1124,239 @@ import {
     }
   }
   function flashDamage() { dmgFlash = 1; }
+
+  // ---- The instrument cluster: six WWII-style analogue gauges drawn on one
+  //      canvas — airspeed, artificial horizon, altimeter (two needles), climb
+  //      (VSI), heading (rotating compass card) and throttle. Real moving
+  //      needles instead of bare digits. ----
+  const gauges = (() => {
+    const cv = document.getElementById('ps-gauges');
+    if (!cv) return null;
+    const ctx = cv.getContext('2d');
+    const N = 6; const CELL = 116; const R = 52;
+    const LW = N * CELL; const LH = 128; // logical size
+    let scale = 1;
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = cv.clientWidth || LW;
+      scale = (w / LW) * dpr;
+      cv.width = Math.round(LW * scale);
+      cv.height = Math.round(LH * scale);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    const CREAM = '#e8e2cc';
+    const DIM = '#9a947e';
+    const face = (cx, cy) => {
+      // bezel + face
+      ctx.beginPath(); ctx.arc(cx, cy, R + 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#23262b'; ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
+      ctx.fillStyle = '#101318'; ctx.fill();
+      ctx.strokeStyle = '#3a3f47'; ctx.lineWidth = 2; ctx.stroke();
+    };
+    const glass = (cx, cy) => {
+      const g = ctx.createRadialGradient(cx - R * 0.4, cy - R * 0.55, 2, cx, cy, R);
+      g.addColorStop(0, 'rgba(255,255,255,0.10)');
+      g.addColorStop(0.4, 'rgba(255,255,255,0.02)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
+      ctx.fillStyle = g; ctx.fill();
+    };
+    const needle = (cx, cy, ang, len, w, color, tailLen) => {
+      ctx.save();
+      ctx.translate(cx, cy); ctx.rotate(ang);
+      ctx.strokeStyle = color; ctx.lineWidth = w; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(-(tailLen || 6), 0); ctx.lineTo(len, 0); ctx.stroke();
+      ctx.restore();
+      ctx.beginPath(); ctx.arc(cx, cy, 3.2, 0, Math.PI * 2);
+      ctx.fillStyle = '#c9c4ae'; ctx.fill();
+    };
+    const label = (cx, cy, txt) => {
+      ctx.fillStyle = DIM; ctx.font = '600 7.5px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center'; ctx.fillText(txt, cx, cy + R * 0.55);
+    };
+    const D2R = Math.PI / 180;
+
+    // 1) Airspeed: 0..450 kn over a 270° sweep starting at 135°.
+    function drawASI(cx, cy, kn) {
+      face(cx, cy);
+      ctx.fillStyle = CREAM; ctx.font = '600 8px "JetBrains Mono", monospace'; ctx.textAlign = 'center';
+      for (let v = 0; v <= 450; v += 50) {
+        const a = (135 + (v / 450) * 270) * D2R;
+        const c = Math.cos(a); const s = Math.sin(a);
+        ctx.strokeStyle = CREAM; ctx.lineWidth = v % 100 === 0 ? 2 : 1;
+        ctx.beginPath();
+        ctx.moveTo(cx + c * (R - 8), cy + s * (R - 8));
+        ctx.lineTo(cx + c * (R - 2), cy + s * (R - 2));
+        ctx.stroke();
+        if (v % 100 === 0) ctx.fillText(String(v), cx + c * (R - 17), cy + s * (R - 17) + 3);
+      }
+      label(cx, cy, 'AIRSPEED · KN');
+      ctx.fillStyle = CREAM; ctx.font = '700 11px "JetBrains Mono", monospace';
+      ctx.fillText(String(Math.round(kn)), cx, cy + 20);
+      needle(cx, cy, (135 + (clamp(kn, 0, 450) / 450) * 270) * D2R, R - 10, 2.4, '#f2ede0');
+      glass(cx, cy);
+    }
+
+    // 2) Artificial horizon: sky/ground card rotated by roll, shifted by pitch.
+    function drawATT(cx, cy, pitchRad, rollRad) {
+      face(cx, cy);
+      ctx.save();
+      ctx.beginPath(); ctx.arc(cx, cy, R - 3, 0, Math.PI * 2); ctx.clip();
+      ctx.translate(cx, cy);
+      ctx.rotate(-rollRad);
+      const pxPerDeg = 1.35;
+      const off = clamp((pitchRad / D2R) * pxPerDeg, -R * 1.6, R * 1.6);
+      ctx.translate(0, off);
+      ctx.fillStyle = '#3f7fb5'; ctx.fillRect(-R * 2, -R * 3, R * 4, R * 3); // sky
+      ctx.fillStyle = '#6d532f'; ctx.fillRect(-R * 2, 0, R * 4, R * 3); // ground
+      ctx.strokeStyle = '#f5f2e6'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(-R * 2, 0); ctx.lineTo(R * 2, 0); ctx.stroke();
+      // pitch ladder every 10°
+      ctx.lineWidth = 1; ctx.fillStyle = '#f5f2e6';
+      ctx.font = '600 6px "JetBrains Mono", monospace'; ctx.textAlign = 'center';
+      for (const d of [-30, -20, -10, 10, 20, 30]) {
+        const y = -d * pxPerDeg;
+        const w = Math.abs(d) === 10 ? 10 : (Math.abs(d) === 20 ? 15 : 20);
+        ctx.beginPath(); ctx.moveTo(-w, y); ctx.lineTo(w, y); ctx.stroke();
+      }
+      ctx.restore();
+      // fixed miniature aircraft
+      ctx.strokeStyle = '#ffb648'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx - 20, cy); ctx.lineTo(cx - 7, cy);
+      ctx.moveTo(cx + 7, cy); ctx.lineTo(cx + 20, cy);
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, 2.4, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffb648'; ctx.fill();
+      label(cx, cy, 'HORIZON');
+      glass(cx, cy);
+    }
+
+    // 3) Altimeter: long needle = 100s of feet, short = 1000s. Classic two-hand.
+    function drawALT(cx, cy, ft) {
+      face(cx, cy);
+      ctx.fillStyle = CREAM; ctx.font = '600 8px "JetBrains Mono", monospace'; ctx.textAlign = 'center';
+      for (let i = 0; i < 10; i++) {
+        const a = (-90 + i * 36) * D2R;
+        const c = Math.cos(a); const s = Math.sin(a);
+        ctx.strokeStyle = CREAM; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cx + c * (R - 8), cy + s * (R - 8));
+        ctx.lineTo(cx + c * (R - 2), cy + s * (R - 2));
+        ctx.stroke();
+        ctx.fillText(String(i), cx + c * (R - 16), cy + s * (R - 16) + 3);
+      }
+      label(cx, cy, 'ALTITUDE · FT');
+      ctx.fillStyle = CREAM; ctx.font = '700 10px "JetBrains Mono", monospace';
+      ctx.fillText(String(Math.max(0, Math.round(ft))), cx, cy + 20);
+      const a1000 = (-90 + ((ft % 10000) / 10000) * 360) * D2R;
+      const a100 = (-90 + ((ft % 1000) / 1000) * 360) * D2R;
+      needle(cx, cy, a1000, R * 0.45, 3.4, '#d8d2ba');
+      needle(cx, cy, a100, R - 12, 2.2, '#f2ede0');
+      glass(cx, cy);
+    }
+
+    // 4) VSI: ±2000 ft/min. 0 points left; climb sweeps up, dive sweeps down.
+    function drawVSI(cx, cy, fpm) {
+      face(cx, cy);
+      ctx.fillStyle = CREAM; ctx.font = '600 7px "JetBrains Mono", monospace'; ctx.textAlign = 'center';
+      for (const [v, t] of [[-2000, '2'], [-1000, '1'], [0, '0'], [1000, '1'], [2000, '2']]) {
+        const a = (180 + (v / 2000) * 80) * D2R;
+        const c = Math.cos(a); const s = Math.sin(a);
+        ctx.strokeStyle = CREAM; ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(cx + c * (R - 8), cy + s * (R - 8));
+        ctx.lineTo(cx + c * (R - 2), cy + s * (R - 2));
+        ctx.stroke();
+        ctx.fillText(t, cx + c * (R - 15), cy + s * (R - 15) + 2.5);
+      }
+      ctx.fillStyle = DIM; ctx.font = '600 6px "JetBrains Mono", monospace';
+      ctx.fillText('UP', cx - R * 0.32, cy - 10);
+      ctx.fillText('DN', cx - R * 0.32, cy + 14);
+      label(cx, cy, 'CLIMB ×1000');
+      needle(cx, cy, (180 + (clamp(fpm, -2000, 2000) / 2000) * 80) * D2R, R - 11, 2.4, '#f2ede0');
+      glass(cx, cy);
+    }
+
+    // 5) Heading: rotating compass card under a fixed lubber line.
+    function drawHDG(cx, cy, hdgRad) {
+      face(cx, cy);
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(-hdgRad);
+      ctx.fillStyle = CREAM; ctx.font = '700 9px "JetBrains Mono", monospace'; ctx.textAlign = 'center';
+      const pts = [['N', 0], ['E', 90], ['S', 180], ['W', 270]];
+      for (const [t, deg] of pts) {
+        const a = (deg - 90) * D2R;
+        ctx.save();
+        ctx.translate(Math.cos(a) * (R - 15), Math.sin(a) * (R - 15));
+        ctx.rotate(deg * D2R);
+        ctx.fillStyle = t === 'N' ? '#ff8f5a' : CREAM;
+        ctx.fillText(t, 0, 3);
+        ctx.restore();
+      }
+      for (let deg = 0; deg < 360; deg += 30) {
+        const a = (deg - 90) * D2R;
+        ctx.strokeStyle = deg % 90 === 0 ? CREAM : DIM;
+        ctx.lineWidth = deg % 90 === 0 ? 2 : 1;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * (R - 7), Math.sin(a) * (R - 7));
+        ctx.lineTo(Math.cos(a) * (R - 2), Math.sin(a) * (R - 2));
+        ctx.stroke();
+      }
+      ctx.restore();
+      // fixed plane silhouette + lubber line
+      ctx.strokeStyle = '#ffb648'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(cx, cy - R + 2); ctx.lineTo(cx, cy - R + 10); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 7); ctx.lineTo(cx + 4.5, cy + 5); ctx.lineTo(cx, cy + 2);
+      ctx.lineTo(cx - 4.5, cy + 5); ctx.closePath();
+      ctx.fillStyle = '#ffb648'; ctx.fill();
+      label(cx, cy, 'HEADING');
+      const deg = Math.round((((hdgRad / D2R) % 360) + 360) % 360);
+      ctx.fillStyle = CREAM; ctx.font = '700 10px "JetBrains Mono", monospace'; ctx.textAlign = 'center';
+      ctx.fillText(`${String(deg).padStart(3, '0')}°`, cx, cy + 20);
+      glass(cx, cy);
+    }
+
+    // 6) Throttle: 0..100% over the same 270° sweep, amber needle.
+    function drawTHR(cx, cy, thr) {
+      face(cx, cy);
+      ctx.fillStyle = CREAM; ctx.font = '600 8px "JetBrains Mono", monospace'; ctx.textAlign = 'center';
+      for (let v = 0; v <= 100; v += 10) {
+        const a = (135 + (v / 100) * 270) * D2R;
+        const c = Math.cos(a); const s = Math.sin(a);
+        ctx.strokeStyle = v >= 90 ? '#ff8f5a' : CREAM; ctx.lineWidth = v % 20 === 0 ? 2 : 1;
+        ctx.beginPath();
+        ctx.moveTo(cx + c * (R - 8), cy + s * (R - 8));
+        ctx.lineTo(cx + c * (R - 2), cy + s * (R - 2));
+        ctx.stroke();
+        if (v % 20 === 0) ctx.fillText(String(v), cx + c * (R - 17), cy + s * (R - 17) + 3);
+      }
+      label(cx, cy, 'THROTTLE %');
+      ctx.fillStyle = CREAM; ctx.font = '700 11px "JetBrains Mono", monospace';
+      ctx.fillText(`${Math.round(thr * 100)}%`, cx, cy + 20);
+      needle(cx, cy, (135 + clamp(thr, 0, 1) * 270) * D2R, R - 10, 2.6, '#ffb648');
+      glass(cx, cy);
+    }
+
+    return {
+      draw(st) {
+        ctx.setTransform(scale, 0, 0, scale, 0, 0);
+        ctx.clearRect(0, 0, LW, LH);
+        const cy = 60;
+        drawASI(60, cy, st.kn);
+        drawATT(60 + CELL, cy, st.pitch, st.roll);
+        drawALT(60 + CELL * 2, cy, st.ft);
+        drawVSI(60 + CELL * 3, cy, st.fpm);
+        drawHDG(60 + CELL * 4, cy, st.hdg);
+        drawTHR(60 + CELL * 5, cy, st.thr);
+      },
+    };
+  })();
 
   // Player-centred radar scope (north-up). The player sits at the centre; a
   // bandit within RADAR_RANGE shows at its true position relative to us, and one
@@ -949,6 +1439,44 @@ import {
     mapCtx.beginPath(); mapCtx.arc(cx, cy, Rpx, 0, Math.PI * 2); mapCtx.stroke();
   }
 
+  // ---- Lead pipper: for the nearest bandit ahead, project the point you'd
+  //      have to shoot AT (target position advanced by flight time, minus our
+  //      own inherited velocity) onto the screen. Put the pipper on it and
+  //      pull the trigger — this is what makes hitting a crossing target
+  //      actually possible. ----
+  const _lead = new THREE.Vector3();
+  const _leadRel = new THREE.Vector3();
+  function updateLeadPipper() {
+    if (!leadEl) return;
+    let best = null; let bestD = CFG.LEAD_MAX;
+    getForward();
+    for (const e of enemies) {
+      if (!e.alive) continue;
+      _lead.copy(e.group.position).sub(plane.position);
+      const d = _lead.length();
+      if (d > bestD) continue;
+      if (_lead.dot(_fwd) < d * 0.25) continue; // roughly ahead of us only
+      best = e; bestD = d;
+    }
+    if (!best || crashed || won || !started) { leadEl.style.display = 'none'; return; }
+    // Two-pass intercept: t = d / muzzle speed, aim = target + (vT - vMe)·t.
+    _leadRel.copy(best.vel).sub(vel);
+    let t = bestD / CFG.TRACER_SPEED;
+    _lead.copy(best.group.position).addScaledVector(_leadRel, t);
+    t = _lead.distanceTo(plane.position) / CFG.TRACER_SPEED;
+    _lead.copy(best.group.position).addScaledVector(_leadRel, t);
+    _lead.project(camera);
+    if (_lead.z > 1 || Math.abs(_lead.x) > 1.05 || Math.abs(_lead.y) > 1.05) {
+      leadEl.style.display = 'none';
+      return;
+    }
+    const r = stage.getBoundingClientRect();
+    leadEl.style.display = 'block';
+    leadEl.style.left = `${((_lead.x + 1) / 2) * r.width}px`;
+    leadEl.style.top = `${((1 - _lead.y) / 2) * r.height}px`;
+    leadEl.classList.toggle('ps-lead-close', bestD < 700);
+  }
+
   function respawn() {
     resetPlane();
     vel.set(0, 0, 0);
@@ -956,6 +1484,7 @@ import {
     crashed = false;
     won = false;
     onGround = true;
+    gearDown = true;
     playerHP = CFG.PLAYER_HP;
     kills = 0;
     resetEnemies();
@@ -969,16 +1498,49 @@ import {
     if (keys.w) throttle = clamp(throttle + CFG.THROTTLE_RATE * dt, 0, 1);
     if (keys.s) throttle = clamp(throttle - CFG.THROTTLE_RATE * dt, 0, 1);
 
-    // Yaw input from rudder keys; pitch/roll from the mouse stick.
-    const yawInput = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
-    const pitchInput = -stickY; // mouse up -> nose up
-    const rollInput = stickX; // mouse right -> roll right
-
     const speed = vel.length();
     const v2 = speed * speed;
 
-    // --- Angle of attack & lift coefficient (the heart of the model) ---
+    // --- The instructor: the mouse offset from screen centre is a COMMANDED
+    //     NOSE OFFSET (rate command), fed through the same bank-and-pull
+    //     controller the AI uses — the plane rolls into a coordinated turn by
+    //     itself. Mouse centred = fly straight; hold it on a bandit and the
+    //     nose walks onto him. Deliberately NOT a camera ray: putting the
+    //     chase camera inside the control loop feeds its lag back into pitch
+    //     and sets up a violent pilot-induced oscillation (found the hard way). ---
+    const dead = 0.04;
+    const shape = (v) => {
+      const a = Math.abs(v);
+      return a < dead ? 0 : Math.sign(v) * ((a - dead) / (1 - dead));
+    };
+    const inNX = dev.stickOverride ? dev.stickOverride.nx : mouseNX;
+    const inNY = dev.stickOverride ? dev.stickOverride.ny : mouseNY;
+    const turnCmd = shape(inNX); // -1..1: how hard to turn
+    const pitchCmd = shape(-inNY); // -1..1: + => nose up
+
+    // Bank-angle command: mouse X sets a TARGET BANK (capped ~72°) and the
+    // ailerons drive the actual bank onto it — hold the mouse right and the
+    // plane banks and carves right, it doesn't barrel-roll. atan2 keeps the
+    // bank well-defined even inverted, so recovery always rolls upright.
+    getRight(); getUp();
+    const bank = Math.atan2(-_right.y, _up.y); // + = banked right
+    const targetBank = turnCmd * 1.05; // up to ~60°
+    let rollInput = clamp((targetBank - bank) * 2.2, -1, 1);
+    // Elevator: the commanded pitch, plus a little extra pull in a hard bank
+    // (flightAssist already holds the nose up through the turn itself), plus a
+    // hands-off auto-level trim: with the mouse centred the nose eases back to
+    // the horizon instead of staying wherever the last manoeuvre left it (that
+    // residue is what used to turn every hard turn into a slow spiral dive).
+    getForward();
+    const pitchAngle = Math.asin(clamp(_fwd.y, -1, 1));
+    const autoLevel = clamp(-pitchAngle * 0.9, -0.5, 0.5) * (1 - Math.abs(pitchCmd));
+    let pitchInput = clamp(pitchCmd * 1.0 + (1 - Math.cos(bank)) * 0.35 + autoLevel, -1, 1);
+    // Manual rudder on top (fine aim / taxi steering).
+    const rudder = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
+    const yawInput = clamp(rudder + turnCmd * 0.3, -1, 1);
     _q.copy(plane.quaternion).invert();
+
+    // --- Angle of attack & lift coefficient (the heart of the model) ---
     _vLocal.copy(vel).applyQuaternion(_q); // velocity in body frame
     const fwdSpeed = -_vLocal.z;
     const aoa = Math.atan2(-_vLocal.y, Math.max(fwdSpeed, 0.001));
@@ -1005,25 +1567,41 @@ import {
     // --- Attitude (rate control, fading in with airspeed) ---
     let e = clamp(speed / CFG.CONTROL_V, 0, 1.15);
     if (stalled) e *= 0.45; // mushy controls in the stall
+    if (onGround) {
+      rollInput = 0; // wings stay level on the wheels
+      // taxi steering: the tailwheel gives real authority even when slow
+      plane.rotateY(-rudder * CFG.YAW_RATE * Math.max(e, 0.4) * dt);
+    } else {
+      plane.rotateY(-yawInput * CFG.YAW_RATE * e * dt);
+    }
     plane.rotateX(pitchInput * CFG.PITCH_RATE * e * dt);
     plane.rotateZ(-rollInput * CFG.ROLL_RATE * e * dt);
-    plane.rotateY(-yawInput * CFG.YAW_RATE * e * dt);
     // Stall break: the nose drops, which lowers AoA and lets you recover.
     if (stalled && fwdSpeed > 0) plane.rotateX(-(Math.abs(aoa) - CFG.A_STALL) * 1.6 * dt);
 
     // Grip + coordinated turn (the anti-drift fix). Skipped on the deck so the
     // takeoff roll / tyre model owns ground velocity.
-    if (plane.position.y > CFG.GROUND_Y + 0.3) flightAssist(plane, vel, e, dt);
+    if (!onGround) flightAssist(plane, vel, e, dt);
 
-    // --- Ground contact / taxi / takeoff roll ---
-    if (plane.position.y <= CFG.GROUND_Y) {
-      plane.position.y = CFG.GROUND_Y;
+    // --- Terrain contact: touchdown, taxi, or crash ---
+    const gh = groundAt(plane.position.x, plane.position.z);
+    if (plane.position.y <= gh + CFG.GROUND_Y) {
+      plane.position.y = gh + CFG.GROUND_Y;
       const impactV = -vel.y;
       if (vel.y < 0) vel.y = 0;
 
-      // A hard, fast, or gear-up arrival = crash.
-      if (started && !crashed && (impactV > 14 || (impactV > 5 && !gearDown))) {
-        crash(gearDown ? 'Hard landing' : 'Belly flop — gear up!');
+      // Water, steep slopes, hard/fast/gear-up arrivals = crash.
+      const ee = 8;
+      const slope = Math.hypot(
+        groundAt(plane.position.x + ee, plane.position.z) - groundAt(plane.position.x - ee, plane.position.z),
+        groundAt(plane.position.x, plane.position.z + ee) - groundAt(plane.position.x, plane.position.z - ee),
+      ) / (2 * ee);
+      if (started && !crashed) {
+        if (gh < TERRAIN.WATER_Y + 0.5) crash('Ditched in the lake');
+        else if (slope > 0.25) crash('Flew into terrain');
+        else if (impactV > 14 || (impactV > 5 && !gearDown)) {
+          crash(gearDown ? 'Hard landing' : 'Belly flop — gear up!');
+        }
       }
 
       onGround = true;
@@ -1057,11 +1635,12 @@ import {
       if (plane.position[axis] > B) { plane.position[axis] = B; if (vel[axis] > 0) vel[axis] = 0; hitBorder = true; }
       if (plane.position[axis] < -B) { plane.position[axis] = -B; if (vel[axis] < 0) vel[axis] = 0; hitBorder = true; }
     }
-    if (plane.position.y > 1500) { plane.position.y = 1500; if (vel.y > 0) vel.y = 0; }
+    if (plane.position.y > CFG.CEIL) { plane.position.y = CFG.CEIL; if (vel.y > 0) vel.y = 0; }
 
-    // --- Propeller spin (idle + throttle), gear retract animation ---
-    const rpm = (0.18 + throttle * 0.82) * 60;
-    if (surf.prop) surf.prop.rotation.z -= rpm * dt;
+    // --- Propeller: spin + blur disc at RPM, gear retract animation ---
+    const rpmNorm = 0.18 + throttle * 0.82;
+    if (surf.prop) surf.prop.rotation.z -= rpmNorm * 60 * dt;
+    setPropBlur(surf, rpmNorm);
 
     const target = gearDown ? 1 : 0;
     gearAnim += clamp(target - gearAnim, -dt / 1.4, dt / 1.4); // ~1.4 s travel
@@ -1091,29 +1670,38 @@ import {
     // --- Target lock: is a bandit in the gun line right now? (turns the pipper red) ---
     getForward();
     lockTarget = false;
-    for (const e of enemies) {
-      if (e.alive && rayHitsSphere(plane.position, _fwd, e.group.position, CFG.HITBOX_R, CFG.GUN_RANGE) >= 0) {
+    for (const en of enemies) {
+      if (en.alive && rayHitsSphere(plane.position, _fwd, en.group.position, CFG.HITBOX_R, CFG.GUN_RANGE) >= 0) {
         lockTarget = true; break;
       }
     }
     if (pipper) pipper.classList.toggle('ps-lock', lockTarget);
 
+    // --- Engine audio follows throttle + speed ---
+    audio.setEngine(throttle, speed);
+
     // --- HUD ---
     const knots = Math.max(0, fwdSpeed) * KT;
-    if (hud.spd) hud.spd.textContent = Math.round(knots);
-    if (hud.alt) hud.alt.textContent = Math.round((plane.position.y - CFG.GROUND_Y) * FT);
-    if (hud.thr) hud.thr.textContent = `${Math.round(throttle * 100)}%`;
-    if (hud.thrFill) hud.thrFill.style.height = `${Math.round(throttle * 100)}%`;
-    if (hud.vsi) hud.vsi.textContent = `${vel.y >= 0 ? '+' : ''}${Math.round(vel.y * FT * 60)}`;
-    if (hud.hdg) {
-      getForward();
-      let deg = (Math.atan2(_fwd.x, -_fwd.z) * 180) / Math.PI;
-      deg = ((deg % 360) + 360) % 360;
-      hud.hdg.textContent = `${Math.round(deg).toString().padStart(3, '0')}°`;
+    if (gauges) {
+      getForward(); getUp(); getRight();
+      gauges.draw({
+        kn: knots,
+        ft: (plane.position.y - CFG.GROUND_Y - gh) * FT,
+        fpm: vel.y * FT * 60,
+        thr: throttle,
+        pitch: Math.asin(clamp(_fwd.y, -1, 1)),
+        roll: Math.atan2(-_right.y, _up.y),
+        hdg: Math.atan2(_fwd.x, -_fwd.z),
+      });
     }
     if (hud.gear) {
-      hud.gear.textContent = gearDown ? 'GEAR DN' : 'GEAR UP';
-      hud.gear.classList.toggle('ps-warn-amber', !gearDown);
+      const transit = Math.abs(gearAnim - (gearDown ? 1 : 0)) > 0.02;
+      hud.gear.textContent = transit ? 'GEAR ···' : (gearDown ? 'GEAR DOWN' : 'GEAR UP');
+      hud.gear.classList.toggle('ps-warn-amber', !gearDown || transit);
+      if (hud.gearBox) {
+        hud.gearBox.classList.toggle('ps-gear-down', gearDown && !transit);
+        hud.gearBox.classList.toggle('ps-gear-transit', transit);
+      }
     }
     if (hud.stall) hud.stall.classList.toggle('ps-show', (stalled || (knots < 70 && !onGround)) && !crashed);
     if (hud.warn && !crashed) {
@@ -1123,9 +1711,17 @@ import {
   }
 
   function crash(reason) {
+    if (dev.god) return;
     crashed = true;
     started = true;
     throttle = 0;
+    audio.boom();
+    spawnSpark(plane.position, 14, 0.5);
+    for (let i = 0; i < 5; i++) {
+      spawnSmoke(plane.position.clone().add(new THREE.Vector3(
+        (Math.random() - 0.5) * 6, Math.random() * 4, (Math.random() - 0.5) * 6,
+      )), 4 + Math.random() * 3, 1.4);
+    }
     if (hud.warn) {
       hud.warn.textContent = `💥 ${reason} — press SPACE to respawn`;
       hud.warn.classList.add('ps-show');
@@ -1140,18 +1736,37 @@ import {
     sun.target.position.copy(plane.position);
     sun.target.updateMatrixWorld();
 
+    // Dev free camera: park it (or ride along) and look at the plane/a point.
+    if (dev.cam) {
+      camera.position.set(dev.cam.x, dev.cam.y, dev.cam.z);
+      if (dev.cam.rel) camera.position.add(plane.position);
+      camera.up.copy(WORLD_UP);
+      if (dev.cam.look === 'plane') camera.lookAt(plane.position);
+      else camera.lookAt(dev.cam.look.x, dev.cam.look.y, dev.cam.look.z);
+      return;
+    }
+
     // Stable chase: sit behind/above following the nose's heading & pitch, but
     // don't roll the view with the aircraft (much easier to fly, less nausea).
     getForward();
     _camPos.copy(plane.position)
       .addScaledVector(_fwd, -CFG.CAM_BACK)
       .addScaledVector(WORLD_UP, CFG.CAM_UP);
-    if (_camPos.y < 2) _camPos.y = 2; // don't dive the camera underground
+    const ghc = groundAt(_camPos.x, _camPos.z);
+    if (_camPos.y < ghc + 2) _camPos.y = ghc + 2; // don't dive the camera underground
     const a = crashed ? 0.06 : 1 - Math.pow(1 - CFG.CAM_LERP, dt * 60);
     camera.position.lerp(_camPos, a);
     _camAim.copy(plane.position).addScaledVector(_fwd, 8);
     camera.up.copy(WORLD_UP);
     camera.lookAt(_camAim);
+
+    // A touch of speed-FOV: the world widens as you go fast.
+    const targetFov = 62 + clamp((vel.length() - 70) / 110, 0, 1) * 8;
+    fov += (targetFov - fov) * Math.min(1, dt * 3);
+    if (Math.abs(camera.fov - fov) > 0.01) {
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+    }
   }
 
   // ======================================================== LOOP ==========
@@ -1169,25 +1784,130 @@ import {
   updateCombatHUD();
   setDifficulty(diffName); // sync HUD label + overlay highlight from the saved tier
 
+  // ==================================================== DEV MODE ==========
+  // A scriptable dev/debug handle on window.__ps (client-side single-player;
+  // "cheating" only cheats yourself). Lets tooling — or a curious player —
+  // simulate stick inputs, teleport, slow time, park a free camera and record
+  // telemetry without touching the real mouse/keyboard.
+  const dev = {
+    stickOverride: null, // {nx, ny} or null
+    god: false,
+    noAiFire: false,
+    timeScale: 1,
+    paused: false,
+    cam: null, // {x,y,z, look?: 'plane'|{x,y,z}} or null for the chase cam
+  };
+  const devState = () => {
+    const V = THREE.Vector3;
+    const f = new V(0, 0, -1).applyQuaternion(plane.quaternion);
+    const r = new V(1, 0, 0).applyQuaternion(plane.quaternion);
+    const u = new V(0, 1, 0).applyQuaternion(plane.quaternion);
+    return {
+      x: +plane.position.x.toFixed(1),
+      y: +plane.position.y.toFixed(1),
+      z: +plane.position.z.toFixed(1),
+      agl: +(plane.position.y - CFG.GROUND_Y - groundAt(plane.position.x, plane.position.z)).toFixed(1),
+      hdg: +((Math.atan2(f.x, -f.z) * 180) / Math.PI).toFixed(1),
+      pitch: +((Math.asin(clamp(f.y, -1, 1)) * 180) / Math.PI).toFixed(1),
+      bank: +((Math.atan2(-r.y, u.y) * 180) / Math.PI).toFixed(1),
+      speed: +vel.length().toFixed(1),
+      kn: +(vel.length() * KT).toFixed(0),
+      vy: +vel.y.toFixed(1),
+      throttle: +throttle.toFixed(2),
+      gearDown,
+      onGround,
+      started,
+      crashed,
+      won,
+      hp: playerHP,
+      kills,
+      enemies: enemies.map((e) => ({
+        alive: e.alive,
+        hp: e.hp,
+        mode: e.mode,
+        dist: +e.group.position.distanceTo(plane.position).toFixed(0),
+        y: +e.group.position.y.toFixed(0),
+      })),
+    };
+  };
+  window.__ps = {
+    plane, vel, enemies, camera, start, respawn, dev,
+    get throttle() { return throttle; },
+    set throttle(v) { throttle = clamp(v, 0, 1); },
+    state: devState,
+    // Virtual stick: overrides the mouse until stick(null).
+    stick(nx, ny) {
+      dev.stickOverride = (nx == null) ? null : { nx: clamp(nx, -1, 1), ny: clamp(ny || 0, -1, 1) };
+    },
+    key(k, down) { keys[String(k).toLowerCase()] = !!down; },
+    fire(on) { firing = !!on; },
+    teleport(x, y, z, hdgDeg = 0, speed = 120) {
+      start();
+      crashed = false; won = false;
+      plane.position.set(x, y, z);
+      plane.quaternion.setFromAxisAngle(WORLD_UP, (-hdgDeg * Math.PI) / 180);
+      getForward();
+      vel.copy(_fwd).multiplyScalar(speed);
+      if (hud.warn) hud.warn.classList.remove('ps-show');
+      return devState();
+    },
+    god(on) { dev.god = !!on; },
+    aiFire(on) { dev.noAiFire = !on; },
+    pause(on) { dev.paused = !!on; },
+    set timeScale(v) { dev.timeScale = clamp(v, 0, 4); },
+    get timeScale() { return dev.timeScale; },
+    // Free camera for inspection: cam(x,y,z) parks it looking at the plane,
+    // cam(x,y,z,{x,y,z}) at a point, cam(x,y,z,'rel') rides along as an offset
+    // from the aircraft, cam(null) restores the chase rig.
+    cam(x, y, z, look) {
+      dev.cam = (x == null) ? null : {
+        x, y, z, rel: look === 'rel', look: (look && look !== 'rel') ? look : 'plane',
+      };
+    },
+    gear(down) { gearDown = !!down; },
+    kill(i) { const e = enemies[i]; if (e && e.alive) damageEnemy(e, 99999); },
+    // Sample state() at `hz` for `sec` seconds -> Promise<samples[]>.
+    record(sec = 5, hz = 2) {
+      return new Promise((res) => {
+        const out = [];
+        const iv = setInterval(() => {
+          out.push(devState());
+          if (out.length >= sec * hz) { clearInterval(iv); res(out); }
+        }, 1000 / hz);
+      });
+    },
+  };
+
   let last = performance.now();
   let borderScroll = 0;
   function frame(now) {
     let dt = (now - last) / 1000;
     last = now;
     if (dt > 0.05) dt = 0.05; // clamp big gaps (tab switches)
+    dt *= dev.timeScale;
+    if (dev.paused) dt = 0;
 
-    const playing = started && !crashed && !won;
+    const playing = started && !crashed && !won && dt > 0;
     if (playing) update(dt);
     else {
       // idle the prop + animate gear even before launch / after a crash
       if (surf.prop) surf.prop.rotation.z -= 0.18 * 60 * dt;
+      setPropBlur(surf, 0.18);
       stepTracers(dt);
+      if (gauges && !started) {
+        gauges.draw({
+          kn: 0, ft: 0, fpm: 0, thr: 0, pitch: 0, roll: 0, hdg: 0,
+        });
+      }
     }
 
     // Bandits fly even before launch / after a crash (so they patrol), but only
     // shoot while the engagement is live.
-    for (const e of enemies) if (e.alive) stepEnemy(e, dt, playing);
+    for (const e of enemies) if (e.alive && dt > 0) stepEnemy(e, dt, playing && !dev.noAiFire);
     stepSparks(dt);
+    stepSmokes(dt);
+    stepDebris(dt);
+    updateLeadPipper();
 
     // Fade the red damage vignette.
     dmgFlash = Math.max(0, dmgFlash - dt * 3);

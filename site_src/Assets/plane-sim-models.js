@@ -5,12 +5,53 @@
 // it. Local forward is -Z, Y is up, units are metres.
 import * as THREE from 'three';
 
+// ---- Procedural camouflage -------------------------------------------------
+// A canvas texture of irregular elongated blotches over a base coat — reads as
+// the RAF temperate land scheme (dark earth + dark green) for the player, or a
+// grey scheme for the bandits. Deterministic enough per call; the organic
+// randomness is a feature (no two airframes identical).
+function camoTexture(baseHex, blotchHex) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = `#${baseHex.toString(16).padStart(6, '0')}`;
+  ctx.fillRect(0, 0, 256, 256);
+  ctx.fillStyle = `#${blotchHex.toString(16).padStart(6, '0')}`;
+  for (let i = 0; i < 26; i++) {
+    const x = Math.random() * 256; const y = Math.random() * 256;
+    const rx = 22 + Math.random() * 46; const ry = 8 + Math.random() * 16;
+    const rot = Math.random() * Math.PI;
+    ctx.save();
+    ctx.translate(x, y); ctx.rotate(rot);
+    ctx.beginPath();
+    // lumpy ellipse: radius modulated as we sweep
+    for (let a = 0; a <= Math.PI * 2 + 0.01; a += Math.PI / 14) {
+      const wob = 0.75 + 0.25 * Math.sin(a * 3 + i);
+      const px = Math.cos(a) * rx * wob; const py = Math.sin(a) * ry * wob;
+      if (a === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  // subtle weathering grain
+  for (let i = 0; i < 900; i++) {
+    const v = Math.random() * 40;
+    ctx.fillStyle = `rgba(0,0,0,${(v / 40) * 0.08})`;
+    ctx.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
 // A thin, elliptical-planform airfoil surface (wings + tailplane). Built by
 // extruding a NACA-ish section across the span, then tapering every spanwise
 // station elliptically so the wing thins to sharp tips — a real aerofoil, not a
-// flat slab. Output: span along X, chord along Z (leading edge toward -Z),
-// thickness along Y, centred on the origin.
-function airfoilSurface(halfSpan, chord, thickFrac) {
+// flat slab. `dihedral` (rise per metre of span, e.g. 0.1 ≈ 5.7°) lifts the
+// tips like the real Spitfire's wing. Output: span along X, chord along Z
+// (leading edge toward -Z), thickness along Y, centred on the origin.
+function airfoilSurface(halfSpan, chord, thickFrac, dihedral = 0) {
   const N = 16;
   const yt = (x) => 5 * thickFrac
     * (0.2969 * Math.sqrt(x) - 0.1260 * x - 0.3516 * x * x + 0.2843 * x ** 3 - 0.1015 * x ** 4);
@@ -23,10 +64,11 @@ function airfoilSurface(halfSpan, chord, thickFrac) {
   geo.translate(0, 0, -halfSpan);
   const pos = geo.attributes.position; const midC = chord * 0.5;
   for (let i = 0; i < pos.count; i++) {
-    let zf = pos.getZ(i) / halfSpan; if (zf > 1) zf = 1; else if (zf < -1) zf = -1;
+    const zSpan = pos.getZ(i);
+    let zf = zSpan / halfSpan; if (zf > 1) zf = 1; else if (zf < -1) zf = -1;
     const cf = Math.sqrt(Math.max(1 - zf * zf, 0.0008)); // elliptical chord factor
     pos.setX(i, midC + (pos.getX(i) - midC) * cf);
-    pos.setY(i, pos.getY(i) * Math.pow(cf, 0.6)); // thickness thins slightly slower
+    pos.setY(i, pos.getY(i) * Math.pow(cf, 0.6) + Math.abs(zSpan) * dihedral);
   }
   geo.rotateY(-Math.PI / 2); // span -> X, chord -> +Z
   geo.translate(0, 0, -chord / 2); // centre the chord (leading edge now toward -Z)
@@ -90,65 +132,80 @@ const setShadows = (obj) => obj.traverse((o) => {
 });
 
 // ---- The Spitfire-ish prop fighter. Returns { group, surf }, where surf holds
-//      the animatable handles (control-surface pivots, prop, gear).
-//      opts.paint overrides the airframe colour and opts.markings === false drops
-//      the RAF roundels + fin flash — used to build visually distinct AI enemies
-//      from the very same geometry the player flies. ----
+//      the animatable handles (control-surface pivots, prop, blades, propDisc,
+//      gear). opts.paint switches to the bandit grey scheme and
+//      opts.markings === false drops the RAF roundels + fin flash. ----
 export function buildAircraft(opts = {}) {
-  const PAINT = opts.paint ?? 0x586a39; // default: RAF olive
+  const enemy = opts.paint != null;
   const markings = opts.markings !== false; // default: RAF roundels + fin flash
   const plane = new THREE.Group();
   const surf = {
-    aileronL: null, aileronR: null, elevator: null, rudder: null, prop: null, gear: null,
+    aileronL: null, aileronR: null, elevator: null, rudder: null,
+    prop: null, blades: null, propDisc: null, gear: null,
   };
 
-  const mkPaint = (hex, side) => new THREE.MeshStandardMaterial({
-    color: hex, roughness: 0.55, metalness: 0.12, side: side || THREE.FrontSide,
+  // Camouflage: RAF dark-earth/dark-green for the player, two-grey for bandits.
+  const camoTex = enemy
+    ? camoTexture(0x686e75, 0x4d545b)
+    : camoTexture(0x6f6440, 0x50633a);
+  const mkCamo = (side) => new THREE.MeshStandardMaterial({
+    map: camoTex, roughness: 0.6, metalness: 0.12, side: side || THREE.FrontSide,
   });
-  const camo1 = mkPaint(PAINT); // airframe paint — wings, tail, control surfaces
+  const camo1 = mkCamo(); // wings, tail, control surfaces
   // Fuselage shell: same paint but DOUBLE-SIDED so the thin lathe can never
   // read as see-through (a single-sided open shell shows the interior/through).
-  const body = mkPaint(PAINT, THREE.DoubleSide);
+  const body = mkCamo(THREE.DoubleSide);
   const metal = new THREE.MeshStandardMaterial({ color: 0x33373d, roughness: 0.4, metalness: 0.7 });
   const glass = new THREE.MeshStandardMaterial({
-    color: 0xa9dcec, roughness: 0.08, metalness: 0.0, transparent: true, opacity: 0.62,
+    color: 0xa9dcec, roughness: 0.08, metalness: 0.0, transparent: true, opacity: 0.55,
   });
 
   // Fuselage: a smooth lathe of revolution laid along Z. Profile is (radius,
   // lathe-y) where +y becomes the TAIL (+Z) and -y the NOSE (-Z). Slim, widest
-  // just forward of centre (engine/cockpit) with a long slender tail — much
-  // closer to the real Spitfire's fineness than the old blimp shape.
+  // just forward of centre (engine/cockpit) with a long slender tail.
   const fpts = [
-    [0.05, 4.8], [0.20, 4.2], [0.36, 3.2], [0.50, 1.8], [0.60, 0.2],
-    [0.66, -1.4], [0.64, -2.6], [0.54, -3.6], [0.34, -4.3], [0.05, -4.8],
+    [0.05, 4.8], [0.16, 4.35], [0.30, 3.4], [0.44, 2.3], [0.54, 1.0],
+    [0.60, 0.2], [0.66, -1.4], [0.65, -2.2], [0.60, -3.0], [0.52, -3.7],
+    [0.40, -4.25], [0.24, -4.65], [0.05, -4.85],
   ];
   const profile = fpts.map(([r, y]) => new THREE.Vector2(Math.max(r, 0.001), y));
-  const fuse = new THREE.Mesh(new THREE.LatheGeometry(profile, 28), body);
+  const fuse = new THREE.Mesh(new THREE.LatheGeometry(profile, 36), body);
   fuse.rotation.x = Math.PI / 2;
   fuse.scale.set(0.92, 1.06, 1.0); // oval section: a touch taller than wide
   plane.add(fuse);
 
-  // Short turtledeck spine just behind the cockpit (wide front tapering aft);
-  // kept short so it doesn't float above the slender tapering tail.
-  const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.26, 2.6, 14), body);
+  // Short turtledeck spine just behind the cockpit (wide front tapering aft).
+  const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.24, 2.4, 14), body);
   spine.rotation.x = Math.PI / 2;
-  spine.position.set(0, 0.42, 1.7);
+  spine.position.set(0, 0.36, 1.6);
   plane.add(spine);
 
-  // Framed bubble canopy, raised so it clearly sits ON TOP of the (now slimmer)
-  // fuselage and reads as a cockpit. An opaque oval sill ring frames its base.
+  // Framed canopy: angled windscreen panel, bubble hood with visible frame
+  // hoops, and a headrest fairing behind the pilot.
   const canopy = new THREE.Mesh(new THREE.SphereGeometry(0.46, 22, 16), glass);
-  canopy.scale.set(0.9, 0.95, 1.85);
+  canopy.scale.set(0.88, 0.92, 1.8);
   canopy.position.set(0, 0.74, -0.05);
   plane.add(canopy);
-  const sill = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.04, 8, 22), metal);
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0x2c3436, roughness: 0.5, metalness: 0.4 });
+  for (const [fz, fs] of [[-0.78, 0.78], [0.02, 1.0], [0.66, 0.82]]) {
+    const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.44, 0.028, 6, 20, Math.PI), frameMat);
+    hoop.rotation.z = Math.PI; // arc over the top
+    hoop.rotation.y = Math.PI / 2;
+    hoop.scale.setScalar(fs);
+    hoop.position.set(0, 0.72, -0.05 + fz);
+    plane.add(hoop);
+  }
+  const sill = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.04, 8, 22), frameMat);
   sill.rotation.x = Math.PI / 2; // lay the ring flat (in the X-Z plane)
   sill.scale.set(0.96, 1.9, 1); // stretch along the body (becomes Z after the rotate)
-  sill.position.set(0, 0.64, -0.05); // ring the canopy where it meets the fuselage top
+  sill.position.set(0, 0.64, -0.05);
   plane.add(sill);
+  const headrest = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.34, 0.5), body);
+  headrest.position.set(0, 0.62, 0.85);
+  plane.add(headrest);
 
-  // Exhaust stacks hugging the upper sides of the engine cowl (placed inside the
-  // cowl radius so they sit flush, not floating) + a radiator under the wing.
+  // Exhaust stacks hugging the upper sides of the engine cowl + carb intake
+  // under the chin + oval radiator housings under the wings (Spitfire-style).
   const exMat = new THREE.MeshStandardMaterial({ color: 0x2a2622, roughness: 0.65, metalness: 0.5 });
   for (const sx of [-1, 1]) {
     for (let i = 0; i < 3; i++) {
@@ -158,27 +215,40 @@ export function buildAircraft(opts = {}) {
       plane.add(ex);
     }
   }
-  const rad = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.4, 1.5), metal);
-  rad.position.set(1.55, -0.5, 0.6);
-  plane.add(rad);
+  const chin = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 1.1, 10), exMat);
+  chin.rotation.x = Math.PI / 2;
+  chin.position.set(0, -0.62, -3.2);
+  plane.add(chin);
+  const radMat = new THREE.MeshStandardMaterial({ color: 0x565b52, roughness: 0.6, metalness: 0.4 });
+  for (const sx of [-1, 1]) {
+    const rad = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1.15, 10), radMat);
+    rad.rotation.x = Math.PI / 2;
+    rad.scale.set(1.25, 1, 0.65); // squashed oval duct
+    rad.position.set(sx * 1.5, -0.34, 0.55);
+    plane.add(rad);
+  }
 
-  // Wing: a single thin airfoil, elliptical planform, ~11 m span.
+  // Wing: a single thin airfoil, elliptical planform, ~11 m span, with real
+  // dihedral (tips ~0.55 m above the roots — the classic Spitfire sit).
   const WING_HALF = 5.5;
   const WING_CHORD = 2.0;
-  const wing = new THREE.Mesh(airfoilSurface(WING_HALF, WING_CHORD, 0.105), camo1);
-  wing.position.set(0, -0.12, -0.05);
+  const DIHEDRAL = 0.1; // rise per metre of span
+  const wing = new THREE.Mesh(airfoilSurface(WING_HALF, WING_CHORD, 0.105, DIHEDRAL), camo1);
+  wing.position.set(0, -0.18, -0.05);
   wing.rotation.x = -0.025; // slight angle of incidence
   plane.add(wing);
   const ailHingeZ = wing.position.z + 0.30; // straight spanwise hinge line
   for (const side of [-1, 1]) {
     if (markings) {
       const r = roundel(0.78);
-      r.position.set(side * 3.25, 0.0, wing.position.z);
+      // Sit on the (dihedral-raised, cambered) wing top surface, tilted to match.
+      r.position.set(side * 3.25, wing.position.y + 3.25 * DIHEDRAL + 0.1, wing.position.z);
+      r.rotation.z = -side * Math.atan(DIHEDRAL);
       plane.add(r);
     }
 
     // Aileron whose planform follows the wing's elliptical trailing edge so it
-    // blends into the wing (same colour) instead of being a bolted-on box.
+    // blends into the wing (same camo) instead of being a bolted-on box.
     const flap = buildFlap({
       xIn: side < 0 ? -4.7 : 2.5,
       xOut: side < 0 ? -2.5 : 4.7,
@@ -187,11 +257,23 @@ export function buildAircraft(opts = {}) {
       midZ: wing.position.z,
       zHinge: ailHingeZ,
       thick: 0.05,
-      y: wing.position.y,
+      y: wing.position.y + 3.6 * DIHEDRAL, // mid-aileron span height
       material: camo1,
     });
     plane.add(flap);
     if (side < 0) surf.aileronL = flap; else surf.aileronR = flap;
+
+    // Wingtip navigation lights: port red, starboard green.
+    const tip = new THREE.Mesh(
+      new THREE.SphereGeometry(0.07, 8, 6),
+      new THREE.MeshStandardMaterial({
+        color: side < 0 ? 0xff3333 : 0x33ff55,
+        emissive: side < 0 ? 0xcc1111 : 0x11cc33,
+        emissiveIntensity: 1.4,
+      }),
+    );
+    tip.position.set(side * (WING_HALF - 0.12), wing.position.y + WING_HALF * DIHEDRAL, wing.position.z);
+    plane.add(tip);
   }
 
   // Tail: thin elliptical tailplane + elevator, curved fin + rudder.
@@ -215,44 +297,65 @@ export function buildAircraft(opts = {}) {
   surf.elevator = elevFlap;
 
   // Vertical fin: rounded leading edge but a VERTICAL trailing edge at x=FIN_TE,
-  // so the rudder mounts flush against it instead of floating behind a swept edge.
-  const FIN_TE = 1.35;
+  // so the rudder mounts flush against it instead of floating behind a swept
+  // edge. Solid paint (not the camo map): extrude/box UVs squeeze the whole
+  // texture into the part, which reads as a muddy near-black slab.
+  const finMat = new THREE.MeshStandardMaterial({
+    color: enemy ? 0x585e65 : 0x556036, roughness: 0.6, metalness: 0.12,
+  });
+  const FIN_TE = 0.95;
   const finShape = new THREE.Shape();
-  finShape.moveTo(0, 0); // base leading edge
+  finShape.moveTo(0.1, 0); // base leading edge
   finShape.lineTo(FIN_TE, 0); // base trailing edge
-  finShape.lineTo(FIN_TE, 1.55); // top of the vertical trailing edge
-  finShape.quadraticCurveTo(FIN_TE - 0.18, 1.96, 0.55, 1.9); // rounded top
-  finShape.quadraticCurveTo(0.06, 1.66, 0, 1.0); // curved leading edge
-  finShape.lineTo(0, 0);
+  finShape.lineTo(FIN_TE, 1.05); // top of the vertical trailing edge
+  finShape.quadraticCurveTo(FIN_TE - 0.14, 1.42, 0.55, 1.34); // rounded top
+  finShape.quadraticCurveTo(0.16, 1.16, 0.1, 0.7); // curved leading edge
+  finShape.lineTo(0.1, 0);
   const finGeo = new THREE.ExtrudeGeometry(finShape, {
     depth: 0.07, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 1, steps: 1,
   });
   finGeo.translate(-0.035, 0, -0.045);
-  const fin = new THREE.Mesh(finGeo, camo1);
+  const fin = new THREE.Mesh(finGeo, finMat);
   fin.rotation.y = -Math.PI / 2; // chord -> +Z, height -> Y
   fin.position.set(0, 0.06, TAIL_Z);
   plane.add(fin);
   // Rudder: flush against the fin's vertical trailing edge, hinged about Y.
   const rPivot = new THREE.Group();
   rPivot.position.set(0, 0.06, TAIL_Z + FIN_TE);
-  const rud = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.5, 0.62), camo1);
-  rud.position.set(0, 0.78, 0.31); // span up from the base, extending aft of the hinge
+  const rud = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.05, 0.5), finMat);
+  rud.position.set(0, 0.55, 0.25); // span up from the base, extending aft of the hinge
   rPivot.add(rud);
   plane.add(rPivot);
   surf.rudder = rPivot;
 
-  // RAF fin flash — pure flavour (player only).
+  // Aerial: mast behind the canopy + a wire back to the fin tip.
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.55, 6), frameMat);
+  mast.position.set(0, 0.85, 1.15);
+  plane.add(mast);
+  const wireGeo = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, 1.12, 1.15), new THREE.Vector3(0, 1.9, TAIL_Z + 0.55),
+  ]);
+  plane.add(new THREE.Line(wireGeo, new THREE.LineBasicMaterial({ color: 0x222426 })));
+
+  // RAF fin flash + fuselage roundels — pure flavour (player only).
   if (markings) {
-    const flash = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.45, 1.3),
-      new THREE.MeshStandardMaterial({ color: 0xc01a2b, roughness: 0.8, side: THREE.DoubleSide }),
-    );
-    flash.position.set(0.06, 0.9, TAIL_Z + 0.95);
-    flash.rotation.y = Math.PI / 2;
-    plane.add(flash);
+    const flashMat = new THREE.MeshStandardMaterial({ color: 0xc01a2b, roughness: 0.8 });
+    for (const sx of [-1, 1]) {
+      const flash = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.8), flashMat);
+      flash.position.set(sx * 0.06, 0.6, TAIL_Z + 0.62); // just proud of the fin skin
+      flash.rotation.y = sx * (Math.PI / 2);
+      plane.add(flash);
+    }
+    for (const sx of [-1, 1]) {
+      const r = roundel(0.5);
+      r.rotation.z = -sx * (Math.PI / 2); // face outward from the fuselage side
+      r.position.set(sx * 0.52, 0.08, 1.15);
+      plane.add(r);
+    }
   }
 
-  // Nose: pointed spinner + backplate + 3 pitched blades on a spin pivot.
+  // Nose: pointed spinner + backplate + 4 pitched blades on a spin pivot, plus
+  // a translucent "blur disc" the game shows instead of the blades at speed.
   const prop = new THREE.Group();
   const spinner = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.3, 20), metal);
   spinner.rotation.x = -Math.PI / 2; // point -Z
@@ -263,18 +366,47 @@ export function buildAircraft(opts = {}) {
   backplate.position.z = -4.55;
   prop.add(backplate);
   const bladeMat = new THREE.MeshStandardMaterial({ color: 0x16181c, roughness: 0.5, metalness: 0.2 });
-  for (let i = 0; i < 3; i++) {
+  const blades = new THREE.Group();
+  for (let i = 0; i < 4; i++) {
     const arm = new THREE.Group();
-    arm.rotation.z = (i / 3) * Math.PI * 2; // 120° apart
+    arm.rotation.z = (i / 4) * Math.PI * 2; // 90° apart
     arm.position.z = -4.8;
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.5, 0.05), bladeMat);
-    blade.position.y = 0.86; // extend outward from the hub (~3.2 m prop disc)
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.55, 0.05), bladeMat);
+    blade.position.y = 0.88; // extend outward from the hub (~3.3 m prop disc)
     blade.rotation.y = 0.34; // blade pitch
     arm.add(blade);
-    prop.add(arm);
+    blades.add(arm);
   }
+  prop.add(blades);
+  // Blur disc (hidden by default; the game fades it in with RPM).
+  const discTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(64, 64, 6, 64, 64, 64);
+    g.addColorStop(0, 'rgba(30,30,34,0)');
+    g.addColorStop(0.55, 'rgba(30,30,34,0.28)');
+    g.addColorStop(0.92, 'rgba(30,30,34,0.34)');
+    g.addColorStop(1, 'rgba(30,30,34,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 128, 128);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  })();
+  const propDisc = new THREE.Mesh(
+    new THREE.CircleGeometry(1.7, 28),
+    new THREE.MeshBasicMaterial({
+      map: discTex, transparent: true, side: THREE.DoubleSide, depthWrite: false,
+    }),
+  );
+  propDisc.position.z = -4.8;
+  propDisc.visible = false;
+  prop.add(propDisc);
   plane.add(prop);
   surf.prop = prop;
+  surf.blades = blades;
+  surf.propDisc = propDisc;
 
   // Undercarriage: two main gear + tailwheel on retract pivots. All three wheel
   // bottoms sit at y = -1.35 so a level aircraft rests cleanly on the deck.
@@ -328,6 +460,16 @@ export function applyControlSurfaces(surf, { ail = 0, elev = 0, rud = 0, gear = 
     if (surf.gear.userData.tail) surf.gear.userData.tail.rotation.x = -r;
     surf.gear.visible = gear > 0.02;
   }
+}
+
+// Prop visual state: below ~40% RPM show the individual blades; above it, fade
+// them out and fade the blur disc in. Shared so the inspector can demo it.
+export function setPropBlur(surf, rpmNorm) {
+  if (!surf.blades || !surf.propDisc) return;
+  const blur = rpmNorm > 0.4;
+  surf.blades.visible = !blur;
+  surf.propDisc.visible = blur;
+  if (blur) surf.propDisc.material.opacity = Math.min(1, (rpmNorm - 0.4) * 3);
 }
 
 // ---- Scenery (shared so the inspector can show them too) ----

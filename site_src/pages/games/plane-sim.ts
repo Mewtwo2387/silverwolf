@@ -6,9 +6,10 @@ import { assetVersion } from '../../asset-version';
 // Plane Sim — a fullscreen Three.js flight simulator (a Spitfire-ish prop
 // fighter). The heavy lifting lives in the self-hosted, bundled
 // `site_src/Assets/plane-sim.js` (built from plane-sim.src.js alongside app.js);
-// this page just lays out the stage, the HUD, and the start overlay, then loads
-// that module. Rendered with `fullscreen: true` so there's no navbar/footer —
-// the canvas owns the viewport.
+// this page just lays out the stage, the HUD (an analogue instrument cluster
+// drawn by the game onto #ps-gauges), and the start overlay, then loads that
+// module. Rendered with `fullscreen: true` so there's no navbar/footer — the
+// canvas owns the viewport.
 const PLANE_SIM_JS = path.resolve(import.meta.dir, '..', '..', 'Assets', 'plane-sim.js');
 
 export function PlaneSimPage(opts: {
@@ -54,33 +55,19 @@ export function PlaneSimPage(opts: {
   .ps-val { font-size: 1.9rem; font-weight: 800; line-height: 1; color: var(--accent-light, #7fdfff); }
   .ps-unit { font-size: 0.62rem; letter-spacing: 0.12em; color: var(--fog-300, #b8c6cf); }
 
-  /* Airspeed (left) + Altitude (right), vertically centred like a HUD tape. */
-  .ps-airspeed { left: 1.1rem; top: 50%; transform: translateY(-50%); text-align: right; min-width: 96px; }
-  .ps-altitude { right: 1.1rem; top: 50%; transform: translateY(-50%); text-align: left; min-width: 96px; }
-
-  /* Throttle column, bottom-left. */
-  .ps-throttle-box { left: 1.1rem; bottom: 1.1rem; display: flex; gap: 0.6rem; align-items: flex-end; }
-  .ps-throttle-track {
-    width: 14px; height: 96px; border-radius: 7px;
-    background: color-mix(in oklab, var(--ink-700, #1a2230) 80%, transparent);
-    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 30%, transparent);
-    position: relative; overflow: hidden;
+  /* Instrument cluster (bottom-centre): the game draws six analogue gauges —
+     airspeed, horizon, altimeter, climb, heading, throttle — on this canvas. */
+  .ps-gauges-wrap {
+    left: 50%; bottom: 0.8rem; transform: translateX(-50%);
+    padding: 0.35rem 0.5rem 0.15rem;
+    border-radius: 0.9rem;
+    max-width: 96vw;
   }
-  #ps-throttle-fill {
-    position: absolute; left: 0; right: 0; bottom: 0; height: 0%;
-    background: linear-gradient(180deg, var(--accent, #22d3ff), color-mix(in oklab, var(--accent, #22d3ff) 40%, #1466ff));
-    transition: height 0.1s linear;
+  #ps-gauges {
+    display: block;
+    width: min(696px, 92vw);
+    aspect-ratio: 696 / 128;
   }
-  .ps-throttle-box .ps-val { font-size: 1.2rem; }
-
-  /* Heading + vertical speed, bottom-centre. */
-  .ps-nav { left: 50%; bottom: 1.1rem; transform: translateX(-50%); display: flex; gap: 1.4rem; text-align: center; }
-  .ps-nav .ps-val { font-size: 1.25rem; }
-
-  /* Gear status, bottom-right above the controls hint. */
-  .ps-gear-box { right: 1.1rem; bottom: 1.1rem; text-align: center; }
-  #ps-gear { font-size: 1.05rem; font-weight: 800; color: var(--accent-light, #7fdfff); }
-  #ps-gear.ps-warn-amber { color: #ffc24a; }
 
   /* Circular minimap, top-left. */
   .ps-map-wrap {
@@ -103,6 +90,19 @@ export function PlaneSimPage(opts: {
   }
   #ps-hp-fill { height: 100%; width: 100%; background: #37d67a; transition: width 0.15s linear, background 0.15s linear; }
 
+  /* Undercarriage lamps (bottom-right): three greens = down and locked. */
+  .ps-gear-box { right: 1.1rem; bottom: 1.1rem; text-align: center; }
+  #ps-gear { font-size: 0.95rem; font-weight: 800; color: var(--accent-light, #7fdfff); }
+  #ps-gear.ps-warn-amber { color: #ffc24a; }
+  .ps-gear-lamps { display: flex; gap: 6px; justify-content: center; margin-top: 0.35rem; }
+  .ps-gear-lamps span {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #2a3140; border: 1px solid #3a4356;
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  .ps-gear-down .ps-gear-lamps span { background: #37d67a; box-shadow: 0 0 7px #37d67a; }
+  .ps-gear-transit .ps-gear-lamps span { background: #ffc24a; box-shadow: 0 0 7px #ffc24a; animation: ps-blink 0.7s steps(2, start) infinite; }
+
   /* Red screen pulse when the player takes a hit. */
   #ps-damage {
     position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0;
@@ -110,7 +110,7 @@ export function PlaneSimPage(opts: {
     transition: opacity 0.09s linear;
   }
 
-  /* Gun crosshair (fixed centre) + the virtual-stick reticle (tracks mouse). */
+  /* Gun crosshair (fixed centre) + the mouse aim-point reticle. */
   .ps-center {
     position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
     width: 26px; height: 26px; pointer-events: none; opacity: 0.8;
@@ -133,6 +133,15 @@ export function PlaneSimPage(opts: {
     content: ''; position: absolute; left: 50%; top: 50%; width: 5px; height: 5px;
     margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: var(--accent-light, #7fdfff);
   }
+
+  /* Lead pipper: shoot HERE to hit the crossing bandit. */
+  #ps-lead {
+    display: none; position: absolute; width: 14px; height: 14px;
+    margin: -7px 0 0 -7px; pointer-events: none;
+    border: 2px solid #ffe04a; transform: rotate(45deg);
+    box-shadow: 0 0 8px rgba(255, 224, 74, 0.8);
+  }
+  #ps-lead.ps-lead-close { border-color: #ff8f5a; box-shadow: 0 0 10px rgba(255, 143, 90, 0.9); }
 
   /* Stall + crash/border banners, top-centre. */
   .ps-stall, .ps-warning {
@@ -168,7 +177,7 @@ export function PlaneSimPage(opts: {
   }
   #ps-overlay.ps-hidden { display: none; }
   .ps-card {
-    max-width: 540px; width: min(90vw, 540px); text-align: center;
+    max-width: 560px; width: min(90vw, 560px); text-align: center;
     background: color-mix(in oklab, var(--ink-800, #0d1320) 80%, transparent);
     border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 35%, transparent);
     border-radius: 1rem; padding: 1.6rem 1.8rem; backdrop-filter: blur(12px);
@@ -176,7 +185,7 @@ export function PlaneSimPage(opts: {
   }
   .ps-card h1 { margin: 0 0 0.3rem; color: var(--accent-light, #7fdfff); font-size: 1.7rem; }
   .ps-card .ps-sub { margin: 0 0 1.1rem; color: var(--fog-300, #b8c6cf); font-size: 0.9rem; }
-  .ps-keys { display: grid; grid-template-columns: auto 1fr; gap: 0.4rem 0.9rem; text-align: left; margin: 0 auto 1.2rem; max-width: 420px; }
+  .ps-keys { display: grid; grid-template-columns: auto 1fr; gap: 0.4rem 0.9rem; text-align: left; margin: 0 auto 1.2rem; max-width: 440px; }
   .ps-keys dt { font-weight: 800; color: var(--accent-light, #7fdfff); }
   .ps-keys dd { margin: 0; color: var(--fog-200, #dfe9ef); font-size: 0.85rem; }
   .ps-key {
@@ -204,7 +213,7 @@ export function PlaneSimPage(opts: {
   .ps-hint { margin: 0 0 0.2rem; font-size: 0.74rem; line-height: 1.4; color: var(--fog-400, #8aa0ad); }
 
   @media (prefers-reduced-motion: reduce) {
-    .ps-stall.ps-show, .ps-go { animation: none; }
+    .ps-stall.ps-show, .ps-go, .ps-gear-transit .ps-gear-lamps span { animation: none; }
   }
   @media (max-width: 600px) {
     .ps-val { font-size: 1.4rem; }
@@ -238,50 +247,22 @@ export function PlaneSimPage(opts: {
           <div class="ps-unit">HULL <span id="ps-hp">100</span> &middot; <span id="ps-diff">REGULAR</span></div>
         </div>
 
-        <!-- Airspeed (left) -->
-        <div class="ps-panel ps-airspeed">
-          <div class="ps-lbl">Airspeed</div>
-          <div class="ps-val"><span id="ps-airspeed">0</span></div>
-          <div class="ps-unit">KNOTS</div>
+        <!-- Analogue instrument cluster (bottom-centre), drawn by the game -->
+        <div class="ps-panel ps-gauges-wrap">
+          <canvas id="ps-gauges"></canvas>
         </div>
 
-        <!-- Altitude (right) -->
-        <div class="ps-panel ps-altitude">
-          <div class="ps-lbl">Altitude</div>
-          <div class="ps-val"><span id="ps-altitude">0</span></div>
-          <div class="ps-unit">FEET</div>
-        </div>
-
-        <!-- Throttle (bottom-left) -->
-        <div class="ps-panel ps-throttle-box">
-          <div class="ps-throttle-track"><div id="ps-throttle-fill"></div></div>
-          <div>
-            <div class="ps-lbl">Thr</div>
-            <div class="ps-val" id="ps-throttle">0%</div>
-          </div>
-        </div>
-
-        <!-- Heading + vertical speed (bottom-centre) -->
-        <div class="ps-panel ps-nav">
-          <div>
-            <div class="ps-lbl">HDG</div>
-            <div class="ps-val" id="ps-heading">000°</div>
-          </div>
-          <div>
-            <div class="ps-lbl">VSI ft/min</div>
-            <div class="ps-val" id="ps-vspeed">+0</div>
-          </div>
-        </div>
-
-        <!-- Gear (bottom-right) -->
-        <div class="ps-panel ps-gear-box">
+        <!-- Undercarriage lamps (bottom-right) -->
+        <div class="ps-panel ps-gear-box" id="ps-gear-box">
           <div class="ps-lbl">Undercarriage</div>
-          <div id="ps-gear">GEAR DN</div>
+          <div id="ps-gear">GEAR DOWN</div>
+          <div class="ps-gear-lamps"><span></span><span></span><span></span></div>
         </div>
 
-        <!-- Centre crosshair + stick reticle -->
+        <!-- Centre crosshair + aim reticle + lead pipper -->
         <div class="ps-center" id="ps-pipper"></div>
         <div id="ps-reticle"></div>
+        <div id="ps-lead"></div>
 
         <!-- Warnings -->
         <div class="ps-stall" id="ps-stall">STALL</div>
@@ -292,13 +273,14 @@ export function PlaneSimPage(opts: {
       <div id="ps-overlay">
         <div class="ps-card">
           <h1>Plane Sim</h1>
-          <p class="ps-sub">Take off from the airfield in a Spitfire-ish prop fighter, then hunt down the <strong>3 bandits</strong> already airborne. Watch your hull — they shoot back.</p>
+          <p class="ps-sub">Take off, climb over the valley and hunt down the <strong>3 bandits</strong> prowling a 12&nbsp;km box of mountains and lakes. Watch your hull — they shoot back.</p>
           <dl class="ps-keys">
+            <dt>Mouse</dt><dd><strong>Point where you want to fly</strong> — the plane banks &amp; turns there itself</dd>
+            <dt>Right-click</dt><dd>Fire guns — put the crosshair on the <strong>◇ lead marker</strong> to connect</dd>
             <dt><span class="ps-key">W</span> / <span class="ps-key">S</span></dt><dd>Throttle up / down</dd>
-            <dt><span class="ps-key">A</span> / <span class="ps-key">D</span></dt><dd>Rudder (yaw left / right)</dd>
-            <dt>Mouse</dt><dd>Pitch (up/down) &amp; roll (left/right)</dd>
+            <dt><span class="ps-key">A</span> / <span class="ps-key">D</span></dt><dd>Rudder (fine aim &amp; taxi steering)</dd>
             <dt><span class="ps-key">G</span></dt><dd>Raise / lower undercarriage (less drag up)</dd>
-            <dt>Right-click</dt><dd>Fire guns (pipper turns red on target)</dd>
+            <dt><span class="ps-key">M</span></dt><dd>Mute engine &amp; gun sound</dd>
             <dt><span class="ps-key">Space</span></dt><dd>Restart after a crash, shoot-down or win</dd>
           </dl>
           <div class="ps-diff-row">

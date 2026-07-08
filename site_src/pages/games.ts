@@ -115,7 +115,7 @@ export const GAMES = [
   {
     name: 'plane sim',
     href: '/games/plane-sim',
-    info: 'Fly a Spitfire-ish prop fighter in 3D. Take off, loop, roll, and buzz the airfield.',
+    info: 'Fly a Spitfire-ish prop fighter in 3D — dogfight AI bandits over 12 km of mountains and lakes.',
     imageType: 'plane' as const,
   },
 ];
