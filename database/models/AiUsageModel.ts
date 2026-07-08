@@ -1,9 +1,7 @@
 import type Database from '../Database';
 import aiUsageQueries from '../queries/aiUsageQueries';
 import { isUserDev } from '../../utils/accessControl';
-
-export const DAILY_LIMIT = 250000; // 250,000 tokens
-export const WEEKLY_LIMIT = 1000000; // 1,000,000 tokens (exactly 4 daily limits)
+import { DAILY_LIMIT, WEEKLY_LIMIT } from '../../utils/ai';
 
 class AiUsageModel {
   private db: Database;
@@ -22,23 +20,33 @@ class AiUsageModel {
     // Ensure user exists in User table
     await this.db.user.getUser(userId);
 
-    await this.db.executeQuery(aiUsageQueries.ADD_USAGE, [
+    const result = await this.db.executeQuery(aiUsageQueries.ADD_USAGE, [
       userId,
       model,
       promptTokens,
       completionTokens,
       cost,
     ]);
+
+    if (!result || result.changes === 0) {
+      throw new Error('Failed to record AI usage in the database');
+    }
   }
 
   async getDailyUsage(userId: string): Promise<number> {
     const row = await this.db.executeSelectQuery(aiUsageQueries.GET_DAILY_USAGE, [userId]);
-    return row?.total ?? 0;
+    if (row === null) {
+      throw new Error('Database query failed while fetching daily usage');
+    }
+    return row.total;
   }
 
   async getWeeklyUsage(userId: string): Promise<number> {
     const row = await this.db.executeSelectQuery(aiUsageQueries.GET_WEEKLY_USAGE, [userId]);
-    return row?.total ?? 0;
+    if (row === null) {
+      throw new Error('Database query failed while fetching weekly usage');
+    }
+    return row.total;
   }
 
   async checkRateLimit(userId: string): Promise<{
@@ -53,12 +61,16 @@ class AiUsageModel {
 
     const dailyUsage = await this.getDailyUsage(userId);
     if (dailyUsage >= DAILY_LIMIT) {
-      return { limited: true, reason: 'daily', usage: dailyUsage, limit: DAILY_LIMIT };
+      return {
+        limited: true, reason: 'daily', usage: dailyUsage, limit: DAILY_LIMIT,
+      };
     }
 
     const weeklyUsage = await this.getWeeklyUsage(userId);
     if (weeklyUsage >= WEEKLY_LIMIT) {
-      return { limited: true, reason: 'weekly', usage: weeklyUsage, limit: WEEKLY_LIMIT };
+      return {
+        limited: true, reason: 'weekly', usage: weeklyUsage, limit: WEEKLY_LIMIT,
+      };
     }
 
     return { limited: false };

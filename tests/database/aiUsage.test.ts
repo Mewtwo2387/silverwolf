@@ -1,7 +1,9 @@
-import { describe, test, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
+import {
+  describe, test, expect, beforeAll, afterAll, beforeEach,
+} from 'bun:test';
 import Database from '../../database/Database';
 import type AiUsageModel from '../../database/models/AiUsageModel';
-import { DAILY_LIMIT, WEEKLY_LIMIT } from '../../database/models/AiUsageModel';
+import { DAILY_LIMIT, WEEKLY_LIMIT } from '../../utils/ai';
 
 describe('AiUsageModel', () => {
   let db: Database;
@@ -142,7 +144,7 @@ describe('AiUsageModel', () => {
       // Skip if no ALLOWED_USERS configured
       return;
     }
-    
+
     await aiUsageModel.addUsage(devId, 'test-model', DAILY_LIMIT * 5, 0);
     const status = await aiUsageModel.checkRateLimit(devId);
     expect(status.limited).toBe(false);

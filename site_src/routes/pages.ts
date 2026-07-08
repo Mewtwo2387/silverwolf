@@ -42,14 +42,40 @@ export function registerPageRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
     const nonce = c.get('nonce');
     const lv999 = c.req.query('lv') === '999';
     try {
-      const [stats, pokemonCount, marriageBenefits, poopStats, poopProfile, aiUsageDaily, aiUsageWeekly] = await Promise.all([
+      const getDailyUsageSafe = async () => {
+        try {
+          return await silverwolf.db.aiUsage.getDailyUsage(user.discordId);
+        } catch (e) {
+          logError('Dashboard failed to load daily AI usage:', e);
+          return 0;
+        }
+      };
+
+      const getWeeklyUsageSafe = async () => {
+        try {
+          return await silverwolf.db.aiUsage.getWeeklyUsage(user.discordId);
+        } catch (e) {
+          logError('Dashboard failed to load weekly AI usage:', e);
+          return 0;
+        }
+      };
+
+      const [
+        stats,
+        pokemonCount,
+        marriageBenefits,
+        poopStats,
+        poopProfile,
+        aiUsageDaily,
+        aiUsageWeekly,
+      ] = await Promise.all([
         silverwolf.db.user.getUser(user.discordId),
         silverwolf.db.pokemon.getUniquePokemonCount(user.discordId),
         silverwolf.db.marriage.getMarriageBenefits(user.discordId),
         silverwolf.db.poop.getUserStats(user.discordId),
         silverwolf.db.poop.getProfile(user.discordId),
-        silverwolf.db.aiUsage.getDailyUsage(user.discordId),
-        silverwolf.db.aiUsage.getWeeklyUsage(user.discordId),
+        getDailyUsageSafe(),
+        getWeeklyUsageSafe(),
       ]);
 
       const profile: DashboardProfile = {

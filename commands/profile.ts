@@ -6,6 +6,7 @@ import {
   getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNuggieCreditsMultiplier,
   getNuggiePokeMultiplier, getNuggieNuggieMultiplier,
 } from '../utils/ascensionupgrades';
+import { DAILY_LIMIT, WEEKLY_LIMIT } from '../utils/ai';
 import {
   getMultiplierAmountInfo,
   getMultiplierChanceInfo,
@@ -155,7 +156,7 @@ class Profile extends Command {
           detailsEmbed = this.createPokemonsEmbed(pokemonList, username, avatarURL);
           break;
         case 'ai_usage':
-          detailsEmbed = await this.createAiUsageEmbed(interaction.user.id, username, avatarURL);
+          detailsEmbed = await this.createAiUsageEmbed(user.id, username, avatarURL);
           break;
         default:
           break;
@@ -325,9 +326,11 @@ ${getNuggieNuggieMultiplierInfo(user.nuggieNuggieMultiplierLevel, INFO_LEVEL.THI
   }
 
   async createAiUsageEmbed(userId: string, username: string, avatarURL: string) {
-    const dailyUsage = await this.client.db.aiUsage.getDailyUsage(userId);
-    const weeklyUsage = await this.client.db.aiUsage.getWeeklyUsage(userId);
-    const status = await this.client.db.aiUsage.checkRateLimit(userId);
+    const [dailyUsage, weeklyUsage, status] = await Promise.all([
+      this.client.db.aiUsage.getDailyUsage(userId),
+      this.client.db.aiUsage.getWeeklyUsage(userId),
+      this.client.db.aiUsage.checkRateLimit(userId),
+    ]);
     const statusText = status.limited
       ? `🛑 **Rate Limited** (${status.reason === 'daily' ? 'Daily' : 'Weekly'} limit exceeded)`
       : '✅ **Active** (Pool is cool)';
@@ -338,8 +341,8 @@ ${getNuggieNuggieMultiplierInfo(user.nuggieNuggieMultiplierLevel, INFO_LEVEL.THI
       .setThumbnail(avatarURL)
       .setDescription(`
 ## AI Usage
-**Daily Usage (24h):** ${dailyUsage.toLocaleString()} / 250,000 tokens
-**Weekly Usage (7d):** ${weeklyUsage.toLocaleString()} / 1,000,000 tokens
+**Daily Usage (24h):** ${dailyUsage.toLocaleString()} / ${DAILY_LIMIT.toLocaleString()} tokens
+**Weekly Usage (7d):** ${weeklyUsage.toLocaleString()} / ${WEEKLY_LIMIT.toLocaleString()} tokens
 **Status:** ${statusText}
       `)
       .setTimestamp();

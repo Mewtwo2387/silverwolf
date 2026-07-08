@@ -340,7 +340,7 @@ export async function generateRpReply(
 
     // Identify triggering user (last human turn author in tail) and check rate limit
     let lastUserTurn: RpHistoryTurn | undefined;
-    for (let i = tail.length - 1; i >= 0; i--) {
+    for (let i = tail.length - 1; i >= 0; i -= 1) {
       const t = tail[i];
       if (t.role === 'user' && !t.fromBot) {
         lastUserTurn = t;
@@ -459,7 +459,7 @@ export async function generateRpReply(
     const activeUsers = [...new Set(
       tail
         .filter((t) => t.role === 'user' && !t.fromBot && t.speakerId)
-        .map((t) => t.speakerId!)
+        .map((t) => t.speakerId!),
     )];
     if (activeUsers.length === 0 && triggeringUserId) {
       activeUsers.push(triggeringUserId);

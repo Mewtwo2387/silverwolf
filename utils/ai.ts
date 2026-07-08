@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { OpenAI } from 'openai';
 import mime from 'mime';
+import type Database from '../database/Database';
 import { logError, logWarning } from './log';
 import { recordUsage } from './tokenCalibration';
 import { countTokensOpenRouterMessages } from './tokenizer';
@@ -168,8 +169,11 @@ export function formatHistoryEntryForModel(entry: Pick<HistoryEntry, 'role' | 'm
   return stripModelTimestampPrefix(entry.message);
 }
 
+export const DAILY_LIMIT = 250000;
+export const WEEKLY_LIMIT = 1000000;
+
 interface GenerateContentOptions {
-  db?: any;
+  db?: Database;
   userId?: string;
   provider: string;
   model: string;
@@ -541,7 +545,11 @@ ${systemPrompt || ''}
       cleanedText = 'I gathered search results but ran out of tool calls before I could finish. Try asking again or narrowing the question.';
     }
     if (db && userId && (totalPromptTokens > 0 || totalCompletionTokens > 0)) {
-      await db.aiUsage.addUsage(userId, model, totalPromptTokens, totalCompletionTokens);
+      try {
+        await db.aiUsage.addUsage(userId, model, totalPromptTokens, totalCompletionTokens);
+      } catch (err) {
+        logError('Failed to record AI usage (OpenRouter):', err);
+      }
     }
     return { text: cleanedText, images: generatedImages, toolCalls };
   }
@@ -723,7 +731,11 @@ ${systemPrompt || ''}
       }
 
       if (db && userId && (totalPromptTokens > 0 || totalCompletionTokens > 0)) {
-        await db.aiUsage.addUsage(userId, model, totalPromptTokens, totalCompletionTokens);
+        try {
+          await db.aiUsage.addUsage(userId, model, totalPromptTokens, totalCompletionTokens);
+        } catch (err) {
+          logError('Failed to record AI usage (Gemini Chat):', err);
+        }
       }
       return { text: fullText, images: generatedImages, toolCalls };
     }
@@ -784,7 +796,11 @@ ${systemPrompt || ''}
       // Ignored
     }
     if (db && userId && (totalPromptTokens > 0 || totalCompletionTokens > 0)) {
-      await db.aiUsage.addUsage(userId, model, totalPromptTokens, totalCompletionTokens);
+      try {
+        await db.aiUsage.addUsage(userId, model, totalPromptTokens, totalCompletionTokens);
+      } catch (err) {
+        logError('Failed to record AI usage (Gemini Image/Fallback):', err);
+      }
     }
     return { text: fullText, images: imageAttachments, toolCalls: [] };
   }

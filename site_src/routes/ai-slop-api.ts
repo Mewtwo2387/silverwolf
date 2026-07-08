@@ -7,6 +7,7 @@ import {
   generateTitleForHistory,
   getPersonaByName,
   type Persona,
+  DAILY_LIMIT,
 } from '../../utils/ai';
 import { trimHistoryToFit } from '../../utils/tokenizer';
 import { type AppEnv, authedGameRequest, readGameBody } from '../shared';
@@ -219,11 +220,13 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
       if (err?.message === 'RATE_LIMIT_EXCEEDED') {
         const dailyUsage = await silverwolf.db.aiUsage.getDailyUsage(auth.discordId);
         const weeklyUsage = await silverwolf.db.aiUsage.getWeeklyUsage(auth.discordId);
-        const reachedDaily = dailyUsage >= 250000;
+        const reachedDaily = dailyUsage >= DAILY_LIMIT;
         return c.json({
           ok: false,
           error: 'rate_limited' as const,
           reason: reachedDaily ? ('daily' as const) : ('weekly' as const),
+          dailyUsage,
+          weeklyUsage,
         }, 429);
       }
       logError('[ai-slop] send failed:', err);

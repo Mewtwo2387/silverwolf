@@ -3,6 +3,7 @@ import { Command } from './classes/Command';
 import { log, logError } from '../utils/log';
 import { getPersonaByName, generateContent, generateTitleForHistory } from '../utils/ai';
 import { trimHistoryToFit } from '../utils/tokenizer';
+import { handleRateLimitError } from '../utils/discordRateLimit';
 
 const PERSONA_NAME = 'Silverwolf';
 
@@ -123,19 +124,7 @@ class AskSilverwolfAI extends Command {
       }
     } catch (error: any) {
       if (error?.message === 'RATE_LIMIT_EXCEEDED') {
-        const dailyUsage = await this.client.db.aiUsage.getDailyUsage(interaction.user.id);
-        const weeklyUsage = await this.client.db.aiUsage.getWeeklyUsage(interaction.user.id);
-        const dailyLimit = 250000;
-        const weeklyLimit = 1000000;
-        const reachedDaily = dailyUsage >= dailyLimit;
-
-        const limitLabel = reachedDaily ? 'Daily' : 'Weekly';
-        const usageVal = reachedDaily ? dailyUsage : weeklyUsage;
-        const limitVal = reachedDaily ? dailyLimit : weeklyLimit;
-
-        await interaction.editReply({
-          content: `⚠️ **${limitLabel} AI Rate Limit Reached**\nYou have consumed **${usageVal.toLocaleString()}** / **${limitVal.toLocaleString()}** tokens in the last ${reachedDaily ? '24 hours' : '7 days'}. Please wait for your token pool to cool down.`,
-        });
+        await handleRateLimitError(interaction, this.client.db);
         return;
       }
       logError('Error generating text:', error);
