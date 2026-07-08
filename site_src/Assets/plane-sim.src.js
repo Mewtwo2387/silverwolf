@@ -41,7 +41,12 @@ import {
   // ---- WebGL guard: show a graceful message instead of a blank screen ----
   let renderer;
   try {
-    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    // logarithmicDepthBuffer: the scene spans 0.5 m..26 km, and a plain 24-bit
+    // depth buffer has almost no precision left at lake distance — shorelines
+    // shimmer/z-fight. Log depth spreads precision evenly across the range.
+    renderer = new THREE.WebGLRenderer({
+      canvas, antialias: true, powerPreference: 'high-performance', logarithmicDepthBuffer: true,
+    });
   } catch (e) {
     const ov = document.getElementById('ps-overlay');
     if (ov) ov.innerHTML = '<div class="ps-card"><h2>WebGL unavailable</h2>'

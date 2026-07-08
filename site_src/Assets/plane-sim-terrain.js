@@ -122,20 +122,30 @@ export function buildTerrain(renderer) {
 
   // Fine grain overlay so the ground has detail between the (54 m apart)
   // vertices — a tiling grayscale noise texture multiplied under the vertex
-  // colours.
+  // colours. 256px tiled every ~8.5 m (~30 texels/m near the ground) with
+  // multi-scale speckle, so low passes read as turf instead of smeared blur.
   const c = document.createElement('canvas');
-  c.width = c.height = 128;
+  c.width = c.height = 256;
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#c9c9c9';
-  ctx.fillRect(0, 0, 128, 128);
-  for (let i = 0; i < 2600; i++) {
-    const v = 150 + Math.floor(Math.random() * 105);
+  ctx.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 1400; i++) { // broad soft mottling
+    const v = 140 + Math.floor(Math.random() * 115);
     ctx.fillStyle = `rgba(${v},${v},${v},0.5)`;
-    ctx.fillRect(Math.random() * 128, Math.random() * 128, 2, 2);
+    ctx.fillRect(Math.random() * 256, Math.random() * 256, 5, 5);
+  }
+  for (let i = 0; i < 11000; i++) { // fine speckle, both lighter and darker
+    const v = 90 + Math.floor(Math.random() * 165);
+    ctx.fillStyle = `rgba(${v},${v},${v},0.7)`;
+    ctx.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
+  }
+  for (let i = 0; i < 1200; i++) { // sparse dark tufts/pebbles for anchor detail
+    ctx.fillStyle = 'rgba(40,40,40,0.35)';
+    ctx.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
   }
   const grain = new THREE.CanvasTexture(c);
   grain.wrapS = grain.wrapT = THREE.RepeatWrapping;
-  grain.repeat.set(700, 700);
+  grain.repeat.set(1600, 1600);
   if (renderer) grain.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
   const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
@@ -146,12 +156,23 @@ export function buildTerrain(renderer) {
 }
 
 // Lake surface: one big translucent plane at WATER_Y. Terrain dipping below it
-// reads as lakes; the shoreline sand band sells the edge.
+// reads as lakes; the shoreline sand band sells the edge. depthWrite stays off
+// (nothing renders under water) and polygonOffset biases the plane away from
+// the near-coplanar shoreline triangles — paired with the renderer's
+// logarithmic depth buffer this kills the shoreline z-fighting shimmer.
 export function buildWater() {
   const mesh = new THREE.Mesh(
     new THREE.PlaneGeometry(TERRAIN.SIZE, TERRAIN.SIZE),
     new THREE.MeshStandardMaterial({
-      color: 0x1f5f7d, roughness: 0.15, metalness: 0.35, transparent: true, opacity: 0.9,
+      color: 0x1f5f7d,
+      roughness: 0.15,
+      metalness: 0.35,
+      transparent: true,
+      opacity: 0.9,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1,
     }),
   );
   mesh.rotation.x = -Math.PI / 2;

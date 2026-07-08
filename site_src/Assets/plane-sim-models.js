@@ -51,7 +51,11 @@ function camoTexture(baseHex, blotchHex) {
 // flat slab. `dihedral` (rise per metre of span, e.g. 0.1 ≈ 5.7°) lifts the
 // tips like the real Spitfire's wing. Output: span along X, chord along Z
 // (leading edge toward -Z), thickness along Y, centred on the origin.
-function airfoilSurface(halfSpan, chord, thickFrac, dihedral = 0) {
+// `cutouts` ([{ x0, x1, z }], in the FINAL frame: x = signed span, z = chord
+// aft) notches the trailing edge — vertices inside the span band with z past
+// the cut line get clamped to it, leaving a blunt-edged recess a control
+// surface slots into (like the real aileron/elevator cut-outs).
+function airfoilSurface(halfSpan, chord, thickFrac, dihedral = 0, cutouts = []) {
   const N = 16;
   const yt = (x) => 5 * thickFrac
     * (0.2969 * Math.sqrt(x) - 0.1260 * x - 0.3516 * x * x + 0.2843 * x ** 3 - 0.1015 * x ** 4);
@@ -60,7 +64,7 @@ function airfoilSurface(halfSpan, chord, thickFrac, dihedral = 0) {
   for (let i = 1; i <= N; i++) { const x = i / N; shp.lineTo(x * chord, yt(x) * chord); }
   for (let i = N - 1; i >= 0; i--) { const x = i / N; shp.lineTo(x * chord, -yt(x) * chord); }
   shp.closePath();
-  const geo = new THREE.ExtrudeGeometry(shp, { depth: halfSpan * 2, steps: 26, bevelEnabled: false });
+  const geo = new THREE.ExtrudeGeometry(shp, { depth: halfSpan * 2, steps: 48, bevelEnabled: false });
   geo.translate(0, 0, -halfSpan);
   const pos = geo.attributes.position; const midC = chord * 0.5;
   for (let i = 0; i < pos.count; i++) {
@@ -72,24 +76,58 @@ function airfoilSurface(halfSpan, chord, thickFrac, dihedral = 0) {
   }
   geo.rotateY(-Math.PI / 2); // span -> X, chord -> +Z
   geo.translate(0, 0, -chord / 2); // centre the chord (leading edge now toward -Z)
+  if (cutouts.length) {
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      for (const cut of cutouts) {
+        if (x >= cut.x0 && x <= cut.x1 && pos.getZ(i) > cut.z) pos.setZ(i, cut.z);
+      }
+    }
+  }
   geo.computeVertexNormals();
   return geo;
 }
 
+// RAF roundel as a single crisp canvas decal (one mesh, no stacked rings to
+// z-fight or splay apart). polygonOffset pulls it in front of the skin it sits
+// on, so it can hug the surface without flicker.
+let _roundelTex = null;
+function roundelTexture() {
+  if (_roundelTex) return _roundelTex;
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const ctx = c.getContext('2d');
+  const ring = (r, col) => {
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(128, 128, r, 0, Math.PI * 2);
+    ctx.fill();
+  };
+  ring(122, '#14418f');
+  ring(76, '#e8e8ec');
+  ring(38, '#c01a2b');
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  _roundelTex = tex;
+  return tex;
+}
 function roundel(radius) {
   const g = new THREE.Group();
-  const ring = (r, col) => {
-    const m = new THREE.Mesh(
-      new THREE.CircleGeometry(r, 24),
-      new THREE.MeshStandardMaterial({ color: col, roughness: 0.85 }),
-    );
-    m.rotation.x = -Math.PI / 2;
-    g.add(m);
-    return m;
-  };
-  ring(radius, 0x113a8c).position.y = 0.001;
-  ring(radius * 0.6, 0xe8e8ec).position.y = 0.002;
-  ring(radius * 0.3, 0xc01a2b).position.y = 0.003;
+  const m = new THREE.Mesh(
+    new THREE.CircleGeometry(radius, 40),
+    new THREE.MeshStandardMaterial({
+      map: roundelTexture(),
+      transparent: true,
+      roughness: 0.85,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -2,
+      side: THREE.DoubleSide,
+    }),
+  );
+  m.rotation.x = -Math.PI / 2;
+  g.add(m);
   return g;
 }
 
@@ -120,6 +158,17 @@ function buildFlap({
   const geo = new THREE.ExtrudeGeometry(shp, { depth: thick, bevelEnabled: false });
   geo.translate(0, 0, -thick / 2);
   geo.rotateX(Math.PI / 2); // shape Y (aft chord) -> world +Z, extrude depth -> thickness in Y
+  // Wedge section: full `thick` at the hinge tapering to a near-sharp trailing
+  // edge, so it reads as a control surface rather than a flat plank.
+  const fp = geo.attributes.position;
+  const maxRear = Math.max(
+    (midZ + ellipChord(xIn, halfSpan, chord) / 2) - zHinge,
+    (midZ + ellipChord(xOut, halfSpan, chord) / 2) - zHinge,
+  );
+  for (let i = 0; i < fp.count; i++) {
+    const aft = Math.min(Math.max(fp.getZ(i) / Math.max(maxRear, 0.001), 0), 1);
+    fp.setY(i, fp.getY(i) * (1 - 0.8 * aft));
+  }
   geo.computeVertexNormals();
   const pivot = new THREE.Group();
   pivot.position.set(0, y, zHinge);
@@ -233,30 +282,43 @@ export function buildAircraft(opts = {}) {
   const WING_HALF = 5.5;
   const WING_CHORD = 2.0;
   const DIHEDRAL = 0.1; // rise per metre of span
-  const wing = new THREE.Mesh(airfoilSurface(WING_HALF, WING_CHORD, 0.105, DIHEDRAL), camo1);
+  const AIL_IN = 2.5; const AIL_OUT = 4.7; // aileron span band
+  const ailHingeZ = -0.05 + 0.30; // straight spanwise hinge line (world z)
+  // Trailing edge notched over the aileron bands — the ailerons slot INTO the
+  // wing (like the real cut-outs) instead of overlapping it.
+  const wing = new THREE.Mesh(
+    airfoilSurface(WING_HALF, WING_CHORD, 0.105, DIHEDRAL, [
+      { x0: -AIL_OUT - 0.06, x1: -AIL_IN + 0.06, z: ailHingeZ + 0.05 - 0.03 },
+      { x0: AIL_IN - 0.06, x1: AIL_OUT + 0.06, z: ailHingeZ + 0.05 - 0.03 },
+    ]),
+    camo1,
+  );
   wing.position.set(0, -0.18, -0.05);
   wing.rotation.x = -0.025; // slight angle of incidence
   plane.add(wing);
-  const ailHingeZ = wing.position.z + 0.30; // straight spanwise hinge line
   for (const side of [-1, 1]) {
     if (markings) {
-      const r = roundel(0.78);
-      // Sit on the (dihedral-raised, cambered) wing top surface, tilted to match.
-      r.position.set(side * 3.25, wing.position.y + 3.25 * DIHEDRAL + 0.1, wing.position.z);
-      r.rotation.z = -side * Math.atan(DIHEDRAL);
+      const r = roundel(0.56);
+      // Hug the (dihedral-raised, cambered) wing top surface: tilt WITH the
+      // dihedral (top normal leans inboard on the raised wing) and match the
+      // wing's angle of incidence. Sits forward of the aileron notch so the
+      // decal never overhangs the cut-out.
+      r.position.set(side * 2.9, wing.position.y + 2.9 * DIHEDRAL + 0.095, wing.position.z - 0.32);
+      r.rotation.z = side * Math.atan(DIHEDRAL);
+      r.rotation.x = wing.rotation.x;
       plane.add(r);
     }
 
     // Aileron whose planform follows the wing's elliptical trailing edge so it
-    // blends into the wing (same camo) instead of being a bolted-on box.
+    // fills the notch cut into the wing (same camo).
     const flap = buildFlap({
-      xIn: side < 0 ? -4.7 : 2.5,
-      xOut: side < 0 ? -2.5 : 4.7,
+      xIn: side < 0 ? -AIL_OUT : AIL_IN,
+      xOut: side < 0 ? -AIL_IN : AIL_OUT,
       halfSpan: WING_HALF,
       chord: WING_CHORD,
       midZ: wing.position.z,
       zHinge: ailHingeZ,
-      thick: 0.05,
+      thick: 0.1,
       y: wing.position.y + 3.6 * DIHEDRAL, // mid-aileron span height
       material: camo1,
     });
@@ -276,9 +338,14 @@ export function buildAircraft(opts = {}) {
     plane.add(tip);
   }
 
-  // Tail: thin elliptical tailplane + elevator, curved fin + rudder.
+  // Tail: thin elliptical tailplane + elevator, curved fin + rudder. The
+  // tailplane trailing edge is notched (cut z is geometry-local) so the
+  // elevator slots into it.
   const TAIL_Z = 4.5;
-  const hstab = new THREE.Mesh(airfoilSurface(2.25, 1.0, 0.085), camo1);
+  const hstab = new THREE.Mesh(
+    airfoilSurface(2.25, 1.0, 0.085, 0, [{ x0: -2.16, x1: 2.16, z: 0.15 }]),
+    camo1,
+  );
   hstab.position.set(0, 0.12, TAIL_Z);
   plane.add(hstab);
   // Elevator — conforms to the tailplane's elliptical trailing edge (one piece).
@@ -289,7 +356,7 @@ export function buildAircraft(opts = {}) {
     chord: 1.0,
     midZ: TAIL_Z,
     zHinge: TAIL_Z + 0.18,
-    thick: 0.045,
+    thick: 0.07,
     y: 0.12,
     material: camo1,
   });
@@ -304,12 +371,14 @@ export function buildAircraft(opts = {}) {
     color: enemy ? 0x585e65 : 0x556036, roughness: 0.6, metalness: 0.12,
   });
   const FIN_TE = 0.95;
+  // The vertical TE runs high (1.30) so the fin + rudder-horn tops form ONE
+  // continuous dome across the hinge line, not two separate round lobes.
   const finShape = new THREE.Shape();
   finShape.moveTo(0.1, 0); // base leading edge
   finShape.lineTo(FIN_TE, 0); // base trailing edge
-  finShape.lineTo(FIN_TE, 1.05); // top of the vertical trailing edge
-  finShape.quadraticCurveTo(FIN_TE - 0.14, 1.42, 0.55, 1.34); // rounded top
-  finShape.quadraticCurveTo(0.16, 1.16, 0.1, 0.7); // curved leading edge
+  finShape.lineTo(FIN_TE, 1.30); // top of the vertical trailing edge
+  finShape.quadraticCurveTo(FIN_TE - 0.1, 1.44, 0.55, 1.38); // short top round
+  finShape.quadraticCurveTo(0.16, 1.18, 0.1, 0.7); // curved leading edge
   finShape.lineTo(0.1, 0);
   const finGeo = new THREE.ExtrudeGeometry(finShape, {
     depth: 0.07, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 1, steps: 1,
@@ -319,30 +388,52 @@ export function buildAircraft(opts = {}) {
   fin.rotation.y = -Math.PI / 2; // chord -> +Z, height -> Y
   fin.position.set(0, 0.06, TAIL_Z);
   plane.add(fin);
-  // Rudder: flush against the fin's vertical trailing edge, hinged about Y.
+  // Rudder: a shaped extrusion continuing the fin — straight hinge edge up the
+  // fin's vertical trailing edge, a rounded balance horn over the fin top, and
+  // a curved trailing edge bulging aft then sweeping down to the tail cone
+  // (the classic Spitfire rudder outline). Hinged about Y at the fin TE.
   const rPivot = new THREE.Group();
   rPivot.position.set(0, 0.06, TAIL_Z + FIN_TE);
-  const rud = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.05, 0.5), finMat);
-  rud.position.set(0, 0.55, 0.25); // span up from the base, extending aft of the hinge
+  const rudShape = new THREE.Shape();
+  rudShape.moveTo(0, 0.02); // bottom of the hinge line
+  rudShape.lineTo(0, 1.30); // straight hinge edge (matches the fin TE height)
+  rudShape.quadraticCurveTo(0.02, 1.45, 0.16, 1.46); // horn continues the fin's top curve
+  rudShape.quadraticCurveTo(0.40, 1.40, 0.46, 0.95); // upper trailing edge
+  rudShape.quadraticCurveTo(0.46, 0.38, 0.20, 0.05); // sweep down to the tail cone
+  rudShape.lineTo(0, 0.02);
+  const rudGeo = new THREE.ExtrudeGeometry(rudShape, {
+    depth: 0.05, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.015, bevelSegments: 1, steps: 1,
+  });
+  rudGeo.translate(0, 0, -0.025); // centre the thickness on the fin plane
+  const rud = new THREE.Mesh(rudGeo, finMat);
+  rud.rotation.y = -Math.PI / 2; // shape x -> aft (+Z), shape y -> up
   rPivot.add(rud);
   plane.add(rPivot);
   surf.rudder = rPivot;
 
-  // Aerial: mast behind the canopy + a wire back to the fin tip.
+  // Aerial: mast behind the canopy + a wire back to the FIN TIP (the fin's
+  // rounded top peaks at ~(y 1.40, z TAIL_Z+0.55) in plane space — the wire
+  // must land there, not float above the tail). A thin cylinder rather than a
+  // 1px THREE.Line so it survives distance/AA.
   const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.55, 6), frameMat);
   mast.position.set(0, 0.85, 1.15);
   plane.add(mast);
-  const wireGeo = new THREE.BufferGeometry().setFromPoints([
-    new THREE.Vector3(0, 1.12, 1.15), new THREE.Vector3(0, 1.9, TAIL_Z + 0.55),
-  ]);
-  plane.add(new THREE.Line(wireGeo, new THREE.LineBasicMaterial({ color: 0x222426 })));
+  const wireFrom = new THREE.Vector3(0, 1.11, 1.16); // mast tip
+  const wireTo = new THREE.Vector3(0, 1.41, TAIL_Z + 0.52); // just under the fin tip
+  const wireDir = new THREE.Vector3().subVectors(wireTo, wireFrom);
+  const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, wireDir.length(), 5), frameMat);
+  wire.position.copy(wireFrom).addScaledVector(wireDir, 0.5);
+  wire.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), wireDir.normalize());
+  plane.add(wire);
 
   // RAF fin flash + fuselage roundels — pure flavour (player only).
   if (markings) {
-    const flashMat = new THREE.MeshStandardMaterial({ color: 0xc01a2b, roughness: 0.8 });
+    const flashMat = new THREE.MeshStandardMaterial({
+      color: 0xc01a2b, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+    });
     for (const sx of [-1, 1]) {
       const flash = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.8), flashMat);
-      flash.position.set(sx * 0.06, 0.6, TAIL_Z + 0.62); // just proud of the fin skin
+      flash.position.set(sx * 0.08, 0.6, TAIL_Z + 0.62); // just proud of the fin skin + bevel
       flash.rotation.y = sx * (Math.PI / 2);
       plane.add(flash);
     }
@@ -492,15 +583,98 @@ export function makeTree() {
   return tree;
 }
 
-// A Quonset-hut hangar: a full cylinder on its side. Designed to sit half-buried
-// — the lower half is hidden by the ground plane, leaving a clean curved
-// half-tube above the deck.
+// A Quonset-hut hangar: a hollow corrugated-steel half-tube sitting ON the
+// ground (base at y=0, axis along X). Rear end closed by a gable, front open
+// with the sliding doors parked at the jambs, arch ribs inside, and a concrete
+// slab underfoot. Double-sided skin so the interior reads from the open end.
 export function makeHangar() {
   const g = new THREE.Group();
-  const hutMat = new THREE.MeshStandardMaterial({ color: 0x7f858d, roughness: 0.92 });
-  const hut = new THREE.Mesh(new THREE.CylinderGeometry(9, 9, 38, 20), hutMat);
-  hut.rotation.z = Math.PI / 2; // lay the axis along X
-  g.add(hut);
+  const R = 9; const LEN = 38;
+
+  // Corrugated-steel texture. On the cylinder UV, u wraps the arch (hoop) and
+  // v runs along the building — so flutes that run OVER the arch (like a real
+  // Nissen hut) alternate along v: horizontal stripes on the canvas. The
+  // sheet-lap seams are rings around the arch: also constant-v lines, but
+  // darker and widely spaced.
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#7d848c';
+  ctx.fillRect(0, 0, 256, 256);
+  for (let y = 0; y < 256; y += 8) { // corrugation flutes (run over the arch)
+    const grd = ctx.createLinearGradient(0, y, 0, y + 8);
+    grd.addColorStop(0, 'rgba(255,255,255,0.20)');
+    grd.addColorStop(0.45, 'rgba(0,0,0,0.04)');
+    grd.addColorStop(1, 'rgba(0,0,0,0.26)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, y, 256, 8);
+  }
+  for (const y of [0, 128]) { // sheet-lap seam rings
+    ctx.fillStyle = 'rgba(0,0,0,0.30)';
+    ctx.fillRect(0, y, 256, 3);
+    ctx.fillStyle = 'rgba(255,255,255,0.10)';
+    ctx.fillRect(0, y + 3, 256, 1);
+  }
+  for (let i = 0; i < 46; i++) { // rust/grime streaks washing down the arch (u direction)
+    const x = Math.random() * 256; const y = Math.random() * 256;
+    const len = 30 + Math.random() * 40;
+    const grad = ctx.createLinearGradient(x, 0, x + len, 0);
+    grad.addColorStop(0, `rgba(96,74,52,${0.10 + Math.random() * 0.16})`);
+    grad.addColorStop(1, 'rgba(96,74,52,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, y, len, 2 + Math.random() * 3);
+  }
+  const skinTex = new THREE.CanvasTexture(c);
+  skinTex.colorSpace = THREE.SRGBColorSpace;
+  skinTex.wrapS = skinTex.wrapT = THREE.RepeatWrapping;
+  skinTex.repeat.set(4, 8); // u wraps the arch (hoop), v runs along the length
+  skinTex.anisotropy = 8;
+  const skinMat = new THREE.MeshStandardMaterial({
+    map: skinTex, roughness: 0.85, metalness: 0.25, side: THREE.DoubleSide,
+  });
+
+  // Arch shell: open-ended half cylinder, axis rotated onto X, arch over +Y.
+  const shell = new THREE.Mesh(new THREE.CylinderGeometry(R, R, LEN, 28, 3, true, 0, Math.PI), skinMat);
+  shell.rotation.z = Math.PI / 2; // axis Y -> X; the theta 0..PI half becomes the +Y arch
+  g.add(shell);
+
+  // Rear gable: a half-disc closing the -X end.
+  const gable = new THREE.Mesh(new THREE.CircleGeometry(R - 0.05, 28, 0, Math.PI), skinMat);
+  gable.rotation.y = -Math.PI / 2;
+  gable.position.x = -LEN / 2 + 0.05;
+  g.add(gable);
+
+  // Interior arch ribs — sell the hollow shell from the open end.
+  const ribMat = new THREE.MeshStandardMaterial({ color: 0x4a5058, roughness: 0.7, metalness: 0.4 });
+  for (const rx of [-LEN * 0.3, 0, LEN * 0.3]) {
+    const rib = new THREE.Mesh(new THREE.TorusGeometry(R - 0.35, 0.14, 6, 20, Math.PI), ribMat);
+    rib.rotation.y = Math.PI / 2; // arc in the YZ plane, spanning over +Y
+    rib.position.x = rx;
+    g.add(rib);
+  }
+
+  // Sliding door panels parked either side of the open (+X) end — sized and
+  // placed to stay inside the arch profile (arch height at |z| is
+  // sqrt(R^2 - z^2), so outer door corners must clear that).
+  const doorMat = new THREE.MeshStandardMaterial({ color: 0x5d646c, roughness: 0.8, metalness: 0.3 });
+  for (const sz of [-1, 1]) {
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.22, 5.6, 3.0), doorMat);
+    door.position.set(LEN / 2 + 0.25, 2.8, sz * 5.2);
+    g.add(door);
+  }
+  // Door header rail across the top of the opening (kept inside the arch).
+  const rail = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.35, 8.8), ribMat);
+  rail.position.set(LEN / 2 + 0.2, 7.2, 0);
+  g.add(rail);
+
+  // Concrete slab floor, slightly proud of the surrounding grass.
+  const slab = new THREE.Mesh(
+    new THREE.BoxGeometry(LEN + 5, 0.14, R * 2 + 2),
+    new THREE.MeshStandardMaterial({ color: 0x565a60, roughness: 0.95 }),
+  );
+  slab.position.set(1.5, 0.07, 0); // extended apron out the open end
+  g.add(slab);
+
   setShadows(g);
   return g;
 }

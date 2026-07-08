@@ -65,8 +65,7 @@ import {
   scene.add(rim);
   scene.add(new THREE.HemisphereLight(0xbfd8ff, 0x35402c, 0.7));
 
-  // ---- Floor: an opaque ground (so the half-buried Quonset hangar reads
-  //      correctly) that receives the shadow, plus a grid overlay. ----
+  // ---- Floor: an opaque ground that receives the shadow, plus a grid overlay. ----
   const groundMat = new THREE.MeshStandardMaterial({ color: 0x1a2230, roughness: 1, metalness: 0 });
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), groundMat);
   ground.rotation.x = -Math.PI / 2;
@@ -145,7 +144,7 @@ import {
     } else if (kind === 'tree') {
       current = makeTree(); modelName = 'plane-sim-tree';
     } else if (kind === 'hangar') {
-      current = makeHangar(); modelName = 'plane-sim-hangar'; sitOnGround = false; // designed half-buried
+      current = makeHangar(); modelName = 'plane-sim-hangar'; sitOnGround = false; // base already at y=0
     } else {
       current = makeControlTower(); modelName = 'plane-sim-control-tower';
     }
@@ -257,4 +256,18 @@ import {
   resize();
   load('aircraft');
   requestAnimationFrame(tick);
+
+  // Dev handle for scripted inspection (harness/tooling): position the camera,
+  // aim at a spot, switch models — without simulating mouse orbits.
+  window.__pv = {
+    camera,
+    controls,
+    scene,
+    load,
+    view(px, py, pz, tx = 0, ty = 1, tz = 0) {
+      camera.position.set(px, py, pz);
+      controls.target.set(tx, ty, tz);
+      controls.update();
+    },
+  };
 })();
