@@ -7,9 +7,8 @@ import {
   resolvePersona,
   generateContent,
   generateTitleForHistory,
-  DAILY_LIMIT,
-  WEEKLY_LIMIT,
 } from '../../utils/ai';
+import { getRateLimitErrorMessage } from '../../utils/discordRateLimit';
 import { IMAGE_GEN_TOOL_NAME, IMAGE_EDIT_MAX_SOURCES } from '../../utils/imageGen';
 import { MUSIC_GEN_TOOL_NAME, MUSIC_GUIDE_TOOL_NAME } from '../../utils/musicGen';
 import { trimHistoryToFit } from '../../utils/tokenizer';
@@ -273,7 +272,8 @@ const scriptHandlers = {
       let mediaDropped = false;
       try {
         genResult = await generateOnce(mediaParts.length > 0);
-      } catch (genErr) {
+      } catch (genErr: any) {
+        if (genErr?.message === 'RATE_LIMIT_EXCEEDED') throw genErr;
         // A provider rejecting the media (bad codec, too long, …) shouldn't eat
         // the whole reply — drop attachments and answer text-only.
         if (mediaParts.length === 0) throw genErr;
@@ -478,17 +478,8 @@ const scriptHandlers = {
       }
       if (err?.message === 'RATE_LIMIT_EXCEEDED') {
         const db = (message.client as any).db;
-        const dailyUsage = await db.aiUsage.getDailyUsage(message.author.id);
-        const weeklyUsage = await db.aiUsage.getWeeklyUsage(message.author.id);
-        const reachedDaily = dailyUsage >= DAILY_LIMIT;
-
-        const limitLabel = reachedDaily ? 'Daily' : 'Weekly';
-        const usageVal = reachedDaily ? dailyUsage : weeklyUsage;
-        const limitVal = reachedDaily ? DAILY_LIMIT : WEEKLY_LIMIT;
-
-        await message.reply(
-          `⚠️ **${limitLabel} AI Rate Limit Reached**\nYou have consumed **${usageVal.toLocaleString()}** / **${limitVal.toLocaleString()}** tokens in the last ${reachedDaily ? '24 hours' : '7 days'}. Please wait for your token pool to cool down.`,
-        );
+        const content = await getRateLimitErrorMessage(message.author.id, db);
+        await message.reply(content);
         return;
       }
       logError('AI unified handler error', err);

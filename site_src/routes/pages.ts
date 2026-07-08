@@ -44,7 +44,8 @@ export function registerPageRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
     try {
       const getDailyUsageSafe = async () => {
         try {
-          return await silverwolf.db.aiUsage.getDailyUsage(user.discordId);
+          const usage = await silverwolf.db.aiUsage.getDailyUsage(user.discordId);
+          return usage ?? 0;
         } catch (e) {
           logError('Dashboard failed to load daily AI usage:', e);
           return 0;
@@ -53,7 +54,8 @@ export function registerPageRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
 
       const getWeeklyUsageSafe = async () => {
         try {
-          return await silverwolf.db.aiUsage.getWeeklyUsage(user.discordId);
+          const usage = await silverwolf.db.aiUsage.getWeeklyUsage(user.discordId);
+          return usage ?? 0;
         } catch (e) {
           logError('Dashboard failed to load weekly AI usage:', e);
           return 0;

@@ -38,7 +38,7 @@ class AiUsageModel {
     if (row === null) {
       throw new Error('Database query failed while fetching daily usage');
     }
-    return row.total;
+    return row.total ?? 0;
   }
 
   async getWeeklyUsage(userId: string): Promise<number> {
@@ -46,7 +46,7 @@ class AiUsageModel {
     if (row === null) {
       throw new Error('Database query failed while fetching weekly usage');
     }
-    return row.total;
+    return row.total ?? 0;
   }
 
   async checkRateLimit(userId: string): Promise<{
