@@ -665,40 +665,95 @@ export function makeHangar() {
     g.add(rib);
   }
 
-  // Sliding-door assembly at the open (+X) end: a header rail whose ends reach
-  // the shell, doors hung from it by brackets and standing on a floor guide
-  // track, parked either side of the opening. Everything is sized to stay
-  // inside the arch profile (arch height at |z| is sqrt(R^2 - z^2)).
-  const DOOR_X = LEN / 2 + 0.25;
-  const doorMat = new THREE.MeshStandardMaterial({ color: 0x5d646c, roughness: 0.8, metalness: 0.3 });
-  // Header rail: y 6.45 — the arch is at |z| ~6.27 there, so a 12.4 m rail
-  // visually ties into the shell on both sides.
-  const rail = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.35, 12.4), ribMat);
-  rail.position.set(DOOR_X, 6.45, 0);
-  g.add(rail);
-  // Floor guide track the doors stand on.
-  const track = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.09, 12.4), ribMat);
-  track.position.set(DOOR_X, 0.19, 0);
+  // Sliding-door front, modelled on real WWII arch hangars (Belfast/blister
+  // type): the door track runs PAST the building on both sides — doors park
+  // beyond the walls on outrigger frames — with two parallel tracks so the
+  // panels stack, a glazed-top door leaf design, and a gable face filling the
+  // arch above the door line.
+  const FRONT_X = LEN / 2;
+
+  // Door-leaf texture: planked lower body with bolt seams, glazed grid on the
+  // top quarter (the classic hangar-door look).
+  const dc = document.createElement('canvas');
+  dc.width = 128; dc.height = 256;
+  const dctx = dc.getContext('2d');
+  dctx.fillStyle = '#5d646c';
+  dctx.fillRect(0, 0, 128, 256);
+  dctx.fillStyle = 'rgba(0,0,0,0.25)';
+  for (const px of [31, 63, 95]) dctx.fillRect(px, 64, 2, 192); // plank joints
+  for (let py = 112; py < 256; py += 48) dctx.fillRect(0, py, 128, 2); // seams
+  dctx.fillStyle = 'rgba(255,255,255,0.08)';
+  for (let py = 70; py < 256; py += 24) { // bolt rows
+    for (let px = 8; px < 128; px += 16) dctx.fillRect(px, py, 2, 2);
+  }
+  dctx.fillStyle = '#39404a'; // window frame band
+  dctx.fillRect(0, 0, 128, 64);
+  dctx.fillStyle = '#b9c8d4'; // panes in a 4x2 grid
+  for (let r = 0; r < 2; r++) {
+    for (let cIdx = 0; cIdx < 4; cIdx++) dctx.fillRect(6 + cIdx * 31, 6 + r * 30, 24, 22);
+  }
+  const doorTex = new THREE.CanvasTexture(dc);
+  doorTex.colorSpace = THREE.SRGBColorSpace;
+  const doorMat = new THREE.MeshStandardMaterial({ map: doorTex, roughness: 0.8, metalness: 0.25 });
+
+  // Gable face above the door line: a circular segment closing the arch above
+  // y=6.75, set just inside the shell mouth.
+  const gShape = new THREE.Shape();
+  const gz = Math.sqrt(8.95 * 8.95 - 6.75 * 6.75); // arch half-width at the door head
+  const a0 = Math.atan2(6.75, gz);
+  gShape.moveTo(-gz, 6.75);
+  gShape.absarc(0, 0, 8.95, Math.PI - a0, a0, true);
+  gShape.lineTo(-gz, 6.75);
+  const gableFront = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(gShape, { depth: 0.12, bevelEnabled: false }),
+    new THREE.MeshStandardMaterial({ color: 0x6d747c, roughness: 0.9, side: THREE.DoubleSide }),
+  );
+  gableFront.rotation.y = -Math.PI / 2; // shape (z,y) plane -> face +X
+  gableFront.position.x = FRONT_X - 0.15;
+  g.add(gableFront);
+
+  // Header beam carrying both door tracks, running past the shell to the
+  // outrigger frames.
+  const RAIL_HALF = 11.2;
+  const header = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.5, RAIL_HALF * 2), ribMat);
+  header.position.set(FRONT_X + 0.45, 6.9, 0);
+  g.add(header);
+  // Twin floor guide tracks under the door lines.
+  const track = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.08, RAIL_HALF * 2), ribMat);
+  track.position.set(FRONT_X + 0.45, 0.18, 0);
   g.add(track);
+
+  // Outrigger frames holding the track ends up beyond the walls: a vertical
+  // post + a diagonal brace back to the slab (lattice-tower stand-in).
   for (const sz of [-1, 1]) {
-    const door = new THREE.Mesh(new THREE.BoxGeometry(0.22, 6.0, 3.0), doorMat);
-    door.position.set(DOOR_X, 3.2, sz * 5.0); // bottom on the track, top corner clears the arch
-    g.add(door);
-    for (const bz of [-0.9, 0.9]) { // hanger brackets up to the rail
-      const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.3, 0.2), ribMat);
-      bracket.position.set(DOOR_X, 6.3, sz * 5.0 + bz);
-      g.add(bracket);
-    }
-    for (const by of [1.6, 4.6]) { // horizontal stiffener ribs on the door face
-      const rib = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.18, 2.7), doorMat);
-      rib.position.set(DOOR_X + 0.15, by, sz * 5.0);
-      g.add(rib);
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.25, 6.9, 0.25), ribMat);
+    post.position.set(FRONT_X + 0.45, 3.45, sz * (RAIL_HALF - 0.15));
+    g.add(post);
+    const brace = new THREE.Mesh(new THREE.BoxGeometry(0.16, 7.6, 0.16), ribMat);
+    brace.rotation.x = sz * 0.42; // lean inboard, foot on the slab
+    brace.position.set(FRONT_X + 0.45, 3.3, sz * (RAIL_HALF - 1.75));
+    g.add(brace);
+  }
+
+  // Four door leaves on two stacked tracks, slid open past the doorway edges
+  // (doorway half-width is ~5.9 at the door head).
+  for (const sz of [-1, 1]) {
+    for (const [dx, dz] of [[0.28, 5.9], [0.52, 8.9]]) {
+      const door = new THREE.Mesh(new THREE.BoxGeometry(0.16, 6.5, 3.3), doorMat);
+      door.position.set(FRONT_X + dx, 3.35, sz * dz);
+      g.add(door);
+      for (const hz of [-1.2, 1.2]) { // hangers up to the header
+        const hanger = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.35, 0.18), ribMat);
+        hanger.position.set(FRONT_X + dx, 6.72, sz * dz + hz);
+        g.add(hanger);
+      }
     }
   }
 
-  // Concrete slab floor, slightly proud of the surrounding grass.
+  // Concrete slab floor, slightly proud of the surrounding grass — wide enough
+  // to carry the door outrigger frames beyond the walls.
   const slab = new THREE.Mesh(
-    new THREE.BoxGeometry(LEN + 5, 0.14, R * 2 + 2),
+    new THREE.BoxGeometry(LEN + 5, 0.14, 25),
     new THREE.MeshStandardMaterial({ color: 0x565a60, roughness: 0.95 }),
   );
   slab.position.set(1.5, 0.07, 0); // extended apron out the open end
