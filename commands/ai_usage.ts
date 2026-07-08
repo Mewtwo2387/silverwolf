@@ -15,13 +15,12 @@ class AiUsageSubcommand extends Command {
   constructor(client: any) {
     super(client, 'usage', 'View your AI token usage and limits', [], {
       isSubcommandOf: 'ai',
+      ephemeral: true,
       blame: 'xei',
     });
   }
 
   async run(interaction: Discord.ChatInputCommandInteraction) {
-    await interaction.deferReply({ ephemeral: true });
-
     try {
       const userId = interaction.user.id;
       const [dailyUsage, weeklyUsage, status] = await Promise.all([
