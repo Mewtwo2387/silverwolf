@@ -13,6 +13,9 @@ site_src/Assets/styles.css
 site_src/Assets/app.js
 site_src/Assets/plane-sim.js
 site_src/Assets/plane-viewer.js
+# Downloaded (checksum-verified) inside the Dockerfile by scripts/fetch-soundfont.ts
+# — never copy a stale local soundfont into the image.
+data/soundfonts/
 # Android app — client-side only, never part of the server image
 android/
 *.apk

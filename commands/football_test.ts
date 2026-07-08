@@ -3,6 +3,7 @@ import { logError } from '../utils/log';
 import { getFootballChannelIds } from '../utils/footballChannels';
 import {
   buildFullTimeEmbed,
+  buildPenaltyShootoutEmbed,
   buildPreMatchEmbed,
   buildScoreUpdateEmbed,
   formatReplayWindow,
@@ -41,7 +42,7 @@ class FootballTest extends DevCommand {
     const channelIds = await getFootballChannelIds(this.client.db);
     if (channelIds.length === 0) {
       await interaction.editReply(
-        'No football channels configured. Use `/football channel` or set `FOOTBALL_CHANNELS` in the environment.',
+        'No football channels configured. Use `/football register` or set `FOOTBALL_CHANNELS` in the environment.',
       );
       return;
     }
@@ -80,7 +81,13 @@ class FootballTest extends DevCommand {
 
         if (isFinished(match)) {
           const finalScore = getDisplayedScore(match);
-          if (finalScore) {
+          if (match.score?.penalty) {
+            messageCount += await this.broadcastEmbed(
+              channelIds,
+              failedChannels,
+              buildPenaltyShootoutEmbed(match, { finished: true }),
+            );
+          } else if (finalScore) {
             messageCount += await this.broadcastEmbed(
               channelIds,
               failedChannels,

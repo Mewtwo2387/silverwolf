@@ -35,8 +35,7 @@ export const GAMES = [
     name: 'blackjack',
     href: '/games/blackjack',
     info: 'Bet your mystic credits on a classic game of 21 against Silverwolf.',
-    imageType: 'img' as const,
-    imageSrc: '/static/svg/poker-svgrepo-com.svg',
+    imageType: 'cards' as const,
   },
   {
     name: 'roulette',
@@ -824,6 +823,138 @@ const styles = raw(`
   }
   .game-card:hover .card-image:has(.holo-raster)::before { opacity: 0.85; }
 
+  /* ---- Per-icon idle animations ----------------------------------------
+     These animate the inlined .holo-svg (NOT the .holo-icon wrapper) so they
+     compose with the hover scale(1.05) on the wrapper instead of fighting it.
+     transform-box: fill-box would re-base the origin to the path bounds, but
+     the svg fills its wrapper so percentages off the element box are fine.
+     All are gated behind prefers-reduced-motion (see the block at the end). */
+
+  /* Love — a double-thump heartbeat. */
+  .game-love .holo-svg {
+    transform-origin: 50% 55%;
+    animation: sw-beat 2.4s ease-in-out infinite;
+  }
+  @keyframes sw-beat {
+    0%, 42%, 100% { transform: scale(1); }
+    10% { transform: scale(1.16); }
+    20% { transform: scale(1.0); }
+    30% { transform: scale(1.1); }
+  }
+
+  /* Fortune — the cookie teeters as if the slip is about to slide out. */
+  .game-fortune .holo-svg {
+    transform-origin: 50% 72%;
+    animation: sw-teeter 4.5s ease-in-out infinite;
+  }
+  @keyframes sw-teeter {
+    0%, 58%, 100% { transform: rotate(0deg); }
+    66% { transform: rotate(-8deg); }
+    74% { transform: rotate(5deg); }
+    82% { transform: rotate(-3deg); }
+    90% { transform: rotate(1.5deg); }
+  }
+
+  /* Roulette — slow continuous spin of the wheel. */
+  .game-roulette .holo-svg {
+    transform-origin: 50% 50%;
+    animation: sw-spin 9s linear infinite;
+  }
+  @keyframes sw-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Poop — squash-and-stretch bounce, anchored at the base. */
+  .game-poop .holo-svg {
+    transform-origin: 50% 92%;
+    animation: sw-bounce 2.1s cubic-bezier(0.3, 0, 0.35, 1) infinite;
+  }
+  @keyframes sw-bounce {
+    0%, 100% { transform: translateY(0) scale(1, 1); }
+    12%      { transform: translateY(0) scale(1.12, 0.88); }   /* wind-up squash */
+    40%      { transform: translateY(-16%) scale(0.94, 1.06); } /* airborne stretch */
+    62%      { transform: translateY(0) scale(1.12, 0.88); }    /* landing squash */
+    78%      { transform: translateY(0) scale(0.98, 1.02); }
+  }
+
+  /* 8-ball — a quick shake, like you're asking it a question. */
+  .game-8ball .holo-svg {
+    transform-origin: 50% 50%;
+    animation: sw-shake 3.2s ease-in-out infinite;
+  }
+  @keyframes sw-shake {
+    0%, 78%, 100% { transform: translate(0, 0) rotate(0deg); }
+    81% { transform: translate(-2px, 1px) rotate(-5deg); }
+    84% { transform: translate(2px, -1px) rotate(5deg); }
+    87% { transform: translate(-2px, 1px) rotate(-4deg); }
+    90% { transform: translate(2px, -1px) rotate(3deg); }
+    94% { transform: translate(-1px, 0) rotate(-1deg); }
+  }
+
+  /* Blackjack — three cards start stacked, fan out like a dealt hand, hold,
+     then collapse back. Each card rotates about a SHARED pivot below the fan
+     (transform-box: view-box pins it to viewBox coords), so rotate(0) overlaps
+     them perfectly and their splay angles spread them evenly. */
+  .bj-fan {
+    width: 72%;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .bj-fan svg { width: 100%; height: 100%; overflow: visible; }
+  .bj-card {
+    transform-box: view-box;
+    transform-origin: 50px 96px;
+  }
+  .bj-card-rect {
+    fill: color-mix(in oklab, var(--ink-900) 82%, transparent);
+    stroke: var(--accent-light);
+    stroke-width: 1.6;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
+  }
+  .bj-rank { font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 11px; }
+  .bj-pip-red { fill: var(--danger); }
+  .bj-pip-dark { fill: var(--accent-light); }
+  .bj-left  { animation: bj-fan-left  5s cubic-bezier(0.5, 0, 0.3, 1) infinite; }
+  .bj-right { animation: bj-fan-right 5s cubic-bezier(0.5, 0, 0.3, 1) infinite; }
+  /* .bj-center stays put and rides on top as the pivot of the fan. */
+  @keyframes bj-fan-left {
+    0%, 12%   { transform: rotate(0deg); }
+    40%, 72%  { transform: rotate(-26deg); }
+    94%, 100% { transform: rotate(0deg); }
+  }
+  @keyframes bj-fan-right {
+    0%, 12%   { transform: rotate(0deg); }
+    40%, 72%  { transform: rotate(26deg); }
+    94%, 100% { transform: rotate(0deg); }
+  }
+
+  /* Slots — a burst of vertical reel-shudder every few seconds, then it stops. */
+  .game-slots .holo-svg {
+    transform-origin: 50% 50%;
+    animation: sw-reels 4.2s ease-in-out infinite;
+  }
+  @keyframes sw-reels {
+    0%, 60%, 100% { transform: translateY(0); }
+    63%, 67%, 71%, 75% { transform: translateY(-7%); }
+    65%, 69%, 73%, 77% { transform: translateY(7%); }
+    82% { transform: translateY(0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .game-love .holo-svg,
+    .game-fortune .holo-svg,
+    .game-roulette .holo-svg,
+    .game-poop .holo-svg,
+    .game-8ball .holo-svg,
+    .game-slots .holo-svg { animation: none; }
+    /* Cards: skip the fan animation but show a static fanned hand, not a
+       single stacked card, so the thumbnail still reads as blackjack. */
+    .bj-left  { animation: none; transform: rotate(-26deg); }
+    .bj-right { animation: none; transform: rotate(26deg); }
+  }
+
 </style>
 `);
 
@@ -876,6 +1007,33 @@ function CyclicImage() {
       <span class="x">X</span><span class="o">O</span><span></span>
       <span></span><span class="x">X</span><span class="o">O</span>
       <span class="o">O</span><span></span><span class="x fade">X</span>
+    </div>
+  `);
+}
+
+// Blackjack card thumbnail: three playing cards that start in a tidy stack and
+// fan out like a dealt hand, then collapse back. Each card is its own <g> that
+// rotates about a SHARED pivot near the bottom of the fan (transform-box:
+// view-box pins the origin to viewBox coords), so at rotate(0) all three
+// overlap perfectly (stacked) and at their splay angles they spread evenly.
+function BlackjackImage() {
+  // One card: rounded body + a top-left rank index and a centre suit glyph.
+  const card = (cls: string, rank: string, suitCls: string, suit: string) => `
+    <g class="bj-card ${cls}">
+      <rect class="bj-card-rect" x="34" y="26" width="32" height="50" rx="4" />
+      <text class="bj-rank ${suitCls}" x="38" y="38">${rank}</text>
+      <path class="bj-suit ${suitCls}" transform="translate(50 54)" d="${suit}" />
+    </g>`;
+  // Compact centred suit glyphs (~14px tall, origin at their own centre).
+  const heart = 'M0 5 C-6 -2 -10 -6 -5 -9 C-2 -11 0 -8 0 -6 C0 -8 2 -11 5 -9 C10 -6 6 -2 0 5 Z';
+  const spade = 'M0 -9 C5 -3 9 -1 9 3 C9 6 6 7 3 6 L4 9 L-4 9 L-3 6 C-6 7 -9 6 -9 3 C-9 -1 -5 -3 0 -9 Z';
+  return raw(`
+    <div class="bj-fan" aria-hidden="true">
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        ${card('bj-left', 'A', 'bj-pip-dark', spade)}
+        ${card('bj-right', 'K', 'bj-pip-red', heart)}
+        ${card('bj-center', 'Q', 'bj-pip-red', heart)}
+      </svg>
     </div>
   `);
 }
@@ -1187,13 +1345,16 @@ export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import(
     </div>
     <div class="games-grid">
       ${GAMES.map(
-    (game) => html`
-          <a href="${game.href}" class="game-card">
+    (game) => {
+      const slug = game.href.split('/').pop() ?? '';
+      return html`
+          <a href="${game.href}" class="game-card game-${slug}">
             <div class="card-image">
               ${(() => {
     if (game.imageType === 'coin') return CoinImage();
     if (game.imageType === 'ai-slop') return AiSlopImage();
     if (game.imageType === 'cyclic') return CyclicImage();
+    if (game.imageType === 'cards') return BlackjackImage();
     if (game.imageType === 'bottle') return BottleImage();
     if (game.imageType === 'plane') return PlaneImage();
     if (game.imageType === 'composite') {
@@ -1225,7 +1386,8 @@ export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import(
               </div>
             </div>
           </a>
-        `,
+        `;
+    },
   )}
     </div>
     ${layoutScript(opts.nonce)}

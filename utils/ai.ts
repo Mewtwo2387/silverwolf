@@ -8,12 +8,23 @@ import { listSearchTools, listSearchToolsGemini, callSearchTool } from './mcp';
 import {
   IMAGE_GEN_TOOL_NAME,
   IMAGE_GEN_DAILY_LIMIT,
+  IMAGE_EDIT_MAX_SOURCES,
   IMAGE_GEN_FALLBACK_MODEL,
   imageGenToolDef,
   imageGenGeminiDecl,
   runImageGeneration,
   type ImageGenContext,
 } from './imageGen';
+import {
+  MUSIC_GUIDE_TOOL_NAME,
+  MUSIC_GEN_TOOL_NAME,
+  musicToolDefs,
+  musicGeminiDecls,
+  buildMusicGenNote,
+  getMusicGuide,
+  runMusicGeneration,
+  type MusicGenContext,
+} from './musicGen';
 // Note: Bun automatically reads .env files
 
 // Initialize AI providers
@@ -44,6 +55,10 @@ export interface Persona {
   responseModalities?: string[];
   avatarURL?: string;
   webSearchEnabled?: boolean;
+  /** OpenRouter provider-routing object (e.g. { only: ['xiaomi'], allow_fallbacks: false }). */
+  providerRouting?: Record<string, any>;
+  /** When true, Discord image/video/audio attachments are sent to the model (openrouter only). */
+  mediaInput?: boolean;
 }
 
 export interface ToolCallRecord {
@@ -55,6 +70,37 @@ export interface ToolCallRecord {
 
 const MAX_TOOL_ITERATIONS = 5;
 const MAX_TITLE_CHARS = 80;
+const MAX_RECORDED_COMPOSITION_CHARS = 500;
+
+/**
+ * ToolCallRecords are persisted as audit rows in chat history; a generate_music
+ * composition can be tens of KB, so truncate it — keep enough to identify the
+ * piece without bloating the DB.
+ */
+function redactToolCallArgs(name: string, args: Record<string, any>): Record<string, any> {
+  if (name === MUSIC_GEN_TOOL_NAME && typeof args.composition === 'string'
+    && args.composition.length > MAX_RECORDED_COMPOSITION_CHARS) {
+    return {
+      ...args,
+      composition: `${args.composition.slice(0, MAX_RECORDED_COMPOSITION_CHARS)}… [truncated, ${args.composition.length} chars total]`,
+    };
+  }
+  return args;
+}
+
+/** System-prompt note advertising the generate_image tool (and, when the
+ * triggering message carried images, the attached-image edit path). */
+function buildImageGenNote(imageGen?: ImageGenContext): string {
+  if (!imageGen) return '';
+  let note = `\n\nYou have a ${IMAGE_GEN_TOOL_NAME} tool. Call it ONLY when the user explicitly asks you to generate, create, draw, or edit an image. The image is attached to your reply automatically — never claim you cannot generate images, and never invent image links. Limit: ${IMAGE_GEN_DAILY_LIMIT} generations per user per 24 hours.`;
+  const attachedCount = imageGen.imageParts?.length ?? 0;
+  if (attachedCount > 0 && attachedCount <= IMAGE_EDIT_MAX_SOURCES) {
+    note += ` The user's current message has ${attachedCount} attached image${attachedCount === 1 ? '' : 's'}; if they ask you to edit, modify, restyle, or transform ${attachedCount === 1 ? 'it' : 'them'}, call ${IMAGE_GEN_TOOL_NAME} with use_attached_images=true and a prompt describing the desired change.`;
+  } else if (attachedCount > IMAGE_EDIT_MAX_SOURCES) {
+    note += ` The user's current message has ${attachedCount} attached images, but ${IMAGE_GEN_TOOL_NAME} accepts only ${IMAGE_EDIT_MAX_SOURCES} attached image${IMAGE_EDIT_MAX_SOURCES === 1 ? '' : 's'} per edit. If the user asks for an edit, do NOT call the tool — politely tell them to send a message with at most ${IMAGE_EDIT_MAX_SOURCES} image${IMAGE_EDIT_MAX_SOURCES === 1 ? '' : 's'} attached.`;
+  }
+  return note;
+}
 
 /**
  * Some open models (Qwen/Hermes/DeepSeek lineage) emit tool calls as plain text
@@ -131,6 +177,16 @@ interface GenerateContentOptions {
   webSearchEnabled?: boolean;
   /** When set, the model is offered the generate_image tool (Discord-only delivery). */
   imageGen?: ImageGenContext;
+  /** When set, the model is offered the music tools (get_music_guide + generate_music, Discord-only delivery). */
+  musicGen?: MusicGenContext;
+  /**
+   * Multimodal content parts (image_url / video_url / input_audio) appended to
+   * the current user turn. OpenRouter provider only; base64 data — never
+   * persisted to history by callers (see utils/aiMedia.ts).
+   */
+  mediaParts?: any[];
+  /** OpenRouter provider-routing body field (pin/exclude providers). */
+  providerRouting?: Record<string, any>;
 }
 
 interface ImageAttachment {
@@ -140,6 +196,7 @@ interface ImageAttachment {
 
 interface GenerateContentResult {
   text: string;
+  /** Generated files to attach to the reply (images from generate_image, WAV audio from generate_music). */
   images: ImageAttachment[];
   toolCalls: ToolCallRecord[];
 }
@@ -205,6 +262,13 @@ function getPersonaInvokeLabel(personaName: string): string {
   return String(trigger).replace(/^@/, '').toUpperCase();
 }
 
+/** Model id configured for a persona (empty string when the persona is unknown). */
+function getPersonaModelName(personaName: string): string {
+  const personas: Persona[] = personasConfig.personas || [];
+  const found = personas.find((p) => p.name.toLowerCase() === String(personaName).toLowerCase());
+  return found?.model || '';
+}
+
 /**
  * Generates content (text and/or images) from the specified AI provider and model.
  */
@@ -221,7 +285,8 @@ function getImageGenConfig(): { model: string; modalities: string[] } {
 }
 
 async function generateContent({
-  provider, model, systemPrompt, prompt, history = [], webSearchEnabled = false, imageGen,
+  provider, model, systemPrompt, prompt, history = [], webSearchEnabled = false, imageGen, musicGen,
+  mediaParts = [], providerRouting,
 }: GenerateContentOptions): Promise<GenerateContentResult> {
   const now = new Date();
   const nowUTC = formatUtcTimestamp(now);
@@ -262,30 +327,48 @@ ${systemPrompt || ''}
     if (imageGen) {
       toolDefs = [...toolDefs, imageGenToolDef()];
     }
-    const imageGenNote = imageGen
-      ? `\n\nYou have a ${IMAGE_GEN_TOOL_NAME} tool. Call it ONLY when the user explicitly asks you to generate, create, or draw an image. The image is attached to your reply automatically — never claim you cannot generate images, and never invent image links. Limit: ${IMAGE_GEN_DAILY_LIMIT} generations per user per 24 hours.`
-      : '';
+    if (musicGen) {
+      toolDefs = [...toolDefs, ...musicToolDefs()];
+    }
+    const imageGenNote = buildImageGenNote(imageGen);
+    const musicGenNote = buildMusicGenNote(musicGen);
     const useTools = toolDefs.length > 0;
-    const toolNote = searchToolNote + imageGenNote;
+    const toolNote = searchToolNote + imageGenNote + musicGenNote;
 
+    // With media the current turn becomes a content-part array; the base64
+    // parts live only in this request body and are dropped when it completes.
+    const userText = formatMessageWithTimestamp(prompt, now);
+    const userContent = mediaParts.length > 0
+      ? [{ type: 'text', text: userText }, ...mediaParts]
+      : userText;
     const requestMessages: any[] = [
       { role: 'system' as const, content: systemPrompt + toolNote },
       ...historyMessages,
-      { role: 'user' as const, content: formatMessageWithTimestamp(prompt, now) },
+      { role: 'user' as const, content: userContent },
     ];
 
     const toolCalls: ToolCallRecord[] = [];
     const generatedImages: ImageAttachment[] = [];
     let toolsAvailable = useTools;
     let finalText = '';
+    // generate_music is rejected until get_music_guide has been read in a
+    // *prior* iteration — the composition must be written with the guide in context.
+    let musicGuideRead = false;
 
     for (let iter = 0; iter < MAX_TOOL_ITERATIONS + 1; iter += 1) {
       const isLastForcedClose = iter === MAX_TOOL_ITERATIONS;
       const requestBody: any = {
         model,
         messages: requestMessages,
-        max_tokens: 8192,
+        // Once the music guide has been read, the next turn is the composing
+        // turn: reasoning models think through the arrangement and then emit a
+        // large composition JSON, which easily blows the normal cap (measured
+        // in the model bake-off). Ordinary turns keep the tight cap.
+        max_tokens: musicGuideRead ? 32768 : 8192,
       };
+      if (providerRouting) {
+        requestBody.provider = providerRouting;
+      }
       if (toolsAvailable && !isLastForcedClose) {
         requestBody.tools = toolDefs;
       } else if (toolsAvailable && isLastForcedClose
@@ -319,8 +402,21 @@ ${systemPrompt || ''}
 
       const actualPromptTokens = completion.usage?.prompt_tokens;
       if (actualPromptTokens && actualPromptTokens > 0) {
+        // Array content (multimodal turns): count the text part, not the media
+        // — otherwise calibration learns an inflated multiplier from media turns.
         const estimated = countTokensOpenRouterMessages(
-          requestMessages.map((m: any) => ({ role: m.role, content: typeof m.content === 'string' ? m.content : '' })),
+          requestMessages.map((m: any) => {
+            let contentText = '';
+            if (typeof m.content === 'string') {
+              contentText = m.content;
+            } else if (Array.isArray(m.content)) {
+              contentText = m.content
+                .filter((p: any) => p?.type === 'text' && typeof p.text === 'string')
+                .map((p: any) => p.text)
+                .join('\n');
+            }
+            return { role: m.role, content: contentText };
+          }),
         );
         recordUsage(model, estimated, actualPromptTokens);
       }
@@ -335,6 +431,10 @@ ${systemPrompt || ''}
           tool_calls: reqToolCalls,
         });
 
+        // Snapshot the gating flag: a generate_music call in the same batch as
+        // its get_music_guide must still be rejected (the composition was
+        // written without the guide in context).
+        const guideReadAtBatchStart = musicGuideRead;
         // eslint-disable-next-line no-await-in-loop
         const results = await Promise.all(reqToolCalls.map(async (tc: any) => {
           const callName = tc.function?.name ?? '';
@@ -364,6 +464,28 @@ ${systemPrompt || ''}
               tcId: tc.id, callName, parsedArgs, resultText, ok,
             };
           }
+          if (musicGen && callName === MUSIC_GUIDE_TOOL_NAME) {
+            resultText = await getMusicGuide();
+            ok = !resultText.startsWith('Error:');
+            return {
+              tcId: tc.id, callName, parsedArgs, resultText, ok,
+            };
+          }
+          if (musicGen && callName === MUSIC_GEN_TOOL_NAME) {
+            const genRes = await runMusicGeneration({
+              ctx: musicGen, args: parsedArgs, guideWasRead: guideReadAtBatchStart,
+            });
+            if (genRes.ok) {
+              generatedImages.push(genRes.attachment);
+              resultText = genRes.resultText;
+              ok = true;
+            } else {
+              resultText = genRes.error;
+            }
+            return {
+              tcId: tc.id, callName, parsedArgs, resultText, ok,
+            };
+          }
           const res = await callSearchTool(callName, parsedArgs);
           if (res.ok) { resultText = res.content; ok = true; } else { resultText = `Error: ${res.error}`; }
           return {
@@ -372,14 +494,20 @@ ${systemPrompt || ''}
         }));
 
         for (const r of results) {
+          // The music guide is first-party content the model must follow —
+          // don't wrap it in the untrusted-result markers.
+          const isTrustedResult = r.callName === MUSIC_GUIDE_TOOL_NAME || r.callName === MUSIC_GEN_TOOL_NAME;
           requestMessages.push({
             role: 'tool',
             tool_call_id: r.tcId,
-            content: `<<MCP_TOOL_RESULT>>\n${r.resultText}\n<</MCP_TOOL_RESULT>>`,
+            content: isTrustedResult
+              ? r.resultText
+              : `<<MCP_TOOL_RESULT>>\n${r.resultText}\n<</MCP_TOOL_RESULT>>`,
           });
           toolCalls.push({
-            name: r.callName, args: r.parsedArgs, resultText: r.resultText, ok: r.ok,
+            name: r.callName, args: redactToolCallArgs(r.callName, r.parsedArgs), resultText: r.resultText, ok: r.ok,
           });
+          if (r.callName === MUSIC_GUIDE_TOOL_NAME && r.ok) musicGuideRead = true;
         }
         // eslint-disable-next-line no-continue
         continue;
@@ -426,11 +554,14 @@ ${systemPrompt || ''}
       if (geminiTools.length === 0) geminiTools = [{ functionDeclarations: [] }];
       geminiTools[0].functionDeclarations.push(imageGenGeminiDecl());
     }
-    const imageGenNote = imageGen && !isImageModel
-      ? `\n\nYou have a ${IMAGE_GEN_TOOL_NAME} tool. Call it ONLY when the user explicitly asks you to generate, create, or draw an image. The image is attached to your reply automatically — never claim you cannot generate images, and never invent image links. Limit: ${IMAGE_GEN_DAILY_LIMIT} generations per user per 24 hours.`
-      : '';
+    if (musicGen && !isImageModel) {
+      if (geminiTools.length === 0) geminiTools = [{ functionDeclarations: [] }];
+      geminiTools[0].functionDeclarations.push(...musicGeminiDecls());
+    }
+    const imageGenNote = !isImageModel ? buildImageGenNote(imageGen) : '';
+    const musicGenNote = !isImageModel ? buildMusicGenNote(musicGen) : '';
     const useTools = geminiTools.length > 0;
-    const toolNote = searchToolNote + imageGenNote;
+    const toolNote = searchToolNote + imageGenNote + musicGenNote;
 
     const modelClientOptions: any = {
       model: currentGeminiModel,
@@ -441,6 +572,13 @@ ${systemPrompt || ''}
     }
     if (useTools) {
       modelClientOptions.tools = geminiTools;
+    }
+    if (musicGen && !isImageModel) {
+      // Mirror the OpenRouter composing budget: generate_music arguments are a
+      // large composition JSON that can truncate under the model's default
+      // output cap. The SDK only takes generationConfig per model/chat session,
+      // so the raised cap applies to the whole music-enabled session.
+      modelClientOptions.generationConfig = { maxOutputTokens: 32768 };
     }
 
     const modelClient = genAI.getGenerativeModel(modelClientOptions);
@@ -464,6 +602,9 @@ ${systemPrompt || ''}
       const chatSession = modelClient.startChat({ history: geminiHistory });
       const toolCalls: ToolCallRecord[] = [];
       const generatedImages: ImageAttachment[] = [];
+      // generate_music is rejected until get_music_guide has been read in a
+      // *prior* iteration — the composition must be written with the guide in context.
+      let musicGuideRead = false;
 
       let result = await chatSession.sendMessage(processedPrompt);
       let fullText = '';
@@ -484,9 +625,39 @@ ${systemPrompt || ''}
           break;
         }
 
+        const guideReadAtBatchStart = musicGuideRead;
         // eslint-disable-next-line no-await-in-loop
         const fnResponses = await Promise.all(fnCalls.map(async (fc: any) => {
           const args = (fc.args ?? {}) as Record<string, any>;
+          if (musicGen && fc.name === MUSIC_GUIDE_TOOL_NAME) {
+            const guide = await getMusicGuide();
+            const guideOk = !guide.startsWith('Error:');
+            toolCalls.push({
+              name: fc.name, args, resultText: guide, ok: guideOk,
+            });
+            return {
+              functionResponse: {
+                name: fc.name,
+                response: { result: guide },
+              },
+            };
+          }
+          if (musicGen && fc.name === MUSIC_GEN_TOOL_NAME) {
+            const genRes = await runMusicGeneration({
+              ctx: musicGen, args, guideWasRead: guideReadAtBatchStart,
+            });
+            const genContent = genRes.ok ? genRes.resultText : genRes.error;
+            if (genRes.ok) generatedImages.push(genRes.attachment);
+            toolCalls.push({
+              name: fc.name, args: redactToolCallArgs(fc.name, args), resultText: genContent, ok: genRes.ok,
+            });
+            return {
+              functionResponse: {
+                name: fc.name,
+                response: { result: genContent },
+              },
+            };
+          }
           if (imageGen && fc.name === IMAGE_GEN_TOOL_NAME) {
             const genRes = await runImageGeneration({
               ctx: imageGen, openrouter, ...getImageGenConfig(), args,
@@ -494,7 +665,7 @@ ${systemPrompt || ''}
             const genContent = genRes.ok ? genRes.resultText : genRes.error;
             if (genRes.ok) generatedImages.push(genRes.attachment);
             toolCalls.push({
-              name: fc.name, args, resultText: genContent, ok: genRes.ok,
+              name: fc.name, args: redactToolCallArgs(fc.name, args), resultText: genContent, ok: genRes.ok,
             });
             return {
               functionResponse: {
@@ -515,6 +686,11 @@ ${systemPrompt || ''}
             },
           };
         }));
+
+        if (!musicGuideRead
+          && toolCalls.some((t) => t.name === MUSIC_GUIDE_TOOL_NAME && t.ok)) {
+          musicGuideRead = true;
+        }
 
         // eslint-disable-next-line no-await-in-loop
         result = await chatSession.sendMessage(fnResponses);
@@ -748,4 +924,5 @@ export {
   getOpenRouterClient,
   getPersonaByName,
   getPersonaInvokeLabel,
+  getPersonaModelName,
 };

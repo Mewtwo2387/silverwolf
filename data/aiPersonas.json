@@ -55,7 +55,7 @@
       "name": "Imgen",
       "triggers": [],
       "provider": "openrouter",
-      "model": "black-forest-labs/flux.2-pro",
+      "model": "google/gemini-3.1-flash-lite-image",
       "responseModalities": ["image"]
     },
     {
@@ -64,6 +64,17 @@
       "provider": "openrouter",
       "model": "openrouter/free",
       "systemPrompt": "Generate a concise title of 5-10 words max summarizing the conversation topic. Output only the raw title text — no quotes, no prefixes, no punctuation at the end. Do not think, reason, plan, or explain. Respond immediately with the title and nothing else."
+    },
+    {
+      "name": "MiMo",
+      "triggers": ["@mi"],
+      "provider": "openrouter",
+      "model": "xiaomi/mimo-v2.5",
+      "providerRouting": { "only": ["xiaomi"], "allow_fallbacks": false },
+      "mediaInput": true,
+      "systemPrompt": "You are MiMo-V2.5, Xiaomi's omnimodal AI assistant. You can natively see images, watch videos, and hear audio the user attaches. Respond clearly, concisely, and politely. When media is attached, describe or analyze it directly — never claim you cannot see or hear attachments. Keep answers under a few sentences unless more detail is explicitly requested.",
+      "avatarURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Xiaomi_logo_%282021-%29.svg/1280px-Xiaomi_logo_%282021-%29.svg.png",
+      "webSearchEnabled": true
     },
     {
       "name": "Deepseek",

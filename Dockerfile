@@ -34,6 +34,11 @@ RUN bun build ./site_src/Assets/app.src.js --minify --outfile ./site_src/Assets/
     && bun build ./site_src/Assets/plane-viewer.src.js --minify --outfile ./site_src/Assets/plane-viewer.js \
     && bunx --bun tailwindcss@3 -i ./site_src/Assets/input.css -o ./site_src/Assets/styles.css --minify
 
+# 5. Fetch the GM soundfont for the JAYDON music generator (checksum-verified,
+#    cached as a layer — only re-downloads when the fetch script changes).
+COPY scripts/fetch-soundfont.ts ./scripts/fetch-soundfont.ts
+RUN bun scripts/fetch-soundfont.ts
+
 # --- STAGE 2: Run ---
 # Use 'slim' (Debian) for a smaller final image that is still compatible with Stage 1
 FROM oven/bun:1-slim
@@ -66,6 +71,8 @@ COPY --from=builder --chown=bun:bun /app/site_src/Assets/styles.css ./site_src/A
 COPY --from=builder --chown=bun:bun /app/site_src/Assets/app.js ./site_src/Assets/app.js
 COPY --from=builder --chown=bun:bun /app/site_src/Assets/plane-sim.js ./site_src/Assets/plane-sim.js
 COPY --from=builder --chown=bun:bun /app/site_src/Assets/plane-viewer.js ./site_src/Assets/plane-viewer.js
+# Soundfont downloaded + checksum-verified in the builder stage.
+COPY --from=builder --chown=bun:bun /app/data/soundfonts ./data/soundfonts
 
 # Refresh font cache
 RUN fc-cache -f

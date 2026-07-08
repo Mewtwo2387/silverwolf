@@ -2,8 +2,11 @@ import { Database as BunDatabase } from 'bun:sqlite';
 import { log, logError } from '../utils/log';
 import { snakeToCamelJSON } from '../utils/caseConvert';
 import * as tables from './tables';
+import serverConfigQueries from './queries/serverConfigQueries';
 import imageGenQueries from './queries/imageGenQueries';
+import musicGenQueries from './queries/musicGenQueries';
 import battleshipsMatchQueries from './queries/battleshipsMatchQueries';
+import rpQueries from './queries/rpQueries';
 import * as modelClasses from './models';
 import type { TableDefinition, QueryResult } from './types';
 import type UserModel from './models/UserModel';
@@ -17,10 +20,12 @@ import type CyclicTttMatchModel from './models/CyclicTttMatchModel';
 import type GameUIDModel from './models/GameUIDModel';
 import type GlobalConfigModel from './models/GlobalConfigModel';
 import type ImageGenModel from './models/ImageGenModel';
-import type ServerRolesModel from './models/ServerRolesModel';
+import type MusicGenModel from './models/MusicGenModel';
+import type ServerConfigModel from './models/ServerConfigModel';
 import type BirthdayReminderModel from './models/BirthdayReminderModel';
 import type FootballMatchAnnouncementModel from './models/FootballMatchAnnouncementModel';
 import type PoopModel from './models/PoopModel';
+import type RpModel from './models/RpModel';
 import type WebSessionModel from './models/WebSessionModel';
 
 class Database {
@@ -160,6 +165,9 @@ class Database {
     // Back the per-user rolling-24h image-generation rate-limit count.
     this.db.run(imageGenQueries.CREATE_USER_CREATED_INDEX);
 
+    // Back the per-user rolling-24h music-generation rate-limit count.
+    this.db.run(musicGenQueries.CREATE_USER_CREATED_INDEX);
+
     // Back the per-user recent-match lookup (GET_RECENT_FOR_USER).
     this.db.run(`
       CREATE INDEX IF NOT EXISTS idx_cyclic_ttt_x_id_ended_at
@@ -174,6 +182,17 @@ class Database {
     this.db.run(battleshipsMatchQueries.CREATE_INDEX_X_RECENT);
     this.db.run(battleshipsMatchQueries.CREATE_INDEX_O_RECENT);
 
+    // Roleplay: mention routing, the proactive "all"-mode scan, and search.
+    this.db.run(rpQueries.CREATE_INDEX_SPAWN_CHANNEL);
+    this.db.run(rpQueries.CREATE_INDEX_SPAWN_ALL);
+    this.db.run(rpQueries.CREATE_INDEX_HISTORY_SPAWN);
+    this.db.run(rpQueries.CREATE_INDEX_HISTORY_SPAWN_ROLE);
+    this.db.run(rpQueries.CREATE_INDEX_CHAR_NAME);
+    this.db.run(rpQueries.CREATE_INDEX_CHAR_CREATOR);
+
+    // Migrate legacy ServerRoles into ServerConfig when opening an older database.
+    this.migrateLegacyServerRolesIfNeeded();
+
     // Initialize models
     Object.entries(modelClasses).forEach(([modelName, ModelClass]) => {
       this.models[modelName] = new (ModelClass as any)(this);
@@ -181,6 +200,38 @@ class Database {
 
     // Enable foreign keys
     this.db.run('PRAGMA foreign_keys = ON');
+  }
+
+  migrateLegacyServerRolesIfNeeded(): void {
+    const legacyTable = this.db
+      .query("SELECT name FROM sqlite_master WHERE type='table' AND name='ServerRoles'")
+      .get();
+    if (!legacyTable) return;
+
+    const rowCount = (this.db
+      .query(serverConfigQueries.COUNT_LEGACY_SERVER_ROLES)
+      .get() as { count: number }).count;
+
+    log(`Migrating ${rowCount} legacy ServerRoles row(s) to ServerConfig`);
+    this.db.run('BEGIN IMMEDIATE TRANSACTION');
+    try {
+      this.db.run(serverConfigQueries.MIGRATE_FROM_SERVER_ROLES);
+
+      const unmigrated = (this.db
+        .query(serverConfigQueries.COUNT_UNMIGRATED_SERVER_ROLES)
+        .get() as { count: number }).count;
+      if (unmigrated > 0) {
+        throw new Error(`${unmigrated} ServerRoles row(s) failed to migrate into ServerConfig`);
+      }
+
+      this.db.run(serverConfigQueries.DROP_LEGACY_SERVER_ROLES);
+      this.db.run('COMMIT');
+      log(`ServerRoles migration complete (${rowCount} row(s) moved to ServerConfig)`);
+    } catch (err) {
+      this.db.run('ROLLBACK');
+      logError('ServerRoles migration failed:', err);
+      throw err;
+    }
   }
 
   checkIfColumnExists(tableName: string, columnName: string): boolean {
@@ -278,7 +329,7 @@ class Database {
   async dumpMarriage(): Promise<string> { return this.dumpTable('Marriage', ['user1_id', 'user2_id']); }
   async dumpBaby(): Promise<string> { return this.dumpTable('Baby', ['mother_id', 'father_id']); }
   async dumpCommandConfig(): Promise<string> { return this.dumpTable('CommandConfig', []); }
-  async dumpServerRoles(): Promise<string> { return this.dumpTable('ServerRoles', []); }
+  async dumpServerConfig(): Promise<string> { return this.dumpTable('ServerConfig', []); }
   async dumpGlobalConfig(): Promise<string> { return this.dumpTable('GlobalConfig', []); }
   async dumpGameUID(): Promise<string> { return this.dumpTable('GameUID', ['user_id']); }
 
@@ -294,9 +345,11 @@ class Database {
   get globalConfig(): GlobalConfigModel { return this.models.GlobalConfigModel; }
   get imageGen(): ImageGenModel { return this.models.ImageGenModel; }
   get marriage(): MarriageModel { return this.models.MarriageModel; }
+  get musicGen(): MusicGenModel { return this.models.MusicGenModel; }
   get pokemon(): PokemonModel { return this.models.PokemonModel; }
   get poop(): PoopModel { return this.models.PoopModel; }
-  get serverRoles(): ServerRolesModel { return this.models.ServerRolesModel; }
+  get rp(): RpModel { return this.models.RpModel; }
+  get serverConfig(): ServerConfigModel { return this.models.ServerConfigModel; }
   get user(): UserModel { return this.models.UserModel; }
   get webSession(): WebSessionModel { return this.models.WebSessionModel; }
 }

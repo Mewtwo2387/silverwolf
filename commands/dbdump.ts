@@ -50,10 +50,10 @@ const DUMP_DEFINITIONS: DumpDefinition[] = [
     formatUserIds: [],
   },
   {
-    choiceName: 'Server Roles Data',
-    value: 'serverRoles',
-    tableName: 'ServerRoles',
-    fileName: 'Server_Roles_Data.csv',
+    choiceName: 'Server Config Data',
+    value: 'serverConfig',
+    tableName: 'ServerConfig',
+    fileName: 'Server_Config_Data.csv',
     formatUserIds: [],
   },
   {

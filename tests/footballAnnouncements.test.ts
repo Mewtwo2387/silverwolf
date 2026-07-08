@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import {
   buildGoalEmbed,
+  buildPenaltyShootoutEmbed,
   buildReplayEmbedsForMatch,
   buildScoreUpdateEmbed,
   formatGoalTitle,
@@ -12,7 +13,13 @@ import {
   getNewGoalEvents,
   replayWindowMsFromHours,
 } from '../utils/footballAnnouncements';
-import { parseKickoffUtc, type WorldCupMatch } from '../utils/worldcup';
+import {
+  getPenaltyShootoutTally,
+  isPenaltyShootout,
+  isPenaltyShootoutPhase,
+  parseKickoffUtc,
+  type WorldCupMatch,
+} from '../utils/worldcup';
 
 const sampleMatch: WorldCupMatch = {
   round: 'Matchday 1',
@@ -85,8 +92,49 @@ describe('footballAnnouncements', () => {
       preMatchSent: true,
       lastHomeScore: 1,
       lastAwayScore: 0,
+      lastAnnouncedGoalCount: 1,
       fullTimeSent: false,
+      lastShootoutKickCount: 0,
+      shootoutMessageIds: {},
     })).toEqual([events[1]]);
+  });
+
+  test('getNewGoalEvents uses goal count not score totals during extra time', () => {
+    const etMatch: WorldCupMatch = {
+      round: 'Round of 16',
+      date: '2026-07-04',
+      time: '19:00 UTC+0',
+      team1: 'Argentina',
+      team2: 'Cape Verde',
+      status: 'ET',
+      score: { ft: [2, 1] },
+      goals1: [
+        { name: 'L. Messi', minute: '29' },
+        { name: 'L. Martinez', minute: '92' },
+      ],
+      goals2: [{ name: 'D. Duarte', minute: '59' }],
+    };
+    const events = getGoalEvents(etMatch);
+    expect(getNewGoalEvents(etMatch, {
+      matchId: 'x',
+      preMatchSent: true,
+      lastHomeScore: 1,
+      lastAwayScore: 1,
+      lastAnnouncedGoalCount: 2,
+      fullTimeSent: false,
+      lastShootoutKickCount: 0,
+      shootoutMessageIds: {},
+    })).toEqual([events[2]]);
+    expect(getNewGoalEvents(etMatch, {
+      matchId: 'x',
+      preMatchSent: true,
+      lastHomeScore: 2,
+      lastAwayScore: 1,
+      lastAnnouncedGoalCount: 3,
+      fullTimeSent: false,
+      lastShootoutKickCount: 0,
+      shootoutMessageIds: {},
+    })).toEqual([]);
   });
 
   test('buildReplayEmbedsForMatch includes pre-match, goals, and full time', () => {
@@ -120,5 +168,59 @@ describe('footballAnnouncements', () => {
     expect(formatReplayWindow(24)).toBe('the last 24 hours');
     expect(formatReplayWindow(48)).toBe('the last 48 hours');
     expect(formatReplayWindow(1)).toBe('the last 1 hour');
+  });
+
+  test('isPenaltyShootout detects live shootout status', () => {
+    const match: WorldCupMatch = { ...sampleMatch, status: 'P' };
+    expect(isPenaltyShootout(match)).toBe(true);
+    expect(isPenaltyShootout({ ...sampleMatch, status: 'ET' })).toBe(false);
+    expect(isPenaltyShootout({ ...sampleMatch, status: 'FINISHED' })).toBe(false);
+  });
+
+  test('buildPenaltyShootoutEmbed uses regulation score and penalty tally', () => {
+    const match: WorldCupMatch = {
+      ...sampleMatch,
+      status: 'P',
+      score: { ft: [1, 1], penalty: [2, 3] },
+      shootoutKicks: [
+        { team: 'Mexico', player: 'A', scored: true },
+        { team: 'South Africa', player: 'B', scored: false },
+      ],
+    };
+    const embed = buildPenaltyShootoutEmbed(match);
+    expect(embed.data.description).toContain('1 – 1');
+    expect(embed.data.description).toContain('Pens **2–3**');
+    expect(embed.data.description).toContain('✅ **A**');
+    expect(embed.data.description).toContain('❌ **B**');
+    expect(getPenaltyShootoutTally(match)).toEqual({ home: 2, away: 3 });
+  });
+
+  test('buildReplayEmbedsForMatch uses penalty shootout embed for decided matches', () => {
+    const match: WorldCupMatch = {
+      ...sampleMatch,
+      status: 'FINISHED',
+      score: { ft: [1, 1], penalty: [4, 5] },
+      shootoutKicks: [{ team: 'Mexico', player: 'A', scored: true }],
+    };
+    const embeds = buildReplayEmbedsForMatch(match);
+    expect(embeds[embeds.length - 1].data.description).toContain('Penalties');
+    expect(embeds[embeds.length - 1].data.description).toContain('Pens **4–5**');
+  });
+
+  test('isPenaltyShootoutPhase includes finished penalty results', () => {
+    expect(isPenaltyShootoutPhase({
+      ...sampleMatch,
+      status: 'P',
+    })).toBe(true);
+    expect(isPenaltyShootoutPhase({
+      ...sampleMatch,
+      status: 'FINISHED',
+      score: { ft: [1, 1], penalty: [3, 4] },
+    })).toBe(true);
+    expect(isPenaltyShootoutPhase({
+      ...sampleMatch,
+      status: 'FINISHED',
+      score: { ft: [2, 0] },
+    })).toBe(false);
   });
 });

@@ -2,6 +2,7 @@ import { Command } from './classes/Command';
 import { logError } from '../utils/log';
 import quote, {
   FAKEQUOTE_FONTS,
+  FAKEQUOTE_FORMATS,
   FAKEQUOTE_BACKGROUNDS,
   FAKEQUOTE_PROFILE_COLORS,
   FAKEQUOTE_AVATAR_SOURCES,
@@ -28,6 +29,13 @@ class FakeQuote extends Command {
         description: 'override the display name shown below the quote',
         type: 3,
         required: false,
+      },
+      {
+        name: 'format',
+        description: 'image layout (default: landscape)',
+        type: 3,
+        required: false,
+        choices: fakeQuoteChoices(FAKEQUOTE_FORMATS),
       },
       {
         name: 'background',
@@ -83,6 +91,7 @@ class FakeQuote extends Command {
         interaction.options.getString('profile_color'),
         interaction.options.getString('avatar_source'),
         interaction.options.getString('font_style'),
+        interaction.options.getString('format'),
       );
 
       await interaction.editReply({ content: null, files: [result] });

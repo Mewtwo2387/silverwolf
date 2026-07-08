@@ -9,9 +9,11 @@ import GameUIDModel from './GameUIDModel';
 import GlobalConfigModel from './GlobalConfigModel';
 import ImageGenModel from './ImageGenModel';
 import MarriageModel from './MarriageModel';
+import MusicGenModel from './MusicGenModel';
 import PokemonModel from './PokemonModel';
 import PoopModel from './PoopModel';
-import ServerRolesModel from './ServerRolesModel';
+import RpModel from './RpModel';
+import ServerConfigModel from './ServerConfigModel';
 import UserModel from './UserModel';
 import WebSessionModel from './WebSessionModel';
 
@@ -27,9 +29,11 @@ export {
   GlobalConfigModel,
   ImageGenModel,
   MarriageModel,
+  MusicGenModel,
   PokemonModel,
   PoopModel,
-  ServerRolesModel,
+  RpModel,
+  ServerConfigModel,
   UserModel,
   WebSessionModel,
 };

@@ -10,10 +10,16 @@ import gameUIDTable from './gameUIDTable';
 import globalConfigTable from './globalConfigTable';
 import imageGenLogTable from './imageGenLogTable';
 import marriageTable from './marriageTable';
+import musicGenLogTable from './musicGenLogTable';
 import pokemonTable from './pokemonTable';
 import poopEntryTable from './poopEntryTable';
 import poopProfileTable from './poopProfileTable';
-import serverRolesTable from './serverRolesTable';
+import rpCharacterTable from './rpCharacterTable';
+import rpSpawnTable from './rpSpawnTable';
+import rpHistoryTable from './rpHistoryTable';
+import rpLorebookTable from './rpLorebookTable';
+import rpPersonaTable from './rpPersonaTable';
+import serverConfigTable from './serverConfigTable';
 import userTable from './userTable';
 import webSessionTable from './webSessionTable';
 
@@ -30,10 +36,16 @@ export {
   globalConfigTable,
   imageGenLogTable,
   marriageTable,
+  musicGenLogTable,
   pokemonTable,
   poopEntryTable,
   poopProfileTable,
-  serverRolesTable,
+  rpCharacterTable,
+  rpSpawnTable,
+  rpHistoryTable,
+  rpLorebookTable,
+  rpPersonaTable,
+  serverConfigTable,
   userTable,
   webSessionTable,
 };
@@ -50,8 +62,14 @@ export type { GameUIDRow } from './gameUIDTable';
 export type { GlobalConfigRow } from './globalConfigTable';
 export type { ImageGenLogRow } from './imageGenLogTable';
 export type { MarriageRow } from './marriageTable';
+export type { MusicGenLogRow } from './musicGenLogTable';
 export type { PokemonRow } from './pokemonTable';
 export type { PoopEntryRow } from './poopEntryTable';
-export type { ServerRolesRow } from './serverRolesTable';
+export type { RpCharacterRow } from './rpCharacterTable';
+export type { RpSpawnRow } from './rpSpawnTable';
+export type { RpHistoryRow } from './rpHistoryTable';
+export type { RpLorebookRow } from './rpLorebookTable';
+export type { RpPersonaRow } from './rpPersonaTable';
+export type { ServerConfigRow } from './serverConfigTable';
 export type { UserRow, UserStatsRow } from './userTable';
 export type { WebSessionRow } from './webSessionTable';

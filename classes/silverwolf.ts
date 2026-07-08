@@ -7,7 +7,9 @@ import Database from '../database/Database';
 import BirthdayScheduler from './birthdayScheduler';
 import BabyScheduler from './babyScheduler';
 import FootballScheduler from './footballScheduler';
+import RpScheduler from './rpScheduler';
 import { log, logError } from '../utils/log';
+import { handleRpMessage, recomputeActiveRpChannels } from '../utils/rpRuntime';
 // Note: Bun automatically reads .env files
 import seasonConfig from '../data/config/skin/pokemon.json';
 import keywordsJson from '../data/keywords.json';
@@ -18,6 +20,7 @@ import {
 import scriptHandlers from './handlers/keywordsBehaviorHandler';
 import quoteDefault from '../utils/quote';
 import { loadAllowedServers } from '../utils/accessControl';
+import { loadResolvedServerConfig } from '../utils/serverConfig';
 
 const FONT_INDEX: string[] = (quoteDefault as any).FONT_INDEX;
 const MAX_MESSAGE_HISTORY = 100;
@@ -28,8 +31,6 @@ const handlers: Record<string, any> = {
   HalloweenHandler,
   AprilFoolsHandler,
 };
-
-const SERIOUS_CHANNELS = ['1262239871758766221'];
 
 /** Given a list of .ts and .js filenames, prefer .ts; only keep a .js file when no .ts counterpart exists. */
 function preferTsOverJs(files: string[]): string[] {
@@ -53,6 +54,7 @@ class Silverwolf extends Client {
   birthdayScheduler: BirthdayScheduler;
   babyScheduler: BabyScheduler;
   footballScheduler: FootballScheduler;
+  rpScheduler: RpScheduler;
   games: string[];
   chat: any;
   sexSessions: any[];
@@ -70,6 +72,7 @@ class Silverwolf extends Client {
     this.birthdayScheduler = new BirthdayScheduler(this);
     this.babyScheduler = new BabyScheduler(this);
     this.footballScheduler = new FootballScheduler(this);
+    this.rpScheduler = new RpScheduler(this);
     this.init();
     this.games = [];
     this.loadGames(); // Initialize the games list from the JSON file
@@ -93,6 +96,10 @@ class Silverwolf extends Client {
     log('Baby scheduler started.');
     this.footballScheduler.start();
     log('Football scheduler started.');
+
+    await recomputeActiveRpChannels(this.db);
+    this.rpScheduler.start();
+    log('Roleplay scheduler started.');
 
     log(`Silverwolf initialized.
 ----------------------------------------------
@@ -202,6 +209,10 @@ All wrongs reserved.
   }
 
   async processInteraction(interaction: any): Promise<void> {
+    if (interaction.isAutocomplete()) {
+      await this.handleAutocomplete(interaction);
+      return;
+    }
     if (interaction.isCommand()) {
       if (!interaction.guild) {
         await interaction.reply('commands can only be used in servers.');
@@ -232,11 +243,33 @@ All wrongs reserved.
     }
   }
 
+  async handleAutocomplete(interaction: any): Promise<void> {
+    try {
+      let command = this.commands.get(interaction.commandName);
+      const sub = interaction.options.getSubcommand(false);
+      if (sub) command = this.commands.get(`${interaction.commandName}.${sub}`);
+      if (command && typeof command.autocomplete === 'function') {
+        await command.autocomplete(interaction);
+      } else {
+        await interaction.respond([]);
+      }
+    } catch (error) {
+      logError('Error handling autocomplete:', error);
+      try { await interaction.respond([]); } catch { /* interaction already closed */ }
+    }
+  }
+
   async processMessage(message: any): Promise<void> {
     if (!message.guild) {
       log(`> Message received from ${message.author.username} (${message.author.id}) in DM: ${message.content}`);
       return;
     }
+
+    // Roleplay hears the whole channel — including other bots/apps — as context, but
+    // only human messages can trigger a reply (enforced in handleRpMessage). Route it
+    // before the bot short-circuit and the human-only behaviours below. Fire-and-forget;
+    // returns immediately (in-memory check) unless the channel actually has spawns.
+    handleRpMessage(this, message).catch((err) => logError('Rp: message handling failed:', err));
 
     if (message.author.bot) {
       log(`Bot message received from ${message.author.username} (${message.author.id}) in ${message.channel.name} (${message.channel.id}) in ${message.guild.name} (${message.guild.id}): ${message.content}`);
@@ -245,10 +278,15 @@ All wrongs reserved.
 
     log(`> Message received from ${message.author.username} (${message.author.id}) in ${message.channel.name} (${message.channel.id}) in ${message.guild.name} (${message.guild.id}): ${message.content}`);
 
-    if (Math.random() < 0.01 && !SERIOUS_CHANNELS.includes(message.channel.id)) {
+    const guildConfig = await loadResolvedServerConfig(this.db, message.guild.id);
+
+    if (
+      Math.random() < guildConfig.pokemonSpawnRate
+      && !guildConfig.seriousChannelIds.includes(message.channel.id)
+    ) {
       log('Summoning a pokemon...');
-      const handler = await this.getHandler(); // Fetch the handler based on the current season
-      await handler.summonPokemon(message); // Use the season-specific summonPokemon method
+      const handler = await this.getHandler();
+      await handler.summonPokemon(message, 'normal', guildConfig);
     }
 
     if (message.author.id === '993614772354416673' && Math.random() < 0.1) {
@@ -312,6 +350,11 @@ All wrongs reserved.
           }
         }
 
+        // format:v / format:vertical → portrait layout (default landscape)
+        const formatParam = getParam('format') || getParam('fmt');
+        let quoteFormat = 'landscape';
+        if (formatParam && /^v(ertical)?$/i.test(formatParam)) quoteFormat = 'vertical';
+
         // txt:#hex → text colour
         const txtParam = getParam('txt');
         let textColor = null;
@@ -338,7 +381,7 @@ All wrongs reserved.
 
         log(`original message: ${originalMessage}`);
         log(`quote params: ${JSON.stringify({
-          background, avatarSource, profileColor, fontStyle, textColor,
+          background, avatarSource, profileColor, fontStyle, textColor, quoteFormat,
         })}`);
 
         const result = await (quoteDefault as any)(
@@ -351,6 +394,7 @@ All wrongs reserved.
           profileColor,
           avatarSource,
           fontStyle,
+          quoteFormat,
         );
 
         await sentMessage.edit({ content: null, files: [result] });
@@ -366,9 +410,9 @@ All wrongs reserved.
       return msg.includes(trigger);
     }));
 
-    if (matchedEntries.length > 0) {
+    if (matchedEntries.length > 0 && guildConfig.messageReactsEnabled) {
       const promises = matchedEntries.map(async (matchedEntry: any) => {
-        if (matchedEntry.excludeSerious && SERIOUS_CHANNELS.includes(message.channel.id)) {
+        if (matchedEntry.excludeSerious && guildConfig.seriousChannelIds.includes(message.channel.id)) {
           return;
         }
 

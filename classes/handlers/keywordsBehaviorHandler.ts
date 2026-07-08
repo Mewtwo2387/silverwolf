@@ -4,9 +4,13 @@ import {
 } from 'discord.js';
 import { log, logError } from '../../utils/log';
 import { resolvePersona, generateContent, generateTitleForHistory } from '../../utils/ai';
-import { IMAGE_GEN_TOOL_NAME } from '../../utils/imageGen';
+import { IMAGE_GEN_TOOL_NAME, IMAGE_EDIT_MAX_SOURCES } from '../../utils/imageGen';
+import { MUSIC_GEN_TOOL_NAME, MUSIC_GUIDE_TOOL_NAME } from '../../utils/musicGen';
 import { trimHistoryToFit } from '../../utils/tokenizer';
 import { extractPdfsFromMessage } from '../../utils/pdf';
+import {
+  collectMediaFromMessage, hasQualifyingMedia, tryAcquireMediaSlot, releaseMediaSlot,
+} from '../../utils/aiMedia';
 
 const WEBHOOK_NAME = process.env.WEBHOOK_NAME || 'grok-webhook';
 
@@ -114,12 +118,68 @@ const scriptHandlers = {
     }
 
     const { blocks: pdfBlocks, notices: pdfNotices } = await extractPdfsFromMessage(message);
-    for (const notice of pdfNotices) {
+
+    // Media (image/video/audio) attachments. Two consumers:
+    //  - vision input (mediaParts → the chat model's user turn): persona-gated
+    //    (mediaInput), openrouter-only;
+    //  - image editing (imageEditParts → the generate_image tool as edit
+    //    sources): any persona with imageGen enabled, images only.
+    // Base64 buffers live in these arrays for the duration of this generation
+    // and are never persisted; only text placeholders enter the prompt/history.
+    let mediaParts: any[] = [];
+    let imageEditParts: any[] = [];
+    let mediaPlaceholders: string[] = [];
+    let editOnlyPlaceholders: string[] = [];
+    const mediaNotices: string[] = [];
+    let mediaSlotHeld = false;
+    const visionCapable = !!persona.mediaInput && persona.provider === 'openrouter';
+    const imageGenEnabled = hasMemory;
+    const shouldCollectMedia = (visionCapable && hasQualifyingMedia(message, contextMsg))
+      || (imageGenEnabled && hasQualifyingMedia(message, contextMsg, true));
+    if (shouldCollectMedia) {
+      if (!tryAcquireMediaSlot()) {
+        mediaNotices.push('⚠ Too many attachment-reading requests in flight right now — answering without your attachments. Try again in a moment.');
+      } else {
+        mediaSlotHeld = true;
+        try {
+          // Non-vision personas only ever need the images (for editing).
+          const collected = await collectMediaFromMessage(message, contextMsg, !visionCapable);
+          imageEditParts = collected.parts.filter((p: any) => p?.type === 'image_url');
+          if (visionCapable) {
+            mediaParts = collected.parts;
+            mediaPlaceholders = collected.placeholders;
+          } else {
+            // The chat model can't see these — placeholders tell it the images
+            // exist so it can offer/perform edits via generate_image. Only a
+            // single attached image is editable (tool hard cap), so with
+            // several the placeholders stay plain and the system note tells
+            // the model to refuse edits.
+            editOnlyPlaceholders = imageEditParts.length <= IMAGE_EDIT_MAX_SOURCES
+              ? collected.placeholders.map(
+                (p) => `${p} (you cannot view this image, but your generate_image tool can edit it)`,
+              )
+              : collected.placeholders.map((p) => `${p} (you cannot view this image)`);
+          }
+          mediaNotices.push(...collected.notices);
+        } catch (mediaErr) {
+          logError('AiChat: media collection failed, proceeding without attachments:', mediaErr);
+          mediaNotices.push('⚠ Couldn\'t process your attachments — answering without them.');
+          mediaParts = [];
+          imageEditParts = [];
+          mediaPlaceholders = [];
+          editOnlyPlaceholders = [];
+        }
+      }
+    }
+
+    for (const notice of [...pdfNotices, ...mediaNotices]) {
       // eslint-disable-next-line no-await-in-loop
       await message.reply({ content: notice, allowedMentions: { repliedUser: false } })
-        .catch((e) => { logError('PDF notice reply failed:', e); });
+        .catch((e) => { logError('Attachment notice reply failed:', e); });
     }
     const pdfPrefix = pdfBlocks.length > 0 ? `${pdfBlocks.join('\n\n')}\n\n` : '';
+    const allPlaceholders = [...mediaPlaceholders, ...editOnlyPlaceholders];
+    const mediaSuffix = allPlaceholders.length > 0 ? `\n${allPlaceholders.join('\n')}` : '';
 
     let prompt = '';
 
@@ -127,9 +187,9 @@ const scriptHandlers = {
       const promptName = (contextMsg.author.username === displayName) ? 'You' : contextMsg.author.username;
       prompt = `${pdfPrefix}Previous message by ${promptName}: "${contextMsg.content}"
 
-      User ${username} said: ${query}`;
+      User ${username} said: ${query}${mediaSuffix}`;
     } else {
-      prompt = `${pdfPrefix}User ${username} said: ${query}`;
+      prompt = `${pdfPrefix}User ${username} said: ${query}${mediaSuffix}`;
     }
 
     log(`Prompt: ${prompt}`);
@@ -179,19 +239,50 @@ const scriptHandlers = {
       const webhooks = await (message.channel as TextChannel).fetchWebhooks();
       let webhook = webhooks.find((wh: any) => wh.name === WEBHOOK_NAME && wh.token);
 
-      const { text, images, toolCalls } = await generateContent({
+      const generateOnce = (withMedia: boolean) => generateContent({
         provider: persona.provider,
         model: persona.model,
         systemPrompt: persona.systemPrompt ?? '',
         prompt,
         history,
         webSearchEnabled: persona.webSearchEnabled,
+        mediaParts: withMedia ? mediaParts : [],
+        providerRouting: persona.providerRouting,
         // Image generation is Discord-only (delivery rides this webhook); the
-        // rate limit is keyed to the requesting Discord user.
+        // rate limit is keyed to the requesting Discord user. Attached images
+        // ride along as edit sources for the generate_image tool.
         imageGen: hasMemory
+          ? { userId: message.author.id, db: (message.client as any).db, imageParts: imageEditParts }
+          : undefined,
+        // Music generation rides the same webhook delivery; rate limit keyed
+        // to the requesting Discord user.
+        musicGen: hasMemory
           ? { userId: message.author.id, db: (message.client as any).db }
           : undefined,
       });
+
+      let genResult;
+      let mediaDropped = false;
+      try {
+        genResult = await generateOnce(mediaParts.length > 0);
+      } catch (genErr) {
+        // A provider rejecting the media (bad codec, too long, …) shouldn't eat
+        // the whole reply — drop attachments and answer text-only.
+        if (mediaParts.length === 0) throw genErr;
+        logError('AiChat: generation with media failed, retrying text-only:', genErr);
+        mediaDropped = true;
+        genResult = await generateOnce(false);
+      } finally {
+        // Buffers are only referenced by these arrays; free the slot as soon
+        // as the provider round-trip is over.
+        mediaParts = [];
+        imageEditParts = [];
+        if (mediaSlotHeld) {
+          releaseMediaSlot();
+          mediaSlotHeld = false;
+        }
+      }
+      const { text, images, toolCalls } = genResult;
 
       if (!webhook) {
         webhook = await (message.channel as TextChannel).createWebhook({
@@ -217,13 +308,22 @@ const scriptHandlers = {
       }
 
       const MAX_LENGTH = 2000;
-      const searchCallCount = (toolCalls ?? []).filter((tc: any) => tc.name !== IMAGE_GEN_TOOL_NAME).length;
+      const nonSearchTools = [IMAGE_GEN_TOOL_NAME, MUSIC_GEN_TOOL_NAME, MUSIC_GUIDE_TOOL_NAME];
+      const searchCallCount = (toolCalls ?? []).filter((tc: any) => !nonSearchTools.includes(tc.name)).length;
       const imageCallHappened = (toolCalls ?? []).some((tc: any) => tc.name === IMAGE_GEN_TOOL_NAME && tc.ok);
+      const musicCallHappened = (toolCalls ?? []).some((tc: any) => tc.name === MUSIC_GEN_TOOL_NAME && tc.ok);
       const searchPrefix = searchCallCount > 0
         ? `-# 🔎 searched the web (${searchCallCount})\n`
         : '';
       const imagePrefix = imageCallHappened ? '-# 🎨 generated an image\n' : '';
-      let remainingText = `${searchPrefix}${imagePrefix}${(text || '').toString()}`;
+      const musicPrefix = musicCallHappened ? '-# 🎵 composed music\n' : '';
+      const mediaReadPrefix = mediaPlaceholders.length > 0 && !mediaDropped
+        ? `-# 📎 read ${mediaPlaceholders.length} attachment${mediaPlaceholders.length === 1 ? '' : 's'}\n`
+        : '';
+      const mediaFailPrefix = mediaDropped
+        ? '-# ⚠ the model rejected the attachments — answered without them\n'
+        : '';
+      let remainingText = `${searchPrefix}${imagePrefix}${musicPrefix}${mediaReadPrefix}${mediaFailPrefix}${(text || '').toString()}`;
       let previousMsg: any = null;
       let filesToAttach: any[] = images || [];
 
@@ -335,14 +435,14 @@ const scriptHandlers = {
             await (message.client as any).db.aiChat.addHistory(
               aiSession.sessionId,
               aiRole,
-              `[image-only response] ${imageMeta}`,
+              `[attachment-only response] ${imageMeta}`,
             );
           }
           if (hasImages && imageCdnUrls.length > 0) {
             await (message.client as any).db.aiChat.addHistory(
               aiSession.sessionId,
               aiRole,
-              `[generated image attached: ${imageCdnUrls.join(' ')}] (note: this link expires within ~24 hours)`,
+              `[generated file attached: ${imageCdnUrls.join(' ')}] (note: this link expires within ~24 hours)`,
             );
           }
 
@@ -364,6 +464,10 @@ const scriptHandlers = {
         }
       }
     } catch (err) {
+      if (mediaSlotHeld) {
+        releaseMediaSlot();
+        mediaSlotHeld = false;
+      }
       logError('AI unified handler error', err);
       await message.reply(
         'Either, our code is fucked, their API is fucked, or you are just fucked. Please try again later.',

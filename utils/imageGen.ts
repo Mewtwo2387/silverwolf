@@ -3,23 +3,39 @@ import { log, logError } from './log';
 
 export const IMAGE_GEN_TOOL_NAME = 'generate_image';
 export const IMAGE_GEN_DAILY_LIMIT = 5;
-export const IMAGE_GEN_FALLBACK_MODEL = 'black-forest-labs/flux.2-pro';
+/** Hard cap on attached-image edit sources per tool call — guards against
+ * bursty spending (N images × N tool iterations) and matches the Imgen
+ * model's single-composite output anyway. */
+export const IMAGE_EDIT_MAX_SOURCES = 1;
+export const IMAGE_GEN_FALLBACK_MODEL = 'google/gemini-3.1-flash-lite-image';
 
 const IMAGE_GEN_TIMEOUT_MS = 60_000;
 const MAX_PROMPT_CHARS = 2_000;
 // Discord upload cap on non-boosted servers.
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
-const TOOL_DESCRIPTION = 'Generate an image from a text prompt. Use ONLY when the user explicitly asks you to '
-  + 'generate, create, or draw an image/picture — never for ordinary questions. The generated image is attached '
-  + 'to your reply automatically; do not claim you cannot generate images, and do not write links or placeholders '
-  + `for it. Users are limited to ${IMAGE_GEN_DAILY_LIMIT} generations per 24 hours.`;
+const TOOL_DESCRIPTION = 'Generate an image from a text prompt, or edit the single image the user attached. Use ONLY '
+  + 'when the user explicitly asks you to generate, create, draw, or edit an image/picture — never for ordinary '
+  + 'questions. The generated image is attached to your reply automatically; do not claim you cannot generate '
+  + 'images, and do not write links or placeholders for it. '
+  + `Users are limited to ${IMAGE_GEN_DAILY_LIMIT} generations per 24 hours.`;
+
+const USE_ATTACHED_DESCRIPTION = 'Set to true to use the image attached to the user\'s current message as the '
+  + 'base for an edit/transformation (the prompt then describes the desired change). Only valid when the current '
+  + `message has EXACTLY ${IMAGE_EDIT_MAX_SOURCES} image attachment(s) — calls are rejected when the message has `
+  + 'none or more than that; in the multi-image case, refuse the edit and ask the user to attach a single image.';
 
 export interface ImageGenContext {
   /** Discord user id of the requester (rate-limit key). */
   userId: string;
   /** Shared Database instance (db.imageGen). */
   db: any;
+  /**
+   * OpenRouter image_url content parts from the user's attached images
+   * (base64 data URLs, see utils/aiMedia.ts). When present, the model may set
+   * use_attached_images to edit them instead of generating from scratch.
+   */
+  imageParts?: any[];
 }
 
 export interface ImageGenAttachment {
@@ -47,7 +63,11 @@ export function imageGenToolDef(): ImageGenToolDef {
         properties: {
           prompt: {
             type: 'string',
-            description: 'A detailed description of the image to generate.',
+            description: 'A detailed description of the image to generate, or of the edit to apply.',
+          },
+          use_attached_images: {
+            type: 'boolean',
+            description: USE_ATTACHED_DESCRIPTION,
           },
         },
         required: ['prompt'],
@@ -65,7 +85,11 @@ export function imageGenGeminiDecl(): { name: string; description: string; param
       properties: {
         prompt: {
           type: 'STRING',
-          description: 'A detailed description of the image to generate.',
+          description: 'A detailed description of the image to generate, or of the edit to apply.',
+        },
+        use_attached_images: {
+          type: 'BOOLEAN',
+          description: USE_ATTACHED_DESCRIPTION,
         },
       },
       required: ['prompt'],
@@ -100,6 +124,27 @@ export async function runImageGeneration(opts: {
   }
   const prompt = rawPrompt.trim().slice(0, MAX_PROMPT_CHARS);
 
+  // Attached-image editing: only honored when the caller actually collected
+  // image parts from the triggering message. Checked before quota reservation
+  // so a bad call doesn't burn a generation slot.
+  const useAttached = opts.args?.use_attached_images === true;
+  const imageParts = Array.isArray(ctx.imageParts) ? ctx.imageParts : [];
+  if (useAttached && imageParts.length === 0) {
+    return {
+      ok: false,
+      error: 'Error: the current message has no usable attached images to edit. Generate from the prompt alone, '
+        + 'or tell the user to attach the image to the message that asks for the edit.',
+    };
+  }
+  if (useAttached && imageParts.length > IMAGE_EDIT_MAX_SOURCES) {
+    return {
+      ok: false,
+      error: `Error: only ${IMAGE_EDIT_MAX_SOURCES} attached image can be edited per request, but the user attached `
+        + `${imageParts.length}. Do NOT retry — refuse the edit and tell the user to send a message with exactly one `
+        + 'image attached.',
+    };
+  }
+
   // Atomically count + insert the quota row (fail closed: DB errors block generation).
   let reservationId: number | null = null;
   try {
@@ -123,14 +168,20 @@ export async function runImageGeneration(opts: {
     });
   };
 
-  log(`[imagegen] user ${ctx.userId} generating: ${prompt.slice(0, 120)}`);
+  log(`[imagegen] user ${ctx.userId} generating${useAttached ? ` (editing ${imageParts.length} attached image${imageParts.length === 1 ? '' : 's'})` : ''}: ${prompt.slice(0, 120)}`);
+
+  // For edits the request carries the source images as multimodal content
+  // parts alongside the instruction text (base64 data URLs, never persisted).
+  const userContent = useAttached
+    ? [{ type: 'text', text: prompt }, ...imageParts]
+    : prompt;
 
   let dataUrl = '';
   try {
     const completion: any = await withTimeout(
       openrouter.chat.completions.create({
         model,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: 'user', content: userContent }],
         modalities,
       } as any),
       IMAGE_GEN_TIMEOUT_MS,
@@ -160,7 +211,8 @@ export async function runImageGeneration(opts: {
   return {
     ok: true,
     attachment: { attachment: buffer, name: `imgen-${Date.now()}.${ext}` },
-    resultText: `Image generated successfully from prompt "${prompt.slice(0, 200)}". It is attached to your reply `
-      + 'automatically — do not write a link, markdown image, or placeholder for it; just describe it briefly.',
+    resultText: `Image ${useAttached ? 'edited' : 'generated'} successfully from prompt "${prompt.slice(0, 200)}". `
+      + 'It is attached to your reply automatically — do not write a link, markdown image, or placeholder for it; '
+      + 'just describe it briefly.',
   };
 }
