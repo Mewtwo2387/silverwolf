@@ -577,20 +577,45 @@ export function setPropBlur(surf, rpmNorm) {
 
 // ---- Scenery (shared so the inspector can show them too) ----
 
-// A tree: trunk + two stacked, colour-varied cones. Random foliage tint + scale
-// are baked in so a field of these varies; the caller just sets position.
-export function makeTree() {
+// A tree in one of three archetypes — 'conifer' (stacked cones), 'pine' (tall
+// slim cone on a bare trunk) or 'broadleaf' (round canopy). Random type when
+// unspecified; foliage tint + scale are baked in so a field of these varies.
+// The game's instanced forests use the same silhouettes/palettes (it can't
+// reuse these Groups directly — instancing needs one geometry per mesh).
+export function makeTree(type) {
+  const t = type || ['conifer', 'pine', 'broadleaf'][Math.floor(Math.random() * 3)];
   const tree = new THREE.Group();
   const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5a3d24, roughness: 1 });
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, 4.5, 6), trunkMat);
-  trunk.position.y = 2.2; tree.add(trunk);
-  const leafMat = new THREE.MeshStandardMaterial({
-    color: new THREE.Color().setHSL(0.28 + Math.random() * 0.05, 0.45, 0.22 + Math.random() * 0.08),
-    roughness: 1,
-  });
-  const c1 = new THREE.Mesh(new THREE.ConeGeometry(3.8, 7, 7), leafMat); c1.position.y = 6.5; tree.add(c1);
-  const c2 = new THREE.Mesh(new THREE.ConeGeometry(2.8, 5.5, 7), leafMat); c2.position.y = 9.8; tree.add(c2);
-  tree.scale.setScalar(0.8 + Math.random() * 1.3);
+  if (t === 'pine') {
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.55, 7, 6), trunkMat);
+    trunk.position.y = 3.5; tree.add(trunk);
+    const leafMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color().setHSL(0.31 + Math.random() * 0.05, 0.35, 0.16 + Math.random() * 0.07),
+      roughness: 1,
+    });
+    const c = new THREE.Mesh(new THREE.ConeGeometry(2.0, 11, 7), leafMat); c.position.y = 11.2; tree.add(c);
+    tree.scale.setScalar(0.8 + Math.random() * 0.9);
+  } else if (t === 'broadleaf') {
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.85, 3.8, 6), trunkMat);
+    trunk.position.y = 1.9; tree.add(trunk);
+    const leafMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color().setHSL(0.22 + Math.random() * 0.09, 0.5, 0.28 + Math.random() * 0.09),
+      roughness: 1,
+    });
+    const canopy = new THREE.Mesh(new THREE.SphereGeometry(3.5, 8, 6), leafMat);
+    canopy.scale.y = 0.85; canopy.position.y = 5.6; tree.add(canopy);
+    tree.scale.setScalar(0.6 + Math.random() * 1.1);
+  } else {
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, 4.5, 6), trunkMat);
+    trunk.position.y = 2.2; tree.add(trunk);
+    const leafMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color().setHSL(0.28 + Math.random() * 0.05, 0.45, 0.22 + Math.random() * 0.08),
+      roughness: 1,
+    });
+    const c1 = new THREE.Mesh(new THREE.ConeGeometry(3.8, 7, 7), leafMat); c1.position.y = 6.5; tree.add(c1);
+    const c2 = new THREE.Mesh(new THREE.ConeGeometry(2.8, 5.5, 7), leafMat); c2.position.y = 9.8; tree.add(c2);
+    tree.scale.setScalar(0.8 + Math.random() * 1.3);
+  }
   setShadows(tree);
   return tree;
 }
@@ -696,21 +721,36 @@ export function makeHangar() {
   doorTex.colorSpace = THREE.SRGBColorSpace;
   const doorMat = new THREE.MeshStandardMaterial({ map: doorTex, roughness: 0.8, metalness: 0.25 });
 
-  // Gable face above the door line: a circular segment closing the arch above
-  // y=6.75, set just inside the shell mouth.
-  const gShape = new THREE.Shape();
+  // Open Belfast-truss gable above the door line: a straight bottom chord at
+  // the door head, a segmented top chord following the arch, and a zigzag web
+  // between them — pale members, see-through like the real lattice.
+  const webMat = new THREE.MeshStandardMaterial({ color: 0xb9bfc6, roughness: 0.7, metalness: 0.2 });
   const gz = Math.sqrt(8.95 * 8.95 - 6.75 * 6.75); // arch half-width at the door head
-  const a0 = Math.atan2(6.75, gz);
-  gShape.moveTo(-gz, 6.75);
-  gShape.absarc(0, 0, 8.95, Math.PI - a0, a0, true);
-  gShape.lineTo(-gz, 6.75);
-  const gableFront = new THREE.Mesh(
-    new THREE.ExtrudeGeometry(gShape, { depth: 0.12, bevelEnabled: false }),
-    new THREE.MeshStandardMaterial({ color: 0x6d747c, roughness: 0.9, side: THREE.DoubleSide }),
-  );
-  gableFront.rotation.y = -Math.PI / 2; // shape (z,y) plane -> face +X
-  gableFront.position.x = FRONT_X - 0.15;
-  g.add(gableFront);
+  const GABLE_X = FRONT_X - 0.2;
+  // A thin member between two points in the gable (z,y) plane.
+  const member = (z1, y1, z2, y2, thick, mat) => {
+    const dy = y2 - y1; const dz = z2 - z1;
+    const len = Math.hypot(dy, dz);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(thick, thick, len), mat);
+    m.position.set(GABLE_X, (y1 + y2) / 2, (z1 + z2) / 2);
+    m.rotation.x = -Math.asin(dy / len);
+    g.add(m);
+  };
+  member(-gz, 6.85, gz, 6.85, 0.2, ribMat); // bottom chord
+  const N_PANEL = 6;
+  const archY = (z) => Math.sqrt(8.95 * 8.95 - z * z) - 0.12; // just under the shell
+  const gzs = [];
+  for (let i = 0; i <= N_PANEL; i++) gzs.push(-gz + (2 * gz * i) / N_PANEL);
+  for (let i = 0; i < N_PANEL; i++) { // top chord segments tracing the arch
+    member(gzs[i], archY(gzs[i]), gzs[i + 1], archY(gzs[i + 1]), 0.18, ribMat);
+  }
+  for (let i = 1; i < N_PANEL; i++) { // verticals at each panel point
+    member(gzs[i], 6.85, gzs[i], archY(gzs[i]), 0.12, webMat);
+  }
+  for (let i = 0; i < N_PANEL; i++) { // zigzag web diagonals
+    if (i % 2 === 0) member(gzs[i], 6.85, gzs[i + 1], archY(gzs[i + 1]), 0.1, webMat);
+    else member(gzs[i], archY(gzs[i]), gzs[i + 1], 6.85, 0.1, webMat);
+  }
 
   // Header beam carrying both door tracks, running past the shell to the
   // outrigger frames.
@@ -723,16 +763,28 @@ export function makeHangar() {
   track.position.set(FRONT_X + 0.45, 0.18, 0);
   g.add(track);
 
-  // Outrigger frames holding the track ends up beyond the walls: a vertical
-  // post + a diagonal brace back to the slab (lattice-tower stand-in).
+  // Outrigger lattice towers holding the track ends up beyond the walls: two
+  // posts (in the door-normal plane) with rungs and zigzag bracing, like the
+  // open towers on the real thing.
   for (const sz of [-1, 1]) {
-    const post = new THREE.Mesh(new THREE.BoxGeometry(0.25, 6.9, 0.25), ribMat);
-    post.position.set(FRONT_X + 0.45, 3.45, sz * (RAIL_HALF - 0.15));
-    g.add(post);
-    const brace = new THREE.Mesh(new THREE.BoxGeometry(0.16, 7.6, 0.16), ribMat);
-    brace.rotation.x = sz * 0.42; // lean inboard, foot on the slab
-    brace.position.set(FRONT_X + 0.45, 3.3, sz * (RAIL_HALF - 1.75));
-    g.add(brace);
+    const tz = sz * (RAIL_HALF - 0.15);
+    const px = [FRONT_X - 0.35, FRONT_X + 1.25]; // post x positions
+    for (const x of px) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.18, 6.9, 0.18), ribMat);
+      post.position.set(x, 3.45, tz);
+      g.add(post);
+    }
+    for (let i = 0; i < 4; i++) { // rungs between the posts
+      const rung = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.12, 0.12), webMat);
+      rung.position.set((px[0] + px[1]) / 2, 1.2 + i * 1.8, tz);
+      g.add(rung);
+    }
+    for (let i = 0; i < 3; i++) { // zigzag diagonals in the tower plane
+      const diag = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.1, 0.1), webMat);
+      diag.position.set((px[0] + px[1]) / 2, 2.1 + i * 1.8, tz);
+      diag.rotation.z = (i % 2 ? -1 : 1) * 0.85;
+      g.add(diag);
+    }
   }
 
   // Four door leaves on two stacked tracks, slid open past the doorway edges

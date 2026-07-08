@@ -29,7 +29,7 @@ import {
   buildAircraft, applyControlSurfaces, setPropBlur, makeHangar, makeControlTower,
 } from './plane-sim-models.js';
 import {
-  TERRAIN, terrainHeight, forestMask, buildTerrain, buildWater, smoothstep,
+  TERRAIN, terrainHeight, forestMask, buildTerrain, buildWater, smoothstep, fbm,
 } from './plane-sim-terrain.js';
 
 (() => {
@@ -148,7 +148,7 @@ import {
   renderer.toneMapping = THREE.ACESFilmicToneMapping; // filmic response -> less "flat web GL"
   renderer.toneMappingExposure = 1.08;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap; // PCFSoft is deprecated (aliases to PCF, but warns every frame)
 
   // ---- Lighting: a warm sun that casts soft shadows, a cool sky/ground
   //      hemisphere fill, and a dim back-fill so shadowed sides aren't dead
@@ -251,62 +251,125 @@ import {
       field.add(hut);
     }
 
+    // Parked aircraft: one tucked inside each hangar (nose out the +X door,
+    // wheels on the 0.14 m slab) and one on the grass by the apron.
+    for (const [px, py, pz, ry] of [
+      [-58, 1.49, 40, -Math.PI / 2],
+      [-58, 1.49, -34, -Math.PI / 2],
+      [-42, 1.35, 96, -2.1],
+    ]) {
+      const parked = buildAircraft();
+      parked.group.position.set(px, py, pz);
+      parked.group.rotation.y = ry;
+      field.add(parked.group);
+    }
+
     scene.add(markings);
     scene.add(field);
   }());
 
-  // ---- Instanced forests + rock fields across the whole terrain. Instancing
-  //      keeps this at four draw calls no matter how many trees. ----
+  // ---- Instanced forests + rock fields across the whole terrain. Three tree
+  //      archetypes (broadleaf valleys, conifer slopes, pines up high), each
+  //      one trunk + one canopy InstancedMesh — 6 draw calls for every tree on
+  //      the map. A separate density noise channel makes some regions thick
+  //      woods and others near-empty meadow. ----
   (function scatterVegetation() {
-    const spots = [];
+    const types = {
+      broadleaf: {
+        spots: [],
+        trunk: [0.5, 0.85, 3.8, 1.9],
+        canopy: () => { const s = new THREE.SphereGeometry(3.5, 8, 6); s.scale(1, 0.85, 1); s.translate(0, 5.6, 0); return s; },
+        hsl: () => [0.22 + Math.random() * 0.09, 0.5, 0.28 + Math.random() * 0.09],
+        scale: () => 0.6 + Math.random() * 1.1,
+      },
+      conifer: {
+        spots: [],
+        trunk: [0.35, 0.65, 4.2, 2.1],
+        canopy: () => { const c = new THREE.ConeGeometry(3.2, 9.5, 6); c.translate(0, 8.2, 0); return c; },
+        hsl: () => [0.26 + Math.random() * 0.07, 0.42 + Math.random() * 0.15, 0.2 + Math.random() * 0.1],
+        scale: () => 0.7 + Math.random() * 1.3,
+      },
+      pine: {
+        spots: [],
+        trunk: [0.28, 0.5, 7, 3.5],
+        canopy: () => { const c = new THREE.ConeGeometry(2.0, 11, 7); c.translate(0, 11.2, 0); return c; },
+        hsl: () => [0.31 + Math.random() * 0.05, 0.35, 0.16 + Math.random() * 0.07],
+        scale: () => 0.75 + Math.random() * 0.85,
+      },
+    };
+    // Type by altitude band, with fuzzy borders: broadleaf on the valley
+    // floor, conifers on the slopes, slim pines toward the peaks.
+    const pickType = (h) => {
+      if (h > 190 + Math.random() * 70) return 'pine';
+      if (h < 45 + Math.random() * 40) return Math.random() < 0.75 ? 'broadleaf' : 'conifer';
+      return Math.random() < 0.8 ? 'conifer' : 'pine';
+    };
+    let placed = 0;
     let guard = 0;
-    while (spots.length < 600 && guard++ < 30000) {
+    while (placed < 1900 && guard++ < 80000) {
       const x = (Math.random() * 2 - 1) * (CFG.BORDER + 1200);
       const z = (Math.random() * 2 - 1) * (CFG.BORDER + 1200);
       const h = terrainHeight(x, z);
-      if (h < TERRAIN.WATER_Y + 6 || h > 330) continue;
+      if (h < TERRAIN.WATER_Y + 6 || h > 380) continue;
       const e = 14;
       const slope = Math.hypot(
         terrainHeight(x + e, z) - terrainHeight(x - e, z),
         terrainHeight(x, z + e) - terrainHeight(x, z - e),
       ) / (2 * e);
-      if (slope > 0.35) continue;
+      if (slope > 0.38) continue;
       const near = Math.hypot(x, z);
       if (near < 240) continue; // keep the apron clear
       if (Math.abs(x) < CFG.RUNWAY_W + 30 && Math.abs(z) < CFG.RUNWAY_LEN / 2 + 60) continue;
-      // Cluster into forests via the shared mask (looser near the airfield so
-      // the immediate scenery isn't bare).
-      const thresh = near < 1600 ? 0.45 : 0.53;
-      if (forestMask(x, z) < thresh) continue;
-      spots.push([x, h, z]);
+      // Cluster into forests: the shared mask gates placement, and a slower
+      // density channel swings the gate so woods thin out into meadows and
+      // thicken into proper forest elsewhere (looser near the airfield).
+      const dens = fbm(x * 0.00042 + 71.3, z * 0.00042 - 12.9, 3);
+      const thresh = (near < 1600 ? 0.38 : 0.42) + 0.26 * (1 - dens);
+      const mask = forestMask(x, z);
+      if (mask < thresh) continue;
+      types[pickType(h)].spots.push([x, h, z]);
+      placed++;
+      // The stronger the mask, the more satellite trees clump around the seed
+      // — sparse lone trees at the wood's edge, thickets in the middle.
+      const extra = Math.floor(((mask - thresh) / (1 - thresh)) * 4 * (0.5 + Math.random()));
+      for (let k = 0; k < extra && placed < 1900; k++) {
+        const sx = x + (Math.random() * 2 - 1) * 42;
+        const sz = z + (Math.random() * 2 - 1) * 42;
+        const sh = terrainHeight(sx, sz);
+        if (sh < TERRAIN.WATER_Y + 6 || sh > 380) continue;
+        types[pickType(sh)].spots.push([sx, sh, sz]);
+        placed++;
+      }
     }
 
-    const trunkGeo = new THREE.CylinderGeometry(0.35, 0.65, 4.2, 5);
-    trunkGeo.translate(0, 2.1, 0);
-    const coneGeo = new THREE.ConeGeometry(3.2, 9.5, 6);
-    coneGeo.translate(0, 8.2, 0);
     const trunkMat = new THREE.MeshStandardMaterial({ color: 0x54381f, roughness: 1 });
     const leafMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 });
-    const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, spots.length);
-    const cones = new THREE.InstancedMesh(coneGeo, leafMat, spots.length);
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     const up = new THREE.Vector3(0, 1, 0);
     const sc = new THREE.Vector3();
     const p = new THREE.Vector3();
     const col = new THREE.Color();
-    for (let i = 0; i < spots.length; i++) {
-      const [x, h, z] = spots[i];
-      const s = 0.8 + Math.random() * 1.5;
-      q.setFromAxisAngle(up, Math.random() * Math.PI * 2);
-      m.compose(p.set(x, h - 0.3, z), q, sc.set(s, s * (0.85 + Math.random() * 0.35), s));
-      trunks.setMatrixAt(i, m);
-      cones.setMatrixAt(i, m);
-      col.setHSL(0.26 + Math.random() * 0.07, 0.42 + Math.random() * 0.15, 0.2 + Math.random() * 0.1);
-      cones.setColorAt(i, col);
+    for (const t of Object.values(types)) {
+      if (!t.spots.length) continue;
+      const [rTop, rBot, tHeight, tY] = t.trunk;
+      const trunkGeo = new THREE.CylinderGeometry(rTop, rBot, tHeight, 5);
+      trunkGeo.translate(0, tY, 0);
+      const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, t.spots.length);
+      const canopies = new THREE.InstancedMesh(t.canopy(), leafMat, t.spots.length);
+      for (let i = 0; i < t.spots.length; i++) {
+        const [x, h, z] = t.spots[i];
+        const s = t.scale();
+        q.setFromAxisAngle(up, Math.random() * Math.PI * 2);
+        m.compose(p.set(x, h - 0.3, z), q, sc.set(s, s * (0.85 + Math.random() * 0.4), s));
+        trunks.setMatrixAt(i, m);
+        canopies.setMatrixAt(i, m);
+        col.setHSL(...t.hsl());
+        canopies.setColorAt(i, col);
+      }
+      trunks.castShadow = true; canopies.castShadow = true; canopies.receiveShadow = true;
+      scene.add(trunks); scene.add(canopies);
     }
-    trunks.castShadow = true; cones.castShadow = true; cones.receiveShadow = true;
-    scene.add(trunks); scene.add(cones);
 
     // Rocks: on the steeps and the high ground.
     const rocks = [];
