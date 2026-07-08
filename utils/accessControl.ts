@@ -34,8 +34,12 @@ function clearCachedAllowedServers(): void {
   cachedAllowedServers = null;
 }
 
+function isUserDev(userId: string): boolean {
+  return ALLOWED_USERS.includes(userId);
+}
+
 function isDev(interaction: ChatInputCommandInteraction): boolean {
-  return ALLOWED_USERS.includes(interaction.user.id);
+  return isUserDev(interaction.user.id);
 }
 
 function isAdmin(interaction: ChatInputCommandInteraction): boolean {
@@ -53,6 +57,7 @@ function isAllowedServer(interaction: ChatInputCommandInteraction): boolean {
 }
 
 export {
+  isUserDev,
   isDev,
   isAdmin,
   isBasement,

@@ -1,4 +1,5 @@
 import AiChatModel from './AiChatModel';
+import AiUsageModel from './AiUsageModel';
 import BabyModel from './BabyModel';
 import BattleshipsMatchModel from './BattleshipsMatchModel';
 import BirthdayReminderModel from './BirthdayReminderModel';
@@ -19,6 +20,7 @@ import WebSessionModel from './WebSessionModel';
 
 export {
   AiChatModel,
+  AiUsageModel,
   BabyModel,
   BattleshipsMatchModel,
   BirthdayReminderModel,

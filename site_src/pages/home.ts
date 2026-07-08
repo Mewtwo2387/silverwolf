@@ -31,6 +31,8 @@ export interface DashboardProfile {
   marriageBenefits: number;
   poopStats: Record<string, any> | null;
   poopProfile: Record<string, any> | null;
+  aiUsageDaily: number;
+  aiUsageWeekly: number;
 }
 
 const styles = raw(`
@@ -297,6 +299,35 @@ export function HomePage(opts: {
           <div class="me-card">
             <div class="label">Heavenly Nuggies</div>
             <div class="value">${numSpan(stats.heavenlyNuggies ?? 0)}</div>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details>
+      <summary>AI Usage</summary>
+      <div class="details-content">
+        <div class="me-grid">
+          <div class="me-card">
+            <div class="label">Daily Usage (24h)</div>
+            <div class="value">${numSpan(profile.aiUsageDaily)}</div>
+            <div class="label" style="margin-top:0.25rem">of 250,000 tokens</div>
+          </div>
+          <div class="me-card">
+            <div class="label">Weekly Usage (7d)</div>
+            <div class="value">${numSpan(profile.aiUsageWeekly)}</div>
+            <div class="label" style="margin-top:0.25rem">of 1,000,000 tokens</div>
+          </div>
+          <div class="me-card">
+            <div class="label">Status</div>
+            <div class="value" style="font-size: 1.5rem; font-weight: 600;">
+              ${profile.aiUsageDaily >= 250000 || profile.aiUsageWeekly >= 1000000 
+                ? html`<span style="color: #ef4444;">Rate Limited</span>` 
+                : html`<span style="color: #10b981;">Active</span>`}
+            </div>
+            <div class="label" style="margin-top:0.25rem">
+              ${profile.aiUsageDaily >= 250000 ? 'Daily limit exceeded' : (profile.aiUsageWeekly >= 1000000 ? 'Weekly limit exceeded' : 'Token pool is cool')}
+            </div>
           </div>
         </div>
       </div>

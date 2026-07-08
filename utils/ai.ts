@@ -169,6 +169,8 @@ export function formatHistoryEntryForModel(entry: Pick<HistoryEntry, 'role' | 'm
 }
 
 interface GenerateContentOptions {
+  db?: any;
+  userId?: string;
   provider: string;
   model: string;
   systemPrompt: string;
@@ -285,9 +287,19 @@ function getImageGenConfig(): { model: string; modalities: string[] } {
 }
 
 async function generateContent({
-  provider, model, systemPrompt, prompt, history = [], webSearchEnabled = false, imageGen, musicGen,
+  db, userId, provider, model, systemPrompt, prompt, history = [], webSearchEnabled = false, imageGen, musicGen,
   mediaParts = [], providerRouting,
 }: GenerateContentOptions): Promise<GenerateContentResult> {
+  if (db && userId) {
+    const isLimited = await db.aiUsage.isRateLimited(userId);
+    if (isLimited) {
+      throw new Error('RATE_LIMIT_EXCEEDED');
+    }
+  }
+
+  let totalPromptTokens = 0;
+  let totalCompletionTokens = 0;
+
   const now = new Date();
   const nowUTC = formatUtcTimestamp(now);
   const today = now.toISOString().slice(0, 10);
@@ -401,6 +413,13 @@ ${systemPrompt || ''}
       }
 
       const actualPromptTokens = completion.usage?.prompt_tokens;
+      const actualCompletionTokens = completion.usage?.completion_tokens;
+      if (actualPromptTokens) {
+        totalPromptTokens += actualPromptTokens;
+      }
+      if (actualCompletionTokens) {
+        totalCompletionTokens += actualCompletionTokens;
+      }
       if (actualPromptTokens && actualPromptTokens > 0) {
         // Array content (multimodal turns): count the text part, not the media
         // — otherwise calibration learns an inflated multiplier from media turns.
@@ -521,6 +540,9 @@ ${systemPrompt || ''}
     if (!cleanedText && finalText.trim()) {
       cleanedText = 'I gathered search results but ran out of tool calls before I could finish. Try asking again or narrowing the question.';
     }
+    if (db && userId && (totalPromptTokens > 0 || totalCompletionTokens > 0)) {
+      await db.aiUsage.addUsage(userId, model, totalPromptTokens, totalCompletionTokens);
+    }
     return { text: cleanedText, images: generatedImages, toolCalls };
   }
 
@@ -611,6 +633,10 @@ ${systemPrompt || ''}
 
       for (let iter = 0; iter < MAX_TOOL_ITERATIONS + 1; iter += 1) {
         const response = await result.response;
+        if (response.usageMetadata) {
+          totalPromptTokens += response.usageMetadata.promptTokenCount ?? 0;
+          totalCompletionTokens += response.usageMetadata.candidatesTokenCount ?? 0;
+        }
         const fnCalls = typeof response.functionCalls === 'function'
           ? (response.functionCalls() ?? [])
           : [];
@@ -696,6 +722,9 @@ ${systemPrompt || ''}
         result = await chatSession.sendMessage(fnResponses);
       }
 
+      if (db && userId && (totalPromptTokens > 0 || totalCompletionTokens > 0)) {
+        await db.aiUsage.addUsage(userId, model, totalPromptTokens, totalCompletionTokens);
+      }
       return { text: fullText, images: generatedImages, toolCalls };
     }
 
@@ -744,6 +773,18 @@ ${systemPrompt || ''}
           }
         });
       }
+    }
+    try {
+      const finalResponse = await resultObject.response;
+      if (finalResponse.usageMetadata) {
+        totalPromptTokens = finalResponse.usageMetadata.promptTokenCount ?? 0;
+        totalCompletionTokens = finalResponse.usageMetadata.candidatesTokenCount ?? 0;
+      }
+    } catch {
+      // Ignored
+    }
+    if (db && userId && (totalPromptTokens > 0 || totalCompletionTokens > 0)) {
+      await db.aiUsage.addUsage(userId, model, totalPromptTokens, totalCompletionTokens);
     }
     return { text: fullText, images: imageAttachments, toolCalls: [] };
   }

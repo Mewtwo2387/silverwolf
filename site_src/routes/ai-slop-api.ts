@@ -162,6 +162,8 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
       }
 
       const result = await generateContent({
+        db: silverwolf.db,
+        userId: auth.discordId,
         provider: persona.provider,
         model: persona.model,
         systemPrompt: persona.systemPrompt ?? '',
@@ -213,7 +215,17 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
           title,
         },
       });
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.message === 'RATE_LIMIT_EXCEEDED') {
+        const dailyUsage = await silverwolf.db.aiUsage.getDailyUsage(auth.discordId);
+        const weeklyUsage = await silverwolf.db.aiUsage.getWeeklyUsage(auth.discordId);
+        const reachedDaily = dailyUsage >= 250000;
+        return c.json({
+          ok: false,
+          error: 'rate_limited' as const,
+          reason: reachedDaily ? ('daily' as const) : ('weekly' as const),
+        }, 429);
+      }
       logError('[ai-slop] send failed:', err);
       // If this was a brand-new session and the AI call failed without producing
       // any history, leave the empty session in place rather than rolling back —

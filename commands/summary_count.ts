@@ -59,13 +59,31 @@ class Summary extends Command {
     let summary: any;
     try {
       summary = await generateContent({
+        db: this.client.db,
+        userId: interaction.user.id,
         provider: persona.provider,
         model: persona.model,
         systemPrompt: persona.systemPrompt ?? '',
         prompt: content,
       });
       log(`Generated summary: ${summary.text}`);
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.message === 'RATE_LIMIT_EXCEEDED') {
+        const dailyUsage = await this.client.db.aiUsage.getDailyUsage(interaction.user.id);
+        const weeklyUsage = await this.client.db.aiUsage.getWeeklyUsage(interaction.user.id);
+        const dailyLimit = 250000;
+        const weeklyLimit = 1000000;
+        const reachedDaily = dailyUsage >= dailyLimit;
+
+        const limitLabel = reachedDaily ? 'Daily' : 'Weekly';
+        const usageVal = reachedDaily ? dailyUsage : weeklyUsage;
+        const limitVal = reachedDaily ? dailyLimit : weeklyLimit;
+
+        await interaction.editReply({
+          content: `⚠️ **${limitLabel} AI Rate Limit Reached**\nYou have consumed **${usageVal.toLocaleString()}** / **${limitVal.toLocaleString()}** tokens in the last ${reachedDaily ? '24 hours' : '7 days'}. Please wait for your token pool to cool down.`,
+        });
+        return;
+      }
       logError('Failed to generate summary:', error);
       await interaction.editReply('Failed to generate summary. Please try again later.');
       return;

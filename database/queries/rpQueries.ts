@@ -132,6 +132,11 @@ const rpQueries = {
         AND id > COALESCE((SELECT MAX(id) FROM RpHistory WHERE spawn_id = ? AND role = 'model'), 0)
     ) AS has
   `,
+  GET_LAST_HUMAN_SPEAKER: `
+    SELECT speaker_id FROM RpHistory
+    WHERE spawn_id = ? AND role = 'user' AND from_bot = 0
+    ORDER BY id DESC LIMIT 1
+  `,
   COUNT_HISTORY: 'SELECT COUNT(*) AS count FROM RpHistory WHERE spawn_id = ?',
   // Whole-table footprint (row count + total message bytes) for /memstats diagnostics.
   // CAST to BLOB so LENGTH counts bytes, not characters. Full scan is acceptable: the

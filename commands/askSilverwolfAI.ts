@@ -59,6 +59,8 @@ class AskSilverwolfAI extends Command {
       );
 
       const { text, toolCalls } = await generateContent({
+        db: this.client.db,
+        userId: interaction.user.id,
         provider: persona.provider,
         model: persona.model,
         systemPrompt: persona.systemPrompt ?? '',
@@ -119,7 +121,23 @@ class AskSilverwolfAI extends Command {
             logError('AiChat: Failed to generate session title:', titleErr);
           });
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.message === 'RATE_LIMIT_EXCEEDED') {
+        const dailyUsage = await this.client.db.aiUsage.getDailyUsage(interaction.user.id);
+        const weeklyUsage = await this.client.db.aiUsage.getWeeklyUsage(interaction.user.id);
+        const dailyLimit = 250000;
+        const weeklyLimit = 1000000;
+        const reachedDaily = dailyUsage >= dailyLimit;
+
+        const limitLabel = reachedDaily ? 'Daily' : 'Weekly';
+        const usageVal = reachedDaily ? dailyUsage : weeklyUsage;
+        const limitVal = reachedDaily ? dailyLimit : weeklyLimit;
+
+        await interaction.editReply({
+          content: `⚠️ **${limitLabel} AI Rate Limit Reached**\nYou have consumed **${usageVal.toLocaleString()}** / **${limitVal.toLocaleString()}** tokens in the last ${reachedDaily ? '24 hours' : '7 days'}. Please wait for your token pool to cool down.`,
+        });
+        return;
+      }
       logError('Error generating text:', error);
       await interaction.editReply({ content: 'Failed to retrieve response from the AI. Please try again later.' });
     }

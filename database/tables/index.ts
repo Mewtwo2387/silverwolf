@@ -1,5 +1,6 @@
 import aiChatHistoryTable from './aiChatHistoryTable';
 import aiChatSessionTable from './aiChatSessionTable';
+import aiUsageTable from './aiUsageTable';
 import babyTable from './babyTable';
 import battleshipsMatchTable from './battleshipsMatchTable';
 import birthdayReminderTable from './birthdayReminderTable';
@@ -26,6 +27,7 @@ import webSessionTable from './webSessionTable';
 export {
   aiChatHistoryTable,
   aiChatSessionTable,
+  aiUsageTable,
   babyTable,
   battleshipsMatchTable,
   birthdayReminderTable,
@@ -52,6 +54,7 @@ export {
 
 export type { AiChatHistoryRow } from './aiChatHistoryTable';
 export type { AiChatSessionRow } from './aiChatSessionTable';
+export type { AiUsageRow } from './aiUsageTable';
 export type { BabyRow } from './babyTable';
 export type { BattleshipsMatchRow } from './battleshipsMatchTable';
 export type { BirthdayReminderRow } from './birthdayReminderTable';
