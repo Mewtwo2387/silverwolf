@@ -457,26 +457,62 @@ export function buildAircraft(opts = {}) {
     }
   }
 
-  // Nose: pointed spinner + backplate + 4 pitched blades on a spin pivot, plus
-  // a translucent "blur disc" the game shows instead of the blades at speed.
+  // Nose: rounded duck-egg spinner (the classic pale Spitfire nose; bandits
+  // keep a dark one) + 4 paddle blades with a rounded tip, real washout twist
+  // (coarse pitch at the root easing off toward the tip) and yellow tip bands,
+  // plus a translucent "blur disc" the game shows instead of the blades at
+  // speed.
   const prop = new THREE.Group();
-  const spinner = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.3, 20), metal);
-  spinner.rotation.x = -Math.PI / 2; // point -Z
-  spinner.position.z = -5.05;
+  const spinMat = new THREE.MeshStandardMaterial({
+    color: enemy ? 0x40454c : 0xd9dfd0, roughness: 0.45, metalness: 0.15,
+  });
+  const spinProfile = [
+    [0.5, 0], [0.475, 0.3], [0.41, 0.62], [0.3, 0.92], [0.17, 1.12], [0.05, 1.24], [0.001, 1.27],
+  ].map(([r, y]) => new THREE.Vector2(r, y));
+  const spinner = new THREE.Mesh(new THREE.LatheGeometry(spinProfile, 24), spinMat);
+  spinner.rotation.x = -Math.PI / 2; // lathe +Y (the nose) -> -Z
+  spinner.position.z = -4.45;
   prop.add(spinner);
-  const backplate = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.16, 20), metal);
+  const backplate = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.16, 20), spinMat);
   backplate.rotation.x = Math.PI / 2;
-  backplate.position.z = -4.55;
+  backplate.position.z = -4.42;
   prop.add(backplate);
-  const bladeMat = new THREE.MeshStandardMaterial({ color: 0x16181c, roughness: 0.5, metalness: 0.2 });
+
+  // One shared blade geometry: paddle planform extruded thin, then a vertex
+  // pass adds the twist and paints the tip band via vertex colours.
+  const BLADE_LEN = 1.5;
+  const bladeShape = new THREE.Shape();
+  bladeShape.moveTo(-0.05, 0);
+  bladeShape.lineTo(0.05, 0);
+  bladeShape.quadraticCurveTo(0.105, 0.5, 0.09, 0.95); // widening paddle
+  bladeShape.quadraticCurveTo(0.08, 1.36, 0, BLADE_LEN); // rounded tip
+  bladeShape.quadraticCurveTo(-0.08, 1.36, -0.09, 0.95);
+  bladeShape.quadraticCurveTo(-0.105, 0.5, -0.05, 0);
+  const bladeGeo = new THREE.ExtrudeGeometry(bladeShape, { depth: 0.045, bevelEnabled: false });
+  bladeGeo.translate(0, 0, -0.0225);
+  const bpos = bladeGeo.attributes.position;
+  const bcols = new Float32Array(bpos.count * 3);
+  const cBlade = new THREE.Color(0x17191d);
+  const cTip = new THREE.Color(0xffd83f);
+  for (let i = 0; i < bpos.count; i++) {
+    const t = Math.min(Math.max(bpos.getY(i) / BLADE_LEN, 0), 1);
+    const ang = 0.55 - 0.38 * t; // washout: ~32 deg at the root -> ~10 deg at the tip
+    const x = bpos.getX(i); const z = bpos.getZ(i);
+    bpos.setX(i, x * Math.cos(ang) + z * Math.sin(ang));
+    bpos.setZ(i, -x * Math.sin(ang) + z * Math.cos(ang));
+    const cc = t > 0.86 ? cTip : cBlade;
+    bcols[i * 3] = cc.r; bcols[i * 3 + 1] = cc.g; bcols[i * 3 + 2] = cc.b;
+  }
+  bladeGeo.setAttribute('color', new THREE.BufferAttribute(bcols, 3));
+  bladeGeo.computeVertexNormals();
+  const bladeMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.15 });
   const blades = new THREE.Group();
   for (let i = 0; i < 4; i++) {
     const arm = new THREE.Group();
-    arm.rotation.z = (i / 4) * Math.PI * 2; // 90° apart
+    arm.rotation.z = (i / 4) * Math.PI * 2; // 90 deg apart
     arm.position.z = -4.8;
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.55, 0.05), bladeMat);
-    blade.position.y = 0.88; // extend outward from the hub (~3.3 m prop disc)
-    blade.rotation.y = 0.34; // blade pitch
+    const blade = new THREE.Mesh(bladeGeo, bladeMat);
+    blade.position.y = 0.28; // root buried in the spinner (~3.5 m prop disc)
     arm.add(blade);
     blades.add(arm);
   }
