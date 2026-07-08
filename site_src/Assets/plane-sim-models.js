@@ -140,10 +140,13 @@ function ellipChord(x, halfSpan, chord) {
 // A control surface (aileron / elevator) whose planform follows the parent
 // wing's elliptical trailing edge — a straight spanwise hinge at the front, a
 // curved rear edge matching the wing — so it blends into the wing instead of
-// reading as a bolted-on box. Returns a pivot group hinged on its front edge;
-// rotate pivot.rotation.x to deflect it. x is span (signed), z is chord.
+// reading as a bolted-on box. Returns { holder, pivot }: `holder` is the
+// mounting frame (tilted by `tiltZ`/`tiltX` so the hinge line follows the
+// wing's dihedral and incidence — a level flap floats above a dihedral wing at
+// one end and sinks into it at the other); `pivot` hinges inside it — rotate
+// pivot.rotation.x to deflect. x is span (signed), z is chord.
 function buildFlap({
-  xIn, xOut, halfSpan, chord, midZ, zHinge, thick, y, material,
+  xIn, xOut, halfSpan, chord, midZ, zHinge, thick, y, material, tiltZ = 0, tiltX = 0,
 }) {
   const N = 10;
   const shp = new THREE.Shape();
@@ -170,10 +173,14 @@ function buildFlap({
     fp.setY(i, fp.getY(i) * (1 - 0.8 * aft));
   }
   geo.computeVertexNormals();
+  const holder = new THREE.Group();
+  holder.position.set(0, y, zHinge);
+  holder.rotation.z = tiltZ;
+  holder.rotation.x = tiltX;
   const pivot = new THREE.Group();
-  pivot.position.set(0, y, zHinge);
   pivot.add(new THREE.Mesh(geo, material));
-  return pivot;
+  holder.add(pivot);
+  return { holder, pivot };
 }
 
 const setShadows = (obj) => obj.traverse((o) => {
@@ -310,7 +317,10 @@ export function buildAircraft(opts = {}) {
     }
 
     // Aileron whose planform follows the wing's elliptical trailing edge so it
-    // fills the notch cut into the wing (same camo).
+    // fills the notch cut into the wing (same camo). The holder is tilted with
+    // the wing's dihedral + incidence so the hinge line lies IN the wing
+    // surface across the whole span (a level flap floats at one end and sinks
+    // at the other).
     const flap = buildFlap({
       xIn: side < 0 ? -AIL_OUT : AIL_IN,
       xOut: side < 0 ? -AIL_IN : AIL_OUT,
@@ -319,11 +329,13 @@ export function buildAircraft(opts = {}) {
       midZ: wing.position.z,
       zHinge: ailHingeZ,
       thick: 0.1,
-      y: wing.position.y + 3.6 * DIHEDRAL, // mid-aileron span height
+      y: wing.position.y, // root height; the dihedral tilt raises it outboard
       material: camo1,
+      tiltZ: side * Math.atan(DIHEDRAL),
+      tiltX: wing.rotation.x,
     });
-    plane.add(flap);
-    if (side < 0) surf.aileronL = flap; else surf.aileronR = flap;
+    plane.add(flap.holder);
+    if (side < 0) surf.aileronL = flap.pivot; else surf.aileronR = flap.pivot;
 
     // Wingtip navigation lights: port red, starboard green.
     const tip = new THREE.Mesh(
@@ -360,8 +372,8 @@ export function buildAircraft(opts = {}) {
     y: 0.12,
     material: camo1,
   });
-  plane.add(elevFlap);
-  surf.elevator = elevFlap;
+  plane.add(elevFlap.holder);
+  surf.elevator = elevFlap.pivot;
 
   // Vertical fin: rounded leading edge but a VERTICAL trailing edge at x=FIN_TE,
   // so the rudder mounts flush against it instead of floating behind a swept
@@ -653,19 +665,36 @@ export function makeHangar() {
     g.add(rib);
   }
 
-  // Sliding door panels parked either side of the open (+X) end — sized and
-  // placed to stay inside the arch profile (arch height at |z| is
-  // sqrt(R^2 - z^2), so outer door corners must clear that).
+  // Sliding-door assembly at the open (+X) end: a header rail whose ends reach
+  // the shell, doors hung from it by brackets and standing on a floor guide
+  // track, parked either side of the opening. Everything is sized to stay
+  // inside the arch profile (arch height at |z| is sqrt(R^2 - z^2)).
+  const DOOR_X = LEN / 2 + 0.25;
   const doorMat = new THREE.MeshStandardMaterial({ color: 0x5d646c, roughness: 0.8, metalness: 0.3 });
-  for (const sz of [-1, 1]) {
-    const door = new THREE.Mesh(new THREE.BoxGeometry(0.22, 5.6, 3.0), doorMat);
-    door.position.set(LEN / 2 + 0.25, 2.8, sz * 5.2);
-    g.add(door);
-  }
-  // Door header rail across the top of the opening (kept inside the arch).
-  const rail = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.35, 8.8), ribMat);
-  rail.position.set(LEN / 2 + 0.2, 7.2, 0);
+  // Header rail: y 6.45 — the arch is at |z| ~6.27 there, so a 12.4 m rail
+  // visually ties into the shell on both sides.
+  const rail = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.35, 12.4), ribMat);
+  rail.position.set(DOOR_X, 6.45, 0);
   g.add(rail);
+  // Floor guide track the doors stand on.
+  const track = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.09, 12.4), ribMat);
+  track.position.set(DOOR_X, 0.19, 0);
+  g.add(track);
+  for (const sz of [-1, 1]) {
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.22, 6.0, 3.0), doorMat);
+    door.position.set(DOOR_X, 3.2, sz * 5.0); // bottom on the track, top corner clears the arch
+    g.add(door);
+    for (const bz of [-0.9, 0.9]) { // hanger brackets up to the rail
+      const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.3, 0.2), ribMat);
+      bracket.position.set(DOOR_X, 6.3, sz * 5.0 + bz);
+      g.add(bracket);
+    }
+    for (const by of [1.6, 4.6]) { // horizontal stiffener ribs on the door face
+      const rib = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.18, 2.7), doorMat);
+      rib.position.set(DOOR_X + 0.15, by, sz * 5.0);
+      g.add(rib);
+    }
+  }
 
   // Concrete slab floor, slightly proud of the surrounding grass.
   const slab = new THREE.Mesh(

@@ -260,6 +260,7 @@ import {
   // Dev handle for scripted inspection (harness/tooling): position the camera,
   // aim at a spot, switch models — without simulating mouse orbits.
   window.__pv = {
+    THREE,
     camera,
     controls,
     scene,
