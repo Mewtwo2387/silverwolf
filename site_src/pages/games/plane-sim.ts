@@ -75,10 +75,15 @@ export function PlaneSimPage(opts: {
     overflow: hidden; display: flex; align-items: center; justify-content: center;
   }
   #ps-map { width: 100%; height: 100%; }
-  .ps-map-n {
-    position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
-    font-size: 0.6rem; font-weight: 800; color: var(--fog-200, #dfe9ef);
+
+  /* Enemy health bars floating over the bandits in the 3D view. */
+  .ps-ebar { display: none; position: absolute; width: 54px; transform: translate(-50%, -100%); text-align: center; }
+  .ps-ebar-track {
+    height: 5px; border-radius: 3px; overflow: hidden;
+    background: rgba(8, 20, 26, 0.65); border: 1px solid rgba(255, 93, 108, 0.55);
   }
+  .ps-ebar-fill { height: 100%; width: 100%; background: #ff8f5a; transition: width 0.12s linear; }
+  .ps-ebar-label { margin-top: 2px; font-size: 0.55rem; letter-spacing: 0.06em; color: #ffb3ab; }
 
   /* Combat status (top-centre): bandits-down board + hull HP bar. */
   .ps-combat { left: 50%; top: 1.1rem; transform: translateX(-50%); text-align: center; min-width: 134px; }
@@ -212,6 +217,31 @@ export function PlaneSimPage(opts: {
   }
   .ps-hint { margin: 0 0 0.2rem; font-size: 0.74rem; line-height: 1.4; color: var(--fog-400, #8aa0ad); }
 
+  /* Pause menu (ESC): same chrome as the start overlay, hosts the settings. */
+  #ps-pause {
+    position: absolute; inset: 0; z-index: 5; cursor: auto;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(6, 8, 15, 0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  }
+  #ps-pause.ps-hidden { display: none; }
+  #ps-pause .ps-card { pointer-events: auto; }
+  .ps-set-row {
+    display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+    justify-content: center; margin: 0.55rem 0;
+  }
+  .ps-set-lbl {
+    min-width: 5.5rem; text-align: right; font-size: 0.68rem; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--fog-400, #8aa0ad);
+  }
+  #ps-vol { width: 180px; accent-color: var(--accent, #22d3ff); cursor: pointer; }
+  .ps-resume-btn {
+    margin-top: 0.9rem; padding: 0.45rem 1.4rem; font-size: 0.95rem; font-weight: 800;
+    cursor: pointer; font-family: 'JetBrains Mono', monospace;
+    color: var(--ink-900, #06080f); background: var(--accent, #22d3ff);
+    border: 1px solid var(--accent, #22d3ff); border-radius: 0.5rem;
+  }
+  .ps-resume-btn:hover { filter: brightness(1.15); }
+
   @media (prefers-reduced-motion: reduce) {
     .ps-stall.ps-show, .ps-go, .ps-gear-transit .ps-gear-lamps span { animation: none; }
   }
@@ -233,11 +263,13 @@ export function PlaneSimPage(opts: {
       </div>
 
       <div class="ps-hud" aria-hidden="true">
-        <!-- Minimap (top-left, circular) -->
+        <!-- Minimap (top-left, circular, heading-up) -->
         <div class="ps-panel ps-map-wrap">
           <canvas id="ps-map" width="150" height="150"></canvas>
-          <span class="ps-map-n">N</span>
         </div>
+
+        <!-- Enemy health bars (positioned by the game each frame) -->
+        <div id="ps-ebars"></div>
 
         <!-- Combat status (top-centre): bandits-down board + hull HP -->
         <div class="ps-panel ps-combat">
@@ -280,7 +312,8 @@ export function PlaneSimPage(opts: {
             <dt><span class="ps-key">W</span> / <span class="ps-key">S</span></dt><dd>Throttle up / down</dd>
             <dt><span class="ps-key">A</span> / <span class="ps-key">D</span></dt><dd>Rudder (fine aim &amp; taxi steering)</dd>
             <dt><span class="ps-key">G</span></dt><dd>Raise / lower undercarriage (less drag up)</dd>
-            <dt><span class="ps-key">M</span></dt><dd>Mute engine &amp; gun sound</dd>
+            <dt><span class="ps-key">C</span> / <span class="ps-key">M</span></dt><dd>Camera distance &middot; mute sound</dd>
+            <dt><span class="ps-key">Esc</span></dt><dd>Pause &amp; settings (volume, camera, bandits)</dd>
             <dt><span class="ps-key">Space</span></dt><dd>Restart after a crash, shoot-down or win</dd>
           </dl>
           <div class="ps-diff-row">
@@ -289,8 +322,49 @@ export function PlaneSimPage(opts: {
             <button type="button" class="ps-diff-btn" data-diff="normal">Regular</button>
             <button type="button" class="ps-diff-btn" data-diff="hard">Ace</button>
           </div>
-          <p class="ps-hint">They turn-fight but <strong>break off</strong> if you press them. Switch skill anytime with <span class="ps-key">1</span> <span class="ps-key">2</span> <span class="ps-key">3</span>.</p>
+          <div class="ps-diff-row">
+            <span class="ps-diff-lbl">Bandits</span>
+            <button type="button" class="ps-diff-btn" data-count="1">1</button>
+            <button type="button" class="ps-diff-btn" data-count="2">2</button>
+            <button type="button" class="ps-diff-btn" data-count="3">3</button>
+            <button type="button" class="ps-diff-btn" data-count="4">4</button>
+            <button type="button" class="ps-diff-btn" data-count="5">5</button>
+          </div>
+          <p class="ps-hint">Lower skill also means <strong>your guns hit harder</strong>. They turn-fight but <strong>break off</strong> if you press them. Switch skill anytime with <span class="ps-key">1</span> <span class="ps-key">2</span> <span class="ps-key">3</span>.</p>
           <div class="ps-go">▸ Click to fly</div>
+        </div>
+      </div>
+
+      <!-- Pause menu (ESC) -->
+      <div id="ps-pause" class="ps-hidden">
+        <div class="ps-card">
+          <h1>Paused</h1>
+          <div class="ps-set-row">
+            <span class="ps-set-lbl">Volume</span>
+            <input id="ps-vol" type="range" min="0" max="100" value="50" aria-label="Sound volume">
+          </div>
+          <div class="ps-set-row">
+            <span class="ps-set-lbl">Camera</span>
+            <button type="button" class="ps-diff-btn" data-cam="close">Close</button>
+            <button type="button" class="ps-diff-btn" data-cam="medium">Medium</button>
+            <button type="button" class="ps-diff-btn" data-cam="far">Far</button>
+          </div>
+          <div class="ps-set-row">
+            <span class="ps-set-lbl">Bandit skill</span>
+            <button type="button" class="ps-diff-btn" data-diff="easy">Rookie</button>
+            <button type="button" class="ps-diff-btn" data-diff="normal">Regular</button>
+            <button type="button" class="ps-diff-btn" data-diff="hard">Ace</button>
+          </div>
+          <div class="ps-set-row">
+            <span class="ps-set-lbl">Bandits</span>
+            <button type="button" class="ps-diff-btn" data-count="1">1</button>
+            <button type="button" class="ps-diff-btn" data-count="2">2</button>
+            <button type="button" class="ps-diff-btn" data-count="3">3</button>
+            <button type="button" class="ps-diff-btn" data-count="4">4</button>
+            <button type="button" class="ps-diff-btn" data-count="5">5</button>
+          </div>
+          <p class="ps-hint">Bandit count applies when the fight (re)starts. Lower skill = tougher bullets for you, sloppier aim for them.</p>
+          <button type="button" class="ps-resume-btn" id="ps-resume">Resume (ESC)</button>
         </div>
       </div>
     </div>

@@ -86,9 +86,8 @@ import {
     RUNWAY_LEN: 760,
     RUNWAY_W: 38,
 
-    // Camera chase rig (local offset behind/above the plane)
-    CAM_BACK: 17.5,
-    CAM_UP: 5.4,
+    // Camera chase rig: lerp factor; the back/up offsets come from the
+    // player-selectable CAM_PRESETS below (C key / pause menu).
     CAM_LERP: 0.12,
 
     // Guns (player)
@@ -105,7 +104,6 @@ import {
     // stall/turn/speed limits — deliberately not over-assisted. Their gunnery is
     // only as good as their nose-tracking (they fire along the nose + jitter, no
     // aimbot lead), and they pull the trigger slower than the player.
-    ENEMY_COUNT: 3,
     ENEMY_HP: 100,
     PLAYER_HP: 100,
     HITBOX_R: 8, // simplified spherical hitbox radius around any plane (m)
@@ -119,6 +117,17 @@ import {
   const FT = 3.28084; // m -> feet
   const clamp = (v, lo, hi) => (v < lo ? lo : (v > hi ? hi : v));
 
+  // Chase-camera distance presets (C key / pause menu; remembered).
+  const CAM_PRESETS = {
+    close: { back: 10.5, up: 3.3 },
+    medium: { back: 14, up: 4.3 },
+    far: { back: 17.5, up: 5.4 },
+  };
+  const CAM_ORDER = ['close', 'medium', 'far'];
+  let camName = (() => {
+    try { const c = localStorage.getItem('ps-cam'); return CAM_PRESETS[c] ? c : 'far'; } catch (_) { return 'far'; }
+  })();
+
   // ============================================================ SCENE =====
   const scene = new THREE.Scene();
   const SKY_TOP = new THREE.Color(0x3f87cc);
@@ -127,7 +136,7 @@ import {
   scene.fog = new THREE.Fog(SKY_HAZE.getHex(), 900, 9000);
 
   const camera = new THREE.PerspectiveCamera(62, 1, 0.5, 26000);
-  camera.position.set(0, CFG.GROUND_Y + CFG.CAM_UP, 320 + CFG.CAM_BACK);
+  camera.position.set(0, CFG.GROUND_Y + CAM_PRESETS[camName].up, 320 + CAM_PRESETS[camName].back);
 
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -493,12 +502,17 @@ import {
   const audio = (() => {
     let ctx = null; let master = null; let engine = null;
     let muted = false;
-    try { muted = localStorage.getItem('ps-muted') === '1'; } catch (_) { /* private mode */ }
+    let vol = 0.5;
+    try {
+      muted = localStorage.getItem('ps-muted') === '1';
+      const v = parseFloat(localStorage.getItem('ps-vol'));
+      if (Number.isFinite(v)) vol = clamp(v, 0, 1);
+    } catch (_) { /* private mode */ }
     function ensure() {
       if (ctx) return;
       try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) { return; }
       master = ctx.createGain();
-      master.gain.value = muted ? 0 : 0.5;
+      master.gain.value = muted ? 0 : vol;
       master.connect(ctx.destination);
       const g = ctx.createGain(); g.gain.value = 0;
       const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 260;
@@ -532,9 +546,14 @@ import {
     }
     function toggleMute() {
       muted = !muted;
-      if (master) master.gain.value = muted ? 0 : 0.5;
+      if (master) master.gain.value = muted ? 0 : vol;
       try { localStorage.setItem('ps-muted', muted ? '1' : '0'); } catch (_) { /* private mode */ }
       return muted;
+    }
+    function setVolume(v) {
+      vol = clamp(v, 0, 1);
+      if (master && !muted) master.gain.value = vol;
+      try { localStorage.setItem('ps-vol', String(vol)); } catch (_) { /* private mode */ }
     }
     return {
       ensure,
@@ -544,6 +563,10 @@ import {
       boom: () => burst(0.9, 130, 1.6, 'lowpass'),
       toggleMute,
       isMuted: () => muted,
+      setVolume,
+      getVolume: () => vol,
+      suspend: () => { if (ctx && ctx.state === 'running') ctx.suspend(); },
+      resume: () => { if (ctx && ctx.state === 'suspended') ctx.resume(); },
     };
   })();
 
@@ -733,7 +756,7 @@ import {
     if (bestE) {
       spawnSpark(muzzle.clone().addScaledVector(_shot, bestT), 4, 0.18);
       audio.hit();
-      damageEnemy(bestE, CFG.GUN_DMG);
+      damageEnemy(bestE, CFG.GUN_DMG * diff.dmgMul);
     }
   }
 
@@ -752,26 +775,38 @@ import {
     desired: new THREE.Vector3(), local: new THREE.Vector3(),
     muzzle: new THREE.Vector3(), shotDir: new THREE.Vector3(), dirP: new THREE.Vector3(),
   };
+  // Five spawn slots; how many actually fly comes from the player-picked
+  // bandit count (1-5, start overlay / pause menu, applied on restart).
   const ENEMY_SPAWN = [
     { ang: -0.7, dist: 1500, alt: 300 },
     { ang: 0.15, dist: 2000, alt: 420 },
     { ang: 0.95, dist: 1300, alt: 240 },
+    { ang: -1.7, dist: 1750, alt: 360 },
+    { ang: 2.3, dist: 1600, alt: 280 },
   ];
+  let enemyCountPref = (() => {
+    try {
+      const n = parseInt(localStorage.getItem('ps-count'), 10);
+      return (n >= 1 && n <= ENEMY_SPAWN.length) ? n : 3;
+    } catch (_) { return 3; }
+  })();
+  let activeCount = enemyCountPref; // the count this engagement was started with
 
   // ---- Difficulty. Scales the bandits' turn performance (turn = multiplier on
   //      their control effectiveness, so <1 means you out-turn them), gunnery
-  //      (jitter/range/cone/interval) and how long they'll grind a turn fight
-  //      before breaking off (breakAfter). Chosen on the start overlay or with
-  //      1/2/3; remembered across sessions. ----
+  //      (jitter/range/cone/interval), how long they'll grind a turn fight
+  //      before breaking off (breakAfter), and YOUR gun damage (dmgMul — a
+  //      rookie fight also means faster kills). Chosen on the start overlay or
+  //      with 1/2/3; remembered across sessions. ----
   const DIFFS = {
     easy: {
-      label: 'ROOKIE', turn: 0.55, jitterMul: 2.6, fireInt: 0.22, range: 520, cone: 0.990, breakAfter: 3.0, breakMin: 3.2, breakMax: 5.0,
+      label: 'ROOKIE', turn: 0.55, jitterMul: 2.6, fireInt: 0.22, range: 520, cone: 0.990, breakAfter: 3.0, breakMin: 3.2, breakMax: 5.0, dmgMul: 3,
     },
     normal: {
-      label: 'REGULAR', turn: 0.72, jitterMul: 1.6, fireInt: 0.17, range: 620, cone: 0.994, breakAfter: 4.5, breakMin: 2.4, breakMax: 4.0,
+      label: 'REGULAR', turn: 0.72, jitterMul: 1.6, fireInt: 0.17, range: 620, cone: 0.994, breakAfter: 4.5, breakMin: 2.4, breakMax: 4.0, dmgMul: 2,
     },
     hard: {
-      label: 'ACE', turn: 0.90, jitterMul: 1.0, fireInt: 0.13, range: 700, cone: 0.997, breakAfter: 6.5, breakMin: 1.6, breakMax: 2.8,
+      label: 'ACE', turn: 0.90, jitterMul: 1.0, fireInt: 0.13, range: 700, cone: 0.997, breakAfter: 6.5, breakMin: 1.6, breakMax: 2.8, dmgMul: 1,
     },
   };
   const validDiff = (n) => n === 'easy' || n === 'normal' || n === 'hard';
@@ -838,14 +873,35 @@ import {
     e.mode = 'engage'; e.modeT = 0; e.coTurn = 0; e.underFire = 0;
   }
 
+  // All five airframes are built once; an engagement activates the first
+  // `enemyCountPref` of them and parks the rest (invisible, not alive).
+  function applyEnemyActivation() {
+    activeCount = enemyCountPref;
+    enemies.forEach((e, i) => {
+      if (i < activeCount) placeEnemy(e);
+      else { e.alive = false; e.group.visible = false; }
+    });
+  }
   function spawnEnemies() {
-    for (const spec of ENEMY_SPAWN) {
-      const e = makeEnemy(spec);
-      placeEnemy(e);
-      enemies.push(e);
+    for (const spec of ENEMY_SPAWN) enemies.push(makeEnemy(spec));
+    applyEnemyActivation();
+  }
+  function resetEnemies() { applyEnemyActivation(); }
+  function setEnemyCount(n) {
+    if (!(n >= 1 && n <= ENEMY_SPAWN.length)) return;
+    enemyCountPref = n;
+    try { localStorage.setItem('ps-count', String(n)); } catch (_) { /* private mode */ }
+    for (const b of document.querySelectorAll('[data-count]')) {
+      b.classList.toggle('ps-diff-active', +b.dataset.count === n);
+    }
+    // Not yet flying (or already over)? Apply immediately; mid-fight it waits
+    // for the restart so the kill tally stays honest.
+    if (!started || crashed || won || onGround) {
+      resetEnemies();
+      kills = 0;
+      updateCombatHUD();
     }
   }
-  function resetEnemies() { for (const e of enemies) placeEnemy(e); }
 
   function stepEnemy(e, dt, canFire) {
     const g = e.group;
@@ -1013,7 +1069,7 @@ import {
       audio.boom();
       kills += 1;
       updateCombatHUD();
-      if (kills >= CFG.ENEMY_COUNT && !won) victory();
+      if (kills >= activeCount && !won) victory();
     }
   }
 
@@ -1040,15 +1096,47 @@ import {
   const overlay = document.getElementById('ps-overlay');
   const reticle = document.getElementById('ps-reticle');
 
-  // Difficulty picker on the start overlay. mousedown stopPropagation so clicking
-  // a tier selects it instead of also starting the game (the stage's mousedown
-  // handler calls start()).
-  const diffBtns = overlay ? overlay.querySelectorAll('[data-diff]') : null;
-  if (diffBtns) {
-    for (const b of diffBtns) {
-      b.addEventListener('mousedown', (ev) => ev.stopPropagation());
-      b.addEventListener('click', (ev) => { ev.stopPropagation(); setDifficulty(b.dataset.diff); });
+  // Difficulty / bandit-count / camera pickers live on BOTH the start overlay
+  // and the pause menu; wire them all. mousedown stopPropagation so clicking a
+  // button on the start overlay selects it instead of also starting the game
+  // (the stage's mousedown handler calls start()).
+  const diffBtns = document.querySelectorAll('[data-diff]');
+  for (const b of diffBtns) {
+    b.addEventListener('mousedown', (ev) => ev.stopPropagation());
+    b.addEventListener('click', (ev) => { ev.stopPropagation(); setDifficulty(b.dataset.diff); });
+  }
+  for (const b of document.querySelectorAll('[data-count]')) {
+    b.addEventListener('mousedown', (ev) => ev.stopPropagation());
+    b.addEventListener('click', (ev) => { ev.stopPropagation(); setEnemyCount(+b.dataset.count); });
+  }
+  function setCamPreset(name) {
+    if (!CAM_PRESETS[name]) return;
+    camName = name;
+    try { localStorage.setItem('ps-cam', name); } catch (_) { /* private mode */ }
+    for (const b of document.querySelectorAll('[data-cam]')) {
+      b.classList.toggle('ps-diff-active', b.dataset.cam === name);
     }
+  }
+  for (const b of document.querySelectorAll('[data-cam]')) {
+    b.addEventListener('mousedown', (ev) => ev.stopPropagation());
+    b.addEventListener('click', (ev) => { ev.stopPropagation(); setCamPreset(b.dataset.cam); });
+  }
+
+  // ---- Pause menu (ESC). Freezes the sim (dt = 0) and suspends audio; the
+  //      overlay hosts volume/camera/bandits/skill settings. ----
+  const pauseOv = document.getElementById('ps-pause');
+  let userPaused = false;
+  function setPaused(on) {
+    userPaused = !!on;
+    firing = false;
+    if (pauseOv) pauseOv.classList.toggle('ps-hidden', !userPaused);
+    if (userPaused) audio.suspend(); else audio.resume();
+  }
+  document.getElementById('ps-resume')?.addEventListener('click', () => setPaused(false));
+  const volSlider = document.getElementById('ps-vol');
+  if (volSlider) {
+    volSlider.value = String(Math.round(audio.getVolume() * 100));
+    volSlider.addEventListener('input', () => { audio.setVolume((+volSlider.value) / 100); });
   }
 
   function start() {
@@ -1061,10 +1149,15 @@ import {
   window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
     keys[k] = true;
+    if (k === 'escape' && started) { setPaused(!userPaused); return; }
     if (k === '1') { setDifficulty('easy'); return; }
     if (k === '2') { setDifficulty('normal'); return; }
     if (k === '3') { setDifficulty('hard'); return; }
     if (k === 'm') { audio.toggleMute(); return; }
+    if (k === 'c') {
+      setCamPreset(CAM_ORDER[(CAM_ORDER.indexOf(camName) + 1) % CAM_ORDER.length]);
+      return;
+    }
     if (['w', 'a', 's', 'd', 'g', ' '].includes(k)) {
       if (started) e.preventDefault();
       if (k === 'g') gearDown = !gearDown; // toggle on key-down edge
@@ -1115,7 +1208,7 @@ import {
 
   // Kill board ("k / N") + hull HP bar (green -> amber -> red as it drops).
   function updateCombatHUD() {
-    if (hud.kills) hud.kills.textContent = `${kills} / ${CFG.ENEMY_COUNT}`;
+    if (hud.kills) hud.kills.textContent = `${kills} / ${activeCount}`;
     const pct = clamp(Math.round((playerHP / CFG.PLAYER_HP) * 100), 0, 100);
     if (hud.hp) hud.hp.textContent = String(Math.max(0, Math.round(playerHP)));
     if (hud.hpFill) {
@@ -1358,10 +1451,11 @@ import {
     };
   })();
 
-  // Player-centred radar scope (north-up). The player sits at the centre; a
-  // bandit within RADAR_RANGE shows at its true position relative to us, and one
-  // beyond range is pinned to the rim as a chevron pointing in its direction. The
-  // world border + runway are drawn relative too, so they slide past as you fly.
+  // Player-centred radar scope, HEADING-UP: your arrow is fixed pointing up
+  // and the world (border, runway, bandits, the N marker) rotates around you —
+  // "left on the scope" is always "left out the canopy". A bandit within
+  // RADAR_RANGE shows at its true relative position; one beyond range is
+  // pinned to the rim as a chevron pointing in its direction.
   function drawMap() {
     if (!mapCtx) return;
     const W = mapCanvas.width; const H = mapCanvas.height;
@@ -1369,8 +1463,8 @@ import {
     const Rpx = Math.min(W, H) / 2 - 3;
     const s = Rpx / CFG.RADAR_RANGE; // metres -> px
     const px = plane.position.x; const pz = plane.position.z;
-    const rX = (wx) => cx + (wx - px) * s;
-    const rY = (wz) => cy + (wz - pz) * s; // world +Z (south) -> screen down
+    const f = getForward();
+    const ang = Math.atan2(f.x, -f.z); // heading: 0 = north (-Z)
 
     mapCtx.clearRect(0, 0, W, H);
     mapCtx.save();
@@ -1379,27 +1473,23 @@ import {
     mapCtx.fillStyle = 'rgba(8,20,26,0.55)';
     mapCtx.fillRect(0, 0, W, H);
 
-    // world border (relative) — only on screen when you're within range of a wall
+    // ---- rotated world layer (heading-up) ----
+    mapCtx.save();
+    mapCtx.translate(cx, cy);
+    mapCtx.rotate(-ang);
+
+    // world border — only on screen when you're within range of a wall
     const B = CFG.BORDER;
     mapCtx.strokeStyle = 'rgba(80,210,255,0.85)';
     mapCtx.lineWidth = 2;
-    mapCtx.strokeRect(rX(-B), rY(-B), 2 * B * s, 2 * B * s);
+    mapCtx.strokeRect((-B - px) * s, (-B - pz) * s, 2 * B * s, 2 * B * s);
 
-    // runway (relative)
+    // runway
     mapCtx.strokeStyle = 'rgba(230,238,242,0.7)';
     mapCtx.lineWidth = 3;
     mapCtx.beginPath();
-    mapCtx.moveTo(rX(0), rY(-CFG.RUNWAY_LEN / 2));
-    mapCtx.lineTo(rX(0), rY(CFG.RUNWAY_LEN / 2));
-    mapCtx.stroke();
-
-    // range rings + cross-hairs
-    mapCtx.strokeStyle = 'rgba(120,220,255,0.16)';
-    mapCtx.lineWidth = 1;
-    mapCtx.beginPath(); mapCtx.arc(cx, cy, Rpx * 0.5, 0, Math.PI * 2); mapCtx.stroke();
-    mapCtx.beginPath();
-    mapCtx.moveTo(cx, cy - Rpx); mapCtx.lineTo(cx, cy + Rpx);
-    mapCtx.moveTo(cx - Rpx, cy); mapCtx.lineTo(cx + Rpx, cy);
+    mapCtx.moveTo(-px * s, (-CFG.RUNWAY_LEN / 2 - pz) * s);
+    mapCtx.lineTo(-px * s, (CFG.RUNWAY_LEN / 2 - pz) * s);
     mapCtx.stroke();
 
     // bandits
@@ -1409,34 +1499,94 @@ import {
       const dy = (e.group.position.z - pz) * s;
       mapCtx.fillStyle = '#ff4d4d';
       if (Math.hypot(dx, dy) <= Rpx) {
-        mapCtx.beginPath(); mapCtx.arc(cx + dx, cy + dy, 3.2, 0, Math.PI * 2); mapCtx.fill();
+        mapCtx.beginPath(); mapCtx.arc(dx, dy, 3.2, 0, Math.PI * 2); mapCtx.fill();
       } else {
-        const a = Math.atan2(dy, dx); // bearing on screen
+        const a = Math.atan2(dy, dx); // bearing in the rotated frame
         mapCtx.save();
-        mapCtx.translate(cx + Math.cos(a) * (Rpx - 4), cy + Math.sin(a) * (Rpx - 4));
+        mapCtx.translate(Math.cos(a) * (Rpx - 4), Math.sin(a) * (Rpx - 4));
         mapCtx.rotate(a);
         mapCtx.beginPath(); mapCtx.moveTo(4, 0); mapCtx.lineTo(-3, 3); mapCtx.lineTo(-3, -3);
         mapCtx.closePath(); mapCtx.fill();
         mapCtx.restore();
       }
     }
+    mapCtx.restore(); // un-rotate
 
-    // player at centre, pointing along heading
-    const f = getForward();
-    const ang = Math.atan2(f.x, -f.z); // 0 = north (-Z) = up
-    mapCtx.save();
-    mapCtx.translate(cx, cy);
-    mapCtx.rotate(-ang);
+    // range rings + cross-hairs (fixed to the scope, not the world)
+    mapCtx.strokeStyle = 'rgba(120,220,255,0.16)';
+    mapCtx.lineWidth = 1;
+    mapCtx.beginPath(); mapCtx.arc(cx, cy, Rpx * 0.5, 0, Math.PI * 2); mapCtx.stroke();
+    mapCtx.beginPath();
+    mapCtx.moveTo(cx, cy - Rpx); mapCtx.lineTo(cx, cy + Rpx);
+    mapCtx.moveTo(cx - Rpx, cy); mapCtx.lineTo(cx + Rpx, cy);
+    mapCtx.stroke();
+
+    // north marker riding the rim (drawn upright)
+    const nx = cx - Math.sin(ang) * (Rpx - 9);
+    const ny = cy - Math.cos(ang) * (Rpx - 9);
+    mapCtx.fillStyle = '#ff8f5a';
+    mapCtx.font = '700 10px "JetBrains Mono", monospace';
+    mapCtx.textAlign = 'center';
+    mapCtx.fillText('N', nx, ny + 3.5);
+
+    // player: fixed arrow at the centre, always pointing up
     mapCtx.fillStyle = crashed ? '#ff5d6c' : '#ffe04a';
     mapCtx.beginPath();
-    mapCtx.moveTo(0, -6); mapCtx.lineTo(4, 5); mapCtx.lineTo(-4, 5); mapCtx.closePath();
+    mapCtx.moveTo(cx, cy - 6); mapCtx.lineTo(cx + 4, cy + 5); mapCtx.lineTo(cx - 4, cy + 5);
+    mapCtx.closePath();
     mapCtx.fill();
-    mapCtx.restore();
 
     mapCtx.restore(); // un-clip
     mapCtx.strokeStyle = 'rgba(120,220,255,0.5)';
     mapCtx.lineWidth = 2;
     mapCtx.beginPath(); mapCtx.arc(cx, cy, Rpx, 0, Math.PI * 2); mapCtx.stroke();
+  }
+
+  // ---- Enemy health bars: a small HP bar + range readout floats over every
+  //      living bandit on screen, so you can see who's hurt and pick targets. ----
+  const ebarsWrap = document.getElementById('ps-ebars');
+  const ebars = [];
+  function initEnemyBars() {
+    if (!ebarsWrap) return;
+    for (let i = 0; i < enemies.length; i++) {
+      const root = document.createElement('div');
+      root.className = 'ps-ebar';
+      const track = document.createElement('div');
+      track.className = 'ps-ebar-track';
+      const fill = document.createElement('div');
+      fill.className = 'ps-ebar-fill';
+      track.appendChild(fill);
+      const label = document.createElement('div');
+      label.className = 'ps-ebar-label';
+      root.appendChild(track);
+      root.appendChild(label);
+      ebarsWrap.appendChild(root);
+      ebars.push({ root, fill, label });
+    }
+  }
+  const _ebv = new THREE.Vector3();
+  function updateEnemyBars() {
+    if (!ebarsWrap) return;
+    const r = stage.getBoundingClientRect();
+    for (let i = 0; i < ebars.length; i++) {
+      const b = ebars[i]; const e = enemies[i];
+      if (!e || !e.alive || !started) { b.root.style.display = 'none'; continue; }
+      const d = e.group.position.distanceTo(plane.position);
+      _ebv.copy(e.group.position);
+      _ebv.y += 7; // float above the airframe
+      _ebv.project(camera);
+      if (_ebv.z > 1 || Math.abs(_ebv.x) > 1.05 || Math.abs(_ebv.y) > 1.05 || d > 2400) {
+        b.root.style.display = 'none';
+        continue;
+      }
+      b.root.style.display = 'block';
+      b.root.style.left = `${((_ebv.x + 1) / 2) * r.width}px`;
+      b.root.style.top = `${((1 - _ebv.y) / 2) * r.height}px`;
+      const pct = clamp((e.hp / CFG.ENEMY_HP) * 100, 0, 100);
+      b.fill.style.width = `${pct}%`;
+      b.fill.style.background = pct > 50 ? '#ff8f5a' : '#ff4d4d';
+      b.label.textContent = `${Math.round(d)} m`;
+    }
   }
 
   // ---- Lead pipper: for the nearest bandit ahead, project the point you'd
@@ -1748,10 +1898,14 @@ import {
 
     // Stable chase: sit behind/above following the nose's heading & pitch, but
     // don't roll the view with the aircraft (much easier to fly, less nausea).
+    const rig = CAM_PRESETS[camName];
     getForward();
     _camPos.copy(plane.position)
-      .addScaledVector(_fwd, -CFG.CAM_BACK)
-      .addScaledVector(WORLD_UP, CFG.CAM_UP);
+      .addScaledVector(_fwd, -rig.back)
+      .addScaledVector(WORLD_UP, rig.up)
+      // Lead the lerp by ~one lag constant so the chase distance stays true to
+      // the preset at speed instead of stretching ~15 m behind it.
+      .addScaledVector(vel, 0.09);
     const ghc = groundAt(_camPos.x, _camPos.z);
     if (_camPos.y < ghc + 2) _camPos.y = ghc + 2; // don't dive the camera underground
     const a = crashed ? 0.06 : 1 - Math.pow(1 - CFG.CAM_LERP, dt * 60);
@@ -1781,8 +1935,11 @@ import {
   resize();
 
   spawnEnemies();
+  initEnemyBars();
   updateCombatHUD();
   setDifficulty(diffName); // sync HUD label + overlay highlight from the saved tier
+  setEnemyCount(enemyCountPref); // sync the 1-5 picker highlight
+  setCamPreset(camName); // sync the camera-distance picker highlight
 
   // ==================================================== DEV MODE ==========
   // A scriptable dev/debug handle on window.__ps (client-side single-player;
@@ -1885,7 +2042,7 @@ import {
     last = now;
     if (dt > 0.05) dt = 0.05; // clamp big gaps (tab switches)
     dt *= dev.timeScale;
-    if (dev.paused) dt = 0;
+    if (dev.paused || userPaused) dt = 0;
 
     const playing = started && !crashed && !won && dt > 0;
     if (playing) update(dt);
@@ -1908,6 +2065,7 @@ import {
     stepSmokes(dt);
     stepDebris(dt);
     updateLeadPipper();
+    updateEnemyBars();
 
     // Fade the red damage vignette.
     dmgFlash = Math.max(0, dmgFlash - dt * 3);
