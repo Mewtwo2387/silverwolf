@@ -7,7 +7,7 @@ import {
   getNuggiePokeMultiplier, getNuggieNuggieMultiplier,
 } from '../utils/ascensionupgrades';
 import { DAILY_LIMIT, WEEKLY_LIMIT } from '../utils/ai';
-import { formatResetTimestamp } from '../utils/discordRateLimit';
+import { getResetLine } from '../utils/discordRateLimit';
 import {
   getMultiplierAmountInfo,
   getMultiplierChanceInfo,
@@ -336,10 +336,7 @@ ${getNuggieNuggieMultiplierInfo(user.nuggieNuggieMultiplierLevel, INFO_LEVEL.THI
       ? `🛑 **Rate Limited** (${status.reason === 'daily' ? 'Daily' : 'Weekly'} limit exceeded)`
       : '✅ **Active** (within limits)';
 
-    const resetAt = status.limited && status.reason
-      ? await this.client.db.aiUsage.getResetAt(userId, status.reason)
-      : null;
-    const resetLine = resetAt ? `\n**Resets:** ${formatResetTimestamp(resetAt)}` : '';
+    const resetLine = await getResetLine(this.client.db, userId, status);
 
     return new Discord.EmbedBuilder()
       .setColor('#0099ff')

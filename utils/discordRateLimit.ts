@@ -11,6 +11,21 @@ export function formatResetTimestamp(resetAt: Date): string {
   return `<t:${unix}:t> (<t:${unix}:R>)`;
 }
 
+/**
+ * The trailing "**Resets:** <t…>" embed line for a rate-limited user (empty
+ * string when not limited or the window has already lapsed). Shared by the
+ * `/ai usage` and `/profile` embeds so the wording stays in sync.
+ */
+export async function getResetLine(
+  db: Database,
+  userId: string,
+  status: { limited: boolean; reason?: 'daily' | 'weekly' },
+): Promise<string> {
+  if (!status.limited || !status.reason) return '';
+  const resetAt = await db.aiUsage.getResetAt(userId, status.reason);
+  return resetAt ? `\n**Resets:** ${formatResetTimestamp(resetAt)}` : '';
+}
+
 export async function getRateLimitErrorMessage(userId: string, db: Database): Promise<string> {
   const [dailyUsage, weeklyUsage] = await Promise.all([
     db.aiUsage.getDailyUsage(userId),

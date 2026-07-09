@@ -1,7 +1,7 @@
 import * as Discord from 'discord.js';
 import { Command } from './classes/Command';
 import { DAILY_LIMIT, WEEKLY_LIMIT } from '../utils/ai';
-import { formatResetTimestamp } from '../utils/discordRateLimit';
+import { getResetLine } from '../utils/discordRateLimit';
 
 function makeProgressBar(value: number, total: number, size = 15): string {
   const percentage = Math.min(Math.max(value / total, 0), 1);
@@ -36,10 +36,7 @@ class AiUsageSubcommand extends Command {
         ? `🛑 **Rate Limited** (${status.reason === 'daily' ? 'Daily' : 'Weekly'} limit exceeded)`
         : '✅ **Active** (within limits)';
 
-      const resetAt = status.limited && status.reason
-        ? await this.client.db.aiUsage.getResetAt(userId, status.reason)
-        : null;
-      const resetLine = resetAt ? `\n**Resets:** ${formatResetTimestamp(resetAt)}` : '';
+      const resetLine = await getResetLine(this.client.db, userId, status);
 
       const embed = new Discord.EmbedBuilder()
         .setColor('#0099ff')
