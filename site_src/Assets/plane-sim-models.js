@@ -1754,11 +1754,26 @@ export function makeFuelTank() {
   dome.position.y = 4.5; g.add(dome);
   const band = new THREE.Mesh(new THREE.TorusGeometry(2.11, 0.06, 6, 24), dark);
   band.rotation.x = Math.PI / 2; band.position.y = 2.4; g.add(band);
-  // Filler stack + ladder.
+  // Filler stack.
   const stack = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 1.0, 8), dark);
   stack.position.set(0, 5.3, 0); g.add(stack);
-  const ladder = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4.4, 0.08), dark);
-  ladder.position.set(0, 2.4, 2.14); g.add(ladder);
+  // Access ladder: two rails + rungs (an open frame you can see through, not a
+  // solid slab), hung on the tank's +Z side.
+  const ladder = new THREE.Group();
+  const railGeo = new THREE.CylinderGeometry(0.04, 0.04, 4.4, 6);
+  for (const rx of [-0.22, 0.22]) {
+    const rail = new THREE.Mesh(railGeo, dark);
+    rail.position.set(rx, 2.4, 0);
+    ladder.add(rail);
+  }
+  const rungGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.52, 6);
+  rungGeo.rotateZ(Math.PI / 2);
+  for (let y = 0.55; y <= 4.4; y += 0.4) {
+    const rung = new THREE.Mesh(rungGeo, dark);
+    rung.position.set(0, y, 0);
+    ladder.add(rung);
+  }
+  ladder.position.set(0, 0, 2.12); g.add(ladder);
   setShadows(g);
   return g;
 }
@@ -1807,16 +1822,23 @@ export function makeNissenHut(len = 9) {
   const skin = new THREE.MeshStandardMaterial({
     map: corrugatedTexture('#8a8f8b', 6, 3), roughness: 0.8, metalness: 0.3, side: THREE.DoubleSide,
   });
-  const shell = new THREE.Mesh(new THREE.CylinderGeometry(R, R, len, 20, 1, true, 0, Math.PI), skin);
-  shell.rotation.x = Math.PI / 2; // axis Y -> Z; the 0..PI half arches over +Y
-  shell.rotation.z = 0;
+  // Half-cylinder shell arching over +Y with its axis along Z. The default
+  // cylinder axis is Y and the 0..π half arches over +X; rotateZ swings that
+  // arch up to +Y (axis -> X, as the hangar does), then rotateY swings the axis
+  // round to Z. Baking it into the geometry keeps the orientation unambiguous.
+  const shellGeo = new THREE.CylinderGeometry(R, R, len, 20, 1, true, 0, Math.PI);
+  shellGeo.rotateZ(Math.PI / 2);
+  shellGeo.rotateY(Math.PI / 2);
+  const shell = new THREE.Mesh(shellGeo, skin);
   g.add(shell);
-  const endMat = new THREE.MeshStandardMaterial({ color: 0x9c6a4e, roughness: 0.95 });
+  const endMat = new THREE.MeshStandardMaterial({ color: 0x9c6a4e, roughness: 0.95, side: THREE.DoubleSide });
   const doorMat = new THREE.MeshStandardMaterial({ color: 0x33403a, roughness: 0.8 });
   const winMat = new THREE.MeshStandardMaterial({ color: 0x9fbccb, roughness: 0.25, metalness: 0.3 });
   for (const sz of [-1, 1]) {
+    // A CircleGeometry(0..π) is the upper half-disc (y 0..R) in the XY plane —
+    // exactly the arch's end cross-section, so it caps the tube with no extra
+    // rotation. Flip the -Z end to face outward.
     const gable = new THREE.Mesh(new THREE.CircleGeometry(R - 0.03, 20, 0, Math.PI), endMat);
-    gable.rotation.z = -Math.PI / 2; // flat disc facing along Z
     if (sz < 0) gable.rotation.y = Math.PI;
     gable.position.z = sz * (len / 2 - 0.02);
     g.add(gable);

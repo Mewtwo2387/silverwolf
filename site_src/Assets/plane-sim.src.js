@@ -1335,7 +1335,7 @@ import {
     flashDamage();
     audio.hit();
     if (at) spawnSpark(at, 2.6, 0.14);
-    if (playerHP <= 0) { playerHP = 0; updateCombatHUD(); crash('Shot down'); return; }
+    if (playerHP <= 0) { playerHP = 0; updateCombatHUD(); crash('Downed by enemy fire', true); return; }
     updateCombatHUD();
   }
 
@@ -1346,7 +1346,7 @@ import {
     const s = Math.max(0, Math.round(ms / 1000));
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   }
-  function showEnd(win, reason) {
+  function showEnd(win, reason, combat) {
     const ov = document.getElementById('ps-end');
     if (hud.warn) hud.warn.classList.remove('ps-show'); // the card supersedes the banner
     if (!ov) return;
@@ -1354,7 +1354,8 @@ import {
     ov.classList.remove('ps-hidden', 'ps-win', 'ps-lose');
     ov.classList.add(win ? 'ps-win' : 'ps-lose');
     if (el('ps-end-icon')) el('ps-end-icon').textContent = win ? '🏆' : '💥';
-    if (el('ps-end-title')) el('ps-end-title').textContent = win ? 'Victory' : 'Shot down';
+    // "Shot down" only for enemy fire; anything you fly into is a "Crashed".
+    if (el('ps-end-title')) el('ps-end-title').textContent = win ? 'Victory' : (combat ? 'Shot down' : 'Crashed');
     if (el('ps-end-sub')) {
       el('ps-end-sub').textContent = win
         ? `All ${activeCount} bandit${activeCount > 1 ? 's' : ''} cleared from the valley.`
@@ -2196,7 +2197,9 @@ import {
     }
   }
 
-  function crash(reason) {
+  // `combat` = downed by enemy fire (title "Shot down"); otherwise it's a crash
+  // into terrain/water/scenery (title "Crashed"). `reason` is the detail line.
+  function crash(reason, combat = false) {
     if (dev.god) return;
     crashed = true;
     started = true;
@@ -2208,7 +2211,7 @@ import {
         (Math.random() - 0.5) * 6, Math.random() * 4, (Math.random() - 0.5) * 6,
       )), 4 + Math.random() * 3, 1.4);
     }
-    showEnd(false, reason);
+    showEnd(false, reason, combat);
   }
 
   // ======================================================== CAMERA ========
