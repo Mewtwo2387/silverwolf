@@ -334,12 +334,12 @@ ${getNuggieNuggieMultiplierInfo(user.nuggieNuggieMultiplierLevel, INFO_LEVEL.THI
     ]);
     const statusText = status.limited
       ? `🛑 **Rate Limited** (${status.reason === 'daily' ? 'Daily' : 'Weekly'} limit exceeded)`
-      : '✅ **Active** (Pool is cool)';
+      : '✅ **Active** (within limits)';
 
     const resetAt = status.limited && status.reason
       ? await this.client.db.aiUsage.getResetAt(userId, status.reason)
       : null;
-    const resetLine = resetAt ? `\n**Cools Down:** ${formatResetTimestamp(resetAt)}` : '';
+    const resetLine = resetAt ? `\n**Resets:** ${formatResetTimestamp(resetAt)}` : '';
 
     return new Discord.EmbedBuilder()
       .setColor('#0099ff')

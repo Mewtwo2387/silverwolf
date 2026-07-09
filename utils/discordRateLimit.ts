@@ -22,14 +22,14 @@ export async function getRateLimitErrorMessage(userId: string, db: Database): Pr
   const limitLabel = reachedDaily ? 'Daily' : 'Weekly';
   const usageVal = reachedDaily ? dailyUsage : weeklyUsage;
   const limitVal = reachedDaily ? DAILY_LIMIT : WEEKLY_LIMIT;
-  const windowLabel = reachedDaily ? '24 hours' : '7 days';
+  const windowLabel = reachedDaily ? '24-hour' : '7-day';
 
   const resetAt = await db.aiUsage.getResetAt(userId, reason);
-  const cooldownNote = resetAt
-    ? `Your pool cools down enough to use again ${formatResetTimestamp(resetAt)}.`
-    : 'Please wait for your token pool to cool down.';
+  const resetNote = resetAt
+    ? `Your limit resets ${formatResetTimestamp(resetAt)}.`
+    : 'Please wait for your limit to reset.';
 
-  return `⚠️ **${limitLabel} AI Rate Limit Reached**\nYou have consumed **${usageVal.toLocaleString()}** / **${limitVal.toLocaleString()}** tokens in the last ${windowLabel}. ${cooldownNote}`;
+  return `⚠️ **${limitLabel} AI Rate Limit Reached**\nYou've used **${usageVal.toLocaleString()}** / **${limitVal.toLocaleString()}** tokens in the current ${windowLabel} window. ${resetNote}`;
 }
 
 export async function handleRateLimitError(
