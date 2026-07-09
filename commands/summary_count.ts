@@ -2,6 +2,7 @@ import { EmbedBuilder } from 'discord.js';
 import { Command } from './classes/Command';
 import { generateContent, getPersonaByName } from '../utils/ai';
 import { log, logError } from '../utils/log';
+import { handleRateLimitError } from '../utils/discordRateLimit';
 import { fetchMessagesByCount } from '../utils/fetch';
 
 function splitForEmbed(text: string, max = 4096): string[] {
@@ -59,13 +60,19 @@ class Summary extends Command {
     let summary: any;
     try {
       summary = await generateContent({
+        db: this.client.db,
+        userId: interaction.user.id,
         provider: persona.provider,
         model: persona.model,
         systemPrompt: persona.systemPrompt ?? '',
         prompt: content,
       });
       log(`Generated summary: ${summary.text}`);
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.message === 'RATE_LIMIT_EXCEEDED') {
+        await handleRateLimitError(interaction, this.client.db);
+        return;
+      }
       logError('Failed to generate summary:', error);
       await interaction.editReply('Failed to generate summary. Please try again later.');
       return;

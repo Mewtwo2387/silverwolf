@@ -361,6 +361,11 @@ class RpModel {
     return row?.count ?? 0;
   }
 
+  async getLastHumanSpeaker(spawnId: number): Promise<string | null> {
+    const row = await this.db.executeSelectQuery(rpQueries.GET_LAST_HUMAN_SPEAKER, [spawnId]);
+    return row?.speakerId ?? null;
+  }
+
   async deleteHistoryBySpawn(spawnId: number): Promise<void> {
     await this.db.executeQuery(rpQueries.DELETE_HISTORY_BY_SPAWN, [spawnId]);
   }

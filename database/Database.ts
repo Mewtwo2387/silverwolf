@@ -7,12 +7,14 @@ import imageGenQueries from './queries/imageGenQueries';
 import musicGenQueries from './queries/musicGenQueries';
 import battleshipsMatchQueries from './queries/battleshipsMatchQueries';
 import rpQueries from './queries/rpQueries';
+import aiUsageQueries from './queries/aiUsageQueries';
 import * as modelClasses from './models';
 import type { TableDefinition, QueryResult } from './types';
 import type UserModel from './models/UserModel';
 import type BabyModel from './models/BabyModel';
 import type BattleshipsMatchModel from './models/BattleshipsMatchModel';
 import type AiChatModel from './models/AiChatModel';
+import type AiUsageModel from './models/AiUsageModel';
 import type PokemonModel from './models/PokemonModel';
 import type MarriageModel from './models/MarriageModel';
 import type CommandConfigModel from './models/CommandConfigModel';
@@ -190,6 +192,9 @@ class Database {
     this.db.run(rpQueries.CREATE_INDEX_CHAR_NAME);
     this.db.run(rpQueries.CREATE_INDEX_CHAR_CREATOR);
 
+    // AI Usage tracking
+    this.db.run(aiUsageQueries.CREATE_INDEX_USER_CREATED);
+
     // Migrate legacy ServerRoles into ServerConfig when opening an older database.
     this.migrateLegacyServerRolesIfNeeded();
 
@@ -334,6 +339,7 @@ class Database {
   async dumpGameUID(): Promise<string> { return this.dumpTable('GameUID', ['user_id']); }
 
   get aiChat(): AiChatModel { return this.models.AiChatModel; }
+  get aiUsage(): AiUsageModel { return this.models.AiUsageModel; }
   get birthdayReminder(): BirthdayReminderModel { return this.models.BirthdayReminderModel; }
   get footballMatchAnnouncement(): FootballMatchAnnouncementModel { return this.models.FootballMatchAnnouncementModel; }
   get baby(): BabyModel { return this.models.BabyModel; }

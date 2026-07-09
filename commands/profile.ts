@@ -6,6 +6,7 @@ import {
   getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNuggieCreditsMultiplier,
   getNuggiePokeMultiplier, getNuggieNuggieMultiplier,
 } from '../utils/ascensionupgrades';
+import { DAILY_LIMIT, WEEKLY_LIMIT } from '../utils/ai';
 import {
   getMultiplierAmountInfo,
   getMultiplierChanceInfo,
@@ -107,6 +108,7 @@ class Profile extends Command {
         { label: 'Gambling', value: 'gambling' },
         { label: 'Others', value: 'others' },
         { label: 'Pokemons', value: 'pokemons' },
+        { label: 'AI Usage', value: 'ai_usage' },
       ]);
 
     const actionRow = new Discord.ActionRowBuilder().addComponents(categorySelect);
@@ -152,6 +154,9 @@ class Profile extends Command {
           break;
         case 'pokemons':
           detailsEmbed = this.createPokemonsEmbed(pokemonList, username, avatarURL);
+          break;
+        case 'ai_usage':
+          detailsEmbed = await this.createAiUsageEmbed(user.id, username, avatarURL);
           break;
         default:
           break;
@@ -317,6 +322,29 @@ ${getNuggieNuggieMultiplierInfo(user.nuggieNuggieMultiplierLevel, INFO_LEVEL.THI
       .setTitle(`${username}'s Profile`)
       .setThumbnail(avatarURL)
       .setDescription(`**Pokemons:** \`\`\`${pokemonList}\`\`\``)
+      .setTimestamp();
+  }
+
+  async createAiUsageEmbed(userId: string, username: string, avatarURL: string) {
+    const [dailyUsage, weeklyUsage, status] = await Promise.all([
+      this.client.db.aiUsage.getDailyUsage(userId),
+      this.client.db.aiUsage.getWeeklyUsage(userId),
+      this.client.db.aiUsage.checkRateLimit(userId),
+    ]);
+    const statusText = status.limited
+      ? `🛑 **Rate Limited** (${status.reason === 'daily' ? 'Daily' : 'Weekly'} limit exceeded)`
+      : '✅ **Active** (Pool is cool)';
+
+    return new Discord.EmbedBuilder()
+      .setColor('#0099ff')
+      .setTitle(`${username}'s Profile`)
+      .setThumbnail(avatarURL)
+      .setDescription(`
+## AI Usage
+**Daily Usage (24h):** ${dailyUsage.toLocaleString()} / ${DAILY_LIMIT.toLocaleString()} tokens
+**Weekly Usage (7d):** ${weeklyUsage.toLocaleString()} / ${WEEKLY_LIMIT.toLocaleString()} tokens
+**Status:** ${statusText}
+      `)
       .setTimestamp();
   }
 }
