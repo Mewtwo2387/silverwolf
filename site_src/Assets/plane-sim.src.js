@@ -214,6 +214,23 @@ import {
   scene.add(buildTerrain(renderer));
   scene.add(buildWater());
 
+  // ---- Obstacle registry for collision. Solid scenery registers a simple
+  //      volume here — a vertical cylinder {x,z,r,top} (trees, rocks, poles,
+  //      round tanks, the tower) or an axis-aligned box {x0,x1,z0,z1,top}
+  //      (hangars, huts, vehicles). `top` is an absolute world height; the
+  //      aircraft only collides below it. update() scans these each frame while
+  //      the plane is low enough to hit something. Populated by buildAirfield +
+  //      scatterVegetation as they build. ----
+  const obCyl = [];
+  const obBox = [];
+  const OBSTACLE_CEIL = 40; // taller than the tallest obstacle (the ~30 m tower)
+  const addCyl = (x, z, r, top, reason) => obCyl.push({
+    x, z, r, top, reason,
+  });
+  const addBox = (x0, x1, z0, z1, top, reason) => obBox.push({
+    x0, x1, z0, z1, top, reason,
+  });
+
   // ---- Demo airfield: tarmac runway (centreline, threshold + edge lines), a
   //      glazed control tower and Quonset-hut hangars. ----
   (function buildAirfield() {
@@ -263,19 +280,27 @@ import {
     const tower = makeControlTower();
     tower.position.set(46, 0, 150);
     field.add(tower);
+    addCyl(46, 150, 5, 30, 'Flew into the control tower');
 
     for (let i = 0; i < 2; i++) {
       const hut = makeHangar();
-      hut.position.set(-56, 0, 40 - i * 74);
+      const hz = 40 - i * 74;
+      hut.position.set(-56, 0, hz);
       field.add(hut);
+      // Hangar arch: axis along X (LEN 38 -> ±19), R 9 span/height.
+      addBox(-56 - 19, -56 + 19, hz - 9, hz + 9, 9, 'Flew into a hangar');
     }
 
     // ---- A row of Nissen huts (accommodation / stores) behind the hangars. ----
     for (let i = 0; i < 4; i++) {
-      const hut = makeNissenHut(8 + (i % 2) * 3);
-      hut.position.set(-92, 0, -45 + i * 30);
+      const len = 8 + (i % 2) * 3;
+      const hut = makeNissenHut(len);
+      const hz = -45 + i * 30;
+      hut.position.set(-92, 0, hz);
       hut.rotation.y = Math.PI / 2; // ridge line runs across, doors face the apron
       field.add(hut);
+      // Rotated 90°, so the length runs along X and the 2.6 m radius along Z.
+      addBox(-92 - len / 2, -92 + len / 2, hz - 2.6, hz + 2.6, 2.6, 'Clipped a hut');
     }
 
     // ---- Dispersed bulk-fuel installation, kept well clear of the hangars in
@@ -284,11 +309,13 @@ import {
       const tank = makeFuelTank();
       tank.position.set(fx, 0, fz);
       field.add(tank);
+      addCyl(fx, fz, 3.4, 6, 'Flew into a fuel tank');
     }
     const bowser = makeBowser();
     bowser.position.set(-40, 0, 70);
     bowser.rotation.y = 1.1;
     field.add(bowser);
+    addCyl(-40, 70, 3.4, 2.6, 'Flew into a bowser');
 
     // ---- Windsocks by each runway threshold (offset to the east side). ----
     for (const wz of [CFG.RUNWAY_LEN / 2 - 30, -(CFG.RUNWAY_LEN / 2 - 30)]) {
@@ -328,7 +355,10 @@ import {
         mat.map.repeat.set(len / 2, FH / 2);
         const panel = new THREE.Mesh(new THREE.PlaneGeometry(len, FH), mat);
         panel.position.set((x1 + x2) / 2, FH / 2, (z1 + z2) / 2);
-        panel.rotation.y = Math.atan2(dx, dz); // width axis along the run
+        // Align the plane's local +X (its width) with the run direction (dx,dz).
+        // A rotation.y of `a` sends local +X to (cos a, 0, -sin a), so a =
+        // atan2(-dz, dx). (The old atan2(dx,dz) left N-S runs lying across X.)
+        panel.rotation.y = Math.atan2(-dz, dx);
         field.add(panel);
         const n = Math.max(2, Math.round(len / 4));
         for (let i = 0; i <= n; i++) posts.push([x1 + (dx * i) / n, z1 + (dz * i) / n]);
@@ -382,6 +412,8 @@ import {
         canopy: () => { const s = new THREE.SphereGeometry(3.5, 8, 6); s.scale(1, 0.85, 1); s.translate(0, 5.6, 0); return s; },
         hsl: () => [0.22 + Math.random() * 0.09, 0.5, 0.28 + Math.random() * 0.09],
         scale: () => 0.6 + Math.random() * 1.1,
+        cr: 2.2, // collision radius + top height (× instance scale)
+        ctop: 9.1,
       },
       conifer: {
         spots: [],
@@ -389,6 +421,8 @@ import {
         canopy: () => { const c = new THREE.ConeGeometry(3.2, 9.5, 6); c.translate(0, 8.2, 0); return c; },
         hsl: () => [0.26 + Math.random() * 0.07, 0.42 + Math.random() * 0.15, 0.2 + Math.random() * 0.1],
         scale: () => 0.7 + Math.random() * 1.3,
+        cr: 2.4,
+        ctop: 13,
       },
       pine: {
         spots: [],
@@ -396,6 +430,8 @@ import {
         canopy: () => { const c = new THREE.ConeGeometry(2.0, 11, 7); c.translate(0, 11.2, 0); return c; },
         hsl: () => [0.31 + Math.random() * 0.05, 0.35, 0.16 + Math.random() * 0.07],
         scale: () => 0.75 + Math.random() * 0.85,
+        cr: 1.9,
+        ctop: 16.7,
       },
     };
     // Type by altitude band, with fuzzy borders: broadleaf on the valley
@@ -467,6 +503,7 @@ import {
         canopies.setMatrixAt(i, m);
         col.setHSL(...t.hsl());
         canopies.setColorAt(i, col);
+        addCyl(x, z, t.cr * s, (h - 0.3) + t.ctop * s, 'Clipped the treeline');
       }
       trunks.castShadow = true; canopies.castShadow = true; canopies.receiveShadow = true;
       scene.add(trunks); scene.add(canopies);
@@ -499,6 +536,7 @@ import {
       rockMesh.setMatrixAt(i, m);
       col.setHSL(0.09, 0.06 + Math.random() * 0.06, 0.32 + Math.random() * 0.14);
       rockMesh.setColorAt(i, col);
+      addCyl(x, z, s * 0.8, h + s, 'Flew into a rock');
     }
     rockMesh.castShadow = true;
     scene.add(rockMesh);
@@ -2001,10 +2039,15 @@ import {
     // takeoff roll / tyre model owns ground velocity.
     if (!onGround) flightAssist(plane, vel, e, dt);
 
-    // --- Terrain contact: touchdown, taxi, or crash ---
+    // --- Terrain / water contact: touchdown, taxi, or crash ---
     const gh = groundAt(plane.position.x, plane.position.z);
-    if (plane.position.y <= gh + CFG.GROUND_Y) {
-      plane.position.y = gh + CFG.GROUND_Y;
+    // Over a lake the water SURFACE is the hard deck — touching it ditches the
+    // aircraft, instead of letting it fly down through the water to the lakebed
+    // before anything registers.
+    const overWater = gh < TERRAIN.WATER_Y - 0.5;
+    const deck = overWater ? TERRAIN.WATER_Y : gh;
+    if (plane.position.y <= deck + CFG.GROUND_Y) {
+      plane.position.y = deck + CFG.GROUND_Y;
       const impactV = -vel.y;
       if (vel.y < 0) vel.y = 0;
 
@@ -2015,7 +2058,7 @@ import {
         groundAt(plane.position.x, plane.position.z + ee) - groundAt(plane.position.x, plane.position.z - ee),
       ) / (2 * ee);
       if (started && !crashed) {
-        if (gh < TERRAIN.WATER_Y + 0.5) crash('Ditched in the lake');
+        if (overWater) crash('Ditched in the lake');
         else if (slope > 0.25) crash('Flew into terrain');
         else if (impactV > 14 || (impactV > 5 && !gearDown)) {
           crash(gearDown ? 'Hard landing' : 'Belly flop — gear up!');
@@ -2044,6 +2087,31 @@ import {
       vel.set(fH.x * hs, vy, fH.z * hs);
     } else {
       onGround = false;
+    }
+
+    // --- Obstacle collision: buildings, trees, rocks, vehicles. Only scanned
+    //     while the aircraft is low enough to hit something (an AABB reject on
+    //     each keeps the ~2 k-cylinder scan cheap; it's skipped entirely above
+    //     OBSTACLE_CEIL AGL, i.e. almost always in normal flight). A hit is a
+    //     crash. ---
+    if (started && !crashed && !dev.god && plane.position.y - gh < OBSTACLE_CEIL) {
+      const px = plane.position.x; const pz = plane.position.z; const py = plane.position.y;
+      const PR = 2.6; // plane collision radius (fuselage-ish, so gaps stay threadable)
+      for (let i = 0; i < obCyl.length; i++) {
+        const o = obCyl[i];
+        if (py > o.top + 1) continue;
+        const dx = px - o.x; const dz = pz - o.z; const rr = o.r + PR;
+        if (dx * dx + dz * dz < rr * rr) { crash(o.reason); break; }
+      }
+      if (!crashed) {
+        for (let i = 0; i < obBox.length; i++) {
+          const o = obBox[i];
+          if (py > o.top + 1) continue;
+          if (px > o.x0 - PR && px < o.x1 + PR && pz > o.z0 - PR && pz < o.z1 + PR) {
+            crash(o.reason); break;
+          }
+        }
+      }
     }
 
     // --- Keep the aircraft inside the world border (soft clamp + warning) ---
@@ -2294,6 +2362,8 @@ import {
     },
     gear(down) { gearDown = !!down; },
     kill(i) { const e = enemies[i]; if (e && e.alive) damageEnemy(e, 99999); },
+    // Collision-obstacle registry (debug/tooling): counts + a sample entry.
+    obstacles() { return { cyl: obCyl.length, box: obBox.length, sampleTree: obCyl.find((o) => o.reason.includes('tree')) }; },
     // Sample state() at `hz` for `sec` seconds -> Promise<samples[]>.
     record(sec = 5, hz = 2) {
       return new Promise((res) => {
