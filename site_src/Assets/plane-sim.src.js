@@ -133,6 +133,49 @@ import {
     try { const c = localStorage.getItem('ps-cam'); return CAM_PRESETS[c] ? c : 'far'; } catch (_) { return 'far'; }
   })();
 
+  // ---- Display units (pause-menu settings; remembered). The physics is all
+  //      SI (m, m/s); these only change how the HUD reads out. Airspeed drives
+  //      the ASI scale + label; altitude drives the altimeter + the VSI
+  //      (ft/min when feet, m/s when metres); distance formats the bandit range
+  //      labels. ----
+  const SPEED_UNITS = {
+    kn: { label: 'KN', f: KT, max: 450, step: 50, maj: 100 },
+    mph: { label: 'MPH', f: 2.23694, max: 500, step: 50, maj: 100 },
+    kmh: { label: 'KM/H', f: 3.6, max: 850, step: 100, maj: 200 },
+  };
+  const ALT_UNITS = {
+    ft: { label: 'FT', f: FT },
+    m: { label: 'M', f: 1 },
+  };
+  const DIST_UNITS = {
+    m: (d) => `${Math.round(d)} m`,
+    ft: (d) => `${Math.round(d * FT)} ft`,
+    km: (d) => `${(d / 1000).toFixed(2)} km`,
+    mi: (d) => `${(d / 1609.34).toFixed(2)} mi`,
+  };
+  const loadUnit = (key, table, dflt) => {
+    try { const v = localStorage.getItem(key); return table[v] ? v : dflt; } catch (_) { return dflt; }
+  };
+  const unit = {
+    speed: loadUnit('ps-u-speed', SPEED_UNITS, 'kn'),
+    alt: loadUnit('ps-u-alt', ALT_UNITS, 'ft'),
+    dist: loadUnit('ps-u-dist', DIST_UNITS, 'm'),
+  };
+  const fmtDist = (m) => DIST_UNITS[unit.dist](m);
+  function setUnit(kind, val, table, key) {
+    if (!table[val]) return;
+    unit[kind] = val;
+    try { localStorage.setItem(key, val); } catch (_) { /* private mode */ }
+    for (const b of document.querySelectorAll(`[data-u${kind}]`)) {
+      b.classList.toggle('ps-diff-active', b.dataset[`u${kind}`] === val);
+    }
+  }
+  function syncUnitUI() {
+    setUnit('speed', unit.speed, SPEED_UNITS, 'ps-u-speed');
+    setUnit('alt', unit.alt, ALT_UNITS, 'ps-u-alt');
+    setUnit('dist', unit.dist, DIST_UNITS, 'ps-u-dist');
+  }
+
   // ============================================================ SCENE =====
   const scene = new THREE.Scene();
   const SKY_TOP = new THREE.Color(0x3f87cc);
@@ -1418,9 +1461,18 @@ import {
     b.addEventListener('mousedown', (ev) => ev.stopPropagation());
     b.addEventListener('click', (ev) => { ev.stopPropagation(); setCamPreset(b.dataset.cam); });
   }
+  // Unit pickers (speed / altitude / distance).
+  for (const [kind, table, key] of [
+    ['speed', SPEED_UNITS, 'ps-u-speed'], ['alt', ALT_UNITS, 'ps-u-alt'], ['dist', DIST_UNITS, 'ps-u-dist'],
+  ]) {
+    for (const b of document.querySelectorAll(`[data-u${kind}]`)) {
+      b.addEventListener('mousedown', (ev) => ev.stopPropagation());
+      b.addEventListener('click', (ev) => { ev.stopPropagation(); setUnit(kind, b.dataset[`u${kind}`], table, key); });
+    }
+  }
 
   // ---- Pause menu (ESC). Freezes the sim (dt = 0) and suspends audio; the
-  //      overlay hosts volume/camera/bandits/skill settings. ----
+  //      overlay hosts volume/camera/bandits/skill/units settings. ----
   const pauseOv = document.getElementById('ps-pause');
   let userPaused = false;
   function setPaused(on) {
@@ -1576,24 +1628,27 @@ import {
     };
     const D2R = Math.PI / 180;
 
-    // 1) Airspeed: 0..450 kn over a 270° sweep starting at 135°.
-    function drawASI(cx, cy, kn) {
+    // 1) Airspeed: 0..max over a 270° sweep starting at 135°. Scale + label
+    //    follow the selected speed unit (knots / mph / km/h).
+    function drawASI(cx, cy, speedMs) {
+      const u = SPEED_UNITS[unit.speed];
+      const val = speedMs * u.f;
       face(cx, cy);
       ctx.fillStyle = CREAM; ctx.font = '600 8px "JetBrains Mono", monospace'; ctx.textAlign = 'center';
-      for (let v = 0; v <= 450; v += 50) {
-        const a = (135 + (v / 450) * 270) * D2R;
+      for (let v = 0; v <= u.max; v += u.step) {
+        const a = (135 + (v / u.max) * 270) * D2R;
         const c = Math.cos(a); const s = Math.sin(a);
-        ctx.strokeStyle = CREAM; ctx.lineWidth = v % 100 === 0 ? 2 : 1;
+        ctx.strokeStyle = CREAM; ctx.lineWidth = v % u.maj === 0 ? 2 : 1;
         ctx.beginPath();
         ctx.moveTo(cx + c * (R - 8), cy + s * (R - 8));
         ctx.lineTo(cx + c * (R - 2), cy + s * (R - 2));
         ctx.stroke();
-        if (v % 100 === 0) ctx.fillText(String(v), cx + c * (R - 17), cy + s * (R - 17) + 3);
+        if (v % u.maj === 0) ctx.fillText(String(v), cx + c * (R - 17), cy + s * (R - 17) + 3);
       }
-      label(cx, cy, 'AIRSPEED · KN');
+      label(cx, cy, `AIRSPEED · ${u.label}`);
       ctx.fillStyle = CREAM; ctx.font = '700 11px "JetBrains Mono", monospace';
-      ctx.fillText(String(Math.round(kn)), cx, cy + 20);
-      needle(cx, cy, (135 + (clamp(kn, 0, 450) / 450) * 270) * D2R, R - 10, 2.4, '#f2ede0');
+      ctx.fillText(String(Math.round(val)), cx, cy + 20);
+      needle(cx, cy, (135 + (clamp(val, 0, u.max) / u.max) * 270) * D2R, R - 10, 2.4, '#f2ede0');
       glass(cx, cy);
     }
 
@@ -1632,8 +1687,11 @@ import {
       glass(cx, cy);
     }
 
-    // 3) Altimeter: long needle = 100s of feet, short = 1000s. Classic two-hand.
-    function drawALT(cx, cy, ft) {
+    // 3) Altimeter: long needle = 100s, short = 1000s of the selected unit
+    //    (feet or metres — the dial reads 0..9 either way). Classic two-hand.
+    function drawALT(cx, cy, altM) {
+      const u = ALT_UNITS[unit.alt];
+      const val = altM * u.f;
       face(cx, cy);
       ctx.fillStyle = CREAM; ctx.font = '600 8px "JetBrains Mono", monospace'; ctx.textAlign = 'center';
       for (let i = 0; i < 10; i++) {
@@ -1646,22 +1704,29 @@ import {
         ctx.stroke();
         ctx.fillText(String(i), cx + c * (R - 16), cy + s * (R - 16) + 3);
       }
-      label(cx, cy, 'ALTITUDE · FT');
+      label(cx, cy, `ALTITUDE · ${u.label}`);
       ctx.fillStyle = CREAM; ctx.font = '700 10px "JetBrains Mono", monospace';
-      ctx.fillText(String(Math.max(0, Math.round(ft))), cx, cy + 20);
-      const a1000 = (-90 + ((ft % 10000) / 10000) * 360) * D2R;
-      const a100 = (-90 + ((ft % 1000) / 1000) * 360) * D2R;
+      ctx.fillText(String(Math.max(0, Math.round(val))), cx, cy + 20);
+      const a1000 = (-90 + ((val % 10000) / 10000) * 360) * D2R;
+      const a100 = (-90 + ((val % 1000) / 1000) * 360) * D2R;
       needle(cx, cy, a1000, R * 0.45, 3.4, '#d8d2ba');
       needle(cx, cy, a100, R - 12, 2.2, '#f2ede0');
       glass(cx, cy);
     }
 
-    // 4) VSI: ±2000 ft/min. 0 points left; climb sweeps up, dive sweeps down.
-    function drawVSI(cx, cy, fpm) {
+    // 4) VSI: 0 points left; climb sweeps up, dive sweeps down. ±2000 ft/min in
+    //    feet mode, ±10 m/s in metres mode (paired with the altitude unit).
+    function drawVSI(cx, cy, vyMs) {
+      const ftMode = unit.alt === 'ft';
+      const val = ftMode ? vyMs * FT * 60 : vyMs;
+      const max = ftMode ? 2000 : 10;
+      const ticks = ftMode
+        ? [[-2000, '2'], [-1000, '1'], [0, '0'], [1000, '1'], [2000, '2']]
+        : [[-10, '10'], [-5, '5'], [0, '0'], [5, '5'], [10, '10']];
       face(cx, cy);
       ctx.fillStyle = CREAM; ctx.font = '600 7px "JetBrains Mono", monospace'; ctx.textAlign = 'center';
-      for (const [v, t] of [[-2000, '2'], [-1000, '1'], [0, '0'], [1000, '1'], [2000, '2']]) {
-        const a = (180 + (v / 2000) * 80) * D2R;
+      for (const [v, t] of ticks) {
+        const a = (180 + (v / max) * 80) * D2R;
         const c = Math.cos(a); const s = Math.sin(a);
         ctx.strokeStyle = CREAM; ctx.lineWidth = 1.6;
         ctx.beginPath();
@@ -1673,8 +1738,8 @@ import {
       ctx.fillStyle = DIM; ctx.font = '600 6px "JetBrains Mono", monospace';
       ctx.fillText('UP', cx - R * 0.32, cy - 10);
       ctx.fillText('DN', cx - R * 0.32, cy + 14);
-      label(cx, cy, 'CLIMB ×1000');
-      needle(cx, cy, (180 + (clamp(fpm, -2000, 2000) / 2000) * 80) * D2R, R - 11, 2.4, '#f2ede0');
+      label(cx, cy, ftMode ? 'CLIMB ×1000' : 'CLIMB m/s');
+      needle(cx, cy, (180 + (clamp(val, -max, max) / max) * 80) * D2R, R - 11, 2.4, '#f2ede0');
       glass(cx, cy);
     }
 
@@ -1745,10 +1810,10 @@ import {
         ctx.setTransform(scale, 0, 0, scale, 0, 0);
         ctx.clearRect(0, 0, LW, LH);
         const cy = 60;
-        drawASI(60, cy, st.kn);
+        drawASI(60, cy, st.speedMs);
         drawATT(60 + CELL, cy, st.pitch, st.roll);
-        drawALT(60 + CELL * 2, cy, st.ft);
-        drawVSI(60 + CELL * 3, cy, st.fpm);
+        drawALT(60 + CELL * 2, cy, st.altM);
+        drawVSI(60 + CELL * 3, cy, st.vyMs);
         drawHDG(60 + CELL * 4, cy, st.hdg);
         drawTHR(60 + CELL * 5, cy, st.thr);
       },
@@ -1889,7 +1954,7 @@ import {
       const pct = clamp((e.hp / e.st.hp) * 100, 0, 100);
       b.fill.style.width = `${pct}%`;
       b.fill.style.background = pct > 50 ? '#ff8f5a' : '#ff4d4d';
-      b.label.textContent = `${Math.round(d)} m`;
+      b.label.textContent = fmtDist(d);
     }
   }
 
@@ -2167,14 +2232,13 @@ import {
     // --- Engine audio follows throttle + speed ---
     audio.setEngine(throttle, speed);
 
-    // --- HUD ---
-    const knots = Math.max(0, fwdSpeed) * KT;
+    // --- HUD (raw SI values; the gauges convert per the unit settings) ---
     if (gauges) {
       getForward(); getUp(); getRight();
       gauges.draw({
-        kn: knots,
-        ft: (plane.position.y - CFG.GROUND_Y - gh) * FT,
-        fpm: vel.y * FT * 60,
+        speedMs: Math.max(0, fwdSpeed),
+        altM: plane.position.y - CFG.GROUND_Y - gh,
+        vyMs: vel.y,
         thr: throttle,
         pitch: Math.asin(clamp(_fwd.y, -1, 1)),
         roll: Math.atan2(-_right.y, _up.y),
@@ -2276,6 +2340,7 @@ import {
   setDifficulty(diffName); // sync HUD label + overlay highlight from the saved tier
   setEnemyCount(enemyCountPref); // sync the 1-5 picker highlight
   setCamPreset(camName); // sync the camera-distance picker highlight
+  syncUnitUI(); // sync the unit-picker highlights
   syncPlaneUI(); // sync the aircraft picker highlight + description + HUD label
 
   // ==================================================== DEV MODE ==========
@@ -2397,7 +2462,7 @@ import {
       stepTracers(dt);
       if (gauges && !started) {
         gauges.draw({
-          kn: 0, ft: 0, fpm: 0, thr: 0, pitch: 0, roll: 0, hdg: 0,
+          speedMs: 0, altM: 0, vyMs: 0, thr: 0, pitch: 0, roll: 0, hdg: 0,
         });
       }
     }

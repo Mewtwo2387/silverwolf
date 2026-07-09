@@ -410,6 +410,24 @@ export function PlaneSimPage(opts: {
             <button type="button" class="ps-diff-btn" data-count="5">5</button>
           </div>
           <p class="ps-hint">Bandit count applies when the fight (re)starts. Lower skill = tougher bullets for you, sloppier aim for them.</p>
+          <div class="ps-set-row">
+            <span class="ps-set-lbl">Speed</span>
+            <button type="button" class="ps-diff-btn" data-uspeed="kn">Knots</button>
+            <button type="button" class="ps-diff-btn" data-uspeed="mph">mph</button>
+            <button type="button" class="ps-diff-btn" data-uspeed="kmh">km/h</button>
+          </div>
+          <div class="ps-set-row">
+            <span class="ps-set-lbl">Altitude</span>
+            <button type="button" class="ps-diff-btn" data-ualt="ft">Feet</button>
+            <button type="button" class="ps-diff-btn" data-ualt="m">Metres</button>
+          </div>
+          <div class="ps-set-row">
+            <span class="ps-set-lbl">Distance</span>
+            <button type="button" class="ps-diff-btn" data-udist="m">m</button>
+            <button type="button" class="ps-diff-btn" data-udist="ft">ft</button>
+            <button type="button" class="ps-diff-btn" data-udist="km">km</button>
+            <button type="button" class="ps-diff-btn" data-udist="mi">mi</button>
+          </div>
           <button type="button" class="ps-resume-btn" id="ps-resume">Resume (ESC)</button>
         </div>
       </div>
