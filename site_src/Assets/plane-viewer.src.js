@@ -12,6 +12,7 @@ import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
 import {
   buildAircraft, makeTree, makeHangar, makeControlTower, applyControlSurfaces,
+  makeWindsock, makeFuelTank, makeBowser, makeNissenHut, PLANE_INFO, planeSpecs,
 } from './plane-sim-models.js';
 
 (() => {
@@ -136,20 +137,51 @@ import {
     });
   }
 
+  // Spec sheet for the currently-loaded aircraft: the same numbers the game
+  // flies (PLANE_INFO / planeSpecs), rendered as a top-speed + hull readout and
+  // a row of comparative rating bars. Hidden for scenery models.
+  const statsEl = document.getElementById('pv-stats');
+  function renderStats(planeType) {
+    if (!statsEl) return;
+    if (!planeType) { statsEl.style.display = 'none'; statsEl.innerHTML = ''; return; }
+    const info = PLANE_INFO[planeType];
+    const spec = planeSpecs(planeType);
+    const bars = Object.entries(spec.ratings).map(([k, v]) => {
+      const pct = Math.round(8 + v * 92); // never a bare empty bar
+      return `<div class="pv-stat-row"><span class="pv-stat-k">${k}</span>`
+        + `<span class="pv-stat-bar"><i style="width:${pct}%"></i></span></div>`;
+    }).join('');
+    statsEl.style.display = 'block';
+    statsEl.innerHTML = `<div class="pv-h">${info.label} — flight stats</div>`
+      + `<p class="pv-stat-desc">${info.desc}</p>`
+      + `<div class="pv-stat-nums"><span><b>${spec.topSpeedKn}</b> kn top</span>`
+      + `<span><b>${spec.hp}</b> hull</span></div>${bars}`;
+  }
+
   function load(kind) {
     if (current) { turntable.remove(current); disposeTree(current); current = null; currentSurf = null; }
     let sitOnGround = true;
+    let planeType = null;
     if (kind === 'aircraft' || kind === 'p51' || kind === 'zero') {
-      const type = kind === 'aircraft' ? 'spitfire' : kind;
-      const a = buildAircraft({ type });
-      current = a.group; currentSurf = a.surf; modelName = `plane-sim-${type}`;
+      planeType = kind === 'aircraft' ? 'spitfire' : kind;
+      const a = buildAircraft({ type: planeType });
+      current = a.group; currentSurf = a.surf; modelName = `plane-sim-${planeType}`;
     } else if (kind === 'tree') {
       current = makeTree(); modelName = 'plane-sim-tree';
     } else if (kind === 'hangar') {
       current = makeHangar(); modelName = 'plane-sim-hangar'; sitOnGround = false; // base already at y=0
+    } else if (kind === 'windsock') {
+      current = makeWindsock(); modelName = 'plane-sim-windsock';
+    } else if (kind === 'fueltank') {
+      current = makeFuelTank(); modelName = 'plane-sim-fuel-tank'; sitOnGround = false;
+    } else if (kind === 'bowser') {
+      current = makeBowser(); modelName = 'plane-sim-bowser';
+    } else if (kind === 'nissen') {
+      current = makeNissenHut(); modelName = 'plane-sim-nissen-hut'; sitOnGround = false;
     } else {
       current = makeControlTower(); modelName = 'plane-sim-control-tower';
     }
+    renderStats(planeType);
     turntable.rotation.y = 0;
     turntable.add(current);
     if (currentSurf) applyControlSurfaces(currentSurf, surfState);

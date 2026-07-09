@@ -372,6 +372,68 @@ function navLight(side, x, y, z) {
   return tip;
 }
 
+// ---- Flyable-aircraft catalogue: label, blurb and the flight/gun/hull stat
+//      block for each type. This is the SINGLE SOURCE OF TRUTH for the numbers
+//      — the game (plane-sim.src.js) flies them and the inspector
+//      (plane-viewer.src.js) shows them, so a tweak here changes both. Stats
+//      are pure data (no CFG dependency): thrust/lift/drag0 set speed & climb,
+//      pitch/roll rate + controlV set agility, hiSpeedStiff is the Zero's
+//      dive-control freeze, and hp/guns set durability & firepower. ----
+export const PLANE_INFO = {
+  spitfire: {
+    label: 'Spitfire',
+    desc: 'The balanced dogfighter: superb turn & climb, eight .303s — a fast, light-hitting hose of bullets.',
+    stats: {
+      thrust: 38, lift: 0.0054, drag0: 0.0013, pitchRate: 1.6, rollRate: 3.4, controlV: 42, hiSpeedStiff: 0,
+      hp: 100, fireInterval: 0.085, gunDmg: 3, gunSpread: 0.006, gunRange: 900,
+    },
+  },
+  p51: {
+    label: 'P-51 Mustang',
+    desc: 'Fastest in a straight line and a dive, rugged airframe — but heavy: wide turns that want airspeed. Six .50 cals hit hard.',
+    stats: {
+      thrust: 40, lift: 0.0048, drag0: 0.00105, pitchRate: 1.35, rollRate: 3.0, controlV: 48, hiSpeedStiff: 0,
+      hp: 115, fireInterval: 0.11, gunDmg: 5, gunSpread: 0.005, gunRange: 950,
+    },
+  },
+  zero: {
+    label: 'A6M Zero',
+    desc: 'Untouchable in a slow turn fight and stalls last — but slow, unarmoured, and the controls stiffen in a dive. Two 20 mm cannon: slow to fire, savage on hit.',
+    stats: {
+      thrust: 33, lift: 0.0063, drag0: 0.00165, pitchRate: 2.0, rollRate: 3.8, controlV: 34, hiSpeedStiff: 0.45,
+      hp: 70, fireInterval: 0.16, gunDmg: 8, gunSpread: 0.008, gunRange: 750,
+    },
+  },
+};
+
+// Derive display-friendly ratings from a raw stat block, normalised [0,1]
+// across the catalogue so the inspector can draw comparable bars, plus an
+// approximate top speed in knots (at top speed thrust accel balances parasitic
+// drag: v = sqrt(thrust / drag0)). Shared so the numbers can never drift from
+// what actually flies.
+export function planeSpecs(name) {
+  const all = Object.values(PLANE_INFO).map((p) => p.stats);
+  const span = (sel) => {
+    const vals = all.map(sel);
+    return [Math.min(...vals), Math.max(...vals)];
+  };
+  const norm = (v, [lo, hi]) => (hi === lo ? 1 : (v - lo) / (hi - lo));
+  const s = PLANE_INFO[name].stats;
+  const KTS = 1.94384;
+  const dps = (x) => x.gunDmg / x.fireInterval;
+  return {
+    topSpeedKn: Math.round(Math.sqrt(s.thrust / s.drag0) * KTS),
+    ratings: {
+      Speed: norm(Math.sqrt(s.thrust / s.drag0), span((x) => Math.sqrt(x.thrust / x.drag0))),
+      Turn: norm(s.pitchRate, span((x) => x.pitchRate)),
+      Roll: norm(s.rollRate, span((x) => x.rollRate)),
+      Toughness: norm(s.hp, span((x) => x.hp)),
+      Firepower: norm(dps(s), span(dps)),
+    },
+    hp: s.hp,
+  };
+}
+
 // ---- The aircraft builders. Each returns { group, surf }, where surf holds
 //      the SAME animatable handles (control-surface pivots, prop, blades,
 //      propDisc, gear) so applyControlSurfaces / setPropBlur drive any type.
@@ -1606,4 +1668,164 @@ export function makeControlTower() {
 
   setShadows(tower);
   return tower;
+}
+
+// A shared corrugated-iron texture (galvanised sheet: fluted highlights/shadows
+// running one way, faint lap seams the other). Used by the smaller huts.
+function corrugatedTexture(base, repeatU, repeatV) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, 128, 128);
+  for (let y = 0; y < 128; y += 6) {
+    const grd = ctx.createLinearGradient(0, y, 0, y + 6);
+    grd.addColorStop(0, 'rgba(255,255,255,0.16)');
+    grd.addColorStop(0.5, 'rgba(0,0,0,0.03)');
+    grd.addColorStop(1, 'rgba(0,0,0,0.22)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, y, 128, 6);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(repeatU, repeatV);
+  return tex;
+}
+
+// A windsock on a mast: a lattice-topped pole with a frame hoop and a striped
+// (orange/white) conical sock streaming downwind and drooping under its own
+// weight. `dir` (radians about Y) aims the tail; a light breeze droop is baked
+// in so it reads as fabric, not a rigid cone.
+export function makeWindsock() {
+  const g = new THREE.Group();
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0xcdd2d6, roughness: 0.6, metalness: 0.4 });
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 7, 8), poleMat);
+  pole.position.y = 3.5; g.add(pole);
+  const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.04, 6, 16), poleMat);
+  hoop.rotation.y = Math.PI / 2; hoop.position.set(0, 6.9, 0.45); g.add(hoop);
+  // Sock: 5 frustums streaming along +Z, alternating orange/white, tapering and
+  // drooping. Each segment is a short open cone; a small pitch per segment sags
+  // the tail like a light-wind sock.
+  const orange = new THREE.MeshStandardMaterial({ color: 0xe06a1e, roughness: 0.8, side: THREE.DoubleSide });
+  const white = new THREE.MeshStandardMaterial({ color: 0xe8e8ea, roughness: 0.8, side: THREE.DoubleSide });
+  const sock = new THREE.Group();
+  sock.position.set(0, 6.9, 0.45);
+  let z = 0; let r0 = 0.4; let pitch = 0;
+  for (let i = 0; i < 5; i++) {
+    const r1 = r0 * 0.82;
+    const len = 0.62;
+    pitch += 0.12; // progressive droop
+    z += len * Math.cos(pitch);
+    const seg = new THREE.Mesh(
+      new THREE.CylinderGeometry(r1, r0, len, 14, 1, true),
+      i % 2 ? white : orange,
+    );
+    seg.rotation.x = Math.PI / 2; // axis along Z
+    seg.position.set(0, -Math.sin(pitch) * (i * 0.16), 0.31 + (z - len / 2));
+    sock.add(seg);
+    r0 = r1;
+  }
+  g.add(sock);
+  setShadows(g);
+  return g;
+}
+
+// A bulk aviation-fuel installation: a vertical steel tank sitting inside a low
+// earth/concrete blast bund (a ring wall that would contain a spill), with a
+// domed top, a filler stack and an access ladder — the kind of dispersed fuel
+// store a WWII airfield kept away from the hangars.
+export function makeFuelTank() {
+  const g = new THREE.Group();
+  const bundMat = new THREE.MeshStandardMaterial({ color: 0x8a8168, roughness: 1 });
+  // Low metalness so the tank reads as pale painted steel, not a near-black
+  // mirror (no environment map in the scene to reflect).
+  const steel = new THREE.MeshStandardMaterial({ color: 0x9aa39c, roughness: 0.62, metalness: 0.15 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x4a4e52, roughness: 0.7, metalness: 0.2 });
+  // Containment bund: a low open ring wall + a floor pad.
+  const pad = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.4, 0.2, 24), bundMat);
+  pad.position.y = 0.1; g.add(pad);
+  const wall = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.5, 1.1, 24, 1, true), bundMat);
+  wall.position.y = 0.55; g.add(wall);
+  // The tank.
+  const tank = new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.1, 4.2, 24), steel);
+  tank.position.y = 2.4; g.add(tank);
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(2.1, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), steel);
+  dome.position.y = 4.5; g.add(dome);
+  const band = new THREE.Mesh(new THREE.TorusGeometry(2.11, 0.06, 6, 24), dark);
+  band.rotation.x = Math.PI / 2; band.position.y = 2.4; g.add(band);
+  // Filler stack + ladder.
+  const stack = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 1.0, 8), dark);
+  stack.position.set(0, 5.3, 0); g.add(stack);
+  const ladder = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4.4, 0.08), dark);
+  ladder.position.set(0, 2.4, 2.14); g.add(ladder);
+  setShadows(g);
+  return g;
+}
+
+// A WWII refuelling bowser (fuel tanker): a boxy cab, a horizontal cylindrical
+// tank on the flatbed, a hose reel and six wheels — RAF blue-grey. Local
+// forward is -Z (nose), so it parks like the aircraft.
+export function makeBowser() {
+  const g = new THREE.Group();
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x55645b, roughness: 0.75, metalness: 0.12 });
+  const tankMat = new THREE.MeshStandardMaterial({ color: 0x859089, roughness: 0.6, metalness: 0.15 });
+  const tyre = new THREE.MeshStandardMaterial({ color: 0x14151a, roughness: 0.9 });
+  const glass = new THREE.MeshStandardMaterial({ color: 0x9fbccb, roughness: 0.2, metalness: 0.3 });
+  const chassis = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.4, 6.2), bodyMat);
+  chassis.position.y = 0.85; g.add(chassis);
+  // Cab up front (-Z).
+  const cab = new THREE.Mesh(new THREE.BoxGeometry(1.9, 1.3, 1.5), bodyMat);
+  cab.position.set(0, 1.55, -2.3); g.add(cab);
+  const wind = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.6, 0.08), glass);
+  wind.position.set(0, 1.85, -3.02); g.add(wind);
+  // Cylindrical fuel tank on the bed.
+  const tank = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 3.4, 20), tankMat);
+  tank.rotation.x = Math.PI / 2; tank.position.set(0, 1.55, 0.9); g.add(tank);
+  for (const ry of [-0.4, 0.5, 1.4]) { // stiffening bands
+    const b = new THREE.Mesh(new THREE.TorusGeometry(1.01, 0.05, 6, 20), bodyMat);
+    b.position.set(0, 1.55, ry); g.add(b);
+  }
+  // Six wheels.
+  for (const sx of [-1, 1]) {
+    for (const wz of [-2.1, 0.4, 1.6]) {
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.35, 14), tyre);
+      w.rotation.z = Math.PI / 2; w.position.set(sx * 0.95, 0.5, wz); g.add(w);
+    }
+  }
+  setShadows(g);
+  return g;
+}
+
+// A Nissen hut: the ubiquitous small corrugated-iron half-cylinder that housed
+// airmen, stores and offices on every WWII RAF station. A brick-coloured end
+// wall with a door + window closes the -Z end; the +Z end is a plain gable.
+// Axis along Z, base at y=0. `len` lets a row vary.
+export function makeNissenHut(len = 9) {
+  const g = new THREE.Group();
+  const R = 2.6;
+  const skin = new THREE.MeshStandardMaterial({
+    map: corrugatedTexture('#8a8f8b', 6, 3), roughness: 0.8, metalness: 0.3, side: THREE.DoubleSide,
+  });
+  const shell = new THREE.Mesh(new THREE.CylinderGeometry(R, R, len, 20, 1, true, 0, Math.PI), skin);
+  shell.rotation.x = Math.PI / 2; // axis Y -> Z; the 0..PI half arches over +Y
+  shell.rotation.z = 0;
+  g.add(shell);
+  const endMat = new THREE.MeshStandardMaterial({ color: 0x9c6a4e, roughness: 0.95 });
+  const doorMat = new THREE.MeshStandardMaterial({ color: 0x33403a, roughness: 0.8 });
+  const winMat = new THREE.MeshStandardMaterial({ color: 0x9fbccb, roughness: 0.25, metalness: 0.3 });
+  for (const sz of [-1, 1]) {
+    const gable = new THREE.Mesh(new THREE.CircleGeometry(R - 0.03, 20, 0, Math.PI), endMat);
+    gable.rotation.z = -Math.PI / 2; // flat disc facing along Z
+    if (sz < 0) gable.rotation.y = Math.PI;
+    gable.position.z = sz * (len / 2 - 0.02);
+    g.add(gable);
+  }
+  // Door + window on the -Z end.
+  const door = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.9, 0.1), doorMat);
+  door.position.set(-0.7, 0.95, -len / 2 - 0.02); g.add(door);
+  const win = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.7, 0.08), winMat);
+  win.position.set(0.75, 1.3, -len / 2 - 0.02); g.add(win);
+  setShadows(g);
+  return g;
 }

@@ -74,6 +74,16 @@ export function PlaneViewerPage(opts: {
   .pv-wide { width: 100%; margin-top: 0.35rem; }
 
   .pv-dims { margin-top: 0.5rem; font-size: 0.7rem; color: var(--accent-light, #7fdfff); }
+
+  /* Aircraft spec sheet (shown only for the flyable models). */
+  #pv-stats { display: none; }
+  .pv-stat-desc { margin: 0 0 0.55rem; font-size: 0.72rem; line-height: 1.4; color: var(--fog-300, #b8c6cf); }
+  .pv-stat-nums { display: flex; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.55rem; font-size: 0.74rem; color: var(--fog-200, #dfe9ef); }
+  .pv-stat-nums b { color: var(--accent-light, #7fdfff); font-size: 0.95rem; }
+  .pv-stat-row { display: flex; align-items: center; gap: 0.5rem; margin: 0.28rem 0; }
+  .pv-stat-k { flex: 0 0 5.2rem; font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fog-400, #8aa0ad); }
+  .pv-stat-bar { flex: 1; height: 7px; border-radius: 4px; overflow: hidden; background: color-mix(in oklab, var(--ink-700, #1a2230) 80%, transparent); }
+  .pv-stat-bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, color-mix(in oklab, var(--accent, #22d3ff) 55%, transparent), var(--accent, #22d3ff)); }
   .pv-hint { position: absolute; bottom: 0.8rem; left: 50%; transform: translateX(-50%); z-index: 5;
     color: var(--fog-400, #8aa0ad); font-size: 0.74rem; font-family: 'JetBrains Mono', monospace; pointer-events: none; }
 
@@ -105,12 +115,18 @@ export function PlaneViewerPage(opts: {
             <button type="button" data-model="aircraft" class="active">Spitfire</button>
             <button type="button" data-model="p51">P-51</button>
             <button type="button" data-model="zero">Zero</button>
-            <button type="button" data-model="tree">Tree</button>
             <button type="button" data-model="hangar">Hangar</button>
             <button type="button" data-model="tower">Tower</button>
+            <button type="button" data-model="nissen">Nissen hut</button>
+            <button type="button" data-model="fueltank">Fuel tank</button>
+            <button type="button" data-model="bowser">Bowser</button>
+            <button type="button" data-model="windsock">Windsock</button>
+            <button type="button" data-model="tree">Tree</button>
           </div>
           <div class="pv-dims" id="pv-dims">—</div>
         </div>
+
+        <div class="pv-group" id="pv-stats"></div>
 
         <div class="pv-group">
           <div class="pv-h">View</div>

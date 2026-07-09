@@ -27,6 +27,7 @@
 import * as THREE from 'three';
 import {
   buildAircraft, applyControlSurfaces, setPropBlur, makeHangar, makeControlTower,
+  makeWindsock, makeFuelTank, makeBowser, makeNissenHut, PLANE_INFO,
 } from './plane-sim-models.js';
 import {
   TERRAIN, terrainHeight, forestMask, buildTerrain, buildWater, smoothstep, fbm,
@@ -107,39 +108,15 @@ import {
   const FT = 3.28084; // m -> feet
   const clamp = (v, lo, hi) => (v < lo ? lo : (v > hi ? hi : v));
 
-  // ---- Flyable aircraft: each type's quirks are real history expressed
-  //      through the SAME flight model (the CFG numbers above are the
-  //      Spitfire baseline). Top speed ≈ sqrt(thrust/drag0); turn is
+  // ---- Flyable aircraft: the catalogue (label / blurb / stat block) lives in
+  //      plane-sim-models.js (PLANE_INFO) so the game and the inspector share
+  //      one source of truth. Each type's quirks are real history expressed
+  //      through the SAME flight model: top speed ≈ sqrt(thrust/drag0); turn is
   //      pitchRate bound by lift/stall; controlV is the airspeed where the
   //      controls reach full authority; hiSpeedStiff is the Zero's infamous
-  //      control freeze-up in a dive (fraction of authority lost by ~300 kn).
-  //      Both the player AND the bandits fly with their type's stats. ----
-  const PLANE_TYPES = {
-    spitfire: {
-      label: 'SPITFIRE',
-      desc: 'The balanced dogfighter: superb turn & climb, eight .303s — a fast, light-hitting hose of bullets.',
-      stats: {
-        thrust: 38, lift: 0.0054, drag0: 0.0013, pitchRate: 1.6, rollRate: 3.4, controlV: 42, hiSpeedStiff: 0,
-        hp: 100, fireInterval: 0.085, gunDmg: 3, gunSpread: 0.006, gunRange: 900,
-      },
-    },
-    p51: {
-      label: 'P-51 MUSTANG',
-      desc: 'Fastest in a straight line and a dive, rugged airframe — but heavy: wide turns that want airspeed. Six .50 cals hit hard.',
-      stats: {
-        thrust: 40, lift: 0.0048, drag0: 0.00105, pitchRate: 1.35, rollRate: 3.0, controlV: 48, hiSpeedStiff: 0,
-        hp: 115, fireInterval: 0.11, gunDmg: 5, gunSpread: 0.005, gunRange: 950,
-      },
-    },
-    zero: {
-      label: 'A6M ZERO',
-      desc: 'Untouchable in a slow turn fight and stalls last — but slow, unarmoured, and the controls stiffen in a dive. Two 20 mm cannon: slow to fire, savage on hit.',
-      stats: {
-        thrust: 33, lift: 0.0063, drag0: 0.00165, pitchRate: 2.0, rollRate: 3.8, controlV: 34, hiSpeedStiff: 0.45,
-        hp: 70, fireInterval: 0.16, gunDmg: 8, gunSpread: 0.008, gunRange: 750,
-      },
-    },
-  };
+  //      control freeze-up in a dive. Both the player AND the bandits fly with
+  //      their type's stats. ----
+  const PLANE_TYPES = PLANE_INFO;
   const PLANE_ORDER = ['spitfire', 'p51', 'zero'];
   const validPlane = (n) => Object.prototype.hasOwnProperty.call(PLANE_TYPES, n);
   // Control stiffening with speed (the Zero quirk): fraction of authority kept.
@@ -264,6 +241,25 @@ import {
       for (let i = -4; i <= 4; i++) flat(new THREE.PlaneGeometry(2.2, 9), i * 3.2, end * (CFG.RUNWAY_LEN / 2 - 9));
     }
 
+    // ---- Paved taxiways: a perimeter track down the west side linking the two
+    //      runway thresholds, with spur links out to the hangar apron. Flat
+    //      tarmac like the runway (receive shadow only). ----
+    const taxiMat = new THREE.MeshStandardMaterial({ color: 0x33373f, roughness: 0.95 });
+    const taxi = (w, l, x, z, rot = 0) => {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, l), taxiMat);
+      m.rotation.x = -Math.PI / 2; m.rotation.z = rot;
+      m.position.set(x, 0.13, z); m.receiveShadow = true;
+      markings.add(m);
+    };
+    const TAXI_X = -30; // perimeter track centreline, just west of the runway
+    taxi(11, CFG.RUNWAY_LEN - 40, TAXI_X, 0); // main perimeter track (N-S)
+    for (const z of [40, -34]) taxi(30, 10, (TAXI_X - 42) / 2, z); // spurs to the hangars
+    for (const end of [-1, 1]) { // links from the track to each runway threshold
+      taxi(Math.abs(TAXI_X) + 4, 11, TAXI_X / 2 + 2, end * (CFG.RUNWAY_LEN / 2 - 30));
+    }
+    // Hangar apron pad.
+    taxi(50, 130, -60, 3);
+
     const tower = makeControlTower();
     tower.position.set(46, 0, 150);
     field.add(tower);
@@ -273,6 +269,87 @@ import {
       hut.position.set(-56, 0, 40 - i * 74);
       field.add(hut);
     }
+
+    // ---- A row of Nissen huts (accommodation / stores) behind the hangars. ----
+    for (let i = 0; i < 4; i++) {
+      const hut = makeNissenHut(8 + (i % 2) * 3);
+      hut.position.set(-92, 0, -45 + i * 30);
+      hut.rotation.y = Math.PI / 2; // ridge line runs across, doors face the apron
+      field.add(hut);
+    }
+
+    // ---- Dispersed bulk-fuel installation, kept well clear of the hangars in
+    //      the SE corner, plus a bowser parked on the apron. ----
+    for (const [fx, fz] of [[86, -60], [98, -60], [92, -74]]) {
+      const tank = makeFuelTank();
+      tank.position.set(fx, 0, fz);
+      field.add(tank);
+    }
+    const bowser = makeBowser();
+    bowser.position.set(-40, 0, 70);
+    bowser.rotation.y = 1.1;
+    field.add(bowser);
+
+    // ---- Windsocks by each runway threshold (offset to the east side). ----
+    for (const wz of [CFG.RUNWAY_LEN / 2 - 30, -(CFG.RUNWAY_LEN / 2 - 30)]) {
+      const sock = makeWindsock();
+      sock.position.set(34, 0, wz);
+      sock.rotation.y = Math.PI * 0.15;
+      field.add(sock);
+    }
+
+    // ---- Perimeter security fence around the technical site (hangars, huts,
+    //      fuel), with a gate gap on the runway side for the taxi spurs. Chain
+    //      link on posts: one alpha-textured panel per run + instanced posts. ----
+    (function fenceCompound() {
+      const lc = document.createElement('canvas');
+      lc.width = lc.height = 64;
+      const lx = lc.getContext('2d');
+      lx.strokeStyle = 'rgba(196,201,206,0.85)';
+      lx.lineWidth = 2;
+      for (let o = -64; o < 64; o += 12) { // diagonal chain-link diamonds
+        lx.beginPath(); lx.moveTo(o, 0); lx.lineTo(o + 64, 64); lx.stroke();
+        lx.beginPath(); lx.moveTo(o + 64, 0); lx.lineTo(o, 64); lx.stroke();
+      }
+      const linkTex = new THREE.CanvasTexture(lc);
+      linkTex.colorSpace = THREE.SRGBColorSpace;
+      linkTex.wrapS = linkTex.wrapT = THREE.RepeatWrapping;
+      const FH = 2.3; // fence height
+      const postMat = new THREE.MeshStandardMaterial({ color: 0x8b9095, roughness: 0.6, metalness: 0.4 });
+      const posts = [];
+      const runFence = (x1, z1, x2, z2) => {
+        const dx = x2 - x1; const dz = z2 - z1;
+        const len = Math.hypot(dx, dz);
+        const mat = new THREE.MeshStandardMaterial({
+          map: linkTex.clone(), transparent: true, alphaTest: 0.35, side: THREE.DoubleSide,
+          roughness: 0.8, metalness: 0.3, color: 0xd2d6da,
+        });
+        mat.map.wrapS = mat.map.wrapT = THREE.RepeatWrapping;
+        mat.map.repeat.set(len / 2, FH / 2);
+        const panel = new THREE.Mesh(new THREE.PlaneGeometry(len, FH), mat);
+        panel.position.set((x1 + x2) / 2, FH / 2, (z1 + z2) / 2);
+        panel.rotation.y = Math.atan2(dx, dz); // width axis along the run
+        field.add(panel);
+        const n = Math.max(2, Math.round(len / 4));
+        for (let i = 0; i <= n; i++) posts.push([x1 + (dx * i) / n, z1 + (dz * i) / n]);
+      };
+      const W = -104; const E = -24; const N = 108; const S = -96;
+      runFence(W, S, W, N); // west
+      runFence(W, N, E, N); // north
+      runFence(W, S, E, S); // south
+      runFence(E, S, E, -18); // east (lower) — gate gap between -18 and 22
+      runFence(E, 22, E, N); // east (upper)
+      const postGeo = new THREE.CylinderGeometry(0.09, 0.09, FH + 0.3, 6);
+      postGeo.translate(0, (FH + 0.3) / 2, 0);
+      const postMesh = new THREE.InstancedMesh(postGeo, postMat, posts.length);
+      const pm = new THREE.Matrix4();
+      for (let i = 0; i < posts.length; i++) {
+        pm.makeTranslation(posts[i][0], 0, posts[i][1]);
+        postMesh.setMatrixAt(i, pm);
+      }
+      postMesh.castShadow = true;
+      field.add(postMesh);
+    }());
 
     // Parked aircraft — one of each flyable type: a Spitfire and a P-51 tucked
     // inside the hangars (nose out the +X door, wheels on the 0.14 m slab) and
@@ -538,6 +615,7 @@ import {
   let playerHP = ac.hp;
   let kills = 0;
   let won = false;
+  let engageStart = 0; // performance.now() at launch/respawn -> engagement clock
   let lockTarget = false; // is an enemy currently in the gun line?
   const enemies = []; // populated by spawnEnemies()
 
@@ -1035,7 +1113,7 @@ import {
     }
     const info = PLANE_TYPES[planeName];
     for (const el of document.querySelectorAll('.ps-plane-desc')) el.textContent = info.desc;
-    if (hud.plane) hud.plane.textContent = info.label;
+    if (hud.plane) hud.plane.textContent = info.label.toUpperCase();
   }
 
   function stepEnemy(e, dt, canFire) {
@@ -1223,12 +1301,48 @@ import {
     updateCombatHUD();
   }
 
+  // The end screen: a victory / defeat card with a scoreboard (aircraft flown,
+  // bandits downed, hull left, skill, time). Click it or press SPACE to fly
+  // again. Replaces the old one-line warn banner.
+  function fmtTime(ms) {
+    const s = Math.max(0, Math.round(ms / 1000));
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }
+  function showEnd(win, reason) {
+    const ov = document.getElementById('ps-end');
+    if (hud.warn) hud.warn.classList.remove('ps-show'); // the card supersedes the banner
+    if (!ov) return;
+    const el = (id) => document.getElementById(id);
+    ov.classList.remove('ps-hidden', 'ps-win', 'ps-lose');
+    ov.classList.add(win ? 'ps-win' : 'ps-lose');
+    if (el('ps-end-icon')) el('ps-end-icon').textContent = win ? '🏆' : '💥';
+    if (el('ps-end-title')) el('ps-end-title').textContent = win ? 'Victory' : 'Shot down';
+    if (el('ps-end-sub')) {
+      el('ps-end-sub').textContent = win
+        ? `All ${activeCount} bandit${activeCount > 1 ? 's' : ''} cleared from the valley.`
+        : reason;
+    }
+    const stats = el('ps-end-stats');
+    if (stats) {
+      const hullPct = Math.max(0, Math.round((playerHP / ac.hp) * 100));
+      const rows = [
+        ['Aircraft', PLANE_TYPES[planeName].label],
+        ['Bandits downed', `${kills} / ${activeCount}`],
+        ['Hull remaining', `${hullPct}%`],
+        ['Skill', diff.label],
+        ['Time', fmtTime(engageStart ? performance.now() - engageStart : 0)],
+      ];
+      stats.innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+    }
+  }
+  function hideEnd() {
+    const ov = document.getElementById('ps-end');
+    if (ov) ov.classList.add('ps-hidden');
+  }
+
   function victory() {
     won = true;
-    if (hud.warn) {
-      hud.warn.textContent = '🏆 All bandits downed — press SPACE to fly again';
-      hud.warn.classList.add('ps-show');
-    }
+    showEnd(true);
   }
 
   // ======================================================== INPUT =========
@@ -1286,9 +1400,15 @@ import {
   function start() {
     if (started) return;
     started = true;
+    engageStart = performance.now(); // start the engagement clock at launch
     audio.ensure(); // user gesture -> AudioContext allowed
     if (overlay) overlay.classList.add('ps-hidden');
   }
+
+  // Fly-again from the end screen (button + click-anywhere), same as SPACE.
+  const endOverlay = document.getElementById('ps-end');
+  document.getElementById('ps-end-again')?.addEventListener('click', (ev) => { ev.stopPropagation(); respawn(); });
+  endOverlay?.addEventListener('click', () => respawn());
 
   window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
@@ -1782,8 +1902,10 @@ import {
     gearDown = true;
     playerHP = ac.hp;
     kills = 0;
+    engageStart = performance.now(); // restart the engagement clock
     resetEnemies();
     updateCombatHUD();
+    hideEnd();
     if (hud.warn) { hud.warn.textContent = ''; hud.warn.classList.remove('ps-show'); }
   }
 
@@ -2018,10 +2140,7 @@ import {
         (Math.random() - 0.5) * 6, Math.random() * 4, (Math.random() - 0.5) * 6,
       )), 4 + Math.random() * 3, 1.4);
     }
-    if (hud.warn) {
-      hud.warn.textContent = `💥 ${reason} — press SPACE to respawn`;
-      hud.warn.classList.add('ps-show');
-    }
+    showEnd(false, reason);
   }
 
   // ======================================================== CAMERA ========

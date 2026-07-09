@@ -217,6 +217,26 @@ export function PlaneSimPage(opts: {
   }
   .ps-hint { margin: 0 0 0.2rem; font-size: 0.74rem; line-height: 1.4; color: var(--fog-400, #8aa0ad); }
 
+  /* End screen (victory / defeat): same card chrome, click or SPACE to fly again. */
+  #ps-end {
+    position: absolute; inset: 0; z-index: 6; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 50% 40%, rgba(6, 8, 15, 0.6), rgba(6, 8, 15, 0.92));
+  }
+  #ps-end.ps-hidden { display: none; }
+  #ps-end .ps-card { pointer-events: auto; max-width: 460px; }
+  #ps-end.ps-win .ps-card { border-color: color-mix(in oklab, #ffd24a 55%, transparent); box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 40px rgba(255, 210, 74, 0.18); }
+  #ps-end.ps-lose .ps-card { border-color: color-mix(in oklab, #ff5d6c 50%, transparent); box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 40px rgba(255, 93, 108, 0.16); }
+  .ps-end-icon { font-size: 2.6rem; line-height: 1; margin-bottom: 0.3rem; }
+  #ps-end.ps-win #ps-end-title { color: #ffd24a; }
+  #ps-end.ps-lose #ps-end-title { color: #ff5d6c; }
+  .ps-end-stats {
+    display: grid; grid-template-columns: auto auto; gap: 0.35rem 1.2rem; justify-content: center;
+    margin: 0.2rem auto 1.1rem; font-size: 0.86rem;
+  }
+  .ps-end-stats dt { color: var(--fog-400, #8aa0ad); text-align: right; letter-spacing: 0.04em; }
+  .ps-end-stats dd { margin: 0; color: var(--fog-100, #eef4f7); font-weight: 700; text-align: left; }
+
   /* Pause menu (ESC): same chrome as the start overlay, hosts the settings. */
   #ps-pause {
     position: absolute; inset: 0; z-index: 5; cursor: auto;
@@ -340,6 +360,17 @@ export function PlaneSimPage(opts: {
           </div>
           <p class="ps-hint">Bandits fly a mix of all three types with their real quirks. Lower skill also means <strong>your guns hit harder</strong>. They turn-fight but <strong>break off</strong> if you press them. Switch skill anytime with <span class="ps-key">1</span> <span class="ps-key">2</span> <span class="ps-key">3</span>.</p>
           <div class="ps-go">▸ Click to fly</div>
+        </div>
+      </div>
+
+      <!-- End screen (victory / shot-down / crash) -->
+      <div id="ps-end" class="ps-hidden">
+        <div class="ps-card">
+          <div id="ps-end-icon" class="ps-end-icon">🏆</div>
+          <h1 id="ps-end-title">Victory</h1>
+          <p class="ps-sub" id="ps-end-sub">All bandits downed.</p>
+          <dl class="ps-end-stats" id="ps-end-stats"></dl>
+          <button type="button" class="ps-resume-btn" id="ps-end-again">Fly again (Space)</button>
         </div>
       </div>
 
