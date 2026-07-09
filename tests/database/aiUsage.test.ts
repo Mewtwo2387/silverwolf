@@ -138,6 +138,58 @@ describe('AiUsageModel', () => {
     expect(status.limit).toBe(WEEKLY_LIMIT);
   });
 
+  test('getResetAt returns null when under the limit', async () => {
+    await aiUsageModel.addUsage('u1', 'test-model', 1000, 1000);
+    expect(await aiUsageModel.getResetAt('u1', 'daily')).toBeNull();
+    expect(await aiUsageModel.getResetAt('u1', 'weekly')).toBeNull();
+  });
+
+  test('getResetAt (daily) clears when the oldest over-budget entry ages out', async () => {
+    // 20h ago: 200k. Once this drops out (at 20h-ago + 24h = ~4h from now),
+    // the remaining 100k is under the 250k daily limit.
+    await db.executeQuery(`
+      INSERT INTO AiUsage (user_id, model, tokens_prompt, tokens_completion, cost, created_at)
+      VALUES (?, ?, ?, ?, ?, datetime('now', '-20 hours'))
+    `, ['u1', 'test-model', 200000, 0, 0]);
+    // 5h ago: 100k (stays in the window past the reset).
+    await db.executeQuery(`
+      INSERT INTO AiUsage (user_id, model, tokens_prompt, tokens_completion, cost, created_at)
+      VALUES (?, ?, ?, ?, ?, datetime('now', '-5 hours'))
+    `, ['u1', 'test-model', 100000, 0, 0]);
+
+    expect(await aiUsageModel.getDailyUsage('u1')).toBe(300000);
+
+    const resetAt = await aiUsageModel.getResetAt('u1', 'daily');
+    expect(resetAt).not.toBeNull();
+    // Expected ≈ now + 4h (20h-ago entry + 24h window).
+    const expected = Date.now() + 4 * 60 * 60 * 1000;
+    expect(Math.abs((resetAt as Date).getTime() - expected)).toBeLessThan(2 * 60 * 1000);
+  });
+
+  test('getResetAt (weekly) clears when the oldest over-budget entry ages out', async () => {
+    // Spread 1.05M across the week without tripping the daily limit; weekly is
+    // over by 50k, so the limit lifts once the oldest (6d-ago) entry drops out
+    // at 6d-ago + 7d = ~1 day from now.
+    for (const [ago, tokens] of [
+      ['-6 days', 200000], ['-5 days', 200000], ['-4 days', 200000],
+      ['-3 days', 200000], ['-2 days', 150000], ['-30 hours', 100000],
+    ] as const) {
+      // eslint-disable-next-line no-await-in-loop
+      await db.executeQuery(`
+        INSERT INTO AiUsage (user_id, model, tokens_prompt, tokens_completion, cost, created_at)
+        VALUES (?, ?, ?, ?, ?, datetime('now', ?))
+      `, ['u1', 'test-model', tokens, 0, 0, ago]);
+    }
+
+    expect(await aiUsageModel.getWeeklyUsage('u1')).toBe(1050000);
+
+    const resetAt = await aiUsageModel.getResetAt('u1', 'weekly');
+    expect(resetAt).not.toBeNull();
+    // Expected ≈ now + 1 day (6d-ago entry + 7d window).
+    const expected = Date.now() + 24 * 60 * 60 * 1000;
+    expect(Math.abs((resetAt as Date).getTime() - expected)).toBeLessThan(2 * 60 * 1000);
+  });
+
   test('bypasses rate limit checks for developers', async () => {
     const devId = process.env.ALLOWED_USERS?.split(',')[0];
     if (!devId) {

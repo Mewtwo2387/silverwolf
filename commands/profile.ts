@@ -7,6 +7,7 @@ import {
   getNuggiePokeMultiplier, getNuggieNuggieMultiplier,
 } from '../utils/ascensionupgrades';
 import { DAILY_LIMIT, WEEKLY_LIMIT } from '../utils/ai';
+import { formatResetTimestamp } from '../utils/discordRateLimit';
 import {
   getMultiplierAmountInfo,
   getMultiplierChanceInfo,
@@ -335,6 +336,11 @@ ${getNuggieNuggieMultiplierInfo(user.nuggieNuggieMultiplierLevel, INFO_LEVEL.THI
       ? `🛑 **Rate Limited** (${status.reason === 'daily' ? 'Daily' : 'Weekly'} limit exceeded)`
       : '✅ **Active** (Pool is cool)';
 
+    const resetAt = status.limited && status.reason
+      ? await this.client.db.aiUsage.getResetAt(userId, status.reason)
+      : null;
+    const resetLine = resetAt ? `\n**Cools Down:** ${formatResetTimestamp(resetAt)}` : '';
+
     return new Discord.EmbedBuilder()
       .setColor('#0099ff')
       .setTitle(`${username}'s Profile`)
@@ -343,7 +349,7 @@ ${getNuggieNuggieMultiplierInfo(user.nuggieNuggieMultiplierLevel, INFO_LEVEL.THI
 ## AI Usage
 **Daily Usage (24h):** ${dailyUsage.toLocaleString()} / ${DAILY_LIMIT.toLocaleString()} tokens
 **Weekly Usage (7d):** ${weeklyUsage.toLocaleString()} / ${WEEKLY_LIMIT.toLocaleString()} tokens
-**Status:** ${statusText}
+**Status:** ${statusText}${resetLine}
       `)
       .setTimestamp();
   }

@@ -49,6 +49,30 @@ class AiUsageModel {
     return row.total ?? 0;
   }
 
+  /**
+   * When a rolling-window limit will clear for a user. Usage is a trailing sum
+   * (24h / 7d), so the limit lifts as the oldest entries age out — this returns
+   * the moment the windowed sum first drops back below the limit, or `null` if
+   * the user is not currently over that limit.
+   */
+  async getResetAt(userId: string, reason: 'daily' | 'weekly'): Promise<Date | null> {
+    const usage = reason === 'daily'
+      ? await this.getDailyUsage(userId)
+      : await this.getWeeklyUsage(userId);
+    const limit = reason === 'daily' ? DAILY_LIMIT : WEEKLY_LIMIT;
+    if (usage < limit) return null;
+
+    const query = reason === 'daily'
+      ? aiUsageQueries.GET_DAILY_RESET_AT
+      : aiUsageQueries.GET_WEEKLY_RESET_AT;
+    const row = await this.db.executeSelectQuery(query, [userId, usage - limit]);
+    if (!row?.resetAt) return null;
+
+    // SQLite datetime() returns UTC "YYYY-MM-DD HH:MM:SS"; make it ISO-parseable.
+    const date = new Date(`${String(row.resetAt).replace(' ', 'T')}Z`);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
   async checkRateLimit(userId: string): Promise<{
     limited: boolean;
     reason?: 'daily' | 'weekly';

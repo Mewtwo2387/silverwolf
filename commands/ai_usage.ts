@@ -1,6 +1,7 @@
 import * as Discord from 'discord.js';
 import { Command } from './classes/Command';
 import { DAILY_LIMIT, WEEKLY_LIMIT } from '../utils/ai';
+import { formatResetTimestamp } from '../utils/discordRateLimit';
 
 function makeProgressBar(value: number, total: number, size = 15): string {
   const percentage = Math.min(Math.max(value / total, 0), 1);
@@ -15,7 +16,6 @@ class AiUsageSubcommand extends Command {
   constructor(client: any) {
     super(client, 'usage', 'View your AI token usage and limits', [], {
       isSubcommandOf: 'ai',
-      ephemeral: true,
       blame: 'xei',
     });
   }
@@ -36,6 +36,11 @@ class AiUsageSubcommand extends Command {
         ? `🛑 **Rate Limited** (${status.reason === 'daily' ? 'Daily' : 'Weekly'} limit exceeded)`
         : '✅ **Active** (Pool is cool)';
 
+      const resetAt = status.limited && status.reason
+        ? await this.client.db.aiUsage.getResetAt(userId, status.reason)
+        : null;
+      const resetLine = resetAt ? `\n**Cools Down:** ${formatResetTimestamp(resetAt)}` : '';
+
       const embed = new Discord.EmbedBuilder()
         .setColor('#0099ff')
         .setTitle('🤖 Your AI Token Usage')
@@ -49,7 +54,7 @@ ${dailyBar}
 ${weeklyUsage.toLocaleString()} / ${WEEKLY_LIMIT.toLocaleString()} tokens
 ${weeklyBar}
 
-**Status:** ${statusText}
+**Status:** ${statusText}${resetLine}
         `)
         .setFooter({ text: 'Note: AI roleplay cost is shared among active users in the chat.' })
         .setTimestamp();
