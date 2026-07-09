@@ -277,6 +277,7 @@ export function PlaneSimPage(opts: {
           <div class="ps-val"><span id="ps-kills">0 / 3</span></div>
           <div class="ps-hp-track"><div id="ps-hp-fill"></div></div>
           <div class="ps-unit">HULL <span id="ps-hp">100</span> &middot; <span id="ps-diff">REGULAR</span></div>
+          <div class="ps-unit"><span id="ps-plane-label">SPITFIRE</span></div>
         </div>
 
         <!-- Analogue instrument cluster (bottom-centre), drawn by the game -->
@@ -317,6 +318,13 @@ export function PlaneSimPage(opts: {
             <dt><span class="ps-key">Space</span></dt><dd>Restart after a crash, shoot-down or win</dd>
           </dl>
           <div class="ps-diff-row">
+            <span class="ps-diff-lbl">Aircraft</span>
+            <button type="button" class="ps-diff-btn" data-plane="spitfire">Spitfire</button>
+            <button type="button" class="ps-diff-btn" data-plane="p51">P-51 Mustang</button>
+            <button type="button" class="ps-diff-btn" data-plane="zero">A6M Zero</button>
+          </div>
+          <p class="ps-hint ps-plane-desc"></p>
+          <div class="ps-diff-row">
             <span class="ps-diff-lbl">Bandit skill</span>
             <button type="button" class="ps-diff-btn" data-diff="easy">Rookie</button>
             <button type="button" class="ps-diff-btn" data-diff="normal">Regular</button>
@@ -330,7 +338,7 @@ export function PlaneSimPage(opts: {
             <button type="button" class="ps-diff-btn" data-count="4">4</button>
             <button type="button" class="ps-diff-btn" data-count="5">5</button>
           </div>
-          <p class="ps-hint">Lower skill also means <strong>your guns hit harder</strong>. They turn-fight but <strong>break off</strong> if you press them. Switch skill anytime with <span class="ps-key">1</span> <span class="ps-key">2</span> <span class="ps-key">3</span>.</p>
+          <p class="ps-hint">Bandits fly a mix of all three types with their real quirks. Lower skill also means <strong>your guns hit harder</strong>. They turn-fight but <strong>break off</strong> if you press them. Switch skill anytime with <span class="ps-key">1</span> <span class="ps-key">2</span> <span class="ps-key">3</span>.</p>
           <div class="ps-go">▸ Click to fly</div>
         </div>
       </div>
@@ -349,6 +357,13 @@ export function PlaneSimPage(opts: {
             <button type="button" class="ps-diff-btn" data-cam="medium">Medium</button>
             <button type="button" class="ps-diff-btn" data-cam="far">Far</button>
           </div>
+          <div class="ps-set-row">
+            <span class="ps-set-lbl">Aircraft</span>
+            <button type="button" class="ps-diff-btn" data-plane="spitfire">Spitfire</button>
+            <button type="button" class="ps-diff-btn" data-plane="p51">P-51</button>
+            <button type="button" class="ps-diff-btn" data-plane="zero">Zero</button>
+          </div>
+          <p class="ps-hint ps-plane-desc"></p>
           <div class="ps-set-row">
             <span class="ps-set-lbl">Bandit skill</span>
             <button type="button" class="ps-diff-btn" data-diff="easy">Rookie</button>

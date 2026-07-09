@@ -58,25 +58,15 @@ import {
   const CFG = {
     G: 9.81, // gravity (m/s^2)
 
-    // Engine / aero. Stall ~64 kn, top speed ~330 kn.
-    THRUST_MAX: 38, // full-throttle acceleration (m/s^2)
+    // Aero shared by every airframe. The per-type numbers (thrust, lift,
+    // parasitic drag, pitch/roll rates, control-authority speed, guns, hull)
+    // live in PLANE_TYPES below — one stat block per flyable aircraft.
     THROTTLE_RATE: 0.6, // throttle units per second while holding W/S
-
-    LIFT: 0.0054, // lift accel = LIFT * speed^2 * CL
     CL_SLOPE: 5.2, // lift-curve slope (per radian of AoA)
     A_STALL: 0.32, // stall angle of attack (rad, ~18°)
-
-    DRAG0: 0.0013, // parasitic drag coefficient (sets top speed)
     DRAG_IND: 0.0008, // induced drag (× CL²) — bleeds speed in hard turns
     DRAG_GEAR: 0.00060, // extra parasitic drag while the undercarriage is down
-
-    // Control authority (rad/s at full effectiveness) and the speed at which
-    // the controls reach full effectiveness. Generous on purpose — the old
-    // rates made just pointing at a bandit a workout.
-    PITCH_RATE: 1.6,
-    ROLL_RATE: 3.4,
-    YAW_RATE: 1.0,
-    CONTROL_V: 42, // airspeed (m/s) at which the controls reach full authority
+    YAW_RATE: 1.0, // rudder authority (rad/s at full effectiveness)
 
     // Handling feel (see flightAssist) — GRIP rotates the velocity vector
     // toward where the nose points (so the plane goes where you aim instead of
@@ -95,22 +85,17 @@ import {
     // player-selectable CAM_PRESETS below (C key / pause menu).
     CAM_LERP: 0.12,
 
-    // Guns (player)
-    FIRE_INTERVAL: 0.085, // seconds between tracer pairs
+    // Guns (shared; per-type fire rate/damage/spread/range live in PLANE_TYPES)
     TRACER_SPEED: 520, // m/s muzzle velocity relative to the plane
     TRACER_LIFE: 1.3,
-    GUN_RANGE: 900, // hitscan reach (m)
-    GUN_DMG: 3, // damage per round that connects
-    GUN_SPREAD: 0.006, // rad of random spread per round
     LEAD_MAX: 1250, // show the lead pipper for targets within this range
 
-    // Combat / AI enemies. The bandits fly the SAME flight model + CFG as the
-    // player (same thrust, lift, drag, turn rates) so they're bound by the same
+    // Combat / AI enemies. The bandits fly the SAME flight model as the player,
+    // each with its own airframe's stats, so they're bound by the same
     // stall/turn/speed limits — deliberately not over-assisted. Their gunnery is
     // only as good as their nose-tracking (they fire along the nose + jitter, no
     // aimbot lead), and they pull the trigger slower than the player.
-    ENEMY_HP: 100,
-    PLAYER_HP: 100,
+    GUN_DMG: 3, // bandit damage per round (flat: difficulty is the balance knob)
     HITBOX_R: 8, // simplified spherical hitbox radius around any plane (m)
     RADAR_RANGE: 1700, // within this, radar shows true relative pos; beyond -> rim blip
     AI_AIM_JITTER: 0.012, // base rad of spread per shot (scaled by difficulty + personality)
@@ -121,6 +106,44 @@ import {
   const KT = 1.94384; // m/s -> knots
   const FT = 3.28084; // m -> feet
   const clamp = (v, lo, hi) => (v < lo ? lo : (v > hi ? hi : v));
+
+  // ---- Flyable aircraft: each type's quirks are real history expressed
+  //      through the SAME flight model (the CFG numbers above are the
+  //      Spitfire baseline). Top speed ≈ sqrt(thrust/drag0); turn is
+  //      pitchRate bound by lift/stall; controlV is the airspeed where the
+  //      controls reach full authority; hiSpeedStiff is the Zero's infamous
+  //      control freeze-up in a dive (fraction of authority lost by ~300 kn).
+  //      Both the player AND the bandits fly with their type's stats. ----
+  const PLANE_TYPES = {
+    spitfire: {
+      label: 'SPITFIRE',
+      desc: 'The balanced dogfighter: superb turn & climb, eight .303s — a fast, light-hitting hose of bullets.',
+      stats: {
+        thrust: 38, lift: 0.0054, drag0: 0.0013, pitchRate: 1.6, rollRate: 3.4, controlV: 42, hiSpeedStiff: 0,
+        hp: 100, fireInterval: 0.085, gunDmg: 3, gunSpread: 0.006, gunRange: 900,
+      },
+    },
+    p51: {
+      label: 'P-51 MUSTANG',
+      desc: 'Fastest in a straight line and a dive, rugged airframe — but heavy: wide turns that want airspeed. Six .50 cals hit hard.',
+      stats: {
+        thrust: 40, lift: 0.0048, drag0: 0.00105, pitchRate: 1.35, rollRate: 3.0, controlV: 48, hiSpeedStiff: 0,
+        hp: 115, fireInterval: 0.11, gunDmg: 5, gunSpread: 0.005, gunRange: 950,
+      },
+    },
+    zero: {
+      label: 'A6M ZERO',
+      desc: 'Untouchable in a slow turn fight and stalls last — but slow, unarmoured, and the controls stiffen in a dive. Two 20 mm cannon: slow to fire, savage on hit.',
+      stats: {
+        thrust: 33, lift: 0.0063, drag0: 0.00165, pitchRate: 2.0, rollRate: 3.8, controlV: 34, hiSpeedStiff: 0.45,
+        hp: 70, fireInterval: 0.16, gunDmg: 8, gunSpread: 0.008, gunRange: 750,
+      },
+    },
+  };
+  const PLANE_ORDER = ['spitfire', 'p51', 'zero'];
+  const validPlane = (n) => Object.prototype.hasOwnProperty.call(PLANE_TYPES, n);
+  // Control stiffening with speed (the Zero quirk): fraction of authority kept.
+  const stiffen = (st, speed) => 1 - st.hiSpeedStiff * clamp((speed - 110) / 105, 0, 1);
 
   // Chase-camera distance presets (C key / pause menu; remembered).
   const CAM_PRESETS = {
@@ -251,14 +274,15 @@ import {
       field.add(hut);
     }
 
-    // Parked aircraft: one tucked inside each hangar (nose out the +X door,
-    // wheels on the 0.14 m slab) and one on the grass by the apron.
-    for (const [px, py, pz, ry] of [
-      [-58, 1.49, 40, -Math.PI / 2],
-      [-58, 1.49, -34, -Math.PI / 2],
-      [-42, 1.35, 96, -2.1],
+    // Parked aircraft — one of each flyable type: a Spitfire and a P-51 tucked
+    // inside the hangars (nose out the +X door, wheels on the 0.14 m slab) and
+    // a Zero on the grass by the apron.
+    for (const [type, px, py, pz, ry] of [
+      ['spitfire', -58, 1.49, 40, -Math.PI / 2],
+      ['p51', -58, 1.49, -34, -Math.PI / 2],
+      ['zero', -42, 1.35, 96, -2.1],
     ]) {
-      const parked = buildAircraft();
+      const parked = buildAircraft({ type });
       parked.group.position.set(px, py, pz);
       parked.group.rotation.y = ry;
       field.add(parked.group);
@@ -472,12 +496,26 @@ import {
   }());
 
   // ======================================================== AIRCRAFT ======
-  // The Spitfire-ish prop fighter. Geometry lives in plane-sim-models.js (shared
-  // with the model inspector) so the flown model and the inspected model are one
+  // The player's fighter. Geometry lives in plane-sim-models.js (shared with
+  // the model inspector) so the flown model and the inspected model are one
   // and the same. `surf` holds the animatable handles (control surfaces, prop,
-  // gear); the physics below drives them.
-  const { group: plane, surf } = buildAircraft();
-  scene.add(plane);
+  // gear); the physics below drives them. The airframe is player-selectable
+  // (start overlay / pause menu) and rebuilt in place on switch.
+  let planeName = (() => {
+    try { const p = localStorage.getItem('ps-plane'); return validPlane(p) ? p : 'spitfire'; } catch (_) { return 'spitfire'; }
+  })();
+  let ac = PLANE_TYPES[planeName].stats; // the player's active stat block
+  let plane; let surf;
+  function buildPlayer() {
+    const old = plane ? { pos: plane.position.clone(), quat: plane.quaternion.clone() } : null;
+    if (plane) scene.remove(plane);
+    const built = buildAircraft({ type: planeName });
+    plane = built.group;
+    surf = built.surf;
+    if (old) { plane.position.copy(old.pos); plane.quaternion.copy(old.quat); }
+    scene.add(plane);
+  }
+  buildPlayer();
 
   // Reset to the runway threshold, lined up to take off toward -Z.
   function resetPlane() {
@@ -497,7 +535,7 @@ import {
   let fov = 62;
 
   // Combat state
-  let playerHP = CFG.PLAYER_HP;
+  let playerHP = ac.hp;
   let kills = 0;
   let won = false;
   let lockTarget = false; // is an enemy currently in the gun line?
@@ -804,8 +842,8 @@ import {
     const right = getRight().clone();
     const up = getUp().clone();
     _shot.copy(fwd)
-      .addScaledVector(up, (Math.random() - 0.5) * 2 * CFG.GUN_SPREAD)
-      .addScaledVector(right, (Math.random() - 0.5) * 2 * CFG.GUN_SPREAD)
+      .addScaledVector(up, (Math.random() - 0.5) * 2 * ac.gunSpread)
+      .addScaledVector(right, (Math.random() - 0.5) * 2 * ac.gunSpread)
       .normalize();
     const muzzle = plane.position.clone().addScaledVector(fwd, 4.5);
     for (const sx of [-1, 1]) {
@@ -815,16 +853,16 @@ import {
     }
     audio.gun();
     // Hitscan along the (spread-jittered) shot line: damage the closest bandit.
-    let bestT = CFG.GUN_RANGE; let bestE = null;
+    let bestT = ac.gunRange; let bestE = null;
     for (const e of enemies) {
       if (!e.alive) continue;
-      const t = rayHitsSphere(muzzle, _shot, e.group.position, CFG.HITBOX_R, CFG.GUN_RANGE);
+      const t = rayHitsSphere(muzzle, _shot, e.group.position, CFG.HITBOX_R, ac.gunRange);
       if (t >= 0 && t < bestT) { bestT = t; bestE = e; }
     }
     if (bestE) {
       spawnSpark(muzzle.clone().addScaledVector(_shot, bestT), 4, 0.18);
       audio.hit();
-      damageEnemy(bestE, CFG.GUN_DMG * diff.dmgMul);
+      damageEnemy(bestE, ac.gunDmg * diff.dmgMul);
     }
   }
 
@@ -892,16 +930,22 @@ import {
   }
 
   function makeEnemy(spec) {
-    const { group, surf: esurf } = buildAircraft({ paint: CFG.ENEMY_PAINT, markings: false });
+    // Bandits fly a random mix of the three airframes, with that type's REAL
+    // stats — a Zero bandit out-turns you, a Mustang bandit outruns you, and
+    // their hull strength differs to match (the HP bars show it).
+    const type = PLANE_ORDER[Math.floor(Math.random() * PLANE_ORDER.length)];
+    const { group, surf: esurf } = buildAircraft({ type, paint: CFG.ENEMY_PAINT, markings: false });
     applyControlSurfaces(esurf, { gear: 0 }); // bandits fly gear-up
     setPropBlur(esurf, 0.85); // airborne -> prop is a blur disc
     scene.add(group);
     return {
       group,
       surf: esurf,
+      type,
+      st: PLANE_TYPES[type].stats,
       vel: new THREE.Vector3(),
       throttle: 0.85,
-      hp: CFG.ENEMY_HP,
+      hp: PLANE_TYPES[type].stats.hp,
       alive: true,
       fireCd: Math.random() * 0.25,
       smokeCd: 0,
@@ -934,7 +978,7 @@ import {
     e.group.quaternion.setFromUnitVectors(FWD_REF, EN.desired);
     e.vel.copy(EN.desired).multiplyScalar(95);
     e.throttle = 0.85;
-    e.hp = CFG.ENEMY_HP;
+    e.hp = e.st.hp;
     e.alive = true;
     e.group.visible = true;
     e.defl.ail = 0; e.defl.elev = 0; e.defl.rud = 0;
@@ -969,6 +1013,29 @@ import {
       kills = 0;
       updateCombatHUD();
     }
+  }
+
+  // ---- Aircraft selection (start overlay / pause menu; remembered). The
+  //      model is rebuilt in place; the stat block swaps live. Mid-flight the
+  //      hull is scaled to the new maximum so switching isn't a free heal. ----
+  function setPlaneType(name) {
+    if (!validPlane(name) || name === planeName) return;
+    const hpFrac = playerHP / ac.hp;
+    planeName = name;
+    ac = PLANE_TYPES[name].stats;
+    playerHP = Math.round(ac.hp * clamp(hpFrac, 0, 1));
+    try { localStorage.setItem('ps-plane', name); } catch (_) { /* private mode */ }
+    buildPlayer();
+    syncPlaneUI();
+    updateCombatHUD();
+  }
+  function syncPlaneUI() {
+    for (const b of document.querySelectorAll('[data-plane]')) {
+      b.classList.toggle('ps-diff-active', b.dataset.plane === planeName);
+    }
+    const info = PLANE_TYPES[planeName];
+    for (const el of document.querySelectorAll('.ps-plane-desc')) el.textContent = info.desc;
+    if (hud.plane) hud.plane.textContent = info.label;
   }
 
   function stepEnemy(e, dt, canFire) {
@@ -1043,7 +1110,9 @@ import {
     if (speed < 60) thrTarget = 1; // never mush into a stall
     e.throttle = clamp(e.throttle + clamp(thrTarget - e.throttle, -dt, dt), 0, 1);
 
-    // ---- Flight integration: identical model + CFG as the player (gear-up) ----
+    // ---- Flight integration: identical model as the player, driven by this
+    //      bandit's own airframe stats (gear-up) ----
+    const st = e.st;
     const v2 = speed * speed;
     EN.vLocal.copy(e.vel).applyQuaternion(EN.q);
     const fwdSpeed = -EN.vLocal.z;
@@ -1057,22 +1126,22 @@ import {
     EN.fwd.copy(FWD_REF).applyQuaternion(g.quaternion);
     EN.up.set(0, 1, 0).applyQuaternion(g.quaternion);
     EN.acc.set(0, 0, 0);
-    EN.acc.addScaledVector(EN.fwd, e.throttle * CFG.THRUST_MAX);
-    EN.acc.addScaledVector(EN.up, CFG.LIFT * v2 * CL);
+    EN.acc.addScaledVector(EN.fwd, e.throttle * st.thrust);
+    EN.acc.addScaledVector(EN.up, st.lift * v2 * CL);
     EN.acc.y -= CFG.G;
     if (speed > 0.01) {
-      const cd = CFG.DRAG0 + CFG.DRAG_IND * CL * CL;
+      const cd = st.drag0 + CFG.DRAG_IND * CL * CL;
       EN.vDir.copy(e.vel).multiplyScalar(1 / speed);
       EN.acc.addScaledVector(EN.vDir, -cd * v2);
     }
     e.vel.addScaledVector(EN.acc, dt);
     g.position.addScaledVector(e.vel, dt);
 
-    let eff = clamp(speed / CFG.CONTROL_V, 0, 1.15);
+    let eff = clamp(speed / st.controlV, 0, 1.15) * stiffen(st, speed);
     if (stalled) eff *= 0.45;
     eff *= diff.turn * e.pers.turnBias; // difficulty/personality turn handicap
-    g.rotateX(pitchInput * CFG.PITCH_RATE * eff * dt);
-    g.rotateZ(-rollInput * CFG.ROLL_RATE * eff * dt);
+    g.rotateX(pitchInput * st.pitchRate * eff * dt);
+    g.rotateZ(-rollInput * st.rollRate * eff * dt);
     g.rotateY(-yawInput * CFG.YAW_RATE * eff * dt);
     if (stalled && fwdSpeed > 0) g.rotateX(-(Math.abs(aoa) - CFG.A_STALL) * 1.6 * dt);
     flightAssist(g, e.vel, eff, dt); // same grip + coordinated turn as the player
@@ -1114,6 +1183,9 @@ import {
         EN.muzzle.copy(g.position).addScaledVector(EN.fwd, 4.5);
         spawnTracer(EN.muzzle, EN.shotDir, CFG.TRACER_SPEED, e.vel, enemyTracerMat);
         const t = rayHitsSphere(EN.muzzle, EN.shotDir, plane.position, CFG.HITBOX_R, diff.range);
+        // Bandit rounds do a flat CFG.GUN_DMG regardless of airframe so the
+        // difficulty tiers stay the balance knob (their AIRFRAME quirks already
+        // vary threat: a Zero tracks you longer, a P-51 catches you).
         if (t >= 0) damagePlayer(CFG.GUN_DMG, EN.dirP.copy(EN.muzzle).addScaledVector(EN.shotDir, t));
       }
     }
@@ -1176,6 +1248,10 @@ import {
   for (const b of document.querySelectorAll('[data-count]')) {
     b.addEventListener('mousedown', (ev) => ev.stopPropagation());
     b.addEventListener('click', (ev) => { ev.stopPropagation(); setEnemyCount(+b.dataset.count); });
+  }
+  for (const b of document.querySelectorAll('[data-plane]')) {
+    b.addEventListener('mousedown', (ev) => ev.stopPropagation());
+    b.addEventListener('click', (ev) => { ev.stopPropagation(); setPlaneType(b.dataset.plane); });
   }
   function setCamPreset(name) {
     if (!CAM_PRESETS[name]) return;
@@ -1266,6 +1342,7 @@ import {
     hp: document.getElementById('ps-hp'),
     hpFill: document.getElementById('ps-hp-fill'),
     diff: document.getElementById('ps-diff'),
+    plane: document.getElementById('ps-plane-label'),
   };
   const mapCanvas = document.getElementById('ps-map');
   const mapCtx = mapCanvas ? mapCanvas.getContext('2d') : null;
@@ -1277,7 +1354,7 @@ import {
   // Kill board ("k / N") + hull HP bar (green -> amber -> red as it drops).
   function updateCombatHUD() {
     if (hud.kills) hud.kills.textContent = `${kills} / ${activeCount}`;
-    const pct = clamp(Math.round((playerHP / CFG.PLAYER_HP) * 100), 0, 100);
+    const pct = clamp(Math.round((playerHP / ac.hp) * 100), 0, 100);
     if (hud.hp) hud.hp.textContent = String(Math.max(0, Math.round(playerHP)));
     if (hud.hpFill) {
       hud.hpFill.style.width = `${pct}%`;
@@ -1650,7 +1727,7 @@ import {
       b.root.style.display = 'block';
       b.root.style.left = `${((_ebv.x + 1) / 2) * r.width}px`;
       b.root.style.top = `${((1 - _ebv.y) / 2) * r.height}px`;
-      const pct = clamp((e.hp / CFG.ENEMY_HP) * 100, 0, 100);
+      const pct = clamp((e.hp / e.st.hp) * 100, 0, 100);
       b.fill.style.width = `${pct}%`;
       b.fill.style.background = pct > 50 ? '#ff8f5a' : '#ff4d4d';
       b.label.textContent = `${Math.round(d)} m`;
@@ -1703,7 +1780,7 @@ import {
     won = false;
     onGround = true;
     gearDown = true;
-    playerHP = CFG.PLAYER_HP;
+    playerHP = ac.hp;
     kills = 0;
     resetEnemies();
     updateCombatHUD();
@@ -1768,22 +1845,23 @@ import {
     else CL = Math.sign(aoa) * Math.max(0, clMax - (Math.abs(aoa) - CFG.A_STALL) * CFG.CL_SLOPE * 1.7);
     const stalled = Math.abs(aoa) > CFG.A_STALL && speed > 4;
 
-    // --- Forces -> acceleration ---
+    // --- Forces -> acceleration (thrust/lift/drag from the selected airframe) ---
     getForward(); getUp();
     _acc.set(0, 0, 0);
-    _acc.addScaledVector(_fwd, throttle * CFG.THRUST_MAX); // thrust
-    _acc.addScaledVector(_up, CFG.LIFT * v2 * CL); // lift (CL carries the sign)
+    _acc.addScaledVector(_fwd, throttle * ac.thrust); // thrust
+    _acc.addScaledVector(_up, ac.lift * v2 * CL); // lift (CL carries the sign)
     _acc.y -= CFG.G; // gravity
     if (speed > 0.01) {
-      const cd = CFG.DRAG0 + CFG.DRAG_IND * CL * CL + (gearDown ? CFG.DRAG_GEAR : 0);
+      const cd = ac.drag0 + CFG.DRAG_IND * CL * CL + (gearDown ? CFG.DRAG_GEAR : 0);
       _vDir.copy(vel).multiplyScalar(1 / speed);
       _acc.addScaledVector(_vDir, -cd * v2);
     }
     vel.addScaledVector(_acc, dt);
     plane.position.addScaledVector(vel, dt);
 
-    // --- Attitude (rate control, fading in with airspeed) ---
-    let e = clamp(speed / CFG.CONTROL_V, 0, 1.15);
+    // --- Attitude (rate control, fading in with airspeed; the Zero's controls
+    //     stiffen again at high speed via stiffen()) ---
+    let e = clamp(speed / ac.controlV, 0, 1.15) * stiffen(ac, speed);
     if (stalled) e *= 0.45; // mushy controls in the stall
     if (onGround) {
       rollInput = 0; // wings stay level on the wheels
@@ -1792,8 +1870,8 @@ import {
     } else {
       plane.rotateY(-yawInput * CFG.YAW_RATE * e * dt);
     }
-    plane.rotateX(pitchInput * CFG.PITCH_RATE * e * dt);
-    plane.rotateZ(-rollInput * CFG.ROLL_RATE * e * dt);
+    plane.rotateX(pitchInput * ac.pitchRate * e * dt);
+    plane.rotateZ(-rollInput * ac.rollRate * e * dt);
     // Stall break: the nose drops, which lowers AoA and lets you recover.
     if (stalled && fwdSpeed > 0) plane.rotateX(-(Math.abs(aoa) - CFG.A_STALL) * 1.6 * dt);
 
@@ -1882,14 +1960,14 @@ import {
 
     // --- Guns ---
     fireCooldown -= dt;
-    if (firing && fireCooldown <= 0) { fireGuns(); fireCooldown = CFG.FIRE_INTERVAL; }
+    if (firing && fireCooldown <= 0) { fireGuns(); fireCooldown = ac.fireInterval; }
     stepTracers(dt);
 
     // --- Target lock: is a bandit in the gun line right now? (turns the pipper red) ---
     getForward();
     lockTarget = false;
     for (const en of enemies) {
-      if (en.alive && rayHitsSphere(plane.position, _fwd, en.group.position, CFG.HITBOX_R, CFG.GUN_RANGE) >= 0) {
+      if (en.alive && rayHitsSphere(plane.position, _fwd, en.group.position, CFG.HITBOX_R, ac.gunRange) >= 0) {
         lockTarget = true; break;
       }
     }
@@ -2008,6 +2086,7 @@ import {
   setDifficulty(diffName); // sync HUD label + overlay highlight from the saved tier
   setEnemyCount(enemyCountPref); // sync the 1-5 picker highlight
   setCamPreset(camName); // sync the camera-distance picker highlight
+  syncPlaneUI(); // sync the aircraft picker highlight + description + HUD label
 
   // ==================================================== DEV MODE ==========
   // A scriptable dev/debug handle on window.__ps (client-side single-player;
@@ -2028,6 +2107,7 @@ import {
     const r = new V(1, 0, 0).applyQuaternion(plane.quaternion);
     const u = new V(0, 1, 0).applyQuaternion(plane.quaternion);
     return {
+      plane: planeName,
       x: +plane.position.x.toFixed(1),
       y: +plane.position.y.toFixed(1),
       z: +plane.position.z.toFixed(1),
@@ -2047,6 +2127,7 @@ import {
       hp: playerHP,
       kills,
       enemies: enemies.map((e) => ({
+        type: e.type,
         alive: e.alive,
         hp: e.hp,
         mode: e.mode,
@@ -2056,9 +2137,12 @@ import {
     };
   };
   window.__ps = {
-    plane, vel, enemies, camera, start, respawn, dev,
+    vel, enemies, camera, start, respawn, dev,
+    get plane() { return plane; }, // getter: the group is swapped on type change
     get throttle() { return throttle; },
     set throttle(v) { throttle = clamp(v, 0, 1); },
+    setPlane: setPlaneType,
+    get planeType() { return planeName; },
     state: devState,
     // Virtual stick: overrides the mouse until stick(null).
     stick(nx, ny) {

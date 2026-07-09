@@ -139,8 +139,10 @@ import {
   function load(kind) {
     if (current) { turntable.remove(current); disposeTree(current); current = null; currentSurf = null; }
     let sitOnGround = true;
-    if (kind === 'aircraft') {
-      const a = buildAircraft(); current = a.group; currentSurf = a.surf; modelName = 'plane-sim-spitfire';
+    if (kind === 'aircraft' || kind === 'p51' || kind === 'zero') {
+      const type = kind === 'aircraft' ? 'spitfire' : kind;
+      const a = buildAircraft({ type });
+      current = a.group; currentSurf = a.surf; modelName = `plane-sim-${type}`;
     } else if (kind === 'tree') {
       current = makeTree(); modelName = 'plane-sim-tree';
     } else if (kind === 'hangar') {

@@ -102,7 +102,9 @@ export function PlaneViewerPage(opts: {
         <div class="pv-group">
           <div class="pv-h">Model</div>
           <div class="pv-models">
-            <button type="button" data-model="aircraft" class="active">Aircraft</button>
+            <button type="button" data-model="aircraft" class="active">Spitfire</button>
+            <button type="button" data-model="p51">P-51</button>
+            <button type="button" data-model="zero">Zero</button>
             <button type="button" data-model="tree">Tree</button>
             <button type="button" data-model="hangar">Hangar</button>
             <button type="button" data-model="tower">Tower</button>
