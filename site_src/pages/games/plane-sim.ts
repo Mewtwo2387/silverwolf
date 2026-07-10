@@ -174,13 +174,118 @@ export function PlaneSimPage(opts: {
   }
   .ps-exit:hover { border-color: var(--accent, #22d3ff); color: var(--accent-light, #7fdfff); }
 
-  /* Start overlay. */
-  #ps-overlay {
-    position: absolute; inset: 0; z-index: 3; cursor: pointer;
+  /* Loading screen: opaque from first paint, faded out by the game module
+     once the first frame has rendered. */
+  #ps-load {
+    position: absolute; inset: 0; z-index: 8;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem;
+    background: #06080f; transition: opacity 0.45s ease;
+  }
+  #ps-load.ps-fade { opacity: 0; pointer-events: none; }
+  #ps-load.ps-hidden { display: none; }
+  .ps-load-title { font-size: 2rem; font-weight: 800; letter-spacing: 0.12em; color: var(--accent-light, #7fdfff); }
+  .ps-load-sub { font-size: 0.78rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fog-400, #8aa0ad); }
+  .ps-load-bar {
+    width: min(320px, 70vw); height: 4px; border-radius: 2px; overflow: hidden;
+    position: relative; background: #1a2230;
+  }
+  .ps-load-bar::after {
+    content: ''; position: absolute; left: -40%; top: 0; bottom: 0; width: 40%; border-radius: 2px;
+    background: var(--accent, #22d3ff); animation: ps-load-sweep 1.1s ease-in-out infinite;
+  }
+  @keyframes ps-load-sweep { to { left: 100%; } }
+
+  /* Hangar (plane select): a see-through layer over the live 3D turntable.
+     Only its panels take pointer events; the backdrop stays transparent. */
+  #ps-menu { position: absolute; inset: 0; z-index: 7; pointer-events: none; }
+  #ps-menu.ps-hidden { display: none; }
+  .ps-menu-title {
+    position: absolute; top: 1.15rem; left: 50%; transform: translateX(-50%);
+    padding: 0.4rem 1rem; border-radius: 0.5rem; white-space: nowrap;
+    font-size: 0.8rem; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--accent-light, #7fdfff);
+    background: color-mix(in oklab, var(--ink-900, #06080f) 55%, transparent);
+    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 35%, transparent);
+    backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
+  }
+  .ps-menu-plate {
+    position: absolute; bottom: 4.6rem; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 0.9rem; pointer-events: auto;
+  }
+  .ps-arrow {
+    cursor: pointer; width: 54px; height: 54px; border-radius: 50%;
+    font-size: 1.7rem; line-height: 1; font-family: 'JetBrains Mono', monospace;
+    color: var(--accent-light, #7fdfff);
+    background: color-mix(in oklab, var(--ink-900, #06080f) 60%, transparent);
+    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 40%, transparent);
+    backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
+  }
+  .ps-arrow:hover { border-color: var(--accent, #22d3ff); background: color-mix(in oklab, var(--ink-800, #0d1320) 80%, transparent); }
+  #ps-menu-name {
+    min-width: 15ch; text-align: center; font-size: 1.3rem; font-weight: 800;
+    letter-spacing: 0.08em; color: var(--fog-100, #eef4f7);
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
+  }
+  .ps-menu-stats {
+    position: absolute; right: 1.2rem; top: 50%; transform: translateY(-50%);
+    width: min(320px, 86vw); pointer-events: auto; text-align: left;
+    background: color-mix(in oklab, var(--ink-800, #0d1320) 82%, transparent);
+    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 35%, transparent);
+    border-radius: 0.9rem; padding: 1rem 1.1rem;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+  .ps-mdesc { font-size: 0.78rem; line-height: 1.45; color: var(--fog-300, #b8c6cf); margin: 0.15rem 0 0.8rem; }
+  .ps-mbar { display: grid; grid-template-columns: 6.2rem 1fr; align-items: center; gap: 0.6rem; margin: 0.32rem 0; }
+  .ps-mbar-l { font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fog-400, #8aa0ad); text-align: right; }
+  .ps-mbar-t { height: 7px; border-radius: 4px; overflow: hidden; background: color-mix(in oklab, var(--ink-700, #1a2230) 85%, transparent); border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 20%, transparent); }
+  .ps-mbar-f { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #1fa3c9, var(--accent, #22d3ff)); }
+  .ps-mchips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.75rem 0 0.2rem; }
+  .ps-mchips span {
+    font-size: 0.66rem; letter-spacing: 0.08em; padding: 0.22rem 0.5rem; border-radius: 0.35rem;
+    color: var(--accent-light, #7fdfff);
+    background: color-mix(in oklab, var(--ink-900, #06080f) 65%, transparent);
+    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 25%, transparent);
+  }
+  .ps-menu-continue { width: 100%; margin-top: 0.9rem; }
+  .ps-menu-keys {
+    position: absolute; bottom: 1.15rem; left: 50%; transform: translateX(-50%);
+    max-width: 92vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: 0.68rem; letter-spacing: 0.06em; color: var(--fog-400, #8aa0ad);
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
+  }
+  #ps-menu .ps-corner-hint { position: absolute; }
+
+  /* Map select: modal card over a dark veil. */
+  #ps-map-menu {
+    position: absolute; inset: 0; z-index: 7; cursor: auto;
     display: flex; align-items: center; justify-content: center;
     background: radial-gradient(circle at 50% 40%, rgba(6, 8, 15, 0.55), rgba(6, 8, 15, 0.9));
   }
-  #ps-overlay.ps-hidden { display: none; }
+  #ps-map-menu.ps-hidden { display: none; }
+  #ps-map-menu .ps-card { pointer-events: auto; }
+  .ps-map-tile {
+    display: flex; gap: 1rem; align-items: center; text-align: left; cursor: pointer;
+    padding: 0.7rem 0.85rem; border-radius: 0.8rem; margin: 0.4rem 0 0.9rem;
+    background: color-mix(in oklab, var(--ink-900, #06080f) 55%, transparent);
+    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 30%, transparent);
+  }
+  .ps-map-tile.ps-active { border-color: var(--accent, #22d3ff); box-shadow: 0 0 24px rgba(34, 211, 255, 0.22); }
+  .ps-map-svg { width: 148px; height: 96px; border-radius: 0.5rem; flex: none; }
+  .ps-map-name { font-size: 1rem; font-weight: 800; color: var(--fog-100, #eef4f7); margin: 0 0 0.25rem; }
+  .ps-map-desc { font-size: 0.76rem; line-height: 1.45; color: var(--fog-300, #b8c6cf); margin: 0; }
+  .ps-menu-row { display: flex; gap: 0.6rem; justify-content: center; }
+  .ps-back-btn {
+    margin-top: 0.9rem; padding: 0.45rem 1.1rem; font-size: 0.95rem; font-weight: 800;
+    cursor: pointer; font-family: 'JetBrains Mono', monospace;
+    color: var(--fog-200, #dfe9ef);
+    background: color-mix(in oklab, var(--ink-900, #06080f) 60%, transparent);
+    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 30%, transparent); border-radius: 0.5rem;
+  }
+  .ps-back-btn:hover { border-color: var(--accent, #22d3ff); color: var(--accent-light, #7fdfff); }
+
+  /* While a menu is up: give the cursor back and hide the flight HUD. */
+  #ps-stage.ps-in-menu { cursor: auto; }
+  #ps-stage.ps-in-menu .ps-hud, #ps-stage.ps-in-menu #ps-damage { display: none; }
   .ps-card {
     max-width: 560px; width: min(90vw, 560px); text-align: center;
     background: color-mix(in oklab, var(--ink-800, #0d1320) 80%, transparent);
@@ -190,18 +295,12 @@ export function PlaneSimPage(opts: {
   }
   .ps-card h1 { margin: 0 0 0.3rem; color: var(--accent-light, #7fdfff); font-size: 1.7rem; }
   .ps-card .ps-sub { margin: 0 0 1.1rem; color: var(--fog-300, #b8c6cf); font-size: 0.9rem; }
-  .ps-keys { display: grid; grid-template-columns: auto 1fr; gap: 0.4rem 0.9rem; text-align: left; margin: 0 auto 1.2rem; max-width: 440px; }
-  .ps-keys dt { font-weight: 800; color: var(--accent-light, #7fdfff); }
-  .ps-keys dd { margin: 0; color: var(--fog-200, #dfe9ef); font-size: 0.85rem; }
   .ps-key {
     display: inline-block; min-width: 1.5em; padding: 0.05em 0.4em; text-align: center;
     border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 40%, transparent);
     border-radius: 0.3rem; background: color-mix(in oklab, var(--ink-900, #06080f) 60%, transparent);
   }
-  .ps-go { margin-top: 0.4rem; font-size: 1.05rem; font-weight: 800; color: var(--accent, #22d3ff); animation: ps-pulse 1.6s ease-in-out infinite; }
-  @keyframes ps-pulse { 50% { opacity: 0.5; } }
-
-  /* Difficulty picker on the start overlay. */
+  /* Difficulty picker (map select + pause menu). */
   .ps-diff-row { display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap; margin: 0.2rem 0 0.5rem; }
   .ps-diff-lbl { font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fog-400, #8aa0ad); }
   .ps-diff-btn {
@@ -263,7 +362,7 @@ export function PlaneSimPage(opts: {
   .ps-resume-btn:hover { filter: brightness(1.15); }
 
   @media (prefers-reduced-motion: reduce) {
-    .ps-stall.ps-show, .ps-go, .ps-gear-transit .ps-gear-lamps span { animation: none; }
+    .ps-stall.ps-show, .ps-load-bar::after, .ps-gear-transit .ps-gear-lamps span { animation: none; }
   }
   @media (max-width: 600px) {
     .ps-val { font-size: 1.4rem; }
@@ -322,28 +421,50 @@ export function PlaneSimPage(opts: {
         <div class="ps-warning" id="ps-warning"></div>
       </div>
 
-      <!-- Start overlay -->
-      <div id="ps-overlay">
+      <!-- Loading screen (hidden by the game once the first frame renders) -->
+      <div id="ps-load">
+        <div class="ps-load-title">PLANE SIM</div>
+        <div class="ps-load-bar"></div>
+        <div class="ps-load-sub">Spooling up the Merlin…</div>
+      </div>
+
+      <!-- Hangar: 3D plane select (arrows cycle, stats on the right) -->
+      <div id="ps-menu" class="ps-hidden">
+        <div class="ps-menu-title">Hangar — choose your fighter</div>
+        <div class="ps-menu-stats">
+          <div class="ps-lbl">Aircraft</div>
+          <div id="ps-mstats"></div>
+          <button type="button" class="ps-resume-btn ps-menu-continue" id="ps-continue">Continue ▸</button>
+        </div>
+        <div class="ps-menu-plate">
+          <button type="button" class="ps-arrow" data-mprev aria-label="Previous aircraft">‹</button>
+          <div id="ps-menu-name">SPITFIRE</div>
+          <button type="button" class="ps-arrow" data-mnext aria-label="Next aircraft">›</button>
+        </div>
+        <div class="ps-menu-keys">◄ ► cycle &middot; Mouse: point to fly &middot; RMB fire &middot; W/S throttle &middot; A/D rudder &middot; G gear &middot; ESC pause</div>
+      </div>
+
+      <!-- Sortie: map select + briefing -->
+      <div id="ps-map-menu" class="ps-hidden">
         <div class="ps-card">
-          <h1>Plane Sim</h1>
-          <p class="ps-sub">Take off, climb over the valley and hunt down the <strong>3 bandits</strong> prowling a 12&nbsp;km box of mountains and lakes. Watch your hull — they shoot back.</p>
-          <dl class="ps-keys">
-            <dt>Mouse</dt><dd><strong>Point where you want to fly</strong> — the plane banks &amp; turns there itself</dd>
-            <dt>Right-click</dt><dd>Fire guns — put the crosshair on the <strong>◇ lead marker</strong> to connect</dd>
-            <dt><span class="ps-key">W</span> / <span class="ps-key">S</span></dt><dd>Throttle up / down</dd>
-            <dt><span class="ps-key">A</span> / <span class="ps-key">D</span></dt><dd>Rudder (fine aim &amp; taxi steering)</dd>
-            <dt><span class="ps-key">G</span></dt><dd>Raise / lower undercarriage (less drag up)</dd>
-            <dt><span class="ps-key">C</span> / <span class="ps-key">M</span></dt><dd>Camera distance &middot; mute sound</dd>
-            <dt><span class="ps-key">Esc</span></dt><dd>Pause &amp; settings (volume, camera, bandits)</dd>
-            <dt><span class="ps-key">Space</span></dt><dd>Restart after a crash, shoot-down or win</dd>
-          </dl>
-          <div class="ps-diff-row">
-            <span class="ps-diff-lbl">Aircraft</span>
-            <button type="button" class="ps-diff-btn" data-plane="spitfire">Spitfire</button>
-            <button type="button" class="ps-diff-btn" data-plane="p51">P-51 Mustang</button>
-            <button type="button" class="ps-diff-btn" data-plane="zero">A6M Zero</button>
+          <h1>Sortie</h1>
+          <p class="ps-sub">Select a map, set the opposition, and go hunt the bandits. Watch your hull — they shoot back.</p>
+          <div class="ps-map-tile ps-active" id="ps-map-coastal">
+            <svg class="ps-map-svg" viewBox="0 0 148 96" role="img" aria-label="Coastal Airfield map preview">
+              <rect width="148" height="96" rx="6" fill="#22381f"/>
+              <path d="M0 66 Q 22 52 44 62 T 96 60 T 148 70 L 148 96 L 0 96 Z" fill="#173f4e"/>
+              <ellipse cx="104" cy="30" rx="22" ry="12" fill="#1c4a5c"/>
+              <path d="M14 44 l8 -12 8 12 Z M30 40 l7 -10 7 10 Z" fill="#3d5940"/>
+              <path d="M22 30 l5 -8 5 8 Z" fill="#7e8b90"/>
+              <rect x="58" y="38" width="44" height="7" rx="1.6" transform="rotate(-18 80 41)" fill="#5a6068"/>
+              <rect x="60" y="52" width="16" height="8" rx="1.5" transform="rotate(-18 68 56)" fill="#6d5f4b"/>
+              <circle cx="120" cy="78" r="2.4" fill="#d9a52e"/>
+            </svg>
+            <div>
+              <p class="ps-map-name">Coastal Airfield</p>
+              <p class="ps-map-desc">A 12&nbsp;km box of mountains, lakes and one very homely airstrip. Bandits prowl the valley.</p>
+            </div>
           </div>
-          <p class="ps-hint ps-plane-desc"></p>
           <div class="ps-diff-row">
             <span class="ps-diff-lbl">Bandit skill</span>
             <button type="button" class="ps-diff-btn" data-diff="easy">Rookie</button>
@@ -358,8 +479,11 @@ export function PlaneSimPage(opts: {
             <button type="button" class="ps-diff-btn" data-count="4">4</button>
             <button type="button" class="ps-diff-btn" data-count="5">5</button>
           </div>
-          <p class="ps-hint">Bandits fly a mix of all three types with their real quirks. Lower skill also means <strong>your guns hit harder</strong>. They turn-fight but <strong>break off</strong> if you press them. Switch skill anytime with <span class="ps-key">1</span> <span class="ps-key">2</span> <span class="ps-key">3</span>.</p>
-          <div class="ps-go">▸ Click to fly</div>
+          <p class="ps-hint">Bandits fly a mix of all three types with their real quirks. Lower skill also means <strong>your guns hit harder</strong>. Switch skill anytime with <span class="ps-key">1</span> <span class="ps-key">2</span> <span class="ps-key">3</span>.</p>
+          <div class="ps-menu-row">
+            <button type="button" class="ps-back-btn" data-menuback>‹ Hangar</button>
+            <button type="button" class="ps-resume-btn" id="ps-takeoff">Take off ▸</button>
+          </div>
         </div>
       </div>
 
@@ -370,7 +494,10 @@ export function PlaneSimPage(opts: {
           <h1 id="ps-end-title">Victory</h1>
           <p class="ps-sub" id="ps-end-sub">All bandits downed.</p>
           <dl class="ps-end-stats" id="ps-end-stats"></dl>
-          <button type="button" class="ps-resume-btn" id="ps-end-again">Fly again (Space)</button>
+          <div class="ps-menu-row">
+            <button type="button" class="ps-back-btn" data-hangar>‹ Hangar</button>
+            <button type="button" class="ps-resume-btn" id="ps-end-again">Fly again (Space)</button>
+          </div>
         </div>
       </div>
 
@@ -428,7 +555,10 @@ export function PlaneSimPage(opts: {
             <button type="button" class="ps-diff-btn" data-udist="km">km</button>
             <button type="button" class="ps-diff-btn" data-udist="mi">mi</button>
           </div>
-          <button type="button" class="ps-resume-btn" id="ps-resume">Resume (ESC)</button>
+          <div class="ps-menu-row">
+            <button type="button" class="ps-back-btn" data-hangar>‹ Hangar</button>
+            <button type="button" class="ps-resume-btn" id="ps-resume">Resume (ESC)</button>
+          </div>
         </div>
       </div>
     </div>

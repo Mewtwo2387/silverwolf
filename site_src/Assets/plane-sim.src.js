@@ -27,7 +27,7 @@
 import * as THREE from 'three';
 import {
   buildAircraft, applyControlSurfaces, setPropBlur, makeHangar, makeControlTower,
-  makeWindsock, makeFuelTank, makeBowser, makeNissenHut, PLANE_INFO,
+  makeWindsock, makeFuelTank, makeBowser, makeNissenHut, PLANE_INFO, planeSpecs,
 } from './plane-sim-models.js';
 import {
   TERRAIN, terrainHeight, forestMask, buildTerrain, buildWater, smoothstep, fbm,
@@ -1429,7 +1429,6 @@ import {
 
   // ======================================================== INPUT =========
   const stage = document.getElementById('ps-stage') || canvas;
-  const overlay = document.getElementById('ps-overlay');
   const reticle = document.getElementById('ps-reticle');
 
   // Difficulty / bandit-count / camera pickers live on BOTH the start overlay
@@ -1488,12 +1487,77 @@ import {
     volSlider.addEventListener('input', () => { audio.setVolume((+volSlider.value) / 100); });
   }
 
+  // ---- Menu flow: loading screen -> hangar (3D plane select) -> map select
+  //      -> sortie. The hangar overlay is transparent, so the live scene
+  //      behind it IS the turntable: the camera orbits the fighter parked on
+  //      the runway while arrows swap the airframe in place. ----
+  const menuEl = document.getElementById('ps-menu');
+  const mapMenuEl = document.getElementById('ps-map-menu');
+  const menuNameEl = document.getElementById('ps-menu-name');
+  const menuStatsEl = document.getElementById('ps-mstats');
+  let menuMode = null; // null (flying) | 'plane' | 'map'
+  let menuAngle = 2.35; // hangar orbit angle, advanced each frame
+  const SPEED_LBL = { kn: 'kn', mph: 'mph', kmh: 'km/h' };
+
+  // Stats panel: name, blurb, the five 0-1 ratings as bars, and hard numbers
+  // (top speed in the player's speed unit). Content is our own static
+  // catalogue — nothing user-supplied goes through innerHTML.
+  function renderMenuStats() {
+    const info = PLANE_TYPES[planeName];
+    if (menuNameEl) menuNameEl.textContent = info.label.toUpperCase();
+    if (!menuStatsEl) return;
+    const specs = planeSpecs(planeName);
+    const st = info.stats;
+    const su = SPEED_UNITS[unit.speed];
+    const top = Math.round(Math.sqrt(st.thrust / st.drag0) * su.f);
+    const bars = Object.entries(specs.ratings).map(([k, v]) => (
+      `<div class="ps-mbar"><span class="ps-mbar-l">${k}</span>`
+      + `<span class="ps-mbar-t"><span class="ps-mbar-f" style="width:${Math.round(16 + v * 84)}%"></span></span></div>`
+    )).join('');
+    menuStatsEl.innerHTML = `<div class="ps-mdesc">${info.desc}</div>${bars}`
+      + `<div class="ps-mchips"><span>TOP ${top} ${SPEED_LBL[unit.speed] || unit.speed}</span>`
+      + `<span>HULL ${st.hp}</span><span>GUNS ${Math.round(st.gunDmg / st.fireInterval)} DPS</span></div>`;
+  }
+
+  function setMenu(mode) {
+    menuMode = mode;
+    if (menuEl) menuEl.classList.toggle('ps-hidden', mode !== 'plane');
+    if (mapMenuEl) mapMenuEl.classList.toggle('ps-hidden', mode !== 'map');
+    stage.classList.toggle('ps-in-menu', !!mode);
+    if (mode === 'plane') renderMenuStats();
+  }
+  function enterHangar() {
+    respawn(); // park on the runway, reset the fight
+    started = false; // back to the pre-launch state
+    setPaused(false);
+    setMenu('plane');
+  }
+  function startSortie() {
+    setMenu(null);
+    respawn();
+    started = true;
+    engageStart = performance.now();
+    audio.ensure(); // user gesture -> AudioContext allowed
+  }
+  function cyclePlane(dir) {
+    const i = PLANE_ORDER.indexOf(planeName);
+    setPlaneType(PLANE_ORDER[(i + dir + PLANE_ORDER.length) % PLANE_ORDER.length]);
+    renderMenuStats();
+  }
+  document.querySelector('[data-mprev]')?.addEventListener('click', () => cyclePlane(-1));
+  document.querySelector('[data-mnext]')?.addEventListener('click', () => cyclePlane(1));
+  document.getElementById('ps-continue')?.addEventListener('click', () => setMenu('map'));
+  document.querySelector('[data-menuback]')?.addEventListener('click', () => setMenu('plane'));
+  document.getElementById('ps-takeoff')?.addEventListener('click', () => startSortie());
+  for (const b of document.querySelectorAll('[data-hangar]')) {
+    b.addEventListener('click', (ev) => { ev.stopPropagation(); enterHangar(); });
+  }
+
   function start() {
     if (started) return;
     started = true;
     engageStart = performance.now(); // start the engagement clock at launch
     audio.ensure(); // user gesture -> AudioContext allowed
-    if (overlay) overlay.classList.add('ps-hidden');
   }
 
   // Fly-again from the end screen (button + click-anywhere), same as SPACE.
@@ -1504,7 +1568,18 @@ import {
   window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
     keys[k] = true;
-    if (k === 'escape' && started) { setPaused(!userPaused); return; }
+    if (k === 'escape') {
+      if (menuMode === 'map') { setMenu('plane'); return; }
+      if (menuMode) return; // the hangar is the root screen
+      if (started) setPaused(!userPaused);
+      return;
+    }
+    if (menuMode === 'plane' && (k === 'arrowleft' || k === 'arrowright')) {
+      cyclePlane(k === 'arrowleft' ? -1 : 1);
+      return;
+    }
+    if (menuMode === 'plane' && k === 'enter') { setMenu('map'); return; }
+    if (menuMode === 'map' && k === 'enter') { startSortie(); return; }
     if (k === '1') { setDifficulty('easy'); return; }
     if (k === '2') { setDifficulty('normal'); return; }
     if (k === '3') { setDifficulty('hard'); return; }
@@ -1536,12 +1611,12 @@ import {
   stage.addEventListener('mouseleave', () => { mouseNX = 0; mouseNY = 0; });
 
   stage.addEventListener('mousedown', (e) => {
+    if (menuMode) return; // menus own the pointer; buttons handle themselves
     start();
     if (e.button === 2) { firing = true; e.preventDefault(); }
   });
   window.addEventListener('mouseup', (e) => { if (e.button === 2) firing = false; });
   stage.addEventListener('contextmenu', (e) => e.preventDefault());
-  if (overlay) overlay.addEventListener('click', start);
 
   // ======================================================== HUD ===========
   const hud = {
@@ -2279,6 +2354,29 @@ import {
   }
 
   // ======================================================== CAMERA ========
+  // Hangar turntable: a slow orbit around the fighter parked on the runway,
+  // never sinking into the apron. Replaces the chase rig while a menu is up.
+  function menuCamera(dt) {
+    sun.position.copy(plane.position).addScaledVector(SUN_DIR, 170);
+    sun.target.position.copy(plane.position);
+    sun.target.updateMatrixWorld();
+    menuAngle += dt * 0.12;
+    const R = 13.5;
+    _camPos.set(
+      plane.position.x + Math.sin(menuAngle) * R,
+      plane.position.y + 3.4,
+      plane.position.z + Math.cos(menuAngle) * R,
+    );
+    const ghc = groundAt(_camPos.x, _camPos.z);
+    if (_camPos.y < ghc + 1.6) _camPos.y = ghc + 1.6;
+    camera.position.copy(_camPos);
+    camera.up.copy(WORLD_UP);
+    _camAim.copy(plane.position);
+    _camAim.y += 1.0;
+    camera.lookAt(_camAim);
+    if (camera.fov !== 55) { camera.fov = 55; fov = 55; camera.updateProjectionMatrix(); }
+  }
+
   function updateCamera(dt) {
     // Keep the sun's shadow frustum centred on the aircraft — it's a small ortho
     // box, so shadows stay crisp wherever you fly across the map.
@@ -2342,6 +2440,7 @@ import {
   setCamPreset(camName); // sync the camera-distance picker highlight
   syncUnitUI(); // sync the unit-picker highlights
   syncPlaneUI(); // sync the aircraft picker highlight + description + HUD label
+  setMenu('plane'); // boot into the hangar (the loading screen covers the first frame)
 
   // ==================================================== DEV MODE ==========
   // A scriptable dev/debug handle on window.__ps (client-side single-player;
@@ -2406,6 +2505,7 @@ import {
     key(k, down) { keys[String(k).toLowerCase()] = !!down; },
     fire(on) { firing = !!on; },
     teleport(x, y, z, hdgDeg = 0, speed = 120) {
+      if (menuMode) setMenu(null); // dev shortcut past the hangar/map menus
       start();
       crashed = false; won = false;
       plane.position.set(x, y, z);
@@ -2446,6 +2546,7 @@ import {
 
   let last = performance.now();
   let borderScroll = 0;
+  let bootShown = false;
   function frame(now) {
     let dt = (now - last) / 1000;
     last = now;
@@ -2484,9 +2585,18 @@ import {
     borderScroll = (borderScroll + dt * 0.06) % 1;
     for (const m of borderMats) if (m.map) m.map.offset.y = borderScroll;
 
-    updateCamera(dt);
+    if (menuMode) menuCamera(dt); else updateCamera(dt);
     drawMap();
     renderer.render(scene, camera);
+    // First frame is on screen -> fade the loading screen out over the hangar.
+    if (!bootShown) {
+      bootShown = true;
+      const lo = document.getElementById('ps-load');
+      if (lo) {
+        lo.classList.add('ps-fade');
+        setTimeout(() => lo.classList.add('ps-hidden'), 500);
+      }
+    }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
