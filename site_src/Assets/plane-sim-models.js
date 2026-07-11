@@ -466,7 +466,8 @@ function buildRefPlane(parts, opts) {
     } else if (part.tex) {
       mat = new THREE.MeshStandardMaterial({
         map: refTexture(part.tex), color: enemy ? 0x8b939c : 0xffffff,
-        roughness: 0.35, metalness: 0.85,
+        roughness: opts.roughness !== undefined ? opts.roughness : 0.35,
+        metalness: opts.metalness !== undefined ? opts.metalness : 0.85,
         normalMap, roughnessMap,
         normalScale: new THREE.Vector2(0.1, 0.1),
         side: THREE.DoubleSide,
@@ -510,7 +511,8 @@ const REF_METAL = () => new THREE.MeshStandardMaterial({
 // pilot under the glass. Ailerons/elevator came separated in the source;
 // the rudder was carved off the fin.
 function buildSpitfire(opts = {}) {
-  const { plane, surf } = buildRefPlane(REF_SPIT_PARTS, opts);
+  const planeOpts = { metalness: 0.3, roughness: 0.55, ...opts };
+  const { plane, surf } = buildRefPlane(REF_SPIT_PARTS, planeOpts);
   const pa = makePropAssembly({
     spinner: false, // the mesh keeps its own spinner cone
     zBlades: -4.31,
@@ -549,7 +551,8 @@ function buildSpitfire(opts = {}) {
 // elevator (the mesh has no separate one).
 function buildP51(opts = {}) {
   const enemy = opts.paint != null;
-  const { plane, surf } = buildRefPlane(REF_P51_PARTS, opts);
+  const planeOpts = { metalness: 0.8, roughness: 0.35, ...opts };
+  const { plane, surf } = buildRefPlane(REF_P51_PARTS, planeOpts);
   const pa = makePropAssembly({
     spinnerProfile: [[0.46, 0], [0.44, 0.2], [0.37, 0.42], [0.25, 0.6], [0.12, 0.74], [0.001, 0.79]],
     spinnerColor: enemy ? 0x40454c : 0x2f5a9e, // the 352nd FG blue nose
@@ -583,7 +586,8 @@ function buildP51(opts = {}) {
 // AND the greenhouse canopy are carved out of the single-piece hull; the
 // canopy renders as glass with a pilot seated underneath.
 function buildZero(opts = {}) {
-  const { plane, surf } = buildRefPlane(REF_ZERO_PARTS, opts);
+  const planeOpts = { metalness: 0.35, roughness: 0.5, ...opts };
+  const { plane, surf } = buildRefPlane(REF_ZERO_PARTS, planeOpts);
   const pa = makePropAssembly({
     spinnerProfile: [[0.20, 0], [0.17, 0.18], [0.09, 0.32], [0.001, 0.40]],
     spinnerColor: 0xcfd3d6,
