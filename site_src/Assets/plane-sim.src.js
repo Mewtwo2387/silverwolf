@@ -2330,7 +2330,7 @@ import {
         hud.gearBox.classList.toggle('ps-gear-transit', transit);
       }
     }
-    if (hud.stall) hud.stall.classList.toggle('ps-show', (stalled || (knots < 70 && !onGround)) && !crashed);
+    if (hud.stall) hud.stall.classList.toggle('ps-show', (stalled || (fwdSpeed * KT < 70 && !onGround)) && !crashed);
     if (hud.warn && !crashed) {
       if (hitBorder) { hud.warn.textContent = '⚠ WORLD BORDER'; hud.warn.classList.add('ps-show'); }
       else { hud.warn.classList.remove('ps-show'); }

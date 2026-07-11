@@ -108,32 +108,84 @@ function makePropAssembly({
 // parks the aircraft origin that high) so a level aircraft rests cleanly on
 // the deck. `attachY` sinks the leg pivots to the wing's underside so struts
 // emerge from the wing instead of poking above it; legs shorten to match.
-// applyControlSurfaces animates the retract via gear.userData.
-function makeUndercarriage(metal, tailZ = 4.5, mainZ = -1.0, groundY = 1.35, attachY = 0) {
+// Each leg is a proper oleo assembly: upper strut + polished piston, scissor
+// (torque) link, a leg-mounted well door, and a torus tyre on a hub. All gear
+// materials are transparent so applyControlSurfaces can fade the whole thing
+// into the wing at the end of the retract (there are no wheel wells to
+// swallow it — fading beats clipping through the skin).
+function makeUndercarriage(metal, tailZ = 4.5, mainZ = -1.0, groundY = 1.35, attachY = 0, doorColor = 0x8f959c) {
   const gear = new THREE.Group();
   const tyreMat = new THREE.MeshStandardMaterial({ color: 0x121316, roughness: 0.9 });
+  const pistonMat = new THREE.MeshStandardMaterial({ color: 0xb9c0c8, roughness: 0.25, metalness: 0.9 });
+  const hubMat = new THREE.MeshStandardMaterial({ color: 0x6e747c, roughness: 0.45, metalness: 0.6 });
+  const doorMat = new THREE.MeshStandardMaterial({ color: doorColor, roughness: 0.6, metalness: 0.15 });
+  const mats = [metal, tyreMat, pistonMat, hubMat, doorMat];
+  for (const m of mats) m.transparent = true;
+  gear.userData.mats = mats;
   const legDrop = groundY + attachY; // pivot down to the wheel's bottom
+  const wheelR = 0.42;
+  const makeWheel = (r, w) => {
+    const g = new THREE.Group();
+    const tyre = new THREE.Mesh(new THREE.TorusGeometry(r - w / 2, w / 2, 10, 22), tyreMat);
+    tyre.rotation.y = Math.PI / 2; // axle along X
+    g.add(tyre);
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.42, r * 0.42, w * 0.66, 14), hubMat);
+    hub.rotation.z = Math.PI / 2;
+    g.add(hub);
+    return g;
+  };
   const leg = (sideX) => {
     const pivot = new THREE.Group();
     pivot.position.set(sideX * 1.45, attachY, mainZ); // wing underside, under the root
     const strutLen = legDrop - 0.36; // overlaps the wheel hub a touch
-    const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, strutLen, 8), metal);
-    strut.position.y = -strutLen / 2;
-    pivot.add(strut);
-    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.26, 16), tyreMat);
-    wheel.rotation.z = Math.PI / 2;
-    wheel.position.y = -legDrop + 0.42; // bottom at -groundY (world)
+    // oleo: fatter upper barrel, slimmer polished piston sliding out of it
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, strutLen * 0.6, 10), metal);
+    upper.position.y = -strutLen * 0.3;
+    pivot.add(upper);
+    const piston = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, strutLen * 0.55, 8), pistonMat);
+    piston.position.y = -strutLen * 0.75;
+    pivot.add(piston);
+    // scissor link on the front face of the oleo (two hinged straps)
+    for (const [i, tilt] of [0.6, -0.6].entries()) {
+      const strap = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.2, 0.035), metal);
+      strap.position.set(0, -strutLen * (0.52 + i * 0.14), -0.085);
+      strap.rotation.x = tilt;
+      pivot.add(strap);
+    }
+    // well door riding the leg, outboard of the strut (P-51/Spitfire style);
+    // it covers the oleo down to the axle and stops above the tyre.
+    const doorLen = strutLen + 0.18;
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.035, doorLen, 0.4), doorMat);
+    door.position.set(sideX * 0.15, -doorLen / 2 + 0.1, 0);
+    pivot.add(door);
+    // wheel sits slightly inboard of the leg on a stub axle
+    const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.22, 8), pistonMat);
+    axle.rotation.z = Math.PI / 2;
+    axle.position.set(-sideX * 0.08, -legDrop + wheelR, 0);
+    pivot.add(axle);
+    const wheel = makeWheel(wheelR, 0.28);
+    wheel.position.set(-sideX * 0.13, -legDrop + wheelR, 0); // bottom at -groundY (world)
     pivot.add(wheel);
     gear.userData[sideX < 0 ? 'left' : 'right'] = pivot;
     return pivot;
   };
   gear.add(leg(-1));
   gear.add(leg(1));
+  // tailwheel: short oleo + fork straddling a small wheel
   const tail = new THREE.Group();
-  const tstrut = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, groundY - 0.25, 6), metal);
-  tstrut.position.y = -(groundY - 0.25) / 2; tail.add(tstrut);
-  const twheel = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.16, 12), tyreMat);
-  twheel.rotation.z = Math.PI / 2; twheel.position.y = -groundY + 0.22; tail.add(twheel); // bottom at -groundY
+  const tLen = groundY - 0.25;
+  const tstrut = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, tLen, 8), metal);
+  tstrut.position.y = -tLen / 2;
+  tail.add(tstrut);
+  for (const fx of [-0.085, 0.085]) {
+    const tine = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.3, 0.14), metal);
+    tine.position.set(fx, -groundY + 0.36, 0.02);
+    tine.rotation.x = 0.25;
+    tail.add(tine);
+  }
+  const twheel = makeWheel(0.21, 0.14);
+  twheel.position.y = -groundY + 0.21; // bottom at -groundY
+  tail.add(twheel);
   tail.position.set(0, 0, tailZ);
   gear.add(tail);
   gear.userData.tail = tail;
@@ -361,7 +413,7 @@ function buildSpitfire(opts = {}) {
   pilot.position.set(0, 0.02, -0.5);
   plane.add(pilot);
 
-  const gear = makeUndercarriage(REF_METAL(), 4.1, -1.7, 1.5, -0.45);
+  const gear = makeUndercarriage(REF_METAL(), 4.1, -1.7, 1.5, -0.45, 0x9fae9b); // Sky-type undersides
   plane.add(gear);
   surf.gear = gear;
 
@@ -396,7 +448,7 @@ function buildP51(opts = {}) {
   surf.propDisc = pa.propDisc;
 
   // Deep radiator scoop -> tall stance; legs hang from the wing underside.
-  const gear = makeUndercarriage(REF_METAL(), 4.3, -1.9, 1.6, -0.6);
+  const gear = makeUndercarriage(REF_METAL(), 4.3, -1.9, 1.6, -0.6, 0xb4b9bf); // natural-metal doors
   plane.add(gear);
   surf.gear = gear;
 
@@ -405,9 +457,9 @@ function buildP51(opts = {}) {
 }
 
 // The Mitsubishi A6M3 Zero — the papercraft-sheet reference model (hull,
-// cowl, closed gear-door plates, antenna mast). Ailerons, elevator and
-// rudder are carved out of the single-piece hull along their hinge lines;
-// the painted-on canopy keeps its own pilot silhouette.
+// cowl, closed gear-door plates, antenna mast). Ailerons, elevator, rudder
+// AND the greenhouse canopy are carved out of the single-piece hull; the
+// canopy renders as glass with a pilot seated underneath.
 function buildZero(opts = {}) {
   const { plane, surf } = buildRefPlane(REF_ZERO_PARTS, opts);
   const pa = makePropAssembly({
@@ -432,8 +484,14 @@ function buildZero(opts = {}) {
   plane.add(navLight(-1, -6.45, 0.2, -2.0));
   plane.add(navLight(1, 6.45, 0.2, -2.0));
 
+  // the greenhouse canopy is carved out as glass — put a pilot underneath
+  const pilot = makePilot(0x4a3526);
+  pilot.scale.setScalar(0.85);
+  pilot.position.set(0, 0.55, -1.55);
+  plane.add(pilot);
+
   // tailwheel under the fin root, where the slim tail cone still has depth
-  const gear = makeUndercarriage(REF_METAL(), 4.0, -2.3, 1.35, -0.28);
+  const gear = makeUndercarriage(REF_METAL(), 4.0, -2.3, 1.35, -0.28, 0x9aa39b); // grey-green doors
   plane.add(gear);
   surf.gear = gear;
 
@@ -450,14 +508,21 @@ export function applyControlSurfaces(surf, { ail = 0, elev = 0, rud = 0, gear = 
   if (surf.elevator) surf.elevator.rotation.x = -elev;
   if (surf.rudder) surf.rudder.rotation.y = -rud;
   if (surf.gear) {
-    const r = (1 - gear) * (Math.PI / 2);
     // Main legs fold INWARD toward the fuselage centreline (rotate about the
-    // fore-aft Z axis), tucking the wheels up under the wing root; the tailwheel
-    // retracts forward.
+    // fore-aft Z axis); the tailwheel retracts rearward. These wings are far
+    // thinner than the tyres and carry no modelled wheel wells, so a full
+    // 90° fold ALWAYS punches the wheels through the top skin. Instead: swing
+    // gently (60° max) and fade the assembly out at 40–60% travel — while
+    // opaque the tyre only ever sinks through the UNDERSIDE, which from
+    // outside reads as the leg tucking into a well.
+    const travel = 1 - gear;
+    const r = travel * (Math.PI / 3);
     if (surf.gear.userData.left) surf.gear.userData.left.rotation.z = r;
     if (surf.gear.userData.right) surf.gear.userData.right.rotation.z = -r;
     if (surf.gear.userData.tail) surf.gear.userData.tail.rotation.x = -r;
-    surf.gear.visible = gear > 0.02;
+    const fade = 1 - Math.min(1, Math.max(0, (travel - 0.4) / 0.2));
+    for (const m of surf.gear.userData.mats || []) m.opacity = fade;
+    surf.gear.visible = fade > 0.01;
   }
 }
 
