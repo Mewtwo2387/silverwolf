@@ -5,6 +5,19 @@ import Database from '../../database/Database';
 import type AiUsageModel from '../../database/models/AiUsageModel';
 import { DAILY_LIMIT, WEEKLY_LIMIT } from '../../utils/ai';
 
+// Back-dates a user's fixed window so it reads as lapsed — the test-time
+// equivalent of the window's interval elapsing.
+async function lapseWindow(db: Database, userId: string, type: 'daily' | 'weekly') {
+  const ago = type === 'daily' ? '-25 hours' : '-8 days';
+  await db.executeQuery(
+    `
+      UPDATE AiRateLimitWindow SET window_start = datetime('now', ?)
+      WHERE user_id = ? AND window_type = ?
+    `,
+    [ago, userId, type],
+  );
+}
+
 describe('AiUsageModel', () => {
   let db: Database;
   let aiUsageModel: AiUsageModel;
@@ -22,6 +35,7 @@ describe('AiUsageModel', () => {
 
   beforeEach(async () => {
     await db.executeQuery('DELETE FROM AiUsage');
+    await db.executeQuery('DELETE FROM AiRateLimitWindow');
     await db.executeQuery('DELETE FROM User');
   });
 
@@ -32,7 +46,7 @@ describe('AiUsageModel', () => {
     expect(limitStatus.limited).toBe(false);
   });
 
-  test('accumulates daily and weekly usage correctly', async () => {
+  test('accumulates usage within a window', async () => {
     await aiUsageModel.addUsage('u1', 'test-model', 1000, 2000);
     await aiUsageModel.addUsage('u1', 'test-model2', 500, 1500);
 
@@ -48,44 +62,26 @@ describe('AiUsageModel', () => {
     expect(await aiUsageModel.getDailyUsage('u2')).toBe(1000);
   });
 
-  test('excludes daily entries older than 24 hours but includes in weekly', async () => {
-    // 25 hours ago
-    await db.executeQuery(`
-      INSERT INTO AiUsage (user_id, model, tokens_prompt, tokens_completion, cost, created_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now', '-25 hours'))
-    `, ['u1', 'test-model', 10000, 10000, 0]);
+  test('clears the daily window wholesale once it lapses, weekly keeps rolling', async () => {
+    await aiUsageModel.addUsage('u1', 'test-model', 100000, 0);
+    expect(await aiUsageModel.getDailyUsage('u1')).toBe(100000);
+    expect(await aiUsageModel.getWeeklyUsage('u1')).toBe(100000);
 
-    // 2 hours ago
-    await aiUsageModel.addUsage('u1', 'test-model', 2000, 3000);
+    await lapseWindow(db, 'u1', 'daily');
+    expect(await aiUsageModel.getDailyUsage('u1')).toBe(0); // daily reset to zero
+    expect(await aiUsageModel.getWeeklyUsage('u1')).toBe(100000); // weekly still open
 
-    expect(await aiUsageModel.getDailyUsage('u1')).toBe(5000);
-    expect(await aiUsageModel.getWeeklyUsage('u1')).toBe(25000);
+    // The next call opens a fresh daily window rather than resuming the old total.
+    await aiUsageModel.addUsage('u1', 'test-model', 50000, 0);
+    expect(await aiUsageModel.getDailyUsage('u1')).toBe(50000);
+    expect(await aiUsageModel.getWeeklyUsage('u1')).toBe(150000);
   });
 
-  test('excludes weekly entries older than 7 days', async () => {
-    // 8 days ago
-    await db.executeQuery(`
-      INSERT INTO AiUsage (user_id, model, tokens_prompt, tokens_completion, cost, created_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now', '-8 days'))
-    `, ['u1', 'test-model', 50000, 50000, 0]);
-
-    // 3 days ago
-    await db.executeQuery(`
-      INSERT INTO AiUsage (user_id, model, tokens_prompt, tokens_completion, cost, created_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now', '-3 days'))
-    `, ['u1', 'test-model', 20000, 20000, 0]);
-
-    expect(await aiUsageModel.getDailyUsage('u1')).toBe(0);
-    expect(await aiUsageModel.getWeeklyUsage('u1')).toBe(40000);
-  });
-
-  test('triggers daily rate limit when budget exceeded', async () => {
-    // Under limit
+  test('triggers daily rate limit when the window budget is exceeded', async () => {
     await aiUsageModel.addUsage('u1', 'test-model', DAILY_LIMIT - 5000, 0);
     let status = await aiUsageModel.checkRateLimit('u1');
     expect(status.limited).toBe(false);
 
-    // Over limit
     await aiUsageModel.addUsage('u1', 'test-model', 10000, 0);
     status = await aiUsageModel.checkRateLimit('u1');
     expect(status.limited).toBe(true);
@@ -93,49 +89,57 @@ describe('AiUsageModel', () => {
     expect(status.limit).toBe(DAILY_LIMIT);
   });
 
-  test('triggers weekly rate limit when budget exceeded', async () => {
-    // Simulate usage across past 6 days, staying below the 250k daily limit on each day
-    // Day 1 (6 days ago): 200k
-    await db.executeQuery(`
-      INSERT INTO AiUsage (user_id, model, tokens_prompt, tokens_completion, cost, created_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now', '-6 days'))
-    `, ['u1', 'test-model', 200000, 0, 0]);
+  test('daily rate limit clears once the window resets', async () => {
+    await aiUsageModel.addUsage('u1', 'test-model', DAILY_LIMIT, 0);
+    expect((await aiUsageModel.checkRateLimit('u1')).limited).toBe(true);
 
-    // Day 2 (5 days ago): 200k
-    await db.executeQuery(`
-      INSERT INTO AiUsage (user_id, model, tokens_prompt, tokens_completion, cost, created_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now', '-5 days'))
-    `, ['u1', 'test-model', 200000, 0, 0]);
+    await lapseWindow(db, 'u1', 'daily');
+    const status = await aiUsageModel.checkRateLimit('u1');
+    expect(status.limited).toBe(false); // daily cleared; weekly (250k) still under 1M
+  });
 
-    // Day 3 (4 days ago): 200k
-    await db.executeQuery(`
-      INSERT INTO AiUsage (user_id, model, tokens_prompt, tokens_completion, cost, created_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now', '-4 days'))
-    `, ['u1', 'test-model', 200000, 0, 0]);
+  test('weekly rate limit trips independently while daily keeps resetting', async () => {
+    // Five 200k "days": daily is lapsed between each so it never exceeds 250k,
+    // but the weekly window keeps accumulating to 1,000,000.
+    for (let i = 0; i < 5; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await aiUsageModel.addUsage('u1', 'test-model', 200000, 0);
+      // eslint-disable-next-line no-await-in-loop
+      await lapseWindow(db, 'u1', 'daily');
+    }
 
-    // Day 4 (3 days ago): 200k
-    await db.executeQuery(`
-      INSERT INTO AiUsage (user_id, model, tokens_prompt, tokens_completion, cost, created_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now', '-3 days'))
-    `, ['u1', 'test-model', 200000, 0, 0]);
+    expect(await aiUsageModel.getWeeklyUsage('u1')).toBe(1000000);
+    expect(await aiUsageModel.getDailyUsage('u1')).toBe(0);
 
-    // Day 5 (2 days ago): 150k
-    await db.executeQuery(`
-      INSERT INTO AiUsage (user_id, model, tokens_prompt, tokens_completion, cost, created_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now', '-2 days'))
-    `, ['u1', 'test-model', 150000, 0, 0]);
-
-    // Day 6 (30 hours ago): 100k
-    await db.executeQuery(`
-      INSERT INTO AiUsage (user_id, model, tokens_prompt, tokens_completion, cost, created_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now', '-30 hours'))
-    `, ['u1', 'test-model', 100000, 0, 0]);
-
-    // Total so far = 1,050,000. Daily usage = 0.
     const status = await aiUsageModel.checkRateLimit('u1');
     expect(status.limited).toBe(true);
     expect(status.reason).toBe('weekly');
     expect(status.limit).toBe(WEEKLY_LIMIT);
+  });
+
+  test('getResetAt is null when no window is open', async () => {
+    expect(await aiUsageModel.getResetAt('u1', 'daily')).toBeNull();
+    expect(await aiUsageModel.getResetAt('u1', 'weekly')).toBeNull();
+
+    await aiUsageModel.addUsage('u1', 'test-model', 1000, 0);
+    await lapseWindow(db, 'u1', 'daily');
+    expect(await aiUsageModel.getResetAt('u1', 'daily')).toBeNull();
+  });
+
+  test('getResetAt (daily) is the window start + 24h', async () => {
+    await aiUsageModel.addUsage('u1', 'test-model', DAILY_LIMIT, 0);
+    const resetAt = await aiUsageModel.getResetAt('u1', 'daily');
+    expect(resetAt).not.toBeNull();
+    const expected = Date.now() + 24 * 60 * 60 * 1000;
+    expect(Math.abs((resetAt as Date).getTime() - expected)).toBeLessThan(2 * 60 * 1000);
+  });
+
+  test('getResetAt (weekly) is the window start + 7d', async () => {
+    await aiUsageModel.addUsage('u1', 'test-model', 500000, 0);
+    const resetAt = await aiUsageModel.getResetAt('u1', 'weekly');
+    expect(resetAt).not.toBeNull();
+    const expected = Date.now() + 7 * 24 * 60 * 60 * 1000;
+    expect(Math.abs((resetAt as Date).getTime() - expected)).toBeLessThan(2 * 60 * 1000);
   });
 
   test('bypasses rate limit checks for developers', async () => {
