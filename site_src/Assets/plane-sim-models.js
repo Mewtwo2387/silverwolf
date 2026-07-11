@@ -206,32 +206,29 @@ function navLight(side, x, y, z) {
   return tip;
 }
 
-// A simple seated pilot (torso, head, leather helmet, goggles band) — sits
-// under the canopy glass and reads as a person at gameplay distance.
-function makePilot(helmetHex = 0x4a3526) {
+// The seated pilot borrowed from the P-51 reference model (seat + torso,
+// modelled head with face, goggles and helmet — parts VIFS25..VIFS30). The
+// group keeps the P-51's cockpit coordinates (head around y 0.6, z -0.75);
+// callers offset/scale it into their own cockpit. Geometry is built once and
+// shared between every pilot instance.
+const PILOT_IDS = new Set(['VIFS25', 'VIFS26', 'VIFS27', 'VIFS28', 'VIFS29', 'VIFS30']);
+let pilotProto = null;
+function makeRefPilot() {
+  if (!pilotProto) {
+    pilotProto = [];
+    for (const part of REF_P51_PARTS) {
+      if (!PILOT_IDS.has(part.id)) continue;
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(part.pos, 3));
+      geo.setIndex(part.idx);
+      geo.computeVertexNormals();
+      pilotProto.push({ geo, color: part.color });
+    }
+  }
   const g = new THREE.Group();
-  const skin = new THREE.MeshStandardMaterial({ color: 0xd9a878, roughness: 0.8 });
-  const suit = new THREE.MeshStandardMaterial({ color: 0x54503e, roughness: 0.85 });
-  const helm = new THREE.MeshStandardMaterial({ color: helmetHex, roughness: 0.7 });
-  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.34, 10), suit);
-  torso.position.y = 0.17;
-  g.add(torso);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.115, 12, 10), skin);
-  head.position.y = 0.45;
-  g.add(head);
-  const cap = new THREE.Mesh(
-    new THREE.SphereGeometry(0.12, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.58),
-    helm,
-  );
-  cap.position.y = 0.455;
-  g.add(cap);
-  const goggles = new THREE.Mesh(
-    new THREE.TorusGeometry(0.112, 0.024, 6, 16),
-    new THREE.MeshStandardMaterial({ color: 0x2c2c30, roughness: 0.4, metalness: 0.3 }),
-  );
-  goggles.rotation.x = Math.PI / 2;
-  goggles.position.y = 0.485;
-  g.add(goggles);
+  for (const { geo, color } of pilotProto) {
+    g.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color, roughness: 0.8, side: THREE.DoubleSide })));
+  }
   return g;
 }
 
@@ -348,9 +345,16 @@ function buildRefPlane(parts, opts) {
     geo.computeVertexNormals();
     let mat;
     if (part.role === 'glass') {
-      mat = new THREE.MeshStandardMaterial({
-        color: 0x9fc7d8, roughness: 0.15, metalness: 0, transparent: true, opacity: 0.5, side: THREE.DoubleSide,
-      });
+      // Textured glass (the Zero's greenhouse) keeps its skin: the painted
+      // frame lines show over the translucency, giving the caged look for
+      // free. Untextured glass is the plain tinted canopy of the other two.
+      mat = part.tex
+        ? new THREE.MeshStandardMaterial({
+          map: refTexture(part.tex), roughness: 0.25, metalness: 0, transparent: true, opacity: 0.62, side: THREE.DoubleSide,
+        })
+        : new THREE.MeshStandardMaterial({
+          color: 0x9fc7d8, roughness: 0.15, metalness: 0, transparent: true, opacity: 0.5, side: THREE.DoubleSide,
+        });
     } else if (part.role === 'lamp') {
       mat = new THREE.MeshStandardMaterial({
         color: part.color, emissive: part.color, emissiveIntensity: 1.2, roughness: 0.4,
@@ -409,11 +413,15 @@ function buildSpitfire(opts = {}) {
   surf.blades = pa.blades;
   surf.propDisc = pa.propDisc;
 
-  const pilot = makePilot(0x6b5133);
-  pilot.position.set(0, 0.02, -0.5);
+  // The P-51's pilot, slid aft+down to sit under the Spitfire's lower canopy.
+  const pilot = makeRefPilot();
+  pilot.scale.setScalar(0.9);
+  pilot.position.set(0, -0.12, 0.22);
   plane.add(pilot);
 
-  const gear = makeUndercarriage(REF_METAL(), 4.1, -1.7, 1.5, -0.45, 0x9fae9b); // Sky-type undersides
+  // Legs hang from the front-spar area where the wing is deepest — the pivot
+  // must sit below the local top skin or the strut pokes out of the wing.
+  const gear = makeUndercarriage(REF_METAL(), 4.1, -2.05, 1.5, -0.72, 0x9fae9b); // Sky-type undersides
   plane.add(gear);
   surf.gear = gear;
 
@@ -484,10 +492,11 @@ function buildZero(opts = {}) {
   plane.add(navLight(-1, -6.45, 0.2, -2.0));
   plane.add(navLight(1, 6.45, 0.2, -2.0));
 
-  // the greenhouse canopy is carved out as glass — put a pilot underneath
-  const pilot = makePilot(0x4a3526);
-  pilot.scale.setScalar(0.85);
-  pilot.position.set(0, 0.55, -1.55);
+  // the greenhouse canopy is carved out as glass — the P-51's pilot sits
+  // underneath, raised to the Zero's higher cockpit deck
+  const pilot = makeRefPilot();
+  pilot.scale.setScalar(0.9);
+  pilot.position.set(0, 0.42, -0.85);
   plane.add(pilot);
 
   // tailwheel under the fin root, where the slim tail cone still has depth
@@ -864,28 +873,43 @@ export function makeWindsock() {
   pole.position.y = 3.5; g.add(pole);
   const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.04, 6, 16), poleMat);
   hoop.rotation.y = Math.PI / 2; hoop.position.set(0, 6.9, 0.45); g.add(hoop);
-  // Sock: 5 frustums streaming along +Z, alternating orange/white, tapering and
-  // drooping. Each segment is a short open cone; a small pitch per segment sags
-  // the tail like a light-wind sock.
+  // Sock: 5 frustums streaming along +Z, alternating orange/white, tapering
+  // and drooping. Built as a CHAIN of joints (each segment parents the next)
+  // so userData.flutter(t) can ripple the fabric: every joint carries a
+  // baseline droop plus phase-lagged sine wiggle that grows toward the tail.
   const orange = new THREE.MeshStandardMaterial({ color: 0xe06a1e, roughness: 0.8, side: THREE.DoubleSide });
   const white = new THREE.MeshStandardMaterial({ color: 0xe8e8ea, roughness: 0.8, side: THREE.DoubleSide });
   const sock = new THREE.Group();
   sock.position.set(0, 6.9, 0.45);
-  let z = 0; let r0 = 0.4; let pitch = 0;
+  const joints = [];
+  let parent = sock;
+  let r0 = 0.4;
+  const len = 0.62;
   for (let i = 0; i < 5; i++) {
     const r1 = r0 * 0.82;
-    const len = 0.62;
-    pitch += 0.12; // progressive droop
-    z += len * Math.cos(pitch);
+    const joint = new THREE.Group();
+    joint.position.z = i === 0 ? 0.31 : len; // hang off the previous segment's end
     const seg = new THREE.Mesh(
       new THREE.CylinderGeometry(r1, r0, len, 14, 1, true),
       i % 2 ? white : orange,
     );
     seg.rotation.x = Math.PI / 2; // axis along Z
-    seg.position.set(0, -Math.sin(pitch) * (i * 0.16), 0.31 + (z - len / 2));
-    sock.add(seg);
+    seg.position.z = len / 2;
+    joint.add(seg);
+    parent.add(joint);
+    joints.push(joint);
+    parent = joint;
     r0 = r1;
   }
+  g.userData.flutter = (t) => {
+    for (let i = 0; i < joints.length; i++) {
+      const lag = i * 0.85; // ripple travels root -> tail
+      const amp = 0.05 + i * 0.045; // tail flaps harder than the mouth
+      joints[i].rotation.x = 0.12 + Math.sin(t * 3.1 - lag) * amp + Math.sin(t * 7.3 - lag * 1.7) * amp * 0.35;
+      joints[i].rotation.y = Math.sin(t * 2.3 - lag + 1.2) * amp * 0.8;
+    }
+  };
+  g.userData.flutter(0);
   g.add(sock);
   setShadows(g);
   return g;

@@ -287,6 +287,7 @@ import {
       applyControlSurfaces(currentSurf, surfState);
       if (opts.spinProp && currentSurf.prop) currentSurf.prop.rotation.z -= dt * 24;
     }
+    if (current && current.userData.flutter) current.userData.flutter(now / 1000); // windsock
     controls.update();
     renderer.render(scene, camera);
     requestAnimationFrame(tick);

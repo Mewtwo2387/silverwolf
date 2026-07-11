@@ -266,6 +266,7 @@ import {
   //      scatterVegetation as they build. ----
   const obCyl = [];
   const obBox = [];
+  const windsocks = []; // fluttered each frame (userData.flutter)
   const OBSTACLE_CEIL = 40; // taller than the tallest obstacle (the ~30 m tower)
   const addCyl = (x, z, r, top, reason) => obCyl.push({
     x, z, r, top, reason,
@@ -360,12 +361,14 @@ import {
     field.add(bowser);
     addCyl(-40, 70, 3.4, 2.6, 'Flew into a bowser');
 
-    // ---- Windsocks by each runway threshold (offset to the east side). ----
+    // ---- Windsocks by each runway threshold (offset to the east side).
+    //      Collected so the frame loop can flutter them in the breeze. ----
     for (const wz of [CFG.RUNWAY_LEN / 2 - 30, -(CFG.RUNWAY_LEN / 2 - 30)]) {
       const sock = makeWindsock();
       sock.position.set(34, 0, wz);
       sock.rotation.y = Math.PI * 0.15;
       field.add(sock);
+      windsocks.push(sock);
     }
 
     // ---- Perimeter security fence around the technical site (hangars, huts,
@@ -1150,8 +1153,10 @@ import {
   function applyEnemyActivation() {
     activeCount = enemyCountPref;
     enemies.forEach((e, i) => {
-      if (i < activeCount) placeEnemy(e);
-      else { e.alive = false; e.group.visible = false; }
+      if (i < activeCount) {
+        placeEnemy(e);
+        e.group.visible = !menuMode; // menus keep bandits off-camera
+      } else { e.alive = false; e.group.visible = false; }
     });
   }
   function spawnEnemies() {
@@ -1525,6 +1530,8 @@ import {
     if (menuEl) menuEl.classList.toggle('ps-hidden', mode !== 'plane');
     if (mapMenuEl) mapMenuEl.classList.toggle('ps-hidden', mode !== 'map');
     stage.classList.toggle('ps-in-menu', !!mode);
+    // Bandits have no business photobombing the hangar turntable.
+    for (const e of enemies) e.group.visible = e.alive && !mode;
     if (mode === 'plane') renderMenuStats();
   }
   function enterHangar() {
@@ -2570,8 +2577,15 @@ import {
     }
 
     // Bandits fly even before launch / after a crash (so they patrol), but only
-    // shoot while the engagement is live.
-    for (const e of enemies) if (e.alive && dt > 0) stepEnemy(e, dt, playing && !dev.noAiFire);
+    // shoot while the engagement is live. In the hangar/map menus they're
+    // hidden AND frozen — otherwise they dive at the parked showpiece.
+    if (!menuMode) {
+      for (const e of enemies) if (e.alive && dt > 0) stepEnemy(e, dt, playing && !dev.noAiFire);
+    }
+
+    // Windsocks ripple in the ambient breeze (menus included — the hangar
+    // turntable looks better alive).
+    for (const w of windsocks) w.userData.flutter(now / 1000);
     stepSparks(dt);
     stepSmokes(dt);
     stepDebris(dt);
