@@ -33,7 +33,12 @@ const STATIC_ASSETS: Record<string, StaticEntry> = {
 };
 // Plane Sim aircraft textures (the P-51 / Zero reference-model skins, loaded
 // by THREE.TextureLoader from the game bundle — see plane-sim-models.js).
-for (const skin of ['p51-fus', 'p51-tai', 'p51-elv', 'p51-rud', 'p51-wng', 'zero-sheet', 'spit-skin']) {
+for (const skin of [
+  'p51-fus', 'p51-tai', 'p51-elv', 'p51-rud', 'p51-wng', 'zero-sheet', 'spit-skin',
+  'tree-bark', 'tree-leaves', 'metal-normal', 'metal-roughness',
+  'asphalt', 'corrugated-metal', 'concrete',
+  'water-normal', 'grass-normal',
+]) {
   STATIC_ASSETS[`/static/planes/${skin}.jpg`] = { path: path.join(ASSETS_DIR, 'planes', `${skin}.jpg`), contentType: 'image/jpeg' };
 }
 // Hero responsive variants — emitted by scripts/build-images.ts. The about-page

@@ -28,6 +28,7 @@ import * as THREE from 'three';
 import {
   buildAircraft, applyControlSurfaces, setPropBlur, makeHangar, makeControlTower,
   makeWindsock, makeFuelTank, makeBowser, makeNissenHut, PLANE_INFO, planeSpecs,
+  makePineCanopyGeo, makeBroadleafCanopyGeo, makeConiferCanopyGeo, makeBroadleafTrunkGeo,
 } from './plane-sim-models.js';
 import {
   TERRAIN, terrainHeight, forestMask, buildTerrain, buildWater, smoothstep, fbm,
@@ -189,7 +190,7 @@ import {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping; // filmic response -> less "flat web GL"
-  renderer.toneMappingExposure = 1.08;
+  renderer.toneMappingExposure = 1.15;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap; // PCFSoft is deprecated (aliases to PCF, but warns every frame)
 
@@ -214,7 +215,7 @@ import {
   const backFill = new THREE.DirectionalLight(0x9fc4ff, 0.55);
   backFill.position.set(0.6, 0.4, -0.5);
   scene.add(backFill);
-  scene.add(new THREE.HemisphereLight(0xbfd8ff, 0x55633f, 1.15));
+  scene.add(new THREE.HemisphereLight(0xcce2ff, 0x6e785a, 1.25));
 
   // ---- A gradient sky dome (top deep-blue -> pale horizon haze) + sun disc ----
   (function buildSky() {
@@ -228,6 +229,8 @@ import {
     ctx.fillStyle = g; ctx.fillRect(0, 0, 8, 256);
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    scene.environment = tex;
     const dome = new THREE.Mesh(
       new THREE.SphereGeometry(15500, 24, 16),
       new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide, fog: false, depthWrite: false }),
@@ -255,7 +258,8 @@ import {
   // ---- Terrain: procedural mountains/valleys/lakes (plane-sim-terrain.js).
   //      The airfield sits on a flattened disc at the origin. ----
   scene.add(buildTerrain(renderer));
-  scene.add(buildWater());
+  const waterMesh = buildWater();
+  scene.add(waterMesh);
 
   // ---- Obstacle registry for collision. Solid scenery registers a simple
   //      volume here — a vertical cylinder {x,z,r,top} (trees, rocks, poles,
@@ -281,9 +285,17 @@ import {
     const field = new THREE.Group(); // 3D structures (cast + receive shadow)
     const markings = new THREE.Group(); // flat ground paint (receive only)
 
+    const asphaltTex = new THREE.TextureLoader().load('/static/planes/asphalt.jpg');
+    asphaltTex.colorSpace = THREE.SRGBColorSpace;
+    asphaltTex.wrapS = asphaltTex.wrapT = THREE.RepeatWrapping;
+    asphaltTex.anisotropy = 8;
+
+    const tarmacTex = asphaltTex.clone();
+    tarmacTex.repeat.set(3, 60);
+
     const tarmac = new THREE.Mesh(
       new THREE.PlaneGeometry(CFG.RUNWAY_W, CFG.RUNWAY_LEN),
-      new THREE.MeshStandardMaterial({ color: 0x2b2f36, roughness: 0.95 }),
+      new THREE.MeshStandardMaterial({ map: tarmacTex, color: 0x8b8f95, roughness: 0.88 }),
     );
     tarmac.rotation.x = -Math.PI / 2;
     tarmac.position.y = 0.12;
@@ -305,7 +317,9 @@ import {
     // ---- Paved taxiways: a perimeter track down the west side linking the two
     //      runway thresholds, with spur links out to the hangar apron. Flat
     //      tarmac like the runway (receive shadow only). ----
-    const taxiMat = new THREE.MeshStandardMaterial({ color: 0x33373f, roughness: 0.95 });
+    const taxiTex = asphaltTex.clone();
+    taxiTex.repeat.set(1.5, 30);
+    const taxiMat = new THREE.MeshStandardMaterial({ map: taxiTex, color: 0x90949a, roughness: 0.88 });
     const taxi = (w, l, x, z, rot = 0) => {
       const m = new THREE.Mesh(new THREE.PlaneGeometry(w, l), taxiMat);
       m.rotation.x = -Math.PI / 2; m.rotation.z = rot;
@@ -455,7 +469,7 @@ import {
       broadleaf: {
         spots: [],
         trunk: [0.5, 0.85, 3.8, 1.9],
-        canopy: () => { const s = new THREE.SphereGeometry(3.5, 8, 6); s.scale(1, 0.85, 1); s.translate(0, 5.6, 0); return s; },
+        canopy: makeBroadleafCanopyGeo,
         hsl: () => [0.22 + Math.random() * 0.09, 0.5, 0.28 + Math.random() * 0.09],
         scale: () => 0.6 + Math.random() * 1.1,
         cr: 2.2, // collision radius + top height (× instance scale)
@@ -464,7 +478,7 @@ import {
       conifer: {
         spots: [],
         trunk: [0.35, 0.65, 4.2, 2.1],
-        canopy: () => { const c = new THREE.ConeGeometry(3.2, 9.5, 6); c.translate(0, 8.2, 0); return c; },
+        canopy: makeConiferCanopyGeo,
         hsl: () => [0.26 + Math.random() * 0.07, 0.42 + Math.random() * 0.15, 0.2 + Math.random() * 0.1],
         scale: () => 0.7 + Math.random() * 1.3,
         cr: 2.4,
@@ -473,7 +487,7 @@ import {
       pine: {
         spots: [],
         trunk: [0.28, 0.5, 7, 3.5],
-        canopy: () => { const c = new THREE.ConeGeometry(2.0, 11, 7); c.translate(0, 11.2, 0); return c; },
+        canopy: makePineCanopyGeo,
         hsl: () => [0.31 + Math.random() * 0.05, 0.35, 0.16 + Math.random() * 0.07],
         scale: () => 0.75 + Math.random() * 0.85,
         cr: 1.9,
@@ -525,8 +539,29 @@ import {
       }
     }
 
-    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x54381f, roughness: 1 });
-    const leafMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 });
+    const trunkTex = new THREE.TextureLoader().load('/static/planes/tree-bark.jpg');
+    trunkTex.wrapS = trunkTex.wrapT = THREE.RepeatWrapping;
+    trunkTex.repeat.set(1, 3);
+    trunkTex.anisotropy = 8;
+
+    const leafTex = new THREE.TextureLoader().load('/static/planes/tree-leaves.jpg');
+    leafTex.colorSpace = THREE.SRGBColorSpace;
+    leafTex.wrapS = leafTex.wrapT = THREE.RepeatWrapping;
+    leafTex.repeat.set(4, 4);
+    leafTex.anisotropy = 8;
+
+    const trunkMat = new THREE.MeshStandardMaterial({
+      map: trunkTex,
+      roughness: 0.9,
+      metalness: 0.05,
+    });
+    const leafMat = new THREE.MeshStandardMaterial({
+      map: leafTex,
+      roughness: 0.85,
+      metalness: 0.05,
+      vertexColors: true,
+    });
+
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     const up = new THREE.Vector3(0, 1, 0);
@@ -535,9 +570,14 @@ import {
     const col = new THREE.Color();
     for (const t of Object.values(types)) {
       if (!t.spots.length) continue;
-      const [rTop, rBot, tHeight, tY] = t.trunk;
-      const trunkGeo = new THREE.CylinderGeometry(rTop, rBot, tHeight, 5);
-      trunkGeo.translate(0, tY, 0);
+      let trunkGeo;
+      if (t === types.broadleaf) {
+        trunkGeo = makeBroadleafTrunkGeo();
+      } else {
+        const [rTop, rBot, tHeight, tY] = t.trunk;
+        trunkGeo = new THREE.CylinderGeometry(rTop, rBot, tHeight, 5);
+        trunkGeo.translate(0, tY, 0);
+      }
       const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, t.spots.length);
       const canopies = new THREE.InstancedMesh(t.canopy(), leafMat, t.spots.length);
       for (let i = 0; i < t.spots.length; i++) {
@@ -2554,6 +2594,8 @@ import {
 
   let last = performance.now();
   let borderScroll = 0;
+  let waterScrollX = 0;
+  let waterScrollY = 0;
   let bootShown = false;
   function frame(now) {
     let dt = (now - last) / 1000;
@@ -2599,6 +2641,13 @@ import {
     // scroll the border stripes for that shimmering Minecraft-wall look
     borderScroll = (borderScroll + dt * 0.06) % 1;
     for (const m of borderMats) if (m.map) m.map.offset.y = borderScroll;
+
+    // scroll the water ripples for dynamic active waves
+    if (waterMesh && waterMesh.material && waterMesh.material.normalMap) {
+      waterScrollX = (waterScrollX + dt * 0.015) % 1;
+      waterScrollY = (waterScrollY + dt * 0.010) % 1;
+      waterMesh.material.normalMap.offset.set(waterScrollX, waterScrollY);
+    }
 
     if (menuMode) menuCamera(dt); else updateCamera(dt);
     drawMap();

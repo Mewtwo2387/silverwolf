@@ -325,6 +325,108 @@ function refTexture(name) {
   return _refTexCache[name];
 }
 
+const _detailTexCache = {};
+function detailTexture(name, repeat) {
+  const key = `${name}_${repeat}`;
+  if (!_detailTexCache[key]) {
+    const tex = new THREE.TextureLoader().load(`/static/planes/${name}.jpg`);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(repeat, repeat);
+    tex.anisotropy = 8;
+    _detailTexCache[key] = tex;
+  }
+  return _detailTexCache[key];
+}
+
+const _treeTexCache = {};
+function treeTexture(name, repeatU, repeatV) {
+  const key = `${name}_${repeatU}_${repeatV}`;
+  if (!_treeTexCache[key]) {
+    const tex = new THREE.TextureLoader().load(`/static/planes/${name}.jpg`);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(repeatU, repeatV);
+    tex.anisotropy = 8;
+    _treeTexCache[key] = tex;
+  }
+  return _treeTexCache[key];
+}
+
+function mergeGeometries(geos) {
+  const positions = [];
+  const normals = [];
+  const uvs = [];
+  const indices = [];
+  let vertexOffset = 0;
+  for (const g of geos) {
+    const posAttr = g.attributes.position;
+    const normAttr = g.attributes.normal;
+    const uvAttr = g.attributes.uv;
+    const indexAttr = g.index;
+    for (let i = 0; i < posAttr.count; i++) {
+      positions.push(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i));
+      if (normAttr) normals.push(normAttr.getX(i), normAttr.getY(i), normAttr.getZ(i));
+      if (uvAttr) uvs.push(uvAttr.getX(i), uvAttr.getY(i));
+    }
+    if (indexAttr) {
+      for (let i = 0; i < indexAttr.count; i++) {
+        indices.push(indexAttr.array[i] + vertexOffset);
+      }
+    } else {
+      for (let i = 0; i < posAttr.count; i++) {
+        indices.push(i + vertexOffset);
+      }
+    }
+    vertexOffset += posAttr.count;
+  }
+  const merged = new THREE.BufferGeometry();
+  merged.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  if (normals.length) merged.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+  if (uvs.length) merged.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  merged.setIndex(indices);
+  return merged;
+}
+
+export function makePineCanopyGeo() {
+  const c1 = new THREE.ConeGeometry(2.0, 7.5, 7); c1.translate(0, 12, 0);
+  const c2 = new THREE.ConeGeometry(1.6, 6.0, 7); c2.translate(0.4, 9.8, 0.3);
+  const c3 = new THREE.ConeGeometry(1.5, 5.0, 7); c3.translate(-0.4, 8.5, -0.4);
+  return mergeGeometries([c1, c2, c3]);
+}
+
+export function makeBroadleafCanopyGeo() {
+  const s1 = new THREE.SphereGeometry(2.4, 8, 6); s1.scale(1, 0.85, 1); s1.translate(0, 5.8, 0);
+  const s2 = new THREE.SphereGeometry(1.8, 8, 6); s2.scale(1, 0.85, 1); s2.translate(1.0, 5.4, 0.8);
+  const s3 = new THREE.SphereGeometry(1.8, 8, 6); s3.scale(1, 0.85, 1); s3.translate(-1.0, 5.2, -0.8);
+  const s4 = new THREE.SphereGeometry(1.6, 8, 6); s4.scale(1, 0.85, 1); s4.translate(0.8, 5.0, -1.0);
+  const s5 = new THREE.SphereGeometry(1.5, 8, 6); s5.scale(1, 0.85, 1); s5.translate(-0.8, 5.5, 1.0);
+  const s6 = new THREE.SphereGeometry(1.4, 8, 6); s6.scale(1, 0.85, 1); s6.translate(0, 6.4, 0);
+  return mergeGeometries([s1, s2, s3, s4, s5, s6]);
+}
+
+export function makeConiferCanopyGeo() {
+  const c1 = new THREE.ConeGeometry(3.6, 6.5, 7); c1.translate(0, 6.2, 0);
+  const c2 = new THREE.ConeGeometry(2.8, 5.0, 7); c2.translate(0.2, 9.2, 0.1);
+  const c3 = new THREE.ConeGeometry(2.0, 4.0, 7); c3.translate(-0.1, 11.6, -0.2);
+  const c4 = new THREE.ConeGeometry(1.2, 2.5, 7); c4.translate(0, 13.2, 0);
+  return mergeGeometries([c1, c2, c3, c4]);
+}
+
+export function makeBroadleafTrunkGeo() {
+  const tGeo = new THREE.CylinderGeometry(0.5, 0.85, 3.8, 6);
+  tGeo.translate(0, 1.9, 0);
+  const b1 = new THREE.CylinderGeometry(0.08, 0.16, 2.2, 5);
+  b1.rotateZ(-0.5);
+  b1.translate(0.5, 3.5, 0.2);
+  const b2 = new THREE.CylinderGeometry(0.08, 0.16, 2.2, 5);
+  b2.rotateZ(0.5);
+  b2.translate(-0.5, 3.5, -0.2);
+  const b3 = new THREE.CylinderGeometry(0.08, 0.16, 2.2, 5);
+  b3.rotateX(0.5);
+  b3.translate(0.2, 3.5, 0.5);
+  return mergeGeometries([tGeo, b1, b2, b3]);
+}
+
 // Meshes + hinge pivots for one exported parts list. Textured skin parts take
 // the bandit tint (desaturated silhouette); colored parts (cockpit, pilot,
 // ducts) keep their baked diffuse; lamps glow; glass goes translucent. Parts
@@ -337,6 +439,8 @@ function buildRefPlane(parts, opts) {
     aileronL: null, aileronR: null, elevator: null, rudder: null,
     prop: null, blades: null, propDisc: null, gear: null,
   };
+  const normalMap = detailTexture('metal-normal', 32);
+  const roughnessMap = detailTexture('metal-roughness', 32);
   for (const part of parts) {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(part.pos, 3));
@@ -362,7 +466,10 @@ function buildRefPlane(parts, opts) {
     } else if (part.tex) {
       mat = new THREE.MeshStandardMaterial({
         map: refTexture(part.tex), color: enemy ? 0x8b939c : 0xffffff,
-        roughness: 0.55, metalness: 0.08, side: THREE.DoubleSide,
+        roughness: 0.35, metalness: 0.85,
+        normalMap, roughnessMap,
+        normalScale: new THREE.Vector2(0.1, 0.1),
+        side: THREE.DoubleSide,
       });
     } else {
       mat = new THREE.MeshStandardMaterial({
@@ -388,7 +495,14 @@ function buildRefPlane(parts, opts) {
   return { plane, surf };
 }
 
-const REF_METAL = () => new THREE.MeshStandardMaterial({ color: 0x33373d, roughness: 0.4, metalness: 0.7 });
+const REF_METAL = () => new THREE.MeshStandardMaterial({
+  color: 0x33373d,
+  roughness: 0.3,
+  metalness: 0.85,
+  normalMap: detailTexture('metal-normal', 16),
+  roughnessMap: detailTexture('metal-roughness', 16),
+  normalScale: new THREE.Vector2(0.1, 0.1),
+});
 
 // The Supermarine Spitfire — the FBX reference model (RAF camouflage with
 // 303 Sqn "RF-J" codes, cannon barrels, pitot, separate glass canopy). Its
@@ -555,35 +669,65 @@ export function setPropBlur(surf, rpmNorm) {
 export function makeTree(type) {
   const t = type || ['conifer', 'pine', 'broadleaf'][Math.floor(Math.random() * 3)];
   const tree = new THREE.Group();
-  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5a3d24, roughness: 1 });
+  
+  const trunkTex = treeTexture('tree-bark', 1, 3);
+  const leafTex = treeTexture('tree-leaves', 4, 4);
+
+  const trunkMat = new THREE.MeshStandardMaterial({
+    map: trunkTex,
+    roughness: 0.9,
+    metalness: 0.05,
+  });
+
   if (t === 'pine') {
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.55, 7, 6), trunkMat);
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.5, 7, 6), trunkMat);
     trunk.position.y = 3.5; tree.add(trunk);
     const leafMat = new THREE.MeshStandardMaterial({
+      map: leafTex,
       color: new THREE.Color().setHSL(0.31 + Math.random() * 0.05, 0.35, 0.16 + Math.random() * 0.07),
-      roughness: 1,
+      roughness: 0.85,
+      metalness: 0.05,
     });
-    const c = new THREE.Mesh(new THREE.ConeGeometry(2.0, 11, 7), leafMat); c.position.y = 11.2; tree.add(c);
+    const canopy = new THREE.Mesh(makePineCanopyGeo(), leafMat);
+    tree.add(canopy);
     tree.scale.setScalar(0.8 + Math.random() * 0.9);
   } else if (t === 'broadleaf') {
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.85, 3.8, 6), trunkMat);
-    trunk.position.y = 1.9; tree.add(trunk);
+    const tGeo = new THREE.CylinderGeometry(0.5, 0.85, 3.8, 6);
+    tGeo.translate(0, 1.9, 0);
+    const b1 = new THREE.CylinderGeometry(0.08, 0.16, 2.2, 5);
+    b1.rotateZ(-0.5);
+    b1.translate(0.5, 3.5, 0.2);
+    const b2 = new THREE.CylinderGeometry(0.08, 0.16, 2.2, 5);
+    b2.rotateZ(0.5);
+    b2.translate(-0.5, 3.5, -0.2);
+    const b3 = new THREE.CylinderGeometry(0.08, 0.16, 2.2, 5);
+    b3.rotateX(0.5);
+    b3.translate(0.2, 3.5, 0.5);
+    const trunkGeo = mergeGeometries([tGeo, b1, b2, b3]);
+
+    const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+    tree.add(trunk);
+
     const leafMat = new THREE.MeshStandardMaterial({
+      map: leafTex,
       color: new THREE.Color().setHSL(0.22 + Math.random() * 0.09, 0.5, 0.28 + Math.random() * 0.09),
-      roughness: 1,
+      roughness: 0.85,
+      metalness: 0.05,
     });
-    const canopy = new THREE.Mesh(new THREE.SphereGeometry(3.5, 8, 6), leafMat);
-    canopy.scale.y = 0.85; canopy.position.y = 5.6; tree.add(canopy);
+    const canopy = new THREE.Mesh(makeBroadleafCanopyGeo(), leafMat);
+    tree.add(canopy);
     tree.scale.setScalar(0.6 + Math.random() * 1.1);
   } else {
     const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, 4.5, 6), trunkMat);
     trunk.position.y = 2.2; tree.add(trunk);
     const leafMat = new THREE.MeshStandardMaterial({
+      map: leafTex,
       color: new THREE.Color().setHSL(0.28 + Math.random() * 0.05, 0.45, 0.22 + Math.random() * 0.08),
-      roughness: 1,
+      roughness: 0.85,
+      metalness: 0.05,
     });
-    const c1 = new THREE.Mesh(new THREE.ConeGeometry(3.8, 7, 7), leafMat); c1.position.y = 6.5; tree.add(c1);
-    const c2 = new THREE.Mesh(new THREE.ConeGeometry(2.8, 5.5, 7), leafMat); c2.position.y = 9.8; tree.add(c2);
+    const canopy = new THREE.Mesh(makeConiferCanopyGeo(), leafMat);
+    tree.add(canopy);
     tree.scale.setScalar(0.8 + Math.random() * 1.3);
   }
   setShadows(tree);
@@ -598,46 +742,13 @@ export function makeHangar() {
   const g = new THREE.Group();
   const R = 9; const LEN = 38;
 
-  // Corrugated-steel texture. On the cylinder UV, u wraps the arch (hoop) and
-  // v runs along the building — so flutes that run OVER the arch (like a real
-  // Nissen hut) alternate along v: horizontal stripes on the canvas. The
-  // sheet-lap seams are rings around the arch: also constant-v lines, but
-  // darker and widely spaced.
-  const c = document.createElement('canvas');
-  c.width = c.height = 256;
-  const ctx = c.getContext('2d');
-  ctx.fillStyle = '#7d848c';
-  ctx.fillRect(0, 0, 256, 256);
-  for (let y = 0; y < 256; y += 8) { // corrugation flutes (run over the arch)
-    const grd = ctx.createLinearGradient(0, y, 0, y + 8);
-    grd.addColorStop(0, 'rgba(255,255,255,0.20)');
-    grd.addColorStop(0.45, 'rgba(0,0,0,0.04)');
-    grd.addColorStop(1, 'rgba(0,0,0,0.26)');
-    ctx.fillStyle = grd;
-    ctx.fillRect(0, y, 256, 8);
-  }
-  for (const y of [0, 128]) { // sheet-lap seam rings
-    ctx.fillStyle = 'rgba(0,0,0,0.30)';
-    ctx.fillRect(0, y, 256, 3);
-    ctx.fillStyle = 'rgba(255,255,255,0.10)';
-    ctx.fillRect(0, y + 3, 256, 1);
-  }
-  for (let i = 0; i < 46; i++) { // rust/grime streaks washing down the arch (u direction)
-    const x = Math.random() * 256; const y = Math.random() * 256;
-    const len = 30 + Math.random() * 40;
-    const grad = ctx.createLinearGradient(x, 0, x + len, 0);
-    grad.addColorStop(0, `rgba(96,74,52,${0.10 + Math.random() * 0.16})`);
-    grad.addColorStop(1, 'rgba(96,74,52,0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(x, y, len, 2 + Math.random() * 3);
-  }
-  const skinTex = new THREE.CanvasTexture(c);
+  const skinTex = new THREE.TextureLoader().load('/static/planes/corrugated-metal.jpg');
   skinTex.colorSpace = THREE.SRGBColorSpace;
   skinTex.wrapS = skinTex.wrapT = THREE.RepeatWrapping;
-  skinTex.repeat.set(4, 8); // u wraps the arch (hoop), v runs along the length
+  skinTex.repeat.set(6, 6); // u wraps the arch (hoop), v runs along the length
   skinTex.anisotropy = 8;
   const skinMat = new THREE.MeshStandardMaterial({
-    map: skinTex, roughness: 0.85, metalness: 0.25, side: THREE.DoubleSide,
+    map: skinTex, roughness: 0.8, metalness: 0.25, side: THREE.DoubleSide,
   });
 
   // Arch shell: open-ended half cylinder, axis rotated onto X, arch over +Y.
@@ -791,7 +902,14 @@ export function makeHangar() {
 // nothing z-fights, and the cab glass is light + reflective so the windows read.
 export function makeControlTower() {
   const tower = new THREE.Group();
-  const concrete = new THREE.MeshStandardMaterial({ color: 0xc2c8ce, roughness: 0.85 });
+  
+  const concTex = new THREE.TextureLoader().load('/static/planes/concrete.jpg');
+  concTex.colorSpace = THREE.SRGBColorSpace;
+  concTex.wrapS = concTex.wrapT = THREE.RepeatWrapping;
+  concTex.repeat.set(2, 6);
+  concTex.anisotropy = 8;
+
+  const concrete = new THREE.MeshStandardMaterial({ map: concTex, color: 0xd2d8de, roughness: 0.8 });
   const trim = new THREE.MeshStandardMaterial({ color: 0x8a929a, roughness: 0.6, metalness: 0.3 });
   // Light, reflective glass with a faint glow so the windows stay visible even
   // when the cab is in shadow (the old near-black glass just read as a void).
@@ -921,10 +1039,20 @@ export function makeWindsock() {
 // store a WWII airfield kept away from the hangars.
 export function makeFuelTank() {
   const g = new THREE.Group();
-  const bundMat = new THREE.MeshStandardMaterial({ color: 0x8a8168, roughness: 1 });
+  const concTex = new THREE.TextureLoader().load('/static/planes/concrete.jpg');
+  concTex.wrapS = concTex.wrapT = THREE.RepeatWrapping;
+  concTex.repeat.set(6, 1);
+  const bundMat = new THREE.MeshStandardMaterial({ map: concTex, color: 0x8a847c, roughness: 0.9 });
   // Low metalness so the tank reads as pale painted steel, not a near-black
   // mirror (no environment map in the scene to reflect).
-  const steel = new THREE.MeshStandardMaterial({ color: 0x9aa39c, roughness: 0.62, metalness: 0.15 });
+  const steel = new THREE.MeshStandardMaterial({
+    color: 0x9aa39c,
+    roughness: 0.35,
+    metalness: 0.8,
+    normalMap: detailTexture('metal-normal', 4),
+    roughnessMap: detailTexture('metal-roughness', 4),
+    normalScale: new THREE.Vector2(0.1, 0.1),
+  });
   const dark = new THREE.MeshStandardMaterial({ color: 0x4a4e52, roughness: 0.7, metalness: 0.2 });
   // Containment bund: a low open ring wall + a floor pad.
   const pad = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.4, 0.2, 24), bundMat);
@@ -967,8 +1095,22 @@ export function makeFuelTank() {
 // forward is -Z (nose), so it parks like the aircraft.
 export function makeBowser() {
   const g = new THREE.Group();
-  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x55645b, roughness: 0.75, metalness: 0.12 });
-  const tankMat = new THREE.MeshStandardMaterial({ color: 0x859089, roughness: 0.6, metalness: 0.15 });
+  const bodyMat = new THREE.MeshStandardMaterial({
+    color: 0x55645b,
+    roughness: 0.38,
+    metalness: 0.75,
+    normalMap: detailTexture('metal-normal', 4),
+    roughnessMap: detailTexture('metal-roughness', 4),
+    normalScale: new THREE.Vector2(0.1, 0.1),
+  });
+  const tankMat = new THREE.MeshStandardMaterial({
+    color: 0x859089,
+    roughness: 0.38,
+    metalness: 0.75,
+    normalMap: detailTexture('metal-normal', 4),
+    roughnessMap: detailTexture('metal-roughness', 4),
+    normalScale: new THREE.Vector2(0.1, 0.1),
+  });
   const tyre = new THREE.MeshStandardMaterial({ color: 0x14151a, roughness: 0.9 });
   const glass = new THREE.MeshStandardMaterial({ color: 0x9fbccb, roughness: 0.2, metalness: 0.3 });
   const chassis = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.4, 6.2), bodyMat);
@@ -1003,8 +1145,13 @@ export function makeBowser() {
 export function makeNissenHut(len = 9) {
   const g = new THREE.Group();
   const R = 2.6;
+  const skinTex = new THREE.TextureLoader().load('/static/planes/corrugated-metal.jpg');
+  skinTex.colorSpace = THREE.SRGBColorSpace;
+  skinTex.wrapS = skinTex.wrapT = THREE.RepeatWrapping;
+  skinTex.repeat.set(2, 2);
+  skinTex.anisotropy = 8;
   const skin = new THREE.MeshStandardMaterial({
-    map: corrugatedTexture('#8a8f8b', 6, 3), roughness: 0.8, metalness: 0.3, side: THREE.DoubleSide,
+    map: skinTex, roughness: 0.8, metalness: 0.3, side: THREE.DoubleSide,
   });
   // Half-cylinder shell arching over +Y with its axis along Z. The default
   // cylinder axis is Y and the 0..π half arches over +X; rotateZ swings that

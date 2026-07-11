@@ -148,8 +148,18 @@ export function buildTerrain(renderer) {
   grain.repeat.set(1600, 1600);
   if (renderer) grain.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
+  const grassNormal = new THREE.TextureLoader().load('/static/planes/grass-normal.jpg');
+  grassNormal.wrapS = grassNormal.wrapT = THREE.RepeatWrapping;
+  grassNormal.repeat.set(2400, 2400);
+  if (renderer) grassNormal.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
   const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-    map: grain, vertexColors: true, roughness: 1, metalness: 0,
+    map: grain,
+    vertexColors: true,
+    roughness: 0.88,
+    metalness: 0.05,
+    normalMap: grassNormal,
+    normalScale: new THREE.Vector2(0.35, 0.35),
   }));
   mesh.receiveShadow = true;
   return mesh;
@@ -161,12 +171,19 @@ export function buildTerrain(renderer) {
 // the near-coplanar shoreline triangles — paired with the renderer's
 // logarithmic depth buffer this kills the shoreline z-fighting shimmer.
 export function buildWater() {
+  const waterNormal = new THREE.TextureLoader().load('/static/planes/water-normal.jpg');
+  waterNormal.wrapS = waterNormal.wrapT = THREE.RepeatWrapping;
+  waterNormal.repeat.set(256, 256);
+  waterNormal.anisotropy = 8;
+
   const mesh = new THREE.Mesh(
     new THREE.PlaneGeometry(TERRAIN.SIZE, TERRAIN.SIZE),
     new THREE.MeshStandardMaterial({
-      color: 0x1f5f7d,
-      roughness: 0.15,
-      metalness: 0.35,
+      color: 0x1d5d75,
+      roughness: 0.08,
+      metalness: 0.15,
+      normalMap: waterNormal,
+      normalScale: new THREE.Vector2(0.35, 0.35),
       transparent: true,
       opacity: 0.9,
       depthWrite: false,
