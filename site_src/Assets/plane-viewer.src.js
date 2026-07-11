@@ -111,6 +111,11 @@ import {
 
   const dimsEl = document.getElementById('pv-dims');
   function frame(modelGroup, { sitOnGround }) {
+    // load() just reset the turntable's yaw, but its matrixWorld is still the
+    // one from the last rendered frame — and Box3.setFromObject refreshes the
+    // object's descendants, NOT its parents. Update the chain first, or the
+    // bbox is taken mid-spin and span/length come out as diagonals.
+    (modelGroup.parent || modelGroup).updateMatrixWorld(true);
     let box = new THREE.Box3().setFromObject(modelGroup);
     if (sitOnGround) {
       modelGroup.position.y -= box.min.y; // rest the lowest point on the floor
