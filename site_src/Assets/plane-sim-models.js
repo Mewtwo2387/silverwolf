@@ -4,6 +4,7 @@
 // what flies. Each builder returns a THREE.Group at the origin; callers position
 // it. Local forward is -Z, Y is up, units are metres.
 import * as THREE from 'three';
+import { REF_P51_PARTS, REF_ZERO_PARTS } from './plane-sim-refmeshes.js';
 
 // ---- Procedural camouflage -------------------------------------------------
 // A canvas texture of irregular elongated blotches over a base coat — reads as
@@ -176,8 +177,6 @@ function decalQuad(tex, w, h) {
   return g;
 }
 const roundel = (radius) => decalQuad(insigniaTexture('raf'), radius * 2, radius * 2);
-const hinomaru = (radius) => decalQuad(insigniaTexture('ijn'), radius * 2, radius * 2);
-const starBar = (w) => decalQuad(insigniaTexture('usaaf'), w, w / 2);
 
 // Chord at spanwise position x for a given planform (defaults elliptical).
 function planformChord(x, halfSpan, chord, planform = ELLIPTIC) {
@@ -325,22 +324,23 @@ function makePropAssembly({
   return { prop, blades, propDisc };
 }
 
-// Undercarriage shared by every aircraft type (all three are taildraggers with
-// the same stance): two main gear + tailwheel on retract pivots. All three
-// wheel bottoms sit at y = -1.35 so a level aircraft rests cleanly on the deck.
-// applyControlSurfaces animates the retract via gear.userData handles.
-function makeUndercarriage(metal, tailZ = 4.5, mainZ = -1.0) {
+// Undercarriage shared by every aircraft type: two main gear + tailwheel on
+// retract pivots. Wheel bottoms sit at y = -groundY (default 1.35; the game
+// parks the aircraft origin that high) so a level aircraft rests cleanly on
+// the deck. applyControlSurfaces animates the retract via gear.userData.
+function makeUndercarriage(metal, tailZ = 4.5, mainZ = -1.0, groundY = 1.35) {
   const gear = new THREE.Group();
+  const drop = groundY - 1.35; // extra leg length for tall-stance airframes
   const tyreMat = new THREE.MeshStandardMaterial({ color: 0x121316, roughness: 0.9 });
   const leg = (sideX) => {
     const pivot = new THREE.Group();
     pivot.position.set(sideX * 1.45, 0, mainZ); // belly, under the wing root
-    const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.95, 8), metal);
-    strut.position.y = -0.475;
+    const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.95 + drop, 8), metal);
+    strut.position.y = -(0.95 + drop) / 2;
     pivot.add(strut);
     const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.26, 16), tyreMat);
     wheel.rotation.z = Math.PI / 2;
-    wheel.position.y = -0.93; // bottom at -1.35
+    wheel.position.y = -groundY + 0.42; // bottom at -groundY
     pivot.add(wheel);
     gear.userData[sideX < 0 ? 'left' : 'right'] = pivot;
     return pivot;
@@ -348,10 +348,10 @@ function makeUndercarriage(metal, tailZ = 4.5, mainZ = -1.0) {
   gear.add(leg(-1));
   gear.add(leg(1));
   const tail = new THREE.Group();
-  const tstrut = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 1.1, 6), metal);
-  tstrut.position.y = -0.55; tail.add(tstrut);
+  const tstrut = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 1.1 + drop, 6), metal);
+  tstrut.position.y = -(1.1 + drop) / 2; tail.add(tstrut);
   const twheel = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.16, 12), tyreMat);
-  twheel.rotation.z = Math.PI / 2; twheel.position.y = -1.13; tail.add(twheel); // bottom at -1.35
+  twheel.rotation.z = Math.PI / 2; twheel.position.y = -groundY + 0.22; tail.add(twheel); // bottom at -groundY
   tail.position.set(0, 0, tailZ);
   gear.add(tail);
   gear.userData.tail = tail;
@@ -370,34 +370,6 @@ function navLight(side, x, y, z) {
   );
   tip.position.set(x, y, z);
   return tip;
-}
-
-// Planform with a constant-chord inboard section (flat to `flat`·halfspan),
-// then linear taper to `taper`, with the last `round` fraction rounded off
-// elliptically — the A6M wing shape (chord holds to ~mid-span, then tapers).
-function flatThenTaper(flat, taper, round) {
-  return (t) => {
-    const lin = t <= flat ? 1 : 1 - (1 - taper) * ((t - flat) / (1 - flat));
-    if (t <= 1 - round) return lin;
-    const k = (t - (1 - round)) / round;
-    return lin * Math.sqrt(Math.max(1 - k * k, 0.0008));
-  };
-}
-
-// Bake a two-tone paint split into vertex colors (upper/lower camouflage —
-// e.g. the Zero's dark-green-over-grey). `isBottom(pos, nor, i)` picks the
-// side per vertex; the material must set vertexColors:true with a white base.
-function twoTone(geo, isBottom, topHex, botHex) {
-  const pos = geo.attributes.position;
-  const nor = geo.attributes.normal;
-  const top = new THREE.Color(topHex);
-  const bot = new THREE.Color(botHex);
-  const colors = new Float32Array(pos.count * 3);
-  for (let i = 0; i < pos.count; i++) {
-    const c = isBottom(pos, nor, i) ? bot : top;
-    colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
-  }
-  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 }
 
 // A simple seated pilot (torso, head, leather helmet, goggles band) — sits
@@ -441,7 +413,7 @@ export const PLANE_INFO = {
     label: 'Spitfire',
     desc: 'The balanced dogfighter: superb turn & climb, eight .303s — a fast, light-hitting hose of bullets.',
     stats: {
-      thrust: 38, lift: 0.0054, drag0: 0.0013, pitchRate: 1.6, rollRate: 3.4, controlV: 42, hiSpeedStiff: 0,
+      thrust: 38, lift: 0.0054, drag0: 0.0013, pitchRate: 1.6, rollRate: 3.4, controlV: 42, hiSpeedStiff: 0, groundY: 1.35,
       hp: 100, fireInterval: 0.085, gunDmg: 3, gunSpread: 0.006, gunRange: 900,
     },
   },
@@ -449,7 +421,7 @@ export const PLANE_INFO = {
     label: 'P-51 Mustang',
     desc: 'Fastest in a straight line and a dive, rugged airframe — but heavy: wide turns that want airspeed. Six .50 cals hit hard.',
     stats: {
-      thrust: 40, lift: 0.0048, drag0: 0.00105, pitchRate: 1.35, rollRate: 3.0, controlV: 48, hiSpeedStiff: 0,
+      thrust: 40, lift: 0.0048, drag0: 0.00105, pitchRate: 1.35, rollRate: 3.0, controlV: 48, hiSpeedStiff: 0, groundY: 1.6,
       hp: 115, fireInterval: 0.11, gunDmg: 5, gunSpread: 0.005, gunRange: 950,
     },
   },
@@ -457,7 +429,7 @@ export const PLANE_INFO = {
     label: 'A6M Zero',
     desc: 'Untouchable in a slow turn fight and stalls last — but slow, unarmoured, and the controls stiffen in a dive. Two 20 mm cannon: slow to fire, savage on hit.',
     stats: {
-      thrust: 33, lift: 0.0063, drag0: 0.00165, pitchRate: 2.0, rollRate: 3.8, controlV: 34, hiSpeedStiff: 0.45,
+      thrust: 33, lift: 0.0063, drag0: 0.00165, pitchRate: 2.0, rollRate: 3.8, controlV: 34, hiSpeedStiff: 0.45, groundY: 1.35,
       hp: 70, fireInterval: 0.16, gunDmg: 8, gunSpread: 0.008, gunRange: 750,
     },
   },
@@ -794,337 +766,94 @@ function buildSpitfire(opts = {}) {
   return { group: plane, surf };
 }
 
-// Subtle panel-line grid for bare-metal skins: a light aluminium base with
-// faint darker panel seams and mottling, so the P-51's natural-metal finish
-// reads as riveted panels instead of one smooth chrome blob.
-function bareMetalTexture() {
-  const c = document.createElement('canvas');
-  c.width = c.height = 256;
-  const ctx = c.getContext('2d');
-  ctx.fillStyle = '#d6dade';
-  ctx.fillRect(0, 0, 256, 256);
-  // adjacent panels rolled from different batches: faint tonal patches
-  for (let i = 0; i < 14; i++) {
-    const v = 200 + Math.floor(Math.random() * 28);
-    ctx.fillStyle = `rgba(${v},${v + 2},${v + 6},0.5)`;
-    ctx.fillRect(Math.floor(Math.random() * 8) * 32, Math.floor(Math.random() * 8) * 32, 32 + Math.random() * 64, 32 + Math.random() * 64);
+// ---- Reference-mesh fighters. The P-51 and Zero are real 3D reference
+// models (converted offline into plane-sim-refmeshes.js + Assets/planes/
+// textures, pre-transformed to game conventions): the game attaches what the
+// references lack — the animated prop assembly, retractable undercarriage,
+// nav lights — plus hinge pivots for the P-51's elevator and rudder. The
+// Spitfire above stays fully procedural. ----
+
+const _refTexCache = {};
+function refTexture(name) {
+  if (!_refTexCache[name]) {
+    const tex = new THREE.TextureLoader().load(`/static/planes/${name}.jpg`);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    _refTexCache[name] = tex;
   }
-  ctx.fillStyle = 'rgba(70,76,84,0.5)'; // panel seams
-  for (let x = 0; x < 256; x += 64) ctx.fillRect(x, 0, 1, 256);
-  for (let y = 0; y < 256; y += 43) ctx.fillRect(0, y, 256, 1);
-  ctx.fillStyle = 'rgba(90,96,104,0.5)'; // rivet lines
-  for (let y = 21; y < 256; y += 43) {
-    for (let x = 2; x < 256; x += 7) ctx.fillRect(x, y, 1, 1);
-  }
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  return tex;
+  return _refTexCache[name];
 }
 
-// The North American P-51D Mustang: bare-metal fighter with the yellow spinner
-// + nose band of the 361st FG reference, black anti-glare panel, deep belly
-// radiator scoop, laminar trapezoid wing with squared tips, bubble canopy and
-// a tall squared fin with a dorsal fillet. USAAF star-and-bar insignia.
+// Meshes for one exported parts list, grouped by role. Textured skin parts
+// take the bandit tint (desaturated silhouette); colored parts (cockpit,
+// pilot, ducts) keep their baked diffuse; lamps glow; glass goes translucent.
+function buildRefMeshes(parts, enemy) {
+  const byRole = { hull: [], elevator: [], rudder: [], glass: [], lamp: [] };
+  for (const part of parts) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(part.pos, 3));
+    if (part.uv) geo.setAttribute('uv', new THREE.Float32BufferAttribute(part.uv, 2));
+    geo.setIndex(part.idx);
+    geo.computeVertexNormals();
+    let mat;
+    if (part.role === 'glass') {
+      mat = new THREE.MeshStandardMaterial({
+        color: 0x9fc7d8, roughness: 0.15, metalness: 0, transparent: true, opacity: 0.5, side: THREE.DoubleSide,
+      });
+    } else if (part.role === 'lamp') {
+      mat = new THREE.MeshStandardMaterial({
+        color: part.color, emissive: part.color, emissiveIntensity: 1.2, roughness: 0.4,
+      });
+    } else if (part.tex) {
+      mat = new THREE.MeshStandardMaterial({
+        map: refTexture(part.tex), color: enemy ? 0x8b939c : 0xffffff,
+        roughness: 0.55, metalness: 0.08, side: THREE.DoubleSide,
+      });
+    } else {
+      mat = new THREE.MeshStandardMaterial({
+        color: part.color, roughness: 0.75, metalness: 0.08, side: THREE.DoubleSide,
+      });
+    }
+    (byRole[part.role] || byRole.hull).push(new THREE.Mesh(geo, mat));
+  }
+  return byRole;
+}
+
+// Re-parent meshes under a pivot Group at (0, yc, hz): rotating the pivot
+// hinges the surface about that line while the geometry stays where exported.
+function hingeAt(plane, meshes, yc, hz) {
+  const pivot = new THREE.Group();
+  pivot.position.set(0, yc, hz);
+  for (const m of meshes) { m.position.set(0, -yc, -hz); pivot.add(m); }
+  plane.add(pivot);
+  return pivot;
+}
+
+// The North American P-51D Mustang — the "Cripes A'Mighty 3rd" reference
+// model (George Preddy's blue-nosed Mustang), textures and pilot included.
+// The whole tailplane pivots as the elevator (the mesh has no separate one).
 function buildP51(opts = {}) {
   const enemy = opts.paint != null;
-  const markings = opts.markings !== false;
   const plane = new THREE.Group();
   const surf = {
     aileronL: null, aileronR: null, elevator: null, rudder: null,
     prop: null, blades: null, propDisc: null, gear: null,
   };
+  const roles = buildRefMeshes(REF_P51_PARTS, enemy);
+  for (const m of [...roles.hull, ...roles.glass, ...roles.lamp]) plane.add(m);
+  surf.elevator = hingeAt(plane, roles.elevator, 0.13, 3.0);
+  surf.rudder = hingeAt(plane, roles.rudder, 0, 4.06);
 
-  // Natural-metal skin (bandits get a dull gunmetal version of the same
-  // panels). Metalness stays LOW: with no environment map a real metal only
-  // reflects the handful of scene lights and renders near-black from most
-  // angles — the aluminium look is carried by the pale panel texture instead.
-  const metalSkin = new THREE.MeshStandardMaterial({
-    map: bareMetalTexture(),
-    color: enemy ? 0x878c93 : 0xfafcff,
-    roughness: enemy ? 0.6 : 0.48,
-    metalness: 0.06,
-  });
-  const body = metalSkin.clone();
-  body.side = THREE.DoubleSide; // thin lathe shell must never read see-through
-  // Control surfaces in a duller finish: on the glossy skin the wedge taper
-  // tilts the top face into the key light and the whole surface glints white,
-  // reading as a detached panel rather than a hinged part of the wing.
-  const ctrlSkin = new THREE.MeshStandardMaterial({
-    map: metalSkin.map, color: enemy ? 0x7b8086 : 0xd7dbe0, roughness: 0.62, metalness: 0.15,
-  });
-  const YELLOW = 0xdfa93c;
   const metal = new THREE.MeshStandardMaterial({ color: 0x33373d, roughness: 0.4, metalness: 0.7 });
-  const glass = new THREE.MeshStandardMaterial({
-    color: 0xa9dcec, roughness: 0.08, metalness: 0.0, transparent: true, opacity: 0.55,
-  });
-  const frameMat = new THREE.MeshStandardMaterial({ color: 0x2c3436, roughness: 0.5, metalness: 0.4 });
-
-  // Fuselage: deep-bellied lathe, widest around the wing root, long slim tail
-  // (the P-51's razorback is CUT DOWN behind the bubble canopy — no spine).
-  const fpts = [
-    [0.04, 4.85], [0.11, 4.5], [0.20, 3.7], [0.30, 2.8], [0.42, 1.7],
-    [0.50, 0.7], [0.58, -0.4], [0.62, -1.5], [0.62, -2.6], [0.60, -3.3],
-    [0.55, -3.9], [0.46, -4.5],
-  ];
-  const profile = fpts.map(([r, y]) => new THREE.Vector2(Math.max(r, 0.001), y));
-  const fuse = new THREE.Mesh(new THREE.LatheGeometry(profile, 36), body);
-  fuse.rotation.x = Math.PI / 2;
-  fuse.scale.set(0.9, 1.12, 1.0); // deep, narrow section
-  plane.add(fuse);
-
-  // Anti-glare panel: an olive-drab arc hugging the nose top from windscreen to
-  // spinner (a tapered open cylinder, scaled a touch proud of the fuselage).
-  const agMat = new THREE.MeshStandardMaterial({
-    color: 0x2e3325, roughness: 0.9, metalness: 0.05,
-    polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
-  });
-  const antiGlare = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.62, 0.5, 2.85, 18, 1, true, Math.PI - 0.62, 1.24),
-    agMat,
-  );
-  antiGlare.rotation.x = Math.PI / 2; // axis -> Z, arc over the top
-  antiGlare.scale.set(0.92, 1.18, 1);
-  antiGlare.position.z = -3.05; // windscreen base back to the spinner
-  plane.add(antiGlare);
-
-  // Yellow nose band right behind the spinner (the 361st FG group marking).
-  const noseBand = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.575, 0.565, 0.42, 20, 1, true),
-    new THREE.MeshStandardMaterial({
-      color: YELLOW, roughness: 0.5, metalness: 0.2, side: THREE.DoubleSide,
-      polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
-    }),
-  );
-  noseBand.rotation.x = Math.PI / 2;
-  noseBand.scale.set(0.93, 1.15, 1);
-  noseBand.position.z = -4.26;
-  if (!enemy) plane.add(noseBand);
-
-  // Bubble canopy on the cut-down rear deck: angled windscreen wedge + one bow
-  // frame + the clean teardrop hood (no hoops — that's the point of a bubble).
-  const wind = new THREE.Mesh(new THREE.SphereGeometry(0.42, 18, 12), glass);
-  wind.scale.set(0.8, 0.68, 1.1);
-  wind.position.set(0, 0.6, -1.3);
-  plane.add(wind);
-  const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.44, 22, 16), glass);
-  bubble.scale.set(0.86, 0.82, 1.85);
-  bubble.position.set(0, 0.64, -0.4);
-  plane.add(bubble);
-  const bow = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.028, 6, 20, Math.PI), frameMat);
-  bow.rotation.z = Math.PI;
-  bow.rotation.y = Math.PI / 2;
-  bow.position.set(0, 0.62, -1.12);
-  plane.add(bow);
-  const sill = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.035, 8, 22), frameMat);
-  sill.rotation.x = Math.PI / 2;
-  sill.scale.set(0.95, 2.2, 1);
-  sill.position.set(0, 0.55, -0.42);
-  plane.add(sill);
-  // The pilot, tucked under the bubble.
-  const pilot = makePilot(0x4a3526);
-  pilot.position.set(0, 0.3, -0.85);
-  plane.add(pilot);
-
-  // Exhaust stacks: six short stubs per side along the nose.
-  const exMat = new THREE.MeshStandardMaterial({ color: 0x2a2622, roughness: 0.65, metalness: 0.5 });
-  for (const sx of [-1, 1]) {
-    for (let i = 0; i < 6; i++) {
-      const ex = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.24), exMat);
-      ex.position.set(sx * 0.49, 0.3, -2.55 - i * 0.28);
-      ex.rotation.y = sx * -0.18;
-      plane.add(ex);
-    }
-  }
-
-  // THE Mustang signature: the deep belly radiator scoop aft of the wing, with
-  // a dark intake mouth up front.
-  const scoop = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 2.3, 6, 14), body);
-  scoop.rotation.x = Math.PI / 2;
-  scoop.scale.set(1.05, 1, 1);
-  scoop.position.set(0, -0.56, 0.75);
-  plane.add(scoop);
-  const mouth = new THREE.Mesh(
-    new THREE.CircleGeometry(0.27, 16),
-    new THREE.MeshStandardMaterial({ color: 0x14161a, roughness: 0.9 }),
-  );
-  mouth.rotation.y = Math.PI; // face forward (-Z)
-  mouth.scale.set(1.05, 1, 1);
-  mouth.position.set(0, -0.59, -0.52);
-  plane.add(mouth);
-  // Carburettor chin intake tucked under the spinner.
-  const chin = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.8, 4, 10), body);
-  chin.rotation.x = Math.PI / 2;
-  chin.scale.set(1.3, 1, 1);
-  chin.position.set(0, -0.62, -3.85);
-  plane.add(chin);
-
-  // Laminar-flow wing: big root chord (~30% of the length, per the reference)
-  // mounted low and forward — root LE just aft of the exhaust stacks — with a
-  // straight trapezoid taper to squared tips (only the last ~12% of span is
-  // rounded off) and less dihedral than the Spit.
-  const P51_WING = taperedPlanform(0.46, 0.12);
-  const WING_HALF = 6.05;
-  const WING_CHORD = 3.0;
-  const DIHEDRAL = 0.07;
-  const AIL_IN = 3.2; const AIL_OUT = 5.5;
-  const wingY = -0.4; const wingZ = -1.2;
-  const ailHingeZ = wingZ + 0.48;
-  const wing = new THREE.Mesh(
-    // cutout z is geometry-local — subtract wingZ from the plane-frame hinge
-    airfoilSurface(WING_HALF, WING_CHORD, 0.085, DIHEDRAL, [
-      { x0: -AIL_OUT - 0.06, x1: -AIL_IN + 0.06, z: ailHingeZ - wingZ + 0.02 },
-      { x0: AIL_IN - 0.06, x1: AIL_OUT + 0.06, z: ailHingeZ - wingZ + 0.02 },
-    ], P51_WING),
-    metalSkin,
-  );
-  wing.position.set(0, wingY, wingZ);
-  wing.rotation.x = -0.02;
-  plane.add(wing);
-  for (const side of [-1, 1]) {
-    if (markings) {
-      const s = starBar(1.7);
-      s.position.set(side * 3.4, wingY + 3.4 * DIHEDRAL + 0.13, wingZ - 0.35);
-      s.rotation.z = side * Math.atan(DIHEDRAL);
-      s.rotation.x = wing.rotation.x;
-      plane.add(s);
-    }
-    const flap = buildFlap({
-      xIn: side < 0 ? -AIL_OUT : AIL_IN,
-      xOut: side < 0 ? -AIL_IN : AIL_OUT,
-      halfSpan: WING_HALF,
-      chord: WING_CHORD,
-      midZ: wingZ,
-      zHinge: ailHingeZ,
-      thick: 0.09,
-      y: wingY,
-      material: ctrlSkin,
-      tiltZ: side * Math.atan(DIHEDRAL),
-      tiltX: wing.rotation.x,
-      planform: P51_WING,
-    });
-    plane.add(flap.holder);
-    if (side < 0) surf.aileronL = flap.pivot; else surf.aileronR = flap.pivot;
-    plane.add(navLight(side, side * (WING_HALF - 0.12), wingY + WING_HALF * DIHEDRAL, wingZ));
-  }
-
-  // Tail: trapezoid tailplane + squared fin with the dorsal fillet — the whole
-  // empennage sits forward so the rudder's trailing edge lands AT the tail
-  // cone's end rather than floating past it.
-  const TAIL_Z = 3.3;
-  const P51_TAILPLANE = taperedPlanform(0.5, 0.15);
-  const hstab = new THREE.Mesh(
-    airfoilSurface(2.1, 1.25, 0.08, 0, [{ x0: -2.0, x1: 2.0, z: 0.2 }], P51_TAILPLANE),
-    metalSkin,
-  );
-  hstab.position.set(0, 0.14, TAIL_Z);
-  plane.add(hstab);
-  const elevFlap = buildFlap({
-    xIn: -1.95,
-    xOut: 1.95,
-    halfSpan: 2.1,
-    chord: 1.25,
-    midZ: TAIL_Z,
-    zHinge: TAIL_Z + 0.23,
-    thick: 0.07,
-    y: 0.14,
-    material: ctrlSkin,
-    planform: P51_TAILPLANE,
-  });
-  plane.add(elevFlap.holder);
-  surf.elevator = elevFlap.pivot;
-
-  const finMat = new THREE.MeshStandardMaterial({
-    color: enemy ? 0x7d8288 : 0xb9bec6, roughness: 0.55, metalness: 0.3,
-  });
-  // Angular Mustang tail: strongly swept leading edge, near-flat top, vertical
-  // trailing edge the squared rudder hangs on (one continuous top line across
-  // the hinge — not two round lobes).
-  const FIN_Z = 3.04;
-  const FIN_TE = 1.12;
-  const finShape = new THREE.Shape();
-  finShape.moveTo(0.08, 0);
-  finShape.lineTo(FIN_TE, 0);
-  finShape.lineTo(FIN_TE, 1.55); // tall vertical trailing edge
-  finShape.quadraticCurveTo(FIN_TE - 0.04, 1.63, 0.64, 1.61); // small top round
-  finShape.lineTo(0.24, 0.35); // straight swept leading edge
-  finShape.quadraticCurveTo(0.15, 0.12, 0.08, 0);
-  const finGeo = new THREE.ExtrudeGeometry(finShape, {
-    depth: 0.07, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 1, steps: 1,
-  });
-  finGeo.translate(-0.035, 0, -0.045);
-  const fin = new THREE.Mesh(finGeo, finMat);
-  fin.rotation.y = -Math.PI / 2;
-  fin.position.set(0, 0.1, FIN_Z);
-  plane.add(fin);
-  // Dorsal fillet: a low blade running up the spine into the fin's swept LE.
-  const filletShape = new THREE.Shape();
-  filletShape.moveTo(0, 0.08);
-  filletShape.lineTo(1.75, 0.5);
-  filletShape.lineTo(1.75, 0);
-  filletShape.lineTo(0, -0.1);
-  filletShape.closePath();
-  const fillet = new THREE.Mesh(
-    new THREE.ExtrudeGeometry(filletShape, { depth: 0.09, bevelEnabled: false }),
-    finMat,
-  );
-  fillet.geometry.translate(0, 0, -0.045);
-  fillet.rotation.y = -Math.PI / 2; // shape x -> +Z (aft), y -> up
-  fillet.position.set(0, 0.26, FIN_Z - 1.72);
-  plane.add(fillet);
-  // Rudder: squared to match the fin — straight hinge edge, small top corner,
-  // straight trailing edge tapering down to the tail cone.
-  const rPivot = new THREE.Group();
-  rPivot.position.set(0, 0.1, FIN_Z + FIN_TE - 0.02);
-  const rudShape = new THREE.Shape();
-  rudShape.moveTo(0, 0.02);
-  rudShape.lineTo(0, 1.55);
-  rudShape.quadraticCurveTo(0.02, 1.63, 0.13, 1.62);
-  rudShape.lineTo(0.52, 1.1); // straight upper trailing edge
-  rudShape.lineTo(0.58, 0.5);
-  rudShape.quadraticCurveTo(0.56, 0.22, 0.3, 0.05);
-  rudShape.lineTo(0, 0.02);
-  const rudGeo = new THREE.ExtrudeGeometry(rudShape, {
-    depth: 0.05, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.015, bevelSegments: 1, steps: 1,
-  });
-  rudGeo.translate(0, 0, -0.025);
-  const rud = new THREE.Mesh(rudGeo, finMat);
-  rud.rotation.y = -Math.PI / 2;
-  rPivot.add(rud);
-  plane.add(rPivot);
-  surf.rudder = rPivot;
-
-  // Whip aerial behind the canopy (no wire on the D — the bubble hood has none).
-  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.025, 0.5, 6), frameMat);
-  mast.position.set(0, 0.62, 0.95);
-  mast.rotation.x = 0.15;
-  plane.add(mast);
-
-  // Fuselage star-and-bar, aft of the cockpit on both sides.
-  if (markings) {
-    for (const sx of [-1, 1]) {
-      const s = starBar(1.35);
-      // Map decal up (+Y) onto ±X (face outward) with the bar running along Z.
-      s.rotation.set(-sx * (Math.PI / 2), 0, -sx * (Math.PI / 2));
-      s.position.set(sx * 0.5, 0.12, 1.35);
-      plane.add(s);
-    }
-  }
-
-  // Nose: pointed spinner (yellow on the player's TIKA-IV scheme) + 4 wide
-  // paddle blades — black with yellow tips. Sized per the reference: spinner
-  // ~7.6% of the length in diameter, prop disc ~30%.
   const pa = makePropAssembly({
-    spinnerProfile: [
-      [0.50, 0], [0.47, 0.22], [0.39, 0.46], [0.27, 0.66], [0.13, 0.81], [0.001, 0.86],
-    ],
-    spinnerColor: enemy ? 0x40454c : YELLOW,
-    backplateR: 0.50,
-    zSpinner: -4.42,
-    zBlades: -4.70,
+    spinnerProfile: [[0.46, 0], [0.44, 0.2], [0.37, 0.42], [0.25, 0.6], [0.12, 0.74], [0.001, 0.79]],
+    spinnerColor: enemy ? 0x40454c : 0x2f5a9e, // the 352nd FG blue nose
+    backplateR: 0.46,
+    zSpinner: -4.66,
+    zBlades: -4.88,
     count: 4,
-    bladeLen: 1.4,
-    bladeWidth: 1.25, // the P-51's wide "paddle" blades
+    bladeLen: 1.45,
+    bladeWidth: 1.25, // wide "paddle" blades
     bladeColor: 0x17191d,
     tipColor: 0xffd83f,
     rootY: 0.28,
@@ -1135,7 +864,8 @@ function buildP51(opts = {}) {
   surf.blades = pa.blades;
   surf.propDisc = pa.propDisc;
 
-  const gear = makeUndercarriage(metal, 4.4, -1.9);
+  // Deep radiator scoop -> tall gear stance (groundY 1.6 vs the default 1.35).
+  const gear = makeUndercarriage(metal, 4.3, -1.9, 1.6);
   plane.add(gear);
   surf.gear = gear;
 
@@ -1143,298 +873,31 @@ function buildP51(opts = {}) {
   return { group: plane, surf };
 }
 
-// The Mitsubishi A6M Zero: black radial cowl with an exposed engine face,
-// glossy IJN dark-green skin, long framed greenhouse canopy, big rounded
-// wingtips with yellow leading-edge ID strips, and hinomaru insignia.
+// The Mitsubishi A6M3 Zero — the papercraft-sheet reference model (hull,
+// cowl, closed gear-door plates, antenna mast). The single-piece hull has no
+// separable control surfaces, so they stay static; prop, gear and guns still
+// animate, and the painted-on canopy keeps its own pilot silhouette.
 function buildZero(opts = {}) {
   const enemy = opts.paint != null;
-  const markings = opts.markings !== false;
   const plane = new THREE.Group();
   const surf = {
     aileronL: null, aileronR: null, elevator: null, rudder: null,
     prop: null, blades: null, propDisc: null, gear: null,
   };
+  const roles = buildRefMeshes(REF_ZERO_PARTS, enemy);
+  for (const m of [...roles.hull, ...roles.glass, ...roles.lamp]) plane.add(m);
 
-  // IJN two-tone: dark green uppers over pale grey undersides (per the A6M3
-  // reference sheet), baked as vertex colors. Bandits get flat grey-green all
-  // over so they stay identifiable at range.
-  const TOP_HEX = enemy ? 0x676d64 : 0x27452f;
-  const BOT_HEX = enemy ? 0x676d64 : 0xb9b4a1;
-  const mkPaint = (side) => new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    vertexColors: true,
-    roughness: enemy ? 0.6 : 0.42,
-    metalness: 0.15,
-    side: side || THREE.FrontSide,
-  });
-  const green = mkPaint();
-  const body = mkPaint(THREE.DoubleSide);
-  const spineMat = new THREE.MeshStandardMaterial({
-    color: TOP_HEX, roughness: enemy ? 0.6 : 0.42, metalness: 0.15,
-  });
-  const cowlMat = new THREE.MeshStandardMaterial({ color: 0x1b1d20, roughness: 0.35, metalness: 0.45 });
   const metal = new THREE.MeshStandardMaterial({ color: 0x33373d, roughness: 0.4, metalness: 0.7 });
-  const glass = new THREE.MeshStandardMaterial({
-    color: 0x7fa8ba, roughness: 0.12, metalness: 0.0, transparent: true, opacity: 0.62,
-  });
-  const frameMat = new THREE.MeshStandardMaterial({ color: 0x21301f, roughness: 0.5, metalness: 0.3 });
-  // Belly split: fuselage lathe is rotated x=+90°, so local +z points at the
-  // world belly; wings/tail split on downward normals instead.
-  const bellyByZ = (pos, nor, i) => pos.getZ(i) > 0.14;
-  const bellyByNormal = (pos, nor, i) => nor.getY(i) < -0.35;
-
-  // Fuselage: round section flowing flush from the cowl (widest just behind
-  // it, ~27% of length), then a long taper to a slim tail cone.
-  const fpts = [
-    [0.10, 4.45], [0.17, 4.05], [0.26, 3.4], [0.36, 2.55], [0.46, 1.65],
-    [0.53, 0.7], [0.59, -0.5], [0.64, -1.6], [0.665, -2.5], [0.66, -3.1], [0.63, -3.45],
-  ];
-  const profile = fpts.map(([r, y]) => new THREE.Vector2(Math.max(r, 0.001), y));
-  const fuseGeo = new THREE.LatheGeometry(profile, 36);
-  twoTone(fuseGeo, bellyByZ, TOP_HEX, BOT_HEX);
-  const fuse = new THREE.Mesh(fuseGeo, body);
-  fuse.rotation.x = Math.PI / 2;
-  fuse.scale.set(0.96, 1.0, 1.0);
-  plane.add(fuse);
-
-  // Radial engine cowling: short black barrel with a rounded intake lip, a
-  // dark engine face behind it and a small pale spinner poking through.
-  const cowl = new THREE.Mesh(new THREE.CylinderGeometry(0.68, 0.62, 1.15, 24, 1, true), cowlMat);
-  cowl.rotation.x = Math.PI / 2; // rTop -> aft (widest where it meets the fuselage)
-  cowl.position.z = -4.0;
-  plane.add(cowl);
-  const lip = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.09, 10, 24), cowlMat);
-  lip.position.z = -4.60;
-  plane.add(lip);
-  const engFace = new THREE.Mesh(
-    new THREE.CircleGeometry(0.53, 20),
-    new THREE.MeshStandardMaterial({ color: 0x191b1e, roughness: 0.85 }),
-  );
-  engFace.rotation.y = Math.PI;
-  engFace.position.z = -4.54;
-  plane.add(engFace);
-  // Hint of the radial: a ring of stubby cylinder heads around the crankcase.
-  const cylMat = new THREE.MeshStandardMaterial({ color: 0x3a3e44, roughness: 0.6, metalness: 0.5 });
-  for (let i = 0; i < 7; i++) {
-    const a = (i / 7) * Math.PI * 2;
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.24, 0.1), cylMat);
-    head.position.set(Math.cos(a) * 0.32, Math.sin(a) * 0.32, -4.58);
-    head.rotation.z = a + Math.PI / 2;
-    plane.add(head);
-  }
-
-  // Turtledeck spine flowing from the canopy's aft end back to the fin root.
-  const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.28, 3.1, 14), spineMat);
-  spine.rotation.x = Math.PI / 2;
-  spine.position.set(0, 0.38, 1.6);
-  plane.add(spine);
-
-  // Long greenhouse canopy: the A6M's glasshouse starts right at the wing
-  // leading edge (just behind the cowl) and runs to mid-fuselage — an
-  // elongated glass shell under a row of frame hoops.
-  const CANOPY_Z = -1.65; // centre; spans roughly -3.3 .. -0.05
-  const canopy = new THREE.Mesh(new THREE.SphereGeometry(0.42, 22, 16), glass);
-  canopy.scale.set(0.74, 0.85, 3.95);
-  canopy.position.set(0, 0.64, CANOPY_Z);
-  plane.add(canopy);
-  for (const [fz, fs] of [[-1.45, 0.52], [-0.95, 0.82], [-0.4, 0.97], [0.15, 1.0], [0.7, 0.91], [1.25, 0.66]]) {
-    const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.034, 6, 20, Math.PI), frameMat);
-    hoop.rotation.z = Math.PI;
-    hoop.rotation.y = Math.PI / 2;
-    hoop.scale.setScalar(fs);
-    hoop.position.set(0, 0.60, CANOPY_Z + fz);
-    plane.add(hoop);
-  }
-  const sill = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.035, 8, 22), frameMat);
-  sill.rotation.x = Math.PI / 2;
-  sill.scale.set(0.96, 4.35, 1);
-  sill.position.set(0, 0.56, CANOPY_Z);
-  plane.add(sill);
-  // The pilot, seated at the front of the glasshouse.
-  const pilot = makePilot(0x5a4030);
-  pilot.position.set(0, 0.32, -2.35);
-  plane.add(pilot);
-
-  // Twin exhaust stubs low on the cowl sides.
-  const exMat = new THREE.MeshStandardMaterial({ color: 0x2a2622, roughness: 0.65, metalness: 0.5 });
-  for (const sx of [-1, 1]) {
-    const ex = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.3), exMat);
-    ex.position.set(sx * 0.56, -0.28, -3.4);
-    plane.add(ex);
-  }
-
-  // Wing: mounted well forward (root LE right behind the cowl, like the real
-  // A6M), generous span, constant chord inboard then a taper to big blunt
-  // rounded tips — the long-range wing that made the Zero turn like nothing
-  // else. Slight extra dihedral.
-  const ZERO_WING = flatThenTaper(0.42, 0.66, 0.18);
-  const WING_HALF = 6.5;
-  const WING_CHORD = 2.2;
-  const DIHEDRAL = 0.105;
-  const AIL_IN = 3.6; const AIL_OUT = 6.0;
-  const wingY = -0.32; const wingZ = -2.1;
-  const ailHingeZ = wingZ + 0.33;
-  // NB cutout z is geometry-local (wing centred on its own origin) — subtract
-  // wingZ from the plane-frame hinge line.
-  const wingGeo = airfoilSurface(WING_HALF, WING_CHORD, 0.11, DIHEDRAL, [
-    { x0: -AIL_OUT - 0.06, x1: -AIL_IN + 0.06, z: ailHingeZ - wingZ + 0.02 },
-    { x0: AIL_IN - 0.06, x1: AIL_OUT + 0.06, z: ailHingeZ - wingZ + 0.02 },
-  ], ZERO_WING);
-  twoTone(wingGeo, bellyByNormal, TOP_HEX, BOT_HEX);
-  const wing = new THREE.Mesh(wingGeo, green);
-  wing.position.set(0, wingY, wingZ);
-  wing.rotation.x = -0.03;
-  plane.add(wing);
-  const stripMat = new THREE.MeshStandardMaterial({ color: 0xd9a52e, roughness: 0.55, metalness: 0.15 });
-  for (const side of [-1, 1]) {
-    if (markings) {
-      const h = hinomaru(0.66);
-      h.position.set(side * 3.7, wingY + 3.7 * DIHEDRAL + 0.115, wingZ - 0.3);
-      h.rotation.z = side * Math.atan(DIHEDRAL);
-      h.rotation.x = wing.rotation.x;
-      plane.add(h);
-    }
-    // Yellow leading-edge ID strips: two short bars wrapping the outer LE,
-    // each swept to follow the tapered leading edge.
-    if (!enemy) {
-      for (const [x0, x1] of [[3.5, 4.5], [4.6, 5.6]]) {
-        const xm = (x0 + x1) / 2;
-        const le = (x) => wingZ - planformChord(x, WING_HALF, WING_CHORD, ZERO_WING) / 2 + 0.1;
-        const strip = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.09, 0.26), stripMat);
-        strip.position.set(side * xm, wingY + xm * DIHEDRAL + 0.02, le(xm));
-        strip.rotation.y = side * Math.atan2(le(x1) - le(x0), x1 - x0) * -1;
-        strip.rotation.z = side * Math.atan(DIHEDRAL);
-        plane.add(strip);
-      }
-    }
-    const flap = buildFlap({
-      xIn: side < 0 ? -AIL_OUT : AIL_IN,
-      xOut: side < 0 ? -AIL_IN : AIL_OUT,
-      halfSpan: WING_HALF,
-      chord: WING_CHORD,
-      midZ: wingZ,
-      zHinge: ailHingeZ,
-      thick: 0.09,
-      y: wingY,
-      material: green,
-      tiltZ: side * Math.atan(DIHEDRAL),
-      tiltX: wing.rotation.x,
-      planform: ZERO_WING,
-    });
-    flap.holder.traverse((o) => {
-      if (o.isMesh) twoTone(o.geometry, bellyByNormal, TOP_HEX, BOT_HEX);
-    });
-    plane.add(flap.holder);
-    if (side < 0) surf.aileronL = flap.pivot; else surf.aileronR = flap.pivot;
-    plane.add(navLight(side, side * (WING_HALF - 0.12), wingY + WING_HALF * DIHEDRAL, wingZ));
-  }
-
-  // Tail: rounded tailplane mounted forward enough that the elevator ends
-  // BEFORE the tail cone (per the reference), + the Zero's big rounded fin.
-  const TAIL_Z = 3.0;
-  const ZERO_TAILPLANE = taperedPlanform(0.55, 0.4);
-  const hstabGeo = airfoilSurface(2.5, 1.15, 0.085, 0, [{ x0: -2.4, x1: 2.4, z: 0.17 }], ZERO_TAILPLANE);
-  twoTone(hstabGeo, bellyByNormal, TOP_HEX, BOT_HEX);
-  const hstab = new THREE.Mesh(hstabGeo, green);
-  hstab.position.set(0, 0.14, TAIL_Z);
-  plane.add(hstab);
-  const elevFlap = buildFlap({
-    xIn: -2.35,
-    xOut: 2.35,
-    halfSpan: 2.5,
-    chord: 1.15,
-    midZ: TAIL_Z,
-    zHinge: TAIL_Z + 0.2,
-    thick: 0.07,
-    y: 0.14,
-    material: green,
-    planform: ZERO_TAILPLANE,
-  });
-  elevFlap.holder.traverse((o) => {
-    if (o.isMesh) twoTone(o.geometry, bellyByNormal, TOP_HEX, BOT_HEX);
-  });
-  plane.add(elevFlap.holder);
-  surf.elevator = elevFlap.pivot;
-
-  const finMat = new THREE.MeshStandardMaterial({
-    color: enemy ? 0x5c625a : 0x203a28, roughness: 0.45, metalness: 0.15,
-  });
-  // Big-root fin with a strongly swept leading edge. The fin TE runs high so
-  // the fin + rudder-horn tops read as ONE rounded dome across the hinge line
-  // (not two lobes) — same trick as the Spitfire tail.
-  const FIN_Z = 2.72; // fin root LE sits over the tailplane
-  const FIN_TE = 1.16;
-  const finShape = new THREE.Shape();
-  finShape.moveTo(0.08, 0);
-  finShape.lineTo(FIN_TE, 0);
-  finShape.lineTo(FIN_TE, 1.35);
-  finShape.quadraticCurveTo(FIN_TE - 0.06, 1.6, 0.74, 1.58); // rounded dome top
-  finShape.lineTo(0.3, 0.55); // strongly swept leading edge
-  finShape.quadraticCurveTo(0.13, 0.18, 0.08, 0);
-  const finGeo = new THREE.ExtrudeGeometry(finShape, {
-    depth: 0.07, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 1, steps: 1,
-  });
-  finGeo.translate(-0.035, 0, -0.045);
-  const fin = new THREE.Mesh(finGeo, finMat);
-  fin.rotation.y = -Math.PI / 2;
-  fin.position.set(0, 0.08, FIN_Z);
-  plane.add(fin);
-  const rPivot = new THREE.Group();
-  rPivot.position.set(0, 0.08, FIN_Z + FIN_TE - 0.03); // snug against the fin TE
-
-  const rudShape = new THREE.Shape();
-  rudShape.moveTo(0, 0.02);
-  rudShape.lineTo(0, 1.35); // straight hinge edge matching the fin TE height
-  rudShape.quadraticCurveTo(0.03, 1.6, 0.24, 1.56); // horn continues the dome
-  rudShape.quadraticCurveTo(0.62, 1.28, 0.65, 0.78); // TE bulges to the tail's end
-  rudShape.quadraticCurveTo(0.63, 0.28, 0.26, 0.05);
-  rudShape.lineTo(0, 0.02);
-  const rudGeo = new THREE.ExtrudeGeometry(rudShape, {
-    depth: 0.05, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.015, bevelSegments: 1, steps: 1,
-  });
-  rudGeo.translate(0, 0, -0.025);
-  const rud = new THREE.Mesh(rudGeo, finMat);
-  rud.rotation.y = -Math.PI / 2;
-  rPivot.add(rud);
-  plane.add(rPivot);
-  surf.rudder = rPivot;
-
-  // Aerial: mast right behind the glasshouse + wire back to the fin tip.
-  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.7, 6), frameMat);
-  mast.position.set(0, 1.1, 0.15);
-  plane.add(mast);
-  const wireFrom = new THREE.Vector3(0, 1.44, 0.16);
-  const wireTo = new THREE.Vector3(0, 1.55, FIN_Z + 0.75);
-  const wireDir = new THREE.Vector3().subVectors(wireTo, wireFrom);
-  const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, wireDir.length(), 5), frameMat);
-  wire.position.copy(wireFrom).addScaledVector(wireDir, 0.5);
-  wire.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), wireDir.normalize());
-  plane.add(wire);
-
-  // Fuselage hinomaru on both sides.
-  if (markings) {
-    for (const sx of [-1, 1]) {
-      const h = hinomaru(0.4);
-      h.rotation.z = -sx * (Math.PI / 2);
-      h.position.set(sx * 0.52, 0.05, 1.25);
-      plane.add(h);
-    }
-  }
-
-  // Nose: small pale spinner poking out of the black cowl + 3 red-brown
-  // blades with yellow tips (the A6M's lacquered Sumitomo prop).
   const pa = makePropAssembly({
-    spinnerProfile: [
-      [0.20, 0], [0.17, 0.18], [0.09, 0.32], [0.001, 0.40],
-    ],
+    spinnerProfile: [[0.20, 0], [0.17, 0.18], [0.09, 0.32], [0.001, 0.40]],
     spinnerColor: 0xcfd3d6,
     backplateR: 0.20,
-    zSpinner: -4.68,
-    zBlades: -4.77,
+    zSpinner: -4.55,
+    zBlades: -4.63,
     count: 3,
     bladeLen: 1.5,
     bladeWidth: 0.95,
-    bladeColor: 0x6b4436,
+    bladeColor: 0x6b4436, // the A6M's lacquered Sumitomo prop
     tipColor: 0xd9a52e,
     rootY: 0.12,
     discR: 1.62,
@@ -1444,14 +907,16 @@ function buildZero(opts = {}) {
   surf.blades = pa.blades;
   surf.propDisc = pa.propDisc;
 
-  const gear = makeUndercarriage(metal, 4.25, -2.4);
+  plane.add(navLight(-1, -6.45, 0.2, -2.0));
+  plane.add(navLight(1, 6.45, 0.2, -2.0));
+
+  const gear = makeUndercarriage(metal, 4.3, -2.3);
   plane.add(gear);
   surf.gear = gear;
 
   setShadows(plane);
   return { group: plane, surf };
 }
-
 // Apply control-surface deflections (radians-ish: ailerons/elevator/rudder in
 // roughly [-0.4, 0.4], gear in [0,1] where 1 is down). Shared by the game and
 // the inspector so the animation matches exactly.

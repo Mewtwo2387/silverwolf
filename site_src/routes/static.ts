@@ -31,6 +31,11 @@ const STATIC_ASSETS: Record<string, StaticEntry> = {
   '/static/plane-sim.js': { path: path.join(ASSETS_DIR, 'plane-sim.js'), contentType: 'text/javascript; charset=utf-8' },
   '/static/plane-viewer.js': { path: path.join(ASSETS_DIR, 'plane-viewer.js'), contentType: 'text/javascript; charset=utf-8' },
 };
+// Plane Sim aircraft textures (the P-51 / Zero reference-model skins, loaded
+// by THREE.TextureLoader from the game bundle — see plane-sim-models.js).
+for (const skin of ['p51-fus', 'p51-tai', 'p51-elv', 'p51-rud', 'p51-wng', 'zero-sheet']) {
+  STATIC_ASSETS[`/static/planes/${skin}.jpg`] = { path: path.join(ASSETS_DIR, 'planes', `${skin}.jpg`), contentType: 'image/jpeg' };
+}
 // Hero responsive variants — emitted by scripts/build-images.ts. The about-page
 // <picture> picks the smallest width that covers its slot (sizes attribute).
 for (const w of [512, 1024, 1600]) {

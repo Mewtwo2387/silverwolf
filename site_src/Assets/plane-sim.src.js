@@ -663,6 +663,7 @@ import {
     try { const p = localStorage.getItem('ps-plane'); return validPlane(p) ? p : 'spitfire'; } catch (_) { return 'spitfire'; }
   })();
   let ac = PLANE_TYPES[planeName].stats; // the player's active stat block
+  const groundY = () => ac.groundY || CFG.GROUND_Y; // parked origin height (per airframe)
   let plane; let surf;
   function buildPlayer() {
     const old = plane ? { pos: plane.position.clone(), quat: plane.quaternion.clone() } : null;
@@ -677,7 +678,7 @@ import {
 
   // Reset to the runway threshold, lined up to take off toward -Z.
   function resetPlane() {
-    plane.position.set(0, CFG.GROUND_Y, CFG.RUNWAY_LEN / 2 - 60);
+    plane.position.set(0, groundY(), CFG.RUNWAY_LEN / 2 - 60);
     plane.quaternion.identity();
   }
   resetPlane();
@@ -2187,8 +2188,8 @@ import {
     // before anything registers.
     const overWater = gh < TERRAIN.WATER_Y - 0.5;
     const deck = overWater ? TERRAIN.WATER_Y : gh;
-    if (plane.position.y <= deck + CFG.GROUND_Y) {
-      plane.position.y = deck + CFG.GROUND_Y;
+    if (plane.position.y <= deck + groundY()) {
+      plane.position.y = deck + groundY();
       const impactV = -vel.y;
       if (vel.y < 0) vel.y = 0;
 
@@ -2312,7 +2313,7 @@ import {
       getForward(); getUp(); getRight();
       gauges.draw({
         speedMs: Math.max(0, fwdSpeed),
-        altM: plane.position.y - CFG.GROUND_Y - gh,
+        altM: plane.position.y - groundY() - gh,
         vyMs: vel.y,
         thr: throttle,
         pitch: Math.asin(clamp(_fwd.y, -1, 1)),
@@ -2465,7 +2466,7 @@ import {
       x: +plane.position.x.toFixed(1),
       y: +plane.position.y.toFixed(1),
       z: +plane.position.z.toFixed(1),
-      agl: +(plane.position.y - CFG.GROUND_Y - groundAt(plane.position.x, plane.position.z)).toFixed(1),
+      agl: +(plane.position.y - groundY() - groundAt(plane.position.x, plane.position.z)).toFixed(1),
       hdg: +((Math.atan2(f.x, -f.z) * 180) / Math.PI).toFixed(1),
       pitch: +((Math.asin(clamp(f.y, -1, 1)) * 180) / Math.PI).toFixed(1),
       bank: +((Math.atan2(-r.y, u.y) * 180) / Math.PI).toFixed(1),
