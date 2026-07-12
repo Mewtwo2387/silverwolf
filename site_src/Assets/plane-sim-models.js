@@ -1230,7 +1230,7 @@ export function makeNissenHut(len = 9) {
 // where deck = { y, w, len } (top-of-deck height and the landable rectangle,
 // centred on the origin) so the game can use it for takeoff/landing/bombing.
 // opts.enemy switches to the enemy scheme (dark IJN-style paint, red bow disc).
-export const CARRIER = { HULL_LEN: 262, DECK_LEN: 250, DECK_W: 32, DECK_Y: 17 };
+export const CARRIER = { HULL_LEN: 262, DECK_LEN: 256, DECK_W: 32, DECK_Y: 17 };
 export function makeCarrier(opts = {}) {
   const enemy = !!opts.enemy;
   const g = new THREE.Group();
@@ -1248,8 +1248,20 @@ export function makeCarrier(opts = {}) {
     color: enemy ? 0x646a60 : 0x7e8894,
     roughness: 0.6,
     metalness: 0.45,
+    normalMap: detailTexture('metal-normal', 12),
+    roughnessMap: detailTexture('metal-roughness', 12),
+    normalScale: new THREE.Vector2(0.12, 0.12),
   });
   const dark = new THREE.MeshStandardMaterial({ color: 0x33373c, roughness: 0.7, metalness: 0.3 });
+
+  const darkDetailMat = new THREE.MeshStandardMaterial({
+    color: 0x222428,
+    roughness: 0.6,
+    metalness: 0.6,
+    normalMap: detailTexture('metal-normal', 6),
+    roughnessMap: detailTexture('metal-roughness', 6),
+    normalScale: new THREE.Vector2(0.15, 0.15),
+  });
 
   // Hull: a 2D plan outline (pointed bow, rounded stern) extruded vertically.
   // Shape is drawn in XY with y = -z(ship) so the bow (ship -Z) is shape +y;
@@ -1272,27 +1284,24 @@ export function makeCarrier(opts = {}) {
   const hull = new THREE.Mesh(hullGeo, hullMat);
   g.add(hull);
 
-  // Flight deck: a wide, BLUNT rounded-rectangle slab overhanging the hull —
-  // a real carrier's flight deck is not ship-shaped; the pointed prow is the
-  // HULL below, which poks out ahead of the deck's rounded forward edge. Only
-  // the corners are radiused (bow a touch more than the stern round-down).
+  // Flight deck: a wide, flat-front rounded-rectangle slab overhanging the hull
   const DHW = DECK_W / 2;
-  const rB = 9; // bow corner radius (rounded forward edge)
   const rS = 6; // stern corner radius (round-down)
+  const rB = 6; // bow corner radius (flat deck front with rounded corners)
   const deckShape = new THREE.Shape();
-  deckShape.moveTo(-DHW, -DECK_LEN / 2 + rS);
-  deckShape.quadraticCurveTo(-DHW, -DECK_LEN / 2, -DHW + rS, -DECK_LEN / 2); // stern port
-  deckShape.lineTo(DHW - rS, -DECK_LEN / 2);
-  deckShape.quadraticCurveTo(DHW, -DECK_LEN / 2, DHW, -DECK_LEN / 2 + rS); // stern stbd
-  deckShape.lineTo(DHW, DECK_LEN / 2 - rB);
-  deckShape.quadraticCurveTo(DHW, DECK_LEN / 2, DHW - rB, DECK_LEN / 2); // bow stbd
-  deckShape.lineTo(-DHW + rB, DECK_LEN / 2);
-  deckShape.quadraticCurveTo(-DHW, DECK_LEN / 2, -DHW, DECK_LEN / 2 - rB); // bow port
+  deckShape.moveTo(-DHW, -125 + rS);
+  deckShape.quadraticCurveTo(-DHW, -125, -DHW + rS, -125); // stern port
+  deckShape.lineTo(DHW - rS, -125);
+  deckShape.quadraticCurveTo(DHW, -125, DHW, -125 + rS); // stern stbd
+  deckShape.lineTo(DHW, 131 - rB);
+  deckShape.quadraticCurveTo(DHW, 131, DHW - rB, 131); // bow stbd
+  deckShape.lineTo(-DHW + rB, 131);
+  deckShape.quadraticCurveTo(-DHW, 131, -DHW, 131 - rB); // bow port
   deckShape.closePath();
   const deckGeo = new THREE.ExtrudeGeometry(deckShape, { depth: 1.3, bevelEnabled: false });
   deckGeo.rotateX(-Math.PI / 2);
   deckGeo.translate(0, DECK_Y - 1.3, 0);
-  const deckSlab = new THREE.Mesh(deckGeo, dark);
+  const deckSlab = new THREE.Mesh(deckGeo, darkDetailMat);
   g.add(deckSlab);
 
   // Deck surface + markings: one canvas draped over the deck plan (transparent
@@ -1304,18 +1313,18 @@ export function makeCarrier(opts = {}) {
     c.width = 256; c.height = 1024; // x across, y along (y=0 is the BOW, -Z)
     const ctx = c.getContext('2d');
     const px = (x) => ((x + DHW) / DECK_W) * 256; // ship x -> canvas x
-    const pz = (z) => ((z + DECK_LEN / 2) / DECK_LEN) * 1024; // ship z -> canvas y
+    const pz = (z) => ((131 - z) / 256) * 1024; // ship z -> canvas y
     ctx.clearRect(0, 0, 256, 1024);
-    // Deck plan silhouette (mirrors the blunt rounded-rectangle deckShape).
+    // Deck plan silhouette (mirrors the flat-bow deckShape).
     ctx.beginPath();
-    ctx.moveTo(px(-DHW), pz(-DECK_LEN / 2 + rS));
-    ctx.quadraticCurveTo(px(-DHW), pz(-DECK_LEN / 2), px(-DHW + rS), pz(-DECK_LEN / 2));
-    ctx.lineTo(px(DHW - rS), pz(-DECK_LEN / 2));
-    ctx.quadraticCurveTo(px(DHW), pz(-DECK_LEN / 2), px(DHW), pz(-DECK_LEN / 2 + rS));
-    ctx.lineTo(px(DHW), pz(DECK_LEN / 2 - rB));
-    ctx.quadraticCurveTo(px(DHW), pz(DECK_LEN / 2), px(DHW - rB), pz(DECK_LEN / 2));
-    ctx.lineTo(px(-DHW + rB), pz(DECK_LEN / 2));
-    ctx.quadraticCurveTo(px(-DHW), pz(DECK_LEN / 2), px(-DHW), pz(DECK_LEN / 2 - rB));
+    ctx.moveTo(px(-DHW), pz(-125 + rS));
+    ctx.quadraticCurveTo(px(-DHW), pz(-125), px(-DHW + rS), pz(-125));
+    ctx.lineTo(px(DHW - rS), pz(-125));
+    ctx.quadraticCurveTo(px(DHW), pz(-125), px(DHW), pz(-125 + rS));
+    ctx.lineTo(px(DHW), pz(131 - rB));
+    ctx.quadraticCurveTo(px(DHW), pz(131), px(DHW - rB), pz(131));
+    ctx.lineTo(px(-DHW + rB), pz(131));
+    ctx.quadraticCurveTo(px(-DHW), pz(131), px(-DHW), pz(131 - rB));
     ctx.closePath();
     ctx.save();
     ctx.clip();
@@ -1339,18 +1348,18 @@ export function makeCarrier(opts = {}) {
     ctx.strokeStyle = 'rgba(20,20,22,0.8)';
     ctx.lineWidth = 3;
     for (let k = 0; k < 8; k++) {
-      const y = pz(DECK_LEN / 2 - 26 - k * 11);
+      const y = pz(-125 + 26 + k * 11);
       ctx.beginPath(); ctx.moveTo(px(-DHW + 3), y); ctx.lineTo(px(DHW - 3), y); ctx.stroke();
     }
     if (enemy) { // red disc on the bow deck
       ctx.fillStyle = 'rgba(190,40,36,0.95)';
-      ctx.beginPath(); ctx.arc(128, pz(-DECK_LEN / 2 + 30), 34, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(128, pz(131 - 30), 34, 0, Math.PI * 2); ctx.fill();
     } else { // deck number
       ctx.fillStyle = 'rgba(235,238,240,0.9)';
       ctx.font = '700 64px "JetBrains Mono", monospace';
       ctx.textAlign = 'center';
       ctx.save();
-      ctx.translate(128, pz(-DECK_LEN / 2 + 32));
+      ctx.translate(128, pz(131 - 32));
       ctx.fillText('6', 0, 24);
       ctx.restore();
     }
@@ -1361,12 +1370,17 @@ export function makeCarrier(opts = {}) {
     const deckTop = new THREE.Mesh(
       new THREE.PlaneGeometry(DECK_W, DECK_LEN),
       new THREE.MeshStandardMaterial({
-        map: tex, transparent: true, alphaTest: 0.4, roughness: 0.85, metalness: 0.1,
+        map: tex,
+        transparent: true,
+        alphaTest: 0.4,
+        roughness: 0.75,
+        metalness: 0.15,
+        normalMap: detailTexture('metal-normal', 24),
+        normalScale: new THREE.Vector2(0.08, 0.08),
       }),
     );
     deckTop.rotation.x = -Math.PI / 2;
-    // canvas y=0 (bow) must land at ship -Z: plane rotated -90° maps +v to -z already
-    deckTop.position.y = DECK_Y + 0.02;
+    deckTop.position.set(0, DECK_Y + 0.02, -3);
     g.add(deckTop);
   }());
 
@@ -1378,23 +1392,133 @@ export function makeCarrier(opts = {}) {
   const bridge = new THREE.Mesh(new THREE.BoxGeometry(6.4, 3.2, 12), supMat);
   bridge.position.set(0, 9.1, -3); island.add(bridge);
   // Bridge windows: a dark strip band.
-  const winBand = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.9, 10.5), dark);
+  const winBand = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.9, 10.5), darkDetailMat);
   winBand.position.set(0, 9.9, -3); island.add(winBand);
-  // Funnel, raked aft.
-  const funnel = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 2.1, 7.5, 12), dark);
+
+  // Front bridge windows
+  const frontWin = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.9, 0.1), darkDetailMat);
+  frontWin.position.set(0, 9.9, -9.02); island.add(frontWin);
+
+  // Window frames (vertical struts) on port (-X) and starboard (+X) of winBand
+  const frameMat = supMat;
+  const frameGeo = new THREE.BoxGeometry(0.1, 0.95, 0.1);
+  for (let wz = -8.25; wz <= 2.25; wz += 1.5) {
+    for (const sx of [-1, 1]) {
+      const frame = new THREE.Mesh(frameGeo, frameMat);
+      frame.position.set(sx * 3.22, 9.9, wz);
+      island.add(frame);
+    }
+  }
+  // Front windows vertical frames
+  for (let wx = -2.8; wx <= 2.8; wx += 1.4) {
+    const frame = new THREE.Mesh(frameGeo, frameMat);
+    frame.position.set(wx, 9.9, -9.08);
+    island.add(frame);
+  }
+  // Aft windows vertical frames
+  for (let wx = -2.8; wx <= 2.8; wx += 1.4) {
+    const frame = new THREE.Mesh(frameGeo, frameMat);
+    frame.position.set(wx, 9.9, 2.27);
+    island.add(frame);
+  }
+
+  // Fences/railings helper
+  const addRailing = (x0, z0, x1, z1, y, parent = island) => {
+    const dx = x1 - x0;
+    const dz = z1 - z0;
+    const len = Math.hypot(dx, dz);
+    const rot = Math.atan2(dx, dz);
+
+    const railG = new THREE.Group();
+    railG.position.set((x0 + x1) / 2, y, (z0 + z1) / 2);
+    railG.rotation.y = rot;
+
+    const railGeo = new THREE.CylinderGeometry(0.03, 0.03, len, 4);
+    railGeo.rotateX(Math.PI / 2);
+
+    const top = new THREE.Mesh(railGeo, darkDetailMat);
+    top.position.y = 0.9;
+    railG.add(top);
+
+    const mid = new THREE.Mesh(railGeo, darkDetailMat);
+    mid.position.y = 0.45;
+    railG.add(mid);
+
+    const postGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.9, 4);
+    const numPosts = Math.max(2, Math.floor(len / 2.5) + 1);
+    const step = len / (numPosts - 1);
+    for (let i = 0; i < numPosts; i++) {
+      const post = new THREE.Mesh(postGeo, darkDetailMat);
+      post.position.set(0, 0.45, -len / 2 + i * step);
+      railG.add(post);
+    }
+    parent.add(railG);
+  };
+
+  // Railings around base top deck (Y = 7.5)
+  addRailing(-2.7, 3.2, -2.7, 11, 7.5);
+  addRailing(2.7, 3.2, 2.7, 11, 7.5);
+  addRailing(-2.7, 11, 2.7, 11, 7.5);
+  addRailing(-2.7, -11, 2.7, -11, 7.5);
+  addRailing(-2.7, -11, -2.7, -9.2, 7.5);
+  addRailing(2.7, -11, 2.7, -9.2, 7.5);
+
+  // Railings around bridge top deck (Y = 10.7) - corrected from 12.3 to prevent levitation
+  addRailing(-3.2, -9, -3.2, 3, 10.7);
+  addRailing(3.2, -9, 3.2, 3, 10.7);
+  addRailing(-3.2, -9, 3.2, -9, 10.7);
+  addRailing(-3.2, 3, 3.2, 3, 10.7);
+
+  // Funnel, raked aft - lowered from 12.2 to 11.0 to prevent levitation above base deck (Y=7.5)
+  const funnel = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 2.1, 7.5, 12), darkDetailMat);
   funnel.rotation.x = 0.22;
-  funnel.position.set(0, 12.2, 5.5); island.add(funnel);
+  funnel.position.set(0, 11.0, 5.5); island.add(funnel);
   // Lattice mast + yard + rotating-radar slab.
-  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.3, 10, 6), dark);
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.3, 10, 6), darkDetailMat);
   mast.position.set(0, 15.5, -6); island.add(mast);
-  const yard = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 7, 6), dark);
+  const yard = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 7, 6), darkDetailMat);
   yard.rotation.z = Math.PI / 2;
   yard.position.set(0, 18.5, -6); island.add(yard);
-  const radar = new THREE.Mesh(new THREE.BoxGeometry(4.2, 1.1, 0.3), supMat);
+
+  // Detailed rotating radar
+  const radar = new THREE.Group();
   radar.position.set(0, 20.8, -6);
+
+  const dishBack = new THREE.Mesh(new THREE.BoxGeometry(4.2, 1.1, 0.1), darkDetailMat);
+  radar.add(dishBack);
+  for (let ry = -0.5; ry <= 0.5; ry += 0.25) {
+    const rib = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.05, 0.15), supMat);
+    rib.position.set(0, ry, 0.05);
+    radar.add(rib);
+  }
+  for (let rx = -2; rx <= 2; rx += 1) {
+    const rib = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.2, 0.15), supMat);
+    rib.position.set(rx, 0, 0.05);
+    radar.add(rib);
+  }
+  const horn = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.6, 4), darkDetailMat);
+  horn.rotation.x = Math.PI / 2;
+  horn.position.set(0, 0, 0.4);
+  radar.add(horn);
+
   island.add(radar);
   g.userData.radar = radar; // the game slowly spins it
   g.add(island);
+
+  // Helper to get approximate hull half-width at any Z coordinate to avoid floating parts
+  const getHullWidthAt = (z) => {
+    const y = -z;
+    if (y >= 79) { // bow taper Bezier curve: Y(t) = 79 + 76t - 24t^2
+      // Solve 24t^2 - 76t + (y - 79) = 0 using quadratic formula
+      const t = (76 - Math.sqrt(5776 - 96 * (y - 79))) / 48;
+      return (1 - t * t) * HW;
+    }
+    if (y <= -110) { // stern rounding
+      const t = (-110 - y) / 14;
+      return HW * Math.sqrt(1 - t * t * 0.5);
+    }
+    return HW;
+  };
 
   // AA gun tubs on sponsons along both deck edges (merged into one mesh):
   // a tub ring + a twin-barrel mount each.
@@ -1415,11 +1539,68 @@ export function makeCarrier(opts = {}) {
           b.translate(x + sx * 0.8, DECK_Y - 0.4, tz + bo);
           geos.push(b);
         }
+
+        // Detailed Sponson support brackets - snapped to the tapered hull
+        const hW = getHullWidthAt(tz);
+        const gap = DHW - hW;
+        const bracketWidth = Math.max(1.0, gap - 0.4);
+        const bracketGeo = new THREE.BoxGeometry(bracketWidth, 0.8, 1.4);
+        const bracket = new THREE.Mesh(bracketGeo, hullMat);
+        bracket.position.set(sx * (DHW - bracketWidth / 2 - 0.4), DECK_Y - 2.0, tz);
+        bracket.rotation.z = sx * 0.15;
+        g.add(bracket);
       }
     }
-    const m = new THREE.Mesh(mergeGeometries(geos), dark);
+    const m = new THREE.Mesh(mergeGeometries(geos), darkDetailMat);
     g.add(m);
   }());
+
+  // Deck support girders under overhang - snapped to the tapered hull
+  for (let zVal = -110; zVal <= 110; zVal += 12) {
+    let nearTub = false;
+    for (const tz of [-96, -52, 8, 64, 100]) {
+      if (Math.abs(zVal - tz) < 4) {
+        nearTub = true;
+        break;
+      }
+    }
+    if (nearTub) continue;
+
+    for (const sx of [-1, 1]) {
+      if (sx === 1 && zVal > -32 && zVal < -4) continue; // skip island area
+
+      const hW = getHullWidthAt(zVal);
+      const gap = DHW - hW;
+      if (gap <= 0.5) continue; // no overhang here
+
+      const girder = new THREE.Mesh(new THREE.BoxGeometry(0.4, 4.0, 0.8), hullMat);
+      girder.position.set(sx * (hW + gap / 2), DECK_Y - 2.5, zVal);
+      girder.rotation.z = -sx * Math.atan2(gap, 3.5);
+      g.add(girder);
+    }
+  }
+
+  // Anchors on both sides of the bow - snapped to the tapered hull
+  const anchorGeo = new THREE.BoxGeometry(0.3, 2.5, 0.3);
+  const flukeGeo = new THREE.CylinderGeometry(0.6, 0.6, 0.4, 4);
+  flukeGeo.rotateX(Math.PI / 2);
+  const anchorZ = -112;
+  const anchorHullW = getHullWidthAt(anchorZ);
+  for (const sx of [-1, 1]) {
+    const anchor = new THREE.Group();
+    anchor.position.set(sx * (anchorHullW - 0.15), 9, anchorZ);
+    anchor.rotation.y = sx * 0.25;
+    anchor.rotation.z = sx * 0.12;
+
+    const shank = new THREE.Mesh(anchorGeo, darkDetailMat);
+    anchor.add(shank);
+
+    const crown = new THREE.Mesh(flukeGeo, darkDetailMat);
+    crown.position.y = -1.2;
+    anchor.add(crown);
+
+    g.add(anchor);
+  }
 
   // Boot-topping: a black waterline band so the hull reads as sitting IN the
   // sea rather than floating on it.
