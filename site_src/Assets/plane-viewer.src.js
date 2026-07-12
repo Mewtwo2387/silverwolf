@@ -13,6 +13,7 @@ import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
 import {
   buildAircraft, makeTree, makeHangar, makeControlTower, applyControlSurfaces,
   makeWindsock, makeFuelTank, makeBowser, makeNissenHut, PLANE_INFO, planeSpecs,
+  makeCarrier, mountWingBombs,
 } from './plane-sim-models.js';
 
 (() => {
@@ -91,9 +92,11 @@ import {
   // ---- State ----
   let current = null; // current model root
   let currentSurf = null; // control-surface handles (aircraft only)
+  let currentPlaneType = null; // airframe key while an aircraft is loaded
+  let currentBombs = []; // wing bombs, when the "Wing bombs" toggle is on
   let modelName = 'model';
   const opts = {
-    wire: false, autoRotate: true, spinProp: true, grid: true,
+    wire: false, autoRotate: true, spinProp: true, grid: true, bombs: false,
   };
   const surfState = {
     ail: 0, elev: 0, rud: 0, gear: 1,
@@ -163,14 +166,26 @@ import {
       + `<span><b>${spec.hp}</b> hull</span></div>${bars}`;
   }
 
+  // Add/remove the wing bombs on the loaded aircraft to match the toggle.
+  function applyBombs() {
+    for (const b of currentBombs) { b.parent?.remove(b); disposeTree(b); }
+    currentBombs = [];
+    if (opts.bombs && currentPlaneType && current) {
+      currentBombs = mountWingBombs(current, currentPlaneType);
+    }
+  }
+
   function load(kind) {
     if (current) { turntable.remove(current); disposeTree(current); current = null; currentSurf = null; }
+    currentBombs = [];
     let sitOnGround = true;
     let planeType = null;
     if (kind === 'aircraft' || kind === 'p51' || kind === 'zero') {
       planeType = kind === 'aircraft' ? 'spitfire' : kind;
       const a = buildAircraft({ type: planeType });
       current = a.group; currentSurf = a.surf; modelName = `plane-sim-${planeType}`;
+    } else if (kind === 'carrier') {
+      current = makeCarrier().group; modelName = 'plane-sim-carrier'; sitOnGround = false;
     } else if (kind === 'tree') {
       current = makeTree(); modelName = 'plane-sim-tree';
     } else if (kind === 'hangar') {
@@ -186,10 +201,12 @@ import {
     } else {
       current = makeControlTower(); modelName = 'plane-sim-control-tower';
     }
+    currentPlaneType = planeType;
     renderStats(planeType);
     turntable.rotation.y = 0;
     turntable.add(current);
     if (currentSurf) applyControlSurfaces(currentSurf, surfState);
+    applyBombs();
     applyWire();
     frame(current, { sitOnGround });
     // Show the control-surface panel only for the aircraft.
@@ -236,10 +253,11 @@ import {
     el.checked = opts[key];
     el.addEventListener('change', () => { opts[key] = el.checked; if (after) after(); });
   };
-  bindToggle('pv-wire', 'wire', applyWire);
+  bindToggle('pv-wire', 'wire', () => { applyWire(); });
   bindToggle('pv-autorotate', 'autoRotate');
   bindToggle('pv-spin', 'spinProp');
   bindToggle('pv-grid', 'grid', () => { grid.visible = opts.grid; });
+  bindToggle('pv-bombs', 'bombs', () => { applyBombs(); applyWire(); });
 
   const bindSlider = (id, key, scale) => {
     const el = $(id);

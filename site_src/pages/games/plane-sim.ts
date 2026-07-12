@@ -463,7 +463,7 @@ export function PlaneSimPage(opts: {
           <div id="ps-menu-name">SPITFIRE</div>
           <button type="button" class="ps-arrow" data-mnext aria-label="Next aircraft">›</button>
         </div>
-        <div class="ps-menu-keys">◄ ► cycle &middot; Mouse: point to fly &middot; RMB fire &middot; W/S throttle &middot; A/D rudder &middot; G gear &middot; ESC pause</div>
+        <div class="ps-menu-keys">◄ ► cycle &middot; Mouse: point to fly &middot; RMB fire &middot; W/S throttle &middot; A/D rudder &middot; G gear &middot; B drop bomb &middot; ESC pause</div>
       </div>
 
       <!-- Sortie: map select + briefing -->
@@ -501,7 +501,7 @@ export function PlaneSimPage(opts: {
             </svg>
             <div>
               <p class="ps-map-name">Ocean — Carrier Strike</p>
-              <p class="ps-map-desc">Launch off your carrier's deck, sweep the bandits away from the fleet, then take two bombs to the enemy flat-top. One hit sinks her — but stray too far too early and it's your carrier on the seabed.</p>
+              <p class="ps-map-desc">Launch off your carrier's deck, sweep the bandits away from the fleet, then take two bombs to the enemy flat-top. Press <strong>B</strong> to drop a bomb — one hit sinks her, but waste both and the strike fails. Stray too far too early and it's your carrier on the seabed.</p>
             </div>
           </div>
           <div class="ps-diff-row">

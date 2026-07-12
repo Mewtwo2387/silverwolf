@@ -267,7 +267,7 @@ export const PLANE_INFO = {
     desc: 'The balanced dogfighter: superb turn & climb, eight .303s — a fast, light-hitting hose of bullets.',
     stats: {
       thrust: 38, lift: 0.0054, drag0: 0.0013, pitchRate: 1.6, rollRate: 3.4, controlV: 42, hiSpeedStiff: 0, groundY: 1.5,
-      stance: 0.16, gearZ: -2.05, tailZ: 4.1,
+      stance: 0.16, gearZ: -2.05, tailZ: 4.1, bomb: { x: 2.3, y: -0.62, z: -1.7 },
       hp: 100, fireInterval: 0.085, gunDmg: 3, gunSpread: 0.006, gunRange: 900,
     },
   },
@@ -276,7 +276,7 @@ export const PLANE_INFO = {
     desc: 'Fastest in a straight line and a dive, rugged airframe — but heavy: wide turns that want airspeed. Six .50 cals hit hard.',
     stats: {
       thrust: 40, lift: 0.0048, drag0: 0.00105, pitchRate: 1.35, rollRate: 3.0, controlV: 48, hiSpeedStiff: 0, groundY: 1.6,
-      stance: 0.16, gearZ: -1.9, tailZ: 4.3,
+      stance: 0.16, gearZ: -1.9, tailZ: 4.3, bomb: { x: 2.5, y: -0.58, z: -1.5 },
       hp: 115, fireInterval: 0.11, gunDmg: 5, gunSpread: 0.005, gunRange: 950,
     },
   },
@@ -285,7 +285,7 @@ export const PLANE_INFO = {
     desc: 'Untouchable in a slow turn fight and stalls last — but slow, unarmoured, and the controls stiffen in a dive. Two 20 mm cannon: slow to fire, savage on hit.',
     stats: {
       thrust: 33, lift: 0.0063, drag0: 0.00165, pitchRate: 2.0, rollRate: 3.8, controlV: 34, hiSpeedStiff: 0.45, groundY: 1.35,
-      stance: 0.14, gearZ: -2.3, tailZ: 4.0,
+      stance: 0.14, gearZ: -2.3, tailZ: 4.0, bomb: { x: 2.6, y: -0.5, z: -1.95 },
       hp: 70, fireInterval: 0.16, gunDmg: 8, gunSpread: 0.008, gunRange: 750,
     },
   },
@@ -1272,17 +1272,22 @@ export function makeCarrier(opts = {}) {
   const hull = new THREE.Mesh(hullGeo, hullMat);
   g.add(hull);
 
-  // Flight deck: a thin slab with the same plan shape (slightly wider — the
-  // deck overhangs the hull), topped by a marked deck surface.
+  // Flight deck: a wide, BLUNT rounded-rectangle slab overhanging the hull —
+  // a real carrier's flight deck is not ship-shaped; the pointed prow is the
+  // HULL below, which poks out ahead of the deck's rounded forward edge. Only
+  // the corners are radiused (bow a touch more than the stern round-down).
   const DHW = DECK_W / 2;
+  const rB = 9; // bow corner radius (rounded forward edge)
+  const rS = 6; // stern corner radius (round-down)
   const deckShape = new THREE.Shape();
-  deckShape.moveTo(-DHW, -DECK_LEN / 2 + 6);
-  deckShape.quadraticCurveTo(-DHW, -DECK_LEN / 2, -DHW + 5, -DECK_LEN / 2);
-  deckShape.lineTo(DHW - 5, -DECK_LEN / 2);
-  deckShape.quadraticCurveTo(DHW, -DECK_LEN / 2, DHW, -DECK_LEN / 2 + 6);
-  deckShape.lineTo(DHW, DECK_LEN / 2 - 34);
-  deckShape.quadraticCurveTo(DHW, DECK_LEN / 2 - 8, 0, DECK_LEN / 2);
-  deckShape.quadraticCurveTo(-DHW, DECK_LEN / 2 - 8, -DHW, DECK_LEN / 2 - 34);
+  deckShape.moveTo(-DHW, -DECK_LEN / 2 + rS);
+  deckShape.quadraticCurveTo(-DHW, -DECK_LEN / 2, -DHW + rS, -DECK_LEN / 2); // stern port
+  deckShape.lineTo(DHW - rS, -DECK_LEN / 2);
+  deckShape.quadraticCurveTo(DHW, -DECK_LEN / 2, DHW, -DECK_LEN / 2 + rS); // stern stbd
+  deckShape.lineTo(DHW, DECK_LEN / 2 - rB);
+  deckShape.quadraticCurveTo(DHW, DECK_LEN / 2, DHW - rB, DECK_LEN / 2); // bow stbd
+  deckShape.lineTo(-DHW + rB, DECK_LEN / 2);
+  deckShape.quadraticCurveTo(-DHW, DECK_LEN / 2, -DHW, DECK_LEN / 2 - rB); // bow port
   deckShape.closePath();
   const deckGeo = new THREE.ExtrudeGeometry(deckShape, { depth: 1.3, bevelEnabled: false });
   deckGeo.rotateX(-Math.PI / 2);
@@ -1301,15 +1306,16 @@ export function makeCarrier(opts = {}) {
     const px = (x) => ((x + DHW) / DECK_W) * 256; // ship x -> canvas x
     const pz = (z) => ((z + DECK_LEN / 2) / DECK_LEN) * 1024; // ship z -> canvas y
     ctx.clearRect(0, 0, 256, 1024);
-    // Deck plan silhouette (mirrors deckShape).
+    // Deck plan silhouette (mirrors the blunt rounded-rectangle deckShape).
     ctx.beginPath();
-    ctx.moveTo(px(-DHW), pz(-DECK_LEN / 2 + 6));
-    ctx.quadraticCurveTo(px(-DHW), pz(-DECK_LEN / 2), px(-DHW + 5), pz(-DECK_LEN / 2));
-    ctx.lineTo(px(DHW - 5), pz(-DECK_LEN / 2));
-    ctx.quadraticCurveTo(px(DHW), pz(-DECK_LEN / 2), px(DHW), pz(-DECK_LEN / 2 + 6));
-    ctx.lineTo(px(DHW), pz(DECK_LEN / 2 - 34));
-    ctx.quadraticCurveTo(px(DHW), pz(DECK_LEN / 2 - 8), px(0), pz(DECK_LEN / 2));
-    ctx.quadraticCurveTo(px(-DHW), pz(DECK_LEN / 2 - 8), px(-DHW), pz(DECK_LEN / 2 - 34));
+    ctx.moveTo(px(-DHW), pz(-DECK_LEN / 2 + rS));
+    ctx.quadraticCurveTo(px(-DHW), pz(-DECK_LEN / 2), px(-DHW + rS), pz(-DECK_LEN / 2));
+    ctx.lineTo(px(DHW - rS), pz(-DECK_LEN / 2));
+    ctx.quadraticCurveTo(px(DHW), pz(-DECK_LEN / 2), px(DHW), pz(-DECK_LEN / 2 + rS));
+    ctx.lineTo(px(DHW), pz(DECK_LEN / 2 - rB));
+    ctx.quadraticCurveTo(px(DHW), pz(DECK_LEN / 2), px(DHW - rB), pz(DECK_LEN / 2));
+    ctx.lineTo(px(-DHW + rB), pz(DECK_LEN / 2));
+    ctx.quadraticCurveTo(px(-DHW), pz(DECK_LEN / 2), px(-DHW), pz(DECK_LEN / 2 - rB));
     ctx.closePath();
     ctx.save();
     ctx.clip();
@@ -1452,4 +1458,22 @@ export function makeBomb() {
   }
   setShadows(g);
   return g;
+}
+
+// Hang a bomb under each wing of an aircraft group, at the airframe's mount
+// point (PLANE_INFO[type].stats.bomb — under the wing, ahead of the CG). Adds
+// the two bombs as children of `planeGroup` and returns them [left, right] so
+// the caller controls their visibility (the game hides them as they're dropped,
+// the inspector toggles them). Shared by the game and the model inspector so
+// the mount geometry can't drift.
+export function mountWingBombs(planeGroup, type) {
+  const b = (PLANE_INFO[type] && PLANE_INFO[type].stats.bomb) || { x: 2.3, y: -0.6, z: -1.6 };
+  const racks = [];
+  for (const sx of [-1, 1]) {
+    const bomb = makeBomb();
+    bomb.position.set(sx * b.x, b.y, b.z);
+    planeGroup.add(bomb);
+    racks.push(bomb);
+  }
+  return racks;
 }

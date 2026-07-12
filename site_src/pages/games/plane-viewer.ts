@@ -115,6 +115,7 @@ export function PlaneViewerPage(opts: {
             <button type="button" data-model="aircraft" class="active">Spitfire</button>
             <button type="button" data-model="p51">P-51</button>
             <button type="button" data-model="zero">Zero</button>
+            <button type="button" data-model="carrier">Carrier</button>
             <button type="button" data-model="hangar">Hangar</button>
             <button type="button" data-model="tower">Tower</button>
             <button type="button" data-model="nissen">Nissen hut</button>
@@ -133,6 +134,7 @@ export function PlaneViewerPage(opts: {
           <div class="pv-row"><label for="pv-autorotate">Auto-rotate</label><input type="checkbox" id="pv-autorotate" checked /></div>
           <div class="pv-row"><label for="pv-wire">Wireframe</label><input type="checkbox" id="pv-wire" /></div>
           <div class="pv-row"><label for="pv-spin">Spin propeller</label><input type="checkbox" id="pv-spin" checked /></div>
+          <div class="pv-row"><label for="pv-bombs">Wing bombs</label><input type="checkbox" id="pv-bombs" /></div>
           <div class="pv-row"><label for="pv-grid">Grid</label><input type="checkbox" id="pv-grid" checked /></div>
           <button type="button" class="pv-wide" id="pv-bg">BG: Dark</button>
         </div>

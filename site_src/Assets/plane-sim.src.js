@@ -29,7 +29,7 @@ import {
   buildAircraft, applyControlSurfaces, setPropBlur, makeHangar, makeControlTower,
   makeWindsock, makeFuelTank, makeBowser, makeNissenHut, PLANE_INFO, planeSpecs, restHeight,
   makePineCanopyGeo, makeBroadleafCanopyGeo, makeConiferCanopyGeo, makeBroadleafTrunkGeo,
-  makeCarrier, makeBomb, CARRIER,
+  makeCarrier, makeBomb, mountWingBombs, CARRIER,
 } from './plane-sim-models.js';
 import {
   TERRAIN, terrainHeight, forestMask, buildTerrain, buildWater, smoothstep, fbm,
@@ -507,6 +507,25 @@ import {
       const c = makeCarrier({ enemy });
       c.group.position.set(cx, TERRAIN.WATER_Y, cz);
       c.group.rotation.y = rotY;
+
+      // Parked deck aircraft (decorative — no collision), spotted along the
+      // deck edges in the BOW half, clear of the centreline launch strip so a
+      // takeoff/landing run never touches them. Children of the carrier group,
+      // so they ride (and sink) with the ship. Local coords: bow at -Z.
+      const spots = [
+        { type: 'spitfire', x: -9, z: -52, ry: 0.42 },
+        { type: 'p51', x: -9.5, z: -82, ry: 0.42 },
+        { type: 'zero', x: 9, z: -100, ry: -0.42 },
+      ];
+      for (const s of spots) {
+        const t = enemy ? 'zero' : s.type; // enemy fleet flies Zeros
+        const parked = buildAircraft({ type: t, paint: enemy ? CFG.ENEMY_PAINT : undefined, markings: !enemy });
+        const gy = PLANE_TYPES[t].stats.groundY || CFG.GROUND_Y;
+        parked.group.position.set(s.x, CARRIER.DECK_Y + gy, s.z);
+        parked.group.rotation.y = s.ry;
+        c.group.add(parked.group);
+      }
+
       oceanGroup.add(c.group);
       carriers.push({
         group: c.group, x: cx, z: cz, enemy, rotY,
@@ -790,14 +809,9 @@ import {
     const built = buildAircraft({ type: planeName });
     plane = built.group;
     surf = built.surf;
-    // Wing bombs (shown on the Ocean map while still on the rack).
-    bombRacks = [];
-    for (const sx of [-1, 1]) {
-      const b = makeBomb();
-      b.position.set(sx * 1.9, -0.8, 0.4);
-      plane.add(b);
-      bombRacks.push(b);
-    }
+    // Wing bombs (shown on the Ocean map while still on the rack) — mounted by
+    // the shared helper so the rack position matches the inspector exactly.
+    bombRacks = mountWingBombs(plane, planeName);
     syncBombRacks();
     if (old) { plane.position.copy(old.pos); plane.quaternion.copy(old.quat); }
     scene.add(plane);
