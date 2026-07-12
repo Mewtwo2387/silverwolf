@@ -1223,3 +1223,233 @@ export function makeNissenHut(len = 9) {
   setShadows(g);
   return g;
 }
+
+// ---- WW2 fleet aircraft carrier (Essex-ish silhouette, simplified to the
+// game's low-poly idiom). Local forward is -Z (bow), origin at the WATERLINE
+// on the centreline — position the group at sea level. Returns { group, deck }
+// where deck = { y, w, len } (top-of-deck height and the landable rectangle,
+// centred on the origin) so the game can use it for takeoff/landing/bombing.
+// opts.enemy switches to the enemy scheme (dark IJN-style paint, red bow disc).
+export const CARRIER = { HULL_LEN: 262, DECK_LEN: 250, DECK_W: 32, DECK_Y: 17 };
+export function makeCarrier(opts = {}) {
+  const enemy = !!opts.enemy;
+  const g = new THREE.Group();
+  const { DECK_LEN, DECK_W, DECK_Y } = CARRIER;
+
+  const hullMat = new THREE.MeshStandardMaterial({
+    color: enemy ? 0x565b52 : 0x6d7885,
+    roughness: 0.55,
+    metalness: 0.55,
+    normalMap: detailTexture('metal-normal', 24),
+    roughnessMap: detailTexture('metal-roughness', 24),
+    normalScale: new THREE.Vector2(0.15, 0.15),
+  });
+  const supMat = new THREE.MeshStandardMaterial({ // superstructure — a shade lighter
+    color: enemy ? 0x646a60 : 0x7e8894,
+    roughness: 0.6,
+    metalness: 0.45,
+  });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x33373c, roughness: 0.7, metalness: 0.3 });
+
+  // Hull: a 2D plan outline (pointed bow, rounded stern) extruded vertically.
+  // Shape is drawn in XY with y = -z(ship) so the bow (ship -Z) is shape +y;
+  // extrude runs 0..H along z, then rotateX(-90°) stands it up (z -> y).
+  const HW = 11.5; // hull half-beam
+  const BOW = 131; const STERN = 124; // |z| extents
+  const hullShape = new THREE.Shape();
+  hullShape.moveTo(-HW, -STERN + 14);
+  hullShape.quadraticCurveTo(-HW, -STERN, -HW + 7, -STERN); // rounded stern corners
+  hullShape.lineTo(HW - 7, -STERN);
+  hullShape.quadraticCurveTo(HW, -STERN, HW, -STERN + 14);
+  hullShape.lineTo(HW, BOW - 52);
+  hullShape.quadraticCurveTo(HW, BOW - 14, 0, BOW); // fine bow
+  hullShape.quadraticCurveTo(-HW, BOW - 14, -HW, BOW - 52);
+  hullShape.closePath();
+  const H = 22; // keel (below water) to hangar-deck top
+  const hullGeo = new THREE.ExtrudeGeometry(hullShape, { depth: H, bevelEnabled: false });
+  hullGeo.rotateX(-Math.PI / 2);
+  hullGeo.translate(0, -6, 0); // waterline at y=0: 6 m draught, 16 m freeboard
+  const hull = new THREE.Mesh(hullGeo, hullMat);
+  g.add(hull);
+
+  // Flight deck: a thin slab with the same plan shape (slightly wider — the
+  // deck overhangs the hull), topped by a marked deck surface.
+  const DHW = DECK_W / 2;
+  const deckShape = new THREE.Shape();
+  deckShape.moveTo(-DHW, -DECK_LEN / 2 + 6);
+  deckShape.quadraticCurveTo(-DHW, -DECK_LEN / 2, -DHW + 5, -DECK_LEN / 2);
+  deckShape.lineTo(DHW - 5, -DECK_LEN / 2);
+  deckShape.quadraticCurveTo(DHW, -DECK_LEN / 2, DHW, -DECK_LEN / 2 + 6);
+  deckShape.lineTo(DHW, DECK_LEN / 2 - 34);
+  deckShape.quadraticCurveTo(DHW, DECK_LEN / 2 - 8, 0, DECK_LEN / 2);
+  deckShape.quadraticCurveTo(-DHW, DECK_LEN / 2 - 8, -DHW, DECK_LEN / 2 - 34);
+  deckShape.closePath();
+  const deckGeo = new THREE.ExtrudeGeometry(deckShape, { depth: 1.3, bevelEnabled: false });
+  deckGeo.rotateX(-Math.PI / 2);
+  deckGeo.translate(0, DECK_Y - 1.3, 0);
+  const deckSlab = new THREE.Mesh(deckGeo, dark);
+  g.add(deckSlab);
+
+  // Deck surface + markings: one canvas draped over the deck plan (transparent
+  // outside the outline, alphaTest clips the corners). Stained wood planking,
+  // white edge lines, dashed centreline, arrestor wires aft, and a bow marking
+  // (white deck number / enemy red disc).
+  (function deckSurface() {
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 1024; // x across, y along (y=0 is the BOW, -Z)
+    const ctx = c.getContext('2d');
+    const px = (x) => ((x + DHW) / DECK_W) * 256; // ship x -> canvas x
+    const pz = (z) => ((z + DECK_LEN / 2) / DECK_LEN) * 1024; // ship z -> canvas y
+    ctx.clearRect(0, 0, 256, 1024);
+    // Deck plan silhouette (mirrors deckShape).
+    ctx.beginPath();
+    ctx.moveTo(px(-DHW), pz(-DECK_LEN / 2 + 6));
+    ctx.quadraticCurveTo(px(-DHW), pz(-DECK_LEN / 2), px(-DHW + 5), pz(-DECK_LEN / 2));
+    ctx.lineTo(px(DHW - 5), pz(-DECK_LEN / 2));
+    ctx.quadraticCurveTo(px(DHW), pz(-DECK_LEN / 2), px(DHW), pz(-DECK_LEN / 2 + 6));
+    ctx.lineTo(px(DHW), pz(DECK_LEN / 2 - 34));
+    ctx.quadraticCurveTo(px(DHW), pz(DECK_LEN / 2 - 8), px(0), pz(DECK_LEN / 2));
+    ctx.quadraticCurveTo(px(-DHW), pz(DECK_LEN / 2 - 8), px(-DHW), pz(DECK_LEN / 2 - 34));
+    ctx.closePath();
+    ctx.save();
+    ctx.clip();
+    // Planking: stained deck boards running fore-aft.
+    ctx.fillStyle = enemy ? '#6b5c40' : '#55534b';
+    ctx.fillRect(0, 0, 256, 1024);
+    for (let i = 0; i < 900; i++) {
+      const v = Math.random();
+      ctx.fillStyle = `rgba(${enemy ? '40,32,18' : '28,28,24'},${0.12 + v * 0.22})`;
+      ctx.fillRect(Math.floor(Math.random() * 64) * 4, Math.random() * 1024, 3, 24 + Math.random() * 70);
+    }
+    // Edge lines.
+    ctx.strokeStyle = 'rgba(235,238,240,0.85)';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    // Dashed centreline.
+    ctx.setLineDash([28, 22]);
+    ctx.beginPath(); ctx.moveTo(128, 40); ctx.lineTo(128, 990); ctx.stroke();
+    ctx.setLineDash([]);
+    // Arrestor wires across the aft third.
+    ctx.strokeStyle = 'rgba(20,20,22,0.8)';
+    ctx.lineWidth = 3;
+    for (let k = 0; k < 8; k++) {
+      const y = pz(DECK_LEN / 2 - 26 - k * 11);
+      ctx.beginPath(); ctx.moveTo(px(-DHW + 3), y); ctx.lineTo(px(DHW - 3), y); ctx.stroke();
+    }
+    if (enemy) { // red disc on the bow deck
+      ctx.fillStyle = 'rgba(190,40,36,0.95)';
+      ctx.beginPath(); ctx.arc(128, pz(-DECK_LEN / 2 + 30), 34, 0, Math.PI * 2); ctx.fill();
+    } else { // deck number
+      ctx.fillStyle = 'rgba(235,238,240,0.9)';
+      ctx.font = '700 64px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.save();
+      ctx.translate(128, pz(-DECK_LEN / 2 + 32));
+      ctx.fillText('6', 0, 24);
+      ctx.restore();
+    }
+    ctx.restore();
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    const deckTop = new THREE.Mesh(
+      new THREE.PlaneGeometry(DECK_W, DECK_LEN),
+      new THREE.MeshStandardMaterial({
+        map: tex, transparent: true, alphaTest: 0.4, roughness: 0.85, metalness: 0.1,
+      }),
+    );
+    deckTop.rotation.x = -Math.PI / 2;
+    // canvas y=0 (bow) must land at ship -Z: plane rotated -90° maps +v to -z already
+    deckTop.position.y = DECK_Y + 0.02;
+    g.add(deckTop);
+  }());
+
+  // Island superstructure on the starboard (+X) deck edge.
+  const island = new THREE.Group();
+  island.position.set(DHW - 2.6, DECK_Y, -18);
+  const base = new THREE.Mesh(new THREE.BoxGeometry(5.4, 7.5, 22), supMat);
+  base.position.y = 3.75; island.add(base);
+  const bridge = new THREE.Mesh(new THREE.BoxGeometry(6.4, 3.2, 12), supMat);
+  bridge.position.set(0, 9.1, -3); island.add(bridge);
+  // Bridge windows: a dark strip band.
+  const winBand = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.9, 10.5), dark);
+  winBand.position.set(0, 9.9, -3); island.add(winBand);
+  // Funnel, raked aft.
+  const funnel = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 2.1, 7.5, 12), dark);
+  funnel.rotation.x = 0.22;
+  funnel.position.set(0, 12.2, 5.5); island.add(funnel);
+  // Lattice mast + yard + rotating-radar slab.
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.3, 10, 6), dark);
+  mast.position.set(0, 15.5, -6); island.add(mast);
+  const yard = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 7, 6), dark);
+  yard.rotation.z = Math.PI / 2;
+  yard.position.set(0, 18.5, -6); island.add(yard);
+  const radar = new THREE.Mesh(new THREE.BoxGeometry(4.2, 1.1, 0.3), supMat);
+  radar.position.set(0, 20.8, -6);
+  island.add(radar);
+  g.userData.radar = radar; // the game slowly spins it
+  g.add(island);
+
+  // AA gun tubs on sponsons along both deck edges (merged into one mesh):
+  // a tub ring + a twin-barrel mount each.
+  (function gunTubs() {
+    const geos = [];
+    const tub = () => new THREE.CylinderGeometry(1.5, 1.5, 1.4, 10, 1, true);
+    const barrel = () => new THREE.CylinderGeometry(0.07, 0.09, 3.2, 5);
+    for (const sx of [-1, 1]) {
+      for (const tz of [-96, -52, 8, 64, 100]) {
+        const t = tub();
+        const x = sx * (DHW - 0.4);
+        t.translate(x, DECK_Y - 1.6, tz);
+        geos.push(t);
+        for (const bo of [-0.35, 0.35]) {
+          const b = barrel();
+          b.rotateX(Math.PI / 2 - 0.35); // elevated, pointing outboard-ish
+          b.rotateY(sx * (Math.PI / 2));
+          b.translate(x + sx * 0.8, DECK_Y - 0.4, tz + bo);
+          geos.push(b);
+        }
+      }
+    }
+    const m = new THREE.Mesh(mergeGeometries(geos), dark);
+    g.add(m);
+  }());
+
+  // Boot-topping: a black waterline band so the hull reads as sitting IN the
+  // sea rather than floating on it.
+  const bandGeo = new THREE.ExtrudeGeometry(hullShape, { depth: 1.6, bevelEnabled: false });
+  bandGeo.rotateX(-Math.PI / 2);
+  bandGeo.scale(1.01, 1, 1.005);
+  bandGeo.translate(0, -0.5, 0);
+  g.add(new THREE.Mesh(bandGeo, new THREE.MeshStandardMaterial({ color: 0x16181c, roughness: 0.8 })));
+
+  setShadows(g);
+  return { group: g, deck: { y: DECK_Y, w: DECK_W, len: DECK_LEN } };
+}
+
+// A general-purpose 250 lb-ish bomb: olive body, ogive nose, tail cone with a
+// box-fin ring. Hung under the wings on the Ocean map and dropped as a free
+// body. Axis along Z (nose -Z, like everything else), origin at the body centre.
+export function makeBomb() {
+  const g = new THREE.Group();
+  const body = new THREE.MeshStandardMaterial({ color: 0x4d5442, roughness: 0.5, metalness: 0.4 });
+  const fin = new THREE.MeshStandardMaterial({ color: 0x3a4036, roughness: 0.6, metalness: 0.4, side: THREE.DoubleSide });
+  const R = 0.24; const LEN = 1.5;
+  const tube = new THREE.Mesh(new THREE.CylinderGeometry(R, R, LEN * 0.55, 10), body);
+  tube.rotation.x = Math.PI / 2; g.add(tube);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(R, 10, 8), body);
+  nose.scale.set(1, 1, 2.1);
+  nose.position.z = -LEN * 0.275; g.add(nose);
+  const tail = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.55, R, LEN * 0.35, 10), body);
+  tail.rotation.x = -Math.PI / 2;
+  tail.position.z = LEN * 0.45; g.add(tail);
+  for (let i = 0; i < 4; i++) { // four tail fins, radial about the tail cone
+    const fg = new THREE.PlaneGeometry(R * 1.4, LEN * 0.32);
+    fg.rotateX(Math.PI / 2); // spans X (radial) and Z (length)
+    fg.translate(R * 0.55, 0, LEN * 0.5); // stand off the tail cone
+    fg.rotateZ((i * Math.PI) / 2);
+    g.add(new THREE.Mesh(fg, fin));
+  }
+  setShadows(g);
+  return g;
+}

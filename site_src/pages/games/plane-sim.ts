@@ -167,6 +167,15 @@ export function PlaneSimPage(opts: {
   .ps-warning.ps-show { opacity: 1; }
   @keyframes ps-blink { 50% { opacity: 0.25; } }
 
+  /* Ocean-mission objective strip, just under the top-centre combat panel. */
+  #ps-objective {
+    position: absolute; left: 50%; bottom: 18.5%; transform: translateX(-50%); z-index: 3;
+    text-align: center; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em;
+    color: #8fe4ff; text-shadow: 0 0 10px rgba(0, 0, 0, 0.8); pointer-events: none;
+    white-space: nowrap; text-transform: uppercase;
+  }
+  #ps-objective:empty { display: none; }
+
   /* Always-available exit (there's no navbar in fullscreen mode). */
   .ps-corner {
     position: absolute; right: 1.1rem; top: 1.1rem; z-index: 4; display: flex; gap: 0.5rem;
@@ -430,6 +439,8 @@ export function PlaneSimPage(opts: {
         <!-- Warnings -->
         <div class="ps-stall" id="ps-stall">STALL</div>
         <div class="ps-warning" id="ps-warning"></div>
+        <!-- Ocean-mission objective (empty = hidden) -->
+        <div id="ps-objective"></div>
       </div>
 
       <!-- Loading screen (hidden by the game once the first frame renders) -->
@@ -460,7 +471,7 @@ export function PlaneSimPage(opts: {
         <div class="ps-card">
           <h1>Sortie</h1>
           <p class="ps-sub">Select a map, set the opposition, and go hunt the bandits. Watch your hull — they shoot back.</p>
-          <div class="ps-map-tile ps-active" id="ps-map-coastal">
+          <div class="ps-map-tile ps-active" id="ps-map-coastal" data-map="coastal">
             <svg class="ps-map-svg" viewBox="0 0 148 96" role="img" aria-label="Coastal Airfield map preview">
               <rect width="148" height="96" rx="6" fill="#22381f"/>
               <path d="M0 66 Q 22 52 44 62 T 96 60 T 148 70 L 148 96 L 0 96 Z" fill="#173f4e"/>
@@ -474,6 +485,23 @@ export function PlaneSimPage(opts: {
             <div>
               <p class="ps-map-name">Coastal Airfield</p>
               <p class="ps-map-desc">A 12&nbsp;km box of mountains, lakes and one very homely airstrip. Bandits prowl the valley.</p>
+            </div>
+          </div>
+          <div class="ps-map-tile" id="ps-map-ocean" data-map="ocean">
+            <svg class="ps-map-svg" viewBox="0 0 148 96" role="img" aria-label="Ocean map preview">
+              <rect width="148" height="96" rx="6" fill="#123a4c"/>
+              <path d="M0 20 q 18 -6 37 0 t 37 0 t 37 0 t 37 0 V 26 q -18 6 -37 0 t -37 0 t -37 0 t -37 0 Z" fill="#1c4a5c" opacity="0.7"/>
+              <path d="M0 58 q 18 -6 37 0 t 37 0 t 37 0 t 37 0 V 64 q -18 6 -37 0 t -37 0 t -37 0 t -37 0 Z" fill="#1c4a5c" opacity="0.7"/>
+              <rect x="18" y="66" width="46" height="9" rx="3" fill="#5f6a74"/>
+              <rect x="46" y="61" width="8" height="6" rx="1" fill="#7e8b90"/>
+              <rect x="92" y="22" width="38" height="8" rx="3" fill="#4a4f48"/>
+              <rect x="98" y="17" width="7" height="6" rx="1" fill="#5f6455"/>
+              <circle cx="124" cy="26" r="2.6" fill="#c23a32"/>
+              <circle cx="86" cy="46" r="1.6" fill="#d9a52e"/>
+            </svg>
+            <div>
+              <p class="ps-map-name">Ocean — Carrier Strike</p>
+              <p class="ps-map-desc">Launch off your carrier's deck, sweep the bandits away from the fleet, then take two bombs to the enemy flat-top. One hit sinks her — but stray too far too early and it's your carrier on the seabed.</p>
             </div>
           </div>
           <div class="ps-diff-row">

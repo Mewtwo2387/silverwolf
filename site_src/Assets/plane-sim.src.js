@@ -29,6 +29,7 @@ import {
   buildAircraft, applyControlSurfaces, setPropBlur, makeHangar, makeControlTower,
   makeWindsock, makeFuelTank, makeBowser, makeNissenHut, PLANE_INFO, planeSpecs, restHeight,
   makePineCanopyGeo, makeBroadleafCanopyGeo, makeConiferCanopyGeo, makeBroadleafTrunkGeo,
+  makeCarrier, makeBomb, CARRIER,
 } from './plane-sim-models.js';
 import {
   TERRAIN, terrainHeight, forestMask, buildTerrain, buildWater, smoothstep, fbm,
@@ -108,6 +109,32 @@ import {
   const KT = 1.94384; // m/s -> knots
   const FT = 3.28084; // m -> feet
   const clamp = (v, lo, hi) => (v < lo ? lo : (v > hi ? hi : v));
+
+  // ---- Maps. 'coastal' is the original airfield valley; 'ocean' is open sea
+  //      with two WW2 carrier groups — take off from yours, defend it from the
+  //      bandits, then fly out and put a bomb into the enemy's deck. Selected
+  //      on the sortie screen; remembered. ----
+  const OCEAN = {
+    FLOOR: -80, // seabed (never seen; keeps every ground query "over water")
+    ALLY: { x: 0, z: 0 }, // your carrier — the spawn deck (waterline origin)
+    ENEMY: { x: 950, z: -4700 }, // the strike target, a flight out to the NNE
+    DEFEND_R: 2600, // stray farther than this while bandits live and...
+    ABANDON_S: 12, // ...this many seconds later your carrier is lost
+  };
+  const validMap = (n) => n === 'coastal' || n === 'ocean';
+  let mapName = (() => {
+    try { const m = localStorage.getItem('ps-map'); return validMap(m) ? m : 'coastal'; } catch (_) { return 'coastal'; }
+  })();
+
+  // Ocean-mission state: phase 1 'defend' (splash every bandit near the fleet;
+  // stray too long and your carrier is lost), phase 2 'strike' (two wing bombs,
+  // one deck hit sinks the enemy carrier).
+  let missionPhase = 'defend';
+  let bombs = 2; // bombs still on the racks
+  let awayT = 0; // seconds spent outside DEFEND_R during 'defend'
+  let enemySinking = 0; // >0 = sink-animation clock (bomb hit landed)
+  let sinkVictory = false; // victory() already fired for this sinking
+  const liveBombs = []; // free-falling bombs
 
   // ---- Flyable aircraft: the catalogue (label / blurb / stat block) lives in
   //      plane-sim-models.js (PLANE_INFO) so the game and the inspector share
@@ -256,8 +283,13 @@ import {
   }());
 
   // ---- Terrain: procedural mountains/valleys/lakes (plane-sim-terrain.js).
-  //      The airfield sits on a flattened disc at the origin. ----
-  scene.add(buildTerrain(renderer));
+  //      The airfield sits on a flattened disc at the origin. Everything
+  //      land-bound (terrain, airfield, forests, rocks) lives in landGroup so
+  //      the Ocean map can switch it all off; the water plane is shared (on
+  //      the ocean it IS the map). ----
+  const landGroup = new THREE.Group();
+  scene.add(landGroup);
+  landGroup.add(buildTerrain(renderer));
   const waterMesh = buildWater();
   scene.add(waterMesh);
 
@@ -455,9 +487,52 @@ import {
       field.add(parked.group);
     }
 
-    scene.add(markings);
-    scene.add(field);
+    landGroup.add(markings);
+    landGroup.add(field);
   }());
+
+  // ---- The Ocean map: two carrier groups on an empty sea. Yours parked at
+  //      the origin (its deck is the runway), the enemy's a few km out. Deck
+  //      contact and hull/island collision are handled analytically in
+  //      update() via the DECK/ocean-obstacle data captured here. ----
+  const oceanGroup = new THREE.Group();
+  const DECK_TOP = TERRAIN.WATER_Y + CARRIER.DECK_Y; // absolute deck height
+  const carriers = []; // { group, x, z, enemy } — both AABB-aligned (axis along Z)
+  const obBoxOcean = []; // island + hull crash volumes, same shape as obBox
+  (function buildOcean() {
+    for (const [enemy, cx, cz, rotY] of [
+      [false, OCEAN.ALLY.x, OCEAN.ALLY.z, 0],
+      [true, OCEAN.ENEMY.x, OCEAN.ENEMY.z, Math.PI], // bow toward our fleet
+    ]) {
+      const c = makeCarrier({ enemy });
+      c.group.position.set(cx, TERRAIN.WATER_Y, cz);
+      c.group.rotation.y = rotY;
+      oceanGroup.add(c.group);
+      carriers.push({
+        group: c.group, x: cx, z: cz, enemy, rotY,
+      });
+      // Hull: solid below the flight deck across the whole footprint.
+      obBoxOcean.push({
+        x0: cx - 12.5, x1: cx + 12.5, z0: cz - 131, z1: cz + 131, top: DECK_TOP - 1.6, reason: 'Flew into the carrier',
+      });
+      // Island superstructure on the deck (starboard = +X, mirrored by rotY).
+      const ix = cx + (rotY ? -1 : 1) * (CARRIER.DECK_W / 2 - 2.6);
+      const iz = cz + (rotY ? 18 : -18);
+      obBoxOcean.push({
+        x0: ix - 3.6, x1: ix + 3.6, z0: iz - 11.5, z1: iz + 11.5, top: DECK_TOP + 22, reason: 'Flew into the island',
+      });
+    }
+    scene.add(oceanGroup);
+  }());
+  // Deck height at (x, z): the flight-deck top if over a carrier, else -Inf.
+  // A sinking enemy carrier stops being a deck (it's on its way down).
+  function carrierDeckAt(x, z) {
+    for (const c of carriers) {
+      if (c.enemy && enemySinking > 0) continue;
+      if (Math.abs(x - c.x) <= CARRIER.DECK_W / 2 && Math.abs(z - c.z) <= CARRIER.DECK_LEN / 2) return DECK_TOP;
+    }
+    return -Infinity;
+  }
 
   // ---- Instanced forests + rock fields across the whole terrain. Three tree
   //      archetypes (broadleaf valleys, conifer slopes, pines up high), each
@@ -592,7 +667,7 @@ import {
         addCyl(x, z, t.cr * s, (h - 0.3) + t.ctop * s, 'Clipped the treeline');
       }
       trunks.castShadow = true; canopies.castShadow = true; canopies.receiveShadow = true;
-      scene.add(trunks); scene.add(canopies);
+      landGroup.add(trunks); landGroup.add(canopies);
     }
 
     // Rocks: on the steeps and the high ground.
@@ -625,7 +700,7 @@ import {
       addCyl(x, z, s * 0.8, h + s, 'Flew into a rock');
     }
     rockMesh.castShadow = true;
-    scene.add(rockMesh);
+    landGroup.add(rockMesh);
   }());
 
   // ---- Clouds: puffy clusters of overlapping sprites for altitude/speed
@@ -708,22 +783,47 @@ import {
   let ac = PLANE_TYPES[planeName].stats; // the player's active stat block
   const groundY = () => ac.groundY || CFG.GROUND_Y; // parked origin height (per airframe)
   let plane; let surf;
+  let bombRacks = []; // the two wing-hung bomb meshes (Ocean map only)
   function buildPlayer() {
     const old = plane ? { pos: plane.position.clone(), quat: plane.quaternion.clone() } : null;
     if (plane) scene.remove(plane);
     const built = buildAircraft({ type: planeName });
     plane = built.group;
     surf = built.surf;
+    // Wing bombs (shown on the Ocean map while still on the rack).
+    bombRacks = [];
+    for (const sx of [-1, 1]) {
+      const b = makeBomb();
+      b.position.set(sx * 1.9, -0.8, 0.4);
+      plane.add(b);
+      bombRacks.push(b);
+    }
+    syncBombRacks();
     if (old) { plane.position.copy(old.pos); plane.quaternion.copy(old.quat); }
     scene.add(plane);
   }
+  // Rack i is visible while bomb i hasn't been dropped (drop order: 0 then 1).
+  function syncBombRacks() {
+    for (let i = 0; i < bombRacks.length; i++) {
+      bombRacks[i].visible = mapName === 'ocean' && (2 - bombs) <= i;
+    }
+  }
   buildPlayer();
 
-  // Reset to the runway threshold, lined up to take off toward -Z, sitting
-  // tail-down at the airframe's taildragger stance angle.
+  // Reset to the runway threshold (or the stern of the carrier deck on the
+  // Ocean map), lined up to take off toward -Z, sitting tail-down at the
+  // airframe's taildragger stance angle.
   function resetPlane() {
     const st = ac.stance || 0;
-    plane.position.set(0, restHeight(ac, st), CFG.RUNWAY_LEN / 2 - 60);
+    if (mapName === 'ocean') {
+      plane.position.set(
+        OCEAN.ALLY.x,
+        DECK_TOP + restHeight(ac, st),
+        OCEAN.ALLY.z + CARRIER.DECK_LEN / 2 - 16,
+      );
+    } else {
+      plane.position.set(0, restHeight(ac, st), CFG.RUNWAY_LEN / 2 - 60);
+    }
     plane.quaternion.identity();
     plane.rotateX(st);
   }
@@ -773,8 +873,10 @@ import {
   const getRight = () => _right.set(1, 0, 0).applyQuaternion(plane.quaternion);
 
   // Ground height under a world position (the terrain module returns exactly 0
-  // on the flattened airfield disc, so the runway Just Works).
-  const groundAt = (x, z) => terrainHeight(x, z);
+  // on the flattened airfield disc, so the runway Just Works). On the Ocean
+  // map the "ground" is the seabed — everywhere is over water, and the carrier
+  // decks are handled separately (carrierDeckAt).
+  const groundAt = (x, z) => (mapName === 'ocean' ? OCEAN.FLOOR : terrainHeight(x, z));
 
   // Velocity-vector "grip" + coordinated bank-to-turn — the arcade trick that
   // stops a plane sliding sideways. The velocity DIRECTION is eased toward where
@@ -1072,6 +1174,122 @@ import {
     }
   }
 
+  // ==================================================== OCEAN MISSION =====
+  // The two wing bombs. B drops one (strike phase only): it falls as a free
+  // body — inherits the aircraft's velocity, pulled by gravity, nose aligned
+  // to the fall — and either lands on the enemy carrier's deck footprint (one
+  // hit sinks her) or splashes. Both missed = the strike failed.
+  const _bq = new THREE.Quaternion();
+  const _bv = new THREE.Vector3();
+  function dropBomb() {
+    if (mapName !== 'ocean' || missionPhase !== 'strike' || crashed || won || bombs <= 0 || enemySinking > 0) return;
+    const rack = bombRacks[2 - bombs];
+    bombs--;
+    const b = makeBomb();
+    rack.getWorldPosition(b.position);
+    b.quaternion.copy(plane.quaternion);
+    rack.visible = false;
+    b.userData.vel = vel.clone();
+    scene.add(b);
+    liveBombs.push(b);
+    updateObjective();
+  }
+  function bombResolved() {
+    // Last bomb spent and nothing sank her -> the strike has failed.
+    if (bombs <= 0 && liveBombs.length === 0 && missionPhase === 'strike'
+        && enemySinking <= 0 && !won && !crashed) {
+      missionFail('Both bombs missed — the enemy carrier steams on.');
+    }
+  }
+  function stepBombs(dt) {
+    for (let i = liveBombs.length - 1; i >= 0; i--) {
+      const b = liveBombs[i];
+      const v = b.userData.vel;
+      v.y -= CFG.G * dt;
+      v.multiplyScalar(1 - 0.04 * dt); // light drag
+      b.position.addScaledVector(v, dt);
+      // Nose follows the fall.
+      _bv.copy(v);
+      if (_bv.lengthSq() > 1) {
+        _bv.normalize();
+        b.quaternion.slerp(_bq.setFromUnitVectors(FWD_REF, _bv), Math.min(1, 3 * dt));
+      }
+      // Impact: a carrier deck, or the sea.
+      const hitDeck = carrierDeckAt(b.position.x, b.position.z);
+      const enemyC = carriers[1];
+      const onEnemyDeck = Math.abs(b.position.x - enemyC.x) <= CARRIER.DECK_W / 2
+        && Math.abs(b.position.z - enemyC.z) <= CARRIER.DECK_LEN / 2;
+      if (b.position.y <= hitDeck + 0.4 || b.position.y <= TERRAIN.WATER_Y + 0.2) {
+        scene.remove(b);
+        liveBombs.splice(i, 1);
+        if (onEnemyDeck && b.position.y > TERRAIN.WATER_Y && enemySinking <= 0) {
+          // Direct hit — fireball on deck, and down she goes.
+          spawnSpark(b.position, 30, 0.9);
+          spawnDebris(b.position, v);
+          for (let k = 0; k < 10; k++) {
+            spawnSmoke(b.position.clone().add(new THREE.Vector3(
+              (Math.random() - 0.5) * 24, Math.random() * 10, (Math.random() - 0.5) * 40,
+            )), 8 + Math.random() * 8, 2.5 + Math.random() * 2);
+          }
+          audio.boom();
+          enemySinking = 0.0001;
+          updateObjective();
+        } else {
+          // Splash (or a dud on a friendly deck).
+          spawnSpark(b.position, 8, 0.35);
+          for (let k = 0; k < 4; k++) {
+            spawnSmoke(b.position.clone().add(new THREE.Vector3(
+              (Math.random() - 0.5) * 6, Math.random() * 3, (Math.random() - 0.5) * 6,
+            )), 3 + Math.random() * 3, 1.2);
+          }
+          audio.boom();
+          bombResolved();
+        }
+      }
+    }
+    // Sink animation: settle by the bow, slip under, then the win card.
+    if (enemySinking > 0 && !won && !crashed) {
+      enemySinking += dt;
+      const g = carriers[1].group;
+      g.position.y -= dt * (0.6 + enemySinking * 0.28);
+      g.rotation.x += dt * 0.012; // down by the bow (rotY=π flips the visual sense correctly)
+      if (Math.random() < 0.5) {
+        spawnSmoke(new THREE.Vector3(
+          carriers[1].x + (Math.random() - 0.5) * 20,
+          DECK_TOP + 4,
+          carriers[1].z + (Math.random() - 0.5) * 80,
+        ), 10 + Math.random() * 8, 2 + Math.random());
+      }
+      if (enemySinking > 4 && !sinkVictory) { sinkVictory = true; victory(); }
+    }
+  }
+  // Kills done on the Ocean map -> phase 2: guns fall silent, bombs go hot.
+  function beginStrike() {
+    missionPhase = 'strike';
+    awayT = 0;
+    updateObjective();
+    if (hud.warn) {
+      hud.warn.textContent = '✔ FLEET SAFE — NOW SINK THE ENEMY CARRIER (B drops a bomb)';
+      hud.warn.classList.add('ps-show');
+      setTimeout(() => { if (!crashed && hud.warn) hud.warn.classList.remove('ps-show'); }, 5000);
+    }
+  }
+  // A mission loss that isn't your aircraft being destroyed.
+  function missionFail(reason) {
+    if (crashed || won || dev.god) return;
+    crashed = true;
+    started = true;
+    audio.boom();
+    showEnd(false, reason, false, 'Mission failed');
+  }
+  function updateObjective() {
+    if (!hud.obj) return;
+    if (mapName !== 'ocean' || !started || crashed || won) { hud.obj.textContent = ''; return; }
+    hud.obj.textContent = missionPhase === 'defend'
+      ? 'OBJECTIVE — defend your carrier: splash every bandit near the fleet'
+      : `OBJECTIVE — sink the enemy carrier · bombs ${bombs}/2 · press B over the target`;
+  }
+
   // ======================================================== ENEMIES =======
   // AI bandits. Each keeps its own world-space velocity + throttle and is flown
   // by a pursuit controller that outputs the SAME pitch/roll/yaw/throttle inputs
@@ -1305,8 +1523,8 @@ import {
 
     // Terrain avoidance: probe the ground here and ~2.5 s ahead; if we're
     // sinking toward it, level the wings and pull.
-    const ghHere = groundAt(g.position.x, g.position.z);
-    const ghAhead = groundAt(g.position.x + e.vel.x * 2.5, g.position.z + e.vel.z * 2.5);
+    const ghHere = Math.max(groundAt(g.position.x, g.position.z), TERRAIN.WATER_Y);
+    const ghAhead = Math.max(groundAt(g.position.x + e.vel.x * 2.5, g.position.z + e.vel.z * 2.5), TERRAIN.WATER_Y);
     const floor = Math.max(ghHere, ghAhead);
     if (g.position.y < floor + 90) { pitchInput = Math.max(pitchInput, 0.7); rollInput *= 0.3; }
     if (g.position.y < floor + 45) { pitchInput = 1; rollInput = 0; }
@@ -1417,7 +1635,10 @@ import {
       audio.boom();
       kills += 1;
       updateCombatHUD();
-      if (kills >= activeCount && !won) victory();
+      if (kills >= activeCount && !won) {
+        // Coastal: last bandit down = win. Ocean: it unlocks the strike phase.
+        if (mapName === 'ocean') { if (missionPhase === 'defend') beginStrike(); } else victory();
+      }
     }
   }
 
@@ -1438,19 +1659,23 @@ import {
     const s = Math.max(0, Math.round(ms / 1000));
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   }
-  function showEnd(win, reason, combat) {
+  function showEnd(win, reason, combat, title) {
     const ov = document.getElementById('ps-end');
     if (hud.warn) hud.warn.classList.remove('ps-show'); // the card supersedes the banner
+    if (hud.obj) hud.obj.textContent = '';
     if (!ov) return;
     const el = (id) => document.getElementById(id);
     ov.classList.remove('ps-hidden', 'ps-win', 'ps-lose');
     ov.classList.add(win ? 'ps-win' : 'ps-lose');
     if (el('ps-end-icon')) el('ps-end-icon').textContent = win ? '🏆' : '💥';
-    // "Shot down" only for enemy fire; anything you fly into is a "Crashed".
-    if (el('ps-end-title')) el('ps-end-title').textContent = win ? 'Victory' : (combat ? 'Shot down' : 'Crashed');
+    // "Shot down" only for enemy fire; anything you fly into is a "Crashed";
+    // an explicit title (e.g. "Mission failed") overrides both.
+    if (el('ps-end-title')) el('ps-end-title').textContent = win ? 'Victory' : (title || (combat ? 'Shot down' : 'Crashed'));
     if (el('ps-end-sub')) {
       el('ps-end-sub').textContent = win
-        ? `All ${activeCount} bandit${activeCount > 1 ? 's' : ''} cleared from the valley.`
+        ? (mapName === 'ocean'
+          ? 'The enemy carrier slips beneath the waves. The fleet is yours.'
+          : `All ${activeCount} bandit${activeCount > 1 ? 's' : ''} cleared from the valley.`)
         : reason;
     }
     const stats = el('ps-end-stats');
@@ -1496,6 +1721,23 @@ import {
   for (const b of document.querySelectorAll('[data-plane]')) {
     b.addEventListener('mousedown', (ev) => ev.stopPropagation());
     b.addEventListener('click', (ev) => { ev.stopPropagation(); setPlaneType(b.dataset.plane); });
+  }
+  // Map picker (sortie screen). Switching worlds re-parks the aircraft on the
+  // new map's deck/runway and resets the engagement.
+  function setMap(name) {
+    if (!validMap(name)) return;
+    mapName = name;
+    try { localStorage.setItem('ps-map', name); } catch (_) { /* private mode */ }
+    for (const t of document.querySelectorAll('[data-map]')) {
+      t.classList.toggle('ps-active', t.dataset.map === name);
+    }
+    landGroup.visible = name === 'coastal';
+    oceanGroup.visible = name === 'ocean';
+    respawn();
+  }
+  for (const t of document.querySelectorAll('[data-map]')) {
+    t.addEventListener('mousedown', (ev) => ev.stopPropagation());
+    t.addEventListener('click', (ev) => { ev.stopPropagation(); setMap(t.dataset.map); });
   }
   function setCamPreset(name) {
     if (!CAM_PRESETS[name]) return;
@@ -1588,6 +1830,7 @@ import {
     respawn();
     started = true;
     engageStart = performance.now();
+    updateObjective();
     audio.ensure(); // user gesture -> AudioContext allowed
   }
   function cyclePlane(dir) {
@@ -1608,6 +1851,7 @@ import {
     if (started) return;
     started = true;
     engageStart = performance.now(); // start the engagement clock at launch
+    updateObjective();
     audio.ensure(); // user gesture -> AudioContext allowed
   }
 
@@ -1639,9 +1883,10 @@ import {
       setCamPreset(CAM_ORDER[(CAM_ORDER.indexOf(camName) + 1) % CAM_ORDER.length]);
       return;
     }
-    if (['w', 'a', 's', 'd', 'g', ' '].includes(k)) {
+    if (['w', 'a', 's', 'd', 'g', 'b', ' '].includes(k)) {
       if (started) e.preventDefault();
       if (k === 'g') gearDown = !gearDown; // toggle on key-down edge
+      if (k === 'b') dropBomb(); // strike phase only (no-op otherwise)
       if (k === ' ' && (crashed || won)) respawn();
     }
   });
@@ -1680,6 +1925,7 @@ import {
     hpFill: document.getElementById('ps-hp-fill'),
     diff: document.getElementById('ps-diff'),
     plane: document.getElementById('ps-plane-label'),
+    obj: document.getElementById('ps-objective'),
   };
   const mapCanvas = document.getElementById('ps-map');
   const mapCtx = mapCanvas ? mapCanvas.getContext('2d') : null;
@@ -1979,13 +2225,44 @@ import {
     mapCtx.lineWidth = 2;
     mapCtx.strokeRect((-B - px) * s, (-B - pz) * s, 2 * B * s, 2 * B * s);
 
-    // runway
-    mapCtx.strokeStyle = 'rgba(230,238,242,0.7)';
-    mapCtx.lineWidth = 3;
-    mapCtx.beginPath();
-    mapCtx.moveTo(-px * s, (-CFG.RUNWAY_LEN / 2 - pz) * s);
-    mapCtx.lineTo(-px * s, (CFG.RUNWAY_LEN / 2 - pz) * s);
-    mapCtx.stroke();
+    if (mapName === 'coastal') {
+      // runway
+      mapCtx.strokeStyle = 'rgba(230,238,242,0.7)';
+      mapCtx.lineWidth = 3;
+      mapCtx.beginPath();
+      mapCtx.moveTo(-px * s, (-CFG.RUNWAY_LEN / 2 - pz) * s);
+      mapCtx.lineTo(-px * s, (CFG.RUNWAY_LEN / 2 - pz) * s);
+      mapCtx.stroke();
+    } else {
+      // carriers: little deck rectangles (white = yours, red = the target).
+      // The enemy carrier is usually far beyond radar range — pin a hollow
+      // square to the rim in its direction so the strike leg is navigable.
+      for (const c of carriers) {
+        const dx = (c.x - px) * s;
+        const dy = (c.z - pz) * s;
+        const inR = Math.hypot(dx, dy) <= Rpx;
+        mapCtx.fillStyle = c.enemy ? '#ff4d4d' : 'rgba(230,238,242,0.9)';
+        if (inR) {
+          mapCtx.fillRect(dx - 2, dy - 6, 4, 12);
+        } else if (c.enemy && enemySinking <= 0) {
+          const a = Math.atan2(dy, dx);
+          mapCtx.save();
+          mapCtx.translate(Math.cos(a) * (Rpx - 6), Math.sin(a) * (Rpx - 6));
+          mapCtx.strokeStyle = '#ff4d4d';
+          mapCtx.lineWidth = 2;
+          mapCtx.strokeRect(-3.5, -3.5, 7, 7);
+          mapCtx.restore();
+        }
+      }
+      // The defend perimeter while it matters.
+      if (missionPhase === 'defend') {
+        mapCtx.strokeStyle = 'rgba(120,220,255,0.35)';
+        mapCtx.lineWidth = 1.5;
+        mapCtx.beginPath();
+        mapCtx.arc((OCEAN.ALLY.x - px) * s, (OCEAN.ALLY.z - pz) * s, OCEAN.DEFEND_R * s, 0, Math.PI * 2);
+        mapCtx.stroke();
+      }
+    }
 
     // bandits
     for (const e of enemies) {
@@ -2133,6 +2410,19 @@ import {
     playerHP = ac.hp;
     kills = 0;
     engageStart = performance.now(); // restart the engagement clock
+    // Reset the ocean mission: bombs back on the racks, enemy carrier refloated.
+    missionPhase = 'defend';
+    bombs = 2;
+    awayT = 0;
+    enemySinking = 0;
+    sinkVictory = false;
+    for (const b of liveBombs) scene.remove(b);
+    liveBombs.length = 0;
+    syncBombRacks();
+    const ec = carriers[1];
+    ec.group.position.set(ec.x, TERRAIN.WATER_Y, ec.z);
+    ec.group.rotation.set(0, ec.rotY, 0);
+    updateObjective();
     resetEnemies();
     updateCombatHUD();
     hideEnd();
@@ -2233,11 +2523,13 @@ import {
 
     // --- Terrain / water contact: touchdown, taxi, or crash ---
     const gh = groundAt(plane.position.x, plane.position.z);
-    // Over a lake the water SURFACE is the hard deck — touching it ditches the
-    // aircraft, instead of letting it fly down through the water to the lakebed
-    // before anything registers.
-    const overWater = gh < TERRAIN.WATER_Y - 0.5;
-    const deck = overWater ? TERRAIN.WATER_Y : gh;
+    // Over a lake (or the open ocean) the water SURFACE is the hard deck —
+    // touching it ditches the aircraft, instead of letting it fly down through
+    // the water to the lakebed before anything registers. A carrier flight
+    // deck overrides both: over it, IT is the ground you land on.
+    const cDeck = mapName === 'ocean' ? carrierDeckAt(plane.position.x, plane.position.z) : -Infinity;
+    const overWater = cDeck === -Infinity && gh < TERRAIN.WATER_Y - 0.5;
+    const deck = Math.max(overWater ? TERRAIN.WATER_Y : gh, cDeck);
     // Taildragger geometry: the height of the origin over the deck when the
     // main wheels touch depends on pitch (mains are ahead of the origin), so
     // the aircraft can sit tail-down at `stance` and pivot on the mains as
@@ -2258,7 +2550,7 @@ import {
         groundAt(plane.position.x, plane.position.z + ee) - groundAt(plane.position.x, plane.position.z - ee),
       ) / (2 * ee);
       if (started && !crashed) {
-        if (overWater) crash('Ditched in the lake');
+        if (overWater) crash(mapName === 'ocean' ? 'Ditched in the sea' : 'Ditched in the lake');
         else if (slope > 0.25) crash('Flew into terrain');
         else if (impactV > 14 || (impactV > 5 && !gearDown)) {
           crash(gearDown ? 'Hard landing' : 'Belly flop — gear up!');
@@ -2302,7 +2594,21 @@ import {
     //     each keeps the ~2 k-cylinder scan cheap; it's skipped entirely above
     //     OBSTACLE_CEIL AGL, i.e. almost always in normal flight). A hit is a
     //     crash. ---
-    if (started && !crashed && !dev.god && plane.position.y - gh < OBSTACLE_CEIL) {
+    // Ocean: carrier hulls + islands are the only obstacles (few, always scanned
+    // when low over the sea). The deck itself is NOT an obstacle — its top is
+    // above both boxes' `top`, so a deck landing never trips them.
+    if (mapName === 'ocean' && started && !crashed && !dev.god && plane.position.y < DECK_TOP + 24) {
+      const px = plane.position.x; const pz = plane.position.z; const py = plane.position.y;
+      const PR = 2.6;
+      for (let i = 0; i < obBoxOcean.length; i++) {
+        const o = obBoxOcean[i];
+        if (py > o.top + 1) continue;
+        if (px > o.x0 - PR && px < o.x1 + PR && pz > o.z0 - PR && pz < o.z1 + PR) {
+          crash(o.reason); break;
+        }
+      }
+    }
+    if (mapName === 'coastal' && started && !crashed && !dev.god && plane.position.y - gh < OBSTACLE_CEIL) {
       const px = plane.position.x; const pz = plane.position.z; const py = plane.position.y;
       const PR = 2.6; // plane collision radius (fuselage-ish, so gaps stay threadable)
       for (let i = 0; i < obCyl.length; i++) {
@@ -2393,9 +2699,28 @@ import {
       }
     }
     if (hud.stall) hud.stall.classList.toggle('ps-show', (stalled || (fwdSpeed * KT < 70 && !onGround)) && !crashed);
+
+    // --- Ocean phase 1: stay with the fleet. Straying past DEFEND_R while
+    //     bandits still live starts a countdown; run it out and your carrier
+    //     is sunk behind you — mission over. Coming back rewinds it fast. ---
+    let awayWarn = null;
+    if (mapName === 'ocean' && missionPhase === 'defend' && started && !won) {
+      const dHome = Math.hypot(plane.position.x - OCEAN.ALLY.x, plane.position.z - OCEAN.ALLY.z);
+      if (dHome > OCEAN.DEFEND_R) {
+        awayT += dt;
+        awayWarn = `⚠ CARRIER UNDER ATTACK — RETURN TO THE FLEET (${Math.max(0, Math.ceil(OCEAN.ABANDON_S - awayT))})`;
+        if (awayT >= OCEAN.ABANDON_S) {
+          missionFail('You left the fleet undefended — your carrier was sunk.');
+        }
+      } else {
+        awayT = Math.max(0, awayT - dt * 3);
+      }
+    }
+
     if (hud.warn && !crashed) {
       if (hitBorder) { hud.warn.textContent = '⚠ WORLD BORDER'; hud.warn.classList.add('ps-show'); }
-      else { hud.warn.classList.remove('ps-show'); }
+      else if (awayWarn) { hud.warn.textContent = awayWarn; hud.warn.classList.add('ps-show'); }
+      else if (missionPhase !== 'strike' || !hud.warn.textContent.startsWith('✔')) hud.warn.classList.remove('ps-show');
     }
   }
 
@@ -2430,7 +2755,7 @@ import {
       plane.position.y + 3.4,
       plane.position.z + Math.cos(menuAngle) * R,
     );
-    const ghc = groundAt(_camPos.x, _camPos.z);
+    const ghc = Math.max(groundAt(_camPos.x, _camPos.z), TERRAIN.WATER_Y);
     if (_camPos.y < ghc + 1.6) _camPos.y = ghc + 1.6;
     camera.position.copy(_camPos);
     camera.up.copy(WORLD_UP);
@@ -2467,8 +2792,8 @@ import {
       // Lead the lerp by ~one lag constant so the chase distance stays true to
       // the preset at speed instead of stretching ~15 m behind it.
       .addScaledVector(vel, 0.09);
-    const ghc = groundAt(_camPos.x, _camPos.z);
-    if (_camPos.y < ghc + 2) _camPos.y = ghc + 2; // don't dive the camera underground
+    const ghc = Math.max(groundAt(_camPos.x, _camPos.z), TERRAIN.WATER_Y);
+    if (_camPos.y < ghc + 2) _camPos.y = ghc + 2; // don't dive the camera underground (or underwater)
     const a = crashed ? 0.06 : 1 - Math.pow(1 - CFG.CAM_LERP, dt * 60);
     camera.position.lerp(_camPos, a);
     _camAim.copy(plane.position).addScaledVector(_fwd, 8);
@@ -2593,6 +2918,16 @@ import {
       };
     },
     gear(down) { gearDown = !!down; },
+    // Ocean-mission dev handles.
+    setMap,
+    get map() { return mapName; },
+    mission() {
+      return {
+        phase: missionPhase, bombs, awayT: +awayT.toFixed(1), enemySinking: +enemySinking.toFixed(1), liveBombs: liveBombs.length,
+      };
+    },
+    bomb: dropBomb,
+    strike() { missionPhase = 'strike'; updateObjective(); }, // skip phase 1 for testing
     kill(i) { const e = enemies[i]; if (e && e.alive) damageEnemy(e, 99999); },
     // Collision-obstacle registry (debug/tooling): counts + a sample entry.
     obstacles() { return { cyl: obCyl.length, box: obBox.length, sampleTree: obCyl.find((o) => o.reason.includes('tree')) }; },
@@ -2656,6 +2991,9 @@ import {
     // Windsocks ripple in the ambient breeze (menus included — the hangar
     // turntable looks better alive).
     for (const w of windsocks) w.userData.flutter(now / 1000);
+    stepBombs(dt);
+    // Idly spin the carriers' radar antennas.
+    if (mapName === 'ocean') for (const c of carriers) { if (c.group.userData.radar) c.group.userData.radar.rotation.y += dt * 1.1; }
     stepSparks(dt);
     stepSmokes(dt);
     stepDebris(dt);
@@ -2703,8 +3041,12 @@ import {
   (() => {
     const warm = new THREE.Group();
     for (const t of ['spitfire', 'p51', 'zero']) warm.add(buildAircraft({ type: t, enemy: true }).group);
+    warm.add(makeBomb());
     warm.position.set(0, -400, 0); // out of sight even if a frame slips through
     scene.add(warm);
+    // Compile BOTH worlds while we're at it (map switches shouldn't hitch).
+    landGroup.visible = true;
+    oceanGroup.visible = true;
     spawnTracer(warm.position, new THREE.Vector3(0, 1, 0), 0, new THREE.Vector3(), tracerMat);
     spawnTracer(warm.position, new THREE.Vector3(0, 1, 0), 0, new THREE.Vector3(), enemyTracerMat);
     spawnSpark(warm.position, 0.01, 0.01);
@@ -2716,6 +3058,9 @@ import {
       for (const k of ['map', 'normalMap', 'emissiveMap', 'roughnessMap']) if (m[k]) renderer.initTexture(m[k]);
     });
     scene.remove(warm);
+    // Now show only the selected map (also parks the plane on its deck/runway
+    // and syncs the sortie-screen map tiles).
+    setMap(mapName);
   })();
   requestAnimationFrame(frame);
 })();
