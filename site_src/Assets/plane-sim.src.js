@@ -2338,23 +2338,17 @@ import {
 
     const target = gearDown ? 1 : 0;
     gearAnim += clamp(target - gearAnim, -dt / 1.4, dt / 1.4); // ~1.4 s travel
-    if (surf.gear) {
-      const r = (1 - gearAnim) * (Math.PI / 2); // main legs fold inward to the belly
-      if (surf.gear.userData.left) surf.gear.userData.left.rotation.z = r;
-      if (surf.gear.userData.right) surf.gear.userData.right.rotation.z = -r;
-      if (surf.gear.userData.tail) surf.gear.userData.tail.rotation.x = -r;
-      surf.gear.visible = gearAnim > 0.02;
-    }
 
-    // --- Animate the control surfaces toward their commanded deflection ---
+    // --- Animate the control surfaces + gear toward their commanded state.
+    //     One shared animator (plane-sim-models.js) drives the player, the
+    //     bandits and the inspector, so the deflection conventions can't
+    //     drift apart (this block used to hand-roll its own — with a stale
+    //     90° gear fold and an inverted rudder). ---
     const lerp = (a, b, t) => a + (b - a) * t;
     defl.ail = lerp(defl.ail, rollInput * 0.4, 0.2);
     defl.elev = lerp(defl.elev, pitchInput * 0.4, 0.2);
     defl.rud = lerp(defl.rud, yawInput * 0.5, 0.2);
-    if (surf.aileronL) surf.aileronL.rotation.x = defl.ail; // ailerons move opposite
-    if (surf.aileronR) surf.aileronR.rotation.x = -defl.ail;
-    if (surf.elevator) surf.elevator.rotation.x = -defl.elev;
-    if (surf.rudder) surf.rudder.rotation.y = -defl.rud;
+    applyControlSurfaces(surf, { ail: defl.ail, elev: defl.elev, rud: defl.rud, gear: gearAnim });
 
     // --- Guns ---
     fireCooldown -= dt;
@@ -2379,7 +2373,9 @@ import {
       getForward(); getUp(); getRight();
       gauges.draw({
         speedMs: Math.max(0, fwdSpeed),
-        altM: plane.position.y - restHeight(ac, ac.stance || 0) - gh, // 0 when parked tail-down
+        // Altitude above sea level (the lake surface is the sea-level datum),
+        // like a real altimeter — it no longer tracks the terrain underneath.
+        altM: plane.position.y - TERRAIN.WATER_Y,
         vyMs: vel.y,
         thr: throttle,
         pitch: Math.asin(clamp(_fwd.y, -1, 1)),
@@ -2617,7 +2613,19 @@ import {
   let waterScrollX = 0;
   let waterScrollY = 0;
   let bootShown = false;
+  // FPS readout: count real frames, refresh the corner label twice a second.
+  const fpsEl = document.getElementById('ps-fps');
+  let fpsFrames = 0;
+  let fpsT0 = performance.now();
+
   function frame(now) {
+    if (fpsEl) {
+      fpsFrames++;
+      if (now - fpsT0 >= 500) {
+        fpsEl.textContent = `${Math.round((fpsFrames * 1000) / (now - fpsT0))} fps`;
+        fpsFrames = 0; fpsT0 = now;
+      }
+    }
     let dt = (now - last) / 1000;
     last = now;
     if (dt > 0.05) dt = 0.05; // clamp big gaps (tab switches)
@@ -2633,7 +2641,7 @@ import {
       stepTracers(dt);
       if (gauges && !started) {
         gauges.draw({
-          speedMs: 0, altM: 0, vyMs: 0, thr: 0, pitch: 0, roll: 0, hdg: 0,
+          speedMs: 0, altM: plane.position.y - TERRAIN.WATER_Y, vyMs: 0, thr: 0, pitch: 0, roll: 0, hdg: 0,
         });
       }
     }

@@ -76,6 +76,14 @@ export function PlaneSimPage(opts: {
   }
   #ps-map { width: 100%; height: 100%; }
 
+  /* Tiny FPS readout in the extreme top-left corner (above the minimap).
+     Lives outside .ps-hud so it stays visible in the hangar/map menus too. */
+  #ps-fps {
+    position: absolute; top: 0.2rem; left: 0.45rem; z-index: 3;
+    font-size: 0.6rem; letter-spacing: 0.08em; pointer-events: none;
+    color: var(--fog-400, #8aa0ad); text-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
+  }
+
   /* Enemy health bars floating over the bandits in the 3D view. */
   .ps-ebar { display: none; position: absolute; width: 54px; transform: translate(-50%, -100%); text-align: center; }
   .ps-ebar-track {
@@ -380,6 +388,9 @@ export function PlaneSimPage(opts: {
         <a class="ps-exit" href="/games/plane-sim/inspect">🔧 Inspect models</a>
         <a class="ps-exit" href="/games">← Games</a>
       </div>
+
+      <!-- FPS readout (top-left corner; updated ~2×/s by the game) -->
+      <div id="ps-fps" aria-hidden="true"></div>
 
       <div class="ps-hud" aria-hidden="true">
         <!-- Minimap (top-left, circular, heading-up) -->

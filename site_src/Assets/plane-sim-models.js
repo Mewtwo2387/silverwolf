@@ -75,7 +75,9 @@ function makePropAssembly({
     blades.add(arm);
   }
   prop.add(blades);
-  // Blur disc (hidden by default; the game fades it in with RPM).
+  // Blur disc (hidden by default; the game fades it in with RPM). The blades'
+  // painted tips smear into a coloured ring at the tip-band radius, like the
+  // real-life yellow warning circle a spinning prop shows.
   const discTex = (() => {
     const c = document.createElement('canvas');
     c.width = c.height = 128;
@@ -86,6 +88,18 @@ function makePropAssembly({
     g.addColorStop(0.92, 'rgba(30,30,34,0.34)');
     g.addColorStop(1, 'rgba(30,30,34,0)');
     ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 128, 128);
+    // tip ring: blades paint their outer 14% in tipColor (t > 0.86 above)
+    const tc = new THREE.Color(tipColor);
+    const rgb = `${Math.round(tc.r * 255)},${Math.round(tc.g * 255)},${Math.round(tc.b * 255)}`;
+    const t0 = Math.min(1, (rootY + L * 0.86) / discR);
+    const t1 = Math.min(1, (rootY + L) / discR);
+    const g2 = ctx.createRadialGradient(64, 64, 6, 64, 64, 64);
+    g2.addColorStop(Math.max(0, t0 - 0.04), `rgba(${rgb},0)`);
+    g2.addColorStop(t0, `rgba(${rgb},0.30)`);
+    g2.addColorStop(t1 - 0.02, `rgba(${rgb},0.30)`);
+    g2.addColorStop(t1, `rgba(${rgb},0)`);
+    ctx.fillStyle = g2;
     ctx.fillRect(0, 0, 128, 128);
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
@@ -653,7 +667,10 @@ export function applyControlSurfaces(surf, { ail = 0, elev = 0, rud = 0, gear = 
   if (surf.aileronL) surf.aileronL.rotation.x = ail;
   if (surf.aileronR) surf.aileronR.rotation.x = -ail;
   if (surf.elevator) surf.elevator.rotation.x = -elev;
-  if (surf.rudder) surf.rudder.rotation.y = -rud;
+  // Positive rud = right pedal = nose right, which needs the rudder's
+  // trailing edge deflected to STARBOARD (+X, pushing the tail port-wards).
+  // rotation.y positive swings the TE (aft of the hinge, +Z) toward +X.
+  if (surf.rudder) surf.rudder.rotation.y = rud;
   if (surf.gear) {
     // Main legs fold INWARD toward the fuselage centreline (rotate about the
     // fore-aft Z axis); the tailwheel retracts rearward. These wings are far
