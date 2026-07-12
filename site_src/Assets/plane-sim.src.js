@@ -27,7 +27,7 @@
 import * as THREE from 'three';
 import {
   buildAircraft, applyControlSurfaces, setPropBlur, makeHangar, makeControlTower,
-  makeWindsock, makeFuelTank, makeBowser, makeNissenHut, PLANE_INFO, planeSpecs,
+  makeWindsock, makeFuelTank, makeBowser, makeNissenHut, PLANE_INFO, planeSpecs, restHeight,
   makePineCanopyGeo, makeBroadleafCanopyGeo, makeConiferCanopyGeo, makeBroadleafTrunkGeo,
 } from './plane-sim-models.js';
 import {
@@ -719,10 +719,13 @@ import {
   }
   buildPlayer();
 
-  // Reset to the runway threshold, lined up to take off toward -Z.
+  // Reset to the runway threshold, lined up to take off toward -Z, sitting
+  // tail-down at the airframe's taildragger stance angle.
   function resetPlane() {
-    plane.position.set(0, groundY(), CFG.RUNWAY_LEN / 2 - 60);
+    const st = ac.stance || 0;
+    plane.position.set(0, restHeight(ac, st), CFG.RUNWAY_LEN / 2 - 60);
     plane.quaternion.identity();
+    plane.rotateX(st);
   }
   resetPlane();
 
@@ -1842,10 +1845,10 @@ import {
     function drawVSI(cx, cy, vyMs) {
       const ftMode = unit.alt === 'ft';
       const val = ftMode ? vyMs * FT * 60 : vyMs;
-      const max = ftMode ? 2000 : 10;
+      const max = ftMode ? 8000 : 40;
       const ticks = ftMode
-        ? [[-2000, '2'], [-1000, '1'], [0, '0'], [1000, '1'], [2000, '2']]
-        : [[-10, '10'], [-5, '5'], [0, '0'], [5, '5'], [10, '10']];
+        ? [[-8000, '8'], [-6000, '6'], [-4000, '4'], [-2000, '2'], [0, '0'], [2000, '2'], [4000, '4'], [6000, '6'], [8000, '8']]
+        : [[-40, '40'], [-30, '30'], [-20, '20'], [-10, '10'], [0, '0'], [10, '10'], [20, '20'], [30, '30'], [40, '40']];
       face(cx, cy);
       ctx.fillStyle = CREAM; ctx.font = '600 7px "JetBrains Mono", monospace'; ctx.textAlign = 'center';
       for (const [v, t] of ticks) {
@@ -2235,8 +2238,16 @@ import {
     // before anything registers.
     const overWater = gh < TERRAIN.WATER_Y - 0.5;
     const deck = overWater ? TERRAIN.WATER_Y : gh;
-    if (plane.position.y <= deck + groundY()) {
-      plane.position.y = deck + groundY();
+    // Taildragger geometry: the height of the origin over the deck when the
+    // main wheels touch depends on pitch (mains are ahead of the origin), so
+    // the aircraft can sit tail-down at `stance` and pivot on the mains as
+    // the tail flies up during the takeoff roll.
+    const stance = ac.stance || 0;
+    getForward();
+    let gndPitch = Math.asin(clamp(_fwd.y, -1, 1)); // nose-up positive
+    const hRest = restHeight(ac, clamp(gndPitch, 0, stance));
+    if (plane.position.y <= deck + hRest) {
+      plane.position.y = deck + hRest;
       const impactV = -vel.y;
       if (vel.y < 0) vel.y = 0;
 
@@ -2259,9 +2270,17 @@ import {
       getRight();
       const rollErr = Math.asin(clamp(_right.y, -1, 1));
       plane.rotateZ(-rollErr * Math.min(1, 6 * dt));
+      // Nose can't dig in (prop clearance) and the tail can't rotate through
+      // the runway past the parked stance while the wheels carry the weight.
+      if (gndPitch < 0) plane.rotateX(-gndPitch * Math.min(1, 8 * dt));
+      else if (gndPitch > stance) plane.rotateX(-(gndPitch - stance) * Math.min(1, 10 * dt));
+      // Tail settle: gravity drops the tail to the stance angle at rest; the
+      // tailplane lifts it toward level as the takeoff roll gathers speed.
+      // Elevator input overrides (blended out by |pitchInput|).
       getForward();
-      const pitch = Math.asin(clamp(_fwd.y, -1, 1));
-      if (pitch < 0) plane.rotateX(-pitch * Math.min(1, 8 * dt));
+      gndPitch = Math.asin(clamp(_fwd.y, -1, 1));
+      const tailLift = clamp(1 - (speed / (0.55 * ac.controlV)) ** 2, 0, 1);
+      plane.rotateX((stance * tailLift - gndPitch) * Math.min(1, 2.5 * dt) * (1 - Math.abs(pitchInput)));
 
       // Tyre grip: keep the horizontal velocity pointing along the nose (no
       // skid) but leave the vertical component alone so lift can fly it off.
@@ -2360,7 +2379,7 @@ import {
       getForward(); getUp(); getRight();
       gauges.draw({
         speedMs: Math.max(0, fwdSpeed),
-        altM: plane.position.y - groundY() - gh,
+        altM: plane.position.y - restHeight(ac, ac.stance || 0) - gh, // 0 when parked tail-down
         vyMs: vel.y,
         thr: throttle,
         pitch: Math.asin(clamp(_fwd.y, -1, 1)),
@@ -2540,6 +2559,7 @@ import {
   };
   window.__ps = {
     vel, enemies, camera, start, respawn, dev,
+    get renderer() { return renderer; }, // draw-call/triangle stats for benchmarking
     get plane() { return plane; }, // getter: the group is swapped on type change
     get throttle() { return throttle; },
     set throttle(v) { throttle = clamp(v, 0, 1); },
@@ -2663,5 +2683,31 @@ import {
     }
     requestAnimationFrame(frame);
   }
+
+  // ---- GPU warm-up, under the loading screen. Everything a sortie can show
+  //      is compiled/uploaded now: one enemy build of each airframe (their
+  //      shaders + sheet textures otherwise compile on the first frame the
+  //      camera catches a bandit — measured as a multi-second hitch mid-
+  //      flight), plus one of every transient effect (tracer/spark/smoke).
+  //      renderer.compile() links the programs and initTexture() uploads the
+  //      maps without waiting for the objects to enter the frustum; the warm
+  //      rig is then removed before the first visible frame. ----
+  (() => {
+    const warm = new THREE.Group();
+    for (const t of ['spitfire', 'p51', 'zero']) warm.add(buildAircraft({ type: t, enemy: true }).group);
+    warm.position.set(0, -400, 0); // out of sight even if a frame slips through
+    scene.add(warm);
+    spawnTracer(warm.position, new THREE.Vector3(0, 1, 0), 0, new THREE.Vector3(), tracerMat);
+    spawnTracer(warm.position, new THREE.Vector3(0, 1, 0), 0, new THREE.Vector3(), enemyTracerMat);
+    spawnSpark(warm.position, 0.01, 0.01);
+    spawnSmoke(warm.position, 0.01, 0.01);
+    renderer.compile(scene, camera);
+    scene.traverse((o) => {
+      const m = o.material;
+      if (!m) return;
+      for (const k of ['map', 'normalMap', 'emissiveMap', 'roughnessMap']) if (m[k]) renderer.initTexture(m[k]);
+    });
+    scene.remove(warm);
+  })();
   requestAnimationFrame(frame);
 })();

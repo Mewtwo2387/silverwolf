@@ -113,7 +113,12 @@ function makePropAssembly({
 // materials are transparent so applyControlSurfaces can fade the whole thing
 // into the wing at the end of the retract (there are no wheel wells to
 // swallow it — fading beats clipping through the skin).
-function makeUndercarriage(metal, tailZ = 4.5, mainZ = -1.0, groundY = 1.35, attachY = 0, doorColor = 0x8f959c) {
+// `stance` (radians) is the taildragger ground angle: the tailwheel gear is
+// shortened so that with the aircraft pitched nose-up by `stance`, the main
+// wheels and the tailwheel touch the deck together (main gear reads taller
+// than the tail gear, as on the real aircraft). The game parks and taxis the
+// aircraft at that pitch; the wheel-bottom maths lives in restHeight() below.
+function makeUndercarriage(metal, tailZ = 4.5, mainZ = -1.0, groundY = 1.35, attachY = 0, doorColor = 0x8f959c, stance = 0) {
   const gear = new THREE.Group();
   const tyreMat = new THREE.MeshStandardMaterial({ color: 0x121316, roughness: 0.9 });
   const pistonMat = new THREE.MeshStandardMaterial({ color: 0xb9c0c8, roughness: 0.25, metalness: 0.9 });
@@ -171,20 +176,23 @@ function makeUndercarriage(metal, tailZ = 4.5, mainZ = -1.0, groundY = 1.35, att
   };
   gear.add(leg(-1));
   gear.add(leg(1));
-  // tailwheel: short oleo + fork straddling a small wheel
+  // tailwheel: short oleo + fork straddling a small wheel. Its length is set
+  // by the stance angle — bottom sits (tailZ - mainZ)·tan(stance) above the
+  // main wheels' bottoms, so both touch when parked nose-up by `stance`.
+  const tailG = groundY - (tailZ - mainZ) * Math.tan(stance);
   const tail = new THREE.Group();
-  const tLen = groundY - 0.25;
+  const tLen = Math.max(0.12, tailG - 0.25);
   const tstrut = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, tLen, 8), metal);
   tstrut.position.y = -tLen / 2;
   tail.add(tstrut);
   for (const fx of [-0.085, 0.085]) {
     const tine = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.3, 0.14), metal);
-    tine.position.set(fx, -groundY + 0.36, 0.02);
+    tine.position.set(fx, -tailG + 0.36, 0.02);
     tine.rotation.x = 0.25;
     tail.add(tine);
   }
   const twheel = makeWheel(0.21, 0.14);
-  twheel.position.y = -groundY + 0.21; // bottom at -groundY
+  twheel.position.y = -tailG + 0.21; // bottom at -tailG (main-bottom + stance rise)
   tail.add(twheel);
   tail.position.set(0, 0, tailZ);
   gear.add(tail);
@@ -245,6 +253,7 @@ export const PLANE_INFO = {
     desc: 'The balanced dogfighter: superb turn & climb, eight .303s — a fast, light-hitting hose of bullets.',
     stats: {
       thrust: 38, lift: 0.0054, drag0: 0.0013, pitchRate: 1.6, rollRate: 3.4, controlV: 42, hiSpeedStiff: 0, groundY: 1.5,
+      stance: 0.16, gearZ: -2.05, tailZ: 4.1,
       hp: 100, fireInterval: 0.085, gunDmg: 3, gunSpread: 0.006, gunRange: 900,
     },
   },
@@ -253,6 +262,7 @@ export const PLANE_INFO = {
     desc: 'Fastest in a straight line and a dive, rugged airframe — but heavy: wide turns that want airspeed. Six .50 cals hit hard.',
     stats: {
       thrust: 40, lift: 0.0048, drag0: 0.00105, pitchRate: 1.35, rollRate: 3.0, controlV: 48, hiSpeedStiff: 0, groundY: 1.6,
+      stance: 0.16, gearZ: -1.9, tailZ: 4.3,
       hp: 115, fireInterval: 0.11, gunDmg: 5, gunSpread: 0.005, gunRange: 950,
     },
   },
@@ -261,10 +271,20 @@ export const PLANE_INFO = {
     desc: 'Untouchable in a slow turn fight and stalls last — but slow, unarmoured, and the controls stiffen in a dive. Two 20 mm cannon: slow to fire, savage on hit.',
     stats: {
       thrust: 33, lift: 0.0063, drag0: 0.00165, pitchRate: 2.0, rollRate: 3.8, controlV: 34, hiSpeedStiff: 0.45, groundY: 1.35,
+      stance: 0.14, gearZ: -2.3, tailZ: 4.0,
       hp: 70, fireInterval: 0.16, gunDmg: 8, gunSpread: 0.008, gunRange: 750,
     },
   },
 };
+
+// Height of the aircraft origin above the deck when the main wheels are on it
+// at a given nose-up pitch (radians). At pitch 0 this is stats.groundY; as the
+// nose rises the mains (ahead of the origin, at z = gearZ < 0) swing up and
+// the origin sinks. Parked pitch is stats.stance, where the tailwheel touches
+// too (its gear is built shorter by exactly that geometry — makeUndercarriage).
+export function restHeight(stats, pitch) {
+  return stats.groundY * Math.cos(pitch) + (stats.gearZ || 0) * Math.sin(pitch);
+}
 
 // Derive display-friendly ratings from a raw stat block, normalised [0,1]
 // across the catalogue so the inspector can draw comparable bars, plus an
@@ -537,7 +557,7 @@ function buildSpitfire(opts = {}) {
 
   // Legs hang from the front-spar area where the wing is deepest — the pivot
   // must sit below the local top skin or the strut pokes out of the wing.
-  const gear = makeUndercarriage(REF_METAL(), 4.1, -2.05, 1.5, -0.72, 0x9fae9b); // Sky-type undersides
+  const gear = makeUndercarriage(REF_METAL(), 4.1, -2.05, 1.5, -0.72, 0x9fae9b, PLANE_INFO.spitfire.stats.stance); // Sky undersides
   plane.add(gear);
   surf.gear = gear;
 
@@ -573,7 +593,7 @@ function buildP51(opts = {}) {
   surf.propDisc = pa.propDisc;
 
   // Deep radiator scoop -> tall stance; legs hang from the wing underside.
-  const gear = makeUndercarriage(REF_METAL(), 4.3, -1.9, 1.6, -0.6, 0xb4b9bf); // natural-metal doors
+  const gear = makeUndercarriage(REF_METAL(), 4.3, -1.9, 1.6, -0.6, 0xb4b9bf, PLANE_INFO.p51.stats.stance); // natural-metal doors
   plane.add(gear);
   surf.gear = gear;
 
@@ -618,7 +638,7 @@ function buildZero(opts = {}) {
   plane.add(pilot);
 
   // tailwheel under the fin root, where the slim tail cone still has depth
-  const gear = makeUndercarriage(REF_METAL(), 4.0, -2.3, 1.35, -0.28, 0x9aa39b); // grey-green doors
+  const gear = makeUndercarriage(REF_METAL(), 4.0, -2.3, 1.35, -0.28, 0x9aa39b, PLANE_INFO.zero.stats.stance); // grey-green doors
   plane.add(gear);
   surf.gear = gear;
 
