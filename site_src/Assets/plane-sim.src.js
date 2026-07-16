@@ -29,7 +29,7 @@ import {
   buildAircraft, applyControlSurfaces, setPropBlur, makeHangar, makeControlTower,
   makeWindsock, makeFuelTank, makeBowser, makeNissenHut, PLANE_INFO, planeSpecs, restHeight,
   makePineCanopyGeo, makeBroadleafCanopyGeo, makeConiferCanopyGeo, makeBroadleafTrunkGeo,
-  makeCarrier, makeBomb, mountWingBombs, CARRIER,
+  makeCarrier, makeBomb, mountWingBombs, CARRIER, makeBridge,
 } from './plane-sim-models.js';
 import {
   TERRAIN, terrainHeight, forestMask, buildTerrain, buildWater, smoothstep, fbm,
@@ -135,6 +135,126 @@ import {
   let enemySinking = 0; // >0 = sink-animation clock (bomb hit landed)
   let sinkVictory = false; // victory() already fired for this sinking
   const liveBombs = []; // free-falling bombs
+
+  // ---- Game modes. 'sortie' is the combat game (the original); 'tutorial'
+  //      runs bite-size scripted lessons with one goal per step; 'stunt' is a
+  //      ring-chase time trial. Chosen on the mode screen after the hangar,
+  //      then a chapter within it. `tut`/`stunt` hold the live chapter state. ----
+  let gameMode = 'sortie';
+  let tut = null; // { id, def, step, holdT, hitFlag }
+  let stunt = null; // { id, def, rings[], i, score, hits, t, prev }
+
+  // Tutorial chapters. Each step is one prompt + a `done()` check evaluated
+  // every frame (held for `hold` seconds where a sustained input is the point).
+  // The checks close over the sim state declared further down — they only run
+  // mid-flight, long after everything is initialised.
+  const TUT = {
+    takeoff: {
+      label: 'First Flight',
+      desc: 'Throttle up, lift off, gear up, climb away.',
+      map: 'coastal',
+      outro: 'Wheels up and climbing — that’s a textbook departure.',
+      steps: [
+        { text: 'Hold W to open the throttle to 100%', done: () => throttle > 0.95 },
+        { text: 'Let her roll — past ~100 kn ease the mouse up gently to lift off', done: () => !onGround && plane.position.y > 6, hold: 0.8 },
+        { text: 'Press G to raise the undercarriage', done: () => !gearDown },
+        { text: 'Climb above 500 ft (150 m)', done: () => plane.position.y - TERRAIN.WATER_Y > 152 },
+      ],
+    },
+    controls: {
+      label: 'Stick & Rudder',
+      desc: 'Bank, climb, dive and rudder — the plane goes where you point.',
+      map: 'coastal',
+      spawn: { x: 0, y: 350, z: -900, hdg: 0, speed: 110 },
+      outro: 'Smooth. You now out-fly half the bandits already.',
+      steps: [
+        { text: 'The plane flies where the mouse points. Move it RIGHT and hold a banked turn', done: () => bankNow() > 0.55, hold: 0.8 },
+        { text: 'Now roll into a LEFT turn and hold it', done: () => bankNow() < -0.55, hold: 0.8 },
+        { text: 'Pull into a climb — nose above +10°', done: () => pitchNow() > 0.17, hold: 0.7 },
+        { text: 'Push into a dive — nose below −10° (watch the speed build)', done: () => pitchNow() < -0.17, hold: 0.7 },
+        { text: 'Feed in rudder with A or D for fine aim — hold one briefly', done: () => !!(keys.a || keys.d), hold: 0.7 },
+      ],
+    },
+    guns: {
+      label: 'Gunnery',
+      desc: 'Track a bandit and splash him. He won’t shoot back — this time.',
+      map: 'coastal',
+      bandit: true,
+      spawn: { x: 0, y: 320, z: 900, hdg: 0, speed: 115 },
+      outro: 'Splash one! The lead diamond is the whole secret — trust it.',
+      steps: [
+        { text: 'A bandit is ahead — the red blip on the radar. Close to 700 m', done: () => enemies.some((e) => e.alive && e.group.position.distanceTo(plane.position) < 700) },
+        { text: 'Lay the yellow lead diamond under your crosshair and fire with RMB', done: () => tut && tut.hitFlag },
+        { text: 'Stay with him — splash him!', done: () => kills >= 1 },
+      ],
+    },
+    bombs: {
+      label: 'Bombing',
+      desc: 'Two wing bombs, one enemy flat-top. Put one on the deck.',
+      map: 'ocean',
+      spawn: { x: 950, y: 300, z: -3300, hdg: 0, speed: 110 },
+      outro: 'Direct hit — down she goes. That’s the strike sorted.',
+      steps: [
+        { text: 'The enemy carrier is dead ahead — run straight at the deck', done: () => Math.hypot(plane.position.x - OCEAN.ENEMY.x, plane.position.z - OCEAN.ENEMY.z) < 800 },
+        { text: 'Press B to drop — the bomb falls ahead of you, so pickle just before the deck', done: () => bombs < 2 },
+        { text: 'Put one on the deck! (miss with both and you’ll be re-armed)', done: () => enemySinking > 0 },
+      ],
+    },
+  };
+  const TUT_ORDER = ['takeoff', 'controls', 'guns', 'bombs'];
+
+  // Stunt courses: hand-plotted ring chains [x, y, z, radius?] (default radius
+  // per course). Plotted offline against the terrain module so every ring
+  // clears the ground; the two low rings on Valley Run thread UNDER the road
+  // bridges built at those spots.
+  const STUNTS = {
+    valley: {
+      label: 'Valley Run',
+      desc: 'Low through the central valley, under two bridges, home past the lakes.',
+      map: 'coastal',
+      r: 26,
+      spawn: { x: 0, y: 55, z: 100, hdg: 0, speed: 100 },
+      rings: [
+        [0, 45, -700], [0, 39, -1100], [0, 33, -1500], [0, 49, -1900], [0, 46, -2300],
+        [0, 33, -2650], [0, 4, -3000, 14], // under the north bridge
+        [-600, 74, -3250], [-1200, 144, -3100], [-1800, 186, -2850], [-2300, 193, -2400],
+        [-2450, 188, -1950], [-2600, 189, -1500], [-2575, 152, -1050], [-2550, 101, -600],
+        [-2450, 63, -150], [-2350, 33, 300], [-2275, 33, 800],
+        [-2200, 4, 1300, 14], // under the west bridge
+        [-2050, 53, 1650], [-1900, 63, 2000], [-1500, 37, 2100], [-1100, 33, 2200],
+        [-750, 33, 2050], [-400, 33, 1900], [-100, 33, 1600], [200, 44, 1300],
+        [250, 44, 900], [300, 45, 500], [250, 45, 150], [200, 45, -200],
+      ],
+    },
+    peaks: {
+      label: 'Peak Pass',
+      desc: 'Up over the south-east ridge country and back down the far slope.',
+      map: 'coastal',
+      r: 30,
+      spawn: { x: 700, y: 70, z: 2200, hdg: 7, speed: 110 },
+      rings: [
+        [800, 46, 1300], [1200, 43, 1700], [1600, 43, 2100], [2050, 43, 2350], [2500, 43, 2600],
+        [2950, 71, 2750], [3400, 133, 2900], [3800, 323, 2700], [4200, 437, 2500],
+        [4400, 400, 2050], [4600, 385, 1600], [4450, 292, 1150], [4300, 289, 700],
+        [3900, 268, 450], [3500, 169, 200], [3050, 104, 250], [2600, 43, 300],
+        [2150, 43, 500], [1700, 43, 700], [1300, 43, 650], [900, 50, 600],
+      ],
+    },
+    wavetop: {
+      label: 'Wavetop Circuit',
+      desc: 'A slalom off the carrier’s bow, wave-high out to the enemy fleet and home.',
+      map: 'ocean',
+      r: 22,
+      spawn: { x: 0, y: 45, z: 260, hdg: 0, speed: 100 },
+      rings: [
+        [60, 18, -300], [-60, 18, -700], [60, 18, -1100], [-60, 18, -1500], [0, 15, -1900],
+        [300, 60, -2300], [600, 90, -2700], [800, 40, -3300], [900, 25, -3900], [950, 16, -4400],
+        [950, 30, -5000], [600, 70, -5300], [200, 120, -4600], [0, 120, -3800], [0, 90, -3000],
+        [0, 60, -2200], [0, 30, -1200], [0, 25, -500],
+      ],
+    },
+  };
+  const STUNT_ORDER = ['valley', 'peaks', 'wavetop'];
 
   // ---- Flyable aircraft: the catalogue (label / blurb / stat block) lives in
   //      plane-sim-models.js (PLANE_INFO) so the game and the inspector share
@@ -303,7 +423,7 @@ import {
   const obCyl = [];
   const obBox = [];
   const windsocks = []; // fluttered each frame (userData.flutter)
-  const OBSTACLE_CEIL = 40; // taller than the tallest obstacle (the ~30 m tower)
+  const OBSTACLE_CEIL = 70; // taller than the tallest obstacle (the bridges over the lakes)
   const addCyl = (x, z, r, top, reason) => obCyl.push({
     x, z, r, top, reason,
   });
@@ -491,6 +611,25 @@ import {
     landGroup.add(field);
   }());
 
+  // ---- Road bridges across two lake narrows — scenery for the whole map, and
+  //      the fly-UNDER gates of the Valley Run stunt course. The deck is a
+  //      box obstacle with a `bot` (solid only between bot..top, so the gap
+  //      beneath stays flyable); the piers are ordinary cylinders. ----
+  (function buildBridges() {
+    for (const [bx, bz, len] of [[-20, -3000, 520], [-2200, 1300, 500]]) {
+      const bridge = makeBridge(len, 24, -55);
+      bridge.position.set(bx, 0, bz);
+      landGroup.add(bridge);
+      // Deck slab (fly under it, not through it).
+      obBox.push({
+        x0: bx - len / 2, x1: bx + len / 2, z0: bz - 7.5, z1: bz + 7.5, top: 26, bot: 19.5, reason: 'Flew into a bridge',
+      });
+      // Piers (mirror makeBridge's spacing).
+      const n = Math.max(1, Math.round(len / 105) - 1);
+      for (let i = 1; i <= n; i++) addCyl(bx - len / 2 + (len * i) / (n + 1), bz, 5.4, 24, 'Flew into a bridge pier');
+    }
+  }());
+
   // ---- The Ocean map: two carrier groups on an empty sea. Yours parked at
   //      the origin (its deck is the runway), the enemy's a few km out. Deck
   //      contact and hull/island collision are handled analytically in
@@ -509,13 +648,15 @@ import {
       c.group.rotation.y = rotY;
 
       // Parked deck aircraft (decorative — no collision), spotted along the
-      // deck edges in the BOW half, clear of the centreline launch strip so a
-      // takeoff/landing run never touches them. Children of the carrier group,
-      // so they ride (and sink) with the ship. Local coords: bow at -Z.
+      // STERN half's deck edges per WW2 deck-park practice: aircraft are
+      // ranged aft (where they're readied and launched from) leaving the bow
+      // run clear. Kept clear of the centreline and of the spawn spot at the
+      // very stern. Children of the carrier group, so they ride (and sink)
+      // with the ship. Local coords: bow at -Z, stern at +Z.
       const spots = [
-        { type: 'spitfire', x: -9, z: -52, ry: 0.42 },
-        { type: 'p51', x: -9.5, z: -82, ry: 0.42 },
-        { type: 'zero', x: 9, z: -100, ry: -0.42 },
+        { type: 'spitfire', x: -10, z: 48, ry: 2.6 },
+        { type: 'p51', x: 10, z: 66, ry: -2.6 },
+        { type: 'zero', x: -10, z: 88, ry: 2.95 },
       ];
       for (const s of spots) {
         const t = enemy ? 'zero' : s.type; // enemy fleet flies Zeros
@@ -817,11 +958,16 @@ import {
     scene.add(plane);
   }
   // Rack i is visible while bomb i hasn't been dropped (drop order: 0 then 1).
+  // No bombs on a stunt run — dead weight through the rings.
   function syncBombRacks() {
     for (let i = 0; i < bombRacks.length; i++) {
-      bombRacks[i].visible = mapName === 'ocean' && (2 - bombs) <= i;
+      bombRacks[i].visible = mapName === 'ocean' && gameMode !== 'stunt' && (2 - bombs) <= i;
     }
   }
+  // Are the bombs droppable right now? Sortie: only once the strike phase is
+  // unlocked. Tutorial: hot throughout the bombing lesson.
+  const bombsHot = () => mapName === 'ocean'
+    && (gameMode === 'tutorial' ? !!(tut && tut.id === 'bombs') : (gameMode === 'sortie' && missionPhase === 'strike'));
   buildPlayer();
 
   // Reset to the runway threshold (or the stern of the carrier deck on the
@@ -885,6 +1031,9 @@ import {
   const getForward = () => _fwd.set(0, 0, -1).applyQuaternion(plane.quaternion);
   const getUp = () => _up.set(0, 1, 0).applyQuaternion(plane.quaternion);
   const getRight = () => _right.set(1, 0, 0).applyQuaternion(plane.quaternion);
+  // Attitude readouts for the tutorial goal checks (rad; bank + = right wing down).
+  const bankNow = () => { getRight(); getUp(); return Math.atan2(-_right.y, _up.y); };
+  const pitchNow = () => { getForward(); return Math.asin(clamp(_fwd.y, -1, 1)); };
 
   // Ground height under a world position (the terrain module returns exactly 0
   // on the flattened airfield disc, so the runway Just Works). On the Ocean
@@ -1196,7 +1345,7 @@ import {
   const _bq = new THREE.Quaternion();
   const _bv = new THREE.Vector3();
   function dropBomb() {
-    if (mapName !== 'ocean' || missionPhase !== 'strike' || crashed || won || bombs <= 0 || enemySinking > 0) return;
+    if (!bombsHot() || crashed || won || bombs <= 0 || enemySinking > 0) return;
     const rack = bombRacks[2 - bombs];
     bombs--;
     const b = makeBomb();
@@ -1209,11 +1358,23 @@ import {
     updateObjective();
   }
   function bombResolved() {
-    // Last bomb spent and nothing sank her -> the strike has failed.
-    if (bombs <= 0 && liveBombs.length === 0 && missionPhase === 'strike'
-        && enemySinking <= 0 && !won && !crashed) {
+    if (!(bombs <= 0 && liveBombs.length === 0 && enemySinking <= 0 && !won && !crashed)) return;
+    if (gameMode === 'tutorial') {
+      // A lesson never fails — hang two fresh bombs and send them back in.
+      bombs = 2;
+      syncBombRacks();
+      toast('✚ BOMBS RE-ARMED — RUN IN AGAIN', 3500);
+    } else if (gameMode === 'sortie' && missionPhase === 'strike') {
+      // Last bomb spent and nothing sank her -> the strike has failed.
       missionFail('Both bombs missed — the enemy carrier steams on.');
     }
+  }
+  // A transient line on the warning banner.
+  function toast(text, ms) {
+    if (!hud.warn) return;
+    hud.warn.textContent = text;
+    hud.warn.classList.add('ps-show');
+    setTimeout(() => { if (!crashed && hud.warn && hud.warn.textContent === text) hud.warn.classList.remove('ps-show'); }, ms);
   }
   function stepBombs(dt) {
     for (let i = liveBombs.length - 1; i >= 0; i--) {
@@ -1274,7 +1435,9 @@ import {
           carriers[1].z + (Math.random() - 0.5) * 80,
         ), 10 + Math.random() * 8, 2 + Math.random());
       }
-      if (enemySinking > 4 && !sinkVictory) { sinkVictory = true; victory(); }
+      // The tutorial's end card fires on the hit itself; only the sortie waits
+      // for her to slip under before calling the win.
+      if (enemySinking > 4 && !sinkVictory) { sinkVictory = true; if (gameMode === 'sortie') victory(); }
     }
   }
   // Kills done on the Ocean map -> phase 2: guns fall silent, bombs go hot.
@@ -1298,7 +1461,7 @@ import {
   }
   function updateObjective() {
     if (!hud.obj) return;
-    if (mapName !== 'ocean' || !started || crashed || won) { hud.obj.textContent = ''; return; }
+    if (mapName !== 'ocean' || gameMode !== 'sortie' || !started || crashed || won) { hud.obj.textContent = ''; return; }
     hud.obj.textContent = missionPhase === 'defend'
       ? 'OBJECTIVE — defend your carrier: splash every bandit near the fleet'
       : `OBJECTIVE — sink the enemy carrier · bombs ${bombs}/2 · press B over the target`;
@@ -1423,10 +1586,17 @@ import {
     e.mode = 'engage'; e.modeT = 0; e.coTurn = 0; e.underFire = 0;
   }
 
+  // How many bandits this mode wants aloft: the player-picked count in a
+  // sortie, exactly one (non-firing) in the gunnery lesson, none anywhere else.
+  const desiredEnemyCount = () => {
+    if (gameMode === 'sortie') return enemyCountPref;
+    if (gameMode === 'tutorial' && tut && tut.def.bandit) return 1;
+    return 0;
+  };
   // All five airframes are built once; an engagement activates the first
-  // `enemyCountPref` of them and parks the rest (invisible, not alive).
+  // `desiredEnemyCount()` of them and parks the rest (invisible, not alive).
   function applyEnemyActivation() {
-    activeCount = enemyCountPref;
+    activeCount = desiredEnemyCount();
     enemies.forEach((e, i) => {
       if (i < activeCount) {
         placeEnemy(e);
@@ -1635,6 +1805,7 @@ import {
   function damageEnemy(e, dmg) {
     if (!e.alive) return;
     e.hp -= dmg;
+    if (tut) tut.hitFlag = true; // gunnery lesson: "landed a hit" goal
     e.underFire = 0.8; // being hit -> accelerates toward a break (jink away)
     if (e.hp <= 0) {
       e.alive = false;
@@ -1649,8 +1820,9 @@ import {
       audio.boom();
       kills += 1;
       updateCombatHUD();
-      if (kills >= activeCount && !won) {
+      if (kills >= activeCount && !won && gameMode === 'sortie') {
         // Coastal: last bandit down = win. Ocean: it unlocks the strike phase.
+        // (The gunnery lesson's kill is scored by the tutorial engine instead.)
         if (mapName === 'ocean') { if (missionPhase === 'defend') beginStrike(); } else victory();
       }
     }
@@ -1673,7 +1845,7 @@ import {
     const s = Math.max(0, Math.round(ms / 1000));
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   }
-  function showEnd(win, reason, combat, title) {
+  function showEnd(win, reason, combat, title, sub, icon) {
     const ov = document.getElementById('ps-end');
     if (hud.warn) hud.warn.classList.remove('ps-show'); // the card supersedes the banner
     if (hud.obj) hud.obj.textContent = '';
@@ -1681,27 +1853,46 @@ import {
     const el = (id) => document.getElementById(id);
     ov.classList.remove('ps-hidden', 'ps-win', 'ps-lose');
     ov.classList.add(win ? 'ps-win' : 'ps-lose');
-    if (el('ps-end-icon')) el('ps-end-icon').textContent = win ? '🏆' : '💥';
+    if (el('ps-end-icon')) el('ps-end-icon').textContent = icon || (win ? '🏆' : '💥');
     // "Shot down" only for enemy fire; anything you fly into is a "Crashed";
-    // an explicit title (e.g. "Mission failed") overrides both.
-    if (el('ps-end-title')) el('ps-end-title').textContent = win ? 'Victory' : (title || (combat ? 'Shot down' : 'Crashed'));
+    // an explicit title (e.g. "Mission failed", "Lesson complete") overrides both.
+    if (el('ps-end-title')) el('ps-end-title').textContent = title || (win ? 'Victory' : (combat ? 'Shot down' : 'Crashed'));
     if (el('ps-end-sub')) {
-      el('ps-end-sub').textContent = win
+      el('ps-end-sub').textContent = sub || (win
         ? (mapName === 'ocean'
           ? 'The enemy carrier slips beneath the waves. The fleet is yours.'
           : `All ${activeCount} bandit${activeCount > 1 ? 's' : ''} cleared from the valley.`)
-        : reason;
+        : reason);
     }
     const stats = el('ps-end-stats');
     if (stats) {
-      const hullPct = Math.max(0, Math.round((playerHP / ac.hp) * 100));
-      const rows = [
-        ['Aircraft', PLANE_TYPES[planeName].label],
-        ['Bandits downed', `${kills} / ${activeCount}`],
-        ['Hull remaining', `${hullPct}%`],
-        ['Skill', diff.label],
-        ['Time', fmtTime(engageStart ? performance.now() - engageStart : 0)],
-      ];
+      const time = fmtTime(engageStart ? performance.now() - engageStart : 0);
+      let rows;
+      if (gameMode === 'stunt' && stunt) {
+        rows = [
+          ['Course', stunt.def.label],
+          ['Score', String(stunt.score)],
+          ['Rings', `${stunt.hits} / ${stunt.rings.length}`],
+          ['Aircraft', PLANE_TYPES[planeName].label],
+          ['Time', fmtTime(stunt.t * 1000)],
+        ];
+      } else if (gameMode === 'tutorial' && tut) {
+        rows = [
+          ['Lesson', tut.def.label],
+          ['Step', `${Math.min(tut.step + 1, tut.def.steps.length)} / ${tut.def.steps.length}`],
+          ['Aircraft', PLANE_TYPES[planeName].label],
+          ['Time', time],
+        ];
+      } else {
+        const hullPct = Math.max(0, Math.round((playerHP / ac.hp) * 100));
+        rows = [
+          ['Aircraft', PLANE_TYPES[planeName].label],
+          ['Bandits downed', `${kills} / ${activeCount}`],
+          ['Hull remaining', `${hullPct}%`],
+          ['Skill', diff.label],
+          ['Time', time],
+        ];
+      }
       stats.innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
     }
   }
@@ -1736,18 +1927,23 @@ import {
     b.addEventListener('mousedown', (ev) => ev.stopPropagation());
     b.addEventListener('click', (ev) => { ev.stopPropagation(); setPlaneType(b.dataset.plane); });
   }
-  // Map picker (sortie screen). Switching worlds re-parks the aircraft on the
-  // new map's deck/runway and resets the engagement.
+  // Swap the visible world without touching the saved sortie preference —
+  // tutorial/stunt chapters borrow whichever map they need.
+  function applyWorld(name) {
+    mapName = name;
+    landGroup.visible = name === 'coastal';
+    oceanGroup.visible = name === 'ocean';
+  }
+  // Map picker (sortie chapter screen). Switching worlds re-parks the aircraft
+  // on the new map's deck/runway and resets the engagement; remembered.
   function setMap(name) {
     if (!validMap(name)) return;
-    mapName = name;
     try { localStorage.setItem('ps-map', name); } catch (_) { /* private mode */ }
     for (const t of document.querySelectorAll('[data-map]')) {
       t.classList.toggle('ps-active', t.dataset.map === name);
     }
-    landGroup.visible = name === 'coastal';
-    oceanGroup.visible = name === 'ocean';
-    respawn();
+    applyWorld(name);
+    respawnBase();
   }
   for (const t of document.querySelectorAll('[data-map]')) {
     t.addEventListener('mousedown', (ev) => ev.stopPropagation());
@@ -1797,10 +1993,13 @@ import {
   //      behind it IS the turntable: the camera orbits the fighter parked on
   //      the runway while arrows swap the airframe in place. ----
   const menuEl = document.getElementById('ps-menu');
+  const modeMenuEl = document.getElementById('ps-mode-menu');
   const mapMenuEl = document.getElementById('ps-map-menu');
+  const tutMenuEl = document.getElementById('ps-tut-menu');
+  const stuntMenuEl = document.getElementById('ps-stunt-menu');
   const menuNameEl = document.getElementById('ps-menu-name');
   const menuStatsEl = document.getElementById('ps-mstats');
-  let menuMode = null; // null (flying) | 'plane' | 'map'
+  let menuMode = null; // null (flying) | 'plane' | 'mode' | 'sortie' | 'tutorial' | 'stunt'
   let menuAngle = 2.35; // hangar orbit angle, advanced each frame
   const SPEED_LBL = { kn: 'kn', mph: 'mph', kmh: 'km/h' };
 
@@ -1827,21 +2026,39 @@ import {
   function setMenu(mode) {
     menuMode = mode;
     if (menuEl) menuEl.classList.toggle('ps-hidden', mode !== 'plane');
-    if (mapMenuEl) mapMenuEl.classList.toggle('ps-hidden', mode !== 'map');
+    if (modeMenuEl) modeMenuEl.classList.toggle('ps-hidden', mode !== 'mode');
+    if (mapMenuEl) mapMenuEl.classList.toggle('ps-hidden', mode !== 'sortie');
+    if (tutMenuEl) tutMenuEl.classList.toggle('ps-hidden', mode !== 'tutorial');
+    if (stuntMenuEl) stuntMenuEl.classList.toggle('ps-hidden', mode !== 'stunt');
     stage.classList.toggle('ps-in-menu', !!mode);
     // Bandits have no business photobombing the hangar turntable.
     for (const e of enemies) e.group.visible = e.alive && !mode;
     if (mode === 'plane') renderMenuStats();
   }
+  // Tear down whatever special mode is live and put the game back into its
+  // plain sortie shape (rings gone, lesson dropped, bandit count restored).
+  function clearSpecialModes() {
+    tut = null;
+    disposeStunt();
+    gameMode = 'sortie';
+    syncModeHUD();
+  }
   function enterHangar() {
-    respawn(); // park on the runway, reset the fight
+    clearSpecialModes();
+    // Back to the remembered sortie map (a lesson/course may have borrowed
+    // the other world).
+    let saved = mapName;
+    try { const m = localStorage.getItem('ps-map'); if (validMap(m)) saved = m; } catch (_) { /* private mode */ }
+    applyWorld(saved);
+    respawnBase(); // park on the runway, reset the fight
     started = false; // back to the pre-launch state
     setPaused(false);
     setMenu('plane');
   }
   function startSortie() {
+    clearSpecialModes();
     setMenu(null);
-    respawn();
+    respawnBase();
     started = true;
     engageStart = performance.now();
     updateObjective();
@@ -1854,8 +2071,28 @@ import {
   }
   document.querySelector('[data-mprev]')?.addEventListener('click', () => cyclePlane(-1));
   document.querySelector('[data-mnext]')?.addEventListener('click', () => cyclePlane(1));
-  document.getElementById('ps-continue')?.addEventListener('click', () => setMenu('map'));
-  document.querySelector('[data-menuback]')?.addEventListener('click', () => setMenu('plane'));
+  document.getElementById('ps-continue')?.addEventListener('click', () => setMenu('mode'));
+  // Game-mode tiles -> that mode's chapter screen. The sortie screen also
+  // re-parks the plane on the remembered map so the backdrop matches.
+  for (const b of document.querySelectorAll('[data-gamemode]')) {
+    b.addEventListener('mousedown', (ev) => ev.stopPropagation());
+    b.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      setMenu(b.dataset.gamemode);
+    });
+  }
+  // Chapter tiles: a tutorial lesson / a stunt course starts immediately.
+  for (const b of document.querySelectorAll('[data-tut]')) {
+    b.addEventListener('mousedown', (ev) => ev.stopPropagation());
+    b.addEventListener('click', (ev) => { ev.stopPropagation(); startTutorial(b.dataset.tut); });
+  }
+  for (const b of document.querySelectorAll('[data-stunt]')) {
+    b.addEventListener('mousedown', (ev) => ev.stopPropagation());
+    b.addEventListener('click', (ev) => { ev.stopPropagation(); startStunt(b.dataset.stunt); });
+  }
+  for (const b of document.querySelectorAll('[data-menuback]')) {
+    b.addEventListener('click', (ev) => { ev.stopPropagation(); setMenu(b.dataset.menuback || 'mode'); });
+  }
   document.getElementById('ps-takeoff')?.addEventListener('click', () => startSortie());
   for (const b of document.querySelectorAll('[data-hangar]')) {
     b.addEventListener('click', (ev) => { ev.stopPropagation(); enterHangar(); });
@@ -1878,7 +2115,8 @@ import {
     const k = e.key.toLowerCase();
     keys[k] = true;
     if (k === 'escape') {
-      if (menuMode === 'map') { setMenu('plane'); return; }
+      if (menuMode === 'sortie' || menuMode === 'tutorial' || menuMode === 'stunt') { setMenu('mode'); return; }
+      if (menuMode === 'mode') { setMenu('plane'); return; }
       if (menuMode) return; // the hangar is the root screen
       if (started) setPaused(!userPaused);
       return;
@@ -1887,8 +2125,9 @@ import {
       cyclePlane(k === 'arrowleft' ? -1 : 1);
       return;
     }
-    if (menuMode === 'plane' && k === 'enter') { setMenu('map'); return; }
-    if (menuMode === 'map' && k === 'enter') { startSortie(); return; }
+    if (menuMode === 'plane' && k === 'enter') { setMenu('mode'); return; }
+    if (menuMode === 'mode' && k === 'enter') { setMenu('sortie'); return; }
+    if (menuMode === 'sortie' && k === 'enter') { startSortie(); return; }
     if (k === '1') { setDifficulty('easy'); return; }
     if (k === '2') { setDifficulty('normal'); return; }
     if (k === '3') { setDifficulty('hard'); return; }
@@ -2269,12 +2508,36 @@ import {
         }
       }
       // The defend perimeter while it matters.
-      if (missionPhase === 'defend') {
+      if (gameMode === 'sortie' && missionPhase === 'defend') {
         mapCtx.strokeStyle = 'rgba(120,220,255,0.35)';
         mapCtx.lineWidth = 1.5;
         mapCtx.beginPath();
         mapCtx.arc((OCEAN.ALLY.x - px) * s, (OCEAN.ALLY.z - pz) * s, OCEAN.DEFEND_R * s, 0, Math.PI * 2);
         mapCtx.stroke();
+      }
+    }
+
+    // Stunt: the active ring — a cyan diamond in range, a rim chevron beyond.
+    if (stunt && stunt.rings[stunt.i]) {
+      const rp = stunt.rings[stunt.i].pos;
+      const dx = (rp.x - px) * s;
+      const dy = (rp.z - pz) * s;
+      mapCtx.fillStyle = '#7fdfff';
+      mapCtx.strokeStyle = '#7fdfff';
+      if (Math.hypot(dx, dy) <= Rpx) {
+        mapCtx.save();
+        mapCtx.translate(dx, dy);
+        mapCtx.rotate(Math.PI / 4);
+        mapCtx.strokeRect(-3.2, -3.2, 6.4, 6.4);
+        mapCtx.restore();
+      } else {
+        const a = Math.atan2(dy, dx);
+        mapCtx.save();
+        mapCtx.translate(Math.cos(a) * (Rpx - 5), Math.sin(a) * (Rpx - 5));
+        mapCtx.rotate(a);
+        mapCtx.beginPath(); mapCtx.moveTo(5, 0); mapCtx.lineTo(-3, 4); mapCtx.lineTo(-3, -4);
+        mapCtx.closePath(); mapCtx.fill();
+        mapCtx.restore();
       }
     }
 
@@ -2413,7 +2676,14 @@ import {
     leadEl.classList.toggle('ps-lead-close', bestD < 700);
   }
 
+  // "Fly again" respects the mode: a lesson or a course restarts itself from
+  // its own spawn; everything else is the plain park-on-the-runway reset.
   function respawn() {
+    if (gameMode === 'tutorial' && tut) { startTutorial(tut.id); return; }
+    if (gameMode === 'stunt' && stunt) { startStunt(stunt.id); return; }
+    respawnBase();
+  }
+  function respawnBase() {
     resetPlane();
     vel.set(0, 0, 0);
     throttle = 0;
@@ -2441,6 +2711,227 @@ import {
     updateCombatHUD();
     hideEnd();
     if (hud.warn) { hud.warn.textContent = ''; hud.warn.classList.remove('ps-show'); }
+  }
+
+  // ================================================== TUTORIAL / STUNT =====
+  // Airborne spawn for lessons and courses that skip the takeoff.
+  function placeAir({
+    x, y, z, hdg = 0, speed = 110,
+  }) {
+    plane.position.set(x, y, z);
+    plane.quaternion.setFromAxisAngle(WORLD_UP, (-hdg * Math.PI) / 180);
+    getForward();
+    vel.copy(_fwd).multiplyScalar(speed);
+    throttle = 0.75;
+    gearDown = false;
+    gearAnim = 0;
+    onGround = false;
+  }
+
+  // Which HUD panels belong to the current mode: the combat board only when
+  // there's something to shoot, the lesson prompt in a tutorial, the score
+  // strip on a stunt run.
+  const combatPanelEl = document.querySelector('.ps-combat');
+  const tutEl = document.getElementById('ps-tut');
+  const stuntEl = document.getElementById('ps-stunt');
+  function syncModeHUD() {
+    if (combatPanelEl) combatPanelEl.style.display = (gameMode === 'sortie' || (tut && tut.def.bandit)) ? '' : 'none';
+    if (tutEl) tutEl.style.display = gameMode === 'tutorial' ? '' : 'none';
+    if (stuntEl) stuntEl.style.display = gameMode === 'stunt' ? '' : 'none';
+  }
+
+  // ---- Tutorial engine: show the current step's prompt, watch its done()
+  //      check each frame (held for `hold` seconds where sustaining the input
+  //      is the point), advance with a chime, finish with a lesson card. ----
+  const tutNameEl = document.getElementById('ps-tut-name');
+  const tutStepEl = document.getElementById('ps-tut-step');
+  const tutTextEl = document.getElementById('ps-tut-text');
+  function updateTutHUD() {
+    if (!tut || !tutTextEl) return;
+    const n = tut.def.steps.length;
+    if (tutNameEl) tutNameEl.textContent = tut.def.label;
+    if (tutStepEl) tutStepEl.textContent = `${Math.min(tut.step + 1, n)} / ${n}`;
+    const st = tut.def.steps[tut.step];
+    tutTextEl.textContent = st ? st.text : '✔ Lesson complete';
+  }
+  function startTutorial(id) {
+    const def = TUT[id];
+    if (!def) return;
+    disposeStunt();
+    gameMode = 'tutorial';
+    tut = {
+      id, def, step: 0, holdT: 0, hitFlag: false,
+    };
+    applyWorld(def.map);
+    respawnBase();
+    if (def.spawn) placeAir(def.spawn);
+    setMenu(null);
+    started = true;
+    engageStart = performance.now();
+    audio.ensure();
+    syncModeHUD();
+    updateTutHUD();
+  }
+  function stepTutorial(dt) {
+    if (!tut || crashed || won) return;
+    const st = tut.def.steps[tut.step];
+    if (!st) return;
+    const ok = st.done();
+    if (ok) tut.holdT += dt; else tut.holdT = 0;
+    if (ok && tut.holdT >= (st.hold || 0)) {
+      tut.step++;
+      tut.holdT = 0;
+      audio.hit(); // the "goal ticked" chime
+      if (tut.step >= tut.def.steps.length) {
+        won = true;
+        showEnd(true, null, false, 'Lesson complete', tut.def.outro, '🎓');
+      }
+      updateTutHUD();
+    }
+  }
+
+  // ---- Stunt engine: a chain of glowing rings. Fly the chain in order; each
+  //      frame the segment the aircraft just flew is tested against the active
+  //      ring's plane — crossing inside the hoop scores (bullseye at half
+  //      radius), crossing wide of it forfeits the ring. A light beacon marks
+  //      the active ring; the last ring ends the run with a score card. ----
+  const ringGroup = new THREE.Group();
+  scene.add(ringGroup);
+  let beacon = null;
+  const beaconTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = 32; c.height = 128;
+    const ctx = c.getContext('2d');
+    const gx = ctx.createLinearGradient(0, 0, 32, 0);
+    gx.addColorStop(0, 'rgba(120,220,255,0)');
+    gx.addColorStop(0.5, 'rgba(160,230,255,0.9)');
+    gx.addColorStop(1, 'rgba(120,220,255,0)');
+    ctx.fillStyle = gx; ctx.fillRect(0, 0, 32, 128);
+    const gy = ctx.createLinearGradient(0, 0, 0, 128);
+    gy.addColorStop(0, 'rgba(255,255,255,0)');
+    gy.addColorStop(0.5, 'rgba(255,255,255,1)');
+    gy.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.fillStyle = gy; ctx.fillRect(0, 0, 32, 128);
+    return new THREE.CanvasTexture(c);
+  })();
+  const stScoreEl = document.getElementById('ps-st-score');
+  const stRingEl = document.getElementById('ps-st-ring');
+  const stTimeEl = document.getElementById('ps-st-time');
+  function updateStuntHUD() {
+    if (!stunt) return;
+    if (stScoreEl) stScoreEl.textContent = String(stunt.score);
+    if (stRingEl) stRingEl.textContent = `${Math.min(stunt.i + 1, stunt.rings.length)} / ${stunt.rings.length}`;
+    if (stTimeEl) stTimeEl.textContent = fmtTime(stunt.t * 1000);
+  }
+  function disposeStunt() {
+    if (!stunt) return;
+    for (const r of stunt.rings) {
+      ringGroup.remove(r.mesh);
+      r.mesh.geometry.dispose();
+      r.mesh.material.dispose();
+    }
+    if (beacon) { ringGroup.remove(beacon); beacon.material.dispose(); beacon = null; }
+    stunt = null;
+  }
+  function highlightRing() {
+    for (let i = stunt.i; i < stunt.rings.length; i++) {
+      stunt.rings[i].mesh.material.opacity = i === stunt.i ? 0.95 : 0.3;
+    }
+    const cur = stunt.rings[stunt.i];
+    if (beacon) {
+      beacon.visible = !!cur;
+      if (cur) beacon.position.set(cur.pos.x, cur.pos.y + 235, cur.pos.z);
+    }
+  }
+  function startStunt(id) {
+    const def = STUNTS[id];
+    if (!def) return;
+    disposeStunt();
+    tut = null;
+    gameMode = 'stunt';
+    applyWorld(def.map);
+    const rings = def.rings.map((rw, i) => {
+      const [x, y, z, rr] = rw;
+      const r = rr || def.r;
+      // Ring faces the local course direction (central difference).
+      const p = def.rings[Math.max(0, i - 1)];
+      const nx = def.rings[Math.min(def.rings.length - 1, i + 1)];
+      const n = new THREE.Vector3(nx[0] - p[0], nx[1] - p[1], nx[2] - p[2]).normalize();
+      const mesh = new THREE.Mesh(
+        new THREE.TorusGeometry(r, 1.5, 8, 40),
+        new THREE.MeshBasicMaterial({
+          color: 0x22d3ff, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+        }),
+      );
+      mesh.position.set(x, y, z);
+      mesh.lookAt(x + n.x, y + n.y, z + n.z);
+      ringGroup.add(mesh);
+      return {
+        pos: new THREE.Vector3(x, y, z), n, r, mesh,
+      };
+    });
+    stunt = {
+      id, def, rings, i: 0, score: 0, hits: 0, t: 0, prev: new THREE.Vector3(),
+    };
+    beacon = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: beaconTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.75,
+    }));
+    beacon.scale.set(26, 470, 1);
+    ringGroup.add(beacon);
+    highlightRing();
+    respawnBase();
+    placeAir(def.spawn);
+    stunt.prev.copy(plane.position);
+    setMenu(null);
+    started = true;
+    engageStart = performance.now();
+    audio.ensure();
+    syncModeHUD();
+    updateStuntHUD();
+  }
+  const _sv = new THREE.Vector3();
+  function advanceRing() {
+    stunt.i++;
+    if (stunt.i >= stunt.rings.length) {
+      won = true;
+      if (beacon) beacon.visible = false;
+      showEnd(true, null, false, 'Course complete',
+        `${stunt.hits} of ${stunt.rings.length} rings — final score ${stunt.score}.`, '🏁');
+      return;
+    }
+    highlightRing();
+  }
+  function stepStunt(dt) {
+    if (!stunt) return;
+    stunt.t += dt;
+    const cur = stunt.rings[stunt.i];
+    if (cur) {
+      const d0 = _sv.copy(stunt.prev).sub(cur.pos).dot(cur.n);
+      const d1 = _sv.copy(plane.position).sub(cur.pos).dot(cur.n);
+      if ((d0 < 0) !== (d1 < 0)) { // crossed the ring's plane this frame
+        const f = d0 / (d0 - d1);
+        _sv.lerpVectors(stunt.prev, plane.position, f).sub(cur.pos);
+        const off = _sv.length();
+        if (off <= cur.r) {
+          const bulls = off <= cur.r * 0.5;
+          stunt.score += bulls ? 150 : 100;
+          stunt.hits++;
+          cur.mesh.material.color.set(0x37d67a);
+          cur.mesh.material.opacity = 0.22;
+          audio.hit();
+          toast(bulls ? '◎ BULLSEYE +150' : '○ RING +100', 900);
+          advanceRing();
+        } else if (off <= cur.r * 4) { // flew past it -> forfeited
+          cur.mesh.material.color.set(0xff5d6c);
+          cur.mesh.material.opacity = 0.16;
+          toast('✕ MISSED RING', 900);
+          advanceRing();
+        }
+      }
+    }
+    stunt.prev.copy(plane.position);
+    updateStuntHUD();
   }
 
   // ======================================================== UPDATE ========
@@ -2635,6 +3126,7 @@ import {
         for (let i = 0; i < obBox.length; i++) {
           const o = obBox[i];
           if (py > o.top + 1) continue;
+          if (o.bot != null && py < o.bot) continue; // open underneath (bridge decks)
           if (px > o.x0 - PR && px < o.x1 + PR && pz > o.z0 - PR && pz < o.z1 + PR) {
             crash(o.reason); break;
           }
@@ -2718,7 +3210,7 @@ import {
     //     bandits still live starts a countdown; run it out and your carrier
     //     is sunk behind you — mission over. Coming back rewinds it fast. ---
     let awayWarn = null;
-    if (mapName === 'ocean' && missionPhase === 'defend' && started && !won) {
+    if (mapName === 'ocean' && gameMode === 'sortie' && missionPhase === 'defend' && started && !won) {
       const dHome = Math.hypot(plane.position.x - OCEAN.ALLY.x, plane.position.z - OCEAN.ALLY.z);
       if (dHome > OCEAN.DEFEND_R) {
         awayT += dt;
@@ -2842,6 +3334,7 @@ import {
   setCamPreset(camName); // sync the camera-distance picker highlight
   syncUnitUI(); // sync the unit-picker highlights
   syncPlaneUI(); // sync the aircraft picker highlight + description + HUD label
+  syncModeHUD(); // hide the tutorial/stunt panels until their mode is live
   setMenu('plane'); // boot into the hangar (the loading screen covers the first frame)
 
   // ==================================================== DEV MODE ==========
@@ -2942,6 +3435,18 @@ import {
     },
     bomb: dropBomb,
     strike() { missionPhase = 'strike'; updateObjective(); }, // skip phase 1 for testing
+    // Mode / chapter dev handles (tooling + harness).
+    get gameMode() { return gameMode; },
+    tutorial: startTutorial,
+    stunt: startStunt,
+    tutState() { return tut && { id: tut.id, step: tut.step, of: tut.def.steps.length, hit: tut.hitFlag }; },
+    stuntState() {
+      return stunt && {
+        id: stunt.id, ring: stunt.i, of: stunt.rings.length, score: stunt.score, hits: stunt.hits, t: +stunt.t.toFixed(1),
+      };
+    },
+    hangar: enterHangar,
+    sortie: startSortie,
     kill(i) { const e = enemies[i]; if (e && e.alive) damageEnemy(e, 99999); },
     // Collision-obstacle registry (debug/tooling): counts + a sample entry.
     obstacles() { return { cyl: obCyl.length, box: obBox.length, sampleTree: obCyl.find((o) => o.reason.includes('tree')) }; },
@@ -2982,8 +3487,11 @@ import {
     if (dev.paused || userPaused) dt = 0;
 
     const playing = started && !crashed && !won && dt > 0;
-    if (playing) update(dt);
-    else {
+    if (playing) {
+      update(dt);
+      if (gameMode === 'tutorial') stepTutorial(dt);
+      else if (gameMode === 'stunt') stepStunt(dt);
+    } else {
       // idle the prop + animate gear even before launch / after a crash
       if (surf.prop) surf.prop.rotation.z -= 0.18 * 60 * dt;
       setPropBlur(surf, 0.18);
@@ -2999,7 +3507,9 @@ import {
     // shoot while the engagement is live. In the hangar/map menus they're
     // hidden AND frozen — otherwise they dive at the parked showpiece.
     if (!menuMode) {
-      for (const e of enemies) if (e.alive && dt > 0) stepEnemy(e, dt, playing && !dev.noAiFire);
+      // Bandits only shoot in a sortie — the gunnery lesson's bandit flies
+      // full evasion but keeps his guns cold.
+      for (const e of enemies) if (e.alive && dt > 0) stepEnemy(e, dt, playing && !dev.noAiFire && gameMode === 'sortie');
     }
 
     // Windsocks ripple in the ambient breeze (menus included — the hangar
@@ -3056,6 +3566,16 @@ import {
     const warm = new THREE.Group();
     for (const t of ['spitfire', 'p51', 'zero']) warm.add(buildAircraft({ type: t, enemy: true }).group);
     warm.add(makeBomb());
+    // One stunt ring + beacon so entering a course doesn't hitch either.
+    warm.add(new THREE.Mesh(
+      new THREE.TorusGeometry(2, 0.2, 8, 40),
+      new THREE.MeshBasicMaterial({
+        color: 0x22d3ff, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+      }),
+    ));
+    warm.add(new THREE.Sprite(new THREE.SpriteMaterial({
+      map: beaconTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true,
+    })));
     warm.position.set(0, -400, 0); // out of sight even if a frame slips through
     scene.add(warm);
     // Compile BOTH worlds while we're at it (map switches shouldn't hitch).

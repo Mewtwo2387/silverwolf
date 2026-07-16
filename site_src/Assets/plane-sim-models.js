@@ -1224,6 +1224,51 @@ export function makeNissenHut(len = 9) {
   return g;
 }
 
+// ---- A stone-piered road viaduct for the stunt courses: deck runs along
+// local X (length `len`), deck TOP at y = `deckY`, piers dropping to `botY`
+// (put the group at water level and let the piers reach the lakebed). Open
+// underneath — the whole point is flying beneath it.
+export function makeBridge(len = 520, deckY = 30, botY = -30) {
+  const g = new THREE.Group();
+  const stone = new THREE.MeshStandardMaterial({ color: 0x8d8578, roughness: 0.92 });
+  const tarmacMat = new THREE.MeshStandardMaterial({ color: 0x565a60, roughness: 0.88 });
+  const steel = new THREE.MeshStandardMaterial({ color: 0x5f6a74, roughness: 0.5, metalness: 0.55 });
+  // Deck slab + wearing surface.
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(len, 1.8, 11), stone);
+  slab.position.y = deckY - 1.0; g.add(slab);
+  const road = new THREE.Mesh(new THREE.BoxGeometry(len, 0.25, 8.6), tarmacMat);
+  road.position.y = deckY; g.add(road);
+  // Side girders + railings.
+  for (const sz of [-1, 1]) {
+    const girder = new THREE.Mesh(new THREE.BoxGeometry(len, 2.6, 0.6), steel);
+    girder.position.set(0, deckY - 1.6, sz * 5.4); g.add(girder);
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(len, 0.18, 0.18), steel);
+    rail.position.set(0, deckY + 1.2, sz * 4.9); g.add(rail);
+    // railing posts
+    const postGeo = new THREE.BoxGeometry(0.16, 1.2, 0.16);
+    for (let x = -len / 2 + 4; x <= len / 2 - 4; x += 12) {
+      const p = new THREE.Mesh(postGeo, steel);
+      p.position.set(x, deckY + 0.6, sz * 4.9); g.add(p);
+    }
+  }
+  // Piers: tapered stone columns every ~105 m (none at the very ends — those
+  // sit on the banks).
+  const pierH = deckY - 1.8 - botY;
+  const pierGeo = new THREE.CylinderGeometry(3.2, 4.6, pierH, 10);
+  const capGeo = new THREE.BoxGeometry(8.5, 1.4, 12.5);
+  const n = Math.max(1, Math.round(len / 105) - 1);
+  for (let i = 1; i <= n; i++) {
+    const x = -len / 2 + (len * i) / (n + 1);
+    const pier = new THREE.Mesh(pierGeo, stone);
+    pier.position.set(x, botY + pierH / 2, 0); g.add(pier);
+    const cap = new THREE.Mesh(capGeo, stone);
+    cap.position.set(x, deckY - 2.2, 0); g.add(cap);
+  }
+  setShadows(g);
+  g.userData.dims = { len, deckY, botY };
+  return g;
+}
+
 // ---- WW2 fleet aircraft carrier (Essex-ish silhouette, simplified to the
 // game's low-poly idiom). Local forward is -Z (bow), origin at the WATERLINE
 // on the centreline — position the group at sea level. Returns { group, deck }

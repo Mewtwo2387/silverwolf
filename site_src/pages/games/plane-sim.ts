@@ -176,6 +176,18 @@ export function PlaneSimPage(opts: {
   }
   #ps-objective:empty { display: none; }
 
+  /* Tutorial prompt (top-centre, under the combat board's spot). */
+  #ps-tut {
+    left: 50%; top: 7.6rem; transform: translateX(-50%); text-align: center;
+    max-width: min(560px, 92vw); pointer-events: none;
+  }
+  #ps-tut-text { margin-top: 0.3rem; font-size: 0.95rem; font-weight: 700; color: var(--fog-100, #eef4f7); line-height: 1.4; }
+
+  /* Stunt score strip (top-centre, where the combat board usually sits). */
+  #ps-stunt { left: 50%; top: 1.1rem; transform: translateX(-50%); text-align: center; display: flex; gap: 1.3rem; }
+  #ps-stunt > div { min-width: 4.6rem; }
+  #ps-stunt .ps-val { font-size: 1.5rem; }
+
   /* Always-available exit (there's no navbar in fullscreen mode). */
   .ps-corner {
     position: absolute; right: 1.1rem; top: 1.1rem; z-index: 4; display: flex; gap: 0.5rem;
@@ -272,14 +284,22 @@ export function PlaneSimPage(opts: {
   }
   #ps-menu .ps-corner-hint { position: absolute; }
 
-  /* Map select: modal card over a dark veil. */
-  #ps-map-menu {
+  /* Mode / chapter select screens: modal card over a dark veil. */
+  .ps-modal {
     position: absolute; inset: 0; z-index: 7; cursor: auto;
     display: flex; align-items: center; justify-content: center;
     background: radial-gradient(circle at 50% 40%, rgba(6, 8, 15, 0.55), rgba(6, 8, 15, 0.9));
   }
-  #ps-map-menu.ps-hidden { display: none; }
-  #ps-map-menu .ps-card { pointer-events: auto; }
+  .ps-modal.ps-hidden { display: none; }
+  .ps-modal .ps-card { pointer-events: auto; max-height: 92vh; overflow-y: auto; }
+  /* Big emoji block standing in for a preview image on mode/chapter tiles. */
+  .ps-tile-ico {
+    flex: none; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; border-radius: 0.6rem;
+    background: color-mix(in oklab, var(--accent, #22d3ff) 10%, transparent);
+    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 25%, transparent);
+  }
+  .ps-map-tile:hover { border-color: color-mix(in oklab, var(--accent, #22d3ff) 70%, transparent); }
   .ps-map-tile {
     display: flex; gap: 1rem; align-items: center; text-align: left; cursor: pointer;
     padding: 0.7rem 0.85rem; border-radius: 0.8rem; margin: 0.4rem 0 0.9rem;
@@ -419,6 +439,19 @@ export function PlaneSimPage(opts: {
           <div class="ps-unit"><span id="ps-plane-label">SPITFIRE</span></div>
         </div>
 
+        <!-- Tutorial prompt (shown only in tutorial mode) -->
+        <div class="ps-panel" id="ps-tut" style="display:none">
+          <div class="ps-lbl">Lesson — <span id="ps-tut-name"></span> · step <span id="ps-tut-step"></span></div>
+          <div id="ps-tut-text"></div>
+        </div>
+
+        <!-- Stunt score strip (shown only in stunt mode) -->
+        <div class="ps-panel" id="ps-stunt" style="display:none">
+          <div><div class="ps-lbl">Score</div><div class="ps-val"><span id="ps-st-score">0</span></div></div>
+          <div><div class="ps-lbl">Ring</div><div class="ps-val"><span id="ps-st-ring">1 / 1</span></div></div>
+          <div><div class="ps-lbl">Time</div><div class="ps-val"><span id="ps-st-time">0:00</span></div></div>
+        </div>
+
         <!-- Analogue instrument cluster (bottom-centre), drawn by the game -->
         <div class="ps-panel ps-gauges-wrap">
           <canvas id="ps-gauges"></canvas>
@@ -466,8 +499,90 @@ export function PlaneSimPage(opts: {
         <div class="ps-menu-keys">◄ ► cycle &middot; Mouse: point to fly &middot; RMB fire &middot; W/S throttle &middot; A/D rudder &middot; G gear &middot; B drop bomb &middot; ESC pause</div>
       </div>
 
+      <!-- Game-mode select: tutorial / sortie / stunt -->
+      <div id="ps-mode-menu" class="ps-modal ps-hidden">
+        <div class="ps-card">
+          <h1>Game mode</h1>
+          <p class="ps-sub">Pick how you want to fly, then a chapter within it.</p>
+          <div class="ps-map-tile" data-gamemode="tutorial">
+            <div class="ps-tile-ico">🎓</div>
+            <div>
+              <p class="ps-map-name">Flight School</p>
+              <p class="ps-map-desc">Bite-size lessons with one goal each: take off, manoeuvre, shoot, bomb. The game tells you what to do and watches you do it.</p>
+            </div>
+          </div>
+          <div class="ps-map-tile" data-gamemode="sortie">
+            <div class="ps-tile-ico">🎯</div>
+            <div>
+              <p class="ps-map-name">Sortie</p>
+              <p class="ps-map-desc">The combat missions: clear the bandits over the coastal valley, or defend the fleet and sink the enemy carrier.</p>
+            </div>
+          </div>
+          <div class="ps-map-tile" data-gamemode="stunt">
+            <div class="ps-tile-ico">💫</div>
+            <div>
+              <p class="ps-map-name">Stunt Circuit</p>
+              <p class="ps-map-desc">Chase rings for points — through valleys, under bridges, wave-high past the fleet. Bullseyes score extra.</p>
+            </div>
+          </div>
+          <div class="ps-menu-row">
+            <button type="button" class="ps-back-btn" data-menuback="plane">‹ Hangar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tutorial: lesson select -->
+      <div id="ps-tut-menu" class="ps-modal ps-hidden">
+        <div class="ps-card">
+          <h1>Flight School</h1>
+          <p class="ps-sub">One goal at a time. Follow the prompt at the top of the screen — it ticks off as you nail each step.</p>
+          <div class="ps-map-tile" data-tut="takeoff">
+            <div class="ps-tile-ico">🛫</div>
+            <div><p class="ps-map-name">1 · First Flight</p><p class="ps-map-desc">Throttle up, lift off, gear up, climb away.</p></div>
+          </div>
+          <div class="ps-map-tile" data-tut="controls">
+            <div class="ps-tile-ico">🕹️</div>
+            <div><p class="ps-map-name">2 · Stick &amp; Rudder</p><p class="ps-map-desc">Bank, climb, dive and rudder — the plane goes where you point the mouse.</p></div>
+          </div>
+          <div class="ps-map-tile" data-tut="guns">
+            <div class="ps-tile-ico">🔫</div>
+            <div><p class="ps-map-name">3 · Gunnery</p><p class="ps-map-desc">Track a bandit and splash him. He won't shoot back — this time.</p></div>
+          </div>
+          <div class="ps-map-tile" data-tut="bombs">
+            <div class="ps-tile-ico">💣</div>
+            <div><p class="ps-map-name">4 · Bombing</p><p class="ps-map-desc">Two wing bombs, one enemy flat-top. Put one on the deck (B to drop).</p></div>
+          </div>
+          <div class="ps-menu-row">
+            <button type="button" class="ps-back-btn" data-menuback>‹ Modes</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stunt: course select -->
+      <div id="ps-stunt-menu" class="ps-modal ps-hidden">
+        <div class="ps-card">
+          <h1>Stunt Circuit</h1>
+          <p class="ps-sub">Fly the glowing rings in order — 100 points a ring, 150 for a bullseye, nothing for a miss. The beam of light marks the next one.</p>
+          <div class="ps-map-tile" data-stunt="valley">
+            <div class="ps-tile-ico">🌉</div>
+            <div><p class="ps-map-name">Valley Run</p><p class="ps-map-desc">Low through the central valley and UNDER two road bridges. 31 rings.</p></div>
+          </div>
+          <div class="ps-map-tile" data-stunt="peaks">
+            <div class="ps-tile-ico">⛰️</div>
+            <div><p class="ps-map-name">Peak Pass</p><p class="ps-map-desc">Climb over the south-east ridge country and dive back down the far slope. 21 rings.</p></div>
+          </div>
+          <div class="ps-map-tile" data-stunt="wavetop">
+            <div class="ps-tile-ico">🌊</div>
+            <div><p class="ps-map-name">Wavetop Circuit</p><p class="ps-map-desc">A slalom off the carrier's bow, wave-high out to the enemy fleet and home. 18 rings.</p></div>
+          </div>
+          <div class="ps-menu-row">
+            <button type="button" class="ps-back-btn" data-menuback>‹ Modes</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Sortie: map select + briefing -->
-      <div id="ps-map-menu" class="ps-hidden">
+      <div id="ps-map-menu" class="ps-modal ps-hidden">
         <div class="ps-card">
           <h1>Sortie</h1>
           <p class="ps-sub">Select a map, set the opposition, and go hunt the bandits. Watch your hull — they shoot back.</p>
@@ -520,7 +635,7 @@ export function PlaneSimPage(opts: {
           </div>
           <p class="ps-hint">Bandits fly a mix of all three types with their real quirks. Lower skill also means <strong>your guns hit harder</strong>. Switch skill anytime with <span class="ps-key">1</span> <span class="ps-key">2</span> <span class="ps-key">3</span>.</p>
           <div class="ps-menu-row">
-            <button type="button" class="ps-back-btn" data-menuback>‹ Hangar</button>
+            <button type="button" class="ps-back-btn" data-menuback>‹ Modes</button>
             <button type="button" class="ps-resume-btn" id="ps-takeoff">Take off ▸</button>
           </div>
         </div>
