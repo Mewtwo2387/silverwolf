@@ -182,6 +182,9 @@ export function PlaneSimPage(opts: {
     max-width: min(560px, 92vw); pointer-events: none;
   }
   #ps-tut-text { margin-top: 0.3rem; font-size: 0.95rem; font-weight: 700; color: var(--fog-100, #eef4f7); line-height: 1.4; }
+  #ps-tut-barwrap { margin-top: 0.45rem; height: 7px; border-radius: 99px; background: rgba(255,255,255,0.12); overflow: hidden; }
+  #ps-tut-bar { width: 0%; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #37b6ff, #6fe3ff); transition: width 90ms linear; }
+  #ps-tut-bar.ps-tut-bar-full { background: linear-gradient(90deg, #35d07f, #7df0b0); }
 
   /* Stunt score strip (top-centre, where the combat board usually sits). */
   #ps-stunt { left: 50%; top: 1.1rem; transform: translateX(-50%); text-align: center; display: flex; gap: 1.3rem; }
@@ -443,6 +446,7 @@ export function PlaneSimPage(opts: {
         <div class="ps-panel" id="ps-tut" style="display:none">
           <div class="ps-lbl">Lesson — <span id="ps-tut-name"></span> · step <span id="ps-tut-step"></span></div>
           <div id="ps-tut-text"></div>
+          <div id="ps-tut-barwrap"><div id="ps-tut-bar"></div></div>
         </div>
 
         <!-- Stunt score strip (shown only in stunt mode) -->
@@ -651,6 +655,7 @@ export function PlaneSimPage(opts: {
           <div class="ps-menu-row">
             <button type="button" class="ps-back-btn" data-hangar>‹ Hangar</button>
             <button type="button" class="ps-resume-btn" id="ps-end-again">Fly again (Space)</button>
+            <button type="button" class="ps-resume-btn" id="ps-end-next" style="display:none">Next lesson ›</button>
           </div>
         </div>
       </div>

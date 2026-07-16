@@ -155,10 +155,10 @@ import {
       map: 'coastal',
       outro: 'Wheels up and climbing — that’s a textbook departure.',
       steps: [
-        { text: 'Hold W to open the throttle to 100%', done: () => throttle > 0.95 },
+        { text: 'Hold W to open the throttle to 100%', done: () => throttle > 0.95, prog: () => throttle / 0.95 },
         { text: 'Let her roll — past ~100 kn ease the mouse up gently to lift off', done: () => !onGround && plane.position.y > 6, hold: 0.8 },
         { text: 'Press G to raise the undercarriage', done: () => !gearDown },
-        { text: 'Climb above 500 ft (150 m)', done: () => plane.position.y - TERRAIN.WATER_Y > 152 },
+        { text: 'Climb above 500 ft (150 m)', done: () => plane.position.y - TERRAIN.WATER_Y > 152, prog: () => (plane.position.y - TERRAIN.WATER_Y) / 152 },
       ],
     },
     controls: {
@@ -183,7 +183,14 @@ import {
       spawn: { x: 0, y: 320, z: 900, hdg: 0, speed: 115 },
       outro: 'Splash one! The lead diamond is the whole secret — trust it.',
       steps: [
-        { text: 'A bandit is ahead — the red blip on the radar. Close to 700 m', done: () => enemies.some((e) => e.alive && e.group.position.distanceTo(plane.position) < 700) },
+        {
+          text: 'A bandit is ahead — the red blip on the radar. Close to 700 m',
+          done: () => enemies.some((e) => e.alive && e.group.position.distanceTo(plane.position) < 700),
+          prog: () => {
+            const d = Math.min(...enemies.filter((e) => e.alive).map((e) => e.group.position.distanceTo(plane.position)), Infinity);
+            return Number.isFinite(d) ? (2500 - d) / (2500 - 700) : 0;
+          },
+        },
         { text: 'Lay the yellow lead diamond under your crosshair and fire with RMB', done: () => tut && tut.hitFlag },
         { text: 'Stay with him — splash him!', done: () => kills >= 1 },
       ],
@@ -195,7 +202,11 @@ import {
       spawn: { x: 950, y: 300, z: -3300, hdg: 0, speed: 110 },
       outro: 'Direct hit — down she goes. That’s the strike sorted.',
       steps: [
-        { text: 'The enemy carrier is dead ahead — run straight at the deck', done: () => Math.hypot(plane.position.x - OCEAN.ENEMY.x, plane.position.z - OCEAN.ENEMY.z) < 800 },
+        {
+          text: 'The enemy carrier is dead ahead — run straight at the deck',
+          done: () => Math.hypot(plane.position.x - OCEAN.ENEMY.x, plane.position.z - OCEAN.ENEMY.z) < 800,
+          prog: () => (1400 - Math.hypot(plane.position.x - OCEAN.ENEMY.x, plane.position.z - OCEAN.ENEMY.z)) / (1400 - 800),
+        },
         { text: 'Press B to drop — the bomb falls ahead of you, so pickle just before the deck', done: () => bombs < 2 },
         { text: 'Put one on the deck! (miss with both and you’ll be re-armed)', done: () => enemySinking > 0 },
       ],
@@ -624,9 +635,10 @@ import {
       obBox.push({
         x0: bx - len / 2, x1: bx + len / 2, z0: bz - 7.5, z1: bz + 7.5, top: 26, bot: 19.5, reason: 'Flew into a bridge',
       });
-      // Piers (mirror makeBridge's spacing).
+      // Piers + end abutments (mirror makeBridge's spacing).
       const n = Math.max(1, Math.round(len / 105) - 1);
       for (let i = 1; i <= n; i++) addCyl(bx - len / 2 + (len * i) / (n + 1), bz, 5.4, 24, 'Flew into a bridge pier');
+      for (const ex of [bx - len / 2 + 5, bx + len / 2 - 5]) addCyl(ex, bz, 8.5, 24, 'Flew into a bridge');
     }
   }());
 
@@ -1895,6 +1907,17 @@ import {
       }
       stats.innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
     }
+    // A finished lesson offers the next one directly from the card.
+    const nextBtn = el('ps-end-next');
+    if (nextBtn) {
+      const nextId = (win && gameMode === 'tutorial' && tut)
+        ? TUT_ORDER[TUT_ORDER.indexOf(tut.id) + 1] : null;
+      nextBtn.style.display = nextId ? '' : 'none';
+      if (nextId) {
+        nextBtn.textContent = `Next: ${TUT[nextId].label} ›`;
+        nextBtn.dataset.tutNext = nextId;
+      }
+    }
   }
   function hideEnd() {
     const ov = document.getElementById('ps-end');
@@ -2109,6 +2132,11 @@ import {
   // Fly-again from the end screen (button + click-anywhere), same as SPACE.
   const endOverlay = document.getElementById('ps-end');
   document.getElementById('ps-end-again')?.addEventListener('click', (ev) => { ev.stopPropagation(); respawn(); });
+  document.getElementById('ps-end-next')?.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    const id = ev.currentTarget.dataset.tutNext;
+    if (id) { hideEnd(); startTutorial(id); }
+  });
   endOverlay?.addEventListener('click', () => respawn());
 
   window.addEventListener('keydown', (e) => {
@@ -2746,6 +2774,7 @@ import {
   const tutNameEl = document.getElementById('ps-tut-name');
   const tutStepEl = document.getElementById('ps-tut-step');
   const tutTextEl = document.getElementById('ps-tut-text');
+  const tutBarEl = document.getElementById('ps-tut-bar');
   function updateTutHUD() {
     if (!tut || !tutTextEl) return;
     const n = tut.def.steps.length;
@@ -2753,6 +2782,16 @@ import {
     if (tutStepEl) tutStepEl.textContent = `${Math.min(tut.step + 1, n)} / ${n}`;
     const st = tut.def.steps[tut.step];
     tutTextEl.textContent = st ? st.text : '✔ Lesson complete';
+    setTutBar(0);
+  }
+  // Goal progress bar under the prompt: hold steps fill with time held, metric
+  // steps (climb / close distance / throttle) with the step's prog(), and
+  // plain on/off steps jump 0 → 100.
+  function setTutBar(frac) {
+    if (!tutBarEl) return;
+    const f = Math.max(0, Math.min(1, frac));
+    tutBarEl.style.width = `${(f * 100).toFixed(1)}%`;
+    tutBarEl.classList.toggle('ps-tut-bar-full', f >= 0.999);
   }
   function startTutorial(id) {
     const def = TUT[id];
@@ -2778,6 +2817,9 @@ import {
     if (!st) return;
     const ok = st.done();
     if (ok) tut.holdT += dt; else tut.holdT = 0;
+    if (st.hold) setTutBar(tut.holdT / st.hold);
+    else if (st.prog) setTutBar(ok ? 1 : st.prog());
+    else setTutBar(ok ? 1 : 0);
     if (ok && tut.holdT >= (st.hold || 0)) {
       tut.step++;
       tut.holdT = 0;

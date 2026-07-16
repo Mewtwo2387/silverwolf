@@ -1251,8 +1251,7 @@ export function makeBridge(len = 520, deckY = 30, botY = -30) {
       p.position.set(x, deckY + 0.6, sz * 4.9); g.add(p);
     }
   }
-  // Piers: tapered stone columns every ~105 m (none at the very ends — those
-  // sit on the banks).
+  // Piers: tapered stone columns every ~105 m.
   const pierH = deckY - 1.8 - botY;
   const pierGeo = new THREE.CylinderGeometry(3.2, 4.6, pierH, 10);
   const capGeo = new THREE.BoxGeometry(8.5, 1.4, 12.5);
@@ -1263,6 +1262,15 @@ export function makeBridge(len = 520, deckY = 30, botY = -30) {
     pier.position.set(x, botY + pierH / 2, 0); g.add(pier);
     const cap = new THREE.Mesh(capGeo, stone);
     cap.position.set(x, deckY - 2.2, 0); g.add(cap);
+  }
+  // End abutments: solid stone towers under both deck ends, running all the
+  // way down past botY — the span is grounded even where the bank falls away.
+  const abutH = pierH + 3;
+  const abutGeo = new THREE.BoxGeometry(12, abutH, 13);
+  for (const sx of [-1, 1]) {
+    const a = new THREE.Mesh(abutGeo, stone);
+    a.position.set(sx * (len / 2 - 5), botY - 3 + abutH / 2, 0);
+    g.add(a);
   }
   setShadows(g);
   g.userData.dims = { len, deckY, botY };
