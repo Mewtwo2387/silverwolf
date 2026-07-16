@@ -573,7 +573,7 @@ export function PlaneSimPage(opts: {
           </div>
           <div class="ps-map-tile" data-stunt="canyon">
             <div class="ps-tile-ico">🏔️</div>
-            <div><p class="ps-map-name">The Canyon</p><p class="ps-map-desc">Its own alpine map: dive into the gorge, follow the river below the rim, pull hard over the exit ridge. 23 rings.</p></div>
+            <div><p class="ps-map-name">The Canyon</p><p class="ps-map-desc">Its own alpine map: weave the gorge switchbacks slow and tight, sprint the straight, pull hard over the exit ridge. 30 rings.</p></div>
           </div>
           <div class="ps-map-tile" data-stunt="wavetop">
             <div class="ps-tile-ico">🌊</div>

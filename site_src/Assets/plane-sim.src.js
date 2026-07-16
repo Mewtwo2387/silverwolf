@@ -239,22 +239,30 @@ import {
     },
     canyon: {
       label: 'The Canyon',
-      desc: 'Dive into the gorge, stay under the rim down the river, then pull hard over the exit ridge.',
+      desc: 'Tight below the rim: weave the gorge switchbacks slow and nimble, sprint the straight, then pull hard over the exit ridge.',
       map: 'canyon',
       r: 24,
       spawn: {
         x: 0, y: 470, z: 4400, hdg: 0, speed: 120,
       },
       rings: [
-        // Down the gorge — floor ~-13 m, rims 280-470 m overhead (scouted
-        // offline against canyonHeight along CANYON.PATH).
-        [0, 20, 3400], [-75, 18, 2950], [-150, 18, 2500], [50, 18, 2050], [250, 16, 1600],
-        [0, 18, 1150], [-250, 18, 700], [-500, 18, 300], [-750, 18, -100], [-550, 18, -550],
-        [-350, 16, -1000], [0, 18, -1350], [350, 18, -1700], [750, 16, -1900], [1150, 16, -2100],
-        [1550, 16, -2250], [1950, 18, -2400], [2300, 16, -2700], [2650, 16, -3000], [2750, 16, -3450], [2850, 16, -3900],
-        // The gorge dead-ends into a ~620 m wall: pop up over the crest and
-        // finish skimming the summit.
-        [2950, 690, -4500, 30], [3080, 650, -4950],
+        // Down the gorge — rings follow CANYON.PATH (scouted offline: floor
+        // ~-13 m, rims 400-700 m, every corner walled against cutting).
+        // Tight r-20 hoops mark the sharp 60-90° corners; the entry reach,
+        // the two sweepers and the mid-course sprint stay wide and straight.
+        [0, 18, 3400], [0, 18, 2950], [0, 18, 2500],
+        [-400, 18, 2050, 20], [150, 16, 1750, 20], [-150, 16, 1550], [-450, 16, 1350, 20],
+        [-175, 18, 1175], [100, 17, 1000, 20],
+        [-350, 16, 600], [-750, 17, 150],
+        [-1150, 17, -200, 20], [-650, 17, -600, 20], [-1050, 16, -1000, 20],
+        [-750, 17, -1150], [-450, 17, -1300], [-50, 17, -1425],
+        [350, 16, -1550], [750, 16, -1725], [1150, 15, -1900], [1450, 17, -2025], [1750, 17, -2150],
+        [2200, 17, -2500, 20], [1900, 16, -2900, 20],
+        [2350, 17, -3250], [2600, 17, -3575], [2850, 16, -3900],
+        // The gorge dead-ends into a ~620 m wall: a guide ring marks the
+        // pull-up point on the face, then pop over the crest and finish
+        // skimming the summit. Build speed on the run-in — it's a zoom climb.
+        [2900, 420, -4150, 30], [2950, 690, -4500, 30], [3080, 665, -4950],
       ],
     },
     wavetop: {

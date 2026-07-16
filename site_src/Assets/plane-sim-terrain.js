@@ -76,9 +76,16 @@ export function forestMask(x, z) {
 // contract as terrainHeight: pure function of (x, z), shared with tooling.
 export const CANYON = {
   FLOOR: -16, // gorge floor sits below WATER_Y, so the shared water plane reads as a river
-  PATH: [ // gorge centreline, south portal to the north exit bowl
-    [0, 3400], [-150, 2500], [250, 1600], [-250, 700], [-750, -100],
-    [-350, -1000], [350, -1700], [1150, -2100], [1950, -2400], [2650, -3000], [2850, -3900],
+  PATH: [ // gorge centreline, south portal to the north exit bowl.
+    // Deliberate rhythm: a long straight entry, a tight S-weave, two medium
+    // sweepers, a hard switchback alley, one wide sprint, then twisties into
+    // the exit wall — slow-and-nimble beats fast-and-wide.
+    [0, 3400], [0, 2500],
+    [-400, 2050], [150, 1750], [-450, 1350], [100, 1000],
+    [-350, 600], [-750, 150],
+    [-1150, -200], [-650, -600], [-1050, -1000], [-450, -1300],
+    [350, -1550], [1150, -1900],
+    [1750, -2150], [2200, -2500], [1900, -2900], [2350, -3250], [2850, -3900],
   ],
 };
 function canyonDist(x, z) {
@@ -99,8 +106,11 @@ export function canyonHeight(x, z) {
   const r = 1 - Math.abs(2 * fbm(nx * 1.9 - 4.1, nz * 1.9 + 13.7, 4) - 1); // ridged [0,1]
   h += r * r * 380; // crests toward ~650
   const t = canyonDist(x, z);
-  const half = 110 + 70 * fbm(nx * 3.1 + 5.2, nz * 3.1 - 8.7, 3); // gorge half-width wobbles
-  const carve = 1 - smoothstep(half, half + 380, t);
+  // Narrow gorge + short wall run-out: the weave/switchback legs sit ~500 m
+  // apart, and this profile leaves a real ridge between them (no corner-cutting
+  // at deck height) while keeping the straights comfortably flyable.
+  const half = 90 + 50 * fbm(nx * 3.1 + 5.2, nz * 3.1 - 8.7, 3);
+  const carve = 1 - smoothstep(half, half + 240, t);
   const floor = CANYON.FLOOR + 5 * fbm(x * 0.002 + 1.1, z * 0.002 - 3.3, 2);
   return h + (floor - h) * carve;
 }
