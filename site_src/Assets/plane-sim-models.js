@@ -96,8 +96,8 @@ function makePropAssembly({
     const t1 = Math.min(1, (rootY + L) / discR);
     const g2 = ctx.createRadialGradient(64, 64, 6, 64, 64, 64);
     g2.addColorStop(Math.max(0, t0 - 0.04), `rgba(${rgb},0)`);
-    g2.addColorStop(t0, `rgba(${rgb},0.30)`);
-    g2.addColorStop(t1 - 0.02, `rgba(${rgb},0.30)`);
+    g2.addColorStop(t0, `rgba(${rgb},0.62)`);
+    g2.addColorStop(t1 - 0.02, `rgba(${rgb},0.62)`);
     g2.addColorStop(t1, `rgba(${rgb},0)`);
     ctx.fillStyle = g2;
     ctx.fillRect(0, 0, 128, 128);
@@ -112,6 +112,7 @@ function makePropAssembly({
     }),
   );
   propDisc.position.z = zBlades;
+  propDisc.renderOrder = 9; // above the transparent water plane, like the stunt rings
   propDisc.visible = false;
   prop.add(propDisc);
   return { prop, blades, propDisc };
