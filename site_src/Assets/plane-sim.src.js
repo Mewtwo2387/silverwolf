@@ -2957,6 +2957,10 @@ import {
           color: 0x22d3ff, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide, fog: false,
         }),
       );
+      // Draw after the (transparent, depthWrite-off) water plane — otherwise
+      // the sorter can paint water over the hoop and wash out its lower arc.
+      back.renderOrder = 10;
+      core.renderOrder = 11;
       mesh.add(back);
       mesh.add(core);
       mesh.position.set(x, y, z);
@@ -2972,6 +2976,7 @@ import {
     beacon = new THREE.Sprite(new THREE.SpriteMaterial({
       map: beaconTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.75,
     }));
+    beacon.renderOrder = 12; // above the water plane, like the rings
     beacon.scale.set(26, 470, 1);
     ringGroup.add(beacon);
     highlightRing();
