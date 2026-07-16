@@ -571,9 +571,9 @@ export function PlaneSimPage(opts: {
             <div class="ps-tile-ico">🌉</div>
             <div><p class="ps-map-name">Valley Run</p><p class="ps-map-desc">Low through the central valley and UNDER two road bridges. 31 rings.</p></div>
           </div>
-          <div class="ps-map-tile" data-stunt="peaks">
-            <div class="ps-tile-ico">⛰️</div>
-            <div><p class="ps-map-name">Peak Pass</p><p class="ps-map-desc">Climb over the south-east ridge country and dive back down the far slope. 21 rings.</p></div>
+          <div class="ps-map-tile" data-stunt="canyon">
+            <div class="ps-tile-ico">🏔️</div>
+            <div><p class="ps-map-name">The Canyon</p><p class="ps-map-desc">Its own alpine map: dive into the gorge, follow the river below the rim, pull hard over the exit ridge. 23 rings.</p></div>
           </div>
           <div class="ps-map-tile" data-stunt="wavetop">
             <div class="ps-tile-ico">🌊</div>

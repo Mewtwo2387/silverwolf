@@ -32,7 +32,7 @@ import {
   makeCarrier, makeBomb, mountWingBombs, CARRIER, makeBridge,
 } from './plane-sim-models.js';
 import {
-  TERRAIN, terrainHeight, forestMask, buildTerrain, buildWater, smoothstep, fbm,
+  TERRAIN, terrainHeight, canyonHeight, forestMask, buildTerrain, buildWater, smoothstep, fbm,
 } from './plane-sim-terrain.js';
 
 (() => {
@@ -237,18 +237,24 @@ import {
         [250, 44, 900], [300, 45, 500], [250, 45, 150], [200, 45, -200],
       ],
     },
-    peaks: {
-      label: 'Peak Pass',
-      desc: 'Up over the south-east ridge country and back down the far slope.',
-      map: 'coastal',
-      r: 30,
-      spawn: { x: 700, y: 70, z: 2200, hdg: 7, speed: 110 },
+    canyon: {
+      label: 'The Canyon',
+      desc: 'Dive into the gorge, stay under the rim down the river, then pull hard over the exit ridge.',
+      map: 'canyon',
+      r: 24,
+      spawn: {
+        x: 0, y: 470, z: 4400, hdg: 0, speed: 120,
+      },
       rings: [
-        [800, 46, 1300], [1200, 43, 1700], [1600, 43, 2100], [2050, 43, 2350], [2500, 43, 2600],
-        [2950, 71, 2750], [3400, 133, 2900], [3800, 323, 2700], [4200, 437, 2500],
-        [4400, 400, 2050], [4600, 385, 1600], [4450, 292, 1150], [4300, 289, 700],
-        [3900, 268, 450], [3500, 169, 200], [3050, 104, 250], [2600, 43, 300],
-        [2150, 43, 500], [1700, 43, 700], [1300, 43, 650], [900, 50, 600],
+        // Down the gorge — floor ~-13 m, rims 280-470 m overhead (scouted
+        // offline against canyonHeight along CANYON.PATH).
+        [0, 20, 3400], [-75, 18, 2950], [-150, 18, 2500], [50, 18, 2050], [250, 16, 1600],
+        [0, 18, 1150], [-250, 18, 700], [-500, 18, 300], [-750, 18, -100], [-550, 18, -550],
+        [-350, 16, -1000], [0, 18, -1350], [350, 18, -1700], [750, 16, -1900], [1150, 16, -2100],
+        [1550, 16, -2250], [1950, 18, -2400], [2300, 16, -2700], [2650, 16, -3000], [2750, 16, -3450], [2850, 16, -3900],
+        // The gorge dead-ends into a ~620 m wall: pop up over the crest and
+        // finish skimming the summit.
+        [2950, 690, -4500, 30], [3080, 650, -4950],
       ],
     },
     wavetop: {
@@ -265,7 +271,7 @@ import {
       ],
     },
   };
-  const STUNT_ORDER = ['valley', 'peaks', 'wavetop'];
+  const STUNT_ORDER = ['valley', 'canyon', 'wavetop'];
 
   // ---- Flyable aircraft: the catalogue (label / blurb / stat block) lives in
   //      plane-sim-models.js (PLANE_INFO) so the game and the inspector share
@@ -423,6 +429,27 @@ import {
   landGroup.add(buildTerrain(renderer));
   const waterMesh = buildWater();
   scene.add(waterMesh);
+
+  // The Canyon map (stunt-only): one alpine gorge world, nothing but terrain —
+  // the shared water plane reads as the river along its sunken floor. Lower
+  // rock/snow bands sell the high-mountain look.
+  const canyonGroup = new THREE.Group();
+  canyonGroup.visible = false;
+  scene.add(canyonGroup);
+  // Built lazily on first entry: the gorge is only ~250 m wide, so this mesh
+  // is much finer than the coastal map's (22 m/vertex) — too slow to build at
+  // page load for a world most sessions never visit.
+  let canyonBuilt = false;
+  function ensureCanyon() {
+    if (canyonBuilt) return;
+    canyonBuilt = true;
+    canyonGroup.add(buildTerrain(renderer, canyonHeight, {
+      rockA: 180, rockB: 330, snowA: 380, snowB: 520, segs: 620, sand: 0.35,
+    }));
+    // Cool fill light so the shaded wall reads as blue-grey rock instead of
+    // pitch black (only lights the scene while the canyon is visible).
+    canyonGroup.add(new THREE.HemisphereLight(0xbdd4ee, 0x46503e, 0.55));
+  }
 
   // ---- Obstacle registry for collision. Solid scenery registers a simple
   //      volume here — a vertical cylinder {x,z,r,top} (trees, rocks, poles,
@@ -1051,7 +1078,10 @@ import {
   // on the flattened airfield disc, so the runway Just Works). On the Ocean
   // map the "ground" is the seabed — everywhere is over water, and the carrier
   // decks are handled separately (carrierDeckAt).
-  const groundAt = (x, z) => (mapName === 'ocean' ? OCEAN.FLOOR : terrainHeight(x, z));
+  const groundAt = (x, z) => {
+    if (mapName === 'ocean') return OCEAN.FLOOR;
+    return mapName === 'canyon' ? canyonHeight(x, z) : terrainHeight(x, z);
+  };
 
   // Velocity-vector "grip" + coordinated bank-to-turn — the arcade trick that
   // stops a plane sliding sideways. The velocity DIRECTION is eased toward where
@@ -1954,8 +1984,10 @@ import {
   // tutorial/stunt chapters borrow whichever map they need.
   function applyWorld(name) {
     mapName = name;
+    if (name === 'canyon') ensureCanyon();
     landGroup.visible = name === 'coastal';
     oceanGroup.visible = name === 'ocean';
+    canyonGroup.visible = name === 'canyon';
   }
   // Map picker (sortie chapter screen). Switching worlds re-parks the aircraft
   // on the new map's deck/runway and resets the engagement; remembered.
@@ -2080,6 +2112,11 @@ import {
   }
   function startSortie() {
     clearSpecialModes();
+    if (!validMap(mapName)) { // a stunt map (canyon) may still be applied
+      let saved = 'coastal';
+      try { const m = localStorage.getItem('ps-map'); if (validMap(m)) saved = m; } catch (_) { /* private mode */ }
+      applyWorld(saved);
+    }
     setMenu(null);
     respawnBase();
     started = true;
@@ -2514,7 +2551,7 @@ import {
       mapCtx.moveTo(-px * s, (-CFG.RUNWAY_LEN / 2 - pz) * s);
       mapCtx.lineTo(-px * s, (CFG.RUNWAY_LEN / 2 - pz) * s);
       mapCtx.stroke();
-    } else {
+    } else if (mapName === 'ocean') {
       // carriers: little deck rectangles (white = yours, red = the target).
       // The enemy carrier is usually far beyond radar range — pin a hollow
       // square to the rim in its direction so the strike leg is navigable.
@@ -2870,15 +2907,19 @@ import {
     if (!stunt) return;
     for (const r of stunt.rings) {
       ringGroup.remove(r.mesh);
-      r.mesh.geometry.dispose();
-      r.mesh.material.dispose();
+      for (const c of r.mesh.children) { c.geometry.dispose(); c.material.dispose(); }
     }
     if (beacon) { ringGroup.remove(beacon); beacon.material.dispose(); beacon = null; }
     stunt = null;
   }
   function highlightRing() {
-    for (let i = stunt.i; i < stunt.rings.length; i++) {
-      stunt.rings[i].mesh.material.opacity = i === stunt.i ? 0.95 : 0.3;
+    for (let i = 0; i < stunt.rings.length; i++) {
+      const r = stunt.rings[i];
+      r.mesh.visible = i >= stunt.i; // passed rings vanish
+      const active = i === stunt.i;
+      r.core.opacity = active ? 1 : 0.55;
+      r.core.color.setHex(active ? 0x35e6ff : 0x1d97bd);
+      r.back.opacity = active ? 0.85 : 0.6;
     }
     const cur = stunt.rings[stunt.i];
     if (beacon) {
@@ -2900,17 +2941,29 @@ import {
       const p = def.rings[Math.max(0, i - 1)];
       const nx = def.rings[Math.min(def.rings.length - 1, i + 1)];
       const n = new THREE.Vector3(nx[0] - p[0], nx[1] - p[1], nx[2] - p[2]).normalize();
-      const mesh = new THREE.Mesh(
-        new THREE.TorusGeometry(r, 1.5, 8, 40),
+      // Two concentric hoops, normal blending: a dark backing ring so the
+      // hoop still reads against bright sea/sky (additive cyan vanished
+      // there), with the bright core on top.
+      const mesh = new THREE.Group();
+      const back = new THREE.Mesh(
+        new THREE.TorusGeometry(r, 2.8, 8, 40),
         new THREE.MeshBasicMaterial({
-          color: 0x22d3ff, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+          color: 0x062733, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide, fog: false,
         }),
       );
+      const core = new THREE.Mesh(
+        new THREE.TorusGeometry(r, 1.4, 8, 40),
+        new THREE.MeshBasicMaterial({
+          color: 0x22d3ff, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide, fog: false,
+        }),
+      );
+      mesh.add(back);
+      mesh.add(core);
       mesh.position.set(x, y, z);
       mesh.lookAt(x + n.x, y + n.y, z + n.z);
       ringGroup.add(mesh);
       return {
-        pos: new THREE.Vector3(x, y, z), n, r, mesh,
+        pos: new THREE.Vector3(x, y, z), n, r, mesh, core: core.material, back: back.material,
       };
     });
     stunt = {
@@ -2959,14 +3012,12 @@ import {
           const bulls = off <= cur.r * 0.5;
           stunt.score += bulls ? 150 : 100;
           stunt.hits++;
-          cur.mesh.material.color.set(0x37d67a);
-          cur.mesh.material.opacity = 0.22;
+          cur.core.color.set(0x37d67a);
           audio.hit();
           toast(bulls ? '◎ BULLSEYE +150' : '○ RING +100', 900);
           advanceRing();
         } else if (off <= cur.r * 4) { // flew past it -> forfeited
-          cur.mesh.material.color.set(0xff5d6c);
-          cur.mesh.material.opacity = 0.16;
+          cur.core.color.set(0xff5d6c);
           toast('✕ MISSED RING', 900);
           advanceRing();
         }
@@ -3097,7 +3148,10 @@ import {
         groundAt(plane.position.x, plane.position.z + ee) - groundAt(plane.position.x, plane.position.z - ee),
       ) / (2 * ee);
       if (started && !crashed) {
-        if (overWater) crash(mapName === 'ocean' ? 'Ditched in the sea' : 'Ditched in the lake');
+        if (overWater) {
+          crash(mapName === 'ocean' ? 'Ditched in the sea'
+            : (mapName === 'canyon' ? 'Ditched in the river' : 'Ditched in the lake'));
+        }
         else if (slope > 0.25) crash('Flew into terrain');
         else if (impactV > 14 || (impactV > 5 && !gearDown)) {
           crash(gearDown ? 'Hard landing' : 'Belly flop — gear up!');

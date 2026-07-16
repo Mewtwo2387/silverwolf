@@ -70,6 +70,41 @@ export function forestMask(x, z) {
   return fbm(x * 0.0006 + 51.7, z * 0.0006 - 23.4, 3);
 }
 
+// ---- The Canyon map --------------------------------------------------------
+// A high alpine plateau split by one deep winding gorge with a river along its
+// floor — the Stunt Circuit's low-level canyon run. Same deterministic
+// contract as terrainHeight: pure function of (x, z), shared with tooling.
+export const CANYON = {
+  FLOOR: -16, // gorge floor sits below WATER_Y, so the shared water plane reads as a river
+  PATH: [ // gorge centreline, south portal to the north exit bowl
+    [0, 3400], [-150, 2500], [250, 1600], [-250, 700], [-750, -100],
+    [-350, -1000], [350, -1700], [1150, -2100], [1950, -2400], [2650, -3000], [2850, -3900],
+  ],
+};
+function canyonDist(x, z) {
+  const P = CANYON.PATH;
+  let m = Infinity;
+  for (let i = 0; i < P.length - 1; i++) {
+    const ax = P[i][0]; const az = P[i][1];
+    const bx = P[i + 1][0] - ax; const bz = P[i + 1][1] - az;
+    const t = Math.min(1, Math.max(0, ((x - ax) * bx + (z - az) * bz) / (bx * bx + bz * bz)));
+    const dx = x - ax - bx * t; const dz = z - az - bz * t;
+    m = Math.min(m, dx * dx + dz * dz);
+  }
+  return Math.sqrt(m);
+}
+export function canyonHeight(x, z) {
+  const nx = x * 0.00016; const nz = z * 0.00016;
+  let h = 230 + (fbm(nx + 11.3, nz + 7.9, 5) - 0.45) * 300; // plateau, ~120–340
+  const r = 1 - Math.abs(2 * fbm(nx * 1.9 - 4.1, nz * 1.9 + 13.7, 4) - 1); // ridged [0,1]
+  h += r * r * 380; // crests toward ~650
+  const t = canyonDist(x, z);
+  const half = 110 + 70 * fbm(nx * 3.1 + 5.2, nz * 3.1 - 8.7, 3); // gorge half-width wobbles
+  const carve = 1 - smoothstep(half, half + 380, t);
+  const floor = CANYON.FLOOR + 5 * fbm(x * 0.002 + 1.1, z * 0.002 - 3.3, 2);
+  return h + (floor - h) * carve;
+}
+
 // ---- Terrain mesh with vertex colours -------------------------------------
 const C_SAND = new THREE.Color(0x9f9066);
 const C_GRASS_LO = new THREE.Color(0x4e6c2e);
@@ -81,22 +116,27 @@ const C_SNOW = new THREE.Color(0xe9edf2);
 const _c = new THREE.Color();
 const _c2 = new THREE.Color();
 
-export function buildTerrain(renderer) {
-  const { SIZE, SEGS, WATER_Y } = TERRAIN;
-  const geo = new THREE.PlaneGeometry(SIZE, SIZE, SEGS, SEGS);
+// hf: the height function to mesh (defaults to the coastal map); opts moves
+// the rock/snow colour bands for maps with different reliefs.
+export function buildTerrain(renderer, hf = terrainHeight, opts = {}) {
+  const {
+    rockA = 300, rockB = 430, snowA = 470, snowB = 560, segs = TERRAIN.SEGS, sand = 1,
+  } = opts;
+  const { SIZE, WATER_Y } = TERRAIN;
+  const geo = new THREE.PlaneGeometry(SIZE, SIZE, segs, segs);
   geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position;
   const colors = new Float32Array(pos.count * 3);
 
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i); const z = pos.getZ(i);
-    const h = terrainHeight(x, z);
+    const h = hf(x, z);
     pos.setY(i, h);
 
     // Slope from finite differences (drives the rock band on steep faces).
     const e = 22;
-    const dhx = terrainHeight(x + e, z) - terrainHeight(x - e, z);
-    const dhz = terrainHeight(x, z + e) - terrainHeight(x, z - e);
+    const dhx = hf(x + e, z) - hf(x - e, z);
+    const dhz = hf(x, z + e) - hf(x, z - e);
     const slope = Math.hypot(dhx, dhz) / (2 * e);
 
     // Base grass, patchy via low-frequency noise; darker "forest floor" blotches.
@@ -106,14 +146,14 @@ export function buildTerrain(renderer) {
     _c.lerp(C_FOREST, forest * 0.75);
 
     // Shoreline sand just above the waterline.
-    const sand = 1 - smoothstep(WATER_Y + 1.5, WATER_Y + 9, h);
-    _c.lerp(C_SAND, sand);
+    const sandBand = (1 - smoothstep(WATER_Y + 1.5, WATER_Y + 9, h)) * sand;
+    _c.lerp(C_SAND, sandBand);
 
     // Rock on steep faces and at altitude, then snow-capped peaks.
     _c2.copy(C_ROCK).lerp(C_ROCK_DK, patch);
     _c.lerp(_c2, smoothstep(0.42, 0.75, slope));
-    _c.lerp(_c2, smoothstep(300, 430, h));
-    _c.lerp(C_SNOW, smoothstep(470, 560, h) * (1 - smoothstep(0.9, 1.3, slope)));
+    _c.lerp(_c2, smoothstep(rockA, rockB, h));
+    _c.lerp(C_SNOW, smoothstep(snowA, snowB, h) * (1 - smoothstep(0.9, 1.3, slope)));
 
     colors[i * 3] = _c.r; colors[i * 3 + 1] = _c.g; colors[i * 3 + 2] = _c.b;
   }
