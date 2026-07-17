@@ -197,6 +197,20 @@ All wrongs reserved.
   }
 
   async processInteraction(interaction: any): Promise<void> {
+    if (interaction.isAutocomplete && interaction.isAutocomplete()) {
+      try {
+        // Resolve to the subcommand when the top-level entry is a group.
+        let cmd = this.commands.get(interaction.commandName);
+        let sub: string | null = null;
+        try { sub = interaction.options.getSubcommand(false); } catch { sub = null; }
+        if (sub) cmd = this.commands.get(`${interaction.commandName}.${sub}`) || cmd;
+        if (cmd && typeof cmd.autocomplete === 'function') await cmd.autocomplete(interaction);
+        else await interaction.respond([]);
+      } catch (error) {
+        logError('Error processing autocomplete:', error);
+      }
+      return;
+    }
     if (interaction.isCommand()) {
       if (!interaction.guild) {
         await interaction.reply('commands can only be used in servers.');

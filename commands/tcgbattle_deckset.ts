@@ -18,11 +18,12 @@ class TcgbattleDeckset extends Command {
   constructor(client: any) {
     super(client, 'deckset', 'Set how many copies of an item are in your deck', [
       {
+        // The catalog exceeds Discord's 25-choice cap, so use autocomplete instead.
         name: 'item',
-        description: 'Which item to adjust',
+        description: 'Which item to adjust (type to search)',
         type: 3,
         required: true,
-        choices: ITEM_DISCORD_CHOICES,
+        autocomplete: true,
       },
       {
         name: 'count',
@@ -33,6 +34,15 @@ class TcgbattleDeckset extends Command {
         max_value: PER_CARD_MAX,
       },
     ], { isSubcommandOf: 'tcgbattle', blame: 'ei', ephemeral: true });
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  async autocomplete(interaction: any): Promise<void> {
+    const focused = String(interaction.options.getFocused() || '').toLowerCase();
+    const matches = ITEM_DISCORD_CHOICES
+      .filter((c) => !focused || c.name.toLowerCase().includes(focused) || c.value.toLowerCase().includes(focused))
+      .slice(0, 25);
+    try { await interaction.respond(matches); } catch { /* interaction expired */ }
   }
 
   async run(interaction: any): Promise<void> {
@@ -48,23 +58,14 @@ class TcgbattleDeckset extends Command {
     const previous = composition[itemId] ?? 0;
     composition[itemId] = count;
 
-    const validation = validateDeckComposition(composition);
-    if (!validation.ok) {
-      const text = formatDeckComposition(composition);
-      await interaction.editReply([
-        `Did not save: ${validation.reason}`,
-        '',
-        text,
-        '',
-        `_Tip: previous count for **${item.name}** was ${previous}._`,
-      ].join('\n').slice(0, 1900));
-      return;
-    }
-
+    // Illegal intermediate states save fine (matches the website): legality is only
+    // enforced when a battle starts, so decks can be restructured step by step.
     await saveDeckCompositionForUser(this.client.db, interaction.user.id, composition);
+    const validation = validateDeckComposition(composition);
     const text = formatDeckComposition(composition);
     await interaction.editReply([
       `Saved: **${item.name}** is now ${count}× in your deck (was ${previous}×).`,
+      ...(validation.ok ? [] : [`⚠️ Deck is currently illegal: ${validation.reason} Battles will use the default deck until it's fixed.`]),
       '',
       text,
     ].join('\n').slice(0, 1900));

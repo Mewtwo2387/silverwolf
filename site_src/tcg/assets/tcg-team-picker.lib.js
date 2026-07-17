@@ -49,7 +49,8 @@ function charArtUrl(slug) {
 
 /**
  * @param {{ defaults?: string[], onChange?: (team: string[]) => void }} opts
- * @returns {{ getTeam: () => string[], isComplete: () => boolean } | null}
+ * @returns {{ getTeam: () => string[], isComplete: () => boolean,
+ *            setTeam: (values: string[]) => void } | null}
  */
 export function setupTeamPicker(opts) {
   opts = opts || {};
@@ -92,6 +93,17 @@ export function setupTeamPicker(opts) {
   function removeAt(i) {
     if (i < 0 || i >= team.length) return;
     team.splice(i, 1);
+    renderSlots();
+    renderGridState();
+    notify();
+  }
+
+  /** Replace the whole selection (e.g. loading a saved team). Unknown values are dropped. */
+  function setTeam(values) {
+    team.length = 0;
+    for (const v of (Array.isArray(values) ? values : [])) {
+      if (team.length < TEAM_SIZE && byValue[v]) team.push(v);
+    }
     renderSlots();
     renderGridState();
     notify();
@@ -242,5 +254,5 @@ export function setupTeamPicker(opts) {
   renderGridState();
   notify();
 
-  return { getTeam, isComplete };
+  return { getTeam, isComplete, setTeam };
 }

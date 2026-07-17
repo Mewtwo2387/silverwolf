@@ -6,11 +6,13 @@ import {
   type AppEnv, authedGameRequest, navUser, readGameBody,
 } from '../shared';
 import {
-  TcgBattleLandingPage,
-  type TcgActiveRoomBrief,
-  type TcgRoster,
+  TcgBrowsePage,
+  TcgCreatePage,
+  type TcgBrowseRoom,
+  type TcgHistoryEntry,
 } from './pages/landing';
 import { TcgBattleRoomPage, TcgBattleJoinPage } from './pages/room';
+import { TcgMatchDetailPage } from './pages/match';
 import {
   TcgDeckBuilderPage,
   type DeckBuilderItem,
@@ -21,7 +23,7 @@ import {
   type TcgMode,
 } from './rooms';
 import { createTcgWsEvents } from './ws';
-import { buildTeamOfThree, CHARACTER_ROSTER_DISCORD_CHOICES } from '../../tcg/characterRoster';
+import { buildTeamOfThree, characterFromRosterValue } from '../../tcg/characterRoster';
 import { CHARACTERS } from '../../tcg/characters';
 import { buildCharacterCatalog } from './pages/detail';
 import {
@@ -37,10 +39,16 @@ import {
 } from '../../tcg/items';
 import { DECK_SIZE } from '../../tcg/battle';
 import { loadDeckCompositionForUser, saveDeckCompositionForUser } from '../../tcg/deckStorage';
+import {
+  loadTeamState,
+  setActiveSlot,
+  updateSlotLineup,
+  TEAM_SLOT_COUNT,
+  type TcgTeamState,
+} from '../../tcg/teamSlotStorage';
 
 const LANDING_PATH = '/games/tcg';
 
-const ROSTER: TcgRoster[] = CHARACTER_ROSTER_DISCORD_CHOICES.map((c) => ({ value: c.value, name: c.name }));
 const CHARACTER_CATALOG = buildCharacterCatalog(CHARACTERS);
 
 const DECK_BUILDER_ITEMS: DeckBuilderItem[] = [...ALL_ITEMS]
@@ -60,11 +68,36 @@ const DECK_CAPS = {
   fourStarMax: DECK_MAX_FOUR_STAR_OR_ABOVE,
 };
 
-function parseTeam(raw: unknown): [string, string, string] | null {
-  if (!Array.isArray(raw) || raw.length !== 3) return null;
-  const vals = raw.map((v) => (typeof v === 'string' ? v : ''));
-  if (vals.some((v) => !v)) return null;
-  return [vals[0], vals[1], vals[2]];
+/** A partial lineup (0..3 known roster values) as sent by the slot auto-save. */
+function parseLineup(raw: unknown): string[] | null {
+  if (!Array.isArray(raw) || raw.length > 3) return null;
+  const vals: string[] = [];
+  for (const v of raw) {
+    if (typeof v !== 'string' || !characterFromRosterValue(v)) return null;
+    vals.push(v);
+  }
+  return vals;
+}
+
+/** Client-facing view of the slot state (lineups + deck size/legality; deck contents stay server-side). */
+function teamStateBrief(state: TcgTeamState) {
+  return {
+    active: state.active,
+    deckSize: DECK_SIZE,
+    slots: state.slots.map((s) => ({
+      team: s.team,
+      // null deck = the default deck: full and always legal.
+      deckCount: s.deck ? Object.values(s.deck).reduce((sum, n) => sum + n, 0) : DECK_SIZE,
+      deckLegal: s.deck ? isLegalDeck(s.deck) : true,
+    })),
+  };
+}
+
+/** The active slot's team, rebuilt server-side — every battle plays from a slot. */
+function activeSlotTeam(state: TcgTeamState) {
+  const vals = state.slots[state.active].team;
+  if (vals.length !== 3) return null;
+  return buildTeamOfThree(vals[0], vals[1], vals[2]);
 }
 
 export function registerTcgBattleRoutes(
@@ -74,7 +107,7 @@ export function registerTcgBattleRoutes(
 ) {
   tcgRoomManager.init(silverwolf);
 
-  // ── Landing ───────────────────────────────────────────────────────────────
+  // ── Browse (default): all in-progress battles + recent match history ────────
   app.get(LANDING_PATH, async (c) => {
     const user = c.get('user');
     const nav = navUser(c);
@@ -83,47 +116,40 @@ export function registerTcgBattleRoutes(
 
     if (!user) {
       return c.html(
-        TcgBattleLandingPage({
-          nonce,
-          lv999,
-          user: nav,
-          csrf: null,
-          roster: ROSTER,
-          characterCatalog: CHARACTER_CATALOG,
-          deckLegal: false,
-          activeRooms: [],
-          loginReturnPath: LANDING_PATH,
+        TcgBrowsePage({
+          nonce, lv999, user: nav, rooms: [], history: [], loginReturnPath: LANDING_PATH,
         }).toString(),
       );
     }
 
-    const composition = await loadDeckCompositionForUser(silverwolf.db, user.discordId);
-    const deckLegal = isLegalDeck(composition);
-    const rooms = tcgRoomManager.listForUser(user.discordId);
-    const briefs: TcgActiveRoomBrief[] = rooms.map((r) => {
-      const youAreCreator = r.creatorDiscordId === user.discordId;
-      const other = youAreCreator ? r.p2 : r.p1;
-      const opp = (other && other.discordId !== user.discordId) ? other.username : null;
-      return {
-        id: r.id,
-        mode: r.mode,
-        status: r.status,
-        opponentUsername: opp,
-        youAreCreator,
-      };
-    });
+    const rooms: TcgBrowseRoom[] = tcgRoomManager.listActive().map((r) => ({
+      id: r.id,
+      mode: r.mode,
+      status: r.status,
+      p1: r.p1?.username ?? null,
+      p2: r.mode === 'solo' ? (r.p1?.username ?? null) : (r.p2?.username ?? null),
+      spectators: r.spectators.size,
+      you: r.creatorDiscordId === user.discordId
+        || r.p1?.discordId === user.discordId
+        || r.p2?.discordId === user.discordId,
+      openLobby: r.mode === 'pvp' && r.status === 'lobby' && !r.p2,
+    }));
+
+    const historyRows = await silverwolf.db.tcgMatch.getRecent(40);
+    const history: TcgHistoryEntry[] = historyRows.map((row: Record<string, any>) => ({
+      id: row.id,
+      mode: row.mode === 'solo' ? 'solo' : 'pvp',
+      p1: row.p1Username,
+      p2: row.p2Username,
+      winner: row.winner ?? null,
+      endReason: row.endReason,
+      rounds: row.rounds,
+      endedAt: row.endedAt,
+    }));
 
     return c.html(
-      TcgBattleLandingPage({
-        nonce,
-        lv999,
-        user: nav,
-        csrf: user.csrfToken,
-        roster: ROSTER,
-        characterCatalog: CHARACTER_CATALOG,
-        deckLegal,
-        activeRooms: briefs,
-        loginReturnPath: LANDING_PATH,
+      TcgBrowsePage({
+        nonce, lv999, user: nav, rooms, history, loginReturnPath: LANDING_PATH,
       }).toString(),
     );
   });
@@ -138,10 +164,10 @@ export function registerTcgBattleRoutes(
     const mode: TcgMode | null = (modeRaw === 'pvp' || modeRaw === 'solo') ? modeRaw : null;
     if (!mode) return c.json({ ok: false, error: 'Pick a valid mode.' }, 400);
 
-    const teamVals = parseTeam(body!.team);
-    if (!teamVals) return c.json({ ok: false, error: 'Pick three characters.' }, 400);
-    const team = buildTeamOfThree(teamVals[0], teamVals[1], teamVals[2]);
-    if (!team) return c.json({ ok: false, error: 'Unknown character selected.' }, 400);
+    // Battles always play from the active team slot (the client edits it in place).
+    const state = await loadTeamState(silverwolf.db, auth.discordId);
+    const team = activeSlotTeam(state);
+    if (!team) return c.json({ ok: false, error: 'Your active team slot needs three characters.' }, 400);
 
     const composition = await loadDeckCompositionForUser(silverwolf.db, auth.discordId);
     if (!isLegalDeck(composition)) {
@@ -172,10 +198,9 @@ export function registerTcgBattleRoutes(
     if (auth instanceof Response) return auth;
 
     const matchId = c.req.param('id');
-    const teamVals = parseTeam(body!.team);
-    if (!teamVals) return c.json({ ok: false, error: 'Pick three characters.' }, 400);
-    const team = buildTeamOfThree(teamVals[0], teamVals[1], teamVals[2]);
-    if (!team) return c.json({ ok: false, error: 'Unknown character selected.' }, 400);
+    const state = await loadTeamState(silverwolf.db, auth.discordId);
+    const team = activeSlotTeam(state);
+    if (!team) return c.json({ ok: false, error: 'Your active team slot needs three characters.' }, 400);
 
     const composition = await loadDeckCompositionForUser(silverwolf.db, auth.discordId);
     if (!isLegalDeck(composition)) {
@@ -260,16 +285,161 @@ export function registerTcgBattleRoutes(
       if (n > 0) composition[id] = n;
     }
 
-    const validation = validateDeckComposition(composition);
-    if (!validation.ok) return c.json({ ok: false, error: validation.reason }, 400);
-
+    // Illegal compositions save fine — legality is display-only (red badge) and only
+    // enforced when a battle starts. Per-item whitelisting above still applies.
     try {
       await saveDeckCompositionForUser(silverwolf.db, auth.discordId, composition);
     } catch (err) {
       logError('tcg deck save failed:', err);
       return c.json({ ok: false, error: 'Failed to save deck.' }, 500);
     }
+    return c.json({ ok: true, deckLegal: validateDeckComposition(composition).ok });
+  });
+
+  // ── Team slots: five saved lineup+deck loadouts; battles use the active one ──
+  // Switch the active slot; responds with its lineup + deck legality so the picker
+  // and deck badge can update in place.
+  app.post('/games/tcg/teams/select', async (c) => {
+    const body = await readGameBody(c);
+    const auth = authedGameRequest(c, body);
+    if (auth instanceof Response) return auth;
+
+    const idx = typeof body!.slot === 'number' ? Math.trunc(body!.slot) : Number.NaN;
+    if (!Number.isInteger(idx) || idx < 0 || idx >= TEAM_SLOT_COUNT) {
+      return c.json({ ok: false, error: 'Invalid slot.' }, 400);
+    }
+    const state = await setActiveSlot(silverwolf.db, auth.discordId, idx);
+    // Judge legality from the slot's own deck (no second state load); a missing deck
+    // means the default deck, which is always legal.
+    const slotDeck = state.slots[state.active].deck;
+    return c.json({
+      ok: true,
+      active: state.active,
+      team: state.slots[state.active].team,
+      deckLegal: slotDeck ? isLegalDeck(slotDeck) : true,
+    });
+  });
+
+  // Auto-save a slot's lineup as the picker changes (partial teams allowed).
+  // Slot-explicit so a fast slot switch can't misattribute a debounced save.
+  app.post('/games/tcg/teams/lineup', async (c) => {
+    const body = await readGameBody(c);
+    const auth = authedGameRequest(c, body);
+    if (auth instanceof Response) return auth;
+
+    const idx = typeof body!.slot === 'number' ? Math.trunc(body!.slot) : Number.NaN;
+    if (!Number.isInteger(idx) || idx < 0 || idx >= TEAM_SLOT_COUNT) {
+      return c.json({ ok: false, error: 'Invalid slot.' }, 400);
+    }
+    const team = parseLineup(body!.team);
+    if (!team) return c.json({ ok: false, error: 'Invalid team.' }, 400);
+    await updateSlotLineup(silverwolf.db, auth.discordId, idx, team);
     return c.json({ ok: true });
+  });
+
+  // ── Create page (registered before :id so "create" isn't captured) ──────────
+  app.get('/games/tcg/create', async (c) => {
+    const user = c.get('user');
+    const nav = navUser(c);
+    const nonce = c.get('nonce');
+    const lv999 = c.req.query('lv') === '999';
+    const loginReturnPath = '/games/tcg/create';
+
+    if (!user) {
+      return c.html(
+        TcgCreatePage({
+          nonce,
+          lv999,
+          user: nav,
+          csrf: null,
+          characterCatalog: CHARACTER_CATALOG,
+          deckLegal: false,
+          teamState: { active: 0, deckSize: DECK_SIZE, slots: [] },
+          loginReturnPath,
+        }).toString(),
+      );
+    }
+
+    const [composition, state] = await Promise.all([
+      loadDeckCompositionForUser(silverwolf.db, user.discordId),
+      loadTeamState(silverwolf.db, user.discordId),
+    ]);
+    return c.html(
+      TcgCreatePage({
+        nonce,
+        lv999,
+        user: nav,
+        csrf: user.csrfToken,
+        characterCatalog: CHARACTER_CATALOG,
+        deckLegal: isLegalDeck(composition),
+        teamState: teamStateBrief(state),
+        loginReturnPath,
+      }).toString(),
+    );
+  });
+
+  // ── Match detail (permanent post-game state; before :id) ────────────────────
+  app.get('/games/tcg/match/:id', async (c) => {
+    const user = c.get('user');
+    const nav = navUser(c);
+    const nonce = c.get('nonce');
+    const lv999 = c.req.query('lv') === '999';
+    const matchId = c.req.param('id');
+
+    const base = {
+      nonce, lv999, user: nav, id: matchId,
+    } as const;
+
+    const blank = {
+      mode: 'pvp' as const,
+      p1: '',
+      p2: '',
+      winner: null,
+      endReason: '',
+      rounds: 0,
+      endedAt: 0,
+      snapshot: null,
+      feed: [],
+    };
+
+    if (!user) {
+      return c.html(TcgMatchDetailPage({ ...base, ...blank }).toString());
+    }
+
+    const row = await silverwolf.db.tcgMatch.getById(matchId);
+    if (!row) {
+      return c.html(TcgMatchDetailPage({ ...base, ...blank, notFound: true }).toString(), 404);
+    }
+
+    let snapshot = null;
+    let feed: any[] = [];
+    if (row.finalState) {
+      try {
+        const parsed = JSON.parse(row.finalState);
+        snapshot = parsed.snapshot ?? null;
+        if (Array.isArray(parsed.feed)) {
+          feed = parsed.feed;
+        } else {
+          // Fallback for any pre-feed rows: log lines, then chat.
+          const log = Array.isArray(parsed.log) ? parsed.log : [];
+          const chat = Array.isArray(parsed.chat) ? parsed.chat : [];
+          feed = [...log.map((e: any) => ({ kind: 'log', e })), ...chat.map((m: any) => ({ kind: 'chat', m }))];
+        }
+      } catch { /* corrupt blob → show summary only */ }
+    }
+
+    return c.html(TcgMatchDetailPage({
+      ...base,
+      mode: row.mode === 'solo' ? 'solo' : 'pvp',
+      p1: row.p1Username,
+      p2: row.p2Username,
+      winner: row.winner ?? null,
+      endReason: row.endReason,
+      rounds: row.rounds,
+      endedAt: row.endedAt,
+      snapshot,
+      feed,
+    }).toString());
   });
 
   // ── Room page (play or join variant) ────────────────────────────────────────
@@ -291,6 +461,9 @@ export function registerTcgBattleRoutes(
 
     const room = tcgRoomManager.getRoom(matchId);
     if (!room) {
+      // Closed rooms become permanent history under the same id — send old live links there.
+      const record = await silverwolf.db.tcgMatch.getById(matchId);
+      if (record) return c.redirect(`/games/tcg/match/${encodeURIComponent(matchId)}`);
       return c.html(
         TcgBattleRoomPage({
           nonce,
@@ -327,9 +500,12 @@ export function registerTcgBattleRoutes(
       );
     }
 
-    // Not a participant: offer to join an open PvP lobby; otherwise it's not viewable.
+    // Not a participant: offer to join an open PvP lobby…
     if (room.mode === 'pvp' && room.status === 'lobby' && !room.p2) {
-      const composition = await loadDeckCompositionForUser(silverwolf.db, user.discordId);
+      const [composition, state] = await Promise.all([
+        loadDeckCompositionForUser(silverwolf.db, user.discordId),
+        loadTeamState(silverwolf.db, user.discordId),
+      ]);
       return c.html(
         TcgBattleJoinPage({
           nonce,
@@ -337,13 +513,15 @@ export function registerTcgBattleRoutes(
           user: nav,
           matchId,
           csrf: user.csrfToken,
-          roster: ROSTER,
           characterCatalog: CHARACTER_CATALOG,
           deckLegal: isLegalDeck(composition),
+          teamState: teamStateBrief(state),
         }).toString(),
       );
     }
 
+    // …otherwise let them spectate (read-only; no hand, can chat). The snapshot is
+    // built with a null viewer side, which the manager renders as a spectator view.
     return c.html(
       TcgBattleRoomPage({
         nonce,
@@ -352,11 +530,9 @@ export function registerTcgBattleRoutes(
         matchId,
         selfDiscordId: user.discordId,
         csrf: user.csrfToken,
-        snapshot: null,
-        roomMissing: true,
+        snapshot: tcgRoomManager.snapshotFor(room, null),
         loginReturnPath,
       }).toString(),
-      404,
     );
   });
 

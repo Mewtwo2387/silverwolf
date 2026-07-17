@@ -157,9 +157,11 @@ function snapshotTeam(battle: Battle, side: BattleSide): SnapshotCharacter[] {
 /**
  * Build a JSON-safe snapshot of the battle for one viewer. Only `viewerSide`'s hand
  * is included; both teams' public state (hp/energy/effects/skills) is always visible.
+ * Pass `spectator: true` for a non-player viewer — the hand is omitted entirely (a
+ * spectator must never see either side's cards), and `viewerSide` only sets layout.
  */
-export function buildBattleSnapshot(battle: Battle, viewerSide: BattleSide): BattleSnapshot {
-  const hand: SnapshotHandCard[] = Array.from(battle.handForSide(viewerSide).entries())
+export function buildBattleSnapshot(battle: Battle, viewerSide: BattleSide, spectator = false): BattleSnapshot {
+  const hand: SnapshotHandCard[] = spectator ? [] : Array.from(battle.handForSide(viewerSide).entries())
     .sort((a, b) => a[0] - b[0])
     .map(([slotId, item]) => ({
       slotId,

@@ -1,4 +1,5 @@
 import { setupTeamPicker } from './tcg-team-picker.lib.js';
+import { setupSlotBar } from './tcg-team-slots.lib.js';
 
 (() => {
   const dataEl = document.getElementById('tcg-landing-data');
@@ -7,8 +8,8 @@ import { setupTeamPicker } from './tcg-team-picker.lib.js';
   try { ctx = JSON.parse(dataEl.textContent); } catch { return; }
 
   const CSRF = ctx.csrf || '';
-  const DEFAULTS = ctx.defaults || [];
-  const DECK_LEGAL = !!ctx.deckLegal;
+  const TEAM_STATE = ctx.teamState || { active: 0, slots: [] };
+  let deckLegal = !!ctx.deckLegal; // per-slot: updated when the active slot changes
   let mode = 'pvp';
 
   const modesEl = document.getElementById('tcg-modes');
@@ -16,18 +17,42 @@ import { setupTeamPicker } from './tcg-team-picker.lib.js';
   const errEl = document.getElementById('tcg-err');
   if (!createBtn) return;
 
-  // Declared with `let` (not `const`) so refreshCreate — which setupTeamPicker
-  // invokes synchronously via onChange during construction — can read `picker`
+  // Declared with `let` (not `const`) so onTeamChange — which setupTeamPicker
+  // invokes synchronously via onChange during construction — can read them
   // without hitting the temporal dead zone.
   let picker = null;
-  picker = setupTeamPicker({ defaults: DEFAULTS, onChange: refreshCreate });
+  let slotBar = null;
+  const activeTeam = (TEAM_STATE.slots[TEAM_STATE.active] || { team: [] }).team;
+  picker = setupTeamPicker({ defaults: activeTeam, onChange: onTeamChange });
+  slotBar = setupSlotBar({
+    csrf: CSRF,
+    state: TEAM_STATE,
+    picker,
+    errEl: document.getElementById('tcg-slotbar-err'),
+    onDeckLegal: setDeckLegal,
+  });
+
+  function onTeamChange() {
+    if (slotBar && picker) slotBar.scheduleSave(picker.getTeam());
+    refreshCreate();
+  }
 
   function refreshCreate() {
-    const ok = !!picker && picker.isComplete() && DECK_LEGAL;
+    const ok = !!picker && picker.isComplete() && deckLegal;
     createBtn.toggleAttribute('disabled', !ok);
     if (errEl && ok) errEl.textContent = '';
   }
   refreshCreate();
+
+  function setDeckLegal(legal) {
+    deckLegal = !!legal;
+    const badge = document.querySelector('.tcg-badge');
+    if (badge) {
+      badge.className = 'tcg-badge ' + (deckLegal ? 'legal' : 'illegal');
+      badge.textContent = deckLegal ? 'legal deck' : 'illegal deck';
+    }
+    refreshCreate();
+  }
 
   if (modesEl) {
     modesEl.querySelectorAll('.tcg-mode').forEach((b) => {
@@ -45,14 +70,15 @@ import { setupTeamPicker } from './tcg-team-picker.lib.js';
   createBtn.addEventListener('click', async () => {
     if (createBtn.hasAttribute('disabled')) return;
     errEl.textContent = '';
-    const team = picker ? picker.getTeam() : [];
-    if (team.length !== 3) { errEl.textContent = 'Pick three characters.'; return; }
     createBtn.setAttribute('disabled', 'disabled');
     try {
+      // The battle plays from the active slot server-side — make sure the last
+      // lineup edit has landed there first.
+      if (slotBar) await slotBar.flush();
       const res = await fetch('/games/tcg/create', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ csrf: CSRF, mode, team }),
+        body: JSON.stringify({ csrf: CSRF, mode }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data || !data.ok) {

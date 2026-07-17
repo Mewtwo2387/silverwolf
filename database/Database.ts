@@ -19,6 +19,7 @@ import type ServerRolesModel from './models/ServerRolesModel';
 import type BirthdayReminderModel from './models/BirthdayReminderModel';
 import type PoopModel from './models/PoopModel';
 import type WebSessionModel from './models/WebSessionModel';
+import type TcgMatchModel from './models/TcgMatchModel';
 
 class Database {
   db!: BunDatabase;
@@ -167,6 +168,12 @@ class Database {
       ON CyclicTttMatch (o_discord_id, ended_at DESC)
     `);
 
+    // Back the TCG match-history list (GET_RECENT, ordered by ended_at DESC).
+    this.db.run(`
+      CREATE INDEX IF NOT EXISTS idx_tcg_match_ended_at
+      ON TcgMatch (ended_at DESC)
+    `);
+
     // Initialize models
     Object.entries(modelClasses).forEach(([modelName, ModelClass]) => {
       this.models[modelName] = new (ModelClass as any)(this);
@@ -287,6 +294,7 @@ class Database {
   get pokemon(): PokemonModel { return this.models.PokemonModel; }
   get poop(): PoopModel { return this.models.PoopModel; }
   get serverRoles(): ServerRolesModel { return this.models.ServerRolesModel; }
+  get tcgMatch(): TcgMatchModel { return this.models.TcgMatchModel; }
   get user(): UserModel { return this.models.UserModel; }
   get webSession(): WebSessionModel { return this.models.WebSessionModel; }
 }

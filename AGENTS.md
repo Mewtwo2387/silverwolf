@@ -6,7 +6,7 @@ Bun process**. It serves fun/games both as slash commands and as web pages, plus
 **The website is public, so security and performance are first-class concerns — code defensively:
 validate every input, never trust client data, keep the CSP tight.**
 
-**Last updated: 2026-06-19**
+**Last updated: 2026-06-30**
 
 > **Maintenance rules.** Edit this file when something here becomes factually wrong, or when you
 > make a qualifying structural change. Rules differ by area:
@@ -213,7 +213,8 @@ all alive cards (this is when effect durations tick) and draws 2 cards per side.
 #### Items
 
 - `DECK_SIZE = 25`, `STARTING_HAND = 5`, `DRAW_PER_ROUND = 2`.
-- Decks are persisted per Discord user in `User.tcg_deck` (JSON `{itemId: count}`).
+- Decks are persisted per user inside their **active team slot** (`User.tcg_teams` — see §6.11;
+  JSON `{itemId: count}`), accessed via `tcg/deckStorage.ts`.
 - A **legal deck** is exactly 25 known items, each with count `0..PER_CARD_MAX (10)`, at most
   **5** copies at 5★+, and at most **15** copies at 4★+ (the 5★ cap counts toward the 4★ cap).
   See `validateDeckComposition` in `tcg/items/deck.ts`.
@@ -527,24 +528,70 @@ cyclic-tic-tac-toe multiplayer pattern.
  roster values (`buildTeamOfThree`) and the user's saved `User.tcg_deck` (`expandDeckComposition`);
  client card data is never trusted. PvP has a turn timer (`TCG_TURN_TIMER_MS`) and a
  disconnect grace window; GC sweeps lobby/ended/abandoned rooms.
+- **Spectators** — any other logged-in user who opens a room link (and isn't the PvP joiner offered
+ the team-picker) attaches as a **spectator** (`room.spectators`, capped at `TCG_MAX_SPECTATORS`).
+ `attachSocket` routes non-seated users here; their snapshot is built with `buildBattleSnapshot(…,
+ spectator: true)` so **no hand is included** and `yourSide` is just the layout side. Spectators
+ can't act (`actionGuard` rejects them) but **can chat**; first-socket-join / last-socket-leave emit
+ a `system` chat notice. The room snapshot carries `spectator: boolean` + `spectatorCount`.
 - **WebSocket** — `site_src/tcg/ws.ts` (`createTcgWsEvents`). First message must be
  `join` carrying the CSRF token (`constantTimeEqual`); then `use_skill` / `use_item` /
- `end_turn` / `rematch_request` / `leave` / `ping`, each routed through the `battleCore`
- executors. Broadcasts are **per-socket viewer-aware snapshots** (hands stay private). Same
- burst rate-limit as the cyclic socket.
+ `end_turn` / `rematch_request` / `chat` / `leave` / `ping`, each routed through the `battleCore`
+ executors (except `chat` → `tcgRoomManager.postChat`). Broadcasts are **per-socket viewer-aware
+ snapshots** (hands stay private; spectators share one hand-less snapshot). Same burst rate-limit as
+ the cyclic socket. `chat` is open to any seated player **or spectator** regardless of turn; text is
+ control-char-stripped + length-capped (`TCG_CHAT_MAX_LEN`). The room maintains the single source of
+ truth `room.feed` (combined log + chat in arrival order); the snapshot ships a recent slice as
+ `feed: TcgFeedItem[]` and the client **renders straight from `state.feed`** (so a re-joining client
+ shows full history and never replays the last action). Each chat `TcgChatMessage` carries
+ `{ kind: 'chat'|'system', senderId, username, isPlayer, isDev, … }`; the client marks `isPlayer`/`isDev`
+ chatters with icons.
+- **Room lifecycle** — a battle *ending* (`endBattle`: victory/timeout/forfeit/disconnect) only sets
+ `status:'ended'` + result; the **room stays open** for rematch/chat. The room **closes** (→ history)
+ only once it's empty — every player *and* spectator has left — after a `TCG_EMPTY_CLOSE_MS` grace
+ (`maybeScheduleClose`/`closeRoom`; a `sweep` backstop closes long-idle empty rooms). Presence drives
+ `system` chat lines: `joined` (first connect), `reconnected`, `disconnected` (drop; mid-battle PvP
+ also arms the disconnect-forfeit grace), `left` (explicit Leave), and spectator `started/stopped
+ spectating`. `listActive()` returns **all** in-memory rooms (any status) for the browse list.
+- **Match history** — `closeRoom` → `db.tcgMatch.recordMatch` persists the **final, un-editable**
+ state (table `TcgMatch`: mode, both players' id/username/team-slugs, winner side, end reason, rounds,
+ timestamps, plus `final_state` — JSON `{ snapshot: hand-less BattleSnapshot, feed: TcgFeedItem[] }`:
+ the final board + the cumulative combined log/chat feed, so the record renders **identically to the
+ live battle**). The match id **is the room id**, so a closed room's old `/games/tcg/:id` link
+ redirects to `/games/tcg/match/:id`. This is the **only** durable TCG state (rooms are in-memory).
+ `getRecent` feeds the browse history list; `getById` feeds the clickable match-detail page (static
+ board + feed re-rendered server-side). Rooms that never started a battle aren't recorded.
 - **Routes** — `site_src/tcg/routes.ts` (`registerTcgBattleRoutes`, wired in `server.ts`
- with `upgradeWebSocket` + `tcgRoomManager.init`): `GET /games/tcg` (landing),
- `POST /games/tcg/create`, `GET /games/tcg/:id` (room — renders the battle client for seated
- players, a team-picker for an eligible PvP joiner, or a not-found notice otherwise),
- `POST /games/tcg/:id/join`, `GET /games/tcg/ws/:id` (origin pre-check + upgrade),
- `GET /games/tcg/deck` + `POST /games/tcg/deck/save` (deck builder). All POSTs use
+ with `upgradeWebSocket` + `tcgRoomManager.init`): `GET /games/tcg` (**browse** — all in-progress
+ rooms via `tcgRoomManager.listActive()` + recent history, the default page), `GET /games/tcg/create`
+ (create form — registered before `:id`), `POST /games/tcg/create`, `GET /games/tcg/match/:id`
+ (permanent match-detail view, before `:id`), `GET /games/tcg/:id` (room —
+ renders the battle client for seated players, a team-picker for an eligible PvP joiner, else a
+ read-only **spectator** view), `POST /games/tcg/:id/join`, `GET /games/tcg/ws/:id` (origin pre-check
+ + upgrade), `GET /games/tcg/deck` + `POST /games/tcg/deck/save` (deck builder). All POSTs use
  `authedGameRequest` (CSRF); deck save re-runs `validateDeckComposition` server-side.
-- **Pages** — `site_src/tcg/pages/` (`landing.ts`, `room.ts`, `deck-builder.ts`, `detail.ts`;
- HTML templates in `site_src/tcg/html/`; client JS in `site_src/tcg/assets/`). Battle client
- renders over WS: card-PNG board with live HP/energy/effect overlays, active-slot glow,
- availability-driven skill buttons with targeting, hand tray, end-turn, action log, result
- banner, rematch/leave). Decks persist via `tcg/deckStorage.ts` — the **same** `User.tcg_deck`
- the Discord `/tcgbattle deckset` uses.
+- **Pages** — `site_src/tcg/pages/` (`landing.ts` = `TcgBrowsePage` + `TcgCreatePage`, `room.ts`,
+ `deck-builder.ts`, `detail.ts`; HTML templates in `site_src/tcg/html/`; client JS in
+ `site_src/tcg/assets/`). Battle client renders over WS: card-PNG board with live HP/energy/effect
+ overlays, active-slot glow, availability-driven skill buttons with targeting, hand tray, end-turn,
+ action log, result banner, rematch/leave). The **Log/Chat panel** is a single persistent element
+ (built once, updated in place so the chat input keeps focus across re-renders): a wide right-hand
+ column ≥920px, and a floating-launcher modal below that width.
+- **Team slots** — each user has **five loadout slots** (`{active, slots: [{team, deck}]}` in
+ `User.tcg_teams`, via `tcg/teamSlotStorage.ts`); **every battle plays from the active slot** — the
+ web create/join POSTs take no team from the client, they rebuild it server-side from the active
+ slot. The create/join pages render a slot bar (`tcg-team-slots.lib.js`): selecting a slot
+ (`POST /games/tcg/teams/select`) makes it active + loads its lineup into the picker; picker edits
+ auto-save (debounced, flushed before create/join) via `POST /games/tcg/teams/lineup`. **Decks live
+ inside slots**: `tcg/deckStorage.ts`'s load/save route to the active slot's deck (`null` =
+ default deck), so the web deck builder (which **auto-syncs on every change** — debounced, with a
+ `pagehide` keepalive flush; no save button) and Discord `/tcgbattle deckset` edit the active slot
+ without knowing about slots. A legacy `User.tcg_deck` is migrated into slot 1 on first load.
+ **Slots save anything** — partial lineups and illegal decks persist as-is; legality is
+ display-only (red `x/3` / `y/25` readiness on the slot chips, red badge in the deck builder)
+ and enforced only at battle time (web create/join reject; Discord `buildDeckForUser` falls back
+ to the default deck). Clients only ever receive `{active, deckSize, slots:[{team, deckCount,
+ deckLegal}]}` briefs (deck contents stay server-side).
 
 ---
 
