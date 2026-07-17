@@ -49,14 +49,14 @@ function bakeHeightMask(heightFn, size, waterY, exclude) {
   return tex;
 }
 
-// opts: { heightFn, size, waterY, exclude: [{x0,x1,z0,z1}] }
+// opts: { heightFn, size, waterY, exclude: [{x0,x1,z0,z1}], tile, blades }
 // Returns { mesh, update(centerVec3, dt) }.
 export function buildGrassField(opts) {
   const {
-    heightFn, size, waterY, exclude = [],
+    heightFn, size, waterY, exclude = [], tile, blades,
   } = opts;
-  const BLADES = 60000;
-  const TILE = 200; // metres of grass around the aircraft (~1.5 blades/m²)
+  const BLADES = blades || 60000;
+  const TILE = tile || 200; // metres of grass around the aircraft
 
   const heightTex = bakeHeightMask(heightFn, size, waterY, exclude);
 

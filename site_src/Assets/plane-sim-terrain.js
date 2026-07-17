@@ -161,11 +161,15 @@ export function buildTerrain(renderer, hf = terrainHeight, opts = {}) {
     const sandBand = (1 - smoothstep(WATER_Y + 1.5, WATER_Y + 9, h)) * sand;
     _c.lerp(C_SAND, sandBand);
 
-    // Rock on steep faces and at altitude, then snow-capped peaks.
+    // Rock on steep faces and at altitude, then snow-capped peaks. The band
+    // thresholds are jittered per-vertex by mid-frequency noise so the snow
+    // line wanders organically instead of tracing jagged polygon edges along
+    // a fixed contour.
+    const band = (fbm(x * 0.0042 + 31.7, z * 0.0042 - 17.3, 2) - 0.5) * 90;
     _c2.copy(C_ROCK).lerp(C_ROCK_DK, patch);
     _c.lerp(_c2, smoothstep(0.42, 0.75, slope));
-    _c.lerp(_c2, smoothstep(rockA, rockB, h));
-    _c.lerp(C_SNOW, smoothstep(snowA, snowB, h) * (1 - smoothstep(0.9, 1.3, slope)));
+    _c.lerp(_c2, smoothstep(rockA + band * 0.6, rockB + band * 0.6, h));
+    _c.lerp(C_SNOW, smoothstep(snowA + band, snowB + band, h) * (1 - smoothstep(0.9, 1.3, slope)));
 
     colors[i * 3] = _c.r; colors[i * 3 + 1] = _c.g; colors[i * 3 + 2] = _c.b;
   }

@@ -793,6 +793,101 @@ export function makeTree(type) {
   return tree;
 }
 
+// A small lakeside cabin: painted timber walls, gabled roof, door + window
+// facing -Z (point that side at the water). Base sits at y=0. Palette varies
+// per build so a shoreline of these doesn't look copy-pasted.
+export function makeCabin() {
+  const g = new THREE.Group();
+  const W = 4.6 + Math.random() * 1.4; // along X
+  const D = 3.6 + Math.random() * 1.0; // along Z
+  const WALL_H = 2.5;
+  const ROOF_H = 1.5;
+  const wallColors = [0x8a6f52, 0xa8b4b9, 0x7d4636, 0x66785f, 0xb09a6c];
+  const roofColors = [0x4a4544, 0x5c3a33, 0x39434a];
+  const wallMat = new THREE.MeshStandardMaterial({
+    color: wallColors[Math.floor(Math.random() * wallColors.length)], roughness: 0.85, metalness: 0.05,
+  });
+  const roofMat = new THREE.MeshStandardMaterial({
+    color: roofColors[Math.floor(Math.random() * roofColors.length)], roughness: 0.8, metalness: 0.1,
+  });
+
+  const walls = new THREE.Mesh(new THREE.BoxGeometry(W, WALL_H, D), wallMat);
+  walls.position.y = WALL_H / 2;
+  g.add(walls);
+
+  // Gable roof: a triangular prism extruded along X, slight eave overhang.
+  const tri = new THREE.Shape();
+  tri.moveTo(-D / 2 - 0.3, 0);
+  tri.lineTo(D / 2 + 0.3, 0);
+  tri.lineTo(0, ROOF_H);
+  tri.closePath();
+  const roofGeo = new THREE.ExtrudeGeometry(tri, { depth: W + 0.6, bevelEnabled: false });
+  roofGeo.rotateY(Math.PI / 2); // extrusion (z) -> x; triangle stands in the ZY plane
+  roofGeo.translate(-(W + 0.6) / 2, WALL_H, 0);
+  g.add(new THREE.Mesh(roofGeo, roofMat));
+
+  // Door + window on the waterside face, a brick chimney out the ridge.
+  const trimMat = new THREE.MeshStandardMaterial({ color: 0x2e2a26, roughness: 0.9 });
+  const door = new THREE.Mesh(new THREE.BoxGeometry(0.85, 1.8, 0.08), trimMat);
+  door.position.set(-W * 0.22, 0.9, -D / 2 - 0.04);
+  g.add(door);
+  const winMat = new THREE.MeshStandardMaterial({
+    color: 0x9fc3d8, roughness: 0.25, metalness: 0.4,
+  });
+  const win = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.9, 0.08), winMat);
+  win.position.set(W * 0.22, 1.45, -D / 2 - 0.04);
+  g.add(win);
+  const chimney = new THREE.Mesh(
+    new THREE.BoxGeometry(0.5, 1.3, 0.5),
+    new THREE.MeshStandardMaterial({ color: 0x6e6259, roughness: 0.9 }),
+  );
+  chimney.position.set(W * 0.3, WALL_H + ROOF_H * 0.5 + 0.5, D * 0.15);
+  g.add(chimney);
+
+  setShadows(g);
+  return g;
+}
+
+// A wooden jetty running from the shore out over the water along -Z: plank
+// deck on twin pile rows, mooring bollards at the far end. Deck top sits at
+// y=0 — position the group so that's just above the waterline; the piles
+// reach well below it.
+export function makeJetty(len = 18) {
+  const g = new THREE.Group();
+  const WID = 2.0;
+  const deckMat = new THREE.MeshStandardMaterial({ color: 0x7a6046, roughness: 0.9, metalness: 0.02 });
+  const pileMat = new THREE.MeshStandardMaterial({ color: 0x54432f, roughness: 0.95, metalness: 0.02 });
+
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(WID, 0.22, len), deckMat);
+  deck.position.set(0, -0.11, -len / 2);
+  g.add(deck);
+  // Plank grooves read from low passes: thin dark strips across the deck.
+  const stripMat = new THREE.MeshStandardMaterial({ color: 0x5f4a35, roughness: 0.95 });
+  for (let z = 1.2; z < len - 0.6; z += 2.4) {
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(WID, 0.02, 0.12), stripMat);
+    strip.position.set(0, 0.005, -z);
+    g.add(strip);
+  }
+
+  const pileGeo = new THREE.CylinderGeometry(0.11, 0.13, 3.4, 6);
+  for (let z = 0.8; z < len; z += 3.2) {
+    for (const sx of [-WID / 2 + 0.15, WID / 2 - 0.15]) {
+      const pile = new THREE.Mesh(pileGeo, pileMat);
+      pile.position.set(sx, -1.7, -z);
+      g.add(pile);
+    }
+  }
+  // End bollards for tying up a boat that isn't there yet.
+  for (const sx of [-WID / 2 + 0.2, WID / 2 - 0.2]) {
+    const bollard = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.55, 6), pileMat);
+    bollard.position.set(sx, 0.27, -len + 0.5);
+    g.add(bollard);
+  }
+
+  setShadows(g);
+  return g;
+}
+
 // A Quonset-hut hangar: a hollow corrugated-steel half-tube sitting ON the
 // ground (base at y=0, axis along X). Rear end closed by a gable, front open
 // with the sliding doors parked at the jambs, arch ribs inside, and a concrete

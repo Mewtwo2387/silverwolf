@@ -31,6 +31,7 @@ export const GFX = {
     sphereSegs: [6, 4], // broadleaf canopy sphere [width, height] segments
     canopyDetail: 0, // extra canopy lobes beyond the low silhouette
     sceneryNormals: false, // grass/water normal maps
+    fogNear: 900,
     fogFar: 6800,
   },
   medium: {
@@ -47,6 +48,7 @@ export const GFX = {
     sphereSegs: [8, 6],
     canopyDetail: 1,
     sceneryNormals: true,
+    fogNear: 900,
     fogFar: 9000,
   },
   high: {
@@ -63,7 +65,8 @@ export const GFX = {
     sphereSegs: [10, 8],
     canopyDetail: 2,
     sceneryNormals: true,
-    fogFar: 11000,
+    fogNear: 1600, // haze starts farther out — clearer long views
+    fogFar: 12500,
     reflectiveWater: false,
     grass: false,
   },
@@ -81,9 +84,12 @@ export const GFX = {
     sphereSegs: [12, 10],
     canopyDetail: 3,
     sceneryNormals: true,
-    fogFar: 13000,
+    fogNear: 2600, // the whole 12 km map reads clearly; haze only at the rim
+    fogFar: 16500,
     reflectiveWater: true, // planar-reflection water with animated waves
     grass: true, // instanced grass blades around the aircraft
+    grassTile: 340, // metres of grass around the aircraft
+    grassBlades: 150000,
   },
 }[GFX_LEVEL];
 

@@ -29,7 +29,7 @@ import {
   buildAircraft, applyControlSurfaces, setPropBlur, makeHangar, makeControlTower,
   makeWindsock, makeFuelTank, makeBowser, makeNissenHut, PLANE_INFO, planeSpecs, restHeight,
   makePineCanopyGeo, makeBroadleafCanopyGeo, makeConiferCanopyGeo, makeBroadleafTrunkGeo,
-  makeCarrier, makeBomb, mountWingBombs, CARRIER, makeBridge,
+  makeCarrier, makeBomb, mountWingBombs, CARRIER, makeBridge, makeCabin, makeJetty,
 } from './plane-sim-models.js';
 import {
   TERRAIN, terrainHeight, canyonHeight, forestMask, buildTerrain, buildWater, smoothstep, fbm,
@@ -357,7 +357,7 @@ import { buildGrassField } from './plane-sim-grass.js';
   const SKY_TOP = new THREE.Color(0x3f87cc);
   const SKY_HAZE = new THREE.Color(0xc3d9e8);
   scene.background = SKY_TOP.clone();
-  scene.fog = new THREE.Fog(SKY_HAZE.getHex(), 900, GFX.fogFar);
+  scene.fog = new THREE.Fog(SKY_HAZE.getHex(), GFX.fogNear, GFX.fogFar);
 
   const camera = new THREE.PerspectiveCamera(62, 1, 0.5, 26000);
   camera.position.set(0, CFG.GROUND_Y + CAM_PRESETS[camName].up, 320 + CAM_PRESETS[camName].back);
@@ -498,6 +498,8 @@ import { buildGrassField } from './plane-sim-grass.js';
       heightFn: terrainHeight,
       size: TERRAIN.SIZE,
       waterY: TERRAIN.WATER_Y,
+      tile: GFX.grassTile,
+      blades: GFX.grassBlades,
       exclude: [{
         x0: -(CFG.RUNWAY_W / 2 + 10),
         x1: CFG.RUNWAY_W / 2 + 10,
@@ -984,36 +986,127 @@ import { buildGrassField } from './plane-sim-grass.js';
     landGroup.add(rockMesh);
   }());
 
-  // ---- Clouds: puffy clusters of overlapping sprites for altitude/speed
-  //      reference (one material per cluster so opacity can vary). ----
+  // ---- Coastal life: wooden jetties poking out over the lakes with the odd
+  //      lakeside cabin behind them. Placement walks the shoreline band
+  //      (just above the waterline, gentle slope, open water a short way
+  //      downhill) and points each jetty down the terrain gradient. ----
+  (function buildCoast() {
+    const { WATER_Y } = TERRAIN;
+    const spots = []; // [x, z] of placed jetties, for spacing
+    let cabins = 0;
+    let guard = 0;
+    while (spots.length < 12 && guard++ < 60000) {
+      const x = (Math.random() * 2 - 1) * CFG.BORDER;
+      const z = (Math.random() * 2 - 1) * CFG.BORDER;
+      const h = terrainHeight(x, z);
+      if (h < WATER_Y + 0.5 || h > WATER_Y + 2.2) continue; // deck sits ~1 m over the water
+      const e = 10;
+      const gx = (terrainHeight(x + e, z) - terrainHeight(x - e, z)) / (2 * e);
+      const gz = (terrainHeight(x, z + e) - terrainHeight(x, z - e)) / (2 * e);
+      const gmag = Math.hypot(gx, gz);
+      if (gmag < 0.015 || gmag > 0.3) continue; // flat marsh or cliff — no pier
+      const dx = -gx / gmag; const dz = -gz / gmag; // downhill = toward the water
+      // Open water a short way out, dry ground a short way in.
+      if (terrainHeight(x + dx * 30, z + dz * 30) > WATER_Y - 0.6) continue;
+      if (terrainHeight(x - dx * 22, z - dz * 22) < WATER_Y + 1.2) continue;
+      // Spread them out; skip anything close to an existing pier.
+      if (spots.some(([sx, sz]) => Math.hypot(sx - x, sz - z) < 500)) continue;
+      spots.push([x, z]);
+
+      const len = 15 + Math.random() * 8;
+      const jetty = makeJetty(len);
+      // makeJetty runs along -Z from its origin; yaw -Z onto the water
+      // direction (dx, dz).
+      const yaw = Math.atan2(-dx, -dz);
+      jetty.rotation.y = yaw;
+      jetty.position.set(x, WATER_Y + 1.05, z);
+      landGroup.add(jetty);
+      addCyl(x + dx * len * 0.5, z + dz * len * 0.5, len * 0.55, WATER_Y + 2.2, 'Hit a jetty');
+
+      if (cabins < 8 && Math.random() < 0.7) {
+        const cd = 15 + Math.random() * 8; // set back from the shore
+        const cx = x - dx * cd;
+        const cz = z - dz * cd;
+        const ch = terrainHeight(cx, cz);
+        if (ch > WATER_Y + 0.8) {
+          const cabin = makeCabin();
+          cabin.rotation.y = yaw + (Math.random() - 0.5) * 0.5; // door roughly at the water
+          cabin.position.set(cx, ch - 0.15, cz);
+          landGroup.add(cabin);
+          addBox(cx - 4, cx + 4, cz - 4, cz + 4, ch + 4.2, 'Crashed into a cabin');
+          cabins++;
+        }
+      }
+    }
+  }());
+
+  // ---- Clouds: sprite billboards, but each carries a drawn CUMULUS texture
+  //      (a row of overlapping puffs — bright domed tops, grey flattened
+  //      base, ragged silhouette) instead of one radial blob, so they read
+  //      as clouds rather than circles. Four variants, drawn once. ----
   (function buildClouds() {
-    const c = document.createElement('canvas');
-    c.width = c.height = 128;
-    const ctx = c.getContext('2d');
-    const g = ctx.createRadialGradient(64, 64, 4, 64, 64, 64);
-    g.addColorStop(0, 'rgba(255,255,255,0.95)');
-    g.addColorStop(0.6, 'rgba(250,252,255,0.55)');
-    g.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 128);
-    const tex = new THREE.CanvasTexture(c);
+    function cloudTexture() {
+      const W = 256; const H = 128;
+      const c = document.createElement('canvas');
+      c.width = W; c.height = H;
+      const ctx = c.getContext('2d');
+      const baseY = H * (0.62 + Math.random() * 0.08); // the flat base of the cloud
+      const puffs = 16 + Math.floor(Math.random() * 10);
+      for (let i = 0; i < puffs; i++) {
+        // Puffs cluster along the base line: big domes near the middle,
+        // smaller ones toward the ends; tops rise, bottoms hug the base.
+        const t = Math.random(); // 0..1 across the cloud
+        const px = W * (0.10 + 0.80 * t);
+        const centrality = 1 - Math.abs(t - 0.5) * 2; // 1 middle -> 0 ends
+        const r = (10 + 22 * centrality) * (0.7 + Math.random() * 0.6);
+        const py = baseY - r * (0.25 + Math.random() * 0.75);
+        // Lower puffs pick up a grey-blue shadow tint.
+        const shade = clamp((py + r - baseY) / r * 0.5 + Math.random() * 0.15, 0, 0.45);
+        const cr = Math.round(255 - 35 * shade);
+        const cg = Math.round(255 - 28 * shade);
+        const g = ctx.createRadialGradient(px, py, r * 0.12, px, py, r);
+        g.addColorStop(0, `rgba(${cr},${cg},255,0.92)`);
+        g.addColorStop(0.65, `rgba(${cr},${cg},255,0.45)`);
+        g.addColorStop(1, `rgba(${cr},${cg},255,0)`);
+        ctx.fillStyle = g;
+        ctx.fillRect(px - r, py - r, r * 2, r * 2);
+      }
+      // Erase everything below the base line with a soft gradient so the
+      // cloud sits on the flat bottom real cumulus have.
+      const cut = ctx.createLinearGradient(0, baseY - 6, 0, baseY + 18);
+      cut.addColorStop(0, 'rgba(0,0,0,0)');
+      cut.addColorStop(1, 'rgba(0,0,0,1)');
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.fillStyle = cut;
+      ctx.fillRect(0, baseY - 6, W, H - baseY + 6);
+      ctx.globalCompositeOperation = 'source-over';
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+    const variants = [cloudTexture(), cloudTexture(), cloudTexture(), cloudTexture()];
     for (let i = 0; i < 34; i++) {
       const mat = new THREE.SpriteMaterial({
-        map: tex, depthWrite: false, opacity: 0.5 + Math.random() * 0.35, fog: true,
+        map: variants[Math.floor(Math.random() * variants.length)],
+        depthWrite: false,
+        opacity: 0.62 + Math.random() * 0.3,
+        fog: true,
       });
       const cx = (Math.random() - 0.5) * CFG.BORDER * 2.2;
       const cy = 260 + Math.random() * 1100;
       const cz = (Math.random() - 0.5) * CFG.BORDER * 2.2;
-      const base = 120 + Math.random() * 220;
-      const n = 4 + Math.floor(Math.random() * 4);
+      const base = 260 + Math.random() * 380;
+      // One wide main billboard per cloud, sometimes a smaller trailing one.
+      const n = 1 + (Math.random() < 0.45 ? 1 : 0);
       for (let k = 0; k < n; k++) {
         const s = new THREE.Sprite(mat);
         s.position.set(
-          cx + (Math.random() - 0.5) * base * 1.6,
-          cy + (Math.random() - 0.5) * base * 0.35,
-          cz + (Math.random() - 0.5) * base * 1.2,
+          cx + k * base * (0.5 + Math.random() * 0.3),
+          cy + (Math.random() - 0.5) * base * 0.12,
+          cz + (Math.random() - 0.5) * base * 0.4,
         );
-        const scl = base * (0.55 + Math.random() * 0.7);
-        s.scale.set(scl, scl * 0.55, 1);
+        const scl = base * (k ? 0.55 : 1) * (0.85 + Math.random() * 0.3);
+        s.scale.set(scl, scl * 0.5, 1);
         scene.add(s);
       }
     }
