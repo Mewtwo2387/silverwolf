@@ -393,6 +393,24 @@ export function PlaneSimPage(opts: {
     text-transform: uppercase; color: var(--fog-400, #8aa0ad);
   }
   #ps-vol { width: 180px; accent-color: var(--accent, #22d3ff); cursor: pointer; }
+  /* Browser-style tabs inside the pause/settings card. */
+  .ps-tabs {
+    display: flex; gap: 0.3rem; justify-content: center; margin: 0.4rem 0 0.7rem;
+    border-bottom: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 25%, transparent);
+  }
+  .ps-tab {
+    pointer-events: auto; cursor: pointer; font-family: 'JetBrains Mono', monospace;
+    padding: 0.35rem 1.1rem; font-size: 0.82rem; color: var(--fog-400, #8aa0ad);
+    background: transparent; border: 1px solid transparent; border-bottom: none;
+    border-radius: 0.45rem 0.45rem 0 0;
+  }
+  .ps-tab:hover { color: var(--accent-light, #7fdfff); }
+  .ps-tab.ps-tab-active {
+    color: var(--accent-light, #7fdfff); font-weight: 800;
+    background: color-mix(in oklab, var(--ink-900, #06080f) 55%, transparent);
+    border-color: color-mix(in oklab, var(--accent, #22d3ff) 40%, transparent);
+  }
+  .ps-tabpane { min-height: 12.5rem; }
   .ps-resume-btn {
     margin-top: 0.9rem; padding: 0.45rem 1.4rem; font-size: 0.95rem; font-weight: 800;
     cursor: pointer; font-family: 'JetBrains Mono', monospace;
@@ -419,6 +437,7 @@ export function PlaneSimPage(opts: {
       <div class="ps-corner">
         <a class="ps-exit" href="/games/plane-sim/inspect">🔧 Inspect models</a>
         <a class="ps-exit" href="/games">← Games</a>
+        <button type="button" class="ps-exit" id="ps-settings-btn" aria-label="Settings">⚙</button>
       </div>
 
       <!-- FPS readout (top-left corner; updated ~2×/s by the game) -->
@@ -637,7 +656,7 @@ export function PlaneSimPage(opts: {
             <button type="button" class="ps-diff-btn" data-count="4">4</button>
             <button type="button" class="ps-diff-btn" data-count="5">5</button>
           </div>
-          <p class="ps-hint">Bandits fly a mix of all three types with their real quirks. Lower skill also means <strong>your guns hit harder</strong>. Switch skill anytime with <span class="ps-key">1</span> <span class="ps-key">2</span> <span class="ps-key">3</span>.</p>
+          <p class="ps-hint">Bandits fly a mix of all three types with their real quirks. Lower skill also means <strong>your guns hit harder</strong>. Keys <span class="ps-key">1</span> <span class="ps-key">2</span> <span class="ps-key">3</span> switch skill on this screen.</p>
           <div class="ps-menu-row">
             <button type="button" class="ps-back-btn" data-menuback>‹ Modes</button>
             <button type="button" class="ps-resume-btn" id="ps-takeoff">Take off ▸</button>
@@ -660,59 +679,55 @@ export function PlaneSimPage(opts: {
         </div>
       </div>
 
-      <!-- Pause menu (ESC) -->
+      <!-- Pause / settings menu (ESC or the ⚙ button). Aircraft and bandit
+           setup are pre-game choices (hangar / sortie screen) — only playback
+           settings live here. -->
       <div id="ps-pause" class="ps-hidden">
         <div class="ps-card">
-          <h1>Paused</h1>
-          <div class="ps-set-row">
-            <span class="ps-set-lbl">Volume</span>
-            <input id="ps-vol" type="range" min="0" max="100" value="50" aria-label="Sound volume">
+          <h1 id="ps-pause-title">Paused</h1>
+          <div class="ps-tabs" role="tablist">
+            <button type="button" class="ps-tab ps-tab-active" data-tab="general" role="tab">General</button>
+            <button type="button" class="ps-tab" data-tab="graphics" role="tab">Graphics</button>
           </div>
-          <div class="ps-set-row">
-            <span class="ps-set-lbl">Camera</span>
-            <button type="button" class="ps-diff-btn" data-cam="close">Close</button>
-            <button type="button" class="ps-diff-btn" data-cam="medium">Medium</button>
-            <button type="button" class="ps-diff-btn" data-cam="far">Far</button>
+          <div class="ps-tabpane" data-pane="general">
+            <div class="ps-set-row">
+              <span class="ps-set-lbl">Volume</span>
+              <input id="ps-vol" type="range" min="0" max="100" value="50" aria-label="Sound volume">
+            </div>
+            <div class="ps-set-row">
+              <span class="ps-set-lbl">Camera</span>
+              <button type="button" class="ps-diff-btn" data-cam="close">Close</button>
+              <button type="button" class="ps-diff-btn" data-cam="medium">Medium</button>
+              <button type="button" class="ps-diff-btn" data-cam="far">Far</button>
+            </div>
+            <div class="ps-set-row">
+              <span class="ps-set-lbl">Speed</span>
+              <button type="button" class="ps-diff-btn" data-uspeed="kn">Knots</button>
+              <button type="button" class="ps-diff-btn" data-uspeed="mph">mph</button>
+              <button type="button" class="ps-diff-btn" data-uspeed="kmh">km/h</button>
+            </div>
+            <div class="ps-set-row">
+              <span class="ps-set-lbl">Altitude</span>
+              <button type="button" class="ps-diff-btn" data-ualt="ft">Feet</button>
+              <button type="button" class="ps-diff-btn" data-ualt="m">Metres</button>
+            </div>
+            <div class="ps-set-row">
+              <span class="ps-set-lbl">Distance</span>
+              <button type="button" class="ps-diff-btn" data-udist="m">m</button>
+              <button type="button" class="ps-diff-btn" data-udist="ft">ft</button>
+              <button type="button" class="ps-diff-btn" data-udist="km">km</button>
+              <button type="button" class="ps-diff-btn" data-udist="mi">mi</button>
+            </div>
+            <p class="ps-hint">Aircraft, bandit skill and bandit count are picked before a flight — in the hangar and on the sortie screen.</p>
           </div>
-          <div class="ps-set-row">
-            <span class="ps-set-lbl">Aircraft</span>
-            <button type="button" class="ps-diff-btn" data-plane="spitfire">Spitfire</button>
-            <button type="button" class="ps-diff-btn" data-plane="p51">P-51</button>
-            <button type="button" class="ps-diff-btn" data-plane="zero">Zero</button>
-          </div>
-          <p class="ps-hint ps-plane-desc"></p>
-          <div class="ps-set-row">
-            <span class="ps-set-lbl">Bandit skill</span>
-            <button type="button" class="ps-diff-btn" data-diff="easy">Rookie</button>
-            <button type="button" class="ps-diff-btn" data-diff="normal">Regular</button>
-            <button type="button" class="ps-diff-btn" data-diff="hard">Ace</button>
-          </div>
-          <div class="ps-set-row">
-            <span class="ps-set-lbl">Bandits</span>
-            <button type="button" class="ps-diff-btn" data-count="1">1</button>
-            <button type="button" class="ps-diff-btn" data-count="2">2</button>
-            <button type="button" class="ps-diff-btn" data-count="3">3</button>
-            <button type="button" class="ps-diff-btn" data-count="4">4</button>
-            <button type="button" class="ps-diff-btn" data-count="5">5</button>
-          </div>
-          <p class="ps-hint">Bandit count applies when the fight (re)starts. Lower skill = tougher bullets for you, sloppier aim for them.</p>
-          <div class="ps-set-row">
-            <span class="ps-set-lbl">Speed</span>
-            <button type="button" class="ps-diff-btn" data-uspeed="kn">Knots</button>
-            <button type="button" class="ps-diff-btn" data-uspeed="mph">mph</button>
-            <button type="button" class="ps-diff-btn" data-uspeed="kmh">km/h</button>
-          </div>
-          <div class="ps-set-row">
-            <span class="ps-set-lbl">Altitude</span>
-            <button type="button" class="ps-diff-btn" data-ualt="ft">Feet</button>
-            <button type="button" class="ps-diff-btn" data-ualt="m">Metres</button>
-          </div>
-          <div class="ps-set-row">
-            <span class="ps-set-lbl">Distance</span>
-            <button type="button" class="ps-diff-btn" data-udist="m">m</button>
-            <button type="button" class="ps-diff-btn" data-udist="ft">ft</button>
-            <button type="button" class="ps-diff-btn" data-udist="km">km</button>
-            <button type="button" class="ps-diff-btn" data-udist="mi">mi</button>
+          <div class="ps-tabpane" data-pane="graphics" style="display:none">
+            <div class="ps-set-row">
+              <span class="ps-set-lbl">Quality</span>
+              <button type="button" class="ps-diff-btn" data-gfx="low">Low</button>
+              <button type="button" class="ps-diff-btn" data-gfx="medium">Medium</button>
+              <button type="button" class="ps-diff-btn" data-gfx="high">High</button>
+            </div>
+            <p class="ps-hint" id="ps-gfx-hint">Low halves texture and terrain detail and drops shadows. High sharpens shadows and adds richer trees and lighting. Changing it reloads the sim.</p>
           </div>
           <div class="ps-menu-row">
             <button type="button" class="ps-back-btn" data-hangar>‹ Hangar</button>

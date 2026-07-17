@@ -8,6 +8,7 @@
 // into ridged mountains toward the world border (a natural "edge of the map"),
 // with lakes wherever the ground dips below WATER_Y.
 import * as THREE from 'three';
+import { GFX, loadSceneryTexture } from './plane-sim-quality.js';
 
 export const TERRAIN = {
   SIZE: 13600, // mesh extent (m) — a bit past the playable border
@@ -130,7 +131,8 @@ const _c2 = new THREE.Color();
 // the rock/snow colour bands for maps with different reliefs.
 export function buildTerrain(renderer, hf = terrainHeight, opts = {}) {
   const {
-    rockA = 300, rockB = 430, snowA = 470, snowB = 560, segs = TERRAIN.SEGS, sand = 1,
+    rockA = 300, rockB = 430, snowA = 470, snowB = 560, sand = 1,
+    segs = Math.round(TERRAIN.SEGS * GFX.segScale),
   } = opts;
   const { SIZE, WATER_Y } = TERRAIN;
   const geo = new THREE.PlaneGeometry(SIZE, SIZE, segs, segs);
@@ -174,43 +176,47 @@ export function buildTerrain(renderer, hf = terrainHeight, opts = {}) {
   // vertices — a tiling grayscale noise texture multiplied under the vertex
   // colours. 256px tiled every ~8.5 m (~30 texels/m near the ground) with
   // multi-scale speckle, so low passes read as turf instead of smeared blur.
+  const gsz = Math.round(256 * GFX.texScale);
+  const gk = gsz / 256; // speckle counts scale with area so density holds
   const c = document.createElement('canvas');
-  c.width = c.height = 256;
+  c.width = c.height = gsz;
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#c9c9c9';
-  ctx.fillRect(0, 0, 256, 256);
-  for (let i = 0; i < 1400; i++) { // broad soft mottling
+  ctx.fillRect(0, 0, gsz, gsz);
+  for (let i = 0; i < 1400 * gk * gk; i++) { // broad soft mottling
     const v = 140 + Math.floor(Math.random() * 115);
     ctx.fillStyle = `rgba(${v},${v},${v},0.5)`;
-    ctx.fillRect(Math.random() * 256, Math.random() * 256, 5, 5);
+    ctx.fillRect(Math.random() * gsz, Math.random() * gsz, 5, 5);
   }
-  for (let i = 0; i < 11000; i++) { // fine speckle, both lighter and darker
+  for (let i = 0; i < 11000 * gk * gk; i++) { // fine speckle, both lighter and darker
     const v = 90 + Math.floor(Math.random() * 165);
     ctx.fillStyle = `rgba(${v},${v},${v},0.7)`;
-    ctx.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
+    ctx.fillRect(Math.random() * gsz, Math.random() * gsz, 2, 2);
   }
-  for (let i = 0; i < 1200; i++) { // sparse dark tufts/pebbles for anchor detail
+  for (let i = 0; i < 1200 * gk * gk; i++) { // sparse dark tufts/pebbles for anchor detail
     ctx.fillStyle = 'rgba(40,40,40,0.35)';
-    ctx.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
+    ctx.fillRect(Math.random() * gsz, Math.random() * gsz, 2, 2);
   }
   const grain = new THREE.CanvasTexture(c);
   grain.wrapS = grain.wrapT = THREE.RepeatWrapping;
   grain.repeat.set(1600, 1600);
-  if (renderer) grain.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  if (renderer) grain.anisotropy = Math.min(GFX.aniso, renderer.capabilities.getMaxAnisotropy());
 
-  const grassNormal = new THREE.TextureLoader().load('/static/planes/grass-normal.jpg');
-  grassNormal.wrapS = grassNormal.wrapT = THREE.RepeatWrapping;
-  grassNormal.repeat.set(2400, 2400);
-  if (renderer) grassNormal.anisotropy = renderer.capabilities.getMaxAnisotropy();
-
-  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+  const mat = new THREE.MeshStandardMaterial({
     map: grain,
     vertexColors: true,
     roughness: 0.88,
     metalness: 0.05,
-    normalMap: grassNormal,
-    normalScale: new THREE.Vector2(0.35, 0.35),
-  }));
+  });
+  if (GFX.sceneryNormals) {
+    const grassNormal = loadSceneryTexture('/static/planes/grass-normal.jpg');
+    grassNormal.wrapS = grassNormal.wrapT = THREE.RepeatWrapping;
+    grassNormal.repeat.set(2400, 2400);
+    if (renderer) grassNormal.anisotropy = Math.min(GFX.aniso, renderer.capabilities.getMaxAnisotropy());
+    mat.normalMap = grassNormal;
+    mat.normalScale = new THREE.Vector2(0.35, 0.35);
+  }
+  const mesh = new THREE.Mesh(geo, mat);
   mesh.receiveShadow = true;
   return mesh;
 }
@@ -221,10 +227,13 @@ export function buildTerrain(renderer, hf = terrainHeight, opts = {}) {
 // the near-coplanar shoreline triangles — paired with the renderer's
 // logarithmic depth buffer this kills the shoreline z-fighting shimmer.
 export function buildWater() {
-  const waterNormal = new THREE.TextureLoader().load('/static/planes/water-normal.jpg');
-  waterNormal.wrapS = waterNormal.wrapT = THREE.RepeatWrapping;
-  waterNormal.repeat.set(256, 256);
-  waterNormal.anisotropy = 8;
+  let waterNormal = null;
+  if (GFX.sceneryNormals) {
+    waterNormal = loadSceneryTexture('/static/planes/water-normal.jpg');
+    waterNormal.wrapS = waterNormal.wrapT = THREE.RepeatWrapping;
+    waterNormal.repeat.set(256, 256);
+    waterNormal.anisotropy = GFX.aniso;
+  }
 
   const mesh = new THREE.Mesh(
     new THREE.PlaneGeometry(TERRAIN.SIZE, TERRAIN.SIZE),

@@ -34,6 +34,7 @@ import {
 import {
   TERRAIN, terrainHeight, canyonHeight, forestMask, buildTerrain, buildWater, smoothstep, fbm,
 } from './plane-sim-terrain.js';
+import { GFX, GFX_LEVEL, GFX_LEVELS, loadSceneryTexture } from './plane-sim-quality.js';
 
 (() => {
   'use strict';
@@ -48,7 +49,7 @@ import {
     // depth buffer has almost no precision left at lake distance — shorelines
     // shimmer/z-fight. Log depth spreads precision evenly across the range.
     renderer = new THREE.WebGLRenderer({
-      canvas, antialias: true, powerPreference: 'high-performance', logarithmicDepthBuffer: true,
+      canvas, antialias: GFX.antialias, powerPreference: 'high-performance', logarithmicDepthBuffer: true,
     });
   } catch (e) {
     const ov = document.getElementById('ps-overlay');
@@ -354,16 +355,16 @@ import {
   const SKY_TOP = new THREE.Color(0x3f87cc);
   const SKY_HAZE = new THREE.Color(0xc3d9e8);
   scene.background = SKY_TOP.clone();
-  scene.fog = new THREE.Fog(SKY_HAZE.getHex(), 900, 9000);
+  scene.fog = new THREE.Fog(SKY_HAZE.getHex(), 900, GFX.fogFar);
 
   const camera = new THREE.PerspectiveCamera(62, 1, 0.5, 26000);
   camera.position.set(0, CFG.GROUND_Y + CAM_PRESETS[camName].up, 320 + CAM_PRESETS[camName].back);
 
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(GFX.pixelRatio);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping; // filmic response -> less "flat web GL"
   renderer.toneMappingExposure = 1.15;
-  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.enabled = GFX.shadows;
   renderer.shadowMap.type = THREE.PCFShadowMap; // PCFSoft is deprecated (aliases to PCF, but warns every frame)
 
   // ---- Lighting: a warm sun that casts soft shadows, a cool sky/ground
@@ -372,14 +373,15 @@ import {
   //      aircraft (see updateCamera) so shadows stay crisp anywhere in the map. ----
   const SUN_DIR = new THREE.Vector3(-0.55, 1, 0.42).normalize();
   const sun = new THREE.DirectionalLight(0xfff2da, 2.4);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.castShadow = GFX.shadows;
+  sun.shadow.mapSize.set(GFX.shadowMapSize, GFX.shadowMapSize);
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.6;
   {
     const sc = sun.shadow.camera;
-    sc.near = 1; sc.far = 420;
-    sc.left = -95; sc.right = 95; sc.top = 95; sc.bottom = -95;
+    const sb = GFX.shadowBox; // high tier: bigger map affords a wider shadowed area
+    sc.near = 1; sc.far = 420 + (sb - 95) * 2;
+    sc.left = -sb; sc.right = sb; sc.top = sb; sc.bottom = -sb;
     sc.updateProjectionMatrix();
   }
   scene.add(sun);
@@ -452,7 +454,7 @@ import {
     if (canyonBuilt) return;
     canyonBuilt = true;
     canyonGroup.add(buildTerrain(renderer, canyonHeight, {
-      rockA: 180, rockB: 330, snowA: 380, snowB: 520, segs: 620, sand: 0.35,
+      rockA: 180, rockB: 330, snowA: 380, snowB: 520, segs: Math.round(620 * GFX.segScale), sand: 0.35,
     }));
     // Cool fill light so the shaded wall reads as blue-grey rock instead of
     // pitch black (only lights the scene while the canyon is visible).
@@ -483,10 +485,10 @@ import {
     const field = new THREE.Group(); // 3D structures (cast + receive shadow)
     const markings = new THREE.Group(); // flat ground paint (receive only)
 
-    const asphaltTex = new THREE.TextureLoader().load('/static/planes/asphalt.jpg');
+    const asphaltTex = loadSceneryTexture('/static/planes/asphalt.jpg');
     asphaltTex.colorSpace = THREE.SRGBColorSpace;
     asphaltTex.wrapS = asphaltTex.wrapT = THREE.RepeatWrapping;
-    asphaltTex.anisotropy = 8;
+    asphaltTex.anisotropy = GFX.aniso;
 
     const tarmacTex = asphaltTex.clone();
     tarmacTex.repeat.set(3, 60);
@@ -783,9 +785,10 @@ import {
       if (h < 45 + Math.random() * 40) return Math.random() < 0.75 ? 'broadleaf' : 'conifer';
       return Math.random() < 0.8 ? 'conifer' : 'pine';
     };
+    const TREE_TARGET = Math.round(1900 * GFX.treeScale);
     let placed = 0;
     let guard = 0;
-    while (placed < 1900 && guard++ < 80000) {
+    while (placed < TREE_TARGET && guard++ < 80000) {
       const x = (Math.random() * 2 - 1) * (CFG.BORDER + 1200);
       const z = (Math.random() * 2 - 1) * (CFG.BORDER + 1200);
       const h = terrainHeight(x, z);
@@ -811,7 +814,7 @@ import {
       // The stronger the mask, the more satellite trees clump around the seed
       // — sparse lone trees at the wood's edge, thickets in the middle.
       const extra = Math.floor(((mask - thresh) / (1 - thresh)) * 4 * (0.5 + Math.random()));
-      for (let k = 0; k < extra && placed < 1900; k++) {
+      for (let k = 0; k < extra && placed < TREE_TARGET; k++) {
         const sx = x + (Math.random() * 2 - 1) * 42;
         const sz = z + (Math.random() * 2 - 1) * 42;
         const sh = terrainHeight(sx, sz);
@@ -821,16 +824,16 @@ import {
       }
     }
 
-    const trunkTex = new THREE.TextureLoader().load('/static/planes/tree-bark.jpg');
+    const trunkTex = loadSceneryTexture('/static/planes/tree-bark.jpg');
     trunkTex.wrapS = trunkTex.wrapT = THREE.RepeatWrapping;
     trunkTex.repeat.set(1, 3);
-    trunkTex.anisotropy = 8;
+    trunkTex.anisotropy = GFX.aniso;
 
-    const leafTex = new THREE.TextureLoader().load('/static/planes/tree-leaves.jpg');
+    const leafTex = loadSceneryTexture('/static/planes/tree-leaves.jpg');
     leafTex.colorSpace = THREE.SRGBColorSpace;
     leafTex.wrapS = leafTex.wrapT = THREE.RepeatWrapping;
     leafTex.repeat.set(4, 4);
-    leafTex.anisotropy = 8;
+    leafTex.anisotropy = GFX.aniso;
 
     const trunkMat = new THREE.MeshStandardMaterial({
       map: trunkTex,
@@ -879,8 +882,9 @@ import {
 
     // Rocks: on the steeps and the high ground.
     const rocks = [];
+    const ROCK_TARGET = Math.round(170 * GFX.treeScale);
     guard = 0;
-    while (rocks.length < 170 && guard++ < 22000) {
+    while (rocks.length < ROCK_TARGET && guard++ < 22000) {
       const x = (Math.random() * 2 - 1) * (CFG.BORDER + 1200);
       const z = (Math.random() * 2 - 1) * (CFG.BORDER + 1200);
       const h = terrainHeight(x, z);
@@ -1206,11 +1210,16 @@ import {
   const _tz = new THREE.Vector3(0, 0, 1);
   // Spawn one visible tracer round travelling `dir` (unit) at `speed`, drifting
   // with the firer's own velocity. Used by both the player guns and the AI.
+  // Tracers are pooled: guns spawn dozens per second, so allocating a Mesh +
+  // Vector3 per round churns the GC. Expired rounds go back on the free list.
+  const tracerPool = [];
   function spawnTracer(pos, dir, speed, baseVel, mat) {
-    const t = new THREE.Mesh(tracerGeo, mat);
+    const t = tracerPool.pop() || new THREE.Mesh(tracerGeo, mat);
+    t.material = mat;
     t.position.copy(pos);
     t.quaternion.copy(_tq.setFromUnitVectors(_tz, dir)); // align the long axis with travel
-    t.userData.vel = dir.clone().multiplyScalar(speed).add(baseVel);
+    if (!t.userData.vel) t.userData.vel = new THREE.Vector3();
+    t.userData.vel.copy(dir).multiplyScalar(speed).add(baseVel);
     t.userData.life = CFG.TRACER_LIFE;
     scene.add(t);
     tracers.push(t);
@@ -1222,6 +1231,7 @@ import {
       t.userData.life -= dt;
       if (t.userData.life <= 0) {
         scene.remove(t);
+        tracerPool.push(t);
         tracers.splice(i, 1);
       }
     }
@@ -1253,12 +1263,16 @@ import {
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
   })();
+  // Sparks and smoke are pooled too (muzzle flashes alone are several sprites
+  // per trigger-second): each sprite keeps its own material for independent
+  // opacity, but the sprite+material pair is reused instead of re-allocated.
   const sparks = [];
+  const sparkPool = [];
   function spawnSpark(pos, size, life) {
-    const m = new THREE.SpriteMaterial({
+    const s = sparkPool.pop() || new THREE.Sprite(new THREE.SpriteMaterial({
       map: sparkTex, depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
-    });
-    const s = new THREE.Sprite(m);
+    }));
+    s.material.opacity = 1;
     s.position.copy(pos);
     s.scale.setScalar(size);
     s.userData = { life, maxLife: life, size };
@@ -1272,7 +1286,7 @@ import {
       const k = s.userData.life / s.userData.maxLife; // 1 -> 0
       if (k <= 0) {
         scene.remove(s);
-        s.material.dispose();
+        sparkPool.push(s);
         sparks.splice(i, 1);
         continue;
       }
@@ -1295,9 +1309,12 @@ import {
     return new THREE.CanvasTexture(c);
   })();
   const smokes = [];
+  const smokePool = [];
   function spawnSmoke(pos, size, life) {
-    const m = new THREE.SpriteMaterial({ map: smokeTex, depthWrite: false, transparent: true });
-    const s = new THREE.Sprite(m);
+    const s = smokePool.pop() || new THREE.Sprite(new THREE.SpriteMaterial({
+      map: smokeTex, depthWrite: false, transparent: true,
+    }));
+    s.material.opacity = 0.8;
     s.position.copy(pos);
     s.scale.setScalar(size);
     s.userData = { life, maxLife: life, size };
@@ -1310,7 +1327,7 @@ import {
       s.userData.life -= dt;
       const k = s.userData.life / s.userData.maxLife;
       if (k <= 0) {
-        scene.remove(s); s.material.dispose(); smokes.splice(i, 1);
+        scene.remove(s); smokePool.push(s); smokes.splice(i, 1);
         continue;
       }
       s.position.y += dt * 2.5;
@@ -1321,16 +1338,21 @@ import {
 
   // ---- Debris: tumbling chunks thrown by a kill, falling under gravity. ----
   const debris = [];
+  const debrisPool = [];
   const debrisMat = new THREE.MeshStandardMaterial({ color: 0x2c2c30, roughness: 0.9 });
+  const debrisGeo = new THREE.BoxGeometry(1, 0.5, 1.4); // unit chunk, scaled per instance
   function spawnDebris(pos, baseVel) {
     for (let i = 0; i < 6; i++) {
       const s = 0.3 + Math.random() * 0.9;
-      const d = new THREE.Mesh(new THREE.BoxGeometry(s, s * 0.5, s * 1.4), debrisMat);
+      const d = debrisPool.pop() || new THREE.Mesh(debrisGeo, debrisMat);
+      d.scale.setScalar(s);
       d.position.copy(pos);
-      d.userData.vel = baseVel.clone().multiplyScalar(0.6).add(new THREE.Vector3(
-        (Math.random() - 0.5) * 45, Math.random() * 30, (Math.random() - 0.5) * 45,
-      ));
-      d.userData.rot = new THREE.Vector3(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+      if (!d.userData.vel) { d.userData.vel = new THREE.Vector3(); d.userData.rot = new THREE.Vector3(); }
+      d.userData.vel.copy(baseVel).multiplyScalar(0.6);
+      d.userData.vel.x += (Math.random() - 0.5) * 45;
+      d.userData.vel.y += Math.random() * 30;
+      d.userData.vel.z += (Math.random() - 0.5) * 45;
+      d.userData.rot.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
       d.userData.life = 2.6;
       scene.add(d);
       debris.push(d);
@@ -1347,7 +1369,7 @@ import {
       d.rotation.z += d.userData.rot.z * dt;
       if (d.userData.life <= 0 || d.position.y < groundAt(d.position.x, d.position.z)) {
         scene.remove(d);
-        d.geometry.dispose();
+        debrisPool.push(d);
         debris.splice(i, 1);
       }
     }
@@ -2034,17 +2056,64 @@ import {
     }
   }
 
-  // ---- Pause menu (ESC). Freezes the sim (dt = 0) and suspends audio; the
-  //      overlay hosts volume/camera/bandits/skill/units settings. ----
+  // ---- Pause / settings menu (ESC or the corner ⚙). Mid-flight it freezes
+  //      the sim (dt = 0) and suspends audio; opened from a menu screen it's
+  //      just a settings panel (nothing to pause). Tabs: General | Graphics.
+  //      Aircraft/bandit setup deliberately does NOT live here — those are
+  //      pre-game choices on the hangar and sortie screens. ----
   const pauseOv = document.getElementById('ps-pause');
+  const pauseTitle = document.getElementById('ps-pause-title');
+  const resumeBtn = document.getElementById('ps-resume');
   let userPaused = false;
+  let settingsOpen = false; // overlay shown from a menu screen (no pause needed)
+  function syncPauseChrome() {
+    const flying = started && !menuMode;
+    if (pauseTitle) pauseTitle.textContent = flying ? 'Paused' : 'Settings';
+    if (resumeBtn) resumeBtn.textContent = flying ? 'Resume (ESC)' : 'Close (ESC)';
+  }
   function setPaused(on) {
     userPaused = !!on;
     firing = false;
-    if (pauseOv) pauseOv.classList.toggle('ps-hidden', !userPaused);
+    if (pauseOv) pauseOv.classList.toggle('ps-hidden', !userPaused && !settingsOpen);
     if (userPaused) audio.suspend(); else audio.resume();
+    syncPauseChrome();
   }
-  document.getElementById('ps-resume')?.addEventListener('click', () => setPaused(false));
+  function showSettings(on) {
+    if (started && !menuMode) { setPaused(on); return; }
+    settingsOpen = !!on;
+    if (pauseOv) pauseOv.classList.toggle('ps-hidden', !settingsOpen);
+    syncPauseChrome();
+  }
+  const settingsShowing = () => userPaused || settingsOpen;
+  resumeBtn?.addEventListener('click', () => { setPaused(false); showSettings(false); });
+  document.getElementById('ps-settings-btn')?.addEventListener('click', () => {
+    showSettings(!settingsShowing());
+  });
+  // Tab strip: one pane visible at a time.
+  for (const t of document.querySelectorAll('.ps-tab')) {
+    t.addEventListener('click', () => {
+      for (const o of document.querySelectorAll('.ps-tab')) o.classList.toggle('ps-tab-active', o === t);
+      for (const p of document.querySelectorAll('.ps-tabpane')) {
+        p.style.display = p.dataset.pane === t.dataset.tab ? '' : 'none';
+      }
+    });
+  }
+  // Graphics quality: the world (terrain mesh, forests, textures) is baked at
+  // boot, so a tier change saves the choice and reloads the sim. Guarded so
+  // re-clicking the active tier does nothing.
+  for (const b of document.querySelectorAll('[data-gfx]')) {
+    b.classList.toggle('ps-diff-active', b.dataset.gfx === GFX_LEVEL);
+    b.addEventListener('mousedown', (ev) => ev.stopPropagation());
+    b.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const name = b.dataset.gfx;
+      if (!GFX_LEVELS.includes(name) || name === GFX_LEVEL) return;
+      try { localStorage.setItem('ps-gfx', name); } catch (_) { /* private mode */ }
+      const hint = document.getElementById('ps-gfx-hint');
+      if (hint) hint.textContent = 'Applying — reloading the sim…';
+      window.location.reload();
+    });
+  }
   const volSlider = document.getElementById('ps-vol');
   if (volSlider) {
     volSlider.value = String(Math.round(audio.getVolume() * 100));
@@ -2188,6 +2257,7 @@ import {
     const k = e.key.toLowerCase();
     keys[k] = true;
     if (k === 'escape') {
+      if (settingsOpen) { showSettings(false); return; } // settings-over-menu closes first
       if (menuMode === 'sortie' || menuMode === 'tutorial' || menuMode === 'stunt') { setMenu('mode'); return; }
       if (menuMode === 'mode') { setMenu('plane'); return; }
       if (menuMode) return; // the hangar is the root screen
@@ -2201,9 +2271,12 @@ import {
     if (menuMode === 'plane' && k === 'enter') { setMenu('mode'); return; }
     if (menuMode === 'mode' && k === 'enter') { setMenu('sortie'); return; }
     if (menuMode === 'sortie' && k === 'enter') { startSortie(); return; }
-    if (k === '1') { setDifficulty('easy'); return; }
-    if (k === '2') { setDifficulty('normal'); return; }
-    if (k === '3') { setDifficulty('hard'); return; }
+    // Bandit skill is a pre-game choice (sortie screen); the 1/2/3 hotkeys
+    // only work before the engagement is live.
+    const preGame = !started || !!menuMode || crashed || won;
+    if (k === '1' && preGame) { setDifficulty('easy'); return; }
+    if (k === '2' && preGame) { setDifficulty('normal'); return; }
+    if (k === '3' && preGame) { setDifficulty('hard'); return; }
     if (k === 'm') { audio.toggleMute(); return; }
     if (k === 'c') {
       setCamPreset(CAM_ORDER[(CAM_ORDER.indexOf(camName) + 1) % CAM_ORDER.length]);

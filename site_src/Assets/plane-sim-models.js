@@ -5,6 +5,7 @@
 // it. Local forward is -Z, Y is up, units are metres.
 import * as THREE from 'three';
 import { REF_P51_PARTS, REF_ZERO_PARTS, REF_SPIT_PARTS } from './plane-sim-refmeshes.js';
+import { GFX, loadSceneryTexture } from './plane-sim-quality.js';
 
 const setShadows = (obj) => obj.traverse((o) => {
   if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
@@ -352,9 +353,11 @@ export function buildAircraft(opts = {}) {
 const _refTexCache = {};
 function refTexture(name) {
   if (!_refTexCache[name]) {
+    // The aircraft skin sheets stay full-resolution on every tier — the player
+    // plane fills the screen; halving it reads as mud, not "low".
     const tex = new THREE.TextureLoader().load(`/static/planes/${name}.jpg`);
     tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 8;
+    tex.anisotropy = Math.max(GFX.aniso, 8);
     _refTexCache[name] = tex;
   }
   return _refTexCache[name];
@@ -364,10 +367,10 @@ const _detailTexCache = {};
 function detailTexture(name, repeat) {
   const key = `${name}_${repeat}`;
   if (!_detailTexCache[key]) {
-    const tex = new THREE.TextureLoader().load(`/static/planes/${name}.jpg`);
+    const tex = loadSceneryTexture(`/static/planes/${name}.jpg`);
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
     tex.repeat.set(repeat, repeat);
-    tex.anisotropy = 8;
+    tex.anisotropy = GFX.aniso;
     _detailTexCache[key] = tex;
   }
   return _detailTexCache[key];
@@ -377,11 +380,11 @@ const _treeTexCache = {};
 function treeTexture(name, repeatU, repeatV) {
   const key = `${name}_${repeatU}_${repeatV}`;
   if (!_treeTexCache[key]) {
-    const tex = new THREE.TextureLoader().load(`/static/planes/${name}.jpg`);
+    const tex = loadSceneryTexture(`/static/planes/${name}.jpg`);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
     tex.repeat.set(repeatU, repeatV);
-    tex.anisotropy = 8;
+    tex.anisotropy = GFX.aniso;
     _treeTexCache[key] = tex;
   }
   return _treeTexCache[key];
@@ -422,29 +425,40 @@ function mergeGeometries(geos) {
   return merged;
 }
 
+// Canopy silhouettes scale with the graphics tier: radial segments come from
+// GFX (5 low / 7 medium / 10 high), the low tier drops the smallest lobes and
+// the high tier adds extra ones for a fuller, more irregular crown.
 export function makePineCanopyGeo() {
-  const c1 = new THREE.ConeGeometry(2.0, 7.5, 7); c1.translate(0, 12, 0);
-  const c2 = new THREE.ConeGeometry(1.6, 6.0, 7); c2.translate(0.4, 9.8, 0.3);
-  const c3 = new THREE.ConeGeometry(1.5, 5.0, 7); c3.translate(-0.4, 8.5, -0.4);
-  return mergeGeometries([c1, c2, c3]);
+  const n = GFX.coneSegs;
+  const parts = [
+    (() => { const g = new THREE.ConeGeometry(2.0, 7.5, n); g.translate(0, 12, 0); return g; })(),
+    (() => { const g = new THREE.ConeGeometry(1.6, 6.0, n); g.translate(0.4, 9.8, 0.3); return g; })(),
+  ];
+  if (GFX.canopyDetail >= 1) { const g = new THREE.ConeGeometry(1.5, 5.0, n); g.translate(-0.4, 8.5, -0.4); parts.push(g); }
+  if (GFX.canopyDetail >= 2) { const g = new THREE.ConeGeometry(1.1, 4.2, n); g.translate(0.15, 7.6, -0.5); parts.push(g); }
+  return mergeGeometries(parts);
 }
 
 export function makeBroadleafCanopyGeo() {
-  const s1 = new THREE.SphereGeometry(2.4, 8, 6); s1.scale(1, 0.85, 1); s1.translate(0, 5.8, 0);
-  const s2 = new THREE.SphereGeometry(1.8, 8, 6); s2.scale(1, 0.85, 1); s2.translate(1.0, 5.4, 0.8);
-  const s3 = new THREE.SphereGeometry(1.8, 8, 6); s3.scale(1, 0.85, 1); s3.translate(-1.0, 5.2, -0.8);
-  const s4 = new THREE.SphereGeometry(1.6, 8, 6); s4.scale(1, 0.85, 1); s4.translate(0.8, 5.0, -1.0);
-  const s5 = new THREE.SphereGeometry(1.5, 8, 6); s5.scale(1, 0.85, 1); s5.translate(-0.8, 5.5, 1.0);
-  const s6 = new THREE.SphereGeometry(1.4, 8, 6); s6.scale(1, 0.85, 1); s6.translate(0, 6.4, 0);
-  return mergeGeometries([s1, s2, s3, s4, s5, s6]);
+  const [w, h] = GFX.sphereSegs;
+  const lobe = (r, x, y, z) => {
+    const g = new THREE.SphereGeometry(r, w, h); g.scale(1, 0.85, 1); g.translate(x, y, z); return g;
+  };
+  const parts = [lobe(2.4, 0, 5.8, 0), lobe(1.8, 1.0, 5.4, 0.8), lobe(1.8, -1.0, 5.2, -0.8)];
+  if (GFX.canopyDetail >= 1) parts.push(lobe(1.6, 0.8, 5.0, -1.0), lobe(1.5, -0.8, 5.5, 1.0), lobe(1.4, 0, 6.4, 0));
+  if (GFX.canopyDetail >= 2) parts.push(lobe(1.2, 0.2, 6.9, 0.6), lobe(1.1, -1.4, 6.0, 0.2), lobe(1.0, 1.3, 6.1, -0.3));
+  return mergeGeometries(parts);
 }
 
 export function makeConiferCanopyGeo() {
-  const c1 = new THREE.ConeGeometry(3.6, 6.5, 7); c1.translate(0, 6.2, 0);
-  const c2 = new THREE.ConeGeometry(2.8, 5.0, 7); c2.translate(0.2, 9.2, 0.1);
-  const c3 = new THREE.ConeGeometry(2.0, 4.0, 7); c3.translate(-0.1, 11.6, -0.2);
-  const c4 = new THREE.ConeGeometry(1.2, 2.5, 7); c4.translate(0, 13.2, 0);
-  return mergeGeometries([c1, c2, c3, c4]);
+  const n = GFX.coneSegs;
+  const cone = (r, ht, x, y, z) => {
+    const g = new THREE.ConeGeometry(r, ht, n); g.translate(x, y, z); return g;
+  };
+  const parts = [cone(3.6, 6.5, 0, 6.2, 0), cone(2.8, 5.0, 0.2, 9.2, 0.1), cone(2.0, 4.0, -0.1, 11.6, -0.2)];
+  if (GFX.canopyDetail >= 1) parts.push(cone(1.2, 2.5, 0, 13.2, 0));
+  if (GFX.canopyDetail >= 2) parts.push(cone(3.2, 3.4, -0.3, 7.6, 0.3), cone(0.7, 1.6, 0, 14.3, 0));
+  return mergeGeometries(parts);
 }
 
 export function makeBroadleafTrunkGeo() {
