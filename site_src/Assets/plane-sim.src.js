@@ -454,13 +454,34 @@ import { buildGrassField } from './plane-sim-grass.js';
       waterNormals,
       sunDirection: SUN_DIR.clone(),
       sunColor: 0xfff2da,
-      waterColor: 0x10485e,
-      distortionScale: 2.4,
+      waterColor: 0x0c4254, // deep blue-green body colour (scatter term)
+      distortionScale: 18, // ripple the reflection hard — a clean mirror reads as mercury
       fog: true,
     });
     waterMesh.rotation.x = -Math.PI / 2;
     waterMesh.position.y = TERRAIN.WATER_Y;
-    waterMesh.material.uniforms.size.value = 4; // wave frequency over world metres
+    waterMesh.material.uniforms.size.value = 8; // wave frequency over world metres
+    // De-chrome the stock Water shader (values tuned by eye against the lakes):
+    // steeper wave normals, a blue-green tint on the mirrored scene (our world
+    // is snow + haze — untinted it reflects silver), and much less of the flat
+    // grey sun-diffuse wash so the head-on colour is deep water, not milk.
+    waterMesh.material.fragmentShader = waterMesh.material.fragmentShader
+      .replace(
+        'vec3 surfaceNormal = normalize( noise.xzy * vec3( 1.5, 1.0, 1.5 ) );',
+        'vec3 surfaceNormal = normalize( noise.xzy * vec3( 2.6, 1.0, 2.6 ) );',
+      )
+      .replace(
+        'vec3 reflectionSample = vec3( texture2D( mirrorSampler, mirrorCoord.xy / mirrorCoord.w + distortion ) );',
+        'vec3 reflectionSample = vec3( texture2D( mirrorSampler, mirrorCoord.xy / mirrorCoord.w + distortion ) ) * vec3( 0.58, 0.74, 0.82 );',
+      )
+      .replace(
+        'vec3 scatter = max( 0.0, dot( surfaceNormal, eyeDirection ) ) * waterColor;',
+        'vec3 scatter = max( 0.0, dot( surfaceNormal, eyeDirection ) ) * waterColor * 1.15;',
+      )
+      .replace(
+        'vec3 albedo = mix( ( sunColor * diffuseLight * 0.3 + scatter ) * getShadowMask()',
+        'vec3 albedo = mix( ( sunColor * diffuseLight * 0.12 + scatter ) * getShadowMask()',
+      );
     waterMesh.material.polygonOffset = true;
     waterMesh.material.polygonOffsetFactor = -1;
     waterMesh.material.polygonOffsetUnits = -1;
