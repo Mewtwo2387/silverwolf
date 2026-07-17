@@ -1,15 +1,16 @@
 // Graphics quality tiers for Plane Sim. 'medium' is the original baseline;
 // 'low' halves texture resolution, thins the geometry and drops shadows;
-// 'high' raises shadow/texture/geometry detail. Read once at boot — world
-// geometry is baked at build time, so changing tiers reloads the sim (the
-// settings UI handles that).
+// 'high' raises shadow/texture/geometry detail; 'ultra' maxes everything and
+// turns on the reflective water and the instanced grass field. Read once at
+// boot — world geometry is baked at build time, so changing tiers reloads
+// the sim (the settings UI handles that).
 import * as THREE from 'three';
 
-export const GFX_LEVELS = ['low', 'medium', 'high'];
+export const GFX_LEVELS = ['low', 'medium', 'high', 'ultra'];
 export const GFX_LEVEL = (() => {
   try {
     const v = localStorage.getItem('ps-gfx');
-    return (v === 'low' || v === 'high') ? v : 'medium';
+    return (v === 'low' || v === 'high' || v === 'ultra') ? v : 'medium';
   } catch (_) { return 'medium'; }
 })();
 
@@ -63,6 +64,26 @@ export const GFX = {
     canopyDetail: 2,
     sceneryNormals: true,
     fogFar: 11000,
+    reflectiveWater: false,
+    grass: false,
+  },
+  ultra: {
+    pixelRatio: Math.min(dpr, 3),
+    antialias: true,
+    shadows: true,
+    shadowMapSize: 4096,
+    shadowBox: 170,
+    aniso: 16,
+    texScale: 2, // procedural (canvas) textures render at double resolution
+    segScale: 1.8,
+    treeScale: 1.6,
+    coneSegs: 12,
+    sphereSegs: [12, 10],
+    canopyDetail: 3,
+    sceneryNormals: true,
+    fogFar: 13000,
+    reflectiveWater: true, // planar-reflection water with animated waves
+    grass: true, // instanced grass blades around the aircraft
   },
 }[GFX_LEVEL];
 

@@ -35,6 +35,8 @@ import {
   TERRAIN, terrainHeight, canyonHeight, forestMask, buildTerrain, buildWater, smoothstep, fbm,
 } from './plane-sim-terrain.js';
 import { GFX, GFX_LEVEL, GFX_LEVELS, loadSceneryTexture } from './plane-sim-quality.js';
+import { Water } from 'three/addons/objects/Water.js';
+import { buildGrassField } from './plane-sim-grass.js';
 
 (() => {
   'use strict';
@@ -437,8 +439,53 @@ import { GFX, GFX_LEVEL, GFX_LEVELS, loadSceneryTexture } from './plane-sim-qual
   const landGroup = new THREE.Group();
   scene.add(landGroup);
   landGroup.add(buildTerrain(renderer));
-  const waterMesh = buildWater();
+  // Ultra: the water is a planar-reflection surface with animated waves (the
+  // whole scene is mirrored into a render target each frame — the closest
+  // WebGL gets to ray-traced reflections). Every other tier keeps the cheap
+  // translucent plane.
+  let waterMesh;
+  if (GFX.reflectiveWater) {
+    const waterNormals = loadSceneryTexture('/static/planes/water-normal.jpg');
+    waterNormals.wrapS = THREE.RepeatWrapping;
+    waterNormals.wrapT = THREE.RepeatWrapping;
+    waterMesh = new Water(new THREE.PlaneGeometry(TERRAIN.SIZE, TERRAIN.SIZE), {
+      textureWidth: 1024,
+      textureHeight: 1024,
+      waterNormals,
+      sunDirection: SUN_DIR.clone(),
+      sunColor: 0xfff2da,
+      waterColor: 0x10485e,
+      distortionScale: 2.4,
+      fog: true,
+    });
+    waterMesh.rotation.x = -Math.PI / 2;
+    waterMesh.position.y = TERRAIN.WATER_Y;
+    waterMesh.material.uniforms.size.value = 4; // wave frequency over world metres
+    waterMesh.material.polygonOffset = true;
+    waterMesh.material.polygonOffsetFactor = -1;
+    waterMesh.material.polygonOffsetUnits = -1;
+  } else {
+    waterMesh = buildWater();
+  }
   scene.add(waterMesh);
+
+  // Ultra: instanced grass blades wrap around the aircraft (coastal map only —
+  // it lives in landGroup so the map switch hides it with everything else).
+  let grassField = null;
+  if (GFX.grass) {
+    grassField = buildGrassField({
+      heightFn: terrainHeight,
+      size: TERRAIN.SIZE,
+      waterY: TERRAIN.WATER_Y,
+      exclude: [{
+        x0: -(CFG.RUNWAY_W / 2 + 10),
+        x1: CFG.RUNWAY_W / 2 + 10,
+        z0: -(CFG.RUNWAY_LEN / 2 + 40),
+        z1: CFG.RUNWAY_LEN / 2 + 40,
+      }],
+    });
+    landGroup.add(grassField.mesh);
+  }
 
   // The Canyon map (stunt-only): one alpine gorge world, nothing but terrain —
   // the shared water plane reads as the river along its sunken floor. Lower
@@ -454,7 +501,9 @@ import { GFX, GFX_LEVEL, GFX_LEVELS, loadSceneryTexture } from './plane-sim-qual
     if (canyonBuilt) return;
     canyonBuilt = true;
     canyonGroup.add(buildTerrain(renderer, canyonHeight, {
-      rockA: 180, rockB: 330, snowA: 380, snowB: 520, segs: Math.round(620 * GFX.segScale), sand: 0.35,
+      // segScale capped here: the canyon grid is already fine (620), and
+      // ultra's 1.8x would mean a >1M-vertex build hitch on first entry.
+      rockA: 180, rockB: 330, snowA: 380, snowB: 520, segs: Math.round(620 * Math.min(GFX.segScale, 1.35)), sand: 0.35,
     }));
     // Cool fill light so the shaded wall reads as blue-grey rock instead of
     // pitch black (only lights the scene while the canyon is visible).
@@ -1132,6 +1181,8 @@ import { GFX, GFX_LEVEL, GFX_LEVELS, loadSceneryTexture } from './plane-sim-qual
   // first user gesture (the click that starts the game). M toggles mute.
   const audio = (() => {
     let ctx = null; let master = null; let engine = null;
+    let noiseBuf = null; // 2 s of white noise; every shot plays a random slice
+    let drive = null; // soft tanh waveshaper — gives the guns their punch
     let muted = false;
     let vol = 0.5;
     try {
@@ -1154,6 +1205,89 @@ import { GFX, GFX_LEVEL, GFX_LEVELS, loadSceneryTexture } from './plane-sim-qual
       engine = {
         g, lp, o1, o2,
       };
+      noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+      const nd = noiseBuf.getChannelData(0);
+      for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+      drive = ctx.createWaveShaper();
+      const curve = new Float32Array(256);
+      for (let i = 0; i < 256; i++) { const x = i / 127.5 - 1; curve[i] = Math.tanh(2.2 * x); }
+      drive.curve = curve;
+      drive.connect(master);
+    }
+    // One gun report: a noise "crack" through a collapsing lowpass plus a
+    // pitch-dropping triangle thump, both saturated through the shared drive.
+    // `far` softens it into the dull thudding of someone ELSE's guns.
+    function shot(v, far) {
+      if (!ctx || muted || !noiseBuf) return;
+      const t = ctx.currentTime;
+      const n = ctx.createBufferSource(); n.buffer = noiseBuf;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass';
+      lp.frequency.setValueAtTime(far ? 750 : 3600 + Math.random() * 1400, t);
+      lp.frequency.exponentialRampToValueAtTime(far ? 220 : 420, t + 0.07);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(v * (0.85 + Math.random() * 0.3), t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + (far ? 0.13 : 0.09));
+      n.connect(lp); lp.connect(g); g.connect(drive);
+      n.start(t, Math.random() * 1.5, 0.16);
+      n.stop(t + 0.18);
+      const o = ctx.createOscillator(); o.type = 'triangle';
+      o.frequency.setValueAtTime((far ? 95 : 150) + Math.random() * 25, t);
+      o.frequency.exponentialRampToValueAtTime(52, t + 0.06);
+      const og = ctx.createGain();
+      og.gain.setValueAtTime(v * (far ? 0.55 : 0.95), t);
+      og.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+      o.connect(og); og.connect(drive);
+      o.start(t); o.stop(t + 0.1);
+    }
+    // Rounds striking a target: a bright metallic snap over a dull thunk.
+    function impact() {
+      if (!ctx || muted || !noiseBuf) return;
+      const t = ctx.currentTime;
+      const n = ctx.createBufferSource(); n.buffer = noiseBuf;
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
+      bp.frequency.value = 2200 + Math.random() * 900; bp.Q.value = 2.2;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.5, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+      n.connect(bp); bp.connect(g); g.connect(drive);
+      n.start(t, Math.random() * 1.5, 0.08); n.stop(t + 0.1);
+      const n2 = ctx.createBufferSource(); n2.buffer = noiseBuf;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 520;
+      const g2 = ctx.createGain();
+      g2.gain.setValueAtTime(0.55, t);
+      g2.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+      n2.connect(lp); lp.connect(g2); g2.connect(drive);
+      n2.start(t, Math.random() * 1.5, 0.1); n2.stop(t + 0.12);
+    }
+    // Explosion: a sub-bass drop, a long rumble and a short debris crackle.
+    function explosion() {
+      if (!ctx || muted || !noiseBuf) return;
+      const t = ctx.currentTime;
+      const o = ctx.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(72, t);
+      o.frequency.exponentialRampToValueAtTime(36, t + 0.7);
+      const og = ctx.createGain();
+      og.gain.setValueAtTime(1.4, t);
+      og.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
+      o.connect(og); og.connect(drive);
+      o.start(t); o.stop(t + 1);
+      const n = ctx.createBufferSource(); n.buffer = noiseBuf;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass';
+      lp.frequency.setValueAtTime(560, t);
+      lp.frequency.exponentialRampToValueAtTime(110, t + 1.1);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(1.5, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+      n.connect(lp); lp.connect(g); g.connect(drive);
+      n.start(t, Math.random() * 0.6, 1.3); n.stop(t + 1.3);
+      const n2 = ctx.createBufferSource(); n2.buffer = noiseBuf;
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
+      bp.frequency.value = 1300; bp.Q.value = 0.8;
+      const g2 = ctx.createGain();
+      g2.gain.setValueAtTime(0.5, t + 0.03);
+      g2.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+      n2.connect(bp); bp.connect(g2); g2.connect(drive);
+      n2.start(t + 0.03, Math.random() * 1.2, 0.4); n2.stop(t + 0.5);
     }
     function setEngine(thr, speed) {
       if (!engine) return;
@@ -1162,18 +1296,6 @@ import { GFX, GFX_LEVEL, GFX_LEVELS, loadSceneryTexture } from './plane-sim-qual
       engine.o2.frequency.value = f * 1.012;
       engine.lp.frequency.value = 220 + thr * 780;
       engine.g.gain.value = 0.1 + thr * 0.22;
-    }
-    function burst(dur, freq, vol, type) {
-      if (!ctx || muted) return;
-      const len = Math.max(1, Math.floor(ctx.sampleRate * dur));
-      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-      const d = buf.getChannelData(0);
-      for (let i = 0; i < len; i++) { const k = 1 - i / len; d[i] = (Math.random() * 2 - 1) * k * k; }
-      const n = ctx.createBufferSource(); n.buffer = buf;
-      const f = ctx.createBiquadFilter(); f.type = type || 'bandpass'; f.frequency.value = freq; f.Q.value = 0.7;
-      const g = ctx.createGain(); g.gain.value = vol;
-      n.connect(f); f.connect(g); g.connect(master);
-      n.start();
     }
     function toggleMute() {
       muted = !muted;
@@ -1189,9 +1311,11 @@ import { GFX, GFX_LEVEL, GFX_LEVELS, loadSceneryTexture } from './plane-sim-qual
     return {
       ensure,
       setEngine,
-      gun: () => burst(0.05, 950, 0.5),
-      hit: () => burst(0.09, 380, 0.6),
-      boom: () => burst(0.9, 130, 1.6, 'lowpass'),
+      gun: () => shot(0.5, false),
+      // Bandit guns heard at a distance: quieter and duller the farther out.
+      gunFar: (dist) => shot(clamp(260 / Math.max(dist, 120), 0.06, 0.4), true),
+      hit: impact,
+      boom: explosion,
       toggleMute,
       isMuted: () => muted,
       setVolume,
@@ -1864,6 +1988,8 @@ import { GFX, GFX_LEVEL, GFX_LEVELS, loadSceneryTexture } from './plane-sim-qual
           .normalize();
         EN.muzzle.copy(g.position).addScaledVector(EN.fwd, 4.5);
         spawnTracer(EN.muzzle, EN.shotDir, CFG.TRACER_SPEED, e.vel, enemyTracerMat);
+        const gd = e.group.position.distanceTo(plane.position);
+        if (gd < 900) audio.gunFar(gd);
         const t = rayHitsSphere(EN.muzzle, EN.shotDir, plane.position, CFG.HITBOX_R, diff.range);
         // Bandit rounds do a flat CFG.GUN_DMG regardless of airframe so the
         // difficulty tiers stay the balance knob (their AIRFRAME quirks already
@@ -3719,7 +3845,10 @@ import { GFX, GFX_LEVEL, GFX_LEVELS, loadSceneryTexture } from './plane-sim-qual
       waterScrollX = (waterScrollX + dt * 0.015) % 1;
       waterScrollY = (waterScrollY + dt * 0.010) % 1;
       waterMesh.material.normalMap.offset.set(waterScrollX, waterScrollY);
+    } else if (waterMesh && waterMesh.isWater) {
+      waterMesh.material.uniforms.time.value += dt * 0.55; // ultra: animated waves
     }
+    if (grassField && landGroup.visible) grassField.update(plane.position, dt);
 
     if (menuMode) menuCamera(dt); else updateCamera(dt);
     drawMap();

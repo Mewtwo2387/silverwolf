@@ -726,8 +726,9 @@ export function PlaneSimPage(opts: {
               <button type="button" class="ps-diff-btn" data-gfx="low">Low</button>
               <button type="button" class="ps-diff-btn" data-gfx="medium">Medium</button>
               <button type="button" class="ps-diff-btn" data-gfx="high">High</button>
+              <button type="button" class="ps-diff-btn" data-gfx="ultra">Ultra</button>
             </div>
-            <p class="ps-hint" id="ps-gfx-hint">Low halves texture and terrain detail and drops shadows. High sharpens shadows and adds richer trees and lighting. Changing it reloads the sim.</p>
+            <p class="ps-hint" id="ps-gfx-hint">Low halves texture and terrain detail and drops shadows. High sharpens shadows and adds richer trees and lighting. Ultra maxes everything and adds reflective waves and real grass — needs a beefy GPU. Changing it reloads the sim.</p>
           </div>
           <div class="ps-menu-row">
             <button type="button" class="ps-back-btn" data-hangar>‹ Hangar</button>

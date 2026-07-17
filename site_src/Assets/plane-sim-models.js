@@ -436,6 +436,7 @@ export function makePineCanopyGeo() {
   ];
   if (GFX.canopyDetail >= 1) { const g = new THREE.ConeGeometry(1.5, 5.0, n); g.translate(-0.4, 8.5, -0.4); parts.push(g); }
   if (GFX.canopyDetail >= 2) { const g = new THREE.ConeGeometry(1.1, 4.2, n); g.translate(0.15, 7.6, -0.5); parts.push(g); }
+  if (GFX.canopyDetail >= 3) { const g = new THREE.ConeGeometry(0.8, 3.0, n); g.translate(-0.2, 13.4, 0.3); parts.push(g); }
   return mergeGeometries(parts);
 }
 
@@ -447,6 +448,7 @@ export function makeBroadleafCanopyGeo() {
   const parts = [lobe(2.4, 0, 5.8, 0), lobe(1.8, 1.0, 5.4, 0.8), lobe(1.8, -1.0, 5.2, -0.8)];
   if (GFX.canopyDetail >= 1) parts.push(lobe(1.6, 0.8, 5.0, -1.0), lobe(1.5, -0.8, 5.5, 1.0), lobe(1.4, 0, 6.4, 0));
   if (GFX.canopyDetail >= 2) parts.push(lobe(1.2, 0.2, 6.9, 0.6), lobe(1.1, -1.4, 6.0, 0.2), lobe(1.0, 1.3, 6.1, -0.3));
+  if (GFX.canopyDetail >= 3) parts.push(lobe(0.9, 0.6, 7.2, -0.5), lobe(0.9, -0.5, 7.0, 0.9), lobe(0.8, 1.6, 5.6, 1.2));
   return mergeGeometries(parts);
 }
 
@@ -458,6 +460,7 @@ export function makeConiferCanopyGeo() {
   const parts = [cone(3.6, 6.5, 0, 6.2, 0), cone(2.8, 5.0, 0.2, 9.2, 0.1), cone(2.0, 4.0, -0.1, 11.6, -0.2)];
   if (GFX.canopyDetail >= 1) parts.push(cone(1.2, 2.5, 0, 13.2, 0));
   if (GFX.canopyDetail >= 2) parts.push(cone(3.2, 3.4, -0.3, 7.6, 0.3), cone(0.7, 1.6, 0, 14.3, 0));
+  if (GFX.canopyDetail >= 3) parts.push(cone(2.4, 2.8, 0.4, 10.6, -0.3), cone(1.6, 2.2, -0.4, 12.4, 0.2));
   return mergeGeometries(parts);
 }
 
