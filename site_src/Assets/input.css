@@ -912,6 +912,29 @@ code, pre, kbd, .font-mono {
 .tcg-room-opp { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tcg-room-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
 .tcg-empty { color: var(--fog-400); font-style: italic; text-align: center; font-size: 0.9rem; margin: 0.75rem 0; }
+/* ── Team-slot bar (create/join): five saved loadouts, one active ──────────── */
+.tcg-slotbar { display: flex; gap: 0.35rem; }
+.tcg-slotchip {
+  flex: 1; min-width: 0; padding: 0.4rem 0.3rem; cursor: pointer; font: inherit;
+  display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
+  color: var(--fog-300); background: color-mix(in oklab, var(--ink-900) 50%, transparent);
+  border: 1px solid var(--ink-600); border-radius: 0.45rem;
+  transition: color 0.15s, border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+.tcg-slotchip:hover { color: var(--fog-100); }
+.tcg-slotchip[disabled] { opacity: 0.6; cursor: wait; }
+.tcg-slotchip.active {
+  color: var(--accent-light); border-color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 13%, transparent); box-shadow: 0 0 8px var(--glow-faint);
+}
+.tcg-slotchip .sc-name { font-size: 0.74rem; font-weight: 700; }
+/* Readiness lines: lineup (x/3) and deck (y/25). Green = battle-ready, red = not. */
+.tcg-slotchip .sc-count, .tcg-slotchip .sc-deck {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: var(--fog-500);
+}
+.tcg-slotchip .sc-count.good, .tcg-slotchip .sc-deck.good { color: #4ade80; }
+.tcg-slotchip .sc-count.bad, .tcg-slotchip .sc-deck.bad { color: var(--danger); }
+.tcg-slotbar-err { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--danger); }
 /* ── Browse page (in-progress battles + match history) ─────────────────────── */
 .tcg-browse-actions { display: flex; justify-content: center; gap: 0.6rem; flex-wrap: wrap; }
 /* These are two distinct actions, not a tab group: kill the resting glow (which read as
@@ -967,6 +990,11 @@ code, pre, kbd, .font-mono {
 .tcg-deck-msg { text-align: right; min-height: 1.1rem; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--fog-300); }
 .tcg-deck-msg.err { color: var(--danger); }
 .tcg-deck-msg.ok { color: #4ade80; }
+/* Auto-sync indicator (deck edits save on change — no save button). */
+.tcg-deck-sync { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--fog-400); min-width: 5.5rem; text-align: right; }
+.tcg-deck-sync.busy { color: var(--fog-300); }
+.tcg-deck-sync.ok { color: #4ade80; }
+.tcg-deck-sync.err { color: var(--danger); }
 /* Deck builder filter toolbar */
 .tcg-deck-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.7rem; padding: 0 0.1rem; }
 .tcg-chips { display: inline-flex; gap: 0.3rem; flex-wrap: wrap; }

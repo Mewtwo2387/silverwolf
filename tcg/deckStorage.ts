@@ -4,21 +4,21 @@ import {
   defaultDeckComposition,
   expandDeckComposition,
   isLegalDeck,
-  ITEMS_BY_ID,
   ALL_ITEMS,
-  PER_CARD_MAX,
 } from './items';
 import { DECK_SIZE } from './battle';
 import type { Item } from './item';
+import { loadTeamState, updateActiveSlotDeck } from './teamSlotStorage';
 
 /**
- * Persistence layer for per-user TCG item decks. We store deck composition as JSON
- * (`{itemId: count}`) in `User.tcg_deck`. When the column is null/empty/invalid,
- * `loadDeckCompositionForUser` falls back to {@link defaultDeckComposition}.
+ * Per-user TCG deck access, routed to the **active team slot** (see
+ * `teamSlotStorage.ts`): a user's deck is whichever deck their active slot holds, so
+ * every existing deck surface (web deck builder, Discord `/tcgbattle deckset`,
+ * `buildDeckForUser`) edits/reads the active slot without knowing about slots.
+ * A slot with no deck (null) falls back to {@link defaultDeckComposition}.
  *
- * The storage format is deliberately a sparse map rather than a card list so that
- * nicer "edit deck" UIs (e.g. /tcgbattle deckset <item> <count>) can mutate one
- * entry at a time without rebuilding the whole deck.
+ * The composition format stays a sparse `{itemId: count}` map so "edit deck" UIs can
+ * mutate one entry at a time without rebuilding the whole deck.
  */
 
 interface DbLike {
@@ -29,51 +29,40 @@ interface DbLike {
 }
 
 /**
- * Read & validate a user's deck composition from the DB. Falls back to the default
- * composition if the column is missing, malformed, or doesn't form a legal deck.
+ * Read the active slot's deck composition **as saved** — possibly illegal (slots keep
+ * whatever the user last saved; legality is display-only until battle time). A slot
+ * with no deck (null) yields the default composition.
  */
 export async function loadDeckCompositionForUser(
   db: DbLike,
   userId: string,
 ): Promise<DeckComposition> {
   try {
-    const raw = await db.user.getUserAttr(userId, 'tcgDeck');
-    if (!raw || typeof raw !== 'string') {
-      return defaultDeckComposition();
-    }
-    const parsed = JSON.parse(raw) as unknown;
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      return defaultDeckComposition();
-    }
-    const composition: DeckComposition = {};
-    Object.entries(parsed as Record<string, unknown>).forEach(([id, count]) => {
-      if (typeof count === 'number' && Number.isFinite(count) && ITEMS_BY_ID[id]) {
-        composition[id] = Math.max(0, Math.min(PER_CARD_MAX, Math.floor(count)));
-      }
-    });
-    if (!isLegalDeck(composition)) {
-      return defaultDeckComposition();
-    }
-    return composition;
+    const state = await loadTeamState(db, userId);
+    return state.slots[state.active].deck ?? defaultDeckComposition();
   } catch (err) {
     logError('Failed to load TCG deck for user', err);
     return defaultDeckComposition();
   }
 }
 
-/** Persist a composition to the DB. Caller should validate first via {@link isLegalDeck}. */
+/** Persist a composition to the active slot. Illegal compositions save fine (shown red). */
 export async function saveDeckCompositionForUser(
   db: DbLike,
   userId: string,
   composition: DeckComposition,
 ): Promise<void> {
-  await db.user.setUserAttr(userId, 'tcgDeck', JSON.stringify(composition));
+  await updateActiveSlotDeck(db, userId, composition);
 }
 
-/** Build a 25-Item array for the given user, using their saved composition or the default. */
+/**
+ * Build a 25-Item array for the given user for a battle. An illegal saved deck falls
+ * back to the default here (Discord battles have no pre-battle legality gate; the web
+ * create/join routes reject illegal decks before ever getting this far).
+ */
 export async function buildDeckForUser(db: DbLike, userId: string): Promise<Item[]> {
   const composition = await loadDeckCompositionForUser(db, userId);
-  const cards = expandDeckComposition(composition);
+  const cards = expandDeckComposition(isLegalDeck(composition) ? composition : defaultDeckComposition());
   // Defensive: if validation passes the deck is exactly DECK_SIZE, but if anything
   // upstream changed we top it up with the default so battles never start short.
   if (cards.length < DECK_SIZE) {

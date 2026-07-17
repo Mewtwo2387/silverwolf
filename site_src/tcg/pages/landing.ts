@@ -14,11 +14,6 @@ import {
 } from '../html';
 import { formatRoomMode } from '../labels';
 
-export interface TcgRoster {
-  value: string;
-  name: string;
-}
-
 /** One open room for the browse list (still live until everyone leaves). */
 export interface TcgBrowseRoom {
   id: string;
@@ -54,14 +49,22 @@ export interface TcgBrowseOpts {
   loginReturnPath: string;
 }
 
+/** Client-facing brief of the five team slots (lineups + deck size/legality; deck contents stay server-side). */
+export interface TcgTeamStateBrief {
+  active: number;
+  deckSize: number;
+  slots: { team: string[]; deckCount: number; deckLegal: boolean }[];
+}
+
 export interface TcgCreateOpts {
   nonce: string;
   lv999?: boolean;
   user: NavUser | null;
   csrf: string | null;
-  roster: TcgRoster[];
   characterCatalog: CharacterCatalogEntry[];
   deckLegal: boolean;
+  /** The user's team slots; the picker edits the active one in place. */
+  teamState: TcgTeamStateBrief;
   loginReturnPath: string;
 }
 
@@ -182,7 +185,7 @@ export function TcgBrowsePage(opts: TcgBrowseOpts) {
 // ── Create page (separate from browse) ──────────────────────────────────────
 export function TcgCreatePage(opts: TcgCreateOpts) {
   const {
-    nonce, lv999, user, csrf, roster, characterCatalog, deckLegal, loginReturnPath,
+    nonce, lv999, user, csrf, characterCatalog, deckLegal, teamState, loginReturnPath,
   } = opts;
   if (!user) {
     return loginPage({
@@ -190,7 +193,6 @@ export function TcgCreatePage(opts: TcgCreateOpts) {
     });
   }
 
-  const firstThree = roster.slice(0, 3).map((r) => r.value);
   const teamPicker = renderTeamPicker({
     deckLegal,
     submitId: 'tcg-create',
@@ -202,7 +204,10 @@ export function TcgCreatePage(opts: TcgCreateOpts) {
     ${renderTcgHtml('tcg-create.html', { TEAM_PICKER: teamPicker })}
     ${tcgDetailModalShell()}
     ${tcgDetailAssets(nonce, characterCatalog)}
-    ${tcgScriptAssets('tcg-landing', nonce, { id: 'tcg-landing-data', payload: { csrf: csrf ?? '', defaults: firstThree, deckLegal } })}
+    ${tcgScriptAssets('tcg-landing', nonce, {
+    id: 'tcg-landing-data',
+    payload: { csrf: csrf ?? '', deckLegal, teamState },
+  })}
   `;
 
   return Layout({

@@ -18,7 +18,7 @@
   const fourEl = document.getElementById('dk-four');
   const fillEl = document.getElementById('dk-fill');
   const legalEl = document.getElementById('dk-legal');
-  const saveBtn = document.getElementById('dk-save');
+  const syncEl = document.getElementById('dk-sync');
   const msgEl = document.getElementById('dk-msg');
   const emptyEl = document.getElementById('dk-empty');
   const cardTpl = document.getElementById('tcg-tpl-deck-card');
@@ -122,6 +122,7 @@
   function bump(id, delta) {
     counts[id] = Math.max(0, Math.min(CAPS.perCard, (counts[id] || 0) + delta));
     refresh();
+    scheduleSave();
     if (filt.inDeck) applyFilters();
     if (filt.sort === 'count') applySort();
   }
@@ -182,7 +183,7 @@
       const v = validate();
       legalEl.textContent = v.ok ? 'legal' : 'illegal';
       legalEl.className = 'tcg-badge ' + (v.ok ? 'legal' : 'illegal');
-      if (saveBtn) saveBtn.toggleAttribute('disabled', !v.ok);
+      // Illegal decks sync fine (shown red; battles reject them) — nothing is blocked.
       grid.querySelectorAll('.tcg-card').forEach((card) => {
         const id = card.dataset.id;
         const n = counts[id] || 0;
@@ -197,31 +198,78 @@
     });
   }
 
-  async function save() {
-    const v = validate();
-    if (!v.ok) { msg(v.reason, 'err'); return; }
-    saveBtn.setAttribute('disabled', 'disabled');
-    msg('Saving…', '');
-    try {
-      const composition = {};
-      for (const it of ITEMS) if (counts[it.id] > 0) composition[it.id] = counts[it.id];
-      const res = await fetch('/games/tcg/deck/save', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ csrf: CSRF, composition }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data || !data.ok) {
-        msg((data && data.error) ? data.error : 'Failed to save.', 'err');
-        refresh();
-        return;
-      }
-      msg('Deck saved.', 'ok');
-    } catch (e) {
-      msg('Network error.', 'err');
-      refresh();
+  // ── Auto-sync: every change saves after a short debounce (no save button) ──
+  const SAVE_DEBOUNCE_MS = 600;
+  let saveTimer = null;
+  let inFlight = false;
+  let pendingSave = false; // changed while a save was in flight → resend after
+  let dirty = false; // unsynced local changes (drives the pagehide flush)
+  let syncClearTimer = null;
+
+  function setSync(text, cls) {
+    if (!syncEl) return;
+    if (syncClearTimer) { clearTimeout(syncClearTimer); syncClearTimer = null; }
+    syncEl.textContent = text;
+    syncEl.className = 'tcg-deck-sync' + (cls ? ' ' + cls : '');
+    if (cls === 'ok') {
+      syncClearTimer = setTimeout(() => { syncEl.textContent = ''; }, 1500);
     }
   }
+
+  function snapshot() {
+    const composition = {};
+    for (const it of ITEMS) if (counts[it.id] > 0) composition[it.id] = counts[it.id];
+    return composition;
+  }
+
+  function scheduleSave() {
+    dirty = true;
+    setSync('saving…', 'busy');
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(doSave, SAVE_DEBOUNCE_MS);
+  }
+
+  async function doSave() {
+    if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+    if (inFlight) { pendingSave = true; return; }
+    inFlight = true;
+    do {
+      pendingSave = false;
+      try {
+        const res = await fetch('/games/tcg/deck/save', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ csrf: CSRF, composition: snapshot() }),
+          keepalive: true,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data || !data.ok) {
+          throw new Error((data && data.error) ? data.error : 'Failed to save.');
+        }
+        if (!pendingSave) { dirty = false; setSync('saved ✓', 'ok'); msg('', ''); }
+      } catch (e) {
+        // Keep dirty so the next change (or leaving the page) retries.
+        setSync('sync failed', 'err');
+        msg(e.message + ' Your latest change isn’t saved yet — it will retry on the next edit.', 'err');
+        break;
+      }
+    } while (pendingSave);
+    inFlight = false;
+  }
+
+  // Last-ditch flush if the user leaves mid-debounce (keepalive survives unload).
+  window.addEventListener('pagehide', () => {
+    if (!dirty) return;
+    if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+    try {
+      fetch('/games/tcg/deck/save', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ csrf: CSRF, composition: snapshot() }),
+        keepalive: true,
+      });
+    } catch (e) { /* page is going away */ }
+  });
 
   function msg(text, kind) {
     if (!msgEl) return;
@@ -250,7 +298,6 @@
   if (sortEl) {
     sortEl.addEventListener('change', () => { filt.sort = sortEl.value; applySort(); });
   }
-  if (saveBtn) saveBtn.addEventListener('click', save);
 
   buildRarityChips();
   buildCards();

@@ -3,7 +3,7 @@ import { html } from 'hono/html';
 import { Layout } from '../../components/layout';
 import type { NavUser } from '../../components/navbar';
 import type { TcgRoomSnapshot } from '../rooms';
-import type { TcgRoster } from './landing';
+import type { TcgTeamStateBrief } from './landing';
 import type { CharacterCatalogEntry } from './detail';
 import { tcgDetailAssets, tcgDetailModalShell } from './detail';
 import {
@@ -28,9 +28,10 @@ export interface TcgJoinPageOpts {
   user: NavUser | null;
   matchId: string;
   csrf: string | null;
-  roster: TcgRoster[];
   characterCatalog: CharacterCatalogEntry[];
   deckLegal: boolean;
+  /** The joiner's team slots; the picker edits the active one in place. */
+  teamState: TcgTeamStateBrief;
 }
 
 function noticePage(opts: {
@@ -55,9 +56,8 @@ function noticePage(opts: {
 /** Team-picker shown to a second player opening a PvP lobby link. */
 export function TcgBattleJoinPage(opts: TcgJoinPageOpts) {
   const {
-    nonce, lv999, user, matchId, csrf, roster, characterCatalog, deckLegal,
+    nonce, lv999, user, matchId, csrf, characterCatalog, deckLegal, teamState,
   } = opts;
-  const firstThree = roster.slice(0, 3).map((r) => r.value);
 
   const teamPicker = renderTeamPicker({
     deckLegal,
@@ -73,7 +73,7 @@ export function TcgBattleJoinPage(opts: TcgJoinPageOpts) {
     ${tcgScriptAssets('tcg-join', nonce, {
     id: 'tcg-join-data',
     payload: {
-      csrf: csrf ?? '', matchId, defaults: firstThree, deckLegal,
+      csrf: csrf ?? '', matchId, deckLegal, teamState,
     },
   })}
   `;

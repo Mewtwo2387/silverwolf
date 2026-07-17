@@ -51,8 +51,10 @@ export interface UserRow {
   last_murder: string | null;
   murder_success: number;
   murder_fail: number;
-  /** JSON-encoded {itemId: count}; null/empty means "use default deck". */
+  /** Legacy single deck (JSON {itemId: count}); migrated into slot 1 of tcg_teams on first load. */
   tcg_deck: string | null;
+  /** JSON-encoded team slots: { active: 0..4, slots: [{team, deck}] } — see tcg/teamSlotStorage.ts. */
+  tcg_teams: string | null;
 }
 
 /** Extended row returned by GET_USER_STATS (includes computed join columns). */
@@ -121,6 +123,7 @@ const userTable: TableDefinition = {
     { name: 'murder_success', type: 'INTEGER DEFAULT 0' },
     { name: 'murder_fail', type: 'INTEGER DEFAULT 0' },
     { name: 'tcg_deck', type: 'TEXT DEFAULT NULL' },
+    { name: 'tcg_teams', type: 'TEXT DEFAULT NULL' },
   ],
   primaryKey: ['id'],
   specialConstraints: [],

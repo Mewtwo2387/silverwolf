@@ -6,7 +6,7 @@ Bun process**. It serves fun/games both as slash commands and as web pages, plus
 **The website is public, so security and performance are first-class concerns — code defensively:
 validate every input, never trust client data, keep the CSP tight.**
 
-**Last updated: 2026-06-22**
+**Last updated: 2026-06-30**
 
 > **Maintenance rules.** Edit this file when something here becomes factually wrong, or when you
 > make a qualifying structural change. Rules differ by area:
@@ -213,7 +213,8 @@ all alive cards (this is when effect durations tick) and draws 2 cards per side.
 #### Items
 
 - `DECK_SIZE = 25`, `STARTING_HAND = 5`, `DRAW_PER_ROUND = 2`.
-- Decks are persisted per Discord user in `User.tcg_deck` (JSON `{itemId: count}`).
+- Decks are persisted per user inside their **active team slot** (`User.tcg_teams` — see §6.11;
+  JSON `{itemId: count}`), accessed via `tcg/deckStorage.ts`.
 - A **legal deck** is exactly 25 known items, each with count `0..PER_CARD_MAX (10)`, at most
   **5** copies at 5★+, and at most **15** copies at 4★+ (the 5★ cap counts toward the 4★ cap).
   See `validateDeckComposition` in `tcg/items/deck.ts`.
@@ -575,8 +576,22 @@ cyclic-tic-tac-toe multiplayer pattern.
  overlays, active-slot glow, availability-driven skill buttons with targeting, hand tray, end-turn,
  action log, result banner, rematch/leave). The **Log/Chat panel** is a single persistent element
  (built once, updated in place so the chat input keeps focus across re-renders): a wide right-hand
- column ≥920px, and a floating-launcher modal below that width. Decks persist via
- `tcg/deckStorage.ts` — the **same** `User.tcg_deck` the Discord `/tcgbattle deckset` uses.
+ column ≥920px, and a floating-launcher modal below that width.
+- **Team slots** — each user has **five loadout slots** (`{active, slots: [{team, deck}]}` in
+ `User.tcg_teams`, via `tcg/teamSlotStorage.ts`); **every battle plays from the active slot** — the
+ web create/join POSTs take no team from the client, they rebuild it server-side from the active
+ slot. The create/join pages render a slot bar (`tcg-team-slots.lib.js`): selecting a slot
+ (`POST /games/tcg/teams/select`) makes it active + loads its lineup into the picker; picker edits
+ auto-save (debounced, flushed before create/join) via `POST /games/tcg/teams/lineup`. **Decks live
+ inside slots**: `tcg/deckStorage.ts`'s load/save route to the active slot's deck (`null` =
+ default deck), so the web deck builder (which **auto-syncs on every change** — debounced, with a
+ `pagehide` keepalive flush; no save button) and Discord `/tcgbattle deckset` edit the active slot
+ without knowing about slots. A legacy `User.tcg_deck` is migrated into slot 1 on first load.
+ **Slots save anything** — partial lineups and illegal decks persist as-is; legality is
+ display-only (red `x/3` / `y/25` readiness on the slot chips, red badge in the deck builder)
+ and enforced only at battle time (web create/join reject; Discord `buildDeckForUser` falls back
+ to the default deck). Clients only ever receive `{active, deckSize, slots:[{team, deckCount,
+ deckLegal}]}` briefs (deck contents stay server-side).
 
 ---
 

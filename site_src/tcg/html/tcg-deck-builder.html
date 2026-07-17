@@ -1,6 +1,7 @@
 <h1 class="text-center tcg-page-title">TCG Deck Builder</h1>
 <p class="text-center text-fog-300 tcg-page-lead">
-  Build a legal {{DECK_SIZE}}-card deck. It's shared with <code class="tcg-code">/tcgbattle</code> on Discord.
+  Build a legal {{DECK_SIZE}}-card deck for your active team slot — changes save automatically.
+  It's shared with <code class="tcg-code">/tcgbattle</code> on Discord.
 </p>
 <div class="tcg-deck-wrap">
   <div class="tcg-panel tcg-deck-summary" id="tcg-deck-summary">
@@ -11,9 +12,9 @@
         <span>4★+ <b id="dk-four">0</b>/{{FOUR_MAX}}</span>
       </div>
       <div class="tcg-deck-actions">
+        <span id="dk-sync" class="tcg-deck-sync" aria-live="polite"></span>
         <span id="dk-legal" class="tcg-badge">—</span>
         <a href="/games/tcg" class="tcg-btn tcg-btn-ghost">[ back ]</a>
-        <button id="dk-save" type="button" class="tcg-btn tcg-btn-primary">[ save deck ]</button>
       </div>
     </div>
     <div class="tcg-deck-fill" aria-hidden="true"><div class="tcg-deck-fill-bar" id="dk-fill"></div></div>

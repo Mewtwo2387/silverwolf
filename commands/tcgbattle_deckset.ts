@@ -58,23 +58,14 @@ class TcgbattleDeckset extends Command {
     const previous = composition[itemId] ?? 0;
     composition[itemId] = count;
 
-    const validation = validateDeckComposition(composition);
-    if (!validation.ok) {
-      const text = formatDeckComposition(composition);
-      await interaction.editReply([
-        `Did not save: ${validation.reason}`,
-        '',
-        text,
-        '',
-        `_Tip: previous count for **${item.name}** was ${previous}._`,
-      ].join('\n').slice(0, 1900));
-      return;
-    }
-
+    // Illegal intermediate states save fine (matches the website): legality is only
+    // enforced when a battle starts, so decks can be restructured step by step.
     await saveDeckCompositionForUser(this.client.db, interaction.user.id, composition);
+    const validation = validateDeckComposition(composition);
     const text = formatDeckComposition(composition);
     await interaction.editReply([
       `Saved: **${item.name}** is now ${count}× in your deck (was ${previous}×).`,
+      ...(validation.ok ? [] : [`⚠️ Deck is currently illegal: ${validation.reason} Battles will use the default deck until it's fixed.`]),
       '',
       text,
     ].join('\n').slice(0, 1900));
