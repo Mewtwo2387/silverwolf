@@ -1,6 +1,6 @@
 import { EmbedBuilder } from 'discord.js';
 import { log, logError } from '../utils/log';
-import { getFootballChannelIds } from '../utils/footballChannels';
+import { getFootballChannelIds, isFootballEnabled } from '../utils/footballChannels';
 import {
   buildFullTimeEmbed,
   buildPreMatchEmbed,
@@ -57,6 +57,8 @@ class FootballScheduler {
 
   async checkMatches(): Promise<void> {
     try {
+      if (!(await isFootballEnabled(this.client.db))) return;
+
       const channelIds = await getFootballChannelIds(this.client.db);
       if (channelIds.length === 0) return;
 
