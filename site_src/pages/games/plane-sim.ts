@@ -471,7 +471,7 @@ export function PlaneSimPage(opts: {
     min-width: 5.5rem; text-align: right; font-size: 0.68rem; letter-spacing: 0.12em;
     text-transform: uppercase; color: var(--ps-parch-dim);
   }
-  #ps-vol { width: 180px; accent-color: var(--ps-brass); cursor: pointer; }
+  #ps-vol, #ps-musicvol, #ps-sfxvol { width: 180px; accent-color: var(--ps-brass); cursor: pointer; }
   /* Manila-folder tabs inside the pause/settings card. */
   .ps-tabs {
     display: flex; gap: 0.3rem; justify-content: center; margin: 0.4rem 0 0.7rem;
@@ -880,8 +880,16 @@ export function PlaneSimPage(opts: {
           </div>
           <div class="ps-tabpane" data-pane="general">
             <div class="ps-set-row">
-              <span class="ps-set-lbl">Volume</span>
-              <input id="ps-vol" type="range" min="0" max="100" value="50" aria-label="Sound volume">
+              <span class="ps-set-lbl">Master</span>
+              <input id="ps-vol" type="range" min="0" max="100" value="50" aria-label="Master volume">
+            </div>
+            <div class="ps-set-row">
+              <span class="ps-set-lbl">Music</span>
+              <input id="ps-musicvol" type="range" min="0" max="100" value="60" aria-label="Music volume">
+            </div>
+            <div class="ps-set-row">
+              <span class="ps-set-lbl">SFX</span>
+              <input id="ps-sfxvol" type="range" min="0" max="100" value="100" aria-label="Sound effects volume">
             </div>
             <div class="ps-set-row">
               <span class="ps-set-lbl">Camera</span>
