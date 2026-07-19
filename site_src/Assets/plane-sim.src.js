@@ -497,6 +497,27 @@ import {
   }
   scene.add(waterMesh);
 
+  // Paved footprint of the coastal airfield — the runway plus the west-side
+  // perimeter taxiway, hangar spurs, threshold links and apron pad. Mirrors
+  // buildAirfield()'s taxi() layout below; kept here (before the grass + tree
+  // scatter) so nothing sprouts through the tarmac. `onPaved` tests a point,
+  // optionally with an outward margin.
+  const RW = CFG.RUNWAY_W;
+  const RL = CFG.RUNWAY_LEN;
+  const TAXI_X = -30;
+  const PAVED = [
+    { x0: -RW / 2, x1: RW / 2, z0: -RL / 2, z1: RL / 2 },                 // runway
+    { x0: TAXI_X - 5.5, x1: TAXI_X + 5.5, z0: -(RL / 2 - 20), z1: RL / 2 - 20 }, // perimeter taxi
+    { x0: -51, x1: -21, z0: 35, z1: 45 },                                // hangar spur (N)
+    { x0: -51, x1: -21, z0: -39, z1: -29 },                              // hangar spur (S)
+    { x0: -30, x1: 4, z0: RL / 2 - 35.5, z1: RL / 2 - 24.5 },            // threshold link (N)
+    { x0: -30, x1: 4, z0: -(RL / 2 - 24.5), z1: -(RL / 2 - 35.5) },      // threshold link (S)
+    { x0: -85, x1: -35, z0: -62, z1: 68 },                              // hangar apron pad
+  ];
+  const onPaved = (x, z, m = 0) => PAVED.some(
+    (r) => x > r.x0 - m && x < r.x1 + m && z > r.z0 - m && z < r.z1 + m,
+  );
+
   // Ultra: instanced grass blades wrap around the aircraft (coastal map only —
   // it lives in landGroup so the map switch hides it with everything else).
   let grassField = null;
@@ -507,12 +528,11 @@ import {
       waterY: TERRAIN.WATER_Y,
       tile: GFX.grassTile,
       blades: GFX.grassBlades,
-      exclude: [{
-        x0: -(CFG.RUNWAY_W / 2 + 10),
-        x1: CFG.RUNWAY_W / 2 + 10,
-        z0: -(CFG.RUNWAY_LEN / 2 + 40),
-        z1: CFG.RUNWAY_LEN / 2 + 40,
-      }],
+      // Every paved rect, grown 14 m so the coarse height/mask bake reliably
+      // clears grass off the tarmac (and leaves a tidy mown verge).
+      exclude: PAVED.map((r) => ({
+        x0: r.x0 - 14, x1: r.x1 + 14, z0: r.z0 - 14, z1: r.z1 + 14,
+      })),
     });
     landGroup.add(grassField.mesh);
   }
@@ -881,6 +901,7 @@ import {
       const near = Math.hypot(x, z);
       if (near < 240) continue; // keep the apron clear
       if (Math.abs(x) < CFG.RUNWAY_W + 30 && Math.abs(z) < CFG.RUNWAY_LEN / 2 + 60) continue;
+      if (onPaved(x, z, 12)) continue; // never seed a tree on the tarmac
       // Cluster into forests: the shared mask gates placement, and a slower
       // density channel swings the gate so woods thin out into meadows and
       // thicken into proper forest elsewhere (looser near the airfield).
@@ -898,6 +919,7 @@ import {
         const sz = z + (Math.random() * 2 - 1) * 42;
         const sh = terrainHeight(sx, sz);
         if (sh < TERRAIN.WATER_Y + 6 || sh > 380) continue;
+        if (onPaved(sx, sz, 10)) continue; // satellites skip the seed tests — keep them off the tarmac too
         types[pickType(sh)].spots.push([sx, sh, sz]);
         placed++;
       }
@@ -2470,7 +2492,13 @@ import {
     syncPauseChrome();
   }
   const settingsShowing = () => userPaused || settingsOpen;
-  resumeBtn?.addEventListener('click', () => { setPaused(false); showSettings(false); });
+  // The single close path for the pause/settings overlay (Resume, ✕, click the
+  // dark backdrop, or a menu transition all route here) so it can never linger.
+  function dismissSettings() { setPaused(false); showSettings(false); }
+  resumeBtn?.addEventListener('click', dismissSettings);
+  document.getElementById('ps-pause-x')?.addEventListener('click', dismissSettings);
+  // Click on the backdrop itself (not the card or its controls) closes it.
+  pauseOv?.addEventListener('mousedown', (ev) => { if (ev.target === pauseOv) dismissSettings(); });
   document.getElementById('ps-settings-btn')?.addEventListener('click', () => {
     showSettings(!settingsShowing());
   });
@@ -2541,6 +2569,9 @@ import {
   }
 
   function setMenu(mode) {
+    // Every menu transition (including starting a flight, mode === null) first
+    // dismisses the pause/settings overlay, so it can never be left on screen.
+    dismissSettings();
     menuMode = mode;
     if (menuEl) menuEl.classList.toggle('ps-hidden', mode !== 'plane');
     if (modeMenuEl) modeMenuEl.classList.toggle('ps-hidden', mode !== 'mode');

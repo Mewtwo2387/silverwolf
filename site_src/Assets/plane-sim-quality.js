@@ -88,8 +88,12 @@ export const GFX = {
     fogFar: 16500,
     reflectiveWater: true, // planar-reflection water with animated waves
     grass: true, // instanced grass blades around the aircraft
-    grassTile: 340, // metres of grass around the aircraft
-    grassBlades: 150000,
+    // The blade tile follows the plane; ~half its width is the visible radius
+    // after the edge fade. 640 m tile ≈ 300 m of grass reaching out ahead (was
+    // ~160 m — which read as a "line" sliding forward when flying low). Blade
+    // count scales with the area so the field keeps roughly the same density.
+    grassTile: 640, // metres of grass around the aircraft
+    grassBlades: 420000,
   },
 }[GFX_LEVEL];
 

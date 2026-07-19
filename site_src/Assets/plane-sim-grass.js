@@ -9,10 +9,12 @@
 import * as THREE from 'three';
 
 // Bake heightFn into an RGBA float texture covering the terrain square:
-// R = height (m), G = grassable (0/1). 512px over ~13.6 km ≈ 27 m/texel —
-// plenty for blade placement (the mesh itself stays the accurate terrain).
+// R = height (m), G = grassable (0/1). See N below for the resolution — the
+// mesh itself stays the accurate terrain; this only places/masks blades.
 function bakeHeightMask(heightFn, size, waterY, exclude) {
-  const N = 512;
+  // 768² over ~13.6 km ≈ 18 m/texel — fine enough that the narrow taxiways
+  // (grown with a margin in the exclude rects) reliably clear their grass.
+  const N = 768;
   const data = new Float32Array(N * N * 4);
   const heights = new Float32Array(N * N);
   const step = size / (N - 1);
@@ -122,9 +124,11 @@ export function buildGrassField(opts) {
         vec2 world = uCenter.xz + mod(aOffset - uCenter.xz, uTile) - uTile * 0.5;
         vec4 hm = texture2D(uHeight, world / uSize + 0.5);
         float scale = aRand.x * hm.g;
-        // Shrink out toward the tile edge so the boundary never pops.
+        // Shrink out toward the tile edge so the boundary never pops — a wide
+        // fade band (0.34..0.48 of the tile) dissolves the far edge into the
+        // ground texture instead of ending on a hard line.
         float d = length(world - uCenter.xz);
-        scale *= 1.0 - smoothstep(uTile * 0.32, uTile * 0.47, d);
+        scale *= 1.0 - smoothstep(uTile * 0.34, uTile * 0.48, d);
         // Cylindrical billboard: the blade plane always faces the camera.
         vec2 toCam = cameraPosition.xz - world;
         vec2 right = normalize(vec2(-toCam.y, toCam.x) + vec2(1e-4));

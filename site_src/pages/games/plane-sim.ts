@@ -41,6 +41,27 @@ export function PlaneSimPage(opts: {
     font-family: 'JetBrains Mono', monospace;
     user-select: none;
     -webkit-user-select: none;
+
+    /* --- Game menu theme ---------------------------------------------------
+       The HUD keeps the site's cyan instrument look (see the .ps-panel /
+       .ps-combat / gauge rules below — untouched). Everything the pilot clicks
+       BETWEEN flights — the hangar, briefing modals, pause menu, medals — wears
+       its own warm military-aviation skin instead: gunmetal plates, brass trim
+       and stencilled type, so the menus feel like a squadron ready-room rather
+       than the rest of the website. These vars drive only that menu chrome. */
+    --ps-brass: #d9a441;
+    --ps-brass-hi: #f2cf72;
+    --ps-brass-dim: #9c7529;
+    --ps-brass-deep: #7c5c1e;
+    --ps-plate: #14170f;      /* warm gunmetal, near-black olive */
+    --ps-plate-2: #232619;    /* raised plate face */
+    --ps-plate-3: #2c3021;    /* hover / active plate */
+    --ps-edge: rgba(217, 164, 65, 0.30);
+    --ps-edge-soft: rgba(217, 164, 65, 0.16);
+    --ps-edge-strong: rgba(217, 164, 65, 0.72);
+    --ps-parch: #ece5d0;      /* warm off-white body text */
+    --ps-parch-dim: #b0a888;  /* muted khaki label text */
+    --ps-ink: #14100a;        /* dark ink on brass fills */
   }
   #ps-canvas { display: block; width: 100%; height: 100%; }
 
@@ -209,13 +230,15 @@ export function PlaneSimPage(opts: {
   .ps-exit {
     pointer-events: auto;
     display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer;
-    padding: 0.4rem 0.7rem; font-size: 0.8rem; text-decoration: none;
-    color: var(--fog-200, #dfe9ef); font-family: 'JetBrains Mono', monospace;
-    background: color-mix(in oklab, var(--ink-900, #06080f) 60%, transparent);
-    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 30%, transparent); border-radius: 0.5rem;
+    padding: 0.4rem 0.7rem; font-size: 0.72rem; text-decoration: none;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--ps-parch); font-family: 'JetBrains Mono', monospace;
+    background: linear-gradient(180deg, color-mix(in oklab, var(--ps-plate-2) 82%, transparent), color-mix(in oklab, var(--ps-plate) 82%, transparent));
+    border: 1px solid var(--ps-edge); border-radius: 0.35rem;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
     backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
   }
-  .ps-exit:hover { border-color: var(--accent, #22d3ff); color: var(--accent-light, #7fdfff); }
+  .ps-exit:hover { border-color: var(--ps-edge-strong); color: var(--ps-brass-hi); }
 
   /* Loading screen: opaque from first paint, faded out by the game module
      once the first frame has rendered. */
@@ -226,15 +249,21 @@ export function PlaneSimPage(opts: {
   }
   #ps-load.ps-fade { opacity: 0; pointer-events: none; }
   #ps-load.ps-hidden { display: none; }
-  .ps-load-title { font-size: 2rem; font-weight: 800; letter-spacing: 0.12em; color: var(--accent-light, #7fdfff); }
-  .ps-load-sub { font-size: 0.78rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fog-400, #8aa0ad); }
+  .ps-load-title {
+    font-size: 2.1rem; font-weight: 800; letter-spacing: 0.34em; text-indent: 0.34em;
+    text-transform: uppercase;
+    background: linear-gradient(180deg, var(--ps-brass-hi), var(--ps-brass) 55%, var(--ps-brass-dim));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+  }
+  .ps-load-sub { font-size: 0.78rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ps-parch-dim); }
   .ps-load-bar {
     width: min(320px, 70vw); height: 4px; border-radius: 2px; overflow: hidden;
-    position: relative; background: #1a2230;
+    position: relative; background: #221f14;
   }
   .ps-load-bar::after {
     content: ''; position: absolute; left: -40%; top: 0; bottom: 0; width: 40%; border-radius: 2px;
-    background: var(--accent, #22d3ff); animation: ps-load-sweep 1.1s ease-in-out infinite;
+    background: var(--ps-brass); animation: ps-load-sweep 1.1s ease-in-out infinite;
   }
   @keyframes ps-load-sweep { to { left: 100%; } }
 
@@ -244,11 +273,12 @@ export function PlaneSimPage(opts: {
   #ps-menu.ps-hidden { display: none; }
   .ps-menu-title {
     position: absolute; top: 1.15rem; left: 50%; transform: translateX(-50%);
-    padding: 0.4rem 1rem; border-radius: 0.5rem; white-space: nowrap;
+    padding: 0.4rem 1.1rem; border-radius: 0.4rem; white-space: nowrap;
     font-size: 0.8rem; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase;
-    color: var(--accent-light, #7fdfff);
-    background: color-mix(in oklab, var(--ink-900, #06080f) 55%, transparent);
-    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 35%, transparent);
+    color: var(--ps-brass-hi);
+    background: linear-gradient(180deg, color-mix(in oklab, var(--ps-plate-2) 78%, transparent), color-mix(in oklab, var(--ps-plate) 82%, transparent));
+    border: 1px solid var(--ps-edge);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
     backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
   }
   .ps-menu-plate {
@@ -258,42 +288,46 @@ export function PlaneSimPage(opts: {
   .ps-arrow {
     cursor: pointer; width: 54px; height: 54px; border-radius: 50%;
     font-size: 1.7rem; line-height: 1; font-family: 'JetBrains Mono', monospace;
-    color: var(--accent-light, #7fdfff);
-    background: color-mix(in oklab, var(--ink-900, #06080f) 60%, transparent);
-    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 40%, transparent);
+    color: var(--ps-brass-hi);
+    background: linear-gradient(180deg, color-mix(in oklab, var(--ps-plate-2) 82%, transparent), color-mix(in oklab, var(--ps-plate) 85%, transparent));
+    border: 1px solid var(--ps-edge);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
     backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
+    transition: border-color 0.15s, background 0.15s;
   }
-  .ps-arrow:hover { border-color: var(--accent, #22d3ff); background: color-mix(in oklab, var(--ink-800, #0d1320) 80%, transparent); }
+  .ps-arrow:hover { border-color: var(--ps-edge-strong); background: linear-gradient(180deg, color-mix(in oklab, var(--ps-plate-3) 88%, transparent), color-mix(in oklab, var(--ps-plate-2) 90%, transparent)); }
   #ps-menu-name {
     min-width: 15ch; text-align: center; font-size: 1.3rem; font-weight: 800;
-    letter-spacing: 0.08em; color: var(--fog-100, #eef4f7);
-    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--ps-parch);
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.85);
   }
   .ps-menu-stats {
     position: absolute; right: 1.2rem; top: 50%; transform: translateY(-50%);
     width: min(320px, 86vw); pointer-events: auto; text-align: left;
-    background: color-mix(in oklab, var(--ink-800, #0d1320) 82%, transparent);
-    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 35%, transparent);
-    border-radius: 0.9rem; padding: 1rem 1.1rem;
+    background: linear-gradient(180deg, color-mix(in oklab, var(--ps-plate-2) 88%, transparent), color-mix(in oklab, var(--ps-plate) 92%, transparent));
+    border: 1px solid var(--ps-edge);
+    border-radius: 0.6rem; padding: 1rem 1.1rem;
+    box-shadow: 0 18px 46px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   }
-  .ps-mdesc { font-size: 0.78rem; line-height: 1.45; color: var(--fog-300, #b8c6cf); margin: 0.15rem 0 0.8rem; }
+  .ps-menu-stats .ps-lbl { color: var(--ps-parch-dim); }
+  .ps-mdesc { font-size: 0.78rem; line-height: 1.45; color: var(--ps-parch); margin: 0.15rem 0 0.8rem; }
   .ps-mbar { display: grid; grid-template-columns: 6.2rem 1fr; align-items: center; gap: 0.6rem; margin: 0.32rem 0; }
-  .ps-mbar-l { font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fog-400, #8aa0ad); text-align: right; }
-  .ps-mbar-t { height: 7px; border-radius: 4px; overflow: hidden; background: color-mix(in oklab, var(--ink-700, #1a2230) 85%, transparent); border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 20%, transparent); }
-  .ps-mbar-f { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #1fa3c9, var(--accent, #22d3ff)); }
+  .ps-mbar-l { font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ps-parch-dim); text-align: right; }
+  .ps-mbar-t { height: 7px; border-radius: 4px; overflow: hidden; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--ps-edge-soft); }
+  .ps-mbar-f { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--ps-brass-dim), var(--ps-brass-hi)); }
   .ps-mchips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.75rem 0 0.2rem; }
   .ps-mchips span {
-    font-size: 0.66rem; letter-spacing: 0.08em; padding: 0.22rem 0.5rem; border-radius: 0.35rem;
-    color: var(--accent-light, #7fdfff);
-    background: color-mix(in oklab, var(--ink-900, #06080f) 65%, transparent);
-    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 25%, transparent);
+    font-size: 0.66rem; letter-spacing: 0.08em; padding: 0.22rem 0.5rem; border-radius: 0.3rem;
+    color: var(--ps-brass-hi);
+    background: color-mix(in oklab, var(--ps-plate) 70%, transparent);
+    border: 1px solid var(--ps-edge);
   }
   .ps-menu-continue { width: 100%; margin-top: 0.9rem; }
   .ps-menu-keys {
     position: absolute; bottom: 1.15rem; left: 50%; transform: translateX(-50%);
     max-width: 92vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    font-size: 0.68rem; letter-spacing: 0.06em; color: var(--fog-400, #8aa0ad);
+    font-size: 0.68rem; letter-spacing: 0.06em; color: var(--ps-parch-dim);
     text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
   }
   #ps-menu .ps-corner-hint { position: absolute; }
@@ -309,63 +343,84 @@ export function PlaneSimPage(opts: {
   /* Big emoji block standing in for a preview image on mode/chapter tiles. */
   .ps-tile-ico {
     flex: none; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center;
-    font-size: 2rem; border-radius: 0.6rem;
-    background: color-mix(in oklab, var(--accent, #22d3ff) 10%, transparent);
-    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 25%, transparent);
+    font-size: 2rem; border-radius: 0.45rem;
+    background: color-mix(in oklab, var(--ps-brass) 12%, transparent);
+    border: 1px solid var(--ps-edge);
   }
-  .ps-map-tile:hover { border-color: color-mix(in oklab, var(--accent, #22d3ff) 70%, transparent); }
+  .ps-map-tile:hover { border-color: var(--ps-edge-strong); background: linear-gradient(180deg, color-mix(in oklab, var(--ps-plate-3) 70%, transparent), color-mix(in oklab, var(--ps-plate-2) 74%, transparent)); }
   .ps-map-tile {
     display: flex; gap: 1rem; align-items: center; text-align: left; cursor: pointer;
-    padding: 0.7rem 0.85rem; border-radius: 0.8rem; margin: 0.4rem 0 0.9rem;
-    background: color-mix(in oklab, var(--ink-900, #06080f) 55%, transparent);
-    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 30%, transparent);
+    padding: 0.7rem 0.85rem; border-radius: 0.5rem; margin: 0.4rem 0 0.9rem;
+    background: linear-gradient(180deg, color-mix(in oklab, var(--ps-plate-2) 60%, transparent), color-mix(in oklab, var(--ps-plate) 66%, transparent));
+    border: 1px solid var(--ps-edge-soft);
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
   }
-  .ps-map-tile.ps-active { border-color: var(--accent, #22d3ff); box-shadow: 0 0 24px rgba(34, 211, 255, 0.22); }
-  .ps-map-svg { width: 148px; height: 96px; border-radius: 0.5rem; flex: none; }
-  .ps-map-name { font-size: 1rem; font-weight: 800; color: var(--fog-100, #eef4f7); margin: 0 0 0.25rem; }
-  .ps-map-desc { font-size: 0.76rem; line-height: 1.45; color: var(--fog-300, #b8c6cf); margin: 0; }
+  .ps-map-tile.ps-active { border-color: var(--ps-edge-strong); box-shadow: 0 0 22px rgba(217, 164, 65, 0.18), inset 0 0 0 1px var(--ps-edge-soft); }
+  .ps-map-svg { width: 148px; height: 96px; border-radius: 0.4rem; flex: none; }
+  .ps-map-name { font-size: 1rem; font-weight: 800; letter-spacing: 0.04em; color: var(--ps-parch); margin: 0 0 0.25rem; }
+  .ps-map-desc { font-size: 0.76rem; line-height: 1.45; color: var(--ps-parch-dim); margin: 0; }
   .ps-menu-row { display: flex; gap: 0.6rem; justify-content: center; }
   .ps-back-btn {
-    margin-top: 0.9rem; padding: 0.45rem 1.1rem; font-size: 0.95rem; font-weight: 800;
+    margin-top: 0.9rem; padding: 0.45rem 1.1rem; font-size: 0.82rem; font-weight: 800;
+    letter-spacing: 0.08em; text-transform: uppercase;
     cursor: pointer; font-family: 'JetBrains Mono', monospace;
-    color: var(--fog-200, #dfe9ef);
-    background: color-mix(in oklab, var(--ink-900, #06080f) 60%, transparent);
-    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 30%, transparent); border-radius: 0.5rem;
+    color: var(--ps-parch);
+    background: linear-gradient(180deg, var(--ps-plate-2), var(--ps-plate));
+    border: 1px solid var(--ps-edge); border-radius: 0.35rem;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
   }
-  .ps-back-btn:hover { border-color: var(--accent, #22d3ff); color: var(--accent-light, #7fdfff); }
+  .ps-back-btn:hover { border-color: var(--ps-edge-strong); color: var(--ps-brass-hi); background: linear-gradient(180deg, var(--ps-plate-3), var(--ps-plate-2)); }
 
   /* While a menu is up: give the cursor back and hide the flight HUD. */
   #ps-stage.ps-in-menu { cursor: auto; }
   #ps-stage.ps-in-menu .ps-hud, #ps-stage.ps-in-menu #ps-damage { display: none; }
   .ps-card {
-    max-width: 560px; width: min(90vw, 560px); text-align: center;
-    background: color-mix(in oklab, var(--ink-800, #0d1320) 80%, transparent);
-    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 35%, transparent);
-    border-radius: 1rem; padding: 1.6rem 1.8rem; backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    max-width: 560px; width: min(90vw, 560px); text-align: center; position: relative;
+    background: linear-gradient(180deg, color-mix(in oklab, var(--ps-plate-2) 88%, transparent), color-mix(in oklab, var(--ps-plate) 93%, transparent));
+    border: 1px solid var(--ps-edge);
+    border-radius: 0.55rem; padding: 1.6rem 1.8rem; backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 22px 64px rgba(0, 0, 0, 0.62), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
-  .ps-card h1 { margin: 0 0 0.3rem; color: var(--accent-light, #7fdfff); font-size: 1.7rem; }
-  .ps-card .ps-sub { margin: 0 0 1.1rem; color: var(--fog-300, #b8c6cf); font-size: 0.9rem; }
+  /* A brass hairline just inside the card edge — a ready-room briefing board. */
+  .ps-card::before {
+    content: ''; position: absolute; inset: 0.32rem; border-radius: 0.4rem;
+    border: 1px solid var(--ps-edge-soft); pointer-events: none;
+  }
+  .ps-card > * { position: relative; }
+  .ps-card h1 {
+    margin: 0 0 0.3rem; font-size: 1.55rem; font-weight: 800;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ps-brass-hi); text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+  }
+  .ps-card .ps-sub { margin: 0 0 1.1rem; color: var(--ps-parch-dim); font-size: 0.9rem; }
   .ps-key {
     display: inline-block; min-width: 1.5em; padding: 0.05em 0.4em; text-align: center;
-    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 40%, transparent);
-    border-radius: 0.3rem; background: color-mix(in oklab, var(--ink-900, #06080f) 60%, transparent);
+    color: var(--ps-parch);
+    border: 1px solid var(--ps-edge);
+    border-radius: 0.25rem; background: color-mix(in oklab, var(--ps-plate) 70%, transparent);
   }
   /* Difficulty picker (map select + pause menu). */
   .ps-diff-row { display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap; margin: 0.2rem 0 0.5rem; }
-  .ps-diff-lbl { font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fog-400, #8aa0ad); }
+  .ps-diff-lbl { font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ps-parch-dim); }
   .ps-diff-btn {
     pointer-events: auto; cursor: pointer; font-family: 'JetBrains Mono', monospace;
-    padding: 0.3rem 0.75rem; font-size: 0.82rem; border-radius: 0.4rem; color: var(--fog-200, #dfe9ef);
-    background: color-mix(in oklab, var(--ink-900, #06080f) 55%, transparent);
-    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 30%, transparent);
+    padding: 0.3rem 0.8rem; font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase;
+    border-radius: 0.3rem; color: var(--ps-parch);
+    background: linear-gradient(180deg, var(--ps-plate-2), var(--ps-plate));
+    border: 1px solid var(--ps-edge);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
   }
-  .ps-diff-btn:hover { border-color: var(--accent, #22d3ff); color: var(--accent-light, #7fdfff); }
+  .ps-diff-btn:hover { border-color: var(--ps-edge-strong); color: var(--ps-brass-hi); }
   .ps-diff-btn.ps-diff-active {
-    color: var(--ink-900, #06080f); font-weight: 800;
-    background: var(--accent, #22d3ff); border-color: var(--accent, #22d3ff);
+    color: var(--ps-ink); font-weight: 800;
+    background: linear-gradient(180deg, var(--ps-brass-hi), var(--ps-brass) 55%, var(--ps-brass-dim));
+    border-color: var(--ps-brass-deep);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -2px 3px rgba(0, 0, 0, 0.22);
   }
-  .ps-hint { margin: 0 0 0.2rem; font-size: 0.74rem; line-height: 1.4; color: var(--fog-400, #8aa0ad); }
+  .ps-hint { margin: 0 0 0.2rem; font-size: 0.74rem; line-height: 1.4; color: var(--ps-parch-dim); }
 
   /* End screen (victory / defeat): same card chrome, click or SPACE to fly again. */
   #ps-end {
@@ -384,127 +439,169 @@ export function PlaneSimPage(opts: {
     display: grid; grid-template-columns: auto auto; gap: 0.35rem 1.2rem; justify-content: center;
     margin: 0.2rem auto 1.1rem; font-size: 0.86rem;
   }
-  .ps-end-stats dt { color: var(--fog-400, #8aa0ad); text-align: right; letter-spacing: 0.04em; }
-  .ps-end-stats dd { margin: 0; color: var(--fog-100, #eef4f7); font-weight: 700; text-align: left; }
+  .ps-end-stats dt { color: var(--ps-parch-dim); text-align: right; letter-spacing: 0.04em; }
+  .ps-end-stats dd { margin: 0; color: var(--ps-parch); font-weight: 700; text-align: left; }
 
-  /* Pause menu (ESC): same chrome as the start overlay, hosts the settings. */
+  /* Pause / settings menu (ESC or the ⚙ button). z-index above the hangar
+     plate (7) and toasts (9) so it always sits on top — clicking the dark
+     backdrop or the ✕ closes it, so a menu can never get stranded on screen. */
   #ps-pause {
-    position: absolute; inset: 0; z-index: 5; cursor: auto;
+    position: absolute; inset: 0; z-index: 12; cursor: auto;
     display: flex; align-items: center; justify-content: center;
     background: rgba(6, 8, 15, 0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
   }
   #ps-pause.ps-hidden { display: none; }
   #ps-pause .ps-card { pointer-events: auto; }
+  /* Close (✕) button, top-right of the settings card. */
+  .ps-pause-x {
+    position: absolute; top: 0.6rem; right: 0.7rem; z-index: 2;
+    width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center;
+    padding: 0; font-size: 1.05rem; line-height: 1; cursor: pointer;
+    font-family: 'JetBrains Mono', monospace; color: var(--ps-parch-dim);
+    background: linear-gradient(180deg, var(--ps-plate-2), var(--ps-plate));
+    border: 1px solid var(--ps-edge); border-radius: 0.3rem;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .ps-pause-x:hover { color: var(--ps-brass-hi); border-color: var(--ps-edge-strong); }
   .ps-set-row {
     display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
     justify-content: center; margin: 0.55rem 0;
   }
   .ps-set-lbl {
     min-width: 5.5rem; text-align: right; font-size: 0.68rem; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--fog-400, #8aa0ad);
+    text-transform: uppercase; color: var(--ps-parch-dim);
   }
-  #ps-vol { width: 180px; accent-color: var(--accent, #22d3ff); cursor: pointer; }
-  /* Browser-style tabs inside the pause/settings card. */
+  #ps-vol { width: 180px; accent-color: var(--ps-brass); cursor: pointer; }
+  /* Manila-folder tabs inside the pause/settings card. */
   .ps-tabs {
     display: flex; gap: 0.3rem; justify-content: center; margin: 0.4rem 0 0.7rem;
-    border-bottom: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 25%, transparent);
+    border-bottom: 1px solid var(--ps-edge);
   }
   .ps-tab {
     pointer-events: auto; cursor: pointer; font-family: 'JetBrains Mono', monospace;
-    padding: 0.35rem 1.1rem; font-size: 0.82rem; color: var(--fog-400, #8aa0ad);
+    padding: 0.35rem 1.1rem; font-size: 0.78rem; letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--ps-parch-dim);
     background: transparent; border: 1px solid transparent; border-bottom: none;
-    border-radius: 0.45rem 0.45rem 0 0;
+    border-radius: 0.4rem 0.4rem 0 0; transition: color 0.15s, background 0.15s;
   }
-  .ps-tab:hover { color: var(--accent-light, #7fdfff); }
+  .ps-tab:hover { color: var(--ps-brass-hi); }
   .ps-tab.ps-tab-active {
-    color: var(--accent-light, #7fdfff); font-weight: 800;
-    background: color-mix(in oklab, var(--ink-900, #06080f) 55%, transparent);
-    border-color: color-mix(in oklab, var(--accent, #22d3ff) 40%, transparent);
+    color: var(--ps-brass-hi); font-weight: 800;
+    background: linear-gradient(180deg, color-mix(in oklab, var(--ps-plate-2) 70%, transparent), transparent);
+    border-color: var(--ps-edge);
   }
   .ps-tabpane { min-height: 12.5rem; }
   #ps-pause .ps-card { max-height: 94vh; overflow-y: auto; }
 
   /* ---- Achievements tab ---- */
   .ps-ach-body { max-height: 62vh; overflow-y: auto; padding: 0.1rem 0.35rem 0.25rem; text-align: left; }
-  .ps-ach-empty { text-align: center; color: var(--fog-300, #b8c6cf); font-size: 0.86rem; line-height: 1.55; padding: 1.4rem 0.6rem; }
+  .ps-ach-empty { text-align: center; color: var(--ps-parch); font-size: 0.86rem; line-height: 1.55; padding: 1.4rem 0.6rem; }
   .ps-ach-empty .ps-ach-login {
-    display: inline-block; margin-top: 0.9rem; padding: 0.45rem 1.1rem; text-decoration: none;
-    font-weight: 800; color: var(--ink-900, #06080f); background: var(--accent, #22d3ff);
-    border-radius: 0.5rem;
+    display: inline-block; margin-top: 0.9rem; padding: 0.5rem 1.2rem; text-decoration: none;
+    font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ps-ink);
+    background: linear-gradient(180deg, var(--ps-brass-hi), var(--ps-brass) 55%, var(--ps-brass-dim));
+    border: 1px solid var(--ps-brass-deep); border-radius: 0.35rem;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
   }
   .ps-ach-summary {
     position: sticky; top: 0; z-index: 1; padding: 0.15rem 0.1rem 0.55rem; margin-bottom: 0.3rem;
-    background: color-mix(in oklab, var(--ink-800, #0d1320) 94%, transparent);
+    background: color-mix(in oklab, var(--ps-plate) 96%, transparent);
   }
   .ps-ach-count { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
-  .ps-ach-count b { font-size: 1.4rem; line-height: 1; color: var(--accent-light, #7fdfff); }
-  .ps-ach-count span { font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fog-400, #8aa0ad); }
+  .ps-ach-count b { font-size: 1.4rem; line-height: 1; color: var(--ps-brass-hi); }
+  .ps-ach-count span { font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ps-parch-dim); }
   .ps-ach-progress {
     height: 8px; border-radius: 4px; overflow: hidden; margin: 0.4rem 0 0.55rem;
-    background: color-mix(in oklab, var(--ink-700, #1a2230) 85%, transparent);
-    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 20%, transparent);
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--ps-edge-soft);
   }
-  .ps-ach-progress > span { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #1fa3c9, var(--accent, #22d3ff)); }
+  .ps-ach-progress > span { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--ps-brass-dim), var(--ps-brass-hi)); }
   .ps-ach-tiers { display: flex; flex-wrap: wrap; gap: 0.4rem; }
   .ps-ach-tier {
     display: flex; align-items: center; gap: 0.34rem; font-size: 0.68rem; letter-spacing: 0.03em;
-    color: var(--fog-200, #dfe9ef); padding: 0.16rem 0.45rem 0.16rem 0.28rem; border-radius: 0.4rem;
-    background: color-mix(in oklab, var(--ink-900, #06080f) 60%, transparent);
-    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 16%, transparent);
+    color: var(--ps-parch); padding: 0.16rem 0.5rem 0.16rem 0.3rem; border-radius: 0.35rem;
+    background: color-mix(in oklab, var(--ps-plate-2) 60%, transparent);
+    border: 1px solid var(--ps-edge-soft);
   }
-  .ps-ach-cat { font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fog-400, #8aa0ad); margin: 0.75rem 0 0.4rem; padding-left: 0.1rem; }
+  .ps-ach-cat {
+    font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ps-brass);
+    margin: 0.85rem 0 0.45rem; padding-bottom: 0.28rem; border-bottom: 1px solid var(--ps-edge-soft);
+  }
   .ps-ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(144px, 1fr)); gap: 0.5rem; }
   .ps-ach-card {
     display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.32rem;
-    padding: 0.6rem 0.5rem 0.55rem; border-radius: 0.6rem;
-    background: color-mix(in oklab, var(--ink-900, #06080f) 55%, transparent);
-    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 15%, transparent);
+    padding: 0.7rem 0.5rem 0.55rem; border-radius: 0.45rem;
+    background: linear-gradient(180deg, color-mix(in oklab, var(--ps-plate-2) 55%, transparent), color-mix(in oklab, var(--ps-plate) 60%, transparent));
+    border: 1px solid var(--ps-edge-soft);
   }
-  .ps-ach-card.ps-ach-on { border-color: color-mix(in oklab, var(--accent, #22d3ff) 45%, transparent); box-shadow: 0 0 16px rgba(34, 211, 255, 0.12); }
-  .ps-ach-name { font-size: 0.75rem; font-weight: 800; line-height: 1.2; color: var(--fog-100, #eef4f7); }
-  .ps-ach-desc { font-size: 0.6rem; line-height: 1.36; color: var(--fog-400, #8aa0ad); }
-  .ps-ach-card.ps-ach-on .ps-ach-desc { color: var(--fog-300, #b8c6cf); }
-  .ps-ach-cbar { width: 100%; height: 5px; border-radius: 3px; overflow: hidden; margin-top: auto; background: rgba(255, 255, 255, 0.09); }
-  .ps-ach-cbar > span { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #1fa3c9, var(--accent, #22d3ff)); }
-  .ps-ach-card.ps-ach-on .ps-ach-cbar > span { background: linear-gradient(90deg, #35d07f, #7df0b0); }
-  .ps-ach-val { font-size: 0.58rem; letter-spacing: 0.05em; color: var(--fog-400, #8aa0ad); }
+  .ps-ach-card.ps-ach-on { border-color: var(--ps-edge-strong); box-shadow: 0 0 16px rgba(217, 164, 65, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.04); }
+  .ps-ach-name { font-size: 0.75rem; font-weight: 800; line-height: 1.2; letter-spacing: 0.02em; color: var(--ps-parch); }
+  .ps-ach-card.ps-ach-on .ps-ach-name { color: var(--ps-brass-hi); }
+  .ps-ach-desc { font-size: 0.6rem; line-height: 1.36; color: var(--ps-parch-dim); }
+  .ps-ach-cbar { width: 100%; height: 5px; border-radius: 3px; overflow: hidden; margin-top: auto; background: rgba(0, 0, 0, 0.38); }
+  .ps-ach-cbar > span { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--ps-brass-dim), var(--ps-brass)); }
+  .ps-ach-card.ps-ach-on .ps-ach-cbar > span { background: linear-gradient(90deg, var(--ps-brass), var(--ps-brass-hi)); }
+  .ps-ach-val { font-size: 0.58rem; letter-spacing: 0.05em; color: var(--ps-parch-dim); }
 
-  /* Medallions: metallic disc + ★, greyed when locked. */
+  /* Lapel medals: a striped suspension ribbon with a metallic star pendant
+     hanging from it — sized entirely in em, so one font-size scales the whole
+     medal (grid card / toast / tier chip). Greyed & dimmed when locked. */
   .ps-medal {
-    width: 46px; height: 46px; border-radius: 50%; flex: none; position: relative;
-    display: flex; align-items: center; justify-content: center; font-size: 1.15rem; color: #2a1c05;
-    border: 2px solid rgba(255, 255, 255, 0.28);
-    box-shadow: inset 0 2px 5px rgba(255, 255, 255, 0.5), inset 0 -3px 6px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.4);
+    font-size: 10px; width: 4.4em; height: 6em; flex: none; position: relative;
+    filter: drop-shadow(0 0.2em 0.24em rgba(0, 0, 0, 0.5));
   }
-  .ps-medal::after { content: '★'; }
-  .ps-medal-bronze { background: radial-gradient(circle at 35% 28%, #f0b27a, #b06f2e 62%, #7a4a1c); }
-  .ps-medal-silver { background: radial-gradient(circle at 35% 28%, #f4f8fb, #a8b6c4 62%, #74828f); color: #2b3138; }
-  .ps-medal-gold { background: radial-gradient(circle at 35% 28%, #fff0b8, #f5c034 60%, #b8860b); }
-  .ps-medal-platinum { background: radial-gradient(circle at 35% 28%, #ffffff, #bfe6f5 55%, #7fb9d6); color: #12303c; }
-  .ps-medal-locked { filter: grayscale(1) brightness(0.72); opacity: 0.4; box-shadow: none; }
+  /* Ribbon: a folded cloth bar, tier-striped, tapering toward the pendant. */
+  .ps-medal::before {
+    content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 2.9em; height: 2.7em;
+    background: var(--rib, #8a6a2e);
+    clip-path: polygon(0 0, 100% 0, 86% 100%, 14% 100%);
+    box-shadow: inset 0 0 0 0.1em rgba(0, 0, 0, 0.28), inset 0.7em 0 0.6em -0.4em rgba(255, 255, 255, 0.35), inset -0.7em 0 0.6em -0.4em rgba(0, 0, 0, 0.4);
+  }
+  /* Pendant: a five-point star in the tier metal, hanging below the ribbon. */
+  .ps-medal::after {
+    content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 4em; height: 4em;
+    background:
+      radial-gradient(circle at 34% 26%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 42%),
+      radial-gradient(circle at 50% 44%, var(--mhi, #f0b27a), var(--mmid, #b06f2e) 56%, var(--mlo, #7a4a1c));
+    clip-path: polygon(50% 1%, 61% 35%, 98% 35%, 68% 57%, 79% 99%, 50% 74%, 21% 99%, 32% 57%, 2% 35%, 39% 35%);
+  }
+  .ps-medal-bronze   { --rib: repeating-linear-gradient(90deg, #6f3f18 0 0.34em, #9c6330 0.34em 0.68em); --mhi: #f4bd83; --mmid: #b06f2e; --mlo: #6f421a; }
+  .ps-medal-silver   { --rib: repeating-linear-gradient(90deg, #46586a 0 0.34em, #8fa2b3 0.34em 0.68em); --mhi: #fbfdff; --mmid: #aab8c6; --mlo: #6f7d8a; }
+  .ps-medal-gold     { --rib: repeating-linear-gradient(90deg, #7a2626 0 0.34em, #d9a441 0.34em 0.68em); --mhi: #fff0b8; --mmid: #f5c034; --mlo: #a9760a; }
+  .ps-medal-platinum { --rib: repeating-linear-gradient(90deg, #35306a 0 0.34em, #cdd8e6 0.34em 0.68em); --mhi: #ffffff; --mmid: #cfe6f2; --mlo: #7fb0c6; }
+  .ps-medal-locked { filter: grayscale(1) brightness(0.6); opacity: 0.42; }
 
   /* Unlock toasts (bottom-left). */
   #ps-ach-toasts { position: absolute; left: 1.1rem; bottom: 1.1rem; z-index: 9; display: flex; flex-direction: column; gap: 0.5rem; pointer-events: none; }
   .ps-ach-toast {
-    display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.85rem 0.5rem 0.5rem; border-radius: 0.6rem;
-    background: color-mix(in oklab, var(--ink-800, #0d1320) 92%, transparent);
-    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 45%, transparent);
-    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.5);
+    display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0.9rem 0.45rem 0.55rem; border-radius: 0.45rem;
+    background: linear-gradient(180deg, color-mix(in oklab, var(--ps-plate-2) 94%, transparent), color-mix(in oklab, var(--ps-plate) 96%, transparent));
+    border: 1px solid var(--ps-edge-strong);
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
     transform: translateX(-120%); opacity: 0; transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.35s;
   }
   .ps-ach-toast.ps-show { transform: translateX(0); opacity: 1; }
-  .ps-ach-toast .ps-medal { width: 38px; height: 38px; font-size: 0.95rem; }
-  .ps-ach-toast .ps-t-cap { font-size: 0.55rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fog-400, #8aa0ad); }
-  .ps-ach-toast .ps-t-name { font-size: 0.86rem; font-weight: 800; color: var(--accent-light, #7fdfff); }
+  .ps-ach-toast .ps-medal { font-size: 8px; }
+  .ps-ach-toast .ps-t-cap { font-size: 0.55rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ps-parch-dim); }
+  .ps-ach-toast .ps-t-name { font-size: 0.86rem; font-weight: 800; color: var(--ps-brass-hi); }
+  /* Tier chips in the summary use a small inline medal. */
+  .ps-ach-tier .ps-medal { font-size: 3.6px; }
   @media (prefers-reduced-motion: reduce) { .ps-ach-toast { transition: opacity 0.2s; transform: none; } }
 
   .ps-resume-btn {
-    margin-top: 0.9rem; padding: 0.45rem 1.4rem; font-size: 0.95rem; font-weight: 800;
+    margin-top: 0.9rem; padding: 0.5rem 1.5rem; font-size: 0.85rem; font-weight: 800;
+    letter-spacing: 0.09em; text-transform: uppercase;
     cursor: pointer; font-family: 'JetBrains Mono', monospace;
-    color: var(--ink-900, #06080f); background: var(--accent, #22d3ff);
-    border: 1px solid var(--accent, #22d3ff); border-radius: 0.5rem;
+    color: var(--ps-ink);
+    background: linear-gradient(180deg, var(--ps-brass-hi), var(--ps-brass) 55%, var(--ps-brass-dim));
+    border: 1px solid var(--ps-brass-deep); border-radius: 0.35rem;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), inset 0 -2px 4px rgba(0, 0, 0, 0.28), 0 3px 9px rgba(0, 0, 0, 0.4);
+    transition: filter 0.15s, transform 0.05s;
   }
-  .ps-resume-btn:hover { filter: brightness(1.15); }
+  .ps-resume-btn:hover { filter: brightness(1.08); }
+  .ps-resume-btn:active { transform: translateY(1px); }
 
   @media (prefers-reduced-motion: reduce) {
     .ps-stall.ps-show, .ps-load-bar::after, .ps-gear-transit .ps-gear-lamps span { animation: none; }
@@ -771,6 +868,7 @@ export function PlaneSimPage(opts: {
            settings live here. -->
       <div id="ps-pause" class="ps-hidden">
         <div class="ps-card">
+          <button type="button" class="ps-pause-x" id="ps-pause-x" aria-label="Close settings">✕</button>
           <h1 id="ps-pause-title">Paused</h1>
           <div class="ps-tabs" role="tablist">
             <button type="button" class="ps-tab" data-tab="achievements" role="tab" aria-label="Achievements">🏆 <span class="ps-tab-txt">Medals</span></button>
