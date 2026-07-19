@@ -15,6 +15,7 @@ import {
   ascendWeb,
   getDinoUpgradesStateWeb,
   generateFakeQuoteWeb,
+  applyPlaneStatsEvents,
 } from '../bot-bridge';
 import {
   type AppEnv, type GameBody, authedGameRequest, coerceInt, readGameBody,
@@ -177,4 +178,15 @@ export function registerGameApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf)
   gameRoute('/games/claim/claim', 'claim', async ({ discordId }) => ({
     ok: true, data: await claimWeb(silverwolf, discordId),
   }));
+
+  // Plane Sim achievement tracking. The body carries an `events` array of
+  // semantic gameplay events; the model validates + applies each one (it owns
+  // the trust boundary — no absolute totals are read from the client) and we
+  // return the full, sanitized stat blob for the browser to re-render from.
+  gameRoute('/games/plane-sim/stats', 'plane-sim stats', async ({ c, body, discordId }) => {
+    const events = Array.isArray(body.events) ? body.events : null;
+    if (!events) return c.json({ error: 'invalid' }, 400);
+    const stats = await applyPlaneStatsEvents(silverwolf, discordId, events);
+    return { ok: true, stats };
+  });
 }

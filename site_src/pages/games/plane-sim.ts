@@ -2,6 +2,7 @@ import path from 'path';
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import { assetVersion } from '../../asset-version';
+import { inlineJSON } from '../../inline';
 
 // Plane Sim — a fullscreen Three.js flight simulator (a Spitfire-ish prop
 // fighter). The heavy lifting lives in the self-hosted, bundled
@@ -16,8 +17,18 @@ export function PlaneSimPage(opts: {
   nonce: string;
   lv999?: boolean;
   user?: import('../../components/navbar').NavUser | null;
+  stats?: unknown; // Plane Sim achievement stat blob (null when logged out)
+  csrf?: string | null;
 }) {
-  const { nonce, lv999, user } = opts;
+  const {
+    nonce, lv999, user, stats = null, csrf = null,
+  } = opts;
+
+  // Boot payload for the Achievements tab: whether the visitor is logged in
+  // (achievements only track with an account), their CSRF token for posting
+  // gameplay events, and their current stats. A non-executable JSON island
+  // (inlineJSON escapes "<") the game module reads once at start.
+  const achBoot = raw(inlineJSON({ loggedIn: !!user, csrf: csrf || null, stats }));
 
   const styles = raw(`
 <style>
@@ -411,6 +422,82 @@ export function PlaneSimPage(opts: {
     border-color: color-mix(in oklab, var(--accent, #22d3ff) 40%, transparent);
   }
   .ps-tabpane { min-height: 12.5rem; }
+  #ps-pause .ps-card { max-height: 94vh; overflow-y: auto; }
+
+  /* ---- Achievements tab ---- */
+  .ps-ach-body { max-height: 62vh; overflow-y: auto; padding: 0.1rem 0.35rem 0.25rem; text-align: left; }
+  .ps-ach-empty { text-align: center; color: var(--fog-300, #b8c6cf); font-size: 0.86rem; line-height: 1.55; padding: 1.4rem 0.6rem; }
+  .ps-ach-empty .ps-ach-login {
+    display: inline-block; margin-top: 0.9rem; padding: 0.45rem 1.1rem; text-decoration: none;
+    font-weight: 800; color: var(--ink-900, #06080f); background: var(--accent, #22d3ff);
+    border-radius: 0.5rem;
+  }
+  .ps-ach-summary {
+    position: sticky; top: 0; z-index: 1; padding: 0.15rem 0.1rem 0.55rem; margin-bottom: 0.3rem;
+    background: color-mix(in oklab, var(--ink-800, #0d1320) 94%, transparent);
+  }
+  .ps-ach-count { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+  .ps-ach-count b { font-size: 1.4rem; line-height: 1; color: var(--accent-light, #7fdfff); }
+  .ps-ach-count span { font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fog-400, #8aa0ad); }
+  .ps-ach-progress {
+    height: 8px; border-radius: 4px; overflow: hidden; margin: 0.4rem 0 0.55rem;
+    background: color-mix(in oklab, var(--ink-700, #1a2230) 85%, transparent);
+    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 20%, transparent);
+  }
+  .ps-ach-progress > span { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #1fa3c9, var(--accent, #22d3ff)); }
+  .ps-ach-tiers { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .ps-ach-tier {
+    display: flex; align-items: center; gap: 0.34rem; font-size: 0.68rem; letter-spacing: 0.03em;
+    color: var(--fog-200, #dfe9ef); padding: 0.16rem 0.45rem 0.16rem 0.28rem; border-radius: 0.4rem;
+    background: color-mix(in oklab, var(--ink-900, #06080f) 60%, transparent);
+    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 16%, transparent);
+  }
+  .ps-ach-cat { font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fog-400, #8aa0ad); margin: 0.75rem 0 0.4rem; padding-left: 0.1rem; }
+  .ps-ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(144px, 1fr)); gap: 0.5rem; }
+  .ps-ach-card {
+    display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.32rem;
+    padding: 0.6rem 0.5rem 0.55rem; border-radius: 0.6rem;
+    background: color-mix(in oklab, var(--ink-900, #06080f) 55%, transparent);
+    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 15%, transparent);
+  }
+  .ps-ach-card.ps-ach-on { border-color: color-mix(in oklab, var(--accent, #22d3ff) 45%, transparent); box-shadow: 0 0 16px rgba(34, 211, 255, 0.12); }
+  .ps-ach-name { font-size: 0.75rem; font-weight: 800; line-height: 1.2; color: var(--fog-100, #eef4f7); }
+  .ps-ach-desc { font-size: 0.6rem; line-height: 1.36; color: var(--fog-400, #8aa0ad); }
+  .ps-ach-card.ps-ach-on .ps-ach-desc { color: var(--fog-300, #b8c6cf); }
+  .ps-ach-cbar { width: 100%; height: 5px; border-radius: 3px; overflow: hidden; margin-top: auto; background: rgba(255, 255, 255, 0.09); }
+  .ps-ach-cbar > span { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #1fa3c9, var(--accent, #22d3ff)); }
+  .ps-ach-card.ps-ach-on .ps-ach-cbar > span { background: linear-gradient(90deg, #35d07f, #7df0b0); }
+  .ps-ach-val { font-size: 0.58rem; letter-spacing: 0.05em; color: var(--fog-400, #8aa0ad); }
+
+  /* Medallions: metallic disc + ★, greyed when locked. */
+  .ps-medal {
+    width: 46px; height: 46px; border-radius: 50%; flex: none; position: relative;
+    display: flex; align-items: center; justify-content: center; font-size: 1.15rem; color: #2a1c05;
+    border: 2px solid rgba(255, 255, 255, 0.28);
+    box-shadow: inset 0 2px 5px rgba(255, 255, 255, 0.5), inset 0 -3px 6px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.4);
+  }
+  .ps-medal::after { content: '★'; }
+  .ps-medal-bronze { background: radial-gradient(circle at 35% 28%, #f0b27a, #b06f2e 62%, #7a4a1c); }
+  .ps-medal-silver { background: radial-gradient(circle at 35% 28%, #f4f8fb, #a8b6c4 62%, #74828f); color: #2b3138; }
+  .ps-medal-gold { background: radial-gradient(circle at 35% 28%, #fff0b8, #f5c034 60%, #b8860b); }
+  .ps-medal-platinum { background: radial-gradient(circle at 35% 28%, #ffffff, #bfe6f5 55%, #7fb9d6); color: #12303c; }
+  .ps-medal-locked { filter: grayscale(1) brightness(0.72); opacity: 0.4; box-shadow: none; }
+
+  /* Unlock toasts (bottom-left). */
+  #ps-ach-toasts { position: absolute; left: 1.1rem; bottom: 1.1rem; z-index: 9; display: flex; flex-direction: column; gap: 0.5rem; pointer-events: none; }
+  .ps-ach-toast {
+    display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.85rem 0.5rem 0.5rem; border-radius: 0.6rem;
+    background: color-mix(in oklab, var(--ink-800, #0d1320) 92%, transparent);
+    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 45%, transparent);
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.5);
+    transform: translateX(-120%); opacity: 0; transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.35s;
+  }
+  .ps-ach-toast.ps-show { transform: translateX(0); opacity: 1; }
+  .ps-ach-toast .ps-medal { width: 38px; height: 38px; font-size: 0.95rem; }
+  .ps-ach-toast .ps-t-cap { font-size: 0.55rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fog-400, #8aa0ad); }
+  .ps-ach-toast .ps-t-name { font-size: 0.86rem; font-weight: 800; color: var(--accent-light, #7fdfff); }
+  @media (prefers-reduced-motion: reduce) { .ps-ach-toast { transition: opacity 0.2s; transform: none; } }
+
   .ps-resume-btn {
     margin-top: 0.9rem; padding: 0.45rem 1.4rem; font-size: 0.95rem; font-weight: 800;
     cursor: pointer; font-family: 'JetBrains Mono', monospace;
@@ -686,8 +773,12 @@ export function PlaneSimPage(opts: {
         <div class="ps-card">
           <h1 id="ps-pause-title">Paused</h1>
           <div class="ps-tabs" role="tablist">
+            <button type="button" class="ps-tab" data-tab="achievements" role="tab" aria-label="Achievements">🏆 <span class="ps-tab-txt">Medals</span></button>
             <button type="button" class="ps-tab ps-tab-active" data-tab="general" role="tab">General</button>
             <button type="button" class="ps-tab" data-tab="graphics" role="tab">Graphics</button>
+          </div>
+          <div class="ps-tabpane" data-pane="achievements" style="display:none">
+            <div id="ps-ach-body" class="ps-ach-body"></div>
           </div>
           <div class="ps-tabpane" data-pane="general">
             <div class="ps-set-row">
@@ -736,8 +827,11 @@ export function PlaneSimPage(opts: {
           </div>
         </div>
       </div>
+      <!-- Achievement-unlock toasts (bottom-left, above the minimap corner) -->
+      <div id="ps-ach-toasts" aria-live="polite"></div>
     </div>
     ${styles}
+    <script type="application/json" id="ps-ach-boot">${achBoot}</script>
     <script type="module" nonce="${nonce}" src="/static/plane-sim.js?v=${assetVersion(PLANE_SIM_JS)}"></script>
   `;
 

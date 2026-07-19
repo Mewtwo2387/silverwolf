@@ -26,6 +26,7 @@ import type MusicGenModel from './models/MusicGenModel';
 import type ServerConfigModel from './models/ServerConfigModel';
 import type BirthdayReminderModel from './models/BirthdayReminderModel';
 import type FootballMatchAnnouncementModel from './models/FootballMatchAnnouncementModel';
+import type PlaneStatsModel from './models/PlaneStatsModel';
 import type PoopModel from './models/PoopModel';
 import type RpModel from './models/RpModel';
 import type WebSessionModel from './models/WebSessionModel';
@@ -352,6 +353,7 @@ class Database {
   get imageGen(): ImageGenModel { return this.models.ImageGenModel; }
   get marriage(): MarriageModel { return this.models.MarriageModel; }
   get musicGen(): MusicGenModel { return this.models.MusicGenModel; }
+  get planeStats(): PlaneStatsModel { return this.models.PlaneStatsModel; }
   get pokemon(): PokemonModel { return this.models.PokemonModel; }
   get poop(): PoopModel { return this.models.PoopModel; }
   get rp(): RpModel { return this.models.RpModel; }

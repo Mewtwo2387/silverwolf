@@ -4,7 +4,11 @@
 // the site CSP is `script-src 'self'` and forbids CDNs. Loaded by
 // site_src/pages/games/plane-sim.ts as a `<script type="module">`.
 //
-// Everything is client-side: no API, no DB, no login. Coordinates are metres,
+// The flight sim is entirely client-side. The one exception is achievements:
+// when logged in, the game posts semantic gameplay events (a kill, a lesson
+// passed, a sortie cleared, a stunt run) to /games/plane-sim/stats, which the
+// server validates + stores; play works fine logged out, just untracked.
+// Coordinates are metres,
 // Y is up, and the aircraft's local forward is -Z (so the chase camera sits on
 // +Z behind it and the plane's right wing, +X, reads as screen-right).
 //
@@ -37,6 +41,9 @@ import {
 import { GFX, GFX_LEVEL, GFX_LEVELS, loadSceneryTexture } from './plane-sim-quality.js';
 import { Water } from 'three/addons/objects/Water.js';
 import { buildGrassField } from './plane-sim-grass.js';
+import {
+  computeAchievements, unlockedIds, CATEGORIES, TIER_META,
+} from './plane-achievements.js';
 
 (() => {
   'use strict';
@@ -1216,6 +1223,7 @@ import { buildGrassField } from './plane-sim-grass.js';
   // Combat state
   let playerHP = ac.hp;
   let kills = 0;
+  let sortieTookDamage = false; // did the player take any hit this sortie (for no-damage medals)
   let won = false;
   let engageStart = 0; // performance.now() at launch/respawn -> engagement clock
   let lockTarget = false; // is an enemy currently in the gun line?
@@ -2131,6 +2139,9 @@ import { buildGrassField } from './plane-sim-grass.js';
       }
       audio.boom();
       kills += 1;
+      // First Blood counts in any mode (the gunnery lesson too); the kill-count
+      // ladder only counts real sorties above Rookie — the server enforces both.
+      achievements.emit({ t: 'kill', mode: gameMode, diff: diffName });
       updateCombatHUD();
       if (kills >= activeCount && !won && gameMode === 'sortie') {
         // Coastal: last bandit down = win. Ocean: it unlocks the strike phase.
@@ -2143,6 +2154,7 @@ import { buildGrassField } from './plane-sim-grass.js';
   function damagePlayer(dmg, at) {
     if (crashed || won || dev.god) return;
     playerHP -= dmg;
+    sortieTookDamage = true; // forfeits the no-damage medals for this sortie
     flashDamage();
     audio.hit();
     if (at) spawnSpark(at, 2.6, 0.14);
@@ -2226,6 +2238,16 @@ import { buildGrassField } from './plane-sim-grass.js';
 
   function victory() {
     won = true;
+    if (gameMode === 'sortie') {
+      achievements.emit({
+        t: 'sortieClear',
+        map: mapName,
+        diff: diffName,
+        hullPct: Math.max(0, Math.round((playerHP / ac.hp) * 100)),
+        bandits: activeCount,
+        tookDamage: sortieTookDamage,
+      });
+    }
     showEnd(true);
   }
 
@@ -2296,11 +2318,134 @@ import { buildGrassField } from './plane-sim-grass.js';
     }
   }
 
+  // ---- Achievements. Login-gated career tracking rendered into the Medals
+  //      tab. The game calls achievements.emit({...}) at decisive moments; the
+  //      events queue and flush to /games/plane-sim/stats (the SERVER decides
+  //      what each event does — never a client total), and the returned stat
+  //      blob is diffed to toast fresh unlocks. Logged out: emit is a no-op and
+  //      the tab shows a login prompt. ----
+  const achievements = (() => {
+    let boot = { loggedIn: false, csrf: null, stats: null };
+    try {
+      const el = document.getElementById('ps-ach-boot');
+      if (el && el.textContent) boot = JSON.parse(el.textContent) || boot;
+    } catch (_) { boot = { loggedIn: false, csrf: null, stats: null }; }
+    const bodyEl = document.getElementById('ps-ach-body');
+    const toastWrap = document.getElementById('ps-ach-toasts');
+    let stats = boot.stats || null;
+    let unlocked = unlockedIds(stats || undefined);
+    let queue = [];
+    let flushTimer = 0;
+    let rendered = false;
+
+    const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+    const medal = (tier, on) => `<div class="ps-medal ps-medal-${tier}${on ? '' : ' ps-medal-locked'}"></div>`;
+    const pct = (n) => `${Math.max(0, Math.min(100, n * 100)).toFixed(0)}%`;
+
+    function render() {
+      if (!bodyEl) return;
+      if (!boot.loggedIn) {
+        bodyEl.innerHTML = '<div class="ps-ach-empty">Achievements track your career across sorties, '
+          + 'lessons and stunt runs — but only with an account.<br>Log in with Discord to start earning medals.'
+          + '<a class="ps-ach-login" href="/auth/discord/login">Log in with Discord</a></div>';
+        rendered = true;
+        return;
+      }
+      const board = computeAchievements(stats || undefined);
+      let h = '<div class="ps-ach-summary">'
+        + `<div class="ps-ach-count"><b>${board.earned} / ${board.total}</b><span>Medals earned</span></div>`
+        + `<div class="ps-ach-progress"><span style="width:${pct(board.total ? board.earned / board.total : 0)}"></span></div>`
+        + '<div class="ps-ach-tiers">';
+      for (const t of ['bronze', 'silver', 'gold', 'platinum']) {
+        const bt = board.byTier[t];
+        h += `<div class="ps-ach-tier">${medal(t, bt.earned > 0)}${TIER_META[t].label} ${bt.earned}/${bt.total}</div>`;
+      }
+      h += '</div></div>';
+      for (const cat of CATEGORIES) {
+        const items = board.items.filter((i) => i.cat === cat.id);
+        if (!items.length) continue;
+        h += `<div class="ps-ach-cat">${esc(cat.label)}</div><div class="ps-ach-grid">`;
+        for (const it of items) {
+          const label = it.objective
+            ? (it.unlocked ? 'Complete' : 'Locked')
+            : `${Math.min(it.value, it.target).toLocaleString()} / ${it.target.toLocaleString()}`;
+          h += `<div class="ps-ach-card${it.unlocked ? ' ps-ach-on' : ''}">`
+            + `<div class="ps-ach-name">${esc(it.name)}</div>`
+            + medal(it.tier, it.unlocked)
+            + `<div class="ps-ach-desc">${esc(it.desc)}</div>`
+            + `<div class="ps-ach-cbar"><span style="width:${pct(it.pct)}"></span></div>`
+            + `<div class="ps-ach-val">${esc(label)}</div>`
+            + '</div>';
+        }
+        h += '</div>';
+      }
+      bodyEl.innerHTML = h;
+      rendered = true;
+    }
+
+    function popToast(item) {
+      if (!toastWrap) return;
+      const el = document.createElement('div');
+      el.className = 'ps-ach-toast';
+      el.innerHTML = medal(item.tier, true)
+        + `<div><div class="ps-t-cap">Achievement unlocked</div><div class="ps-t-name">${esc(item.name)}</div></div>`;
+      toastWrap.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('ps-show'));
+      setTimeout(() => {
+        el.classList.remove('ps-show');
+        setTimeout(() => el.remove(), 450);
+      }, 4200);
+    }
+
+    function applyStats(next) {
+      if (!next) return;
+      const before = unlocked;
+      stats = next;
+      unlocked = unlockedIds(stats);
+      const board = computeAchievements(stats);
+      for (const it of board.items) if (it.unlocked && !before.has(it.id)) popToast(it);
+      if (rendered) render();
+    }
+
+    async function flush() {
+      flushTimer = 0;
+      if (!boot.loggedIn || !boot.csrf || !queue.length) { queue = []; return; }
+      const batch = queue.splice(0, 64);
+      try {
+        const r = await fetch('/games/plane-sim/stats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ csrf: boot.csrf, events: batch }),
+          keepalive: true,
+        });
+        if (!r.ok) return;
+        const data = await r.json();
+        if (data && data.stats) applyStats(data.stats);
+      } catch (_) { /* offline/transient — the medal just won't tick this time */ }
+    }
+    function scheduleFlush() { if (!flushTimer) flushTimer = setTimeout(flush, 500); }
+
+    function emit(ev) {
+      if (!boot.loggedIn) return;
+      queue.push(ev);
+      scheduleFlush();
+    }
+
+    // Best-effort flush of anything still queued when the tab is closing.
+    window.addEventListener('pagehide', () => { if (queue.length) flush(); });
+    const tabBtn = document.querySelector('[data-tab="achievements"]');
+    if (tabBtn) tabBtn.addEventListener('click', render);
+    render(); // pre-render so the first open of the tab is instant
+
+    return { emit, render };
+  })();
+
   // ---- Pause / settings menu (ESC or the corner ⚙). Mid-flight it freezes
   //      the sim (dt = 0) and suspends audio; opened from a menu screen it's
-  //      just a settings panel (nothing to pause). Tabs: General | Graphics.
-  //      Aircraft/bandit setup deliberately does NOT live here — those are
-  //      pre-game choices on the hangar and sortie screens. ----
+  //      just a settings panel (nothing to pause). Tabs: Medals | General |
+  //      Graphics. Aircraft/bandit setup deliberately does NOT live here —
+  //      those are pre-game choices on the hangar and sortie screens. ----
   const pauseOv = document.getElementById('ps-pause');
   const pauseTitle = document.getElementById('ps-pause-title');
   const resumeBtn = document.getElementById('ps-resume');
@@ -3079,6 +3224,7 @@ import { buildGrassField } from './plane-sim-grass.js';
     gearDown = true;
     playerHP = ac.hp;
     kills = 0;
+    sortieTookDamage = false;
     engageStart = performance.now(); // restart the engagement clock
     // Reset the ocean mission: bombs back on the racks, enemy carrier refloated.
     missionPhase = 'defend';
@@ -3184,6 +3330,7 @@ import { buildGrassField } from './plane-sim-grass.js';
       audio.hit(); // the "goal ticked" chime
       if (tut.step >= tut.def.steps.length) {
         won = true;
+        achievements.emit({ t: 'tutorial', id: tut.id });
         showEnd(true, null, false, 'Lesson complete', tut.def.outro, '🎓');
       }
       updateTutHUD();
@@ -3292,7 +3439,7 @@ import { buildGrassField } from './plane-sim-grass.js';
       };
     });
     stunt = {
-      id, def, rings, i: 0, score: 0, hits: 0, t: 0, prev: new THREE.Vector3(),
+      id, def, rings, i: 0, score: 0, hits: 0, bull: 0, t: 0, prev: new THREE.Vector3(),
     };
     beacon = new THREE.Sprite(new THREE.SpriteMaterial({
       map: beaconTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.75,
@@ -3317,6 +3464,14 @@ import { buildGrassField } from './plane-sim-grass.js';
     if (stunt.i >= stunt.rings.length) {
       won = true;
       if (beacon) beacon.visible = false;
+      achievements.emit({
+        t: 'stuntRun',
+        course: stunt.id,
+        score: stunt.score,
+        ringsHit: stunt.hits,
+        ringsTotal: stunt.rings.length,
+        bullseyes: stunt.bull,
+      });
       showEnd(true, null, false, 'Course complete',
         `${stunt.hits} of ${stunt.rings.length} rings — final score ${stunt.score}.`, '🏁');
       return;
@@ -3338,6 +3493,7 @@ import { buildGrassField } from './plane-sim-grass.js';
           const bulls = off <= cur.r * 0.5;
           stunt.score += bulls ? 150 : 100;
           stunt.hits++;
+          if (bulls) stunt.bull++;
           cur.core.color.set(0x37d67a);
           audio.hit();
           toast(bulls ? '◎ BULLSEYE +150' : '○ RING +100', 900);
