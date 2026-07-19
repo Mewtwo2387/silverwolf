@@ -67,9 +67,9 @@ export function createMusicEngine(ctx, out) {
   const nd = noise.getChannelData(0);
   for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
 
-  // Gentle saturation for brass edge.
+  // Gentle saturation for brass edge (kept mild so it reads as horn, not buzz).
   const brassCurve = new Float32Array(256);
-  for (let i = 0; i < 256; i++) { const x = i / 127.5 - 1; brassCurve[i] = Math.tanh(1.7 * x); }
+  for (let i = 0; i < 256; i++) { const x = i / 127.5 - 1; brassCurve[i] = Math.tanh(1.3 * x); }
 
   // Attack / sustain / exponential-release envelope on a gain param.
   function env(param, t, dur, peak, atk, rel) {
@@ -109,17 +109,17 @@ export function createMusicEngine(ctx, out) {
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
     lp.Q.value = 1.1;
-    lp.frequency.setValueAtTime(480, t);
-    lp.frequency.linearRampToValueAtTime(2900, t + 0.07);
-    lp.frequency.exponentialRampToValueAtTime(1450, t + Math.min(dur, 0.55));
+    lp.frequency.setValueAtTime(460, t);
+    lp.frequency.linearRampToValueAtTime(2500, t + 0.08);
+    lp.frequency.exponentialRampToValueAtTime(1350, t + Math.min(dur, 0.6));
     const sh = ctx.createWaveShaper();
     sh.curve = brassCurve;
     const g = ctx.createGain();
-    env(g.gain, t, dur, gain, 0.045, Math.min(0.28, dur * 0.4));
+    env(g.gain, t, dur, gain, 0.05, Math.min(0.3, dur * 0.4));
     lp.connect(sh);
     sh.connect(g);
     g.connect(swap);
-    for (const c of [-6, 6]) {
+    for (const c of [-5, 5]) {
       const o = ctx.createOscillator();
       o.type = 'sawtooth';
       o.frequency.value = freq;
@@ -271,11 +271,11 @@ export function createMusicEngine(ctx, out) {
     bars: 8,
     chords: [Dm, Cc, Bb, Am, Dm, Cc, Bb, Am],
     parts: [
-      (s, ch, bar, g, t, sec) => { if (s % 4 === 0) brass(mtof(ch[0] - 12), t, sec(0.95), 0.1); }, // low brass on the beat
-      (s, ch, bar, g, t, sec) => { if (s % 2 === 0) strings(mtof(ch[0]), t, sec(0.34), 0.045, 2200); }, // driving string ostinato
-      (s, ch, bar, g, t, sec) => { const n = COMBAT_MEL[g]; if (n) brass(mtof(n), t, sec(0.82), 0.13); }, // heroic brass melody
+      (s, ch, bar, g, t, sec) => { if (s === 0 || s === 8) brass(mtof(ch[0] - 12), t, sec(1.9), 0.09); }, // sustained low-brass foundation (beats 1 & 3)
+      (s, ch, bar, g, t, sec) => { if (s === 0) stringChord(ch, t, sec(2.05), 0.04, 2000); }, // sustained string bed — the drive comes from the drums, not a repeated stab
+      (s, ch, bar, g, t, sec) => { const n = COMBAT_MEL[g]; if (n) brass(mtof(n - 12), t, sec(0.9), 0.12); }, // heroic brass melody in warm horn register
       (s, ch, bar, g, t) => { if (s === 0 || s === 8) { timpani(mtof(ch[0] - 12), t, 0.5); bassDrum(t); } }, // martial low pulse
-      (s, ch, bar, g, t) => { // snare cadence: soft 8ths, accents on 2 & 4, a pickup roll
+      (s, ch, bar, g, t) => { // snare cadence carries the march: soft 8ths, accents on 2 & 4, pickup roll
         if (s === 4 || s === 12) snare(t, 0.26);
         else if (s % 2 === 0) snare(t, 0.1);
         else if (s === 15) snare(t, 0.12);
@@ -287,16 +287,16 @@ export function createMusicEngine(ctx, out) {
     bars: 8,
     chords: [Ff, Dm, Bb, Cc, Ff, Dm, Bb, Cc],
     parts: [
-      (s, ch, bar, g, t, sec) => { if (s === 0 || s === 8) stringChord(ch, t, sec(1.7), 0.038, 3000); }, // string bed
-      (s, ch, bar, g, t, sec) => { // buoyant horn bass: root then fifth
-        if (s === 0 || s === 8) brass(mtof(ch[0] - 12), t, sec(0.7), 0.1);
-        else if (s === 4 || s === 12) brass(mtof(ch[0] - 5), t, sec(0.45), 0.085);
+      (s, ch, bar, g, t, sec) => { if (s === 0) stringChord(ch, t, sec(1.85), 0.038, 3000); }, // sustained string bed
+      (s, ch, bar, g, t, sec) => { // buoyant horn bass: root, then fifth — sustained, not stabbed
+        if (s === 0) brass(mtof(ch[0] - 12), t, sec(1.4), 0.09);
+        else if (s === 8) brass(mtof(ch[0] - 5), t, sec(1.0), 0.08);
       },
-      (s, ch, bar, g, t, sec) => { const n = STUNT_MEL[g]; if (n) brass(mtof(n), t, sec(0.6), 0.12); }, // bright brass melody
+      (s, ch, bar, g, t, sec) => { const n = STUNT_MEL[g]; if (n) brass(mtof(n - 12), t, sec(0.62), 0.11); }, // brass melody in warm register
       (s, ch, bar, g, t) => { if (s === 0 || s === 8) bassDrum(t, 0.42); },
       (s, ch, bar, g, t) => { // lighter march snare
         if (s === 4 || s === 12) snare(t, 0.22);
-        else if (s === 2 || s === 6 || s === 10 || s === 14) snare(t, 0.08);
+        else if (s % 4 === 2) snare(t, 0.08);
       },
     ],
   };
