@@ -41,7 +41,6 @@ import {
 import { GFX, GFX_LEVEL, GFX_LEVELS, loadSceneryTexture } from './plane-sim-quality.js';
 import { Water } from 'three/addons/objects/Water.js';
 import { buildGrassField } from './plane-sim-grass.js';
-import { createMusicEngine } from './plane-sim-music.js';
 import {
   computeAchievements, unlockedIds, CATEGORIES, TIER_META,
 } from './plane-achievements.js';
@@ -1328,21 +1327,12 @@ import {
     let ctx = null; let master = null; let engine = null;
     let noiseBuf = null; // 2 s of white noise; every shot plays a random slice
     let drive = null; // soft tanh waveshaper — gives the guns their punch
-    // Two sub-buses fan out from master so the player has independent SFX and
-    // Music faders under the one Master fader: master -> {sfxBus, musicBus}.
-    let sfxBus = null; let musicBus = null; let music = null;
     let muted = false;
-    let vol = 0.5; // master
-    let sfxVol = 1; let musicVol = 0.6;
-    let track = 'menu'; // desired music track; applied when the engine exists
+    let vol = 0.5;
     try {
       muted = localStorage.getItem('ps-muted') === '1';
       const v = parseFloat(localStorage.getItem('ps-vol'));
       if (Number.isFinite(v)) vol = clamp(v, 0, 1);
-      const sv = parseFloat(localStorage.getItem('ps-sfxvol'));
-      if (Number.isFinite(sv)) sfxVol = clamp(sv, 0, 1);
-      const mv = parseFloat(localStorage.getItem('ps-musicvol'));
-      if (Number.isFinite(mv)) musicVol = clamp(mv, 0, 1);
     } catch (_) { /* private mode */ }
     function ensure() {
       if (ctx) return;
@@ -1350,13 +1340,11 @@ import {
       master = ctx.createGain();
       master.gain.value = muted ? 0 : vol;
       master.connect(ctx.destination);
-      sfxBus = ctx.createGain(); sfxBus.gain.value = sfxVol; sfxBus.connect(master);
-      musicBus = ctx.createGain(); musicBus.gain.value = musicVol; musicBus.connect(master);
       const g = ctx.createGain(); g.gain.value = 0;
       const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 260;
       const o1 = ctx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = 52;
       const o2 = ctx.createOscillator(); o2.type = 'sawtooth'; o2.frequency.value = 52.6;
-      o1.connect(lp); o2.connect(lp); lp.connect(g); g.connect(sfxBus);
+      o1.connect(lp); o2.connect(lp); lp.connect(g); g.connect(master);
       o1.start(); o2.start();
       engine = {
         g, lp, o1, o2,
@@ -1368,13 +1356,7 @@ import {
       const curve = new Float32Array(256);
       for (let i = 0; i < 256; i++) { const x = i / 127.5 - 1; curve[i] = Math.tanh(2.2 * x); }
       drive.curve = curve;
-      drive.connect(sfxBus);
-      // Fire up the soundtrack on the same gesture that unlocked the context.
-      try {
-        music = createMusicEngine(ctx, musicBus);
-        music.setTrack(track);
-        music.start();
-      } catch (_) { music = null; }
+      drive.connect(master);
     }
     // One gun report: a noise "crack" through a collapsing lowpass plus a
     // pitch-dropping triangle thump, both saturated through the shared drive.
@@ -1470,20 +1452,6 @@ import {
       if (master && !muted) master.gain.value = vol;
       try { localStorage.setItem('ps-vol', String(vol)); } catch (_) { /* private mode */ }
     }
-    function setSfxVolume(v) {
-      sfxVol = clamp(v, 0, 1);
-      if (sfxBus) sfxBus.gain.value = sfxVol;
-      try { localStorage.setItem('ps-sfxvol', String(sfxVol)); } catch (_) { /* private mode */ }
-    }
-    function setMusicVolume(v) {
-      musicVol = clamp(v, 0, 1);
-      if (musicBus) musicBus.gain.value = musicVol;
-      try { localStorage.setItem('ps-musicvol', String(musicVol)); } catch (_) { /* private mode */ }
-    }
-    function setTrack(name) {
-      track = name;
-      if (music) music.setTrack(name);
-    }
     return {
       ensure,
       setEngine,
@@ -1496,37 +1464,10 @@ import {
       isMuted: () => muted,
       setVolume,
       getVolume: () => vol,
-      setSfxVolume,
-      getSfxVolume: () => sfxVol,
-      setMusicVolume,
-      getMusicVolume: () => musicVol,
-      setTrack,
-      // Pausing halts the scheduler too, so it can't pile up while suspended.
-      suspend: () => { if (music) music.stop(); if (ctx && ctx.state === 'running') ctx.suspend(); },
-      resume: () => { if (ctx && ctx.state === 'suspended') ctx.resume(); if (music) music.start(); },
+      suspend: () => { if (ctx && ctx.state === 'running') ctx.suspend(); },
+      resume: () => { if (ctx && ctx.state === 'suspended') ctx.resume(); },
     };
   })();
-
-  // Pick the soundtrack from the current game state; called on every menu/mode
-  // transition. The AudioContext only exists after the first user gesture, so a
-  // one-time listener kicks it (and the menu theme) off then.
-  function syncMusic() {
-    let t = 'menu';
-    if (started && !menuMode) {
-      if (gameMode === 'stunt') t = 'stunt';
-      else if (gameMode === 'tutorial') t = 'menu';
-      else t = 'combat';
-    }
-    audio.setTrack(t);
-  }
-  const kickAudio = () => {
-    audio.ensure();
-    syncMusic();
-    window.removeEventListener('pointerdown', kickAudio);
-    window.removeEventListener('keydown', kickAudio);
-  };
-  window.addEventListener('pointerdown', kickAudio);
-  window.addEventListener('keydown', kickAudio);
 
   // ======================================================== TRACERS =======
   const tracerGeo = new THREE.BoxGeometry(0.12, 0.12, 3.2);
@@ -2591,16 +2532,6 @@ import {
     volSlider.value = String(Math.round(audio.getVolume() * 100));
     volSlider.addEventListener('input', () => { audio.setVolume((+volSlider.value) / 100); });
   }
-  const musicSlider = document.getElementById('ps-musicvol');
-  if (musicSlider) {
-    musicSlider.value = String(Math.round(audio.getMusicVolume() * 100));
-    musicSlider.addEventListener('input', () => { audio.ensure(); audio.setMusicVolume((+musicSlider.value) / 100); });
-  }
-  const sfxSlider = document.getElementById('ps-sfxvol');
-  if (sfxSlider) {
-    sfxSlider.value = String(Math.round(audio.getSfxVolume() * 100));
-    sfxSlider.addEventListener('input', () => { audio.setSfxVolume((+sfxSlider.value) / 100); });
-  }
 
   // ---- Menu flow: loading screen -> hangar (3D plane select) -> map select
   //      -> sortie. The hangar overlay is transparent, so the live scene
@@ -2651,7 +2582,6 @@ import {
     // Bandits have no business photobombing the hangar turntable.
     for (const e of enemies) e.group.visible = e.alive && !mode;
     if (mode === 'plane') renderMenuStats();
-    syncMusic();
   }
   // Tear down whatever special mode is live and put the game back into its
   // plain sortie shape (rings gone, lesson dropped, bandit count restored).
@@ -2686,7 +2616,6 @@ import {
     engageStart = performance.now();
     updateObjective();
     audio.ensure(); // user gesture -> AudioContext allowed
-    syncMusic();
   }
   function cyclePlane(dir) {
     const i = PLANE_ORDER.indexOf(planeName);
@@ -3414,7 +3343,6 @@ import {
     started = true;
     engageStart = performance.now();
     audio.ensure();
-    syncMusic();
     syncModeHUD();
     updateTutHUD();
   }
@@ -3558,7 +3486,6 @@ import {
     started = true;
     engageStart = performance.now();
     audio.ensure();
-    syncMusic();
     syncModeHUD();
     updateStuntHUD();
   }
