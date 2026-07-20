@@ -1,8 +1,9 @@
 import { parseChannelIds } from './parseChannelIds';
+import { GLOBAL_CONFIG_KEYS } from './globalConfig';
 
-export const FOOTBALL_CHANNELS_CONFIG_KEY = 'football_channels';
+export const FOOTBALL_CHANNELS_CONFIG_KEY = GLOBAL_CONFIG_KEYS.FOOTBALL_CHANNELS;
 /** Global kill-switch: `0` = off, `1` = on. Unset defaults to on. */
-export const FOOTBALL_ENABLED_CONFIG_KEY = 'football';
+export const FOOTBALL_ENABLED_CONFIG_KEY = GLOBAL_CONFIG_KEYS.FOOTBALL;
 
 type GlobalConfigReader = {
   globalConfig: { getGlobalConfig: (key: string) => Promise<string | null> };
