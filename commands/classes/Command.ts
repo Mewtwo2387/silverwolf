@@ -39,7 +39,8 @@ class Command {
   }
 
   async execute(interaction: any): Promise<void> {
-    if (await this.client.db.globalConfig.getGlobalConfig('banned') === 'true') {
+    const banned = await this.client.db.globalConfig.getGlobalConfig('banned');
+    if (banned === '1' || banned === 'true') {
       if (!isDev(interaction)) {
         log('ehe banned');
         const embed = new EmbedBuilder()
