@@ -44,6 +44,7 @@ import { buildGrassField } from './plane-sim-grass.js';
 import {
   computeAchievements, unlockedIds, CATEGORIES, TIER_META,
 } from './plane-achievements.js';
+import { buildCity, CITY } from './plane-sim-city.js';
 
 (() => {
   'use strict';
@@ -131,10 +132,33 @@ import {
     DEFEND_R: 2600, // stray farther than this while bandits live and...
     ABANDON_S: 12, // ...this many seconds later your carrier is lost
   };
-  const validMap = (n) => n === 'coastal' || n === 'ocean';
+  // ---- City defence. A third map: a 1940s-Manhattan island you protect from
+  //      bomber waves for two minutes. The map overloads the sortie ruleset (as
+  //      Ocean does) — see the CITY layout in plane-sim-city.js; the tuning below
+  //      is gameplay only. ----
+  const CITY_MODE = {
+    DURATION: 120, // seconds on the clock
+    LOSE_AT: 75, // mission lost when city integrity drops below this %
+    BOMB_DMG: 1.15, // integrity lost per bomb that lands on the city
+    WAVE_EVERY: 30, // seconds between bomber waves
+    GRACE: 6, // seconds before the first wave shows up
+    BOMBER_HP: 18, // fragile raiders
+    BOMBS_EACH: 4, // bombs per bomber
+    MAX_BOMBERS: 8, // concurrent cap (waves can overlap if you're slow)
+    WAVE: { easy: 2, normal: 3, hard: 5 }, // raiders per wave by raid intensity
+  };
+  const validMap = (n) => n === 'coastal' || n === 'ocean' || n === 'city';
   let mapName = (() => {
     try { const m = localStorage.getItem('ps-map'); return validMap(m) ? m : 'coastal'; } catch (_) { return 'coastal'; }
   })();
+
+  // City-mission state: integrity 0..100 (lose below LOSE_AT), the countdown,
+  // and the wave scheduler. Reset in respawnBase.
+  let cityHP = 100;
+  let cityClock = CITY_MODE.DURATION;
+  let waveTimer = CITY_MODE.GRACE;
+  let waveNo = 0;
+  const cityBombs = []; // free-falling bombs dropped ON the city by raiders
 
   // Ocean-mission state: phase 1 'defend' (splash every bandit near the fleet;
   // stray too long and your carrier is lost), phase 2 'strike' (two wing bombs,
@@ -842,6 +866,15 @@ import {
     return -Infinity;
   }
 
+  // ---- The City map world (built once; toggled by applyWorld). Static scenery
+  //      plus the footprints/obstacles/drop-zones the defence mission queries. ----
+  const cityWorld = buildCity();
+  const cityGroup = cityWorld.group;
+  cityGroup.visible = false;
+  scene.add(cityGroup);
+  const obBoxCity = cityWorld.obstacles; // building + airfield crash AABBs
+  windsocks.push(...cityWorld.socks); // fluttered by the frame loop (hidden off-map)
+
   // ---- Instanced forests + rock fields across the whole terrain. Three tree
   //      archetypes (broadleaf valleys, conifer slopes, pines up high), each
   //      one trunk + one canopy InstancedMesh — 6 draw calls for every tree on
@@ -1224,6 +1257,13 @@ import {
         DECK_TOP + restHeight(ac, st),
         OCEAN.ALLY.z + CARRIER.DECK_LEN / 2 - 16,
       );
+    } else if (mapName === 'city') {
+      // Parked at the south threshold of the airfield-island runway, facing N.
+      plane.position.set(
+        cityWorld.field.x,
+        CITY.GROUND_Y + restHeight(ac, st),
+        cityWorld.field.z + cityWorld.field.rwLen / 2 - 60,
+      );
     } else {
       plane.position.set(0, restHeight(ac, st), CFG.RUNWAY_LEN / 2 - 60);
     }
@@ -1285,6 +1325,7 @@ import {
   // decks are handled separately (carrierDeckAt).
   const groundAt = (x, z) => {
     if (mapName === 'ocean') return OCEAN.FLOOR;
+    if (mapName === 'city') return cityWorld.groundAt(x, z);
     return mapName === 'canyon' ? canyonHeight(x, z) : terrainHeight(x, z);
   };
 
@@ -1801,10 +1842,100 @@ import {
   }
   function updateObjective() {
     if (!hud.obj) return;
-    if (mapName !== 'ocean' || gameMode !== 'sortie' || !started || crashed || won) { hud.obj.textContent = ''; return; }
+    if (gameMode !== 'sortie' || !started || crashed || won) { hud.obj.textContent = ''; return; }
+    if (mapName === 'city') {
+      hud.obj.textContent = `OBJECTIVE — hold the city above ${CITY_MODE.LOSE_AT}% for ${fmtTime(Math.max(0, cityClock) * 1000)} · splash the bombers`;
+      return;
+    }
+    if (mapName !== 'ocean') { hud.obj.textContent = ''; return; }
     hud.obj.textContent = missionPhase === 'defend'
       ? 'OBJECTIVE — defend your carrier: splash every bandit near the fleet'
       : `OBJECTIVE — sink the enemy carrier · bombs ${bombs}/2 · press B over the target`;
+  }
+
+  // ==================================================== CITY DEFENCE ======
+  // The two-minute stand: bomber waves arrive on a timer and rain bombs on the
+  // city; you thin them out before its integrity falls below the line. Win on
+  // the clock, lose on the integrity — see CITY_MODE.
+  const cityHud = {
+    wrap: document.getElementById('ps-city'),
+    fill: document.getElementById('ps-city-fill'),
+    pct: document.getElementById('ps-city-pct'),
+    timer: document.getElementById('ps-city-timer'),
+  };
+  function updateCityHUD() {
+    if (cityHud.wrap) cityHud.wrap.style.display = (mapName === 'city' && started && !menuMode && !crashed && !won) ? '' : 'none';
+    const hp = Math.max(0, cityHP);
+    if (cityHud.fill) {
+      cityHud.fill.style.width = `${hp}%`;
+      cityHud.fill.style.background = hp < CITY_MODE.LOSE_AT + 5 ? '#ff4d4d' : (hp < 90 ? '#ffb454' : '#67d67a');
+    }
+    if (cityHud.pct) cityHud.pct.textContent = `${Math.round(hp)}%`;
+    if (cityHud.timer) cityHud.timer.textContent = fmtTime(Math.max(0, cityClock) * 1000);
+  }
+  // Launch up to n idle bomber shells as one wave.
+  function launchWave(n) {
+    let out = 0;
+    for (const e of enemies) {
+      if (out >= n) break;
+      if (e.role === 'bomber' && !e.alive) { launchBomber(e); out += 1; }
+    }
+  }
+  function stepCity(dt) {
+    if (mapName !== 'city' || gameMode !== 'sortie' || !started || crashed || won) return;
+    cityClock -= dt;
+    waveTimer -= dt;
+    if (waveTimer <= 0) {
+      waveTimer += CITY_MODE.WAVE_EVERY;
+      waveNo += 1;
+      launchWave(CITY_MODE.WAVE[diffName] || 3);
+      toast(`⚠ RAID INBOUND — WAVE ${waveNo}`, 3000);
+    }
+    updateCityHUD();
+    updateObjective();
+    if (cityHP < CITY_MODE.LOSE_AT) { missionFail(`The city lies in rubble — integrity fell below ${CITY_MODE.LOSE_AT}%.`); return; }
+    if (cityClock <= 0) { cityClock = 0; victory(); }
+  }
+  // Bombs the raiders drop on the city: free bodies that damage the city where
+  // they land, or splash harmlessly in the harbour.
+  function stepCityBombs(dt) {
+    for (let i = cityBombs.length - 1; i >= 0; i--) {
+      const b = cityBombs[i];
+      const v = b.userData.vel;
+      v.y -= CFG.G * dt;
+      v.multiplyScalar(1 - 0.02 * dt);
+      b.position.addScaledVector(v, dt);
+      _bv.copy(v);
+      if (_bv.lengthSq() > 1) {
+        _bv.normalize();
+        b.quaternion.slerp(_bq.setFromUnitVectors(FWD_REF, _bv), Math.min(1, 3 * dt));
+      }
+      const onCity = cityWorld.inCity(b.position.x, b.position.z);
+      const groundY = onCity ? CITY.GROUND_Y : TERRAIN.WATER_Y;
+      if (b.position.y <= groundY + 0.3) {
+        scene.remove(b);
+        cityBombs.splice(i, 1);
+        if (onCity && !won && !crashed) {
+          cityHP = Math.max(0, cityHP - CITY_MODE.BOMB_DMG);
+          spawnSpark(b.position, 16, 0.6);
+          for (let k = 0; k < 6; k++) {
+            spawnSmoke(b.position.clone().add(new THREE.Vector3(
+              (Math.random() - 0.5) * 14, Math.random() * 8, (Math.random() - 0.5) * 14,
+            )), 5 + Math.random() * 5, 2 + Math.random());
+          }
+          audio.boom();
+          updateCityHUD();
+        } else {
+          spawnSpark(b.position, 6, 0.3);
+          for (let k = 0; k < 3; k++) {
+            spawnSmoke(b.position.clone().add(new THREE.Vector3(
+              (Math.random() - 0.5) * 6, Math.random() * 3, (Math.random() - 0.5) * 6,
+            )), 3 + Math.random() * 2, 1.1);
+          }
+          audio.boom();
+        }
+      }
+    }
   }
 
   // ======================================================== ENEMIES =======
@@ -1883,6 +2014,7 @@ import {
       group,
       surf: esurf,
       type,
+      role: 'fighter',
       st: PLANE_TYPES[type].stats,
       vel: new THREE.Vector3(),
       throttle: 0.85,
@@ -1926,10 +2058,88 @@ import {
     e.mode = 'engage'; e.modeT = 0; e.coTurn = 0; e.underFire = 0;
   }
 
+  // ---- City raiders. Fragile bombers that ignore the player and run bombs onto
+  //      the city, sluggishly jinking when you get on them. Built like bandits
+  //      but with four belly bombs and a bomber behaviour (see stepBomber). Kept
+  //      in the same `enemies[]` pool so guns/HP-bars/tracers/kills all work. ----
+  function makeBomberShell() {
+    const type = PLANE_ORDER[Math.floor(Math.random() * PLANE_ORDER.length)];
+    const { group, surf: esurf } = buildAircraft({ type, paint: CFG.ENEMY_PAINT, markings: false });
+    applyControlSurfaces(esurf, { gear: 0 });
+    setPropBlur(esurf, 0.85);
+    group.visible = false;
+    scene.add(group);
+    // Four bombs slung under the belly; hidden one-by-one as they're released.
+    const bombMeshes = [];
+    for (let i = 0; i < CITY_MODE.BOMBS_EACH; i++) {
+      const bm = makeBomb();
+      bm.scale.setScalar(0.8);
+      bm.position.set(((i % 2) ? 0.7 : -0.7), -0.7, -1.4 + Math.floor(i / 2) * 1.9);
+      group.add(bm);
+      bombMeshes.push(bm);
+    }
+    return {
+      group,
+      surf: esurf,
+      type,
+      role: 'bomber',
+      st: PLANE_TYPES[type].stats,
+      hpMax: CITY_MODE.BOMBER_HP,
+      vel: new THREE.Vector3(),
+      throttle: 0.8,
+      hp: CITY_MODE.BOMBER_HP,
+      alive: false,
+      smokeCd: 0,
+      propSpin: 0,
+      defl: { ail: 0, elev: 0, rud: 0 },
+      underFire: 0,
+      // Bomber run state.
+      phase: 'ingress', // 'ingress' -> over the city -> 'egress'
+      bombsLeft: CITY_MODE.BOMBS_EACH,
+      bombMeshes,
+      dropCd: 0,
+      dir: 1, // +1 flying north, -1 south (run axis)
+      target: { x: 0, z: 0 },
+      jinkPhase: Math.random() * 6.283,
+      workAlt: 320,
+    };
+  }
+  // Send an idle bomber shell in from the north/south rim, running the LENGTH of
+  // the island toward a drop zone — so bombs released on the run drift over the
+  // city rather than out to sea. High enough to clear the Midtown towers.
+  function launchBomber(e) {
+    const rim = CFG.BORDER - 500;
+    const dz = cityWorld.dropZones.length
+      ? cityWorld.dropZones[Math.floor(Math.random() * cityWorld.dropZones.length)]
+      : { x: CITY.ISLAND.x, z: 0 };
+    const fromSouth = dz.z >= 0 ? Math.random() < 0.7 : Math.random() < 0.3;
+    const sz = (fromSouth ? -1 : 1) * rim;
+    const sx = CITY.ISLAND.x + (Math.random() - 0.5) * CITY.ISLAND.hx * 1.1;
+    e.dir = fromSouth ? 1 : -1;
+    e.target = { x: dz.x, z: dz.z };
+    e.workAlt = 320 + Math.random() * 45;
+    e.group.position.set(sx, e.workAlt, sz);
+    EN.desired.set(dz.x - sx, 0, dz.z - sz).normalize();
+    e.group.quaternion.setFromUnitVectors(FWD_REF, EN.desired);
+    e.vel.copy(EN.desired).multiplyScalar(90);
+    e.throttle = 0.8;
+    e.hp = CITY_MODE.BOMBER_HP;
+    e.alive = true;
+    e.group.visible = true;
+    e.phase = 'ingress';
+    e.bombsLeft = CITY_MODE.BOMBS_EACH;
+    e.dropCd = 0;
+    e.underFire = 0;
+    e.defl.ail = 0; e.defl.elev = 0; e.defl.rud = 0;
+    for (const bm of e.bombMeshes) bm.visible = true;
+  }
+
   // How many bandits this mode wants aloft: the player-picked count in a
   // sortie, exactly one (non-firing) in the gunnery lesson, none anywhere else.
   const desiredEnemyCount = () => {
-    if (gameMode === 'sortie') return enemyCountPref;
+    // City defence has no free-flying fighters — its bombers are launched by the
+    // wave scheduler instead (see stepCity), so the fighter pool stays parked.
+    if (gameMode === 'sortie') return mapName === 'city' ? 0 : enemyCountPref;
     if (gameMode === 'tutorial' && tut && tut.def.bandit) return 1;
     return 0;
   };
@@ -1946,6 +2156,10 @@ import {
   }
   function spawnEnemies() {
     for (const spec of ENEMY_SPAWN) enemies.push(makeEnemy(spec));
+    // City bomber pool — appended after the fighters so applyEnemyActivation
+    // (which only ever activates the first `activeCount` ≤ fighter-count) leaves
+    // them parked; the wave scheduler owns their lifecycle.
+    for (let i = 0; i < CITY_MODE.MAX_BOMBERS; i++) enemies.push(makeBomberShell());
     applyEnemyActivation();
   }
   function resetEnemies() { applyEnemyActivation(); }
@@ -1988,7 +2202,123 @@ import {
     if (hud.plane) hud.plane.textContent = info.label.toUpperCase();
   }
 
+  // Release one bomb from a raider's belly toward the city below. It keeps only
+  // a fraction of the bomber's forward speed (plus a downward kick) so it falls
+  // fairly steeply and lands near the aim point rather than gliding out to sea.
+  const _cbv = new THREE.Vector3();
+  function dropCityBomb(e) {
+    const idx = CITY_MODE.BOMBS_EACH - e.bombsLeft;
+    const bm = e.bombMeshes[idx];
+    const b = makeBomb();
+    if (bm) { bm.getWorldPosition(b.position); bm.visible = false; }
+    else b.position.copy(e.group.position);
+    b.quaternion.copy(e.group.quaternion);
+    _cbv.copy(e.vel).multiplyScalar(0.32); _cbv.y -= 18;
+    b.userData.vel = _cbv.clone();
+    scene.add(b);
+    cityBombs.push(b);
+    e.bombsLeft -= 1;
+  }
+  function beginEgress(e) {
+    e.phase = 'egress';
+    e.throttle = 1;
+    // Continue out to the far rim in the current run direction.
+    e.target = { x: e.group.position.x + (Math.random() - 0.5) * 600, z: e.dir * (CFG.BORDER + 400) };
+  }
+
+  // ---- Bomber controller: a level ingress run to the drop zone, four bombs on
+  //      the city, then an egress off the far rim. Fragile, guns cold, and only
+  //      a slow wing-rock for evasion when a fighter closes — sluggish by design.
+  function stepBomber(e, dt) {
+    const g = e.group;
+    EN.toP.copy(plane.position).sub(g.position);
+    const distP = EN.toP.length();
+    e.underFire = Math.max(0, e.underFire - dt);
+
+    const dxT = e.target.x - g.position.x; const dzT = e.target.z - g.position.z;
+    const horiz = Math.hypot(dxT, dzT);
+    if (e.phase === 'ingress') {
+      if (horiz < 170) {
+        e.dropCd -= dt;
+        if (e.bombsLeft > 0 && e.dropCd <= 0) { dropCityBomb(e); e.dropCd = 0.45; }
+      }
+      // Bombs spent, or ran well past the aim point -> peel off and egress.
+      if (e.bombsLeft <= 0 || (e.dir * (g.position.z - e.target.z) > 500)) beginEgress(e);
+    } else if (Math.abs(g.position.z) > CFG.BORDER - 480 || Math.abs(g.position.x) > CFG.BORDER - 480) {
+      e.alive = false; e.group.visible = false; return; // cleared the map — free the slot
+    }
+
+    EN.aim.set(e.target.x, e.workAlt, e.target.z);
+    EN.desired.copy(EN.aim).sub(g.position);
+    if (EN.desired.lengthSq() < 1e-6) EN.desired.copy(FWD_REF);
+    EN.desired.normalize();
+    EN.q.copy(g.quaternion).invert();
+    EN.local.copy(EN.desired).applyQuaternion(EN.q);
+    const yawErr = Math.atan2(EN.local.x, -EN.local.z);
+    const pitchErr = Math.atan2(EN.local.y, Math.hypot(EN.local.x, EN.local.z));
+    let rollInput = clamp(yawErr * 1.0, -1, 1);
+    let pitchInput = clamp(pitchErr * 1.1, -0.5, 0.5);
+    const yawInput = clamp(yawErr * 0.3, -1, 1);
+    // Sluggish jink when a fighter is close: a slow, shallow wing-rock — enough
+    // to spoil a lazy gun track, nowhere near a real evasive break.
+    if (distP < 640 && e.phase === 'ingress') {
+      const jr = Math.sin(performance.now() * 0.0021 + e.jinkPhase);
+      rollInput = clamp(rollInput + jr * 0.45, -1, 1);
+      pitchInput = clamp(pitchInput + Math.cos(performance.now() * 0.0017 + e.jinkPhase) * 0.12, -0.5, 0.5);
+    }
+
+    const st = e.st;
+    const speed = e.vel.length();
+    const v2 = speed * speed;
+    EN.vLocal.copy(e.vel).applyQuaternion(EN.q);
+    const fwdSpeed = -EN.vLocal.z;
+    const aoa = Math.atan2(-EN.vLocal.y, Math.max(fwdSpeed, 0.001));
+    const clMax = CFG.CL_SLOPE * CFG.A_STALL;
+    let CL;
+    if (Math.abs(aoa) <= CFG.A_STALL) CL = CFG.CL_SLOPE * aoa;
+    else CL = Math.sign(aoa) * Math.max(0, clMax - (Math.abs(aoa) - CFG.A_STALL) * CFG.CL_SLOPE * 1.7);
+    e.throttle = clamp(e.throttle + clamp((e.phase === 'egress' ? 1 : 0.8) - e.throttle, -dt, dt), 0, 1);
+
+    EN.fwd.copy(FWD_REF).applyQuaternion(g.quaternion);
+    EN.up.set(0, 1, 0).applyQuaternion(g.quaternion);
+    EN.acc.set(0, 0, 0);
+    EN.acc.addScaledVector(EN.fwd, e.throttle * st.thrust);
+    EN.acc.addScaledVector(EN.up, st.lift * v2 * CL);
+    EN.acc.y -= CFG.G;
+    if (speed > 0.01) {
+      const cd = st.drag0 + CFG.DRAG_IND * CL * CL;
+      EN.vDir.copy(e.vel).multiplyScalar(1 / speed);
+      EN.acc.addScaledVector(EN.vDir, -cd * v2);
+    }
+    e.vel.addScaledVector(EN.acc, dt);
+    g.position.addScaledVector(e.vel, dt);
+
+    // Sluggish: bombers turn at ~55% of the airframe's authority.
+    const eff = clamp(speed / st.controlV, 0, 1.1) * 0.55;
+    g.rotateX(pitchInput * st.pitchRate * eff * dt);
+    g.rotateZ(-rollInput * st.rollRate * eff * dt);
+    g.rotateY(-yawInput * CFG.YAW_RATE * eff * dt);
+    flightAssist(g, e.vel, eff, dt);
+
+    e.propSpin -= (0.2 + e.throttle * 0.8) * 60 * dt;
+    if (e.surf.prop) e.surf.prop.rotation.z = e.propSpin;
+    e.defl.ail += (rollInput * 0.4 - e.defl.ail) * 0.2;
+    e.defl.elev += (pitchInput * 0.4 - e.defl.elev) * 0.2;
+    applyControlSurfaces(e.surf, {
+      ail: e.defl.ail, elev: e.defl.elev, rud: e.defl.rud, gear: 0,
+    });
+    if (e.hp < CITY_MODE.BOMBER_HP * 0.5) {
+      e.smokeCd -= dt;
+      if (e.smokeCd <= 0) {
+        e.smokeCd = 0.07;
+        EN.muzzle.copy(g.position).addScaledVector(EN.fwd, -3);
+        spawnSmoke(EN.muzzle, 2.2 + Math.random(), 1.2);
+      }
+    }
+  }
+
   function stepEnemy(e, dt, canFire) {
+    if (e.role === 'bomber') { stepBomber(e, dt); return; }
     const g = e.group;
 
     // ---- Pursuit controller -> stick inputs ----
@@ -2165,9 +2495,10 @@ import {
       // ladder only counts real sorties above Rookie — the server enforces both.
       achievements.emit({ t: 'kill', mode: gameMode, diff: diffName });
       updateCombatHUD();
-      if (kills >= activeCount && !won && gameMode === 'sortie') {
+      if (kills >= activeCount && !won && gameMode === 'sortie' && mapName !== 'city') {
         // Coastal: last bandit down = win. Ocean: it unlocks the strike phase.
-        // (The gunnery lesson's kill is scored by the tutorial engine instead.)
+        // City wins on the clock, not the tally — see stepCity. (The gunnery
+        // lesson's kill is scored by the tutorial engine instead.)
         if (mapName === 'ocean') { if (missionPhase === 'defend') beginStrike(); } else victory();
       }
     }
@@ -2204,11 +2535,11 @@ import {
     // an explicit title (e.g. "Mission failed", "Lesson complete") overrides both.
     if (el('ps-end-title')) el('ps-end-title').textContent = title || (win ? 'Victory' : (combat ? 'Shot down' : 'Crashed'));
     if (el('ps-end-sub')) {
-      el('ps-end-sub').textContent = sub || (win
-        ? (mapName === 'ocean'
-          ? 'The enemy carrier slips beneath the waves. The fleet is yours.'
-          : `All ${activeCount} bandit${activeCount > 1 ? 's' : ''} cleared from the valley.`)
-        : reason);
+      let winSub;
+      if (mapName === 'ocean') winSub = 'The enemy carrier slips beneath the waves. The fleet is yours.';
+      else if (mapName === 'city') winSub = `The all-clear sounds — ${kills} raider${kills === 1 ? '' : 's'} downed, the city holds at ${Math.round(cityHP)}%.`;
+      else winSub = `All ${activeCount} bandit${activeCount > 1 ? 's' : ''} cleared from the valley.`;
+      el('ps-end-sub').textContent = sub || (win ? winSub : reason);
     }
     const stats = el('ps-end-stats');
     if (stats) {
@@ -2228,6 +2559,15 @@ import {
           ['Step', `${Math.min(tut.step + 1, tut.def.steps.length)} / ${tut.def.steps.length}`],
           ['Aircraft', PLANE_TYPES[planeName].label],
           ['Time', time],
+        ];
+      } else if (mapName === 'city') {
+        const held = fmtTime((CITY_MODE.DURATION - Math.max(0, cityClock)) * 1000);
+        rows = [
+          ['Aircraft', PLANE_TYPES[planeName].label],
+          ['Bombers downed', String(kills)],
+          ['City integrity', `${Math.max(0, Math.round(cityHP))}%`],
+          ['Raid intensity', diff.label],
+          ['Time held', held],
         ];
       } else {
         const hullPct = Math.max(0, Math.round((playerHP / ac.hp) * 100));
@@ -2302,9 +2642,30 @@ import {
     landGroup.visible = name === 'coastal';
     oceanGroup.visible = name === 'ocean';
     canyonGroup.visible = name === 'canyon';
+    cityGroup.visible = name === 'city';
+    updateCityHUD();
   }
   // Map picker (sortie chapter screen). Switching worlds re-parks the aircraft
   // on the new map's deck/runway and resets the engagement; remembered.
+  // Adapt the sortie briefing to the selected map: City is wave-driven, so its
+  // difficulty row means "raid intensity" and the fixed bandit-count row hides.
+  function syncSortieMenu() {
+    const city = mapName === 'city';
+    const countRow = document.getElementById('ps-row-count');
+    const diffLbl = document.getElementById('ps-diff-lbl-txt');
+    const hint = document.getElementById('ps-sortie-hint');
+    const takeoff = document.getElementById('ps-takeoff');
+    if (countRow) countRow.style.display = city ? 'none' : '';
+    if (diffLbl) diffLbl.textContent = city ? 'Raid intensity' : 'Bandit skill';
+    if (takeoff) takeoff.textContent = city ? 'Scramble ▸' : 'Take off ▸';
+    const kl = document.getElementById('ps-kills-lbl');
+    if (kl) kl.textContent = city ? 'Raiders down' : 'Bandits down';
+    if (hint) {
+      hint.innerHTML = city
+        ? 'Higher intensity means <strong>more bombers per wave</strong> (Rookie 2 · Regular 3 · Ace 5). Raiders ignore you and run bombs onto the city — hunt them down; they\'re fragile but sluggish. Keys <span class="ps-key">1</span> <span class="ps-key">2</span> <span class="ps-key">3</span> set intensity here.'
+        : 'Bandits fly a mix of all three types with their real quirks. Lower skill also means <strong>your guns hit harder</strong>. Keys <span class="ps-key">1</span> <span class="ps-key">2</span> <span class="ps-key">3</span> switch skill on this screen.';
+    }
+  }
   function setMap(name) {
     if (!validMap(name)) return;
     try { localStorage.setItem('ps-map', name); } catch (_) { /* private mode */ }
@@ -2312,6 +2673,7 @@ import {
       t.classList.toggle('ps-active', t.dataset.map === name);
     }
     applyWorld(name);
+    syncSortieMenu();
     respawnBase();
   }
   for (const t of document.querySelectorAll('[data-map]')) {
@@ -2751,7 +3113,8 @@ import {
 
   // Kill board ("k / N") + hull HP bar (green -> amber -> red as it drops).
   function updateCombatHUD() {
-    if (hud.kills) hud.kills.textContent = `${kills} / ${activeCount}`;
+    // City has no fixed bandit count — the tally is just raiders downed.
+    if (hud.kills) hud.kills.textContent = mapName === 'city' ? String(kills) : `${kills} / ${activeCount}`;
     const pct = clamp(Math.round((playerHP / ac.hp) * 100), 0, 100);
     if (hud.hp) hud.hp.textContent = String(Math.max(0, Math.round(playerHP)));
     if (hud.hpFill) {
@@ -3193,7 +3556,7 @@ import {
       b.root.style.display = 'block';
       b.root.style.left = `${((_ebv.x + 1) / 2) * r.width}px`;
       b.root.style.top = `${((1 - _ebv.y) / 2) * r.height}px`;
-      const pct = clamp((e.hp / e.st.hp) * 100, 0, 100);
+      const pct = clamp((e.hp / (e.hpMax || e.st.hp)) * 100, 0, 100);
       b.fill.style.width = `${pct}%`;
       b.fill.style.background = pct > 50 ? '#ff8f5a' : '#ff4d4d';
       b.label.textContent = fmtDist(d);
@@ -3269,8 +3632,22 @@ import {
     const ec = carriers[1];
     ec.group.position.set(ec.x, TERRAIN.WATER_Y, ec.z);
     ec.group.rotation.set(0, ec.rotY, 0);
+    // Reset the city defence: full integrity, fresh clock, no raiders aloft.
+    cityHP = 100;
+    cityClock = CITY_MODE.DURATION;
+    waveTimer = CITY_MODE.GRACE;
+    waveNo = 0;
+    for (const b of cityBombs) scene.remove(b);
+    cityBombs.length = 0;
+    for (const e of enemies) {
+      if (e.role === 'bomber') {
+        e.alive = false; e.group.visible = false;
+        for (const bm of e.bombMeshes) bm.visible = true;
+      }
+    }
     updateObjective();
     resetEnemies();
+    updateCityHUD();
     updateCombatHUD();
     hideEnd();
     if (hud.warn) { hud.warn.textContent = ''; hud.warn.classList.remove('ps-show'); }
@@ -3722,6 +4099,18 @@ import {
         }
       }
     }
+    // City: the skyline + airfield structures are AABBs, only scanned when low.
+    if (mapName === 'city' && started && !crashed && !dev.god && plane.position.y < 340) {
+      const px = plane.position.x; const pz = plane.position.z; const py = plane.position.y;
+      const PR = 2.6;
+      for (let i = 0; i < obBoxCity.length; i++) {
+        const o = obBoxCity[i];
+        if (py > o.top + 1) continue;
+        if (px > o.x0 - PR && px < o.x1 + PR && pz > o.z0 - PR && pz < o.z1 + PR) {
+          crash(o.reason); break;
+        }
+      }
+    }
     if (mapName === 'coastal' && started && !crashed && !dev.god && plane.position.y - gh < OBSTACLE_CEIL) {
       const px = plane.position.x; const pz = plane.position.z; const py = plane.position.y;
       const PR = 2.6; // plane collision radius (fuselage-ish, so gaps stay threadable)
@@ -3944,6 +4333,9 @@ import {
   syncUnitUI(); // sync the unit-picker highlights
   syncPlaneUI(); // sync the aircraft picker highlight + description + HUD label
   syncModeHUD(); // hide the tutorial/stunt panels until their mode is live
+  applyWorld(mapName); // show the remembered world (city/ocean/coastal) from the first frame
+  for (const t of document.querySelectorAll('[data-map]')) t.classList.toggle('ps-active', t.dataset.map === mapName);
+  syncSortieMenu(); // adapt the sortie briefing to the remembered map
   setMenu('plane'); // boot into the hangar (the loading screen covers the first frame)
 
   // ==================================================== DEV MODE ==========
@@ -4044,6 +4436,19 @@ import {
     },
     bomb: dropBomb,
     strike() { missionPhase = 'strike'; updateObjective(); }, // skip phase 1 for testing
+    // City-defence dev handles (tooling + harness).
+    city() {
+      return {
+        cityHP: +cityHP.toFixed(1),
+        clock: +cityClock.toFixed(1),
+        wave: waveNo,
+        waveIn: +waveTimer.toFixed(1),
+        bombers: enemies.filter((e) => e.role === 'bomber' && e.alive).length,
+        cityBombs: cityBombs.length,
+      };
+    },
+    wave(n) { launchWave(n || (CITY_MODE.WAVE[diffName] || 3)); return this.city(); },
+    cityhp(v) { cityHP = clamp(v, 0, 100); updateCityHUD(); return cityHP; },
     // Mode / chapter dev handles (tooling + harness).
     get gameMode() { return gameMode; },
     tutorial: startTutorial,
@@ -4100,6 +4505,7 @@ import {
       update(dt);
       if (gameMode === 'tutorial') stepTutorial(dt);
       else if (gameMode === 'stunt') stepStunt(dt);
+      else if (mapName === 'city') stepCity(dt);
     } else {
       // idle the prop + animate gear even before launch / after a crash
       if (surf.prop) surf.prop.rotation.z -= 0.18 * 60 * dt;
@@ -4125,6 +4531,7 @@ import {
     // turntable looks better alive).
     for (const w of windsocks) w.userData.flutter(now / 1000);
     stepBombs(dt);
+    stepCityBombs(dt);
     // Idly spin the carriers' radar antennas.
     if (mapName === 'ocean') for (const c of carriers) { if (c.group.userData.radar) c.group.userData.radar.rotation.y += dt * 1.1; }
     stepSparks(dt);

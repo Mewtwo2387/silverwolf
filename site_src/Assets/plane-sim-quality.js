@@ -31,6 +31,7 @@ export const GFX = {
     sphereSegs: [6, 4], // broadleaf canopy sphere [width, height] segments
     canopyDetail: 0, // extra canopy lobes beyond the low silhouette
     sceneryNormals: false, // grass/water normal maps
+    cityBuildings: 0.5, // City map skyline density (fewer/sparser blocks)
     fogNear: 900,
     fogFar: 6800,
   },
@@ -48,6 +49,7 @@ export const GFX = {
     sphereSegs: [8, 6],
     canopyDetail: 1,
     sceneryNormals: true,
+    cityBuildings: 0.75,
     fogNear: 900,
     fogFar: 9000,
   },
@@ -65,6 +67,7 @@ export const GFX = {
     sphereSegs: [10, 8],
     canopyDetail: 2,
     sceneryNormals: true,
+    cityBuildings: 1,
     fogNear: 1600, // haze starts farther out — clearer long views
     fogFar: 12500,
     reflectiveWater: false,
@@ -84,6 +87,7 @@ export const GFX = {
     sphereSegs: [12, 10],
     canopyDetail: 3,
     sceneryNormals: true,
+    cityBuildings: 1.25, // densest skyline
     fogNear: 2600, // the whole 12 km map reads clearly; haze only at the rim
     fogFar: 16500,
     reflectiveWater: true, // planar-reflection water with animated waves

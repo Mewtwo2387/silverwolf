@@ -135,6 +135,19 @@ export function PlaneSimPage(opts: {
   }
   #ps-hp-fill { height: 100%; width: 100%; background: #37d67a; transition: width 0.15s linear, background 0.15s linear; }
 
+  /* City-defence board (top-centre, below the combat panel; City map only). */
+  .ps-city { left: 50%; top: 7.4rem; transform: translateX(-50%); text-align: center; min-width: 210px; }
+  .ps-city-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.8rem; }
+  .ps-city-timer { font-size: 1.05rem; font-weight: 800; color: var(--accent-light, #7fdfff); letter-spacing: 0.06em; }
+  .ps-city-track {
+    position: relative; width: 210px; height: 11px; border-radius: 5px; margin: 0.42rem auto 0.24rem; overflow: hidden;
+    background: color-mix(in oklab, var(--ink-700, #1a2230) 82%, transparent);
+    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 32%, transparent);
+  }
+  #ps-city-fill { height: 100%; width: 100%; background: #67d67a; transition: width 0.2s linear, background 0.2s linear; }
+  /* The 75% "hold above" line marked on the track. */
+  .ps-city-line { position: absolute; top: -1px; bottom: -1px; left: 75%; width: 2px; background: rgba(255, 255, 255, 0.75); z-index: 1; }
+
   /* Undercarriage lamps (bottom-right): three greens = down and locked. */
   .ps-gear-box { right: 1.1rem; bottom: 1.1rem; text-align: center; }
   #ps-gear { font-size: 0.95rem; font-weight: 800; color: var(--accent-light, #7fdfff); }
@@ -638,11 +651,21 @@ export function PlaneSimPage(opts: {
 
         <!-- Combat status (top-centre): bandits-down board + hull HP -->
         <div class="ps-panel ps-combat">
-          <div class="ps-lbl">Bandits down</div>
+          <div class="ps-lbl" id="ps-kills-lbl">Bandits down</div>
           <div class="ps-val"><span id="ps-kills">0 / 3</span></div>
           <div class="ps-hp-track"><div id="ps-hp-fill"></div></div>
           <div class="ps-unit">HULL <span id="ps-hp">100</span> &middot; <span id="ps-diff">REGULAR</span></div>
           <div class="ps-unit"><span id="ps-plane-label">SPITFIRE</span></div>
+        </div>
+
+        <!-- City defence (top-centre, City map only): integrity + countdown -->
+        <div class="ps-panel ps-city" id="ps-city" style="display:none">
+          <div class="ps-city-head">
+            <span class="ps-lbl">City integrity</span>
+            <span class="ps-city-timer">⏱ <span id="ps-city-timer">2:00</span></span>
+          </div>
+          <div class="ps-city-track"><div class="ps-city-line"></div><div id="ps-city-fill"></div></div>
+          <div class="ps-unit">HOLD ABOVE 75% &middot; <span id="ps-city-pct">100%</span></div>
         </div>
 
         <!-- Tutorial prompt (shown only in tutorial mode) -->
@@ -826,13 +849,38 @@ export function PlaneSimPage(opts: {
               <p class="ps-map-desc">Launch off your carrier's deck, sweep the bandits away from the fleet, then take two bombs to the enemy flat-top. Press <strong>B</strong> to drop a bomb — one hit sinks her, but waste both and the strike fails. Stray too far too early and it's your carrier on the seabed.</p>
             </div>
           </div>
-          <div class="ps-diff-row">
-            <span class="ps-diff-lbl">Bandit skill</span>
+          <div class="ps-map-tile" id="ps-map-city" data-map="city">
+            <svg class="ps-map-svg" viewBox="0 0 148 96" role="img" aria-label="City map preview">
+              <rect width="148" height="96" rx="6" fill="#123243"/>
+              <!-- harbour water -->
+              <rect width="148" height="96" fill="#123243"/>
+              <!-- airfield island (SW) -->
+              <ellipse cx="26" cy="66" rx="20" ry="13" fill="#3f5330"/>
+              <rect x="18" y="54" width="3" height="24" rx="1" transform="rotate(-8 19 66)" fill="#7e8b90"/>
+              <!-- city island (long, E) with a skyline -->
+              <rect x="86" y="10" width="40" height="78" rx="4" fill="#5a5f66"/>
+              <rect x="92" y="30" width="6" height="34" fill="#b9a582"/>
+              <rect x="100" y="20" width="7" height="44" fill="#c7ba9d"/>
+              <rect x="109" y="26" width="6" height="38" fill="#a9b0b6"/>
+              <rect x="117" y="36" width="5" height="28" fill="#b9a582"/>
+              <rect x="103" y="14" width="1.6" height="7" fill="#8a8f96"/>
+              <!-- raiders inbound -->
+              <path d="M60 24 l6 2 -6 2 2 -2 Z" fill="#c23a32"/>
+              <path d="M48 40 l6 2 -6 2 2 -2 Z" fill="#c23a32"/>
+              <circle cx="132" cy="80" r="2.4" fill="#d9a52e"/>
+            </svg>
+            <div>
+              <p class="ps-map-name">City — Air Defence</p>
+              <p class="ps-map-desc">Scramble from the island airfield and hold a 1940s Manhattan against waves of bombers. You have <strong>two minutes</strong> — down as many raiders as you can and keep the city's integrity above <strong>75%</strong>. Heavier raid intensity sends bigger waves.</p>
+            </div>
+          </div>
+          <div class="ps-diff-row" id="ps-row-diff">
+            <span class="ps-diff-lbl" id="ps-diff-lbl-txt">Bandit skill</span>
             <button type="button" class="ps-diff-btn" data-diff="easy">Rookie</button>
             <button type="button" class="ps-diff-btn" data-diff="normal">Regular</button>
             <button type="button" class="ps-diff-btn" data-diff="hard">Ace</button>
           </div>
-          <div class="ps-diff-row">
+          <div class="ps-diff-row" id="ps-row-count">
             <span class="ps-diff-lbl">Bandits</span>
             <button type="button" class="ps-diff-btn" data-count="1">1</button>
             <button type="button" class="ps-diff-btn" data-count="2">2</button>
@@ -840,7 +888,7 @@ export function PlaneSimPage(opts: {
             <button type="button" class="ps-diff-btn" data-count="4">4</button>
             <button type="button" class="ps-diff-btn" data-count="5">5</button>
           </div>
-          <p class="ps-hint">Bandits fly a mix of all three types with their real quirks. Lower skill also means <strong>your guns hit harder</strong>. Keys <span class="ps-key">1</span> <span class="ps-key">2</span> <span class="ps-key">3</span> switch skill on this screen.</p>
+          <p class="ps-hint" id="ps-sortie-hint">Bandits fly a mix of all three types with their real quirks. Lower skill also means <strong>your guns hit harder</strong>. Keys <span class="ps-key">1</span> <span class="ps-key">2</span> <span class="ps-key">3</span> switch skill on this screen.</p>
           <div class="ps-menu-row">
             <button type="button" class="ps-back-btn" data-menuback>‹ Modes</button>
             <button type="button" class="ps-resume-btn" id="ps-takeoff">Take off ▸</button>
