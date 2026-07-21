@@ -630,9 +630,25 @@ import { buildCity, CITY } from './plane-sim-city.js';
     const tarmacTex = asphaltTex.clone();
     tarmacTex.repeat.set(3, 60);
 
+    const tarmacGeo = new THREE.PlaneGeometry(CFG.RUNWAY_W, CFG.RUNWAY_LEN, 2, 24);
+    const tarmacPos = tarmacGeo.attributes.position;
+    const tarmacCols = new Float32Array(tarmacPos.count * 3);
+    const tarmacBase = new THREE.Color(0x8b8f95);
+    for (let i = 0; i < tarmacPos.count; i++) {
+        const wx = tarmacPos.getX(i);
+        const wz = -tarmacPos.getY(i);
+        const n1 = fbm(wx * 0.005, wz * 0.005, 2);
+        const n2 = fbm(wx * 0.06, wz * 0.06, 2);
+        const factor = 0.58 + n1 * 0.26 + n2 * 0.16;
+        tarmacCols[i * 3] = tarmacBase.r * factor;
+        tarmacCols[i * 3 + 1] = tarmacBase.g * factor;
+        tarmacCols[i * 3 + 2] = tarmacBase.b * factor;
+      }
+    tarmacGeo.setAttribute('color', new THREE.BufferAttribute(tarmacCols, 3));
+
     const tarmac = new THREE.Mesh(
-      new THREE.PlaneGeometry(CFG.RUNWAY_W, CFG.RUNWAY_LEN),
-      new THREE.MeshStandardMaterial({ map: tarmacTex, color: 0x8b8f95, roughness: 0.88 }),
+      tarmacGeo,
+      new THREE.MeshStandardMaterial({ map: tarmacTex, color: 0xffffff, roughness: 0.88, vertexColors: true }),
     );
     tarmac.rotation.x = -Math.PI / 2;
     tarmac.position.y = 0.12;
@@ -656,9 +672,28 @@ import { buildCity, CITY } from './plane-sim-city.js';
     //      tarmac like the runway (receive shadow only). ----
     const taxiTex = asphaltTex.clone();
     taxiTex.repeat.set(1.5, 30);
-    const taxiMat = new THREE.MeshStandardMaterial({ map: taxiTex, color: 0x90949a, roughness: 0.88 });
+    const taxiMat = new THREE.MeshStandardMaterial({ map: taxiTex, color: 0xffffff, roughness: 0.88, vertexColors: true });
     const taxi = (w, l, x, z, rot = 0) => {
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, l), taxiMat);
+      const geo = new THREE.PlaneGeometry(w, l, Math.max(1, Math.round(w / 10)), Math.max(1, Math.round(l / 10)));
+      const pos = geo.attributes.position;
+      const cols = new Float32Array(pos.count * 3);
+      const base = new THREE.Color(0x90949a);
+      const cosZ = Math.cos(rot);
+      const sinZ = Math.sin(rot);
+      for (let i = 0; i < pos.count; i++) {
+        const lx = pos.getX(i);
+        const ly = pos.getY(i);
+        const wx = x + lx * cosZ + ly * sinZ;
+        const wz = z + lx * -sinZ + ly * cosZ;
+        const n1 = fbm(wx * 0.005, wz * 0.005, 2);
+        const n2 = fbm(wx * 0.06, wz * 0.06, 2);
+        const factor = 0.58 + n1 * 0.26 + n2 * 0.16;
+        cols[i * 3] = base.r * factor;
+        cols[i * 3 + 1] = base.g * factor;
+        cols[i * 3 + 2] = base.b * factor;
+      }
+      geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+      const m = new THREE.Mesh(geo, taxiMat);
       m.rotation.x = -Math.PI / 2; m.rotation.z = rot;
       m.position.set(x, 0.13, z); m.receiveShadow = true;
       markings.add(m);
@@ -893,6 +928,43 @@ import { buildCity, CITY } from './plane-sim-city.js';
   scene.add(cityGroup);
   const obBoxCity = cityWorld.obstacles; // building + airfield crash AABBs
   windsocks.push(...cityWorld.socks); // fluttered by the frame loop (hidden off-map)
+
+  let cityGrassField = null;
+  if (GFX.grass) {
+    const cityExcludes = [
+      // Exclude Manhattan city island
+      {
+        x0: CITY.ISLAND.x - CITY.ISLAND.hx,
+        x1: CITY.ISLAND.x + CITY.ISLAND.hx,
+        z0: CITY.ISLAND.z - CITY.ISLAND.hz,
+        z1: CITY.ISLAND.z + CITY.ISLAND.hz,
+      },
+      // Exclude Coastal airfield equivalent paved areas at translated city airfield coords
+      ...PAVED.map((r) => ({
+        x0: r.x0 + CITY.FIELD.x - 14,
+        x1: r.x1 + CITY.FIELD.x + 14,
+        z0: r.z0 + CITY.FIELD.z - 14,
+        z1: r.z1 + CITY.FIELD.z + 14,
+      })),
+      // Also exclude translated airfield extra pads
+      ...airfieldExtras.pads.map((r) => ({
+        x0: r.x0 + CITY.FIELD.x - 14,
+        x1: r.x1 + CITY.FIELD.x + 14,
+        z0: r.z0 + CITY.FIELD.z - 14,
+        z1: r.z1 + CITY.FIELD.z + 14,
+      })),
+    ];
+
+    cityGrassField = buildGrassField({
+      heightFn: cityWorld.groundAt,
+      size: TERRAIN.SIZE,
+      waterY: TERRAIN.WATER_Y,
+      tile: GFX.grassTile,
+      blades: GFX.grassBlades,
+      exclude: cityExcludes,
+    });
+    cityGroup.add(cityGrassField.mesh);
+  }
 
   // ---- Instanced forests + rock fields across the whole terrain. Three tree
   //      archetypes (broadleaf valleys, conifer slopes, pines up high), each
@@ -4625,6 +4697,7 @@ import { buildCity, CITY } from './plane-sim-city.js';
       waterMesh.material.uniforms.time.value += dt * 0.55; // ultra: animated waves
     }
     if (grassField && landGroup.visible) grassField.update(plane.position, dt);
+    if (cityGrassField && cityGroup.visible) cityGrassField.update(plane.position, dt);
 
     if (menuMode) menuCamera(dt); else updateCamera(dt);
     drawMap();

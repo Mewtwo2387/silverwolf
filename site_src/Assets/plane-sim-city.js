@@ -28,6 +28,7 @@ import {
   makeBroadleafCanopyGeo, makeBroadleafTrunkGeo,
   buildAirfieldExtras,
 } from './plane-sim-models.js';
+import { fbm } from './plane-sim-terrain.js';
 
 // ---- Layout (metres, world space). The city is a long N–S island on the east
 //      side of the box; the airfield a smaller island to the south-west. Both
@@ -67,66 +68,415 @@ function mulberry32(seed) {
 //      5-storey tenement and an 80-storey tower. Four period styles; each
 //      building also multiplies a per-vertex tint over these, so two brick
 //      tenements never read as clones. ----
+// ---- Helper to adjust light and saturation of a color ----
+function adjustColor(hex, lightAmt, satAmt = 0) {
+  let r = parseInt(hex.slice(1, 3), 16);
+  let g = parseInt(hex.slice(3, 5), 16);
+  let b = parseInt(hex.slice(5, 7), 16);
+
+  r = Math.min(255, Math.max(0, r + lightAmt * 255));
+  g = Math.min(255, Math.max(0, g + lightAmt * 255));
+  b = Math.min(255, Math.max(0, b + lightAmt * 255));
+
+  if (satAmt !== 0) {
+    const grey = 0.299 * r + 0.587 * g + 0.114 * b;
+    r = Math.min(255, Math.max(0, r + satAmt * (r - grey)));
+    g = Math.min(255, Math.max(0, g + satAmt * (g - grey)));
+    b = Math.min(255, Math.max(0, b + satAmt * (b - grey)));
+  }
+
+  return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
+}
+
+// ---- Procedural facade materials: creates THREE.MeshStandardMaterial with
+//      aligned color (map), bump (bumpMap), and gloss (roughnessMap) textures
+//      procedurally drawn onto canvases. Each style has multiple variants. ----
 const FACADE_TILE = 12; // metres of wall per texture repeat (≈3 floors × 3 bays)
-function facadeTexture(style) {
-  const S = 192;
+function createFacadeMaterial(style, variant) {
+  const S = 256;
   const c = document.createElement('canvas');
   c.width = c.height = S;
   const ctx = c.getContext('2d');
+
+  const cBump = document.createElement('canvas');
+  cBump.width = cBump.height = S;
+  const ctxBump = cBump.getContext('2d');
+
+  const cRough = document.createElement('canvas');
+  cRough.width = cRough.height = S;
+  const ctxRough = cRough.getContext('2d');
+
   const cfg = {
-    stone: { base: '#c7ba9d', trim: '#d8ccb2', win: '#39424b', glow: '#5b6b78' }, // limestone office
-    deco: { base: '#b9a582', trim: '#d8c7a4', win: '#33404a', glow: '#5a6d7c' }, // art-deco, pilasters
-    brick: { base: '#8a5140', trim: '#9c6250', win: '#2f363d', glow: '#556069' }, // red-brick tenement
-    brownstone: { base: '#6e5245', trim: '#82655a', win: '#2c3238', glow: '#4e5860' }, // dark rowhouse
-  }[style];
-  ctx.fillStyle = cfg.base;
-  ctx.fillRect(0, 0, S, S);
-  // faint mortar/soot mottling so flat walls aren't dead-flat
-  for (let i = 0; i < 900; i++) {
-    const v = Math.random() * 0.10;
-    ctx.fillStyle = `rgba(0,0,0,${v.toFixed(3)})`;
-    ctx.fillRect(Math.random() * S, Math.random() * S, 2, 2);
-  }
-  if (style === 'brick' || style === 'brownstone') {
-    // brick courses
-    ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+    brick: [
+      { // Variant 0: Classic Red Brick
+        base: '#8a4b3b', mortar: '#4a4542', trim: '#b3a598',
+        winFrame: '#2c333a', winGlass: '#22282e', winLit: '#fca13b',
+        brickW: 10, brickH: 4.8, winPattern: '2x2'
+      },
+      { // Variant 1: Yellow/Buff Brick
+        base: '#cca575', mortar: '#7d7a75', trim: '#8c7d6e',
+        winFrame: '#38332e', winGlass: '#1c1f24', winLit: '#fdba5c',
+        brickW: 12, brickH: 5.6, winPattern: '1x1'
+      },
+      { // Variant 2: Weathered Dark Brick
+        base: '#59403a', mortar: '#2b2928', trim: '#7d7772',
+        winFrame: '#24211e', winGlass: '#171a1d', winLit: '#e08f38',
+        brickW: 9, brickH: 4.2, winPattern: '3x3'
+      }
+    ],
+    stone: [
+      { // Variant 0: Limestone
+        base: '#c7ba9d', trim: '#d8ccb2', winFrame: '#2d333a',
+        winGlass: '#1b2229', winLit: '#ffbe69', blockW: 64, blockH: 32, winPattern: '2x2'
+      },
+      { // Variant 1: Dark Granite
+        base: '#7f858c', trim: '#5f646b', winFrame: '#1b1d21',
+        winGlass: '#11151a', winLit: '#fda54b', blockW: 42, blockH: 26, winPattern: '1x1'
+      },
+      { // Variant 2: Warm Sandstone
+        base: '#cca585', trim: '#d9bda2', winFrame: '#362f2a',
+        winGlass: '#1c1714', winLit: '#fcb86f', blockW: 85, blockH: 42, winPattern: '3x3'
+      }
+    ],
+    deco: [
+      { // Variant 0: Classic Cream & Gold
+        base: '#ebdcb9', trim: '#fffdf5', decoColor: '#d6b876',
+        winFrame: '#3d372c', winGlass: '#171e24', winLit: '#fca33d', winPattern: 'vertical'
+      },
+      { // Variant 1: Grey & Silver Metallic
+        base: '#a4abb5', trim: '#cfd4db', decoColor: '#78818c',
+        winFrame: '#1b2024', winGlass: '#0e1216', winLit: '#fdb561', winPattern: 'vertical'
+      },
+      { // Variant 2: Terracotta & Bronze
+        base: '#b86c4d', trim: '#ebd3c8', decoColor: '#6e4533',
+        winFrame: '#362721', winGlass: '#161210', winLit: '#e6903e', winPattern: 'vertical'
+      }
+    ],
+    brownstone: [
+      { // Variant 0: Dark Reddish Brownstone
+        base: '#6e5245', trim: '#82655a', winFrame: '#241f1c',
+        winGlass: '#181b21', winLit: '#fca644', winPattern: '2x2'
+      },
+      { // Variant 1: Grey-Olive Brownstone
+        base: '#756c60', trim: '#948a7d', winFrame: '#262421',
+        winGlass: '#14181c', winLit: '#fda952', winPattern: '1x1'
+      }
+    ]
+  }[style][variant];
+
+  // Draw background texture patterns
+  if (style === 'brick') {
+    ctx.fillStyle = cfg.mortar;
+    ctx.fillRect(0, 0, S, S);
+    ctxBump.fillStyle = 'rgb(60,60,60)';
+    ctxBump.fillRect(0, 0, S, S);
+    ctxRough.fillStyle = 'rgb(255,255,255)';
+    ctxRough.fillRect(0, 0, S, S);
+
+    const bW = cfg.brickW;
+    const bH = cfg.brickH;
+    const rowCount = Math.floor(S / bH) + 1;
+    const colCount = Math.floor(S / bW) + 2;
+
+    for (let row = 0; row < rowCount; row++) {
+      const y = row * bH;
+      const xOffset = (row % 2) * (bW / 2);
+      for (let col = -1; col < colCount; col++) {
+        const x = col * bW + xOffset;
+        const rand = Math.random();
+        let color = cfg.base;
+        if (rand < 0.12) {
+          color = adjustColor(cfg.base, -0.12, -0.05);
+        } else if (rand < 0.24) {
+          color = adjustColor(cfg.base, 0.08, 0.05);
+        } else if (rand < 0.3) {
+          color = adjustColor(cfg.base, 0.0, -0.1);
+        }
+
+        ctx.fillStyle = color;
+        ctx.fillRect(x + 0.5, y + 0.5, bW - 1, bH - 1);
+
+        const bumpVal = Math.floor(140 + Math.random() * 25);
+        ctxBump.fillStyle = `rgb(${bumpVal},${bumpVal},${bumpVal})`;
+        ctxBump.fillRect(x + 0.5, y + 0.5, bW - 1, bH - 1);
+
+        const roughVal = Math.floor(220 + Math.random() * 15);
+        ctxRough.fillStyle = `rgb(${roughVal},${roughVal},${roughVal})`;
+        ctxRough.fillRect(x + 0.5, y + 0.5, bW - 1, bH - 1);
+      }
+    }
+  } else if (style === 'stone') {
+    ctx.fillStyle = cfg.trim;
+    ctx.fillRect(0, 0, S, S);
+    ctxBump.fillStyle = 'rgb(70,70,70)';
+    ctxBump.fillRect(0, 0, S, S);
+    ctxRough.fillStyle = 'rgb(240,240,240)';
+    ctxRough.fillRect(0, 0, S, S);
+
+    const blW = cfg.blockW;
+    const blH = cfg.blockH;
+    const rCount = Math.floor(S / blH) + 1;
+    const cCount = Math.floor(S / blW) + 2;
+
+    for (let row = 0; row < rCount; row++) {
+      const y = row * blH;
+      const xOffset = (row % 2) * (blW / 2);
+      for (let col = -1; col < cCount; col++) {
+        const x = col * blW + xOffset;
+        const rand = Math.random();
+        let color = cfg.base;
+        if (rand < 0.15) {
+          color = adjustColor(cfg.base, -0.06, 0.0);
+        } else if (rand < 0.3) {
+          color = adjustColor(cfg.base, 0.04, 0.0);
+        }
+
+        ctx.fillStyle = color;
+        ctx.fillRect(x + 1, y + 1, blW - 2, blH - 2);
+
+        if (variant === 1) { // Granite specks
+          for (let i = 0; i < 30; i++) {
+            ctx.fillStyle = 'rgba(0,0,0,0.18)';
+            ctx.fillRect(x + 1 + Math.random() * (blW - 3), y + 1 + Math.random() * (blH - 3), 1.2, 1.2);
+            ctx.fillStyle = 'rgba(255,255,255,0.15)';
+            ctx.fillRect(x + 1 + Math.random() * (blW - 3), y + 1 + Math.random() * (blH - 3), 1.2, 1.2);
+          }
+        } else if (variant === 2) { // Sandstone banding
+          const g = ctx.createLinearGradient(x, y, x, y + blH);
+          g.addColorStop(0, 'rgba(0,0,0,0.06)');
+          g.addColorStop(0.5, 'rgba(255,255,255,0.05)');
+          g.addColorStop(1, 'rgba(0,0,0,0.04)');
+          ctx.fillStyle = g;
+          ctx.fillRect(x + 1, y + 1, blW - 2, blH - 2);
+        }
+
+        const bumpVal = Math.floor(150 + Math.random() * 20);
+        ctxBump.fillStyle = `rgb(${bumpVal},${bumpVal},${bumpVal})`;
+        ctxBump.fillRect(x + 1, y + 1, blW - 2, blH - 2);
+
+        const roughVal = Math.floor(210 + Math.random() * 15);
+        ctxRough.fillStyle = `rgb(${roughVal},${roughVal},${roughVal})`;
+        ctxRough.fillRect(x + 1, y + 1, blW - 2, blH - 2);
+      }
+    }
+  } else if (style === 'deco') {
+    ctx.fillStyle = cfg.base;
+    ctx.fillRect(0, 0, S, S);
+    ctxBump.fillStyle = 'rgb(140,140,140)';
+    ctxBump.fillRect(0, 0, S, S);
+    ctxRough.fillStyle = 'rgb(180,180,180)';
+    ctxRough.fillRect(0, 0, S, S);
+
+    const cols = 3;
+    const cw = S / cols;
+    ctx.fillStyle = cfg.trim;
+    ctxBump.fillStyle = 'rgb(185,185,185)';
+    ctxRough.fillStyle = 'rgb(140,140,140)';
+
+    for (let i = 0; i <= cols; i++) {
+      ctx.fillRect(i * cw - 3, 0, 6, S);
+      ctxBump.fillRect(i * cw - 3, 0, 6, S);
+      ctxRough.fillRect(i * cw - 3, 0, 6, S);
+    }
+
+    ctx.fillStyle = cfg.decoColor;
+    ctxBump.fillStyle = 'rgb(160,160,160)';
+    for (let r = 0; r < 3; r++) {
+      ctx.fillRect(0, r * (S / 3), S, 3);
+      ctxBump.fillRect(0, r * (S / 3), S, 3);
+    }
+  } else if (style === 'brownstone') {
+    ctx.fillStyle = cfg.base;
+    ctx.fillRect(0, 0, S, S);
+    ctxBump.fillStyle = 'rgb(140,140,140)';
+    ctxBump.fillRect(0, 0, S, S);
+    ctxRough.fillStyle = 'rgb(220,220,220)';
+    ctxRough.fillRect(0, 0, S, S);
+
+    ctx.strokeStyle = cfg.trim;
     ctx.lineWidth = 1;
-    for (let y = 0; y < S; y += 5) {
+    ctxBump.strokeStyle = 'rgb(60,60,60)';
+    ctxBump.lineWidth = 1.5;
+
+    for (let y = 0; y < S; y += 16) {
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(S, y); ctx.stroke();
+      ctxBump.beginPath(); ctxBump.moveTo(0, y); ctxBump.lineTo(S, y); ctxBump.stroke();
     }
   }
+
+  // Draw Windows
   const cols = 3; const rows = 3;
   const cw = S / cols; const rh = S / rows;
   const wpad = (style === 'brick' || style === 'brownstone') ? cw * 0.30 : cw * 0.22;
   const hpadTop = rh * 0.16; const hpadBot = rh * 0.30;
-  if (style === 'deco') {
-    ctx.fillStyle = cfg.trim; // pale pilasters straddling the column gaps
-    for (let i = 0; i <= cols; i++) ctx.fillRect(i * cw - 2.5, 0, 5, S);
-  }
+
   for (let r = 0; r < rows; r++) {
     for (let col = 0; col < cols; col++) {
       const x0 = col * cw + wpad; const x1 = (col + 1) * cw - wpad;
       const y0 = r * rh + hpadTop; const y1 = (r + 1) * rh - hpadBot;
-      ctx.fillStyle = cfg.trim; // sill/lintel
-      ctx.fillRect(x0 - 2, y0 - 2, (x1 - x0) + 4, (y1 - y0) + 4);
-      const g = ctx.createLinearGradient(0, y0, 0, y1); // glass, sky-lit at the top
-      g.addColorStop(0, cfg.glow);
-      g.addColorStop(0.5, cfg.win);
-      g.addColorStop(1, cfg.win);
-      ctx.fillStyle = g;
-      ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
-      ctx.strokeStyle = 'rgba(20,24,28,0.55)'; // mullion
+      const w = x1 - x0; const h = y1 - y0;
+
+      // 1. Sill / Lintel Trim
+      ctx.fillStyle = cfg.trim;
+      ctx.fillRect(x0 - 2, y0 - 2, w + 4, h + 4);
+      ctxBump.fillStyle = 'rgb(220,220,220)';
+      ctxBump.fillRect(x0 - 2, y0 - 2, w + 4, h + 4);
+      ctxRough.fillStyle = 'rgb(190,190,190)';
+      ctxRough.fillRect(x0 - 2, y0 - 2, w + 4, h + 4);
+
+      // 2. Window Frame
+      ctx.fillStyle = cfg.winFrame;
+      ctx.fillRect(x0, y0, w, h);
+      ctxBump.fillStyle = 'rgb(160,160,160)';
+      ctxBump.fillRect(x0, y0, w, h);
+      ctxRough.fillStyle = 'rgb(150,150,150)';
+      ctxRough.fillRect(x0, y0, w, h);
+
+      // 3. Glass Area
+      const gx0 = x0 + 2; const gx1 = x1 - 2;
+      const gy0 = y0 + 2; const gy1 = y1 - 2;
+      const gw = gx1 - gx0; const gh = gy1 - gy0;
+
+      // Determine window state deterministically based on grid coordinates
+      const wId = (r + col * 2) % 6;
+      const isLit = wId === 0;
+      const isBlind = wId === 1 || wId === 4;
+
+      if (isLit) {
+        const g = ctx.createLinearGradient(gx0, gy0, gx0, gy1);
+        g.addColorStop(0, '#ffeed1');
+        g.addColorStop(1, cfg.winLit);
+        ctx.fillStyle = g;
+        ctx.fillRect(gx0, gy0, gw, gh);
+
+        ctxBump.fillStyle = 'rgb(30,30,30)';
+        ctxBump.fillRect(gx0, gy0, gw, gh);
+
+        ctxRough.fillStyle = 'rgb(30,30,30)';
+        ctxRough.fillRect(gx0, gy0, gw, gh);
+      } else if (isBlind) {
+        // Draw dark glass background
+        const g = ctx.createLinearGradient(gx0, gy0, gx0, gy1);
+        g.addColorStop(0, '#3e4954');
+        g.addColorStop(1, cfg.winGlass);
+        ctx.fillStyle = g;
+        ctx.fillRect(gx0, gy0, gw, gh);
+
+        ctxBump.fillStyle = 'rgb(30,30,30)';
+        ctxBump.fillRect(gx0, gy0, gw, gh);
+
+        ctxRough.fillStyle = 'rgb(30,30,30)';
+        ctxRough.fillRect(gx0, gy0, gw, gh);
+
+        // Draw blind overlay
+        const blindPct = 0.35 + ((r * 3 + col * 7) % 5) * 0.11;
+        const bH = gh * blindPct;
+        ctx.fillStyle = '#ebe5d6';
+        ctx.fillRect(gx0, gy0, gw, bH);
+        
+        ctx.fillStyle = '#b8b0a1';
+        ctx.fillRect(gx0, gy0 + bH - 1, gw, 1);
+
+        ctxBump.fillStyle = 'rgb(90,90,90)';
+        ctxBump.fillRect(gx0, gy0, gw, bH);
+
+        ctxRough.fillStyle = 'rgb(215,215,215)';
+        ctxRough.fillRect(gx0, gy0, gw, bH);
+      } else {
+        // Dark glass
+        const g = ctx.createLinearGradient(gx0, gy0, gx0, gy1);
+        g.addColorStop(0, '#3e4954');
+        g.addColorStop(1, cfg.winGlass);
+        ctx.fillStyle = g;
+        ctx.fillRect(gx0, gy0, gw, gh);
+
+        ctxBump.fillStyle = 'rgb(30,30,30)';
+        ctxBump.fillRect(gx0, gy0, gw, gh);
+
+        ctxRough.fillStyle = 'rgb(30,30,30)';
+        ctxRough.fillRect(gx0, gy0, gw, gh);
+      }
+
+      // 4. Mullions (Window Grids)
+      ctx.strokeStyle = cfg.winFrame;
       ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo((x0 + x1) / 2, y0); ctx.lineTo((x0 + x1) / 2, y1);
-      ctx.stroke();
+      if (cfg.winPattern === '2x2') {
+        const mx = (gx0 + gx1) / 2;
+        const my = (gy0 + gy1) / 2;
+        ctx.beginPath();
+        ctx.moveTo(mx, gy0); ctx.lineTo(mx, gy1);
+        ctx.moveTo(gx0, my); ctx.lineTo(gx1, my);
+        ctx.stroke();
+      } else if (cfg.winPattern === '3x3') {
+        const mx1 = gx0 + gw / 3;
+        const mx2 = gx0 + (gw * 2) / 3;
+        const my1 = gy0 + gh / 3;
+        const my2 = gy0 + (gh * 2) / 3;
+        ctx.beginPath();
+        ctx.moveTo(mx1, gy0); ctx.lineTo(mx1, gy1);
+        ctx.moveTo(mx2, gy0); ctx.lineTo(mx2, gy1);
+        ctx.moveTo(gx0, my1); ctx.lineTo(gx1, my1);
+        ctx.moveTo(gx0, my2); ctx.lineTo(gx1, my2);
+        ctx.stroke();
+      } else if (cfg.winPattern === 'vertical') {
+        const mx = (gx0 + gx1) / 2;
+        ctx.beginPath();
+        ctx.moveTo(mx, gy0); ctx.lineTo(mx, gy1);
+        ctx.stroke();
+      }
     }
   }
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.anisotropy = GFX.aniso;
-  return tex;
+
+  // Weathering/soot overlay on color
+  for (let i = 0; i < 1000; i++) {
+    const v = Math.random() * 0.08;
+    ctx.fillStyle = `rgba(0,0,0,${v.toFixed(3)})`;
+    ctx.fillRect(Math.random() * S, Math.random() * S, 2, 2);
+  }
+
+  // Water run-off stains under window sills
+  ctx.fillStyle = 'rgba(0,0,0,0.06)';
+  for (let i = 0; i < 12; i++) {
+    const sx = Math.random() * S;
+    const sy = Math.random() * S;
+    const sh = 10 + Math.random() * 30;
+    ctx.fillRect(sx, sy, 1.2, sh);
+  }
+
+  // Micro-texture noise in bump map
+  const bumpImg = ctxBump.getImageData(0, 0, S, S);
+  const data = bumpImg.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const noise = Math.floor(Math.random() * 9) - 4;
+    data[i] = Math.min(255, Math.max(0, data[i] + noise));
+    data[i+1] = Math.min(255, Math.max(0, data[i+1] + noise));
+    data[i+2] = Math.min(255, Math.max(0, data[i+2] + noise));
+  }
+  ctxBump.putImageData(bumpImg, 0, 0);
+
+  // Setup ThreeJS Textures
+  const mapTex = new THREE.CanvasTexture(c);
+  mapTex.colorSpace = THREE.SRGBColorSpace;
+  mapTex.wrapS = mapTex.wrapT = THREE.RepeatWrapping;
+  mapTex.anisotropy = GFX.aniso;
+
+  const bumpTex = new THREE.CanvasTexture(cBump);
+  bumpTex.wrapS = bumpTex.wrapT = THREE.RepeatWrapping;
+  bumpTex.anisotropy = GFX.aniso;
+
+  const roughTex = new THREE.CanvasTexture(cRough);
+  roughTex.wrapS = roughTex.wrapT = THREE.RepeatWrapping;
+  roughTex.anisotropy = GFX.aniso;
+
+  return new THREE.MeshStandardMaterial({
+    map: mapTex,
+    bumpMap: bumpTex,
+    bumpScale: style === 'brick' ? 0.12 : 0.08,
+    roughnessMap: roughTex,
+    roughness: 1.0,
+    metalness: 0.1,
+    vertexColors: true,
+  });
 }
 
 // ---- One box's four vertical walls as a bare quad soup (no top/bottom faces),
@@ -267,9 +617,25 @@ function buildField(group, obstacles) {
   asphalt.wrapS = asphalt.wrapT = THREE.RepeatWrapping;
   asphalt.anisotropy = GFX.aniso;
   const rw = asphalt.clone(); rw.repeat.set(3, 56);
+  const tarmacGeo = new THREE.PlaneGeometry(RW, RL, 2, 24);
+  const tarmacPos = tarmacGeo.attributes.position;
+  const tarmacCols = new Float32Array(tarmacPos.count * 3);
+  const tarmacBase = new THREE.Color(0x8b8f95);
+  for (let i = 0; i < tarmacPos.count; i++) {
+    const wx = tarmacPos.getX(i) + F.x;
+    const wz = -tarmacPos.getY(i) + F.z;
+    const n1 = fbm(wx * 0.005, wz * 0.005, 2);
+    const n2 = fbm(wx * 0.06, wz * 0.06, 2);
+    const factor = 0.58 + n1 * 0.26 + n2 * 0.16;
+    tarmacCols[i * 3] = tarmacBase.r * factor;
+    tarmacCols[i * 3 + 1] = tarmacBase.g * factor;
+    tarmacCols[i * 3 + 2] = tarmacBase.b * factor;
+  }
+  tarmacGeo.setAttribute('color', new THREE.BufferAttribute(tarmacCols, 3));
+
   const tarmac = new THREE.Mesh(
-    new THREE.PlaneGeometry(RW, RL),
-    new THREE.MeshStandardMaterial({ map: rw, color: 0x8b8f95, roughness: 0.9 }),
+    tarmacGeo,
+    new THREE.MeshStandardMaterial({ map: rw, color: 0xffffff, roughness: 0.9, vertexColors: true }),
   );
   tarmac.rotation.x = -Math.PI / 2; tarmac.position.set(F.x, g + 0.12, F.z);
   tarmac.receiveShadow = true; group.add(tarmac);
@@ -285,9 +651,24 @@ function buildField(group, obstacles) {
   // Perimeter taxiway + spurs + threshold links + apron (the Coastal layout).
   const taxiTex = asphalt.clone();
   taxiTex.repeat.set(1.5, 30);
-  const taxiMat = new THREE.MeshStandardMaterial({ map: taxiTex, color: 0x90949a, roughness: 0.88 });
+  const taxiMat = new THREE.MeshStandardMaterial({ map: taxiTex, color: 0xffffff, roughness: 0.88, vertexColors: true });
   const taxi = (w, l, x, z) => {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, l), taxiMat);
+    const geo = new THREE.PlaneGeometry(w, l, Math.max(1, Math.round(w / 10)), Math.max(1, Math.round(l / 10)));
+    const pos = geo.attributes.position;
+    const cols = new Float32Array(pos.count * 3);
+    const base = new THREE.Color(0x90949a);
+    for (let i = 0; i < pos.count; i++) {
+      const wx = pos.getX(i) + F.x + x;
+      const wz = -pos.getY(i) + F.z + z;
+      const n1 = fbm(wx * 0.005, wz * 0.005, 2);
+      const n2 = fbm(wx * 0.06, wz * 0.06, 2);
+      const factor = 0.58 + n1 * 0.26 + n2 * 0.16;
+      cols[i * 3] = base.r * factor;
+      cols[i * 3 + 1] = base.g * factor;
+      cols[i * 3 + 2] = base.b * factor;
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+    const m = new THREE.Mesh(geo, taxiMat);
     m.rotation.x = -Math.PI / 2;
     m.position.set(F.x + x, g + 0.13, F.z + z); m.receiveShadow = true;
     group.add(m);
@@ -415,15 +796,37 @@ function buildField(group, obstacles) {
 
 // A rectangular island platform: a concrete/rock seawall block up to GROUND_Y,
 // capped by a ground surface (asphalt streets for the city, grass for the field).
-function buildIsland(group, cx, cz, hx, hz, topMat) {
+function buildIsland(group, cx, cz, hx, hz, topMat, baseColorHex) {
   const g = CITY.GROUND_Y; const depth = g - CITY.SEA_FLOOR + 4;
   const wall = new THREE.Mesh(
     new THREE.BoxGeometry(hx * 2, depth, hz * 2),
     new THREE.MeshStandardMaterial({ color: 0x6b6b66, roughness: 0.95 }),
   );
   wall.position.set(cx, g - depth / 2, cz); wall.receiveShadow = true; group.add(wall);
-  const top = new THREE.Mesh(new THREE.PlaneGeometry(hx * 2, hz * 2), topMat);
-  top.rotation.x = -Math.PI / 2; top.position.set(cx, g + 0.04, cz); top.receiveShadow = true;
+
+  const segsX = Math.round((hx * 2) / 40);
+  const segsZ = Math.round((hz * 2) / 40);
+  const topGeo = new THREE.PlaneGeometry(hx * 2, hz * 2, segsX, segsZ);
+  topGeo.rotateX(-Math.PI / 2);
+
+  const pos = topGeo.attributes.position;
+  const colors = new Float32Array(pos.count * 3);
+  const baseColor = new THREE.Color(baseColorHex);
+
+  for (let i = 0; i < pos.count; i++) {
+    const wx = pos.getX(i) + cx;
+    const wz = pos.getZ(i) + cz;
+    const n1 = fbm(wx * 0.001, wz * 0.001, 2);
+    const n2 = fbm(wx * 0.012, wz * 0.012, 2);
+    const factor = 0.65 + n1 * 0.23 + n2 * 0.12;
+    colors[i * 3] = baseColor.r * factor;
+    colors[i * 3 + 1] = baseColor.g * factor;
+    colors[i * 3 + 2] = baseColor.b * factor;
+  }
+
+  topGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  const top = new THREE.Mesh(topGeo, topMat);
+  top.position.set(cx, g + 0.04, cz); top.receiveShadow = true;
   group.add(top);
 }
 
@@ -439,11 +842,20 @@ export function buildCity() {
   const streetTex = loadSceneryTexture('/static/planes/asphalt.jpg');
   streetTex.wrapS = streetTex.wrapT = THREE.RepeatWrapping;
   streetTex.repeat.set(I.hx / 12, I.hz / 12); streetTex.anisotropy = GFX.aniso;
-  buildIsland(group, I.x, I.z, I.hx, I.hz,
-    new THREE.MeshStandardMaterial({ map: streetTex, color: 0x51555c, roughness: 0.95 }));
+  const streetMat = new THREE.MeshStandardMaterial({
+    map: streetTex,
+    color: 0xffffff,
+    roughness: 0.95,
+    vertexColors: true,
+  });
+  buildIsland(group, I.x, I.z, I.hx, I.hz, streetMat, 0x51555c);
   // Field ground: grass.
-  buildIsland(group, CITY.FIELD.x, CITY.FIELD.z, CITY.FIELD.hx, CITY.FIELD.hz,
-    new THREE.MeshStandardMaterial({ color: 0x51632f, roughness: 0.95 }));
+  const grassFieldMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    roughness: 0.95,
+    vertexColors: true,
+  });
+  buildIsland(group, CITY.FIELD.x, CITY.FIELD.z, CITY.FIELD.hx, CITY.FIELD.hz, grassFieldMat, 0x51632f);
 
   const grassMat = new THREE.MeshStandardMaterial({ color: 0x4c6630, roughness: 0.95 });
   const flatPatch = (x0, x1, z0, z1, mat, lift) => {
@@ -678,7 +1090,10 @@ export function buildCity() {
 
   const ctx = {
     walls: {
-      stone: newBucket(), deco: newBucket(), brick: newBucket(), brownstone: newBucket(),
+      stone_0: newBucket(), stone_1: newBucket(), stone_2: newBucket(),
+      deco_0: newBucket(), deco_1: newBucket(), deco_2: newBucket(),
+      brick_0: newBucket(), brick_1: newBucket(), brick_2: newBucket(),
+      brownstone_0: newBucket(), brownstone_1: newBucket(),
     },
     roofs: newBucket(),
     tanks: [],
@@ -690,7 +1105,10 @@ export function buildCity() {
   // One building: box (+ optional penthouse) or a tiered setback tower once it
   // gets tall. Registers the crash AABB and maybe a rooftop water tank.
   function building(style, x, z, w, d, h, tint) {
-    const bucket = ctx.walls[style];
+    const numVariants = { stone: 3, deco: 3, brick: 3, brownstone: 2 }[style] || 1;
+    const hash = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
+    const varIdx = Math.floor((hash - Math.floor(hash)) * numVariants);
+    const bucket = ctx.walls[`${style}_${varIdx}`];
     if (h > 100) {
       // Wedding-cake setbacks (the 1916 zoning look): 3-4 shrinking tiers.
       const tiers = 3 + (rng() < 0.4 ? 1 : 0);
@@ -734,7 +1152,7 @@ export function buildCity() {
     let w = L.w; let d = L.d; let baseY = g0; let remaining = L.h;
     for (let t = 0; t < L.tiers; t++) {
       const th = t === L.tiers - 1 ? remaining : remaining * (t === 0 ? 0.45 : 0.4);
-      pushWalls(ctx.walls.deco, L.x, L.z, baseY, w, d, th, tint);
+      pushWalls(ctx.walls.deco_0, L.x, L.z, baseY, w, d, th, tint);
       pushRoof(ctx.roofs, L.x, L.z, baseY + th, w, d, tint);
       baseY += th; remaining -= th;
       w *= L.kind === 'crown' ? 0.8 : 0.7;
@@ -959,14 +1377,22 @@ export function buildCity() {
     m.castShadow = true; group.add(m);
   }
 
-  // ---- Merge the whole skyline into a handful of draw calls. ----
-  const facadeMat = (style) => new THREE.MeshStandardMaterial({
-    map: facadeTexture(style), roughness: 0.92, vertexColors: true,
-  });
+  // ---- Generate procedural materials for each style & variant ----
+  const facadeMaterials = {};
+  const numVariants = { stone: 3, deco: 3, brick: 3, brownstone: 2 };
   for (const style of ['stone', 'deco', 'brick', 'brownstone']) {
-    const geo = bucketToGeo(ctx.walls[style]);
+    const count = numVariants[style];
+    for (let v = 0; v < count; v++) {
+      facadeMaterials[`${style}_${v}`] = createFacadeMaterial(style, v);
+    }
+  }
+
+  // ---- Merge the whole skyline into a handful of draw calls. ----
+  const wallKeys = Object.keys(ctx.walls);
+  for (const key of wallKeys) {
+    const geo = bucketToGeo(ctx.walls[key]);
     if (geo) {
-      const m = new THREE.Mesh(geo, facadeMat(style));
+      const m = new THREE.Mesh(geo, facadeMaterials[key]);
       m.castShadow = true; m.receiveShadow = true; group.add(m);
     }
   }

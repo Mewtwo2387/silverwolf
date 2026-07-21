@@ -374,7 +374,7 @@ function refTexture(name) {
   if (!_refTexCache[name]) {
     // The aircraft skin sheets stay full-resolution on every tier — the player
     // plane fills the screen; halving it reads as mud, not "low".
-    const tex = new THREE.TextureLoader().load(`/static/planes/${name}.jpg`);
+    const tex = new THREE.TextureLoader().load(`/static/planes/${name}.jpg?v=3`);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = Math.max(GFX.aniso, 8);
     _refTexCache[name] = tex;
@@ -717,16 +717,43 @@ function buildBomber(opts = {}) {
   const normalMap = detailTexture('metal-normal', 32);
   const roughnessMap = detailTexture('metal-roughness', 32);
   const mats = {};
-  const matFor = (tex) => {
-    if (!mats[tex]) {
-      mats[tex] = new THREE.MeshStandardMaterial({
+  const matFor = (tex, role) => {
+    let key = tex;
+    let roughness = 0.55;
+    let metalness = 0.35;
+    let normalScale = 0.1;
+
+    if (role.startsWith('prop')) {
+      key = `${tex}_prop`;
+      roughness = 0.75;
+      metalness = 0.05;
+      normalScale = 0.05;
+    } else if (role === 'gear') {
+      key = `${tex}_gear`;
+      roughness = 0.65;
+      metalness = 0.25;
+      normalScale = 0.15;
+    } else if (role === 'static' && tex === 'bomber-det') {
+      key = `${tex}_detail`;
+      roughness = 0.28;
+      metalness = 0.65;
+      normalScale = 0.15;
+    } else {
+      key = `${tex}_skin`;
+      roughness = 0.46;
+      metalness = 0.18;
+      normalScale = 0.12;
+    }
+
+    if (!mats[key]) {
+      mats[key] = new THREE.MeshStandardMaterial({
         map: refTexture(tex), color: enemy ? 0x8b939c : 0xffffff,
-        roughness: 0.55, metalness: 0.35,
-        normalMap, roughnessMap, normalScale: new THREE.Vector2(0.1, 0.1),
+        roughness, metalness,
+        normalMap, roughnessMap, normalScale: new THREE.Vector2(normalScale, normalScale),
         side: THREE.DoubleSide,
       });
     }
-    return mats[tex];
+    return mats[key];
   };
   const gearGroup = new THREE.Group();
   for (const part of REF_BOMBER_PARTS) {
@@ -735,7 +762,7 @@ function buildBomber(opts = {}) {
     geo.setAttribute('uv', new THREE.Float32BufferAttribute(part.uv, 2));
     geo.setIndex(part.idx);
     geo.computeVertexNormals();
-    const mesh = new THREE.Mesh(geo, matFor(part.tex));
+    const mesh = new THREE.Mesh(geo, matFor(part.tex, part.role));
     if (part.pivot) {
       const [px, py, pz] = part.pivot;
       const pivot = new THREE.Group();

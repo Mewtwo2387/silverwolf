@@ -35,6 +35,7 @@ const STATIC_ASSETS: Record<string, StaticEntry> = {
 // by THREE.TextureLoader from the game bundle — see plane-sim-models.js).
 for (const skin of [
   'p51-fus', 'p51-tai', 'p51-elv', 'p51-rud', 'p51-wng', 'zero-sheet', 'spit-skin',
+  'bomber-hull', 'bomber-wing', 'bomber-det',
   'tree-bark', 'tree-leaves', 'metal-normal', 'metal-roughness',
   'asphalt', 'corrugated-metal', 'concrete',
   'water-normal', 'grass-normal',
