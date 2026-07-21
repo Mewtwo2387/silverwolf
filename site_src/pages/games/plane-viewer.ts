@@ -74,6 +74,26 @@ export function PlaneViewerPage(opts: {
   .pv-wide { width: 100%; margin-top: 0.35rem; }
 
   .pv-dims { margin-top: 0.5rem; font-size: 0.7rem; color: var(--accent-light, #7fdfff); }
+  .pv-livery-container {
+    display: flex; gap: 0.8rem; align-items: center;
+    background: color-mix(in oklab, var(--ink-700, #1a2230) 40%, transparent);
+    padding: 0.55rem 0.6rem; border-radius: 0.5rem;
+    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 15%, transparent);
+    cursor: pointer; user-select: none; transition: all 0.15s ease-in-out;
+  }
+  .pv-livery-container:hover {
+    border-color: var(--accent, #22d3ff);
+    background: color-mix(in oklab, var(--accent, #22d3ff) 8%, transparent);
+  }
+  .pv-livery-preview {
+    width: 52px; height: 52px; border-radius: 0.35rem;
+    background-size: cover; background-position: center;
+    border: 1px solid rgba(255,255,255,0.15); flex-shrink: 0;
+    transition: transform 0.15s ease;
+  }
+  .pv-livery-container:active .pv-livery-preview {
+    transform: scale(0.95);
+  }
 
   /* Aircraft spec sheet (shown only for the flyable models). */
   #pv-stats { display: none; }
@@ -126,6 +146,17 @@ export function PlaneViewerPage(opts: {
             <button type="button" data-model="tree">Tree</button>
           </div>
           <div class="pv-dims" id="pv-dims">—</div>
+        </div>
+
+        <div class="pv-group" id="pv-livery-group" style="display: none;">
+          <div class="pv-h">Livery</div>
+          <div id="pv-livery-toggle" class="pv-livery-container">
+            <div id="pv-livery-preview" class="pv-livery-preview" style="background-image: url('/static/planes/spitfire-original-preview.jpg');"></div>
+            <div style="flex: 1;">
+              <div id="pv-livery-name" style="font-weight: bold; color: var(--accent-light, #7fdfff); font-size: 0.8rem;">Original</div>
+              <div style="font-size: 0.65rem; color: var(--fog-400, #8aa0ad); margin-top: 0.15rem;">Click to cycle</div>
+            </div>
+          </div>
         </div>
 
         <div class="pv-group" id="pv-stats"></div>

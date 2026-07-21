@@ -19,6 +19,19 @@ import {
 (() => {
   'use strict';
 
+  const LIVERIES = {
+    original: { label: 'Original' },
+    desert: { label: 'Desert Camo' },
+    winter: { label: 'Winter Camo' },
+    special: {
+      spitfire: { label: 'D-Day Stripes' },
+      p51: { label: 'Red Tails' },
+      zero: { label: 'Late-War Green' },
+      bomber: { label: 'Silver Metal' },
+    },
+  };
+  const LIVERY_KEYS = ['original', 'desert', 'winter', 'special'];
+
   const canvas = document.getElementById('pv-canvas');
   if (!canvas) return;
 
@@ -212,7 +225,8 @@ import {
     let planeType = null;
     if (kind === 'aircraft' || kind === 'p51' || kind === 'zero' || kind === 'bomber') {
       planeType = kind === 'aircraft' ? 'spitfire' : kind;
-      const a = buildAircraft({ type: planeType, gearDown: true });
+      const skin = localStorage.getItem(`ps-skin-${planeType}`) || 'original';
+      const a = buildAircraft({ type: planeType, gearDown: true, skin });
       current = a.group; currentSurf = a.surf; modelName = `plane-sim-${planeType}`;
     } else if (kind === 'carrier') {
       current = makeCarrier().group; modelName = 'plane-sim-carrier'; sitOnGround = false;
@@ -239,6 +253,23 @@ import {
     applyBombs();
     applyWire();
     frame(current, { sitOnGround });
+
+    // Livery group UI handling
+    const liveryGroup = document.getElementById('pv-livery-group');
+    if (liveryGroup) {
+      if (planeType) {
+        liveryGroup.style.display = 'block';
+        const skin = localStorage.getItem(`ps-skin-${planeType}`) || 'original';
+        const nameEl = document.getElementById('pv-livery-name');
+        const previewEl = document.getElementById('pv-livery-preview');
+        const label = skin === 'special' ? LIVERIES.special[planeType].label : LIVERIES[skin].label;
+        if (nameEl) nameEl.textContent = label;
+        if (previewEl) previewEl.style.backgroundImage = `url('/static/planes/${planeType}-${skin}-preview.jpg')`;
+      } else {
+        liveryGroup.style.display = 'none';
+      }
+    }
+
     // Show the control-surface panel only for the aircraft.
     const panel = document.getElementById('pv-surfaces');
     if (panel) panel.style.display = currentSurf ? '' : 'none';
@@ -276,6 +307,18 @@ import {
   // ---- UI wiring ----
   const $ = (id) => document.getElementById(id);
   document.querySelectorAll('[data-model]').forEach((b) => b.addEventListener('click', () => load(b.dataset.model)));
+
+  $('pv-livery-toggle')?.addEventListener('click', () => {
+    if (!currentPlaneType) return;
+    const currentSkin = localStorage.getItem(`ps-skin-${currentPlaneType}`) || 'original';
+    const nextIdx = (LIVERY_KEYS.indexOf(currentSkin) + 1) % LIVERY_KEYS.length;
+    const nextSkin = LIVERY_KEYS[nextIdx];
+    localStorage.setItem(`ps-skin-${currentPlaneType}`, nextSkin);
+
+    const activeBtn = document.querySelector('[data-model].active');
+    const kind = activeBtn ? activeBtn.dataset.model : 'aircraft';
+    load(kind);
+  });
 
   const bindToggle = (id, key, after) => {
     const el = $(id);

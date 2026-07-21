@@ -338,6 +338,9 @@ export function planeSpecs(name) {
 //      switches to the bandit grey scheme and opts.markings === false drops
 //      the national insignia. ----
 export function buildAircraft(opts = {}) {
+  if (!opts.skin && typeof localStorage !== 'undefined') {
+    opts.skin = localStorage.getItem(`ps-skin-${opts.type}`) || 'original';
+  }
   if (opts.type === 'p51') return buildP51(opts);
   if (opts.type === 'zero') return buildZero(opts);
   if (opts.type === 'bomber') return buildBomber(opts);
@@ -505,6 +508,7 @@ export function makeBroadleafTrunkGeo() {
 // into surf for applyControlSurfaces.
 function buildRefPlane(parts, opts) {
   const enemy = opts.paint != null;
+  const skin = opts.skin || 'original';
   const plane = new THREE.Group();
   const surf = {
     aileronL: null, aileronR: null, elevator: null, rudder: null,
@@ -519,13 +523,16 @@ function buildRefPlane(parts, opts) {
     geo.setIndex(part.idx);
     geo.computeVertexNormals();
     let mat;
+    const texName = (skin !== 'original' && part.tex && (part.tex.startsWith('spit-') || part.tex.startsWith('zero-') || part.tex.startsWith('p51-')))
+      ? `${part.tex}-${skin}`
+      : part.tex;
     if (part.role === 'glass') {
       // Textured glass (the Zero's greenhouse) keeps its skin: the painted
       // frame lines show over the translucency, giving the caged look for
       // free. Untextured glass is the plain tinted canopy of the other two.
       mat = part.tex
         ? new THREE.MeshStandardMaterial({
-          map: refTexture(part.tex), roughness: 0.25, metalness: 0, transparent: true, opacity: 0.62, side: THREE.DoubleSide,
+          map: refTexture(texName), roughness: 0.25, metalness: 0, transparent: true, opacity: 0.62, side: THREE.DoubleSide,
         })
         : new THREE.MeshStandardMaterial({
           color: 0x9fc7d8, roughness: 0.15, metalness: 0, transparent: true, opacity: 0.5, side: THREE.DoubleSide,
@@ -536,7 +543,7 @@ function buildRefPlane(parts, opts) {
       });
     } else if (part.tex) {
       mat = new THREE.MeshStandardMaterial({
-        map: refTexture(part.tex), color: enemy ? 0x8b939c : 0xffffff,
+        map: refTexture(texName), color: enemy ? 0x8b939c : 0xffffff,
         roughness: opts.roughness !== undefined ? opts.roughness : 0.35,
         metalness: opts.metalness !== undefined ? opts.metalness : 0.85,
         normalMap, roughnessMap,
@@ -708,6 +715,7 @@ function buildZero(opts = {}) {
 //   surf.gearGroup — the whole undercarriage; hidden unless opts.gearDown
 function buildBomber(opts = {}) {
   const enemy = opts.paint != null;
+  const skin = opts.skin || 'original';
   const plane = new THREE.Group();
   const surf = {
     aileronL: null, aileronR: null, elevator: null, rudder: null,
@@ -745,9 +753,13 @@ function buildBomber(opts = {}) {
       normalScale = 0.12;
     }
 
+    const texName = (skin !== 'original' && (tex === 'bomber-hull' || tex === 'bomber-wing'))
+      ? `${tex}-${skin}`
+      : tex;
+
     if (!mats[key]) {
       mats[key] = new THREE.MeshStandardMaterial({
-        map: refTexture(tex), color: enemy ? 0x8b939c : 0xffffff,
+        map: refTexture(texName), color: enemy ? 0x8b939c : 0xffffff,
         roughness, metalness,
         normalMap, roughnessMap, normalScale: new THREE.Vector2(normalScale, normalScale),
         side: THREE.DoubleSide,
