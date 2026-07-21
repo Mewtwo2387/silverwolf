@@ -729,7 +729,7 @@ export function PlaneSimPage(opts: {
         <div class="ps-menu-keys">◄ ► cycle &middot; Mouse: point to fly &middot; RMB fire &middot; W/S throttle &middot; A/D rudder &middot; G gear &middot; B drop bomb &middot; ESC pause</div>
       </div>
 
-      <!-- Game-mode select: tutorial / sortie / stunt -->
+      <!-- Game-mode select: tutorial / sortie / stunt / free flight -->
       <div id="ps-mode-menu" class="ps-modal ps-hidden">
         <div class="ps-card">
           <h1>Game mode</h1>
@@ -753,6 +753,13 @@ export function PlaneSimPage(opts: {
             <div>
               <p class="ps-map-name">Stunt Circuit</p>
               <p class="ps-map-desc">Chase rings for points — through valleys, under bridges, wave-high past the fleet. Bullseyes score extra.</p>
+            </div>
+          </div>
+          <div class="ps-map-tile" data-gamemode="free">
+            <div class="ps-tile-ico">⛓️‍💥</div>
+            <div>
+              <p class="ps-map-name">Free Flight</p>
+              <p class="ps-map-desc">No bandits, no clock, no mission — pick any map and just roam. The only way to lose is to bend the aeroplane.</p>
             </div>
           </div>
           <div class="ps-menu-row">
@@ -804,6 +811,29 @@ export function PlaneSimPage(opts: {
           <div class="ps-map-tile" data-stunt="wavetop">
             <div class="ps-tile-ico">🌊</div>
             <div><p class="ps-map-name">Wavetop Circuit</p><p class="ps-map-desc">A slalom off the carrier's bow, wave-high out to the enemy fleet and home. 18 rings.</p></div>
+          </div>
+          <div class="ps-menu-row">
+            <button type="button" class="ps-back-btn" data-menuback>‹ Modes</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Free Flight: map select (no enemies, no objectives — just flying) -->
+      <div id="ps-free-menu" class="ps-modal ps-hidden">
+        <div class="ps-card">
+          <h1>Free Flight</h1>
+          <p class="ps-sub">Pick a playground and take off. No enemies, no objectives, no timer — just you and the aeroplane. A crash still ends the flight.</p>
+          <div class="ps-map-tile" data-freemap="coastal">
+            <div class="ps-tile-ico">🏞️</div>
+            <div><p class="ps-map-name">Coastal Airfield</p><p class="ps-map-desc">The home valley: mountains, lakes, forests and the full-length runway. Two bridges to sneak under, if you're feeling it.</p></div>
+          </div>
+          <div class="ps-map-tile" data-freemap="ocean">
+            <div class="ps-tile-ico">🌊</div>
+            <div><p class="ps-map-name">Open Ocean</p><p class="ps-map-desc">Launch off the carrier deck into empty blue. Both fleets ride at anchor — nobody shoots back.</p></div>
+          </div>
+          <div class="ps-map-tile" data-freemap="city">
+            <div class="ps-tile-ico">🏙️</div>
+            <div><p class="ps-map-name">The City</p><p class="ps-map-desc">The island airfield and the 1940s skyline, all to yourself. Mind the towers — they're solid.</p></div>
           </div>
           <div class="ps-menu-row">
             <button type="button" class="ps-back-btn" data-menuback>‹ Modes</button>

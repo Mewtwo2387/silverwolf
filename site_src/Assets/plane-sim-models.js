@@ -1428,6 +1428,277 @@ export function makeNissenHut(len = 9) {
   return g;
 }
 
+// ---- WWII airfield dispersal & defences. The same rough set stands on both
+//      the Coastal home field and the City island field — see
+//      buildAirfieldExtras() for the shared layout. ----
+
+// Sandbag courses (the AA pit's ring wall): staggered rows of shaded bags so
+// the wall reads as stacked sacks from a low pass, not a smooth drum.
+function sandbagTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#7d7057';
+  ctx.fillRect(0, 0, 128, 128);
+  const BH = 18; const BW = 36; const R = 6;
+  for (let y = -BH, row = 0; y < 128 + BH; y += BH, row++) {
+    const off = (row % 2) * (BW / 2);
+    for (let x = -BW; x < 128 + BW; x += BW) {
+      const bx = x + off + 1.5; const by = y + 2; const w = BW - 3; const h = BH - 3;
+      const g = ctx.createLinearGradient(0, by, 0, by + h);
+      g.addColorStop(0, '#9c8f70');
+      g.addColorStop(0.6, '#847656');
+      g.addColorStop(1, '#5f5440');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(bx + R, by);
+      ctx.arcTo(bx + w, by, bx + w, by + h, R);
+      ctx.arcTo(bx + w, by + h, bx, by + h, R);
+      ctx.arcTo(bx, by + h, bx, by, R);
+      ctx.arcTo(bx, by, bx + w, by, R);
+      ctx.fill();
+    }
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+// A fighter dispersal blast pen: a U of earth banks (trapezoid section, grass
+// over rubble) around a concrete pad, open toward local -Z so a fighter taxis
+// in off the perimeter track. The three banks are the only solid parts — you
+// can fly INTO the pen under the open top (the caller registers the banks as
+// separate crash boxes).
+export function makeBlastPen() {
+  const g = new THREE.Group();
+  const earth = new THREE.MeshStandardMaterial({ color: 0x5d6a38, roughness: 0.97 });
+  const concMat = new THREE.MeshStandardMaterial({
+    map: detailTexture('concrete', 3), color: 0x8d8a80, roughness: 0.92,
+  });
+  // Bank cross-section: base 3.4 m, crest 1.5 m, 2.5 m high.
+  const sect = new THREE.Shape();
+  sect.moveTo(-1.7, 0); sect.lineTo(1.7, 0); sect.lineTo(0.75, 2.5); sect.lineTo(-0.75, 2.5);
+  sect.closePath();
+  const bank = (len) => {
+    const geo = new THREE.ExtrudeGeometry(sect, { depth: len, bevelEnabled: false });
+    geo.translate(0, 0, -len / 2);
+    return new THREE.Mesh(geo, earth);
+  };
+  // Back bank (+Z), length along X, long enough to close the rear corners.
+  const back = bank(19);
+  back.rotation.y = Math.PI / 2;
+  back.position.set(0, 0, 8);
+  g.add(back);
+  // Side banks, length along Z, stops short of the front so the mouth stays open.
+  for (const sx of [-7.6, 7.6]) {
+    const side = bank(16.3);
+    side.position.set(sx, 0, 0);
+    g.add(side);
+  }
+  // Concrete dispersal pad, slightly proud of the grass.
+  const pad = new THREE.Mesh(new THREE.BoxGeometry(16.5, 0.14, 17.6), concMat);
+  pad.position.set(0, 0.07, 0.4);
+  g.add(pad);
+  setShadows(g);
+  return g;
+}
+
+// A dispersed munitions/store bunker: a reinforced concrete core half-buried
+// under a grassed earth mound, with a concrete headwall and a steel blast
+// door on the local -Z face, plus a vent pipe through the mound crest. Bomb
+// stores sat well away from the hangars — exactly where these are placed.
+export function makeBunker() {
+  const g = new THREE.Group();
+  const concMat = new THREE.MeshStandardMaterial({
+    map: detailTexture('concrete', 2), color: 0x9b978b, roughness: 0.9,
+  });
+  const earth = new THREE.MeshStandardMaterial({
+    color: 0x596738, roughness: 0.97, side: THREE.DoubleSide,
+  });
+  const steel = new THREE.MeshStandardMaterial({
+    color: 0x3c4147, roughness: 0.55, metalness: 0.5,
+  });
+  const core = new THREE.Mesh(new THREE.BoxGeometry(8.2, 3.0, 5.6), concMat);
+  core.position.y = 1.5;
+  g.add(core);
+  // The mound: a squashed hemisphere over the core, its phi gap centred on -Z
+  // (three.js sphere phi = 3π/2 faces -Z) so the door face stays exposed.
+  const gap = 1.35;
+  const mound = new THREE.Mesh(
+    new THREE.SphereGeometry(1, 26, 14, (3 * Math.PI) / 2 + gap / 2, Math.PI * 2 - gap, 0, Math.PI / 2),
+    earth,
+  );
+  mound.scale.set(5.6, 3.6, 4.6);
+  mound.position.set(0, 0.55, 0.35);
+  g.add(mound);
+  // Headwall closing the gap, the blast door and its lintel.
+  const headwall = new THREE.Mesh(new THREE.BoxGeometry(8.2, 3.3, 0.5), concMat);
+  headwall.position.set(0, 1.65, -2.85);
+  g.add(headwall);
+  const door = new THREE.Mesh(new THREE.BoxGeometry(2.3, 2.5, 0.2), steel);
+  door.position.set(0, 1.25, -3.14);
+  g.add(door);
+  const lintel = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.3, 0.24), concMat);
+  lintel.position.set(0, 2.65, -3.12);
+  g.add(lintel);
+  // Vent pipe through the mound crest.
+  const vent = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 1.1, 8), steel);
+  vent.position.set(1.6, 4.0, 1.2);
+  g.add(vent);
+  const ventCap = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.14, 8), steel);
+  ventCap.position.set(1.6, 4.6, 1.2);
+  g.add(ventCap);
+  // Concrete apron in front of the door.
+  const apron = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.12, 3.2), concMat);
+  apron.position.set(0, 0.06, -4.6);
+  g.add(apron);
+  setShadows(g);
+  return g;
+}
+
+// A hexagonal concrete pillbox watching a runway approach: embrasure slots
+// proud of the faces, a roof slab with a drip edge, and a rear door.
+export function makePillbox() {
+  const g = new THREE.Group();
+  const concMat = new THREE.MeshStandardMaterial({
+    map: detailTexture('concrete', 1.5), color: 0x8f8c82, roughness: 0.92,
+  });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x22262b, roughness: 0.9 });
+  const walls = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 2.15, 2.2, 6), concMat);
+  walls.position.y = 1.1;
+  g.add(walls);
+  const roof = new THREE.Mesh(new THREE.CylinderGeometry(2.25, 2.25, 0.3, 6), concMat);
+  roof.position.y = 2.35;
+  g.add(roof);
+  // Hex faces point at 30°+k·60° (vertices at 0°, 60°, ...); the tapered
+  // apothem at slot height is ~1.78 m.
+  for (const a of [0.52, 1.57, 2.62, 5.24]) {
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.26, 0.12), dark);
+    slot.position.set(Math.sin(a) * 1.78, 1.45, Math.cos(a) * 1.78);
+    slot.rotation.y = a;
+    g.add(slot);
+  }
+  const door = new THREE.Mesh(new THREE.BoxGeometry(0.85, 1.65, 0.12), dark);
+  door.position.set(Math.sin(3.66) * 1.84, 0.85, Math.cos(3.66) * 1.84);
+  door.rotation.y = 3.66;
+  g.add(door);
+  const pad = new THREE.Mesh(new THREE.CylinderGeometry(2.7, 2.8, 0.12, 20), concMat);
+  pad.position.y = 0.06;
+  g.add(pad);
+  setShadows(g);
+  return g;
+}
+
+// A light-AA pit: a sandbag ring on a gravel pad with a Bofors-style gun —
+// cruciform platform, curved shield and a long elevated barrel (local -Z).
+export function makeAAEmplacement() {
+  const g = new THREE.Group();
+  const bagMat = new THREE.MeshStandardMaterial({
+    map: sandbagTexture(), roughness: 0.95, side: THREE.DoubleSide,
+  });
+  const gravel = new THREE.MeshStandardMaterial({ color: 0x7c7668, roughness: 0.97 });
+  const steel = new THREE.MeshStandardMaterial({
+    color: 0x4b5344, roughness: 0.5, metalness: 0.5, side: THREE.DoubleSide,
+  });
+  const pad = new THREE.Mesh(new THREE.CylinderGeometry(4.3, 4.45, 0.14, 24), gravel);
+  pad.position.y = 0.07;
+  g.add(pad);
+  const wall = new THREE.Mesh(new THREE.CylinderGeometry(3.7, 3.95, 1.0, 24, 1, true), bagMat);
+  wall.position.y = 0.64;
+  g.add(wall);
+  // Cruciform platform + pedestal.
+  const cross1 = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.16, 0.5), steel);
+  cross1.position.y = 0.3;
+  g.add(cross1);
+  const cross2 = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.16, 3.0), steel);
+  cross2.position.y = 0.3;
+  g.add(cross2);
+  const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 0.9, 10), steel);
+  ped.position.y = 0.85;
+  g.add(ped);
+  // Breech + elevated barrel (rotateX(-0.96) points the +Y axis up and toward
+  // -Z: ~(0, +0.57, -0.82), a 35° elevation).
+  const breech = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.55, 1.0), steel);
+  breech.position.set(0, 1.55, 0.15);
+  g.add(breech);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 3.4, 10), steel);
+  barrel.rotation.x = -0.96;
+  barrel.position.set(0, 1.55 + Math.cos(0.96) * 1.7, 0.15 - Math.sin(0.96) * 1.7);
+  g.add(barrel);
+  const muzzle = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.3, 8), steel);
+  muzzle.rotation.x = -0.96;
+  muzzle.position.set(0, 1.55 + Math.cos(0.96) * 3.3, 0.15 - Math.sin(0.96) * 3.3);
+  g.add(muzzle);
+  // Curved gun shield ahead of the breech (phi gap centred on -Z).
+  const shield = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.05, 1.05, 1.25, 16, 1, true, (3 * Math.PI) / 2 - 0.85, 1.7),
+    steel,
+  );
+  shield.position.set(0, 1.35, 0);
+  g.add(shield);
+  setShadows(g);
+  return g;
+}
+
+// The shared dispersal + defence set, laid out identically on the Coastal
+// home field and the City island field (which copies the Coastal offsets):
+// two fighter blast pens on the east side with their mouths toward the
+// runway, a bomb-store cluster dispersed far to the south-east (clear of the
+// technical site), pillboxes watching both runway approaches, and a sandbag
+// AA pit mid-field. Coordinates are FIELD-LOCAL (origin = runway centre,
+// x east / z south, ground y = 0). Returns { group, obstacles, pads }:
+// obstacles are crash AABBs { x0..z1, top, reason } for the caller's
+// registry; pads are ground footprints { x0, x1, z0, z1 } the Coastal map
+// uses to keep grass blades and trees off the new standings.
+export function buildAirfieldExtras() {
+  const group = new THREE.Group();
+  const obstacles = [];
+  const pads = [];
+  const LAYOUT = [
+    // Blast pen A (NE dispersal), mouth facing -X (west, toward the runway).
+    [makeBlastPen, 105, 95, Math.PI / 2, [
+      [111.3, 114.7, 85.5, 104.5, 2.5], // back bank (east)
+      [96.85, 113.15, 85.7, 89.1, 2.5], // north bank
+      [96.85, 113.15, 100.9, 104.3, 2.5], // south bank
+    ], 'Flew into a blast pen', [94, 117, 83, 107]],
+    // Blast pen B (SE dispersal), mouth facing -X.
+    [makeBlastPen, 118, -105, Math.PI / 2, [
+      [124.3, 127.7, -114.5, -95.5, 2.5],
+      [109.85, 126.15, -114.3, -110.9, 2.5],
+      [109.85, 126.15, -99.1, -95.7, 2.5],
+    ], 'Flew into a blast pen', [107, 130, -117, -94]],
+    // Bomb stores, dispersed south-east well away from the technical site.
+    [makeBunker, 100, -195, 0, [[94.4, 105.6, -199.95, -190.05, 4.8]],
+      'Flew into a bunker', [93, 107, -201.5, -188.5]],
+    [makeBunker, 132, -212, Math.PI / 2, [[127, 137, -217.6, -206.4, 4.8]],
+      'Flew into a bunker', [125.5, 138.5, -219, -205]],
+    [makeBunker, 163, -190, 0, [[157.4, 168.6, -194.95, -185.05, 4.8]],
+      'Flew into a bunker', [156, 170, -196.5, -183.5]],
+    // Pillboxes watching the runway approaches, clear of the thresholds.
+    [makePillbox, 60, -315, 0.4, [[57.8, 62.2, -317.2, -312.8, 2.7]],
+      'Flew into a pillbox', [56.5, 63.5, -318.5, -311.5]],
+    [makePillbox, 58, 318, -0.3, [[55.8, 60.2, 315.8, 320.2, 2.7]],
+      'Flew into a pillbox', [54.5, 61.5, 314.5, 321.5]],
+    // The AA pit, mid-field east, barrel trained outward.
+    [makeAAEmplacement, 115, 20, -Math.PI / 2, [[110.5, 119.5, 15.5, 24.5, 3.6]],
+      'Flew into the AA pit', [108.5, 121.5, 13.5, 26.5]],
+  ];
+  for (const [make, x, z, ry, boxes, reason, pad] of LAYOUT) {
+    const m = make();
+    m.position.set(x, 0, z);
+    m.rotation.y = ry;
+    group.add(m);
+    for (const [x0, x1, z0, z1, top] of boxes) obstacles.push({
+      x0, x1, z0, z1, top, reason,
+    });
+    pads.push({
+      x0: pad[0], x1: pad[1], z0: pad[2], z1: pad[3],
+    });
+  }
+  return { group, obstacles, pads };
+}
+
 // ---- A stone-piered road viaduct for the stunt courses: deck runs along
 // local X (length `len`), deck TOP at y = `deckY`, piers dropping to `botY`
 // (put the group at water level and let the piers reach the lakebed). Open

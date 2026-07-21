@@ -34,6 +34,7 @@ import {
   makeWindsock, makeFuelTank, makeBowser, makeNissenHut, PLANE_INFO, BOMBER_INFO, planeSpecs, restHeight,
   makePineCanopyGeo, makeBroadleafCanopyGeo, makeConiferCanopyGeo, makeBroadleafTrunkGeo,
   makeCarrier, makeBomb, mountWingBombs, CARRIER, makeBridge, makeCabin, makeJetty,
+  buildAirfieldExtras,
 } from './plane-sim-models.js';
 import {
   TERRAIN, terrainHeight, canyonHeight, forestMask, buildTerrain, buildWater, smoothstep, fbm,
@@ -149,6 +150,9 @@ import { buildCity, CITY } from './plane-sim-city.js';
     WAVE: { easy: 2, normal: 3, hard: 5 }, // raiders per wave by raid intensity
   };
   const validMap = (n) => n === 'coastal' || n === 'ocean' || n === 'city';
+  // Display names for the free-flight end card (the sortie names live in the
+  // page markup; the sim itself only tracks the short keys).
+  const MAP_LABEL = { coastal: 'Coastal Airfield', ocean: 'Open Ocean', city: 'The City' };
   let mapName = (() => {
     try { const m = localStorage.getItem('ps-map'); return validMap(m) ? m : 'coastal'; } catch (_) { return 'coastal'; }
   })();
@@ -173,8 +177,10 @@ import { buildCity, CITY } from './plane-sim-city.js';
 
   // ---- Game modes. 'sortie' is the combat game (the original); 'tutorial'
   //      runs bite-size scripted lessons with one goal per step; 'stunt' is a
-  //      ring-chase time trial. Chosen on the mode screen after the hangar,
-  //      then a chapter within it. `tut`/`stunt` hold the live chapter state. ----
+  //      ring-chase time trial; 'free' is a no-enemies, no-objective roam on
+  //      any map (a crash still ends the flight). Chosen on the mode screen
+  //      after the hangar, then a chapter within it. `tut`/`stunt` hold the
+  //      live chapter state. ----
   let gameMode = 'sortie';
   let tut = null; // { id, def, step, holdT, hitFlag }
   let stunt = null; // { id, def, rings[], i, score, hits, t, prev }
@@ -543,6 +549,13 @@ import { buildCity, CITY } from './plane-sim-city.js';
     (r) => x > r.x0 - m && x < r.x1 + m && z > r.z0 - m && z < r.z1 + m,
   );
 
+  // The shared dispersal + defence set (blast pens, bomb-store bunkers,
+  // pillboxes, an AA pit) — the City island field uses the identical layout.
+  // Its pads join PAVED now so the grass blades and the tree scatter below
+  // keep the new standings clear.
+  const airfieldExtras = buildAirfieldExtras();
+  PAVED.push(...airfieldExtras.pads);
+
   // Ultra: instanced grass blades wrap around the aircraft (coastal map only —
   // it lives in landGroup so the map switch hides it with everything else).
   let grassField = null;
@@ -778,6 +791,11 @@ import { buildCity, CITY } from './plane-sim-city.js';
       parked.group.rotation.y = ry;
       field.add(parked.group);
     }
+
+    // The shared dispersal + defence set (pens, bunkers, pillboxes, AA pit),
+    // standing on the east side; its banks/walls join the crash registry.
+    landGroup.add(airfieldExtras.group);
+    for (const o of airfieldExtras.obstacles) obBox.push(o);
 
     landGroup.add(markings);
     landGroup.add(field);
@@ -1235,10 +1253,10 @@ import { buildCity, CITY } from './plane-sim-city.js';
     scene.add(plane);
   }
   // Rack i is visible while bomb i hasn't been dropped (drop order: 0 then 1).
-  // No bombs on a stunt run — dead weight through the rings.
+  // No bombs on a stunt run or a free flight — dead weight with nothing to hit.
   function syncBombRacks() {
     for (let i = 0; i < bombRacks.length; i++) {
-      bombRacks[i].visible = mapName === 'ocean' && gameMode !== 'stunt' && (2 - bombs) <= i;
+      bombRacks[i].visible = mapName === 'ocean' && gameMode !== 'stunt' && gameMode !== 'free' && (2 - bombs) <= i;
     }
   }
   // Are the bombs droppable right now? Sortie: only once the strike phase is
@@ -1866,7 +1884,7 @@ import { buildCity, CITY } from './plane-sim-city.js';
     timer: document.getElementById('ps-city-timer'),
   };
   function updateCityHUD() {
-    if (cityHud.wrap) cityHud.wrap.style.display = (mapName === 'city' && started && !menuMode && !crashed && !won) ? '' : 'none';
+    if (cityHud.wrap) cityHud.wrap.style.display = (mapName === 'city' && gameMode === 'sortie' && started && !menuMode && !crashed && !won) ? '' : 'none';
     const hp = Math.max(0, cityHP);
     if (cityHud.fill) {
       cityHud.fill.style.width = `${hp}%`;
@@ -2576,6 +2594,13 @@ import { buildCity, CITY } from './plane-sim-city.js';
           ['Aircraft', PLANE_TYPES[planeName].label],
           ['Time', time],
         ];
+      } else if (gameMode === 'free') {
+        rows = [
+          ['Flight', 'Free Flight'],
+          ['Map', MAP_LABEL[mapName] || mapName],
+          ['Aircraft', PLANE_TYPES[planeName].label],
+          ['Time aloft', time],
+        ];
       } else if (mapName === 'city') {
         const held = fmtTime((CITY_MODE.DURATION - Math.max(0, cityClock)) * 1000);
         rows = [
@@ -2920,9 +2945,10 @@ import { buildCity, CITY } from './plane-sim-city.js';
   const mapMenuEl = document.getElementById('ps-map-menu');
   const tutMenuEl = document.getElementById('ps-tut-menu');
   const stuntMenuEl = document.getElementById('ps-stunt-menu');
+  const freeMenuEl = document.getElementById('ps-free-menu');
   const menuNameEl = document.getElementById('ps-menu-name');
   const menuStatsEl = document.getElementById('ps-mstats');
-  let menuMode = null; // null (flying) | 'plane' | 'mode' | 'sortie' | 'tutorial' | 'stunt'
+  let menuMode = null; // null (flying) | 'plane' | 'mode' | 'sortie' | 'tutorial' | 'stunt' | 'free'
   let menuAngle = 2.35; // hangar orbit angle, advanced each frame
   const SPEED_LBL = { kn: 'kn', mph: 'mph', kmh: 'km/h' };
 
@@ -2956,6 +2982,7 @@ import { buildCity, CITY } from './plane-sim-city.js';
     if (mapMenuEl) mapMenuEl.classList.toggle('ps-hidden', mode !== 'sortie');
     if (tutMenuEl) tutMenuEl.classList.toggle('ps-hidden', mode !== 'tutorial');
     if (stuntMenuEl) stuntMenuEl.classList.toggle('ps-hidden', mode !== 'stunt');
+    if (freeMenuEl) freeMenuEl.classList.toggle('ps-hidden', mode !== 'free');
     stage.classList.toggle('ps-in-menu', !!mode);
     // Bandits have no business photobombing the hangar turntable.
     for (const e of enemies) e.group.visible = e.alive && !mode;
@@ -2995,6 +3022,22 @@ import { buildCity, CITY } from './plane-sim-city.js';
     updateObjective();
     audio.ensure(); // user gesture -> AudioContext allowed
   }
+  // Free Flight: borrow the chosen map with no opposition and no objective —
+  // take off and roam; crashing is still the end. applyWorld (not setMap) so
+  // the saved sortie-map preference survives the visit, and respawnBase parks
+  // us on the map's runway/deck with desiredEnemyCount() == 0 (no bandits).
+  function startFree(map) {
+    clearSpecialModes();
+    gameMode = 'free';
+    if (validMap(map)) applyWorld(map);
+    setMenu(null);
+    respawnBase();
+    started = true;
+    engageStart = performance.now();
+    updateObjective();
+    audio.ensure();
+    syncModeHUD();
+  }
   function cyclePlane(dir) {
     const i = PLANE_ORDER.indexOf(planeName);
     setPlaneType(PLANE_ORDER[(i + dir + PLANE_ORDER.length) % PLANE_ORDER.length]);
@@ -3020,6 +3063,11 @@ import { buildCity, CITY } from './plane-sim-city.js';
   for (const b of document.querySelectorAll('[data-stunt]')) {
     b.addEventListener('mousedown', (ev) => ev.stopPropagation());
     b.addEventListener('click', (ev) => { ev.stopPropagation(); startStunt(b.dataset.stunt); });
+  }
+  // Free-flight map tiles: click one and you're on its runway, wheels chocked.
+  for (const b of document.querySelectorAll('[data-freemap]')) {
+    b.addEventListener('mousedown', (ev) => ev.stopPropagation());
+    b.addEventListener('click', (ev) => { ev.stopPropagation(); startFree(b.dataset.freemap); });
   }
   for (const b of document.querySelectorAll('[data-menuback]')) {
     b.addEventListener('click', (ev) => { ev.stopPropagation(); setMenu(b.dataset.menuback || 'mode'); });
@@ -3052,7 +3100,7 @@ import { buildCity, CITY } from './plane-sim-city.js';
     keys[k] = true;
     if (k === 'escape') {
       if (settingsOpen) { showSettings(false); return; } // settings-over-menu closes first
-      if (menuMode === 'sortie' || menuMode === 'tutorial' || menuMode === 'stunt') { setMenu('mode'); return; }
+      if (menuMode === 'sortie' || menuMode === 'tutorial' || menuMode === 'stunt' || menuMode === 'free') { setMenu('mode'); return; }
       if (menuMode === 'mode') { setMenu('plane'); return; }
       if (menuMode) return; // the hangar is the root screen
       if (started) setPaused(!userPaused);
@@ -4472,6 +4520,7 @@ import { buildCity, CITY } from './plane-sim-city.js';
     get gameMode() { return gameMode; },
     tutorial: startTutorial,
     stunt: startStunt,
+    free: startFree,
     tutState() { return tut && { id: tut.id, step: tut.step, of: tut.def.steps.length, hit: tut.hitFlag }; },
     stuntState() {
       return stunt && {

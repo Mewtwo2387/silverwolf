@@ -26,6 +26,7 @@ import {
   makeControlTower, makeHangar, makeWindsock, makeFuelTank, makeJetty,
   makeNissenHut, makeBowser, buildAircraft,
   makeBroadleafCanopyGeo, makeBroadleafTrunkGeo,
+  buildAirfieldExtras,
 } from './plane-sim-models.js';
 
 // ---- Layout (metres, world space). The city is a long N–S island on the east
@@ -254,7 +255,9 @@ const LANDMARKS = [
 //      runway with full markings, the west-side perimeter taxiway with hangar
 //      spurs / threshold links / apron pad, control tower, two hangars with
 //      parked fighters inside, the Nissen-hut row, dispersed fuel tanks, a
-//      bowser on the apron, windsocks, and the chain-link compound fence.
+//      bowser on the apron, windsocks, the chain-link compound fence, and the
+//      shared dispersal/defence set (blast pens, bomb stores, pillboxes, an
+//      AA pit — see buildAirfieldExtras in plane-sim-models.js).
 //      All positions are the Coastal offsets, translated to the island. ----
 function buildField(group, obstacles) {
   const F = CITY.FIELD; const g = CITY.GROUND_Y;
@@ -395,6 +398,18 @@ function buildField(group, obstacles) {
     group.add(parked.group);
   }
 
+  // The shared dispersal + defence set (blast pens, bomb stores, pillboxes,
+  // AA pit) — the identical layout to the Coastal field, island-translated.
+  const extras = buildAirfieldExtras();
+  extras.group.position.set(F.x, g, F.z);
+  group.add(extras.group);
+  for (const o of extras.obstacles) {
+    obstacles.push({
+      x0: F.x + o.x0, x1: F.x + o.x1, z0: F.z + o.z0, z1: F.z + o.z1,
+      top: g + o.top, reason: o.reason,
+    });
+  }
+
   return socks;
 }
 
@@ -448,8 +463,10 @@ export function buildCity() {
   flatPatch(P.x0, P.x1, P.z0, P.z1, grassMat, 0.08);
   flatPatch(I.x - I.hx, I.x + I.hx, -2150, -1955, grassMat, 0.08); // Battery green
 
-  // Park water: the ocean's material recipe (ripple normal map, glossy,
-  // translucent) but held still — sheltered water — and a touch greener.
+  // Park water: sheltered, still and MURKY — real park ponds are silted, and
+  // a translucent surface showed the ground (and, before the paths/lawns were
+  // clipped clear, submerged pavement) through it. Fully opaque, a muddy bed
+  // disc just under each surface, so the bottom can never be seen.
   let pondNormals = null;
   if (GFX.sceneryNormals) {
     pondNormals = loadSceneryTexture('/static/planes/water-normal.jpg');
@@ -458,14 +475,13 @@ export function buildCity() {
     pondNormals.anisotropy = GFX.aniso;
   }
   const pondMat = new THREE.MeshStandardMaterial({
-    color: 0x1e6168, // the sea's blue, nudged toward park-water green
+    color: 0x1a4f50, // deep park-water green
     roughness: 0.08,
     metalness: 0.15,
     normalMap: pondNormals,
     normalScale: new THREE.Vector2(0.35, 0.35),
-    transparent: true,
-    opacity: 0.92,
   });
+  const mudMat = new THREE.MeshStandardMaterial({ color: 0x2b2718, roughness: 1 });
   const ellipse = (cx, cz, rx, rz, mat, lift) => {
     const m = new THREE.Mesh(new THREE.CircleGeometry(1, 40), mat);
     m.scale.set(rx, rz, 1);
@@ -480,24 +496,30 @@ export function buildCity() {
     { x: P.x0 + 120, z: P.z0 + 150, rx: 58, rz: 76 }, // the pond
     { x: P.x0 + 118, z: P.z0 + 350, rx: 74, rz: 56 }, // the lake
   ];
+  for (const w of WATERS) ellipse(w.x, w.z, w.rx, w.rz, mudMat, 0.095); // the silt bed
   for (const w of WATERS) ellipse(w.x, w.z, w.rx, w.rz, pondMat, 0.12);
   const inWater = (x, z, m) => WATERS.some((w) => {
     const dx = (x - w.x) / (w.rx + m); const dz = (z - w.z) / (w.rz + m);
     return dx * dx + dz * dz < 1;
   });
 
-  // Meadows: the big lawns (lighter green), with sandy ball diamonds on the
-  // Great Lawn like the reference photo.
+  // Meadows: the big lawns (lighter green). Both are plotted to sit CLEAR of
+  // the waters — the earlier layout let the Sheep Meadow slide under the pond
+  // and lake and put the whole Great Lawn under the reservoir, which read as
+  // pale "pavements" under the surface.
   const lawnMat = new THREE.MeshStandardMaterial({ color: 0x5d7c38, roughness: 0.95 });
-  flatPatch(P.x0 + 55, P.x1 - 130, P.z0 + 170, P.z0 + 330, lawnMat, 0.09); // Sheep Meadow
-  flatPatch(P.x0 + 70, P.x1 - 70, P.z1 - 320, P.z1 - 120, lawnMat, 0.09); // Great Lawn
+  flatPatch(P.x0 + 200, P.x1 - 70, P.z0 + 180, P.z0 + 320, lawnMat, 0.09); // Sheep Meadow (east of the pond/lake)
+  flatPatch(P.x0 + 190, P.x1 - 40, P.z0 + 40, P.z0 + 140, lawnMat, 0.09); // Great Lawn (park's SE corner)
+  // Sandy ball diamonds on the Great Lawn — dry ground, south-east corner.
   const sandMat = new THREE.MeshStandardMaterial({ color: 0xc2a26a, roughness: 0.95 });
-  for (const [dx2, dz2] of [[110, -160], [280, -160], [110, -280], [280, -280]]) {
-    ellipse(P.x0 + 70 + dx2, P.z1 + dz2 + 60, 17, 17, sandMat, 0.1);
+  for (const [dx2, dz2] of [[250, 60], [360, 60], [250, 108], [360, 108]]) {
+    ellipse(P.x0 + dx2, P.z0 + dz2, 14, 14, sandMat, 0.1);
   }
 
   // Paths: a perimeter loop, two transverse crossings, and a ring track around
-  // the reservoir (strips, like the airfield markings).
+  // the reservoir (strips, like the airfield markings). The crossings ROUTE
+  // AROUND the water: strips are clipped against the pond/lake/reservoir
+  // (with a grass margin) so no pavement runs under a pond.
   const pathMat = new THREE.MeshStandardMaterial({ color: 0xb3ab93, roughness: 0.95 });
   const path = (x0, x1, z0, z1) => flatPatch(x0, x1, z0, z1, pathMat, 0.1);
   const inset = 16; const pw = 6;
@@ -505,21 +527,47 @@ export function buildCity() {
   path(P.x0 + inset, P.x1 - inset, P.z1 - inset - pw, P.z1 - inset); // north
   path(P.x0 + inset, P.x0 + inset + pw, P.z0 + inset, P.z1 - inset); // west
   path(P.x1 - inset - pw, P.x1 - inset, P.z0 + inset, P.z1 - inset); // east
-  path(P.x0 + inset, P.x1 - inset, P.z0 + 395, P.z0 + 395 + pw); // south transverse
-  path(P.x0 + inset, P.x1 - inset, P.z1 - 100, P.z1 - 100 + pw); // north transverse
+  // Subtract the water spans from an x-running strip at height zc; returns the
+  // surviving [x0, x1] segments (paths end at the shore, never dive under it).
+  const drySegments = (x0, x1, zc) => {
+    const cuts = [];
+    for (const w of WATERS) {
+      const dz = (zc - w.z) / (w.rz + 2); // +2: keep a grass verge off the water
+      if (Math.abs(dz) >= 1) continue;
+      const half = (w.rx + 2) * Math.sqrt(1 - dz * dz);
+      cuts.push([w.x - half, w.x + half]);
+    }
+    cuts.sort((a, b) => a[0] - b[0]);
+    const segs = [];
+    let cur = x0;
+    for (const [c0, c1] of cuts) {
+      if (c0 > cur) segs.push([cur, Math.min(c0, x1)]);
+      cur = Math.max(cur, c1);
+    }
+    if (cur < x1) segs.push([cur, x1]);
+    return segs.filter(([a, b]) => b - a > 2);
+  };
+  for (const [sx0, sx1] of drySegments(P.x0 + inset, P.x1 - inset, P.z0 + 395 + pw / 2)) {
+    path(sx0, sx1, P.z0 + 395, P.z0 + 395 + pw); // south transverse
+  }
+  for (const [sx0, sx1] of drySegments(P.x0 + inset, P.x1 - inset, P.z1 - 100 + pw / 2)) {
+    path(sx0, sx1, P.z1 - 100, P.z1 - 100 + pw); // north transverse
+  }
   { // reservoir running track: an ellipse ring drawn as a thin flat ring mesh
     const w = WATERS[0];
     const ring = new THREE.Mesh(new THREE.RingGeometry(1, 1.06, 48), pathMat);
     ring.scale.set(w.rx + 14, w.rz + 14, 1);
     ring.rotation.x = -Math.PI / 2;
-    ring.position.set(w.x, g0 + 0.1, w.z);
+    ring.position.set(w.x, g0 + 0.115, w.z); // just above the crossing paths (no z-fight)
     ring.receiveShadow = true;
     group.add(ring);
   }
 
-  // The fountain at the south transverse crossing (basin, water, spray).
+  // The fountain on the reservoir's south shore, where the clipped south
+  // transverse crossing ends at the water (a Bethesda-terrace moment). It
+  // used to sit at the park centreline — smack IN the reservoir.
   {
-    const fx = 1500; const fz = P.z0 + 398;
+    const fx = 1660; const fz = P.z0 + 398;
     const basin = new THREE.Mesh(
       new THREE.CylinderGeometry(7, 7.6, 1.3, 20),
       new THREE.MeshStandardMaterial({ color: 0x9a917d, roughness: 0.85 }),
@@ -576,8 +624,8 @@ export function buildCity() {
       spots.push([x + (rng() - 0.5) * 8, P.z0 + 10 + (rng() - 0.5) * 5]);
       spots.push([x + (rng() - 0.5) * 8, P.z1 - 10 + (rng() - 0.5) * 5]);
     }
-    const inLawn = (x, z) => (x > P.x0 + 55 && x < P.x1 - 130 && z > P.z0 + 170 && z < P.z0 + 330)
-      || (x > P.x0 + 70 && x < P.x1 - 70 && z > P.z1 - 320 && z < P.z1 - 120);
+    const inLawn = (x, z) => (x > P.x0 + 200 && x < P.x1 - 70 && z > P.z0 + 180 && z < P.z0 + 320)
+      || (x > P.x0 + 190 && x < P.x1 - 40 && z > P.z0 + 40 && z < P.z0 + 140);
     let guard = 0;
     const want = Math.round(150 * dens);
     let placed = 0;
@@ -585,6 +633,8 @@ export function buildCity() {
       const x = P.x0 + 14 + rng() * (P.x1 - P.x0 - 28);
       const z = P.z0 + 14 + rng() * (P.z1 - P.z0 - 28);
       if (inWater(x, z, 10) || inLawn(x, z)) continue;
+      // ...and off the fountain plaza on the reservoir's south shore.
+      if (Math.hypot(x - 1660, z - (P.z0 + 398)) < 14) continue;
       spots.push([x, z]);
       placed++;
     }
