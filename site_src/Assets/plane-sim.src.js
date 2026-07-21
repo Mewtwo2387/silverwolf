@@ -31,7 +31,7 @@
 import * as THREE from 'three';
 import {
   buildAircraft, applyControlSurfaces, setPropBlur, makeHangar, makeControlTower,
-  makeWindsock, makeFuelTank, makeBowser, makeNissenHut, PLANE_INFO, planeSpecs, restHeight,
+  makeWindsock, makeFuelTank, makeBowser, makeNissenHut, PLANE_INFO, BOMBER_INFO, planeSpecs, restHeight,
   makePineCanopyGeo, makeBroadleafCanopyGeo, makeConiferCanopyGeo, makeBroadleafTrunkGeo,
   makeCarrier, makeBomb, mountWingBombs, CARRIER, makeBridge, makeCabin, makeJetty,
 } from './plane-sim-models.js';
@@ -111,6 +111,7 @@ import { buildCity, CITY } from './plane-sim-city.js';
     // aimbot lead), and they pull the trigger slower than the player.
     GUN_DMG: 3, // bandit damage per round (flat: difficulty is the balance knob)
     HITBOX_R: 8, // simplified spherical hitbox radius around any plane (m)
+    HITBOX_BOMBER: 11, // the carpet bomber is a fatter target (17 m span)
     RADAR_RANGE: 1700, // within this, radar shows true relative pos; beyond -> rim blip
     AI_AIM_JITTER: 0.012, // base rad of spread per shot (scaled by difficulty + personality)
     AI_LEAD: 520, // m/s used to lead the target while STEERING (~tracer speed)
@@ -1708,7 +1709,8 @@ import { buildCity, CITY } from './plane-sim-city.js';
     let bestT = ac.gunRange; let bestE = null;
     for (const e of enemies) {
       if (!e.alive) continue;
-      const t = rayHitsSphere(muzzle, _shot, e.group.position, CFG.HITBOX_R, ac.gunRange);
+      const r = e.role === 'bomber' ? CFG.HITBOX_BOMBER : CFG.HITBOX_R;
+      const t = rayHitsSphere(muzzle, _shot, e.group.position, r, ac.gunRange);
       if (t >= 0 && t < bestT) { bestT = t; bestE = e; }
     }
     if (bestE) {
@@ -2058,32 +2060,31 @@ import { buildCity, CITY } from './plane-sim-city.js';
     e.mode = 'engage'; e.modeT = 0; e.coTurn = 0; e.underFire = 0;
   }
 
-  // ---- City raiders. Fragile bombers that ignore the player and run bombs onto
-  //      the city, sluggishly jinking when you get on them. Built like bandits
-  //      but with four belly bombs and a bomber behaviour (see stepBomber). Kept
-  //      in the same `enemies[]` pool so guns/HP-bars/tracers/kills all work. ----
+  // ---- City raiders. The real four-engined carpet bomber (its own reference
+  //      model + stat block — heavy, draggy, sluggish in pitch and roll). It
+  //      ignores the player and runs bombs onto the city; the bomb-bay doors
+  //      swing open on the run-in (see stepBomber). Kept in the same
+  //      `enemies[]` pool so guns/HP-bars/tracers/kills all work. ----
   function makeBomberShell() {
-    const type = PLANE_ORDER[Math.floor(Math.random() * PLANE_ORDER.length)];
-    const { group, surf: esurf } = buildAircraft({ type, paint: CFG.ENEMY_PAINT, markings: false });
-    applyControlSurfaces(esurf, { gear: 0 });
-    setPropBlur(esurf, 0.85);
+    const { group, surf: esurf } = buildAircraft({ type: 'bomber' });
     group.visible = false;
     scene.add(group);
-    // Four bombs slung under the belly; hidden one-by-one as they're released.
+    // Four bombs racked in the bay; hidden one-by-one as they're released.
+    const bay = BOMBER_INFO.dims.bay;
     const bombMeshes = [];
     for (let i = 0; i < CITY_MODE.BOMBS_EACH; i++) {
       const bm = makeBomb();
-      bm.scale.setScalar(0.8);
-      bm.position.set(((i % 2) ? 0.7 : -0.7), -0.7, -1.4 + Math.floor(i / 2) * 1.9);
+      bm.scale.setScalar(0.9);
+      bm.position.set(((i % 2) ? 0.5 : -0.5), bay[1] + 0.25, bay[2] + 0.6 + Math.floor(i / 2) * 2.0);
       group.add(bm);
       bombMeshes.push(bm);
     }
     return {
       group,
       surf: esurf,
-      type,
+      type: 'bomber',
       role: 'bomber',
-      st: PLANE_TYPES[type].stats,
+      st: BOMBER_INFO.stats,
       hpMax: CITY_MODE.BOMBER_HP,
       vel: new THREE.Vector3(),
       throttle: 0.8,
@@ -2102,6 +2103,7 @@ import { buildCity, CITY } from './plane-sim-city.js';
       target: { x: 0, z: 0 },
       jinkPhase: Math.random() * 6.283,
       workAlt: 320,
+      bayAnim: 0, // 0 closed -> 1 doors open
     };
   }
   // Send an idle bomber shell in from the north/south rim, running the LENGTH of
@@ -2130,6 +2132,7 @@ import { buildCity, CITY } from './plane-sim-city.js';
     e.bombsLeft = CITY_MODE.BOMBS_EACH;
     e.dropCd = 0;
     e.underFire = 0;
+    e.bayAnim = 0;
     e.defl.ail = 0; e.defl.elev = 0; e.defl.rud = 0;
     for (const bm of e.bombMeshes) bm.visible = true;
   }
@@ -2240,13 +2243,21 @@ import { buildCity, CITY } from './plane-sim-city.js';
     if (e.phase === 'ingress') {
       if (horiz < 170) {
         e.dropCd -= dt;
-        if (e.bombsLeft > 0 && e.dropCd <= 0) { dropCityBomb(e); e.dropCd = 0.45; }
+        // Bombs only fall once the bay doors are actually open.
+        if (e.bombsLeft > 0 && e.dropCd <= 0 && e.bayAnim > 0.8) { dropCityBomb(e); e.dropCd = 0.45; }
       }
       // Bombs spent, or ran well past the aim point -> peel off and egress.
       if (e.bombsLeft <= 0 || (e.dir * (g.position.z - e.target.z) > 500)) beginEgress(e);
     } else if (Math.abs(g.position.z) > CFG.BORDER - 480 || Math.abs(g.position.x) > CFG.BORDER - 480) {
       e.alive = false; e.group.visible = false; return; // cleared the map — free the slot
     }
+    // Bomb-bay doors: swing open on the run-in (well before the release point,
+    // like the real drill), closed again once the last bomb is away.
+    const wantOpen = e.phase === 'ingress' && e.bombsLeft > 0 && horiz < 900;
+    e.bayAnim = clamp(e.bayAnim + (wantOpen ? dt : -dt) / 0.9, 0, 1);
+    const baySwing = e.bayAnim * 1.25;
+    if (e.surf.bayL) e.surf.bayL.rotation.z = -baySwing;
+    if (e.surf.bayR) e.surf.bayR.rotation.z = baySwing;
 
     EN.aim.set(e.target.x, e.workAlt, e.target.z);
     EN.desired.copy(EN.aim).sub(g.position);
@@ -2293,15 +2304,20 @@ import { buildCity, CITY } from './plane-sim-city.js';
     e.vel.addScaledVector(EN.acc, dt);
     g.position.addScaledVector(e.vel, dt);
 
-    // Sluggish: bombers turn at ~55% of the airframe's authority.
-    const eff = clamp(speed / st.controlV, 0, 1.1) * 0.55;
+    // The bomber's own stat block already encodes the sluggishness (pitchRate
+    // 0.6 / rollRate 1.1 vs a fighter's 1.4–3.8) — no artificial handicap.
+    const eff = clamp(speed / st.controlV, 0, 1.1) * stiffen(st, speed);
     g.rotateX(pitchInput * st.pitchRate * eff * dt);
     g.rotateZ(-rollInput * st.rollRate * eff * dt);
     g.rotateY(-yawInput * CFG.YAW_RATE * eff * dt);
     flightAssist(g, e.vel, eff, dt);
 
+    // All four engines turn together; surf.prop is #1, the slaves follow.
     e.propSpin -= (0.2 + e.throttle * 0.8) * 60 * dt;
-    if (e.surf.prop) e.surf.prop.rotation.z = e.propSpin;
+    if (e.surf.prop) {
+      e.surf.prop.rotation.z = e.propSpin;
+      for (const p of e.surf.propSlaves) p.rotation.z = e.propSpin;
+    }
     e.defl.ail += (rollInput * 0.4 - e.defl.ail) * 0.2;
     e.defl.elev += (pitchInput * 0.4 - e.defl.elev) * 0.2;
     applyControlSurfaces(e.surf, {
@@ -3642,6 +3658,9 @@ import { buildCity, CITY } from './plane-sim-city.js';
     for (const e of enemies) {
       if (e.role === 'bomber') {
         e.alive = false; e.group.visible = false;
+        e.bayAnim = 0;
+        if (e.surf.bayL) e.surf.bayL.rotation.z = 0;
+        if (e.surf.bayR) e.surf.bayR.rotation.z = 0;
         for (const bm of e.bombMeshes) bm.visible = true;
       }
     }

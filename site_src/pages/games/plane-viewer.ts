@@ -115,6 +115,7 @@ export function PlaneViewerPage(opts: {
             <button type="button" data-model="aircraft" class="active">Spitfire</button>
             <button type="button" data-model="p51">P-51</button>
             <button type="button" data-model="zero">Zero</button>
+            <button type="button" data-model="bomber">Bomber</button>
             <button type="button" data-model="carrier">Carrier</button>
             <button type="button" data-model="hangar">Hangar</button>
             <button type="button" data-model="tower">Tower</button>

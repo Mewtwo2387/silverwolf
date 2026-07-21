@@ -5,6 +5,7 @@
 // it. Local forward is -Z, Y is up, units are metres.
 import * as THREE from 'three';
 import { REF_P51_PARTS, REF_ZERO_PARTS, REF_SPIT_PARTS } from './plane-sim-refmeshes.js';
+import { REF_BOMBER_PARTS, BOMBER_DIMS } from './plane-sim-refbomber.js';
 import { GFX, loadSceneryTexture } from './plane-sim-quality.js';
 
 const setShadows = (obj) => obj.traverse((o) => {
@@ -339,8 +340,26 @@ export function planeSpecs(name) {
 export function buildAircraft(opts = {}) {
   if (opts.type === 'p51') return buildP51(opts);
   if (opts.type === 'zero') return buildZero(opts);
+  if (opts.type === 'bomber') return buildBomber(opts);
   return buildSpitfire(opts);
 }
+
+// ---- The raider bomber. Enemy-only (never player-flown, so NOT in PLANE_INFO —
+//      planeSpecs normalises its rating bars across that catalogue and a bomber
+//      would skew the fighters). The stat block feeds the same flight
+//      integrator: four engines but heavy — poor power-to-weight, a big draggy
+//      airframe, sluggish pitch/roll, and controls that only firm up with
+//      speed. ----
+export const BOMBER_INFO = {
+  label: 'Carpet Bomber',
+  desc: 'Four engines, a belly full of bombs and nowhere to hide. Slow to turn, steady on the run-in.',
+  stats: {
+    thrust: 30, lift: 0.0058, drag0: 0.0019, pitchRate: 0.6, rollRate: 1.1, controlV: 55, hiSpeedStiff: 0.2,
+    groundY: 2.4, stance: 0, gearZ: -1.5, tailZ: 6.3,
+    hp: 18, fireInterval: 0, gunDmg: 0, gunSpread: 0, gunRange: 0,
+  },
+  dims: BOMBER_DIMS,
+};
 
 // ---- Reference-mesh fighters. All three airframes are real 3D reference
 // models (converted offline into plane-sim-refmeshes.js + Assets/planes/
@@ -678,6 +697,75 @@ function buildZero(opts = {}) {
   return { group: plane, surf };
 }
 
+// The four-engined carpet bomber — a fully rigged FBX reference model
+// (plane-sim-refbomber.js). Unlike the fighters it needs no procedural
+// attachments: the props, ailerons, elevator, rudder, landing gear and even
+// the BOMB-BAY DOORS are carved from the source mesh by bone weights, each
+// exported with its pivot. surf gains bomber-only handles:
+//   surf.propSlaves — the other three prop pivots (surf.prop is engine #1;
+//     whoever spins surf.prop copies rotation.z onto the slaves)
+//   surf.bayL/bayR — bomb-bay door pivots (rotation.z swings them open)
+//   surf.gearGroup — the whole undercarriage; hidden unless opts.gearDown
+function buildBomber(opts = {}) {
+  const enemy = opts.paint != null;
+  const plane = new THREE.Group();
+  const surf = {
+    aileronL: null, aileronR: null, elevator: null, rudder: null,
+    prop: null, blades: null, propDisc: null, gear: null,
+    propSlaves: [], bayL: null, bayR: null, gearGroup: null,
+  };
+  const normalMap = detailTexture('metal-normal', 32);
+  const roughnessMap = detailTexture('metal-roughness', 32);
+  const mats = {};
+  const matFor = (tex) => {
+    if (!mats[tex]) {
+      mats[tex] = new THREE.MeshStandardMaterial({
+        map: refTexture(tex), color: enemy ? 0x8b939c : 0xffffff,
+        roughness: 0.55, metalness: 0.35,
+        normalMap, roughnessMap, normalScale: new THREE.Vector2(0.1, 0.1),
+        side: THREE.DoubleSide,
+      });
+    }
+    return mats[tex];
+  };
+  const gearGroup = new THREE.Group();
+  for (const part of REF_BOMBER_PARTS) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(part.pos, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(part.uv, 2));
+    geo.setIndex(part.idx);
+    geo.computeVertexNormals();
+    const mesh = new THREE.Mesh(geo, matFor(part.tex));
+    if (part.pivot) {
+      const [px, py, pz] = part.pivot;
+      const pivot = new THREE.Group();
+      pivot.position.set(px, py, pz);
+      mesh.position.set(-px, -py, -pz);
+      pivot.add(mesh);
+      plane.add(pivot);
+      if (part.role === 'aileronL') surf.aileronL = pivot;
+      else if (part.role === 'aileronR') surf.aileronR = pivot;
+      else if (part.role === 'elevator') surf.elevator = pivot;
+      else if (part.role === 'rudder') surf.rudder = pivot;
+      else if (part.role === 'bayL') surf.bayL = pivot;
+      else if (part.role === 'bayR') surf.bayR = pivot;
+      else if (part.role.startsWith('prop')) {
+        if (!surf.prop) surf.prop = pivot;
+        else surf.propSlaves.push(pivot);
+      }
+    } else if (part.role === 'gear') {
+      gearGroup.add(mesh);
+    } else {
+      plane.add(mesh);
+    }
+  }
+  gearGroup.visible = !!opts.gearDown; // raiders fly gear-up; inspector can drop it
+  plane.add(gearGroup);
+  surf.gearGroup = gearGroup;
+  setShadows(plane);
+  return { group: plane, surf };
+}
+
 // Apply control-surface deflections (radians-ish: ailerons/elevator/rudder in
 // roughly [-0.4, 0.4], gear in [0,1] where 1 is down). Shared by the game and
 // the inspector so the animation matches exactly.
@@ -685,6 +773,9 @@ export function applyControlSurfaces(surf, { ail = 0, elev = 0, rud = 0, gear = 
   if (surf.aileronL) surf.aileronL.rotation.x = ail;
   if (surf.aileronR) surf.aileronR.rotation.x = -ail;
   if (surf.elevator) surf.elevator.rotation.x = -elev;
+  // The bomber's undercarriage is real carved geometry with no fold rig —
+  // it simply shows below half-travel and hides above (raiders fly gear-up).
+  if (surf.gearGroup) surf.gearGroup.visible = gear > 0.5;
   // Positive rud = right pedal = nose right, which needs the rudder's
   // trailing edge deflected to STARBOARD (+X, pushing the tail port-wards).
   // rotation.y positive swings the TE (aft of the hinge, +Z) toward +X.

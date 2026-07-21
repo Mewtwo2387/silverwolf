@@ -13,7 +13,7 @@ import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
 import {
   buildAircraft, makeTree, makeHangar, makeControlTower, applyControlSurfaces,
   makeWindsock, makeFuelTank, makeBowser, makeNissenHut, PLANE_INFO, planeSpecs,
-  makeCarrier, mountWingBombs,
+  makeCarrier, mountWingBombs, BOMBER_INFO, makeBomb,
 } from './plane-sim-models.js';
 
 (() => {
@@ -152,6 +152,18 @@ import {
   function renderStats(planeType) {
     if (!statsEl) return;
     if (!planeType) { statsEl.style.display = 'none'; statsEl.innerHTML = ''; return; }
+    if (planeType === 'bomber') {
+      // Enemy-only airframe: not in the fighter catalogue (its ratings would
+      // skew the comparative bars), so it gets a plain spec card.
+      const s = BOMBER_INFO.stats;
+      const top = Math.round(Math.sqrt(s.thrust / s.drag0) * 1.94384);
+      statsEl.style.display = 'block';
+      statsEl.innerHTML = `<div class="pv-h">${BOMBER_INFO.label} — flight stats</div>`
+        + `<p class="pv-stat-desc">${BOMBER_INFO.desc} Flown by the raiders on the City map — the "Bombs" toggle opens the bay.</p>`
+        + `<div class="pv-stat-nums"><span><b>${top}</b> kn top</span>`
+        + `<span><b>4</b> engines</span><span><b>4</b> bombs</span></div>`;
+      return;
+    }
     const info = PLANE_INFO[planeType];
     const spec = planeSpecs(planeType);
     const bars = Object.entries(spec.ratings).map(([k, v]) => {
@@ -166,10 +178,28 @@ import {
       + `<span><b>${spec.hp}</b> hull</span></div>${bars}`;
   }
 
-  // Add/remove the wing bombs on the loaded aircraft to match the toggle.
+  // Add/remove the bombs on the loaded aircraft to match the toggle. Fighters
+  // hang them under the wings; the bomber racks four in the bay and swings the
+  // bay doors open so you can see them.
   function applyBombs() {
     for (const b of currentBombs) { b.parent?.remove(b); disposeTree(b); }
     currentBombs = [];
+    if (currentPlaneType === 'bomber' && currentSurf) {
+      const swing = opts.bombs ? 1.25 : 0;
+      if (currentSurf.bayL) currentSurf.bayL.rotation.z = -swing;
+      if (currentSurf.bayR) currentSurf.bayR.rotation.z = swing;
+      if (opts.bombs && current) {
+        const bay = BOMBER_INFO.dims.bay;
+        for (let i = 0; i < 4; i++) {
+          const bm = makeBomb();
+          bm.scale.setScalar(0.9);
+          bm.position.set(((i % 2) ? 0.5 : -0.5), bay[1] + 0.25, bay[2] + 0.6 + Math.floor(i / 2) * 2.0);
+          current.add(bm);
+          currentBombs.push(bm);
+        }
+      }
+      return;
+    }
     if (opts.bombs && currentPlaneType && current) {
       currentBombs = mountWingBombs(current, currentPlaneType);
     }
@@ -180,9 +210,9 @@ import {
     currentBombs = [];
     let sitOnGround = true;
     let planeType = null;
-    if (kind === 'aircraft' || kind === 'p51' || kind === 'zero') {
+    if (kind === 'aircraft' || kind === 'p51' || kind === 'zero' || kind === 'bomber') {
       planeType = kind === 'aircraft' ? 'spitfire' : kind;
-      const a = buildAircraft({ type: planeType });
+      const a = buildAircraft({ type: planeType, gearDown: true });
       current = a.group; currentSurf = a.surf; modelName = `plane-sim-${planeType}`;
     } else if (kind === 'carrier') {
       current = makeCarrier().group; modelName = 'plane-sim-carrier'; sitOnGround = false;
@@ -303,7 +333,11 @@ import {
     if (opts.autoRotate) turntable.rotation.y += dt * 0.35;
     if (currentSurf) {
       applyControlSurfaces(currentSurf, surfState);
-      if (opts.spinProp && currentSurf.prop) currentSurf.prop.rotation.z -= dt * 24;
+      if (opts.spinProp && currentSurf.prop) {
+        currentSurf.prop.rotation.z -= dt * 24;
+        // the bomber's other three engines turn with #1
+        for (const p of currentSurf.propSlaves || []) p.rotation.z = currentSurf.prop.rotation.z;
+      }
     }
     if (current && current.userData.flutter) current.userData.flutter(now / 1000); // windsock
     controls.update();
