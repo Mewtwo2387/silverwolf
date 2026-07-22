@@ -151,7 +151,7 @@ export function PlaneViewerPage(opts: {
         <div class="pv-group" id="pv-livery-group" style="display: none;">
           <div class="pv-h">Livery</div>
           <div id="pv-livery-toggle" class="pv-livery-container">
-            <div id="pv-livery-preview" class="pv-livery-preview" style="background-image: url('/static/planes/spitfire-original-preview.jpg');"></div>
+            <div id="pv-livery-preview" class="pv-livery-preview" style="background-image: url('/static/planes/spitfire-original-preview.jpg?v=5');"></div>
             <div style="flex: 1;">
               <div id="pv-livery-name" style="font-weight: bold; color: var(--accent-light, #7fdfff); font-size: 0.8rem;">Original</div>
               <div style="font-size: 0.65rem; color: var(--fog-400, #8aa0ad); margin-top: 0.15rem;">Click to cycle</div>

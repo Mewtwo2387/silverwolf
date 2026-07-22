@@ -11,9 +11,11 @@ Due to initial AI image generation rate limits, some skins were generated via ou
 | Aircraft | Original Texture | Desert Theme | Winter Theme | Special Theme | Status / Method |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Spitfire** | `spit-skin.jpg` | `spit-skin-desert.jpg` | `spit-skin-winter.jpg` | `spit-skin-special.jpg` | **AI Generated** (Gemini Image Model) |
-| **Zero** | `zero-sheet.jpg` | `zero-sheet-desert.jpg` | `zero-sheet-winter.jpg` | `zero-sheet-special.jpg` | **Desert:** AI Generated<br>**Winter & Special:** Procedural |
-| **P-51 Mustang** | `p51-fus.jpg`<br>`p51-tai.jpg`<br>`p51-rud.jpg`<br>`p51-elv.jpg`<br>`p51-wng.jpg` | Append `-desert` | Append `-winter` | Append `-special` | **Procedural** (Fuselage/wings metallic silver; Special tail/rudder painted Tuskegee Red) |
-| **Carpet Bomber**| `bomber-hull.jpg`<br>`bomber-wing.jpg`<br>`bomber-det.jpg` | Append `-desert` | Append `-winter` | Append `-special` | **Procedural** (Hull/wings shaded to desert sand, winter white, and silver metallic) |
+| **Zero** | `zero-sheet.jpg` | `zero-sheet-desert.jpg` | `zero-sheet-winter.jpg` | `zero-sheet-special.jpg` | **Winter:** AI Generated (1440x1994)<br>**Desert & Special:** Procedural |
+| **P-51 Mustang** | `p51-fus.jpg`<br>`p51-tai.jpg`<br>`p51-rud.jpg`<br>`p51-elv.jpg`<br>`p51-wng.jpg` | Append `-desert` | Append `-winter` | Append `-special` | **Procedural** (Preserves exact UV layout; Tuskegee Red Tails special) |
+| **Carpet Bomber**| `bomber-hull.jpg`<br>`bomber-wing.jpg`<br>`bomber-det.jpg` | Append `-desert` | Append `-winter` | Append `-special` | **Procedural** (Desert, Winter & Silver metal) |
+
+*Note: Special silver skins for all aircraft utilize enhanced Three.js material properties (`roughness: 0.15`, `metalness: 0.95`) for high specular reflectivity.*
 
 ---
 
@@ -53,6 +55,8 @@ When your Gemini Image Generator quota resets, you can replace the procedural sk
 
 ---
 
+---
+
 ## 3. Re-running the Procedural Script
 
 If you make modifications to the baseline textures or want to reset the procedurally generated skins, you can re-run the script:
@@ -60,3 +64,31 @@ If you make modifications to the baseline textures or want to reset the procedur
 bun run scripts/generate-skins-procedural.ts
 bun run scripts/generate-previews-procedural.ts
 ```
+
+---
+
+## 4. Cache-Busting & Image Generator Log
+
+### Cache-Busting Fix
+Texture maps and previews are served under immutable caching headers (`cache-control: public, max-age=31536000, immutable`). 
+To ensure client browsers immediately pull updated textures and thumbnails instead of serving stale cached images:
+- Texture query parameters bumped to `?v=5` in `site_src/Assets/plane-sim-models.js`.
+- Preview thumbnail query parameters bumped to `?v=5` in `site_src/Assets/plane-viewer.src.js` and `site_src/pages/games/plane-viewer.ts`.
+- Server static route middleware updated in `site_src/routes/static.ts` to output `cache-control: no-cache, must-revalidate` during local development (`NODE_ENV !== 'production'`).
+
+### Thumbnail AI Generation Status & Rate Limit Log
+- **Spitfire Previews:** AI Generated (`spitfire-original-preview.jpg`, `spitfire-desert-preview.jpg`, `spitfire-winter-preview.jpg`, `spitfire-special-preview.jpg`)
+- **Zero Previews:** AI Generated (`zero-original-preview.jpg`, `zero-desert-preview.jpg`, `zero-winter-preview.jpg`, `zero-special-preview.jpg`)
+- **P-51 Mustang Previews:**
+  - `p51-original-preview.jpg`: **AI Generated**
+  - `p51-desert-preview.jpg`: **AI Generated**
+  - `p51-winter-preview.jpg`: **AI Generated**
+  - `p51-special-preview.jpg`: Procedural / Pending quota reset
+- **Carpet Bomber Previews:**
+  - `bomber-original-preview.jpg`, `bomber-desert-preview.jpg`, `bomber-winter-preview.jpg`, `bomber-special-preview.jpg`: Procedural / Pending quota reset
+
+> **Rate Limit Note (2026-07-22 00:02 UTC):**
+> Gemini Image Model hit quota limit (`429 RESOURCE_EXHAUSTED` on `gemini-3.1-flash-image`).
+> Reset timestamp: **2026-07-22T04:41:34Z** (~4 hours).
+> Once quota resets, generate the remaining 5 thumbnails (`p51-special-preview.jpg` and `bomber-*-preview.jpg`).
+

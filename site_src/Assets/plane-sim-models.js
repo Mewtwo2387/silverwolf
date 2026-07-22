@@ -377,7 +377,7 @@ function refTexture(name) {
   if (!_refTexCache[name]) {
     // The aircraft skin sheets stay full-resolution on every tier — the player
     // plane fills the screen; halving it reads as mud, not "low".
-    const tex = new THREE.TextureLoader().load(`/static/planes/${name}.jpg?v=3`);
+    const tex = new THREE.TextureLoader().load(`/static/planes/${name}.jpg?v=5`);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = Math.max(GFX.aniso, 8);
     _refTexCache[name] = tex;
@@ -542,10 +542,11 @@ function buildRefPlane(parts, opts) {
         color: part.color, emissive: part.color, emissiveIntensity: 1.2, roughness: 0.4,
       });
     } else if (part.tex) {
+      const isSpecial = skin === 'special';
       mat = new THREE.MeshStandardMaterial({
         map: refTexture(texName), color: enemy ? 0x8b939c : 0xffffff,
-        roughness: opts.roughness !== undefined ? opts.roughness : 0.35,
-        metalness: opts.metalness !== undefined ? opts.metalness : 0.85,
+        roughness: isSpecial ? 0.15 : (opts.roughness !== undefined ? opts.roughness : 0.35),
+        metalness: isSpecial ? 0.95 : (opts.metalness !== undefined ? opts.metalness : 0.85),
         normalMap, roughnessMap,
         normalScale: new THREE.Vector2(0.1, 0.1),
         side: THREE.DoubleSide,
@@ -758,9 +759,11 @@ function buildBomber(opts = {}) {
       : tex;
 
     if (!mats[key]) {
+      const isSpecial = skin === 'special';
       mats[key] = new THREE.MeshStandardMaterial({
         map: refTexture(texName), color: enemy ? 0x8b939c : 0xffffff,
-        roughness, metalness,
+        roughness: isSpecial ? 0.15 : roughness,
+        metalness: isSpecial ? 0.92 : metalness,
         normalMap, roughnessMap, normalScale: new THREE.Vector2(normalScale, normalScale),
         side: THREE.DoubleSide,
       });

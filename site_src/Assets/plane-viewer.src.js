@@ -264,7 +264,7 @@ import {
         const previewEl = document.getElementById('pv-livery-preview');
         const label = skin === 'special' ? LIVERIES.special[planeType].label : LIVERIES[skin].label;
         if (nameEl) nameEl.textContent = label;
-        if (previewEl) previewEl.style.backgroundImage = `url('/static/planes/${planeType}-${skin}-preview.jpg')`;
+        if (previewEl) previewEl.style.backgroundImage = `url('/static/planes/${planeType}-${skin}-preview.jpg?v=5')`;
       } else {
         liveryGroup.style.display = 'none';
       }

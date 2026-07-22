@@ -111,9 +111,10 @@ for (const rarity of ['gold', 'silver', 'bronze']) {
 async function serveStatic(entry: StaticEntry) {
   const file = Bun.file(entry.path);
   if (!(await file.exists())) return new Response('not found', { status: 404 });
+  const isDev = process.env.NODE_ENV !== 'production';
   const headers: Record<string, string> = {
     'content-type': entry.contentType,
-    'cache-control': IMMUTABLE_CACHE,
+    'cache-control': isDev ? 'no-cache, must-revalidate' : IMMUTABLE_CACHE,
   };
   // SVGs can carry <script> if served as a top-level document. Lock them down
   // so even a future malicious-SVG drop in Assets/svg/ can't run JS.
