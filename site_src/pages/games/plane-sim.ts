@@ -1,7 +1,7 @@
 import path from 'path';
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
-import { assetVersion } from '../../asset-version';
+import { assetVersion, assetVersionMap } from '../../asset-version';
 import { inlineJSON } from '../../inline';
 
 // Plane Sim — a fullscreen Three.js flight simulator (a Spitfire-ish prop
@@ -12,6 +12,7 @@ import { inlineJSON } from '../../inline';
 // module. Rendered with `fullscreen: true` so there's no navbar/footer — the
 // canvas owns the viewport.
 const PLANE_SIM_JS = path.resolve(import.meta.dir, '..', '..', 'Assets', 'plane-sim.js');
+const PLANES_DIR = path.resolve(import.meta.dir, '..', '..', 'Assets', 'planes');
 
 export function PlaneSimPage(opts: {
   nonce: string;
@@ -1015,6 +1016,9 @@ export function PlaneSimPage(opts: {
     </div>
     ${styles}
     <script type="application/json" id="ps-ach-boot">${achBoot}</script>
+    <!-- Content-hash map for /static/planes/ textures: the game module appends
+         ?v=<hash> so edited skins bust the immutable cache (see plane-sim-assets.js). -->
+    <script type="application/json" id="ps-asset-ver">${raw(inlineJSON(assetVersionMap(PLANES_DIR)))}</script>
     <script type="module" nonce="${nonce}" src="/static/plane-sim.js?v=${assetVersion(PLANE_SIM_JS)}"></script>
   `;
 

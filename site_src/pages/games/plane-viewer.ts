@@ -1,7 +1,8 @@
 import path from 'path';
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
-import { assetVersion } from '../../asset-version';
+import { assetVersion, assetVersionMap } from '../../asset-version';
+import { inlineJSON } from '../../inline';
 
 // Plane Sim — Model Inspector. A standalone turntable viewer for the Plane Sim
 // 3D assets (the aircraft + scenery), so the models can be examined and iterated
@@ -9,6 +10,7 @@ import { assetVersion } from '../../asset-version';
 // 3D lives in the bundled site_src/Assets/plane-viewer.js, which imports the
 // same shared builders the game uses (plane-sim-models.js).
 const PLANE_VIEWER_JS = path.resolve(import.meta.dir, '..', '..', 'Assets', 'plane-viewer.js');
+const PLANES_DIR = path.resolve(import.meta.dir, '..', '..', 'Assets', 'planes');
 
 export function PlaneViewerPage(opts: {
   nonce: string;
@@ -151,7 +153,7 @@ export function PlaneViewerPage(opts: {
         <div class="pv-group" id="pv-livery-group" style="display: none;">
           <div class="pv-h">Livery</div>
           <div id="pv-livery-toggle" class="pv-livery-container">
-            <div id="pv-livery-preview" class="pv-livery-preview" style="background-image: url('/static/planes/spitfire-original-preview.jpg?v=5');"></div>
+            <div id="pv-livery-preview" class="pv-livery-preview" style="background-image: url('/static/planes/spitfire-original-preview.jpg?v=${assetVersion(path.join(PLANES_DIR, 'spitfire-original-preview.jpg'))}');"></div>
             <div style="flex: 1;">
               <div id="pv-livery-name" style="font-weight: bold; color: var(--accent-light, #7fdfff); font-size: 0.8rem;">Original</div>
               <div style="font-size: 0.65rem; color: var(--fog-400, #8aa0ad); margin-top: 0.15rem;">Click to cycle</div>
@@ -212,6 +214,9 @@ export function PlaneViewerPage(opts: {
       </div>
     </div>
     ${styles}
+    <!-- Content-hash map for /static/planes/ textures + preview thumbnails: the
+         viewer module appends ?v=<hash> so edits bust the cache (plane-sim-assets.js). -->
+    <script type="application/json" id="ps-asset-ver">${raw(inlineJSON(assetVersionMap(PLANES_DIR)))}</script>
     <script type="module" nonce="${nonce}" src="/static/plane-viewer.js?v=${assetVersion(PLANE_VIEWER_JS)}"></script>
   `;
 

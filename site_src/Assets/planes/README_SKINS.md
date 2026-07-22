@@ -15,7 +15,7 @@ Due to initial AI image generation rate limits, some skins were generated via ou
 | **P-51 Mustang** | `p51-fus.jpg`<br>`p51-tai.jpg`<br>`p51-rud.jpg`<br>`p51-elv.jpg`<br>`p51-wng.jpg` | Append `-desert` | Append `-winter` | Append `-special` | **Procedural** (Preserves exact UV layout; Tuskegee Red Tails special) |
 | **Carpet Bomber**| `bomber-hull.jpg`<br>`bomber-wing.jpg`<br>`bomber-det.jpg` | Append `-desert` | Append `-winter` | Append `-special` | **Procedural** (Desert, Winter & Silver metal) |
 
-*Note: Special silver skins for all aircraft utilize enhanced Three.js material properties (`roughness: 0.15`, `metalness: 0.95`) for high specular reflectivity.*
+*Note: "Special" livery materials are tuned per aircraft (`plane-sim-models.js`). Only the **bare-metal** specials are metallic: the **P-51 "Red Tails"** (bright polished-aluminium sheet → `metalness 0.9`, `roughness 0.25`) and the **Bomber "Silver Metal"** (its sheet is a dark grey, so `metalness 0.55`, `roughness 0.42` plus an HDR colour lift to keep it from reading black). The **painted** specials — **Spitfire "D-Day Stripes"** and **Zero "Late-War Green"** — use the normal matte skin response; forcing them fully metallic turned them into near-black mirrors. The model inspector also has its own environment map (`plane-viewer.src.js`) so metals have a bright sky to reflect (the game gets this from its sky dome).*
 
 ---
 
@@ -69,12 +69,12 @@ bun run scripts/generate-previews-procedural.ts
 
 ## 4. Cache-Busting & Image Generator Log
 
-### Cache-Busting Fix
-Texture maps and previews are served under immutable caching headers (`cache-control: public, max-age=31536000, immutable`). 
-To ensure client browsers immediately pull updated textures and thumbnails instead of serving stale cached images:
-- Texture query parameters bumped to `?v=5` in `site_src/Assets/plane-sim-models.js`.
-- Preview thumbnail query parameters bumped to `?v=5` in `site_src/Assets/plane-viewer.src.js` and `site_src/pages/games/plane-viewer.ts`.
-- Server static route middleware updated in `site_src/routes/static.ts` to output `cache-control: no-cache, must-revalidate` during local development (`NODE_ENV !== 'production'`).
+### Cache-Busting (automatic, content-hash)
+Texture maps and previews are served under immutable caching headers (`cache-control: public, max-age=31536000, immutable`), so without a cache buster the browser never re-fetches an edited texture. This is now **automatic** — no manual `?v=` bump:
+- The server hashes every file in `site_src/Assets/planes/` (`assetVersionMap()` in `site_src/asset-version.ts`, mtime-cached, same MD5 scheme as `styles.css`/`app.js`) and renders a `{ basename: hash }` manifest into a JSON island `#ps-asset-ver` on both `/games/plane-sim` and `/games/plane-sim/inspect`.
+- The client helper `planeUrl(name)` (`site_src/Assets/plane-sim-assets.js`) reads that manifest and appends `?v=<hash>`. It's used by `refTexture()` (all aircraft skin sheets) in `plane-sim-models.js` and by the livery-preview thumbnails in `plane-viewer.src.js`. Edit a skin → its hash changes → the URL changes → the browser re-fetches. No code change needed.
+- The viewer's default (server-rendered) preview thumbnail uses `assetVersion()` directly in `site_src/pages/games/plane-viewer.ts`.
+- Server static route middleware (`site_src/routes/static.ts`) additionally serves `cache-control: no-cache, must-revalidate` during local development (`NODE_ENV !== 'production'`) so texture edits show up instantly without any query change.
 
 ### Thumbnail AI Generation Status & Rate Limit Log
 - **Spitfire Previews:** AI Generated (`spitfire-original-preview.jpg`, `spitfire-desert-preview.jpg`, `spitfire-winter-preview.jpg`, `spitfire-special-preview.jpg`)

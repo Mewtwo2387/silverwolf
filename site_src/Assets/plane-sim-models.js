@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { REF_P51_PARTS, REF_ZERO_PARTS, REF_SPIT_PARTS } from './plane-sim-refmeshes.js';
 import { REF_BOMBER_PARTS, BOMBER_DIMS } from './plane-sim-refbomber.js';
 import { GFX, loadSceneryTexture } from './plane-sim-quality.js';
+import { planeUrl } from './plane-sim-assets.js';
 
 const setShadows = (obj) => obj.traverse((o) => {
   if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
@@ -377,7 +378,7 @@ function refTexture(name) {
   if (!_refTexCache[name]) {
     // The aircraft skin sheets stay full-resolution on every tier — the player
     // plane fills the screen; halving it reads as mud, not "low".
-    const tex = new THREE.TextureLoader().load(`/static/planes/${name}.jpg?v=5`);
+    const tex = new THREE.TextureLoader().load(planeUrl(name));
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = Math.max(GFX.aniso, 8);
     _refTexCache[name] = tex;
@@ -542,11 +543,16 @@ function buildRefPlane(parts, opts) {
         color: part.color, emissive: part.color, emissiveIntensity: 1.2, roughness: 0.4,
       });
     } else if (part.tex) {
-      const isSpecial = skin === 'special';
+      // "Special" liveries: only the bare-metal one — the P-51's polished
+      // aluminium (Red Tails) — gets the hard metallic sheen. The painted
+      // specials (Spitfire D-Day stripes, Zero late-war green) are matte
+      // paint; forcing them fully metallic turned them into near-black
+      // mirrors under a dim sky, so they keep the normal skin response.
+      const metalSpecial = skin === 'special' && part.tex.startsWith('p51-');
       mat = new THREE.MeshStandardMaterial({
         map: refTexture(texName), color: enemy ? 0x8b939c : 0xffffff,
-        roughness: isSpecial ? 0.15 : (opts.roughness !== undefined ? opts.roughness : 0.35),
-        metalness: isSpecial ? 0.95 : (opts.metalness !== undefined ? opts.metalness : 0.85),
+        roughness: metalSpecial ? 0.25 : (opts.roughness !== undefined ? opts.roughness : 0.35),
+        metalness: metalSpecial ? 0.9 : (opts.metalness !== undefined ? opts.metalness : 0.85),
         normalMap, roughnessMap,
         normalScale: new THREE.Vector2(0.1, 0.1),
         side: THREE.DoubleSide,
@@ -759,11 +765,19 @@ function buildBomber(opts = {}) {
       : tex;
 
     if (!mats[key]) {
+      // The bomber's "Silver Metal" special is bare aluminium, but its skin
+      // sheet is a dark grey (~68/255 luma). At full metalness that dark albedo
+      // tints the reflection down to near-black, so: brushed-satin roughness,
+      // a moderate metalness so the key light still lights it diffusely, and an
+      // HDR colour lift (>1, tone-mapped back down) to pull the dark sheet up
+      // to a believable lit aluminium instead of charcoal.
       const isSpecial = skin === 'special';
+      const baseCol = enemy ? new THREE.Color(0x8b939c)
+        : (isSpecial ? new THREE.Color(1.7, 1.75, 1.85) : new THREE.Color(0xffffff));
       mats[key] = new THREE.MeshStandardMaterial({
-        map: refTexture(texName), color: enemy ? 0x8b939c : 0xffffff,
-        roughness: isSpecial ? 0.15 : roughness,
-        metalness: isSpecial ? 0.92 : metalness,
+        map: refTexture(texName), color: baseCol,
+        roughness: isSpecial ? 0.42 : roughness,
+        metalness: isSpecial ? 0.55 : metalness,
         normalMap, roughnessMap, normalScale: new THREE.Vector2(normalScale, normalScale),
         side: THREE.DoubleSide,
       });

@@ -15,6 +15,7 @@ import {
   makeWindsock, makeFuelTank, makeBowser, makeNissenHut, PLANE_INFO, planeSpecs,
   makeCarrier, mountWingBombs, BOMBER_INFO, makeBomb,
 } from './plane-sim-models.js';
+import { planeUrl } from './plane-sim-assets.js';
 
 (() => {
   'use strict';
@@ -79,6 +80,34 @@ import {
   rim.position.set(0, 4, -10);
   scene.add(rim);
   scene.add(new THREE.HemisphereLight(0xbfd8ff, 0x35402c, 0.7));
+
+  // ---- Environment map (image-based lighting). Metals (the P-51's bare
+  //      aluminium, the bomber's Silver Metal) reflect the ENVIRONMENT, not the
+  //      lights — with no envMap a metallic material shows only a black
+  //      reflection and reads as near-black. The game gets this for free from
+  //      its sky dome (scene.environment); the studio needs its own. A soft
+  //      bright vertical gradient equirect gives the metal a believable sky to
+  //      mirror, so silver looks silver instead of charcoal. ----
+  (function buildStudioEnv() {
+    const c = document.createElement('canvas');
+    c.width = 8; c.height = 256;
+    const ctx = c.getContext('2d');
+    const g = ctx.createLinearGradient(0, 0, 0, 256);
+    // Bright, broad "softbox" gradient: a large metal surface (the bomber's
+    // Silver Metal, the P-51's aluminium) reflects a wide band of this, so
+    // most of the sphere has to read bright or the metal goes charcoal at
+    // grazing angles. Kept slightly cooler toward the floor for form.
+    g.addColorStop(0.0, '#ffffff'); // zenith
+    g.addColorStop(0.45, '#e9f0f8'); // sky
+    g.addColorStop(0.72, '#c2ccd7'); // horizon
+    g.addColorStop(1.0, '#8e97a1'); // floor bounce (still bright)
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 8, 256);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    scene.environment = tex;
+    scene.environmentIntensity = 1.3; // push the IBL so metals read bright silver
+  }());
 
   // ---- Floor: an opaque ground that receives the shadow, plus a grid overlay. ----
   const groundMat = new THREE.MeshStandardMaterial({ color: 0x1a2230, roughness: 1, metalness: 0 });
@@ -264,7 +293,7 @@ import {
         const previewEl = document.getElementById('pv-livery-preview');
         const label = skin === 'special' ? LIVERIES.special[planeType].label : LIVERIES[skin].label;
         if (nameEl) nameEl.textContent = label;
-        if (previewEl) previewEl.style.backgroundImage = `url('/static/planes/${planeType}-${skin}-preview.jpg?v=5')`;
+        if (previewEl) previewEl.style.backgroundImage = `url('${planeUrl(`${planeType}-${skin}-preview`)}')`;
       } else {
         liveryGroup.style.display = 'none';
       }
