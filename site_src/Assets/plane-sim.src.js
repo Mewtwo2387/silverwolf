@@ -1683,6 +1683,13 @@ gl_Position = projectionMatrix * mvPosition;
   scene.add(rain);
   function stepRain(dt) {
     const cx = camera.position.x; const cy = camera.position.y; const cz = camera.position.z;
+    // The object rides the camera and its streak verts are written CAMERA-RELATIVE
+    // (below). A transparent object sorts by its ORIGIN's depth, so with the verts
+    // in world space and the object left at (0,0,0) the rain sorted as if it sat at
+    // the map origin — far from the plane — and drew behind the clouds/overcast at
+    // some view angles (rain "only visible looking up"). Riding the camera makes it
+    // sort as the nearest thing, so it's drawn over the deck in every direction.
+    rain.position.set(cx, cy, cz);
     const fall = 52; // terminal-ish drop speed (m/s)
     const wx = windState.vec.x * 0.6; const wz = windState.vec.z * 0.6; // wind-driven slant
     const tailK = 0.017; // streak length as a fraction of fall velocity
@@ -1695,9 +1702,11 @@ gl_Position = projectionMatrix * mvPosition;
         z = cz + (Math.random() - 0.5) * RAIN_BOX * 2;
       }
       rainDrops[i * 3] = x; rainDrops[i * 3 + 1] = y; rainDrops[i * 3 + 2] = z;
+      // Verts are camera-relative (the object is parked at the camera above), so
+      // the streaks land at the same world positions but the object sorts nearest.
       const o = i * 6;
-      rainPos[o] = x; rainPos[o + 1] = y; rainPos[o + 2] = z;
-      rainPos[o + 3] = x - wx * tailK; rainPos[o + 4] = y + fall * tailK; rainPos[o + 5] = z - wz * tailK;
+      rainPos[o] = x - cx; rainPos[o + 1] = y - cy; rainPos[o + 2] = z - cz;
+      rainPos[o + 3] = (x - wx * tailK) - cx; rainPos[o + 4] = (y + fall * tailK) - cy; rainPos[o + 5] = (z - wz * tailK) - cz;
     }
     rainGeo.attributes.position.needsUpdate = true;
   }
