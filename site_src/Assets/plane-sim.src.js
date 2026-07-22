@@ -436,24 +436,52 @@ import { buildCity, CITY } from './plane-sim-city.js';
   //      skyCtl exposes the canvas/texture/sun-sprite so the weather system
   //      can repaint the gradient (and dim the sun) when the sky changes. ----
   const skyCtl = { canvas: null, ctx: null, tex: null, sunSpr: null };
+  // Paint the vertical sky gradient. Kept CLEAN (no per-texel dither): this
+  // texture is tiny (16×512) and stretched across a 15 km dome, so per-texel
+  // noise smears into big blotches — the "blocky, stitched" artifact. Banding
+  // is instead broken in SCREEN space by a fragment-shader dither on the dome
+  // (see domeMat.onBeforeCompile below), which jitters per output pixel. Shared
+  // by buildSky and the weather repaint (paintSky).
+  function paintSkyGradient(ctx, canvas, topCss, midCss, hazeCss) {
+    const h = canvas.height;
+    const g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0.0, topCss);
+    g.addColorStop(0.55, midCss);
+    g.addColorStop(1.0, hazeCss);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, canvas.width, h);
+  }
   (function buildSky() {
     const c = document.createElement('canvas');
-    c.width = 8; c.height = 256;
+    c.width = 16; c.height = 512;
     const ctx = c.getContext('2d');
-    const g = ctx.createLinearGradient(0, 0, 0, 256);
-    g.addColorStop(0.0, '#2b66a8');
-    g.addColorStop(0.55, '#68a4d6');
-    g.addColorStop(1.0, '#d5e4ee');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, 8, 256);
+    paintSkyGradient(ctx, c, '#2b66a8', '#68a4d6', '#d5e4ee');
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.mapping = THREE.EquirectangularReflectionMapping;
+    // No mipmaps: the coarse mips of a 512-tall gradient average whole bands of
+    // sky together, and the dome samples different mip levels at different
+    // latitudes — that mip-transition ringing WAS the "stitched" look. A plain
+    // linear filter on the base level gives one smooth continuous gradient.
+    tex.generateMipmaps = false;
+    tex.minFilter = THREE.LinearFilter;
     scene.environment = tex;
     skyCtl.canvas = c; skyCtl.ctx = ctx; skyCtl.tex = tex;
-    const dome = new THREE.Mesh(
-      new THREE.SphereGeometry(15500, 24, 16),
-      new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide, fog: false, depthWrite: false }),
-    );
+    const domeMat = new THREE.MeshBasicMaterial({
+      map: tex, side: THREE.BackSide, fog: false, depthWrite: false, dithering: true,
+    });
+    // Strong screen-space triangular dither (~±2 LSB), added AFTER tone-mapping,
+    // to fully dissolve the blue-sky banding the built-in ~0.5 LSB dither leaves
+    // behind. Per output pixel (not per texel), so it can't blotch.
+    domeMat.onBeforeCompile = (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <dithering_fragment>',
+        `#include <dithering_fragment>
+        float _sn1 = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
+        float _sn2 = fract(sin(dot(gl_FragCoord.xy + 1.7, vec2(39.3468, 11.135))) * 24634.6345);
+        gl_FragColor.rgb += (_sn1 + _sn2 - 1.0) * (2.2 / 255.0);`,
+      );
+    };
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(15500, 64, 40), domeMat);
     scene.add(dome);
 
     // The sun itself: a bright additive sprite hung out along the light vector.
@@ -1493,9 +1521,7 @@ gl_Position = projectionMatrix * mvPosition;
   const WATER0 = { color: 0x1d5d75, ultraColor: 0x0c4254 }; // buildWater/Water defaults
   function paintSky(topCss, midCss, hazeCss) {
     if (!skyCtl.ctx) return;
-    const g = skyCtl.ctx.createLinearGradient(0, 0, 0, skyCtl.canvas.height);
-    g.addColorStop(0, topCss); g.addColorStop(0.55, midCss); g.addColorStop(1, hazeCss);
-    skyCtl.ctx.fillStyle = g; skyCtl.ctx.fillRect(0, 0, skyCtl.canvas.width, skyCtl.canvas.height);
+    paintSkyGradient(skyCtl.ctx, skyCtl.canvas, topCss, midCss, hazeCss);
     skyCtl.tex.needsUpdate = true;
     if (scene.background && scene.background.isColor) scene.background.set(topCss);
     scene.fog.color.set(hazeCss);
