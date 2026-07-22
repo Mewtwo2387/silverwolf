@@ -1501,22 +1501,38 @@ gl_Position = projectionMatrix * mvPosition;
       m.color.setHex(p.seaTint || WATER0.color);
     }
   }
-  // Wet ground: darken + slick the terrain and pavement, and show puddles.
-  // (Coastal map only for now — the city keeps its own materials dry.)
+  // Per-map puddle sheets (one InstancedMesh each) + the city ground materials,
+  // both driven by applyWetGround. Populated by buildPuddles below; referenced
+  // here because applyWetGround runs only at respawn, long after init.
+  const puddleMeshes = [];
+  const cityWetMats = cityWorld.groundMats
+    ? cityWorld.groundMats.map((mat) => ({ mat, rough: mat.roughness }))
+    : [];
+
+  // Wet ground: darken + slick the terrain and pavement, and show puddles —
+  // now on every land map (coastal terrain, city streets, carrier decks).
   function applyWetGround(wet) {
+    // Coastal terrain: darken + slicken the grass/dirt.
     terrainMesh.material.color.setScalar(wet ? 0.62 : 1);
     terrainMesh.material.roughness = wet ? 0.5 : 0.88;
     for (const w of wetSurfaces) {
       w.mat.roughness = wet ? 0.3 : w.rough;
       w.mat.color.setHex(wet ? 0xa8b4c2 : w.color);
     }
-    puddleGroup.visible = wet;
+    // City streets + field ground: same darken/slicken recipe.
+    for (const w of cityWetMats) {
+      w.mat.color.setScalar(wet ? 0.6 : 1);
+      w.mat.roughness = wet ? 0.45 : w.rough;
+    }
+    // Every map's puddle sheet shows only in the wet (storm) state.
+    for (const m of puddleMeshes) m.visible = wet;
   }
 
-  // ---- Puddles: mirror-flat dark discs over the airfield tarmac and the
-  //      flat grass of the airfield disc. Built once, shown in the storm. ----
-  const puddleGroup = new THREE.Group();
-  puddleGroup.visible = false;
+  // ---- Puddles: mirror-flat dark discs of standing rainwater. One
+  //      InstancedMesh per map (1 draw call each) parented under that map's
+  //      group, so each shows only on its own map and only in the storm. The
+  //      low-roughness material reflects the sky env, so the discs read as
+  //      water. Built once. ----
   (function buildPuddles() {
     const mat = new THREE.MeshStandardMaterial({
       color: 0x232b34, roughness: 0.05, metalness: 0.0,
@@ -1524,31 +1540,88 @@ gl_Position = projectionMatrix * mvPosition;
       polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
     });
     const geo = new THREE.CircleGeometry(1, 18);
-    const addPuddle = (x, y, z, rx, rz) => {
-      const m = new THREE.Mesh(geo, mat);
-      m.rotation.x = -Math.PI / 2;
-      m.rotation.z = Math.random() * Math.PI;
-      m.position.set(x, y, z);
-      m.scale.set(rx, rz, 1);
-      m.renderOrder = 2; // over the tarmac paint
-      puddleGroup.add(m);
+    const _m = new THREE.Matrix4();
+    const _q = new THREE.Quaternion();
+    const _p = new THREE.Vector3();
+    const _s = new THREE.Vector3();
+    const _e = new THREE.Euler();
+    // placements: [{x,y,z,rx,rz}] -> one flat-on-the-ground InstancedMesh.
+    const makePuddleSheet = (placements, parent) => {
+      if (!placements.length) return;
+      const mesh = new THREE.InstancedMesh(geo, mat, placements.length);
+      placements.forEach((pl, i) => {
+        _e.set(-Math.PI / 2, 0, Math.random() * Math.PI); // lay flat, random spin
+        _q.setFromEuler(_e);
+        _p.set(pl.x, pl.y, pl.z);
+        _s.set(pl.rx, pl.rz, 1);
+        _m.compose(_p, _q, _s);
+        mesh.setMatrixAt(i, _m);
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.renderOrder = 2; // over the ground/tarmac paint
+      mesh.frustumCulled = false; // flat discs spread wide; don't pop at edges
+      mesh.visible = false;
+      parent.add(mesh);
+      puddleMeshes.push(mesh);
     };
+
+    // Coastal: the airfield tarmac + the flat grass of the airfield disc.
+    const coastal = [];
     for (const r of PAVED) { // a few per paved rect, sized by area
       const n = clamp(Math.round(((r.x1 - r.x0) * (r.z1 - r.z0)) / 900), 1, 6);
       for (let i = 0; i < n; i++) {
-        addPuddle(
-          r.x0 + Math.random() * (r.x1 - r.x0), 0.19, r.z0 + Math.random() * (r.z1 - r.z0),
-          1.6 + Math.random() * 4.2, 1.1 + Math.random() * 2.6,
-        );
+        coastal.push({
+          x: r.x0 + Math.random() * (r.x1 - r.x0), y: 0.19, z: r.z0 + Math.random() * (r.z1 - r.z0),
+          rx: 1.6 + Math.random() * 4.2, rz: 1.1 + Math.random() * 2.6,
+        });
       }
     }
     for (let i = 0; i < 26; i++) { // grass puddles on the flat airfield disc
       const a = Math.random() * Math.PI * 2; const d = 40 + Math.random() * 190;
       const x = Math.sin(a) * d; const z = Math.cos(a) * d;
       if (onPaved(x, z, 4)) continue;
-      addPuddle(x, 0.07, z, 1.8 + Math.random() * 4.6, 1.2 + Math.random() * 3);
+      coastal.push({ x, y: 0.07, z, rx: 1.8 + Math.random() * 4.6, rz: 1.2 + Math.random() * 3 });
     }
-    landGroup.add(puddleGroup);
+    makePuddleSheet(coastal, landGroup);
+
+    // City: scatter across BOTH city islands — the main midtown/downtown island
+    // (streets + parks) and the separate airfield island — rejecting building
+    // footprints (obBoxCity) and the water gaps between islands (groundAt dips
+    // to the sea floor there). Rejection sampling — the streets are the gaps
+    // between edge-to-edge blocks, so plenty of points still land on open road.
+    const city = [];
+    const inBuilding = (x, z) => obBoxCity.some(
+      (o) => x >= o.x0 - 1.5 && x <= o.x1 + 1.5 && z >= o.z0 - 1.5 && z <= o.z1 + 1.5,
+    );
+    const scatterIsland = (cx, cz, hx, hz, maxN, maxTries) => {
+      let placed = 0;
+      for (let tries = 0; tries < maxTries && placed < maxN; tries++) {
+        const x = cx + (Math.random() - 0.5) * 2 * hx;
+        const z = cz + (Math.random() - 0.5) * 2 * hz;
+        if (inBuilding(x, z)) continue;
+        const gy = cityWorld.groundAt(x, z);
+        if (gy < CITY.GROUND_Y - 1) continue; // off the platform → open sea
+        city.push({ x, y: gy + 0.06, z, rx: 1.4 + Math.random() * 4, rz: 1.1 + Math.random() * 2.6 });
+        placed++;
+      }
+    };
+    scatterIsland(CITY.ISLAND.x, CITY.ISLAND.z, CITY.ISLAND.hx, CITY.ISLAND.hz, 160, 1200);
+    scatterIsland(CITY.FIELD.x, CITY.FIELD.z, CITY.FIELD.hx, CITY.FIELD.hz, 46, 500);
+    makePuddleSheet(city, cityGroup);
+
+    // Ocean: standing water on each carrier's steel flight deck.
+    const decks = [];
+    for (const c of carriers) {
+      for (let i = 0; i < 12; i++) {
+        decks.push({
+          x: c.x + (Math.random() - 0.5) * (CARRIER.DECK_W * 0.78),
+          y: DECK_TOP + 0.05,
+          z: c.z + (Math.random() - 0.5) * (CARRIER.DECK_LEN * 0.86),
+          rx: 1.2 + Math.random() * 2.8, rz: 1.0 + Math.random() * 2.2,
+        });
+      }
+    }
+    makePuddleSheet(decks, oceanGroup);
   }());
 
   // ---- Rain: a camera-following box of falling streaks (one LineSegments

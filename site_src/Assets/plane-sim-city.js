@@ -1429,5 +1429,6 @@ export function buildCity() {
     field: { x: CITY.FIELD.x, z: CITY.FIELD.z, rwLen: CITY.FIELD.rwLen },
     groundAt,
     inCity: inCityXZ,
+    groundMats: [streetMat, grassFieldMat], // wetted by the storm weather system
   };
 }
