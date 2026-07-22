@@ -1306,12 +1306,21 @@ export function makeWindsock() {
     parent = joint;
     r0 = r1;
   }
-  g.userData.flutter = (t) => {
+  // flutter(t, k, stream): k scales the flap speed/amplitude with the breeze,
+  // stream (0..1) lifts the sock toward horizontal as the wind fills it (and
+  // adds a high-frequency shiver — gale fabric vibrates more than it flaps).
+  // Defaults keep the original ambient-breeze behaviour for old callers.
+  g.userData.flutter = (t, k = 1, stream = 0) => {
+    const f = 0.8 + k * 0.45; // stronger wind flaps faster
+    const droop = 0.12 * (1 - stream); // filled by the gale -> streams level
     for (let i = 0; i < joints.length; i++) {
       const lag = i * 0.85; // ripple travels root -> tail
-      const amp = 0.05 + i * 0.045; // tail flaps harder than the mouth
-      joints[i].rotation.x = 0.12 + Math.sin(t * 3.1 - lag) * amp + Math.sin(t * 7.3 - lag * 1.7) * amp * 0.35;
-      joints[i].rotation.y = Math.sin(t * 2.3 - lag + 1.2) * amp * 0.8;
+      const amp = (0.05 + i * 0.045) * (0.55 + 0.45 * k) * (1 - stream * 0.45) + stream * 0.014 * i;
+      const vib = stream * 0.02 * (0.4 + i * 0.2);
+      joints[i].rotation.x = droop + Math.sin(t * 3.1 * f - lag) * amp
+        + Math.sin(t * 7.3 * f - lag * 1.7) * amp * 0.35
+        + Math.sin(t * 13.7 * f - lag * 2.3) * vib;
+      joints[i].rotation.y = Math.sin(t * 2.3 * f - lag + 1.2) * amp * 0.8;
     }
   };
   g.userData.flutter(0);

@@ -835,6 +835,13 @@ export function PlaneSimPage(opts: {
             <div class="ps-tile-ico">🏙️</div>
             <div><p class="ps-map-name">The City</p><p class="ps-map-desc">The island airfield and the 1940s skyline, all to yourself. Mind the towers — they're solid.</p></div>
           </div>
+          <div class="ps-diff-row" id="ps-weather-row">
+            <span class="ps-diff-lbl">Weather</span>
+            <button type="button" class="ps-diff-btn" data-weather="sunny">☀ Sunny</button>
+            <button type="button" class="ps-diff-btn" data-weather="cloudy">☁ Cloudy</button>
+            <button type="button" class="ps-diff-btn" data-weather="storm">⛈ Thunderstorms</button>
+          </div>
+          <p class="ps-hint">Pick the weather, then a map. Thunderstorms bring gusty crosswinds, turbulence, rain and lightning — and heavy seas out on the ocean.</p>
           <div class="ps-menu-row">
             <button type="button" class="ps-back-btn" data-menuback>‹ Modes</button>
           </div>

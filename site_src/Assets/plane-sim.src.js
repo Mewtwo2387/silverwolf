@@ -429,9 +429,13 @@ import { buildCity, CITY } from './plane-sim-city.js';
   const backFill = new THREE.DirectionalLight(0x9fc4ff, 0.55);
   backFill.position.set(0.6, 0.4, -0.5);
   scene.add(backFill);
-  scene.add(new THREE.HemisphereLight(0xcce2ff, 0x6e785a, 1.25));
+  const hemi = new THREE.HemisphereLight(0xcce2ff, 0x6e785a, 1.25);
+  scene.add(hemi);
 
-  // ---- A gradient sky dome (top deep-blue -> pale horizon haze) + sun disc ----
+  // ---- A gradient sky dome (top deep-blue -> pale horizon haze) + sun disc.
+  //      skyCtl exposes the canvas/texture/sun-sprite so the weather system
+  //      can repaint the gradient (and dim the sun) when the sky changes. ----
+  const skyCtl = { canvas: null, ctx: null, tex: null, sunSpr: null };
   (function buildSky() {
     const c = document.createElement('canvas');
     c.width = 8; c.height = 256;
@@ -445,6 +449,7 @@ import { buildCity, CITY } from './plane-sim-city.js';
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.mapping = THREE.EquirectangularReflectionMapping;
     scene.environment = tex;
+    skyCtl.canvas = c; skyCtl.ctx = ctx; skyCtl.tex = tex;
     const dome = new THREE.Mesh(
       new THREE.SphereGeometry(15500, 24, 16),
       new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide, fog: false, depthWrite: false }),
@@ -467,7 +472,53 @@ import { buildCity, CITY } from './plane-sim-city.js';
     sunSpr.position.copy(SUN_DIR).multiplyScalar(12500);
     sunSpr.scale.setScalar(2400);
     scene.add(sunSpr);
+    skyCtl.sunSpr = sunSpr;
   }());
+
+  // ---- Wind-sway shader hook (weather system). Shared uniforms — the
+  //      weather engine (further down) drives them each frame; the tree
+  //      materials in scatterVegetation get injectWindSway() applied so every
+  //      tree on the map bends with the SAME wind, in the vertex shader, with
+  //      zero per-frame CPU cost. Declared this early because the forests are
+  //      built long before the weather engine section. ----
+  const windUniforms = {
+    uTime: { value: 0 },
+    uWindDir: { value: new THREE.Vector2(1, 0) }, // unit XZ, where the wind blows TOWARD
+    uSway: { value: 0 }, // metres of lean at reference height (12 m)
+    uVib: { value: 0 }, // high-frequency shiver on top (gale vibration)
+  };
+  // Bend instanced geometry with height above the instance origin; the gust
+  // phase comes from the instance's world position so gust waves travel
+  // across the forest while everything leans the same way.
+  function injectWindSway(mat) {
+    mat.onBeforeCompile = (shader) => {
+      shader.uniforms.uTime = windUniforms.uTime;
+      shader.uniforms.uWindDir = windUniforms.uWindDir;
+      shader.uniforms.uSway = windUniforms.uSway;
+      shader.uniforms.uVib = windUniforms.uVib;
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nuniform float uTime;\nuniform vec2 uWindDir;\nuniform float uSway;\nuniform float uVib;')
+        .replace('#include <project_vertex>', `
+vec4 mvPosition = vec4( transformed, 1.0 );
+#ifdef USE_INSTANCING
+  mvPosition = instanceMatrix * mvPosition;
+  {
+    float hAbove = max( mvPosition.y - instanceMatrix[3][1], 0.0 );
+    float bend = pow( clamp( hAbove / 12.0, 0.0, 1.6 ), 1.5 );
+    float ph = instanceMatrix[3][0] * 0.019 + instanceMatrix[3][2] * 0.023;
+    float g = sin( uTime * 1.6 + ph ) * 0.62 + sin( uTime * 2.9 + ph * 1.6 ) * 0.38;
+    float swayAmt = uSway * bend * ( 0.55 + 0.45 * g );
+    float vibAmt = uVib * bend * sin( uTime * 12.0 + ph * 3.1 ) * 0.12;
+    mvPosition.x += uWindDir.x * ( swayAmt + vibAmt );
+    mvPosition.z += uWindDir.y * ( swayAmt + vibAmt );
+  }
+#endif
+mvPosition = modelViewMatrix * mvPosition;
+gl_Position = projectionMatrix * mvPosition;
+`);
+    };
+    mat.customProgramCacheKey = () => 'ps-wind-sway';
+  }
 
   // ---- Terrain: procedural mountains/valleys/lakes (plane-sim-terrain.js).
   //      The airfield sits on a flattened disc at the origin. Everything
@@ -476,7 +527,8 @@ import { buildCity, CITY } from './plane-sim-city.js';
   //      the ocean it IS the map). ----
   const landGroup = new THREE.Group();
   scene.add(landGroup);
-  landGroup.add(buildTerrain(renderer));
+  const terrainMesh = buildTerrain(renderer); // kept: the storm weather darkens it for wet ground
+  landGroup.add(terrainMesh);
   // Ultra: the water is a planar-reflection surface with animated waves (the
   // whole scene is mirrored into a render target each frame — the closest
   // WebGL gets to ray-traced reflections). Every other tier keeps the cheap
@@ -616,6 +668,12 @@ import { buildCity, CITY } from './plane-sim-city.js';
     x0, x1, z0, z1, top, reason,
   });
 
+  // Pavement / runway-paint materials collected as they're built, so the storm
+  // weather can drop their roughness for a rain-slick sheen (and restore on
+  // clear). { mat, rough, color } — color is the dry tint to restore.
+  const wetSurfaces = [];
+  const registerWet = (mat) => { wetSurfaces.push({ mat, rough: mat.roughness, color: mat.color.getHex() }); };
+
   // ---- Demo airfield: tarmac runway (centreline, threshold + edge lines), a
   //      glazed control tower and Quonset-hut hangars. ----
   (function buildAirfield() {
@@ -654,8 +712,10 @@ import { buildCity, CITY } from './plane-sim-city.js';
     tarmac.position.y = 0.12;
     tarmac.receiveShadow = true;
     markings.add(tarmac);
+    registerWet(tarmac.material);
 
     const paint = new THREE.MeshStandardMaterial({ color: 0xe8edf2, roughness: 0.8 });
+    registerWet(paint);
     const flat = (geo, x, z) => {
       const m = new THREE.Mesh(geo, paint);
       m.rotation.x = -Math.PI / 2; m.position.set(x, 0.18, z); m.receiveShadow = true;
@@ -673,6 +733,7 @@ import { buildCity, CITY } from './plane-sim-city.js';
     const taxiTex = asphaltTex.clone();
     taxiTex.repeat.set(1.5, 30);
     const taxiMat = new THREE.MeshStandardMaterial({ map: taxiTex, color: 0xffffff, roughness: 0.88, vertexColors: true });
+    registerWet(taxiMat);
     const taxi = (w, l, x, z, rot = 0) => {
       const geo = new THREE.PlaneGeometry(w, l, Math.max(1, Math.round(w / 10)), Math.max(1, Math.round(l / 10)));
       const pos = geo.attributes.position;
@@ -753,6 +814,7 @@ import { buildCity, CITY } from './plane-sim-city.js';
       const sock = makeWindsock();
       sock.position.set(34, 0, wz);
       sock.rotation.y = Math.PI * 0.15;
+      sock.userData.yaw0 = sock.rotation.y; // calm-weather heading (wind steering restores it)
       field.add(sock);
       windsocks.push(sock);
     }
@@ -927,6 +989,7 @@ import { buildCity, CITY } from './plane-sim-city.js';
   cityGroup.visible = false;
   scene.add(cityGroup);
   const obBoxCity = cityWorld.obstacles; // building + airfield crash AABBs
+  for (const s of cityWorld.socks) if (s.userData.yaw0 == null) s.userData.yaw0 = s.rotation.y;
   windsocks.push(...cityWorld.socks); // fluttered by the frame loop (hidden off-map)
 
   let cityGrassField = null;
@@ -1071,6 +1134,8 @@ import { buildCity, CITY } from './plane-sim-city.js';
       metalness: 0.05,
       vertexColors: true,
     });
+    injectWindSway(trunkMat); // storm wind bends every tree in the vertex shader
+    injectWindSway(leafMat);
 
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
@@ -1196,7 +1261,15 @@ import { buildCity, CITY } from './plane-sim-city.js';
   // ---- Clouds: sprite billboards, but each carries a drawn CUMULUS texture
   //      (a row of overlapping puffs — bright domed tops, grey flattened
   //      base, ragged silhouette) instead of one radial blob, so they read
-  //      as clouds rather than circles. Four variants, drawn once. ----
+  //      as clouds rather than circles. Four variants, drawn once.
+  //      Three decks for the weather system: 'fair' (the original scattered
+  //      cumulus), 'mid' (broken patches with sunny gaps — the cloudy preset)
+  //      and 'storm' (a dark towering overcast + a ceiling cap). applyWeather
+  //      toggles which decks show. ----
+  const cloudGroups = { fair: new THREE.Group(), mid: new THREE.Group(), storm: new THREE.Group() };
+  const stormCloudMats = []; // dark deck materials, flashed white by lightning
+  let overcastCap = null; // the storm ceiling (one draw call of dark churn)
+  let overcastBase = null;
   (function buildClouds() {
     function cloudTexture() {
       const W = 256; const H = 128;
@@ -1238,18 +1311,15 @@ import { buildCity, CITY } from './plane-sim-city.js';
       return tex;
     }
     const variants = [cloudTexture(), cloudTexture(), cloudTexture(), cloudTexture()];
-    for (let i = 0; i < 34; i++) {
+    // One cloud = one material (so tint/opacity vary) behind 1-2 billboards.
+    function puff(group, cx, cy, cz, base, tint, opMin, opVar, ySquash = 0.5) {
       const mat = new THREE.SpriteMaterial({
         map: variants[Math.floor(Math.random() * variants.length)],
         depthWrite: false,
-        opacity: 0.62 + Math.random() * 0.3,
+        opacity: opMin + Math.random() * opVar,
+        color: tint,
         fog: true,
       });
-      const cx = (Math.random() - 0.5) * CFG.BORDER * 2.2;
-      const cy = 260 + Math.random() * 1100;
-      const cz = (Math.random() - 0.5) * CFG.BORDER * 2.2;
-      const base = 260 + Math.random() * 380;
-      // One wide main billboard per cloud, sometimes a smaller trailing one.
       const n = 1 + (Math.random() < 0.45 ? 1 : 0);
       for (let k = 0; k < n; k++) {
         const s = new THREE.Sprite(mat);
@@ -1259,11 +1329,516 @@ import { buildCity, CITY } from './plane-sim-city.js';
           cz + (Math.random() - 0.5) * base * 0.4,
         );
         const scl = base * (k ? 0.55 : 1) * (0.85 + Math.random() * 0.3);
-        s.scale.set(scl, scl * 0.5, 1);
-        scene.add(s);
+        s.scale.set(scl, scl * ySquash, 1);
+        group.add(s);
+      }
+      return mat;
+    }
+    // The original fair-weather cumulus, scattered thin and high.
+    for (let i = 0; i < 34; i++) {
+      puff(cloudGroups.fair,
+        (Math.random() - 0.5) * CFG.BORDER * 2.2, 260 + Math.random() * 1100,
+        (Math.random() - 0.5) * CFG.BORDER * 2.2, 260 + Math.random() * 380,
+        0xffffff, 0.62, 0.3);
+    }
+    // Cloudy: a few whites plus several broken-deck patches — lower, greyer,
+    // clustered — so some districts sit under cloud while sun gets through
+    // between the patches.
+    for (let i = 0; i < 12; i++) {
+      puff(cloudGroups.mid,
+        (Math.random() - 0.5) * CFG.BORDER * 2.2, 300 + Math.random() * 900,
+        (Math.random() - 0.5) * CFG.BORDER * 2.2, 240 + Math.random() * 320,
+        0xffffff, 0.6, 0.25);
+    }
+    for (let p = 0; p < 6; p++) {
+      const px = (Math.random() - 0.5) * CFG.BORDER * 1.8;
+      const pz = (Math.random() - 0.5) * CFG.BORDER * 1.8;
+      const py = 640 + Math.random() * 320;
+      const n = 6 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < n; i++) {
+        puff(cloudGroups.mid,
+          px + (Math.random() - 0.5) * 1500, py + (Math.random() - 0.5) * 160,
+          pz + (Math.random() - 0.5) * 1500, 320 + Math.random() * 320,
+          0xd6dce2, 0.72, 0.2);
       }
     }
+    // Storm: a low dark deck, ragged scud beneath it, and towering cells
+    // punching high like real thunderheads.
+    for (let i = 0; i < 58; i++) {
+      stormCloudMats.push(puff(cloudGroups.storm,
+        (Math.random() - 0.5) * CFG.BORDER * 2.6, 480 + Math.random() * 260,
+        (Math.random() - 0.5) * CFG.BORDER * 2.6, 460 + Math.random() * 460,
+        0x565b66, 0.9, 0.1, 0.46));
+    }
+    for (let i = 0; i < 24; i++) { // ragged low scud
+      stormCloudMats.push(puff(cloudGroups.storm,
+        (Math.random() - 0.5) * CFG.BORDER * 2.4, 300 + Math.random() * 180,
+        (Math.random() - 0.5) * CFG.BORDER * 2.4, 180 + Math.random() * 200,
+        0x464b55, 0.85, 0.15, 0.42));
+    }
+    for (let i = 0; i < 15; i++) { // towering cells climbing out of the deck
+      stormCloudMats.push(puff(cloudGroups.storm,
+        (Math.random() - 0.5) * CFG.BORDER * 2.2, 800 + Math.random() * 700,
+        (Math.random() - 0.5) * CFG.BORDER * 2.2, 380 + Math.random() * 380,
+        0x666c78, 0.92, 0.08, 0.85));
+    }
+    for (const m of stormCloudMats) m.userData.base = m.color.clone();
+    // The overcast ceiling: one dark churning cap over most of the sky (a
+    // single draw call), so the deck above reads as continuous cloud cover.
+    const oc = (() => {
+      const S = 512;
+      const c = document.createElement('canvas');
+      c.width = c.height = S;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#3a3f48'; ctx.fillRect(0, 0, S, S);
+      for (let i = 0; i < 300; i++) { // layered grey churn
+        const x = Math.random() * S; const y = Math.random() * S; const r = 18 + Math.random() * 90;
+        const v = 44 + Math.floor(Math.random() * 42);
+        const g = ctx.createRadialGradient(x, y, r * 0.15, x, y, r);
+        g.addColorStop(0, `rgba(${v},${v + 3},${v + 9},0.5)`);
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
+      }
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(4, 2);
+      return tex;
+    })();
+    overcastCap = new THREE.Mesh(
+      new THREE.SphereGeometry(13800, 32, 10, 0, Math.PI * 2, 0, Math.PI * 0.42),
+      new THREE.MeshBasicMaterial({
+        map: oc, color: 0x9aa0ab, transparent: true, opacity: 0.92,
+        side: THREE.BackSide, fog: false, depthWrite: false,
+      }),
+    );
+    overcastBase = overcastCap.material.color.clone();
+    cloudGroups.storm.add(overcastCap);
+    scene.add(cloudGroups.fair);
+    scene.add(cloudGroups.mid);
+    scene.add(cloudGroups.storm);
+    cloudGroups.mid.visible = false;
+    cloudGroups.storm.visible = false;
   }());
+
+  // ======================================================== WEATHER ========
+  // Experimental weather systems — FREE FLIGHT ONLY for now. The picker lives
+  // on the free-flight screen (remembered in localStorage); respawnBase is the
+  // single funnel that applies the picked weather for a free flight and forces
+  // 'sunny' for everything else. Three presets:
+  //   sunny — the original calm day (default).
+  //   cloudy — a broken deck with sunny gaps (light still gets through), a
+  //     steady breeze, light chop on the water.
+  //   storm — dark towering overcast over most of the sky, lightning +
+  //     distance-delayed thunder, rain, wet ground with puddles, heavy seas
+  //     crashing on the carriers, and a gusty wind that genuinely flies the
+  //     aeroplane (drift on the ground track + turbulence jolts).
+  // The wind is NOT pure random: it blows from one general heading per flight
+  // (chosen in applyWeather), slowly veering ±~25° and gusting — so every
+  // loose thing in the world (trees, windsocks, rain, sea foam) leans the
+  // SAME way at the SAME time.
+  const WX = {
+    sunny: {
+      wind: 2.5, gust: 0.2, jolt: 0, sway: 0.05, vib: 0,
+      sun: 2.4, sunCol: 0xfff2da, hemi: 1.25, back: 0.55, expo: 1.15,
+      sky: ['#2b66a8', '#68a4d6', '#d5e4ee'], fogMul: 1, sunSprite: 1,
+      seaN: 0.35, seaDistort: 18, seaSize: 8, seaRough: 0.08, seaTint: 0, waterScroll: 1, wet: false,
+    },
+    cloudy: {
+      wind: 6.5, gust: 0.6, jolt: 0.1, sway: 0.16, vib: 0.05,
+      sun: 1.8, sunCol: 0xfff6e6, hemi: 1.1, back: 0.5, expo: 1.1,
+      sky: ['#476a8e', '#7d9ab4', '#c3cdd4'], fogMul: 0.85, sunSprite: 0.45,
+      seaN: 0.55, seaDistort: 24, seaSize: 10, seaRough: 0.14, seaTint: 0x1a5468, waterScroll: 1.6, wet: false,
+    },
+    storm: {
+      wind: 15, gust: 1.6, jolt: 0.45, sway: 0.5, vib: 0.32,
+      sun: 0.7, sunCol: 0xdde4ee, hemi: 0.65, back: 0.35, expo: 0.92,
+      sky: ['#39434f', '#4c5764', '#68717e'], fogMul: 0.55, sunSprite: 0,
+      seaN: 1.5, seaDistort: 42, seaSize: 16, seaRough: 0.3, seaTint: 0x123240, waterScroll: 3.2, wet: true,
+    },
+  };
+  const validWeather = (n) => n === 'sunny' || n === 'cloudy' || n === 'storm';
+  let weatherName = (() => { // the MENU preference (remembered)
+    try { const w = localStorage.getItem('ps-weather'); return validWeather(w) ? w : 'sunny'; } catch (_) { return 'sunny'; }
+  })();
+  let weather = WX.sunny; // the LIVE preset actually driving the world
+
+  // ---- Wind state: one general heading, slowly veering, gusting in slow
+  //      envelopes. vec is the current wind vector (m/s, world XZ). ----
+  const windState = {
+    baseDir: Math.random() * Math.PI * 2, // THE general direction this flight
+    dir: 0, speed: 0, yaw: 0, gust01: 0, t: 0,
+    vec: new THREE.Vector3(), sockK: 1, stream: 0,
+  };
+  // Smooth pseudo-noise in [-1, 1] from layered incommensurate sines (no
+  // allocation, deterministic) — drives turbulence jolts and gust texture.
+  const turbNoise = (t, seed) => Math.sin(t * 1.9 + seed) * 0.55
+    + Math.sin(t * 3.7 + seed * 1.7) * 0.3
+    + Math.sin(t * 6.1 + seed * 2.3) * 0.15;
+
+  // ---- Scene-wide weather application ----
+  const FOG0 = { near: GFX.fogNear, far: GFX.fogFar };
+  const WATER0 = { color: 0x1d5d75, ultraColor: 0x0c4254 }; // buildWater/Water defaults
+  function paintSky(topCss, midCss, hazeCss) {
+    if (!skyCtl.ctx) return;
+    const g = skyCtl.ctx.createLinearGradient(0, 0, 0, skyCtl.canvas.height);
+    g.addColorStop(0, topCss); g.addColorStop(0.55, midCss); g.addColorStop(1, hazeCss);
+    skyCtl.ctx.fillStyle = g; skyCtl.ctx.fillRect(0, 0, skyCtl.canvas.width, skyCtl.canvas.height);
+    skyCtl.tex.needsUpdate = true;
+    if (scene.background && scene.background.isColor) scene.background.set(topCss);
+    scene.fog.color.set(hazeCss);
+  }
+  function applyWaterWeather(p) {
+    if (!waterMesh || !waterMesh.material) return;
+    const m = waterMesh.material;
+    if (waterMesh.isWater) { // ultra: the planar-reflection Water addon
+      m.uniforms.distortionScale.value = p.seaDistort;
+      m.uniforms.size.value = p.seaSize;
+      m.uniforms.waterColor.value.setHex(p.seaTint || WATER0.ultraColor);
+    } else { // the cheap translucent plane: rougher normal chop, darker body
+      m.normalScale.set(p.seaN, p.seaN);
+      m.roughness = p.seaRough;
+      m.color.setHex(p.seaTint || WATER0.color);
+    }
+  }
+  // Wet ground: darken + slick the terrain and pavement, and show puddles.
+  // (Coastal map only for now — the city keeps its own materials dry.)
+  function applyWetGround(wet) {
+    terrainMesh.material.color.setScalar(wet ? 0.62 : 1);
+    terrainMesh.material.roughness = wet ? 0.5 : 0.88;
+    for (const w of wetSurfaces) {
+      w.mat.roughness = wet ? 0.3 : w.rough;
+      w.mat.color.setHex(wet ? 0xa8b4c2 : w.color);
+    }
+    puddleGroup.visible = wet;
+  }
+
+  // ---- Puddles: mirror-flat dark discs over the airfield tarmac and the
+  //      flat grass of the airfield disc. Built once, shown in the storm. ----
+  const puddleGroup = new THREE.Group();
+  puddleGroup.visible = false;
+  (function buildPuddles() {
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0x232b34, roughness: 0.05, metalness: 0.0,
+      transparent: true, opacity: 0.85, depthWrite: false,
+      polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+    });
+    const geo = new THREE.CircleGeometry(1, 18);
+    const addPuddle = (x, y, z, rx, rz) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.rotation.x = -Math.PI / 2;
+      m.rotation.z = Math.random() * Math.PI;
+      m.position.set(x, y, z);
+      m.scale.set(rx, rz, 1);
+      m.renderOrder = 2; // over the tarmac paint
+      puddleGroup.add(m);
+    };
+    for (const r of PAVED) { // a few per paved rect, sized by area
+      const n = clamp(Math.round(((r.x1 - r.x0) * (r.z1 - r.z0)) / 900), 1, 6);
+      for (let i = 0; i < n; i++) {
+        addPuddle(
+          r.x0 + Math.random() * (r.x1 - r.x0), 0.19, r.z0 + Math.random() * (r.z1 - r.z0),
+          1.6 + Math.random() * 4.2, 1.1 + Math.random() * 2.6,
+        );
+      }
+    }
+    for (let i = 0; i < 26; i++) { // grass puddles on the flat airfield disc
+      const a = Math.random() * Math.PI * 2; const d = 40 + Math.random() * 190;
+      const x = Math.sin(a) * d; const z = Math.cos(a) * d;
+      if (onPaved(x, z, 4)) continue;
+      addPuddle(x, 0.07, z, 1.8 + Math.random() * 4.6, 1.2 + Math.random() * 3);
+    }
+    landGroup.add(puddleGroup);
+  }());
+
+  // ---- Rain: a camera-following box of falling streaks (one LineSegments
+  //      draw call). Drops slant with the same wind that flies the plane. ----
+  const RAIN_N = 700;
+  const RAIN_BOX = 30; // half-extent of the drop box around the camera (m)
+  const rainDrops = new Float32Array(RAIN_N * 3);
+  const rainGeo = new THREE.BufferGeometry();
+  const rainPos = new Float32Array(RAIN_N * 6); // 2 verts per streak
+  for (let i = 0; i < RAIN_N; i++) {
+    rainDrops[i * 3] = (Math.random() - 0.5) * RAIN_BOX * 2;
+    rainDrops[i * 3 + 1] = Math.random() * 44;
+    rainDrops[i * 3 + 2] = (Math.random() - 0.5) * RAIN_BOX * 2;
+  }
+  rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
+  const rain = new THREE.LineSegments(rainGeo, new THREE.LineBasicMaterial({
+    color: 0xa9bdcf, transparent: true, opacity: 0.33, depthWrite: false,
+  }));
+  rain.frustumCulled = false;
+  rain.visible = false;
+  scene.add(rain);
+  function stepRain(dt) {
+    const cx = camera.position.x; const cy = camera.position.y; const cz = camera.position.z;
+    const fall = 52; // terminal-ish drop speed (m/s)
+    const wx = windState.vec.x * 0.6; const wz = windState.vec.z * 0.6; // wind-driven slant
+    const tailK = 0.017; // streak length as a fraction of fall velocity
+    for (let i = 0; i < RAIN_N; i++) {
+      let x = rainDrops[i * 3]; let y = rainDrops[i * 3 + 1]; let z = rainDrops[i * 3 + 2];
+      y -= fall * dt; x += wx * dt; z += wz * dt;
+      if (y < cy - 20 || x < cx - RAIN_BOX || x > cx + RAIN_BOX || z < cz - RAIN_BOX || z > cz + RAIN_BOX) {
+        y = cy + 18 + Math.random() * 10;
+        x = cx + (Math.random() - 0.5) * RAIN_BOX * 2;
+        z = cz + (Math.random() - 0.5) * RAIN_BOX * 2;
+      }
+      rainDrops[i * 3] = x; rainDrops[i * 3 + 1] = y; rainDrops[i * 3 + 2] = z;
+      const o = i * 6;
+      rainPos[o] = x; rainPos[o + 1] = y; rainPos[o + 2] = z;
+      rainPos[o + 3] = x - wx * tailK; rainPos[o + 4] = y + fall * tailK; rainPos[o + 5] = z - wz * tailK;
+    }
+    rainGeo.attributes.position.needsUpdate = true;
+  }
+
+  // ---- Lightning: jagged bolt sprites (canvas-drawn variants), a uniform
+  //      point-light pop, a flash across the storm deck, and thunder delayed
+  //      by distance. Most strikes stay inside the deck; some reach ground. ----
+  const boltTexs = [];
+  (function buildBoltTextures() {
+    for (let v = 0; v < 3; v++) {
+      const c = document.createElement('canvas');
+      c.width = 128; c.height = 512;
+      const ctx = c.getContext('2d');
+      ctx.strokeStyle = 'rgba(235,242,255,0.95)';
+      ctx.shadowColor = 'rgba(160,190,255,0.9)';
+      ctx.shadowBlur = 10;
+      ctx.lineCap = 'round';
+      const drawChannel = (x0, y0, y1, w) => {
+        let x = x0; let y = y0;
+        ctx.lineWidth = w;
+        ctx.beginPath(); ctx.moveTo(x, y);
+        while (y < y1) {
+          y += 14 + Math.random() * 22;
+          x += (Math.random() - 0.5) * 46;
+          ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        return y1;
+      };
+      drawChannel(64 + (Math.random() - 0.5) * 20, 0, 512, 4.5); // main channel
+      drawChannel(64, 180 + Math.random() * 120, 420 + Math.random() * 80, 2); // a branch
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      boltTexs.push(tex);
+    }
+  }());
+  const FLASH_COL = new THREE.Color(0xcfe0ff);
+  const flashLight = new THREE.PointLight(0xdfe9ff, 0, 0, 0); // decay 0 -> uniform flash
+  scene.add(flashLight);
+  let cloudFlash = 0;
+  const bolts = []; // live strikes { spr, life, maxLife }
+  const boltPool = [];
+  let boltTimer = 2.5;
+  function spawnBolt() {
+    const ang = Math.random() * Math.PI * 2;
+    const dist = 700 + Math.random() * 2600;
+    const x = plane.position.x + Math.sin(ang) * dist;
+    const z = plane.position.z + Math.cos(ang) * dist;
+    const topY = 520 + Math.random() * 320;
+    const inCloud = Math.random() < 0.45; // most lightning never leaves the deck
+    const botY = inCloud ? topY - (140 + Math.random() * 260)
+      : Math.max(groundAt(x, z), TERRAIN.WATER_Y);
+    const len = Math.max(topY - botY, 60);
+    const spr = boltPool.pop() || new THREE.Sprite(new THREE.SpriteMaterial({
+      map: boltTexs[0], depthWrite: false, transparent: true, blending: THREE.AdditiveBlending, fog: false,
+    }));
+    spr.material.map = boltTexs[Math.floor(Math.random() * boltTexs.length)];
+    spr.position.set(x, (topY + botY) / 2, z);
+    spr.scale.set(46 + Math.random() * 60, len, 1);
+    spr.material.opacity = 0;
+    scene.add(spr);
+    bolts.push({ spr, life: 0.32, maxLife: 0.32 });
+    flashLight.position.set(x, topY * 0.6, z);
+    flashLight.intensity = 14;
+    cloudFlash = 1;
+    audio.thunder(dist);
+  }
+  function stepBolts(dt) {
+    boltTimer -= dt;
+    if (boltTimer <= 0) {
+      boltTimer = 2.4 + Math.random() * 5.5;
+      spawnBolt();
+      // a third of strikes come as a paired stroke a beat later
+      if (Math.random() < 0.3) setTimeout(() => { if (weather === WX.storm) spawnBolt(); }, 120 + Math.random() * 220);
+    }
+    for (let i = bolts.length - 1; i >= 0; i--) {
+      const b = bolts[i];
+      b.life -= dt;
+      if (b.life <= 0) {
+        scene.remove(b.spr);
+        boltPool.push(b.spr);
+        bolts.splice(i, 1);
+        continue;
+      }
+      const k = b.life / b.maxLife; // 1 -> 0, double-strobe flicker
+      b.spr.material.opacity = (k > 0.72 || (k > 0.38 && k < 0.55)) ? 0.95 : 0.12;
+    }
+  }
+
+  // ---- Heavy seas (ocean map, storm): white foam beaten off the wave tops,
+  //      and breakers crashing over the carrier bows. ----
+  const foamTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const ctx = c.getContext('2d');
+    for (let i = 0; i < 7; i++) { // a ragged white patch of overlapping blobs
+      const x = 22 + Math.random() * 20; const y = 22 + Math.random() * 20; const r = 9 + Math.random() * 14;
+      const g = ctx.createRadialGradient(x, y, 1, x, y, r);
+      g.addColorStop(0, 'rgba(235,242,246,0.85)');
+      g.addColorStop(1, 'rgba(235,242,246,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  })();
+  const foams = [];
+  const foamPool = [];
+  function spawnFoam(pos, size, life, vy = 0) {
+    const s = foamPool.pop() || new THREE.Sprite(new THREE.SpriteMaterial({
+      map: foamTex, depthWrite: false, transparent: true,
+    }));
+    s.material.opacity = 0.9;
+    s.position.copy(pos);
+    s.scale.setScalar(size);
+    s.userData = { life, maxLife: life, size, vy };
+    scene.add(s);
+    foams.push(s);
+  }
+  function stepFoam(dt) {
+    for (let i = foams.length - 1; i >= 0; i--) {
+      const s = foams[i];
+      s.userData.life -= dt;
+      const k = s.userData.life / s.userData.maxLife;
+      if (k <= 0) { scene.remove(s); foamPool.push(s); foams.splice(i, 1); continue; }
+      s.position.y += s.userData.vy * dt; // spray leaps, then hangs
+      s.userData.vy = Math.max(0, s.userData.vy - 14 * dt);
+      s.position.x += windState.vec.x * 0.35 * dt;
+      s.position.z += windState.vec.z * 0.35 * dt;
+      s.material.opacity = k * 0.9;
+      s.scale.setScalar(s.userData.size * (1 + (1 - k) * 1.8));
+    }
+  }
+  let foamT = 0; let bowT = 2;
+  const _foamPos = new THREE.Vector3();
+  function stepStormSeas(dt) {
+    if (mapName !== 'ocean') return;
+    // steady foam beaten off the upwind beam of each carrier
+    foamT -= dt;
+    if (foamT <= 0) {
+      foamT = 0.14 + Math.random() * 0.22;
+      const c = carriers[Math.random() < 0.7 ? 0 : 1];
+      const side = Math.sign(windState.vec.x) || 1; // upwind = against the wind vector
+      _foamPos.set(
+        c.x - side * (CARRIER.DECK_W / 2 + 2 + Math.random() * 4),
+        TERRAIN.WATER_Y + 0.6 + Math.random() * 1.6,
+        c.z + (Math.random() - 0.5) * (CARRIER.DECK_LEN - 20),
+      );
+      spawnFoam(_foamPos, 3.5 + Math.random() * 5, 1.1 + Math.random() * 0.9, 1.5 + Math.random() * 2);
+    }
+    // and every few seconds a breaker slams over a bow
+    bowT -= dt;
+    if (bowT <= 0) {
+      bowT = 2.6 + Math.random() * 3.4;
+      const c = carriers[Math.random() < 0.65 ? 0 : 1];
+      const bowDir = c.rotY ? 1 : -1; // the ally bow faces -Z, the enemy +Z
+      for (let k = 0; k < 6; k++) {
+        _foamPos.set(
+          c.x + (Math.random() - 0.5) * (CARRIER.DECK_W * 0.9),
+          TERRAIN.WATER_Y + 1 + Math.random() * 6,
+          c.z + bowDir * (CARRIER.DECK_LEN / 2 - 3 - Math.random() * 10),
+        );
+        spawnFoam(_foamPos, 6 + Math.random() * 9, 1.3 + Math.random() * 0.9, 5 + Math.random() * 6);
+      }
+    }
+  }
+
+  // ---- The one funnel: swap the whole world to a preset. Called from
+  //      respawnBase with the menu pick for free flights, 'sunny' otherwise. ----
+  function applyWeather(name) {
+    const n = validWeather(name) ? name : 'sunny';
+    weather = WX[n];
+    // cloud decks (the storm deck replaces the fair-weather cumulus)
+    cloudGroups.fair.visible = n !== 'storm';
+    cloudGroups.mid.visible = n === 'cloudy';
+    cloudGroups.storm.visible = n === 'storm';
+    // sky, fog, lights, exposure
+    paintSky(weather.sky[0], weather.sky[1], weather.sky[2]);
+    scene.fog.near = FOG0.near * weather.fogMul;
+    scene.fog.far = FOG0.far * weather.fogMul;
+    sun.intensity = weather.sun;
+    sun.color.setHex(weather.sunCol);
+    hemi.intensity = weather.hemi;
+    backFill.intensity = weather.back;
+    renderer.toneMappingExposure = weather.expo;
+    if (skyCtl.sunSpr) skyCtl.sunSpr.material.opacity = weather.sunSprite;
+    // sea + ground
+    applyWaterWeather(weather);
+    applyWetGround(weather.wet);
+    // rain / lightning / heavy seas churn only in a live storm
+    rain.visible = n === 'storm';
+    if (n !== 'storm') {
+      for (const b of bolts) { scene.remove(b.spr); boltPool.push(b.spr); }
+      bolts.length = 0;
+      flashLight.intensity = 0;
+      cloudFlash = 0;
+      for (const m of stormCloudMats) m.color.copy(m.userData.base);
+      if (overcastCap) overcastCap.material.color.copy(overcastBase);
+      boltTimer = 2.5;
+    }
+    audio.setRain(n === 'storm' ? 1 : 0);
+  }
+
+  // ---- Per-frame weather tick: evolve the wind, push the shared sway
+  //      uniforms, and run the storm systems when they're live. ----
+  function stepWeather(dt) {
+    windState.t += dt;
+    const wt = windState.t;
+    // One general heading per flight, veering slowly; gusts as slow envelopes.
+    windState.dir = windState.baseDir + Math.sin(wt * 0.021) * 0.38 + Math.sin(wt * 0.047 + 1.7) * 0.16;
+    const gustEnv = 0.5 + 0.5 * Math.sin(wt * 0.11 + 0.6) * Math.sin(wt * 0.043 + 2.4);
+    windState.gust01 = clamp(gustEnv, 0, 1);
+    windState.speed = weather.wind * (0.6 + 0.4 * gustEnv)
+      + weather.gust * gustEnv * (0.5 + 0.5 * Math.sin(wt * 0.7 + 1.1)) * 2.2;
+    windState.vec.set(Math.sin(windState.dir), 0, Math.cos(windState.dir)).multiplyScalar(windState.speed);
+    windState.yaw = Math.atan2(windState.vec.x, windState.vec.z);
+    windState.sockK = clamp(0.6 + windState.speed / 7, 0.7, 2.8);
+    windState.stream = clamp((windState.speed - 3) / 11, 0, 1);
+    // shared tree-sway uniforms (direction is THE wind; amplitude rides gusts)
+    windUniforms.uTime.value = wt;
+    windUniforms.uWindDir.value.set(Math.sin(windState.dir), Math.cos(windState.dir));
+    windUniforms.uSway.value = weather.sway * (0.6 + 0.7 * windState.gust01);
+    windUniforms.uVib.value = weather.vib;
+    if (weather === WX.storm) {
+      if (overcastCap) overcastCap.rotation.y += dt * 0.004; // the deck churns slowly
+      stepRain(dt);
+      stepBolts(dt);
+      stepStormSeas(dt);
+    }
+    stepFoam(dt); // decay any live foam even after the storm clears
+    // lightning light + cloud-deck flash decay between strikes
+    flashLight.intensity = flashLight.intensity > 0.01 ? flashLight.intensity * Math.exp(-dt * 9) : 0;
+    if (cloudFlash > 0.004) {
+      cloudFlash *= Math.exp(-dt * 7);
+      for (const m of stormCloudMats) m.color.copy(m.userData.base).lerp(FLASH_COL, cloudFlash * 0.75);
+      if (overcastCap) overcastCap.material.color.copy(overcastBase).lerp(FLASH_COL, cloudFlash * 0.6);
+    }
+  }
+
+  // ---- Weather picker (free-flight screen; remembered). ----
+  function setWeatherPref(name) {
+    if (!validWeather(name)) return;
+    weatherName = name;
+    try { localStorage.setItem('ps-weather', name); } catch (_) { /* private mode */ }
+    for (const b of document.querySelectorAll('[data-weather]')) {
+      b.classList.toggle('ps-diff-active', b.dataset.weather === name);
+    }
+  }
+  for (const b of document.querySelectorAll('[data-weather]')) {
+    b.addEventListener('mousedown', (ev) => ev.stopPropagation());
+    b.addEventListener('click', (ev) => { ev.stopPropagation(); setWeatherPref(b.dataset.weather); });
+  }
 
   // ---- World border: Minecraft-style translucent cyan walls, with a scrolling
   //      vertical-stripe texture so the boundary is unmistakable. ----
@@ -1396,6 +1971,7 @@ import { buildCity, CITY } from './plane-sim-city.js';
   const _up = new THREE.Vector3();
   const _right = new THREE.Vector3();
   const _vLocal = new THREE.Vector3();
+  const _vAir = new THREE.Vector3(); // air-relative velocity (ground velocity minus wind)
   const _acc = new THREE.Vector3();
   const _vDir = new THREE.Vector3();
   const _q = new THREE.Quaternion();
@@ -1489,6 +2065,7 @@ import { buildCity, CITY } from './plane-sim-city.js';
       for (let i = 0; i < 256; i++) { const x = i / 127.5 - 1; curve[i] = Math.tanh(2.2 * x); }
       drive.curve = curve;
       drive.connect(master);
+      setRain(rainLevel); // a storm picked before the first gesture starts hissing now
     }
     // One gun report: a noise "crack" through a collapsing lowpass plus a
     // pitch-dropping triangle thump, both saturated through the shared drive.
@@ -1573,6 +2150,53 @@ import { buildCity, CITY } from './plane-sim-city.js';
       engine.lp.frequency.value = 220 + thr * 780;
       engine.g.gain.value = 0.1 + thr * 0.22;
     }
+    // Thunder from a lightning strike `dist` metres away: the bang arrives
+    // late (343 m/s), close strikes get a sharp crack, everything gets the
+    // long rolling low rumble (two peaks, like the real echo off the hills).
+    function thunder(dist) {
+      if (!ctx || muted || !noiseBuf) return;
+      const d = Math.max(dist, 60);
+      const t0 = ctx.currentTime + d / 343;
+      const v = clamp(1100 / d, 0.12, 1);
+      if (d < 1000) { // the crack of a close one
+        const n = ctx.createBufferSource(); n.buffer = noiseBuf;
+        const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 900;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(v * 1.1, t0);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.35);
+        n.connect(hp); hp.connect(g); g.connect(drive);
+        n.start(t0, Math.random() * 1.2, 0.5); n.stop(t0 + 0.55);
+      }
+      for (const [off, dur, vv] of [[0, 2.6, 1], [0.9, 2.2, 0.55]]) { // rolling rumble
+        const n = ctx.createBufferSource(); n.buffer = noiseBuf;
+        const lp = ctx.createBiquadFilter(); lp.type = 'lowpass';
+        lp.frequency.setValueAtTime(130 + Math.random() * 60, t0 + off);
+        lp.frequency.exponentialRampToValueAtTime(55, t0 + off + dur);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.001, t0 + off);
+        g.gain.exponentialRampToValueAtTime(v * 0.9 * vv, t0 + off + 0.35);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + off + dur);
+        n.connect(lp); lp.connect(g); g.connect(drive);
+        n.start(t0 + off, Math.random() * 1.2, dur + 0.1); n.stop(t0 + off + dur + 0.15);
+      }
+    }
+    // Rain hiss: a looping band of noise under the storm, faded in/out by the
+    // weather system. Created lazily (the AudioContext needs a user gesture
+    // first), so the level is remembered and applied whenever possible.
+    let rainSrc = null; let rainGain = null; let rainLevel = 0;
+    function setRain(k) {
+      rainLevel = clamp(k, 0, 1);
+      if (!ctx || !master || !noiseBuf) return;
+      if (!rainSrc) {
+        rainSrc = ctx.createBufferSource();
+        rainSrc.buffer = noiseBuf; rainSrc.loop = true;
+        const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 950; bp.Q.value = 0.4;
+        rainGain = ctx.createGain(); rainGain.gain.value = 0;
+        rainSrc.connect(bp); bp.connect(rainGain); rainGain.connect(master);
+        rainSrc.start();
+      }
+      rainGain.gain.setTargetAtTime(rainLevel * 0.13, ctx.currentTime, 0.7);
+    }
     function toggleMute() {
       muted = !muted;
       if (master) master.gain.value = muted ? 0 : vol;
@@ -1592,6 +2216,8 @@ import { buildCity, CITY } from './plane-sim-city.js';
       gunFar: (dist) => shot(clamp(260 / Math.max(dist, 120), 0.06, 0.4), true),
       hit: impact,
       boom: explosion,
+      thunder,
+      setRain,
       toggleMute,
       isMuted: () => muted,
       setVolume,
@@ -3748,6 +4374,9 @@ import { buildCity, CITY } from './plane-sim-city.js';
     resetPlane();
     vel.set(0, 0, 0);
     throttle = 0;
+    // Weather is free-flight only: a free flight gets the menu pick, every
+    // other mode funnels back to a clear day.
+    applyWeather(gameMode === 'free' ? weatherName : 'sunny');
     crashed = false;
     won = false;
     onGround = true;
@@ -4062,7 +4691,14 @@ import { buildCity, CITY } from './plane-sim-city.js';
     if (keys.w) throttle = clamp(throttle + CFG.THROTTLE_RATE * dt, 0, 1);
     if (keys.s) throttle = clamp(throttle - CFG.THROTTLE_RATE * dt, 0, 1);
 
-    const speed = vel.length();
+    // --- Weather: aloft, the aerodynamics run on the AIR-relative velocity
+    //     (ground velocity minus the wind) — a headwind costs takeoff speed, a
+    //     crosswind drifts the ground track, gusts jolt the airframe. The wind
+    //     fades out toward the deck (boundary layer) so taxiing isn't skating. ---
+    const ghAir = Math.max(groundAt(plane.position.x, plane.position.z), TERRAIN.WATER_Y);
+    const windK = onGround ? 0 : clamp((plane.position.y - ghAir) / 45, 0, 1);
+    _vAir.copy(vel).addScaledVector(windState.vec, -windK);
+    const speed = _vAir.length(); // AIRSPEED: lift, drag, AoA and the ASI all use it
     const v2 = speed * speed;
 
     // --- The instructor: the mouse offset from screen centre is a COMMANDED
@@ -4105,7 +4741,7 @@ import { buildCity, CITY } from './plane-sim-city.js';
     _q.copy(plane.quaternion).invert();
 
     // --- Angle of attack & lift coefficient (the heart of the model) ---
-    _vLocal.copy(vel).applyQuaternion(_q); // velocity in body frame
+    _vLocal.copy(_vAir).applyQuaternion(_q); // AIR velocity in body frame
     const fwdSpeed = -_vLocal.z;
     const aoa = Math.atan2(-_vLocal.y, Math.max(fwdSpeed, 0.001));
     let CL;
@@ -4122,7 +4758,7 @@ import { buildCity, CITY } from './plane-sim-city.js';
     _acc.y -= CFG.G; // gravity
     if (speed > 0.01) {
       const cd = ac.drag0 + CFG.DRAG_IND * CL * CL + (gearDown ? CFG.DRAG_GEAR : 0);
-      _vDir.copy(vel).multiplyScalar(1 / speed);
+      _vDir.copy(_vAir).multiplyScalar(1 / speed); // drag opposes the relative airflow
       _acc.addScaledVector(_vDir, -cd * v2);
     }
     vel.addScaledVector(_acc, dt);
@@ -4144,9 +4780,29 @@ import { buildCity, CITY } from './plane-sim-city.js';
     // Stall break: the nose drops, which lowers AoA and lets you recover.
     if (stalled && fwdSpeed > 0) plane.rotateX(-(Math.abs(aoa) - CFG.A_STALL) * 1.6 * dt);
 
-    // Grip + coordinated turn (the anti-drift fix). Skipped on the deck so the
+    // Grip + coordinated turn (the anti-drift fix), applied to the AIR
+    // velocity so a crosswind still drifts the ground track while the plane
+    // keeps its nose on the relative airflow. Skipped on the deck so the
     // takeoff roll / tyre model owns ground velocity.
-    if (!onGround) flightAssist(plane, vel, e, dt);
+    if (!onGround) {
+      _vAir.copy(vel).addScaledVector(windState.vec, -windK);
+      flightAssist(plane, _vAir, e, dt);
+      vel.copy(_vAir).addScaledVector(windState.vec, windK);
+    }
+
+    // --- Turbulence: smooth gust noise jostles the airframe (the storm's
+    //     handling tax) — small velocity bumps plus a little attitude rattle,
+    //     arriving in waves with the gust envelope. ---
+    if (weather.jolt > 0 && !onGround && started && !crashed) {
+      const j = weather.jolt * (0.5 + 0.5 * windState.gust01) * windK;
+      const tt = windState.t;
+      vel.x += turbNoise(tt, 1.7) * j * 4.0 * dt;
+      vel.y += turbNoise(tt, 4.3) * j * 2.6 * dt;
+      vel.z += turbNoise(tt, 9.1) * j * 4.0 * dt;
+      plane.rotateX(turbNoise(tt * 1.07, 2.9) * j * 0.09 * dt);
+      plane.rotateY(turbNoise(tt * 0.93, 5.7) * j * 0.06 * dt);
+      plane.rotateZ(turbNoise(tt * 1.13, 7.4) * j * 0.13 * dt);
+    }
 
     // --- Terrain / water contact: touchdown, taxi, or crash ---
     const gh = groundAt(plane.position.x, plane.position.z);
@@ -4471,6 +5127,7 @@ import { buildCity, CITY } from './plane-sim-city.js';
   setCamPreset(camName); // sync the camera-distance picker highlight
   syncUnitUI(); // sync the unit-picker highlights
   syncPlaneUI(); // sync the aircraft picker highlight + description + HUD label
+  setWeatherPref(weatherName); // sync the weather-picker highlight (free-flight screen)
   syncModeHUD(); // hide the tutorial/stunt panels until their mode is live
   applyWorld(mapName); // show the remembered world (city/ocean/coastal) from the first frame
   for (const t of document.querySelectorAll('[data-map]')) t.classList.toggle('ps-active', t.dataset.map === mapName);
@@ -4602,6 +5259,21 @@ import { buildCity, CITY } from './plane-sim-city.js';
     hangar: enterHangar,
     sortie: startSortie,
     kill(i) { const e = enemies[i]; if (e && e.alive) damageEnemy(e, 99999); },
+    // Weather dev handle: weather() reads, weather('storm') forces a preset
+    // live (any mode — tooling/screenshots). Normal play only applies the
+    // picker choice to free flight, via respawnBase.
+    weather(n) {
+      if (n) { setWeatherPref(n); applyWeather(n); }
+      return weatherName;
+    },
+    wind() {
+      return {
+        dir: +((windState.dir * 180) / Math.PI).toFixed(0),
+        speed: +windState.speed.toFixed(1),
+        kn: +(windState.speed * KT).toFixed(0),
+        gust: +windState.gust01.toFixed(2),
+      };
+    },
     // Collision-obstacle registry (debug/tooling): counts + a sample entry.
     obstacles() { return { cyl: obCyl.length, box: obBox.length, sampleTree: obCyl.find((o) => o.reason.includes('tree')) }; },
     // Sample state() at `hz` for `sec` seconds -> Promise<samples[]>.
@@ -4627,6 +5299,12 @@ import { buildCity, CITY } from './plane-sim-city.js';
   let fpsT0 = performance.now();
 
   function frame(now) {
+    stepFrame(now);
+    requestAnimationFrame(frame);
+  }
+  // One frame of the sim: physics, effects, camera, HUD, render. Pulled out of
+  // the rAF wrapper so tooling can drive it deterministically (__ps.step).
+  function stepFrame(now) {
     if (fpsEl) {
       fpsFrames++;
       if (now - fpsT0 >= 500) {
@@ -4667,9 +5345,18 @@ import { buildCity, CITY } from './plane-sim-city.js';
       for (const e of enemies) if (e.alive && dt > 0) stepEnemy(e, dt, playing && !dev.noAiFire && gameMode === 'sortie');
     }
 
-    // Windsocks ripple in the ambient breeze (menus included — the hangar
-    // turntable looks better alive).
-    for (const w of windsocks) w.userData.flutter(now / 1000);
+    // Windsocks stream downwind and ripple harder as the breeze picks up
+    // (menus included — the hangar turntable looks better alive).
+    for (const w of windsocks) {
+      if (windState.speed > 3.5) {
+        w.rotation.y = windState.yaw; // hoop + sock orbit the mast, as real ones do
+        w.userData.flutter(now / 1000, windState.sockK, windState.stream);
+      } else {
+        if (w.userData.yaw0 != null) w.rotation.y = w.userData.yaw0;
+        w.userData.flutter(now / 1000, 1, 0);
+      }
+    }
+    stepWeather(dt);
     stepBombs(dt);
     stepCityBombs(dt);
     // Idly spin the carriers' radar antennas.
@@ -4688,13 +5375,13 @@ import { buildCity, CITY } from './plane-sim-city.js';
     borderScroll = (borderScroll + dt * 0.06) % 1;
     for (const m of borderMats) if (m.map) m.map.offset.y = borderScroll;
 
-    // scroll the water ripples for dynamic active waves
+    // scroll the water ripples for dynamic active waves (faster in heavy weather)
     if (waterMesh && waterMesh.material && waterMesh.material.normalMap) {
-      waterScrollX = (waterScrollX + dt * 0.015) % 1;
-      waterScrollY = (waterScrollY + dt * 0.010) % 1;
+      waterScrollX = (waterScrollX + dt * 0.015 * weather.waterScroll) % 1;
+      waterScrollY = (waterScrollY + dt * 0.010 * weather.waterScroll) % 1;
       waterMesh.material.normalMap.offset.set(waterScrollX, waterScrollY);
     } else if (waterMesh && waterMesh.isWater) {
-      waterMesh.material.uniforms.time.value += dt * 0.55; // ultra: animated waves
+      waterMesh.material.uniforms.time.value += dt * 0.55 * weather.waterScroll; // ultra: animated waves
     }
     if (grassField && landGroup.visible) grassField.update(plane.position, dt);
     if (cityGrassField && cityGroup.visible) cityGrassField.update(plane.position, dt);
@@ -4711,7 +5398,8 @@ import { buildCity, CITY } from './plane-sim-city.js';
         setTimeout(() => lo.classList.add('ps-hidden'), 500);
       }
     }
-    requestAnimationFrame(frame);
+    // NB: the rAF loop is driven by frame() above — stepFrame must NOT schedule
+    // its own, or every frame would queue two callbacks (exponential runaway).
   }
 
   // ---- GPU warm-up, under the loading screen. Everything a sortie can show
