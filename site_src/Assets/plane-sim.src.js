@@ -1004,18 +1004,21 @@ gl_Position = projectionMatrix * mvPosition;
       }
 
       oceanGroup.add(c.group);
-      carriers.push({
-        group: c.group, x: cx, z: cz, enemy, rotY,
-      });
-      // Hull: solid below the flight deck across the whole footprint.
+      const carrier = {
+        group: c.group, x: cx, z: cz, enemy, rotY, rockHeave: 0, rockRoll: 0, rockPitch: 0,
+      };
+      carriers.push(carrier);
+      // Hull + island crash boxes carry `carrier` + `baseTop` so stepSwell can
+      // heave their `top` with the ship — otherwise the deck (and the plane
+      // resting on it) rides the swell down THROUGH a static box and crashes.
       obBoxOcean.push({
-        x0: cx - 12.5, x1: cx + 12.5, z0: cz - 131, z1: cz + 131, top: DECK_TOP - 1.6, reason: 'Flew into the carrier',
+        x0: cx - 12.5, x1: cx + 12.5, z0: cz - 131, z1: cz + 131, top: DECK_TOP - 1.6, baseTop: DECK_TOP - 1.6, carrier, kind: 'hull', reason: 'Flew into the carrier',
       });
       // Island superstructure on the deck (starboard = +X, mirrored by rotY).
       const ix = cx + (rotY ? -1 : 1) * (CARRIER.DECK_W / 2 - 2.6);
       const iz = cz + (rotY ? 18 : -18);
       obBoxOcean.push({
-        x0: ix - 3.6, x1: ix + 3.6, z0: iz - 11.5, z1: iz + 11.5, top: DECK_TOP + 22, reason: 'Flew into the island',
+        x0: ix - 3.6, x1: ix + 3.6, z0: iz - 11.5, z1: iz + 11.5, top: DECK_TOP + 22, baseTop: DECK_TOP + 22, carrier, reason: 'Flew into the island',
       });
     }
     scene.add(oceanGroup);
@@ -1026,9 +1029,24 @@ gl_Position = projectionMatrix * mvPosition;
   function carrierDeckAt(x, z) {
     for (const c of carriers) {
       if (c.enemy && enemySinking > 0) continue;
-      if (Math.abs(x - c.x) <= CARRIER.DECK_W / 2 && Math.abs(z - c.z) <= CARRIER.DECK_LEN / 2) return DECK_TOP + (c.rockHeave || 0);
+      const lx = x - c.x; const lz = z - c.z;
+      if (Math.abs(lx) <= CARRIER.DECK_W / 2 && Math.abs(lz) <= CARRIER.DECK_LEN / 2) {
+        // Rigid deck plane: centre heave + the roll/pitch tilt at this offset, so
+        // a plane parked at the bow/stern sits on the deck that's actually there.
+        return DECK_TOP + (c.rockHeave || 0)
+          + lx * Math.sin(c.rockRoll || 0) - lz * Math.sin(c.rockPitch || 0);
+      }
     }
     return -Infinity;
+  }
+  // The carrier whose flight deck is under (x, z) — for riding/swaying a parked
+  // aircraft with the ship. Null if none (or a sinking enemy).
+  function carrierUnder(x, z) {
+    for (const c of carriers) {
+      if (c.enemy && enemySinking > 0) continue;
+      if (Math.abs(x - c.x) <= CARRIER.DECK_W / 2 && Math.abs(z - c.z) <= CARRIER.DECK_LEN / 2) return c;
+    }
+    return null;
   }
 
   // ---- Storm swell: a REAL geometry-displaced heavy sea, local to each carrier.
@@ -1147,7 +1165,7 @@ gl_Position = projectionMatrix * mvPosition;
     }
     if (live) {
       for (const c of carriers) {
-        if (c.enemy && (enemySinking > 0 || sinkVictory)) { c.rockHeave = 0; continue; }
+        if (c.enemy && (enemySinking > 0 || sinkVictory)) { c.rockHeave = 0; c.rockRoll = 0; c.rockPitch = 0; continue; }
         const cx = c.x; const cz = c.z;
         // pitch from the fore/aft height difference, roll from port/stbd — the
         // long swell tilts and heaves the whole 260 m hull.
@@ -1156,20 +1174,27 @@ gl_Position = projectionMatrix * mvPosition;
         const hA = swellHeight(cx, cz + 120, swellT, true);
         const hS = swellHeight(cx + 14, cz, swellT, true);
         const hP = swellHeight(cx - 14, cz, swellT, true);
-        c.rockHeave = hC;
-        c.group.position.y = TERRAIN.WATER_Y + hC;
         // pitch reads the gentle fore/aft slope; roll is eased (0.6) so a 260 m
         // ship wallows heavily but doesn't flip like a dinghy.
-        _rockRot.set(Math.atan2(hF - hA, 240) * 0.9, c.rotY, Math.atan2(hS - hP, 28) * 0.6);
+        c.rockHeave = hC;
+        c.rockPitch = Math.atan2(hF - hA, 240) * 0.9;
+        c.rockRoll = Math.atan2(hS - hP, 28) * 0.6;
+        c.group.position.y = TERRAIN.WATER_Y + hC;
+        _rockRot.set(c.rockPitch, c.rotY, c.rockRoll);
         c.group.rotation.copy(_rockRot);
       }
     } else if (swellWasLive) { // storm just ended: settle every ship back to flat
       for (const c of carriers) {
-        c.rockHeave = 0;
+        c.rockHeave = 0; c.rockRoll = 0; c.rockPitch = 0;
         if (c.enemy && (enemySinking > 0 || sinkVictory)) continue;
         c.group.position.y = TERRAIN.WATER_Y;
         c.group.rotation.set(0, c.rotY, 0);
       }
+    }
+    // Ride each carrier's crash boxes up/down with its heave so the deck the
+    // plane rests on and the box that would crash it move together.
+    if (live || swellWasLive) {
+      for (const o of obBoxOcean) if (o.carrier) o.top = o.baseTop + o.carrier.rockHeave;
     }
     swellWasLive = live;
   }
@@ -1838,19 +1863,22 @@ gl_Position = projectionMatrix * mvPosition;
     scatterIsland(CITY.FIELD.x, CITY.FIELD.z, CITY.FIELD.hx, CITY.FIELD.hz, 46, 500);
     makePuddleSheet(city, cityGroup);
 
-    // Ocean: standing water on each carrier's steel flight deck.
-    const decks = [];
+    // Ocean: standing water on each carrier's steel flight deck. One sheet PER
+    // carrier, parented to that CARRIER GROUP in LOCAL deck coords, so the
+    // puddles heave / roll / pitch with the ship instead of floating at the old
+    // deck height (and clipping through it) when it rocks in the storm.
     for (const c of carriers) {
+      const deckPuddles = [];
       for (let i = 0; i < 12; i++) {
-        decks.push({
-          x: c.x + (Math.random() - 0.5) * (CARRIER.DECK_W * 0.78),
-          y: DECK_TOP + 0.05,
-          z: c.z + (Math.random() - 0.5) * (CARRIER.DECK_LEN * 0.86),
+        deckPuddles.push({
+          x: (Math.random() - 0.5) * (CARRIER.DECK_W * 0.78),
+          y: CARRIER.DECK_Y + 0.05, // local: deck top is DECK_Y above the carrier origin
+          z: (Math.random() - 0.5) * (CARRIER.DECK_LEN * 0.86),
           rx: 1.2 + Math.random() * 2.8, rz: 1.0 + Math.random() * 2.2,
         });
       }
+      makePuddleSheet(deckPuddles, c.group);
     }
-    makePuddleSheet(decks, oceanGroup);
   }());
 
   // ---- Rain: a camera-following box of falling streaks (one LineSegments
@@ -2280,6 +2308,12 @@ gl_Position = projectionMatrix * mvPosition;
   let started = false;
   let crashed = false;
   let onGround = true;
+  // Deck-sway state: while parked on a heaving carrier we apply the ship's
+  // per-frame rotation delta to the aircraft so it rocks with the deck.
+  let deckSwayCarrier = null;
+  let deckSwayQ = null;
+  const _deckQinv = new THREE.Quaternion();
+  const _deckDeltaQ = new THREE.Quaternion();
   let fov = 62;
 
   // Combat state
@@ -4714,6 +4748,7 @@ gl_Position = projectionMatrix * mvPosition;
     crashed = false;
     won = false;
     onGround = true;
+    deckSwayCarrier = null; // fresh deck-sway baseline (no stale rotation delta)
     gearDown = true;
     playerHP = ac.hp;
     kills = 0;
@@ -5147,6 +5182,10 @@ gl_Position = projectionMatrix * mvPosition;
     const cDeck = mapName === 'ocean' ? carrierDeckAt(plane.position.x, plane.position.z) : -Infinity;
     const overWater = cDeck === -Infinity && gh < TERRAIN.WATER_Y - 0.5;
     const deck = Math.max(overWater ? TERRAIN.WATER_Y : gh, cDeck);
+    // The carrier we're sitting on this frame (parked or touching down) — its
+    // hull crash box is skipped below, since a tilted deck can drop the plane
+    // beside the box's (centre-referenced) top without it being a real hit.
+    let restingCarrier = null;
     // Taildragger geometry: the height of the origin over the deck when the
     // main wheels touch depends on pitch (mains are ahead of the origin), so
     // the aircraft can sit tail-down at `stance` and pivot on the mains as
@@ -5155,6 +5194,12 @@ gl_Position = projectionMatrix * mvPosition;
     getForward();
     let gndPitch = Math.asin(clamp(_fwd.y, -1, 1)); // nose-up positive
     const hRest = restHeight(ac, clamp(gndPitch, 0, stance));
+    // A parked/slow aircraft on a carrier deck rides the deck up AND down with
+    // the swell (the resting snap below only catches it on the way UP; without
+    // this a downward heave drops the deck away and it falls / clips the hull).
+    const parkedCarrier = (cDeck !== -Infinity && onGround && vel.length() < 12)
+      ? carrierUnder(plane.position.x, plane.position.z) : null;
+    if (parkedCarrier) { plane.position.y = deck + hRest; if (vel.y < 0) vel.y = 0; }
     if (plane.position.y <= deck + hRest) {
       plane.position.y = deck + hRest;
       const impactV = -vel.y;
@@ -5178,21 +5223,37 @@ gl_Position = projectionMatrix * mvPosition;
       }
 
       onGround = true;
-      // Auto-level roll, and don't let the nose dig into the runway.
-      getRight();
-      const rollErr = Math.asin(clamp(_right.y, -1, 1));
-      plane.rotateZ(-rollErr * Math.min(1, 6 * dt));
-      // Nose can't dig in (prop clearance) and the tail can't rotate through
-      // the runway past the parked stance while the wheels carry the weight.
-      if (gndPitch < 0) plane.rotateX(-gndPitch * Math.min(1, 8 * dt));
-      else if (gndPitch > stance) plane.rotateX(-(gndPitch - stance) * Math.min(1, 10 * dt));
-      // Tail settle: gravity drops the tail to the stance angle at rest; the
-      // tailplane lifts it toward level as the takeoff roll gathers speed.
-      // Elevator input overrides (blended out by |pitchInput|).
-      getForward();
-      gndPitch = Math.asin(clamp(_fwd.y, -1, 1));
-      const tailLift = clamp(1 - (speed / (0.55 * ac.controlV)) ** 2, 0, 1);
-      plane.rotateX((stance * tailLift - gndPitch) * Math.min(1, 2.5 * dt) * (1 - Math.abs(pitchInput)));
+      if (cDeck !== -Infinity) restingCarrier = carrierUnder(plane.position.x, plane.position.z);
+      if (parkedCarrier) {
+        // Chocked to a heaving deck: ride its exact roll/pitch by applying the
+        // ship's per-frame rotation delta (heading-independent, sign-safe),
+        // rather than levelling to the world.
+        const cq = parkedCarrier.group.quaternion;
+        if (deckSwayCarrier === parkedCarrier && deckSwayQ) {
+          _deckDeltaQ.copy(cq).multiply(_deckQinv);
+          plane.quaternion.premultiply(_deckDeltaQ);
+          plane.quaternion.normalize();
+        }
+        if (!deckSwayQ) deckSwayQ = new THREE.Quaternion();
+        deckSwayCarrier = parkedCarrier; deckSwayQ.copy(cq); _deckQinv.copy(cq).invert();
+      } else {
+        deckSwayCarrier = null;
+        // Auto-level roll, and don't let the nose dig into the runway.
+        getRight();
+        const rollErr = Math.asin(clamp(_right.y, -1, 1));
+        plane.rotateZ(-rollErr * Math.min(1, 6 * dt));
+        // Nose can't dig in (prop clearance) and the tail can't rotate through
+        // the runway past the parked stance while the wheels carry the weight.
+        if (gndPitch < 0) plane.rotateX(-gndPitch * Math.min(1, 8 * dt));
+        else if (gndPitch > stance) plane.rotateX(-(gndPitch - stance) * Math.min(1, 10 * dt));
+        // Tail settle: gravity drops the tail to the stance angle at rest; the
+        // tailplane lifts it toward level as the takeoff roll gathers speed.
+        // Elevator input overrides (blended out by |pitchInput|).
+        getForward();
+        gndPitch = Math.asin(clamp(_fwd.y, -1, 1));
+        const tailLift = clamp(1 - (speed / (0.55 * ac.controlV)) ** 2, 0, 1);
+        plane.rotateX((stance * tailLift - gndPitch) * Math.min(1, 2.5 * dt) * (1 - Math.abs(pitchInput)));
+      }
 
       // Tyre grip: keep the horizontal velocity pointing along the nose (no
       // skid) but leave the vertical component alone so lift can fly it off.
@@ -5222,6 +5283,7 @@ gl_Position = projectionMatrix * mvPosition;
       const PR = 2.6;
       for (let i = 0; i < obBoxOcean.length; i++) {
         const o = obBoxOcean[i];
+        if (o.kind === 'hull' && o.carrier === restingCarrier) continue; // resting on this deck
         if (py > o.top + 1) continue;
         if (px > o.x0 - PR && px < o.x1 + PR && pz > o.z0 - PR && pz < o.z1 + PR) {
           crash(o.reason); break;
