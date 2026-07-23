@@ -1830,17 +1830,17 @@ export function makeCarrier(opts = {}) {
   const { DECK_LEN, DECK_W, DECK_Y } = CARRIER;
 
   const hullMat = new THREE.MeshStandardMaterial({
-    color: enemy ? 0x565b52 : 0x6d7885,
-    roughness: 0.55,
-    metalness: 0.55,
+    color: enemy ? 0x545a50 : 0x5a6572, // weathered naval blue-grey (Measure-21-ish)
+    roughness: 0.62,
+    metalness: 0.5,
     normalMap: detailTexture('metal-normal', 24),
     roughnessMap: detailTexture('metal-roughness', 24),
     normalScale: new THREE.Vector2(0.15, 0.15),
   });
   const supMat = new THREE.MeshStandardMaterial({ // superstructure — a shade lighter
-    color: enemy ? 0x646a60 : 0x7e8894,
-    roughness: 0.6,
-    metalness: 0.45,
+    color: enemy ? 0x6a7066 : 0x717c8a,
+    roughness: 0.66,
+    metalness: 0.4,
     normalMap: detailTexture('metal-normal', 12),
     roughnessMap: detailTexture('metal-roughness', 12),
     normalScale: new THREE.Vector2(0.12, 0.12),
@@ -1980,39 +1980,83 @@ export function makeCarrier(opts = {}) {
   // Island superstructure on the starboard (+X) deck edge.
   const island = new THREE.Group();
   island.position.set(DHW - 2.6, DECK_Y, -18);
-  const base = new THREE.Mesh(new THREE.BoxGeometry(5.4, 7.5, 22), supMat);
-  base.position.y = 3.75; island.add(base);
-  const bridge = new THREE.Mesh(new THREE.BoxGeometry(6.4, 3.2, 12), supMat);
-  bridge.position.set(0, 9.1, -3); island.add(bridge);
-  // Bridge windows: a dark strip band.
-  const winBand = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.9, 10.5), darkDetailMat);
-  winBand.position.set(0, 9.9, -3); island.add(winBand);
-
-  // Front bridge windows
-  const frontWin = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.9, 0.1), darkDetailMat);
-  frontWin.position.set(0, 9.9, -9.02); island.add(frontWin);
-
-  // Window frames (vertical struts) on port (-X) and starboard (+X) of winBand
-  const frameMat = supMat;
+  // ---- A multi-tier Essex-class island: a tall uptake house, stacked
+  //      navigating / flag bridges with wrap-around windows, an integrated
+  //      raked funnel, and a lattice foremast carrying the big "bedspring"
+  //      SK air-search radar. Footprint stays within the deck crash box. ----
+  const winMat = new THREE.MeshStandardMaterial({ color: 0x0e1216, roughness: 0.3, metalness: 0.55 });
+  const capMat = new THREE.MeshStandardMaterial({ color: 0x191b1f, roughness: 0.72, metalness: 0.35 });
   const frameGeo = new THREE.BoxGeometry(0.1, 0.95, 0.1);
-  for (let wz = -8.25; wz <= 2.25; wz += 1.5) {
-    for (const sx of [-1, 1]) {
-      const frame = new THREE.Mesh(frameGeo, frameMat);
-      frame.position.set(sx * 3.22, 9.9, wz);
-      island.add(frame);
-    }
+
+  // Tier 0 — the tall lower house (uptakes + ready rooms), full island length,
+  // capped by a splinter-shield lip.
+  const house = new THREE.Mesh(new THREE.BoxGeometry(5.4, 6.0, 20), supMat);
+  house.position.set(0, 3.0, 0); island.add(house);
+  const houseLip = new THREE.Mesh(new THREE.BoxGeometry(5.9, 0.4, 20.5), darkDetailMat);
+  houseLip.position.set(0, 5.9, 0); island.add(houseLip);
+
+  // Tier 1 — navigating bridge, windows wrapping the forward face and sides.
+  const nav = new THREE.Mesh(new THREE.BoxGeometry(5.6, 2.7, 12), supMat);
+  nav.position.set(0, 7.35, -2.5); island.add(nav);
+  const navWinF = new THREE.Mesh(new THREE.BoxGeometry(5.7, 1.05, 0.14), winMat);
+  navWinF.position.set(0, 7.7, -8.45); island.add(navWinF);
+  for (const sx of [-1, 1]) { const w = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.05, 10.6), winMat); w.position.set(sx * 2.85, 7.7, -2.5); island.add(w); }
+  for (let wx = -2.4; wx <= 2.4; wx += 1.2) { const f = new THREE.Mesh(frameGeo, supMat); f.position.set(wx, 7.7, -8.5); island.add(f); }
+
+  // Tier 2 — flag bridge / pri-fly, smaller and set aft.
+  const pri = new THREE.Mesh(new THREE.BoxGeometry(4.6, 2.3, 7), supMat);
+  pri.position.set(0, 9.85, -1.5); island.add(pri);
+  const priWinF = new THREE.Mesh(new THREE.BoxGeometry(4.7, 0.9, 0.14), winMat);
+  priWinF.position.set(0, 10.15, -4.95); island.add(priWinF);
+
+  // Tier 3 — an open signal platform on top (railed below).
+  const top3 = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.35, 5.5), darkDetailMat);
+  top3.position.set(0, 11.0, -1.5); island.add(top3);
+
+  // Integrated funnel: a big raked stack off the aft house, black cap + uptake pipes.
+  const funnel = new THREE.Mesh(new THREE.CylinderGeometry(1.85, 2.25, 8.6, 16), supMat);
+  funnel.rotation.x = 0.15; funnel.position.set(0, 9.4, 6.3); island.add(funnel);
+  const funnelCap = new THREE.Mesh(new THREE.CylinderGeometry(2.15, 2.0, 0.8, 16), capMat);
+  funnelCap.rotation.x = 0.15; funnelCap.position.set(0, 13.55, 6.9); island.add(funnelCap);
+  for (const px of [-0.85, 0, 0.85]) { const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 7.4, 6), darkDetailMat); pipe.rotation.x = 0.15; pipe.position.set(px, 9.4, 4.5); island.add(pipe); }
+
+  // Lattice foremast (tripod) from the bridge up to the masthead.
+  const MAST_BASE = 11.2; const MAST_TOP = 20.6; const MZ = -2.5;
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.22, MAST_TOP - MAST_BASE, 6), darkDetailMat);
+  mast.position.set(0, (MAST_BASE + MAST_TOP) / 2, MZ); island.add(mast);
+  for (const [lx, lz] of [[-1.5, 0.9], [1.5, 0.9], [0, -1.8]]) {
+    const legLen = MAST_TOP - MAST_BASE - 1.2;
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, legLen * 1.03, 5), darkDetailMat);
+    leg.position.set(lx / 2, MAST_BASE + legLen / 2, MZ + lz / 2);
+    leg.rotation.set(Math.atan2(lz, legLen), 0, Math.atan2(-lx, legLen));
+    island.add(leg);
   }
-  // Front windows vertical frames
-  for (let wx = -2.8; wx <= 2.8; wx += 1.4) {
-    const frame = new THREE.Mesh(frameGeo, frameMat);
-    frame.position.set(wx, 9.9, -9.08);
-    island.add(frame);
-  }
-  // Aft windows vertical frames
-  for (let wx = -2.8; wx <= 2.8; wx += 1.4) {
-    const frame = new THREE.Mesh(frameGeo, frameMat);
-    frame.position.set(wx, 9.9, 2.27);
-    island.add(frame);
+  const yard = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 8, 6), darkDetailMat);
+  yard.rotation.z = Math.PI / 2; yard.position.set(0, 17.4, MZ); island.add(yard);
+  const sg = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 0.16, 12), darkDetailMat); // SG surface-search dish
+  sg.rotation.x = Math.PI / 2; sg.position.set(2.4, 17.4, MZ); island.add(sg);
+  for (const yx of [-3.4, 3.4]) { const whip = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 3.2, 4), darkDetailMat); whip.position.set(yx, 18.9, MZ); island.add(whip); }
+
+  // The big "bedspring" SK air-search radar at the masthead (the game spins it).
+  const radar = new THREE.Group(); radar.position.set(0, MAST_TOP + 0.6, MZ);
+  radar.add(new THREE.Mesh(new THREE.BoxGeometry(5.4, 3.0, 0.12), darkDetailMat));
+  for (let gy = -1.2; gy <= 1.2; gy += 0.4) { const r = new THREE.Mesh(new THREE.BoxGeometry(5.4, 0.05, 0.2), supMat); r.position.set(0, gy, 0.09); radar.add(r); }
+  for (let gx = -2.4; gx <= 2.4; gx += 0.6) { const r = new THREE.Mesh(new THREE.BoxGeometry(0.05, 3.0, 0.2), supMat); r.position.set(gx, 0, 0.09); radar.add(r); }
+  const feed = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 0.7, 5), darkDetailMat); feed.rotation.x = Math.PI / 2; feed.position.set(0, 0, 0.42); radar.add(feed);
+  island.add(radar); g.userData.radar = radar;
+
+  // A gun-director tub + rangefinder on a platform off the bridge front.
+  const dirTub = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 1.0, 12, 1, true), darkDetailMat);
+  dirTub.position.set(0, 8.6, -9.4); island.add(dirTub);
+  const director = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.9, 1.3), supMat);
+  director.position.set(0, 9.45, -9.4); island.add(director);
+  const rangefinder = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.4, 6), darkDetailMat);
+  rangefinder.rotation.z = Math.PI / 2; rangefinder.position.set(0, 9.7, -9.4); island.add(rangefinder);
+  // Twin AA tubs on the outboard (starboard) sponson of the house.
+  for (const tz of [-6.5, 5.0]) {
+    const tub = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.05, 1.0, 10, 1, true), darkDetailMat);
+    tub.position.set(3.0, 4.2, tz); island.add(tub);
+    for (const bo of [-0.28, 0.28]) { const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 2.2, 5), darkDetailMat); bar.rotation.set(Math.PI / 2 - 0.35, 0, 0); bar.position.set(3.0 + bo, 4.9, tz + 0.6); island.add(bar); }
   }
 
   // Fences/railings helper
@@ -2048,54 +2092,16 @@ export function makeCarrier(opts = {}) {
     parent.add(railG);
   };
 
-  // Railings around base top deck (Y = 7.5)
-  addRailing(-2.7, 3.2, -2.7, 11, 7.5);
-  addRailing(2.7, 3.2, 2.7, 11, 7.5);
-  addRailing(-2.7, 11, 2.7, 11, 7.5);
-  addRailing(-2.7, -11, 2.7, -11, 7.5);
-  addRailing(-2.7, -11, -2.7, -9.2, 7.5);
-  addRailing(2.7, -11, 2.7, -9.2, 7.5);
+  // Catwalk railings around the house top and the open signal platform.
+  addRailing(-2.7, -10, -2.7, 10, 6.0);
+  addRailing(2.7, -10, 2.7, 10, 6.0);
+  addRailing(-2.7, 10, 2.7, 10, 6.0);
+  addRailing(-2.7, -10, 2.7, -10, 6.0);
+  addRailing(-2.0, -4.25, -2.0, 1.25, 11.2);
+  addRailing(2.0, -4.25, 2.0, 1.25, 11.2);
+  addRailing(-2.0, -4.25, 2.0, -4.25, 11.2);
+  addRailing(-2.0, 1.25, 2.0, 1.25, 11.2);
 
-  // Railings around bridge top deck (Y = 10.7) - corrected from 12.3 to prevent levitation
-  addRailing(-3.2, -9, -3.2, 3, 10.7);
-  addRailing(3.2, -9, 3.2, 3, 10.7);
-  addRailing(-3.2, -9, 3.2, -9, 10.7);
-  addRailing(-3.2, 3, 3.2, 3, 10.7);
-
-  // Funnel, raked aft - lowered from 12.2 to 11.0 to prevent levitation above base deck (Y=7.5)
-  const funnel = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 2.1, 7.5, 12), darkDetailMat);
-  funnel.rotation.x = 0.22;
-  funnel.position.set(0, 11.0, 5.5); island.add(funnel);
-  // Lattice mast + yard + rotating-radar slab.
-  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.3, 10, 6), darkDetailMat);
-  mast.position.set(0, 15.5, -6); island.add(mast);
-  const yard = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 7, 6), darkDetailMat);
-  yard.rotation.z = Math.PI / 2;
-  yard.position.set(0, 18.5, -6); island.add(yard);
-
-  // Detailed rotating radar
-  const radar = new THREE.Group();
-  radar.position.set(0, 20.8, -6);
-
-  const dishBack = new THREE.Mesh(new THREE.BoxGeometry(4.2, 1.1, 0.1), darkDetailMat);
-  radar.add(dishBack);
-  for (let ry = -0.5; ry <= 0.5; ry += 0.25) {
-    const rib = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.05, 0.15), supMat);
-    rib.position.set(0, ry, 0.05);
-    radar.add(rib);
-  }
-  for (let rx = -2; rx <= 2; rx += 1) {
-    const rib = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.2, 0.15), supMat);
-    rib.position.set(rx, 0, 0.05);
-    radar.add(rib);
-  }
-  const horn = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.6, 4), darkDetailMat);
-  horn.rotation.x = Math.PI / 2;
-  horn.position.set(0, 0, 0.4);
-  radar.add(horn);
-
-  island.add(radar);
-  g.userData.radar = radar; // the game slowly spins it
   g.add(island);
 
   // Helper to get approximate hull half-width at any Z coordinate to avoid floating parts
@@ -2195,13 +2201,19 @@ export function makeCarrier(opts = {}) {
     g.add(anchor);
   }
 
-  // Boot-topping: a black waterline band so the hull reads as sitting IN the
-  // sea rather than floating on it.
-  const bandGeo = new THREE.ExtrudeGeometry(hullShape, { depth: 1.6, bevelEnabled: false });
+  // Anti-fouling red below the waterline (the classic red hull bottom), capped
+  // by a thin black boot-topping stripe right at the waterline so the hull reads
+  // as sitting IN the sea rather than floating on it.
+  const redGeo = new THREE.ExtrudeGeometry(hullShape, { depth: 6.2, bevelEnabled: false });
+  redGeo.rotateX(-Math.PI / 2);
+  redGeo.scale(1.012, 1, 1.007);
+  redGeo.translate(0, -6.1, 0); // clads the keel up to just under the waterline
+  g.add(new THREE.Mesh(redGeo, new THREE.MeshStandardMaterial({ color: enemy ? 0x5c2a24 : 0x6f2c22, roughness: 0.85, metalness: 0.1 })));
+  const bandGeo = new THREE.ExtrudeGeometry(hullShape, { depth: 0.95, bevelEnabled: false });
   bandGeo.rotateX(-Math.PI / 2);
-  bandGeo.scale(1.01, 1, 1.005);
-  bandGeo.translate(0, -0.5, 0);
-  g.add(new THREE.Mesh(bandGeo, new THREE.MeshStandardMaterial({ color: 0x16181c, roughness: 0.8 })));
+  bandGeo.scale(1.014, 1, 1.008);
+  bandGeo.translate(0, -0.4, 0);
+  g.add(new THREE.Mesh(bandGeo, new THREE.MeshStandardMaterial({ color: 0x141519, roughness: 0.8 })));
 
   setShadows(g);
   return { group: g, deck: { y: DECK_Y, w: DECK_W, len: DECK_LEN } };
