@@ -1021,13 +1021,157 @@ gl_Position = projectionMatrix * mvPosition;
     scene.add(oceanGroup);
   }());
   // Deck height at (x, z): the flight-deck top if over a carrier, else -Inf.
-  // A sinking enemy carrier stops being a deck (it's on its way down).
+  // A sinking enemy carrier stops being a deck (it's on its way down). In a
+  // storm the deck heaves with the swell, so the landing height rides c.rockHeave.
   function carrierDeckAt(x, z) {
     for (const c of carriers) {
       if (c.enemy && enemySinking > 0) continue;
-      if (Math.abs(x - c.x) <= CARRIER.DECK_W / 2 && Math.abs(z - c.z) <= CARRIER.DECK_LEN / 2) return DECK_TOP;
+      if (Math.abs(x - c.x) <= CARRIER.DECK_W / 2 && Math.abs(z - c.z) <= CARRIER.DECK_LEN / 2) return DECK_TOP + (c.rockHeave || 0);
     }
     return -Infinity;
+  }
+
+  // ---- Storm swell: a REAL geometry-displaced heavy sea, local to each carrier.
+  //      The main ocean is a flat 2-triangle plane (reflective Water / a plain
+  //      slab) and can't take vertex waves, so in a storm we lay a tessellated,
+  //      Gerstner-ish sum-of-sines patch over the sea around each ship. ONE
+  //      height field (SWELL_WAVES) drives both the GPU mesh and — on the CPU —
+  //      the ship's heave/pitch/roll and the breaker heights, so the carrier
+  //      genuinely rides the same waves you see rolling under it. Only shown in
+  //      a storm (amplitude ramps 0↔1 so it fades in/out with the weather). ----
+  const SWELL_WAVES = [ // dirX, dirZ (unit), wavelength m, amplitude m, speed m/s
+    [0.86, 0.51, 165, 4.1, 12.5],
+    [0.55, -0.84, 92, 2.6, 9.5],
+    [-0.30, 0.95, 52, 1.4, 7.5],
+    [0.94, 0.34, 30, 0.8, 6.2],
+  ];
+  const swellData = SWELL_WAVES.map(([dx, dz, len, amp, spd]) => {
+    const k = (2 * Math.PI) / len; return { dx, dz, k, amp, w: spd * k };
+  });
+  let swellAmp = 0; // current 0..1 (lerped toward the target set by applyWeather)
+  let swellAmpTarget = 0;
+  let swellT = 0;
+  // Sum-of-sines wave height at world (x,z). `longOnly` uses just the two long
+  // swells — what a 260 m ship actually responds to (it ignores the ripples).
+  function swellHeight(x, z, t, longOnly) {
+    let h = 0; const n = longOnly ? 2 : swellData.length;
+    for (let i = 0; i < n; i++) { const s = swellData[i]; h += s.amp * Math.sin(s.k * (s.dx * x + s.dz * z) - s.w * t); }
+    return h * swellAmp;
+  }
+  const stormSwells = [];
+  (function buildStormSwell() {
+    const PATCH = 1000; const SEG = 120; // ~8 m cells — enough for the 30 m ripple
+    const geo = new THREE.PlaneGeometry(PATCH, PATCH, SEG, SEG);
+    geo.rotateX(-Math.PI / 2); // lie flat in XZ, displace along +Y
+    const wavesVec = swellData.map((s) => new THREE.Vector4(s.dx, s.dz, s.k, s.amp));
+    const wSpeeds = swellData.map((s) => s.w);
+    for (const c of carriers) {
+      const uniforms = {
+        uTime: { value: 0 }, uAmp: { value: 0 },
+        uWaves: { value: wavesVec }, uW: { value: wSpeeds },
+        uCenter: { value: new THREE.Vector2(c.x, c.z) },
+        uColor: { value: new THREE.Color(c.enemy ? 0x13303b : 0x16323d) },
+        uFoam: { value: new THREE.Color(0xbfccd4) },
+        uSun: { value: SUN_DIR.clone() },
+        uSunCol: { value: new THREE.Color(0x9fb0c2) },
+        uAmb: { value: new THREE.Color(0x2b3946) },
+        uFogCol: { value: new THREE.Color(scene.fog.color.getHex()) },
+        uFogNear: { value: scene.fog.near }, uFogFar: { value: scene.fog.far },
+      };
+      const mat = new THREE.ShaderMaterial({
+        uniforms, transparent: true, depthWrite: false, fog: false,
+        vertexShader: `
+          uniform float uTime, uAmp; uniform vec4 uWaves[4]; uniform float uW[4]; uniform vec2 uCenter;
+          varying float vHN; varying float vCrest; varying vec3 vN; varying float vViewZ; varying float vRad;
+          void main(){
+            vec3 p = position; vec2 wxz = p.xz + uCenter;
+            float h = 0.0, dhx = 0.0, dhz = 0.0, shortSteep = 0.0;
+            for(int i=0;i<4;i++){ vec4 w = uWaves[i];
+              float ph = w.z*(w.x*wxz.x + w.y*wxz.y) - uW[i]*uTime;
+              h += w.w*sin(ph); dhx += w.w*w.z*w.x*cos(ph); dhz += w.w*w.z*w.y*cos(ph);
+              if(i>=2) shortSteep += w.w*w.z*abs(cos(ph)); // the short choppy waves only
+            }
+            h *= uAmp; dhx *= uAmp; dhz *= uAmp;
+            p.y += h;
+            vN = normalize(vec3(-dhx, 1.0, -dhz));
+            vHN = h / max(0.5, uAmp * 5.5);              // normalized wave height (~-1..1)
+            vCrest = shortSteep * uAmp;                  // choppy-crest intensity, for scattered whitecaps
+            vRad = length(position.xz);
+            vec4 mv = modelViewMatrix * vec4(p,1.0); vViewZ = -mv.z;
+            gl_Position = projectionMatrix * mv;
+          }`,
+        fragmentShader: `
+          uniform vec3 uColor, uFoam, uSun, uSunCol, uAmb, uFogCol; uniform float uFogNear, uFogFar, uAmp;
+          varying float vHN; varying float vCrest; varying vec3 vN; varying float vViewZ; varying float vRad;
+          void main(){
+            float diff = max(dot(normalize(vN), normalize(uSun)), 0.0);
+            vec3 col = uColor * (uAmb + uSunCol * diff * 0.95);
+            col *= 0.72 + 0.5 * (vHN * 0.5 + 0.5);        // troughs dark, crests lit → the swell reads as relief
+            // Whitecaps: thin crests on the tallest swells, plus scattered spray
+            // where the short waves are steep. Kept sparse so it never sheets over.
+            float foam = smoothstep(0.88, 0.99, vHN) * 0.45 + smoothstep(0.62, 1.15, vCrest) * 0.75;
+            col = mix(col, uFoam, clamp(foam, 0.0, 0.85));
+            float fog = clamp((vViewZ - uFogNear) / (uFogFar - uFogNear), 0.0, 1.0);
+            col = mix(col, uFogCol, fog);
+            float edge = 1.0 - smoothstep(360.0, 480.0, vRad); // dissolve the patch rim into the flat sea
+            gl_FragColor = vec4(col, edge * 0.985 * clamp(uAmp*3.0, 0.0, 1.0));
+          }`,
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(c.x, TERRAIN.WATER_Y + 0.06, c.z);
+      mesh.renderOrder = 1; // over the flat water plane
+      mesh.frustumCulled = false;
+      mesh.visible = false;
+      scene.add(mesh);
+      stormSwells.push({ mesh, uniforms, carrier: c });
+    }
+  }());
+  // Per-frame swell tick (runs every frame via stepWeather so it ramps in/out
+  // smoothly): advance the wave clock, ramp amplitude, drive the mesh uniforms,
+  // and rock each carrier on the long-swell height field it sits in.
+  const _rockRot = new THREE.Euler();
+  let swellWasLive = false;
+  function stepSwell(dt) {
+    swellAmp += (swellAmpTarget - swellAmp) * Math.min(1, dt * 1.6);
+    if (swellAmp < 0.001 && swellAmpTarget === 0) swellAmp = 0;
+    swellT += dt;
+    const live = swellAmp > 0.004 && mapName === 'ocean'; // the swell patches live at the carrier coords
+    for (const s of stormSwells) {
+      s.mesh.visible = live;
+      if (!live) continue;
+      s.uniforms.uTime.value = swellT;
+      s.uniforms.uAmp.value = swellAmp;
+      s.uniforms.uFogCol.value.setHex(scene.fog.color.getHex());
+      s.uniforms.uFogNear.value = scene.fog.near;
+      s.uniforms.uFogFar.value = scene.fog.far;
+    }
+    if (live) {
+      for (const c of carriers) {
+        if (c.enemy && (enemySinking > 0 || sinkVictory)) { c.rockHeave = 0; continue; }
+        const cx = c.x; const cz = c.z;
+        // pitch from the fore/aft height difference, roll from port/stbd — the
+        // long swell tilts and heaves the whole 260 m hull.
+        const hC = swellHeight(cx, cz, swellT, true);
+        const hF = swellHeight(cx, cz - 120, swellT, true);
+        const hA = swellHeight(cx, cz + 120, swellT, true);
+        const hS = swellHeight(cx + 14, cz, swellT, true);
+        const hP = swellHeight(cx - 14, cz, swellT, true);
+        c.rockHeave = hC;
+        c.group.position.y = TERRAIN.WATER_Y + hC;
+        // pitch reads the gentle fore/aft slope; roll is eased (0.6) so a 260 m
+        // ship wallows heavily but doesn't flip like a dinghy.
+        _rockRot.set(Math.atan2(hF - hA, 240) * 0.9, c.rotY, Math.atan2(hS - hP, 28) * 0.6);
+        c.group.rotation.copy(_rockRot);
+      }
+    } else if (swellWasLive) { // storm just ended: settle every ship back to flat
+      for (const c of carriers) {
+        c.rockHeave = 0;
+        if (c.enemy && (enemySinking > 0 || sinkVictory)) continue;
+        c.group.position.y = TERRAIN.WATER_Y;
+        c.group.rotation.set(0, c.rotY, 0);
+      }
+    }
+    swellWasLive = live;
   }
 
   // ---- The City map world (built once; toggled by applyWorld). Static scenery
@@ -1887,36 +2031,57 @@ gl_Position = projectionMatrix * mvPosition;
       s.scale.setScalar(s.userData.size * (1 + (1 - k) * 1.8));
     }
   }
-  let foamT = 0; let bowT = 2;
+  let foamT = 0; let bowT = 2; let beamT = 1;
   const _foamPos = new THREE.Vector3();
+  // The waterline the swell has heaved a spot to right now — spray is thrown
+  // off the CREST as it meets the hull, so breakers fire where the sea is high.
+  const seaAt = (x, z) => TERRAIN.WATER_Y + swellHeight(x, z, swellT, false);
   function stepStormSeas(dt) {
     if (mapName !== 'ocean') return;
-    // steady foam beaten off the upwind beam of each carrier
+    const HW = CARRIER.DECK_W / 2;
+    // Dense sheets of spray torn off both beams along the whole hull — heavier
+    // and more frequent than a calm chop, and thrown from the live wave height.
     foamT -= dt;
     if (foamT <= 0) {
-      foamT = 0.14 + Math.random() * 0.22;
+      foamT = 0.05 + Math.random() * 0.08;
       const c = carriers[Math.random() < 0.7 ? 0 : 1];
-      const side = Math.sign(windState.vec.x) || 1; // upwind = against the wind vector
-      _foamPos.set(
-        c.x - side * (CARRIER.DECK_W / 2 + 2 + Math.random() * 4),
-        TERRAIN.WATER_Y + 0.6 + Math.random() * 1.6,
-        c.z + (Math.random() - 0.5) * (CARRIER.DECK_LEN - 20),
-      );
-      spawnFoam(_foamPos, 3.5 + Math.random() * 5, 1.1 + Math.random() * 0.9, 1.5 + Math.random() * 2);
+      const sx = Math.random() < 0.5 ? -1 : 1;
+      const z = c.z + (Math.random() - 0.5) * (CARRIER.DECK_LEN - 16);
+      const bx = c.x + sx * (HW + 1 + Math.random() * 4);
+      _foamPos.set(bx, seaAt(bx, z) + 0.4 + Math.random() * 2.2, z);
+      spawnFoam(_foamPos, 4 + Math.random() * 7, 1.1 + Math.random() * 1.0, 2.5 + Math.random() * 3.5);
     }
-    // and every few seconds a breaker slams over a bow
+    // Breakers marching down a beam: a burst of spray sheets climbing the side,
+    // fired when the swell crest is running high against the hull amidships.
+    beamT -= dt;
+    if (beamT <= 0) {
+      beamT = 0.9 + Math.random() * 1.4;
+      const c = carriers[Math.random() < 0.6 ? 0 : 1];
+      const sx = Math.sign(windState.vec.x) || (Math.random() < 0.5 ? -1 : 1);
+      const z0 = c.z + (Math.random() - 0.5) * CARRIER.DECK_LEN;
+      const crest = seaAt(c.x + sx * HW, z0);
+      if (crest > TERRAIN.WATER_Y + swellAmp * 1.1) { // only where the sea stands proud
+        for (let k = 0; k < 5; k++) {
+          const z = z0 + (Math.random() - 0.5) * 26;
+          const bx = c.x + sx * (HW + Math.random() * 3);
+          _foamPos.set(bx, crest + 1 + Math.random() * 5, z);
+          spawnFoam(_foamPos, 7 + Math.random() * 10, 1.2 + Math.random() * 1.1, 6 + Math.random() * 7);
+        }
+      }
+    }
+    // And a heavy sea bursting clean over a bow every few seconds — a wall of
+    // white water up and across the fore deck.
     bowT -= dt;
     if (bowT <= 0) {
-      bowT = 2.6 + Math.random() * 3.4;
-      const c = carriers[Math.random() < 0.65 ? 0 : 1];
+      bowT = 1.8 + Math.random() * 2.6;
+      const c = carriers[Math.random() < 0.6 ? 0 : 1];
       const bowDir = c.rotY ? 1 : -1; // the ally bow faces -Z, the enemy +Z
-      for (let k = 0; k < 6; k++) {
-        _foamPos.set(
-          c.x + (Math.random() - 0.5) * (CARRIER.DECK_W * 0.9),
-          TERRAIN.WATER_Y + 1 + Math.random() * 6,
-          c.z + bowDir * (CARRIER.DECK_LEN / 2 - 3 - Math.random() * 10),
-        );
-        spawnFoam(_foamPos, 6 + Math.random() * 9, 1.3 + Math.random() * 0.9, 5 + Math.random() * 6);
+      const bz = c.z + bowDir * (CARRIER.DECK_LEN / 2 - 4);
+      for (let k = 0; k < 10; k++) {
+        const x = c.x + (Math.random() - 0.5) * (CARRIER.DECK_W * 1.05);
+        const z = bz - bowDir * Math.random() * 22;
+        _foamPos.set(x, seaAt(x, z) + 1.5 + Math.random() * 8, z);
+        spawnFoam(_foamPos, 8 + Math.random() * 12, 1.4 + Math.random() * 1.1, 7 + Math.random() * 8);
       }
     }
   }
@@ -1945,6 +2110,7 @@ gl_Position = projectionMatrix * mvPosition;
     applyWetGround(weather.wet);
     // rain / lightning / heavy seas churn only in a live storm
     rain.visible = n === 'storm';
+    swellAmpTarget = n === 'storm' ? 1 : 0; // the geometric swell + ship rocking ramps with the storm
     if (n !== 'storm') {
       for (const b of bolts) { scene.remove(b.spr); boltPool.push(b.spr); }
       bolts.length = 0;
@@ -1983,6 +2149,7 @@ gl_Position = projectionMatrix * mvPosition;
       stepBolts(dt);
       stepStormSeas(dt);
     }
+    stepSwell(dt); // ramp the geometric swell + ship rocking in/out with the storm
     stepFoam(dt); // decay any live foam even after the storm clears
     // lightning light + cloud-deck flash decay between strikes
     flashLight.intensity = flashLight.intensity > 0.01 ? flashLight.intensity * Math.exp(-dt * 9) : 0;
