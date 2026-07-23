@@ -1286,15 +1286,28 @@ gl_Position = projectionMatrix * mvPosition;
     }
   }());
 
-  // ---- Clouds: sprite billboards, but each carries a drawn CUMULUS texture
+  // ---- Clouds: YAW-LOCKED billboards, each carrying a drawn CUMULUS texture
   //      (a row of overlapping puffs — bright domed tops, grey flattened
   //      base, ragged silhouette) instead of one radial blob, so they read
   //      as clouds rather than circles. Four variants, drawn once.
+  //      NOT three.js Sprites: a Sprite is a FULL spherical billboard, so a big
+  //      nearby cloud is one giant flat card that tilts on every axis and
+  //      visibly swings its whole face at you as you pan or pitch — glaringly
+  //      obvious on massive storm clouds. Instead each cloud is an upright plane
+  //      mesh that we rotate around ONLY the vertical axis each frame to face
+  //      the camera in yaw (updateClouds). Clouds stay "standing up" like real
+  //      cloud walls; pitching the view no longer rotates them at all, and the
+  //      horizontal yaw of a symmetric cloud silhouette reads far more natural.
+  //      One mesh = one draw call, same as the old sprites.
   //      Three decks for the weather system: 'fair' (the original scattered
   //      cumulus), 'mid' (broken patches with sunny gaps — the cloudy preset)
   //      and 'storm' (a dark towering overcast + a ceiling cap). applyWeather
   //      toggles which decks show. ----
   const cloudGroups = { fair: new THREE.Group(), mid: new THREE.Group(), storm: new THREE.Group() };
+  const cloudGeo = new THREE.PlaneGeometry(1, 1); // shared unit quad for all cloud billboards
+  // Yaw-billboards to orient each frame, grouped by deck so we only touch the
+  // one that's actually visible.
+  const cloudBB = new Map([[cloudGroups.fair, []], [cloudGroups.mid, []], [cloudGroups.storm, []]]);
   const stormCloudMats = []; // dark deck materials, flashed white by lightning
   let overcastCap = null; // the storm ceiling (one draw call of dark churn)
   let overcastBase = null;
@@ -1340,17 +1353,21 @@ gl_Position = projectionMatrix * mvPosition;
     }
     const variants = [cloudTexture(), cloudTexture(), cloudTexture(), cloudTexture()];
     // One cloud = one material (so tint/opacity vary) behind 1-2 billboards.
+    const bbList = (group) => cloudBB.get(group);
     function puff(group, cx, cy, cz, base, tint, opMin, opVar, ySquash = 0.5) {
-      const mat = new THREE.SpriteMaterial({
+      const mat = new THREE.MeshBasicMaterial({
         map: variants[Math.floor(Math.random() * variants.length)],
+        transparent: true,
         depthWrite: false,
         opacity: opMin + Math.random() * opVar,
         color: tint,
         fog: true,
+        side: THREE.DoubleSide,
       });
+      const list = bbList(group);
       const n = 1 + (Math.random() < 0.45 ? 1 : 0);
       for (let k = 0; k < n; k++) {
-        const s = new THREE.Sprite(mat);
+        const s = new THREE.Mesh(cloudGeo, mat);
         s.position.set(
           cx + k * base * (0.5 + Math.random() * 0.3),
           cy + (Math.random() - 0.5) * base * 0.12,
@@ -1358,7 +1375,10 @@ gl_Position = projectionMatrix * mvPosition;
         );
         const scl = base * (k ? 0.55 : 1) * (0.85 + Math.random() * 0.3);
         s.scale.set(scl, scl * ySquash, 1);
+        // Seed a facing so the first frame (before updateClouds runs) is sane.
+        s.rotation.y = Math.random() * Math.PI * 2;
         group.add(s);
+        list.push(s);
       }
       return mat;
     }
@@ -1908,6 +1928,22 @@ gl_Position = projectionMatrix * mvPosition;
       boltTimer = 2.5;
     }
     audio.setRain(n === 'storm' ? 1 : 0);
+  }
+
+  // ---- Yaw-lock the visible cloud deck to the camera each frame. Only one
+  //      deck is ever visible, so this touches a single list. Clouds stay
+  //      upright and only rotate about the vertical axis toward the camera —
+  //      no whole-card tilt when you pitch, no obvious "spin to face you" that
+  //      the old spherical Sprites had on the big storm masses. ----
+  function updateClouds() {
+    const cx = camera.position.x; const cz = camera.position.z;
+    for (const [group, list] of cloudBB) {
+      if (!group.visible) continue;
+      for (let i = 0; i < list.length; i++) {
+        const m = list[i];
+        m.rotation.y = Math.atan2(cx - m.position.x, cz - m.position.z);
+      }
+    }
   }
 
   // ---- Per-frame weather tick: evolve the wind, push the shared sway
@@ -5507,6 +5543,7 @@ gl_Position = projectionMatrix * mvPosition;
     if (cityGrassField && cityGroup.visible) cityGrassField.update(plane.position, dt);
 
     if (menuMode) menuCamera(dt); else updateCamera(dt);
+    updateClouds(); // yaw-lock the visible cloud deck to the finalized camera
     drawMap();
     renderer.render(scene, camera);
     // First frame is on screen -> fade the loading screen out over the hangar.
