@@ -319,8 +319,28 @@ import { buildCity, CITY } from './plane-sim-city.js';
         [0, 60, -2200], [0, 30, -1200], [0, 25, -500],
       ],
     },
+    skyline: {
+      label: 'Skyline Dash',
+      desc: 'Thread the Midtown towers at rooftop height — hugging the supertowers up the east skyline.',
+      map: 'city',
+      // Tight r-13 hoops: the whole chain was A*-routed against the real building
+      // AABBs (plane-sim-city obstacles) at 140 m and every ring-to-ring chord
+      // verified to clear all towers by ≥20 m — so the course is always flyable,
+      // never a corner you can't make. Do NOT hand-edit a ring without re-running
+      // the routing/validation (see obstacles() dev handle); moving one can steer
+      // the straight line into a facade. Threads within ~30 m of the 316 m and
+      // 251 m supertowers at rings 8-9.
+      r: 13,
+      spawn: { x: 1401, y: 140, z: -843, hdg: 135, speed: 105 },
+      rings: [
+        [1500, 140, -744], [1596, 140, -648], [1692, 140, -552], [1788, 140, -456],
+        [1884, 140, -360], [1992, 140, -336], [2004, 140, -192], [1992, 140, -48],
+        [2004, 140, 96], [2004, 140, 240], [1980, 140, 312], [1944, 140, 396],
+        [1848, 140, 492], [1704, 140, 492], [1584, 140, 552], [1500, 140, 636],
+      ],
+    },
   };
-  const STUNT_ORDER = ['valley', 'canyon', 'wavetop'];
+  const STUNT_ORDER = ['valley', 'canyon', 'wavetop', 'skyline'];
 
   // ---- Flyable aircraft: the catalogue (label / blurb / stat block) lives in
   //      plane-sim-models.js (PLANE_INFO) so the game and the inspector share
@@ -5421,8 +5441,14 @@ gl_Position = projectionMatrix * mvPosition;
         gust: +windState.gust01.toFixed(2),
       };
     },
-    // Collision-obstacle registry (debug/tooling): counts + a sample entry.
-    obstacles() { return { cyl: obCyl.length, box: obBox.length, sampleTree: obCyl.find((o) => o.reason.includes('tree')) }; },
+    // Collision-obstacle registry (debug/tooling): coastal counts + a sample
+    // entry, plus the city/ocean AABB arrays used to validate stunt courses.
+    obstacles() {
+      return {
+        cyl: obCyl.length, box: obBox.length, sampleTree: obCyl.find((o) => o.reason.includes('tree')),
+        city: obBoxCity, ocean: obBoxOcean,
+      };
+    },
     // Sample state() at `hz` for `sec` seconds -> Promise<samples[]>.
     record(sec = 5, hz = 2) {
       return new Promise((res) => {

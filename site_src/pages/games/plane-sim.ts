@@ -813,6 +813,10 @@ export function PlaneSimPage(opts: {
             <div class="ps-tile-ico">🌊</div>
             <div><p class="ps-map-name">Wavetop Circuit</p><p class="ps-map-desc">A slalom off the carrier's bow, wave-high out to the enemy fleet and home. 18 rings.</p></div>
           </div>
+          <div class="ps-map-tile" data-stunt="skyline">
+            <div class="ps-tile-ico">🏙️</div>
+            <div><p class="ps-map-name">Skyline Dash</p><p class="ps-map-desc">Thread the Midtown towers at rooftop height, hugging the supertowers up the east skyline. 16 rings.</p></div>
+          </div>
           <div class="ps-menu-row">
             <button type="button" class="ps-back-btn" data-menuback>‹ Modes</button>
           </div>
