@@ -1286,161 +1286,168 @@ gl_Position = projectionMatrix * mvPosition;
     }
   }());
 
-  // ---- Clouds: YAW-LOCKED billboards, each carrying a drawn CUMULUS texture
-  //      (a row of overlapping puffs — bright domed tops, grey flattened
-  //      base, ragged silhouette) instead of one radial blob, so they read
-  //      as clouds rather than circles. Four variants, drawn once.
-  //      NOT three.js Sprites: a Sprite is a FULL spherical billboard, so a big
-  //      nearby cloud is one giant flat card that tilts on every axis and
-  //      visibly swings its whole face at you as you pan or pitch — glaringly
-  //      obvious on massive storm clouds. Instead each cloud is an upright plane
-  //      mesh that we rotate around ONLY the vertical axis each frame to face
-  //      the camera in yaw (updateClouds). Clouds stay "standing up" like real
-  //      cloud walls; pitching the view no longer rotates them at all, and the
-  //      horizontal yaw of a symmetric cloud silhouette reads far more natural.
-  //      One mesh = one draw call, same as the old sprites.
-  //      Three decks for the weather system: 'fair' (the original scattered
-  //      cumulus), 'mid' (broken patches with sunny gaps — the cloudy preset)
-  //      and 'storm' (a dark towering overcast + a ceiling cap). applyWeather
-  //      toggles which decks show. ----
+  // ---- Clouds: REAL 3-D volumetric puffs, not billboards. Each cloud is a
+  //      cluster of soft, silhouette-faded sphere puffs, and a whole deck is a
+  //      single InstancedMesh (one draw call). Because they're genuine geometry
+  //      they never rotate to face you, and you can fly straight INTO a cloud
+  //      and out the far side — the one thing a flat billboard can never do
+  //      (it just turns edge-on and pops you out the back). A fresnel-style
+  //      fragment fade dissolves each puff's rim so the overlapping spheres
+  //      read as fluffy cumulus instead of hard balls, and the Standard shading
+  //      lets tops catch light while undersides shade for real form.
+  //      Three decks for the weather system: 'fair' (scattered cumulus), 'mid'
+  //      (broken patches with sunny gaps — the cloudy preset) and 'storm' (a
+  //      dark towering overcast + a ceiling cap). applyWeather toggles which
+  //      deck shows. ----
   const cloudGroups = { fair: new THREE.Group(), mid: new THREE.Group(), storm: new THREE.Group() };
-  const cloudGeo = new THREE.PlaneGeometry(1, 1); // shared unit quad for all cloud billboards
-  // Yaw-billboards to orient each frame, grouped by deck so we only touch the
-  // one that's actually visible.
-  const cloudBB = new Map([[cloudGroups.fair, []], [cloudGroups.mid, []], [cloudGroups.storm, []]]);
-  const stormCloudMats = []; // dark deck materials, flashed white by lightning
+  let stormDeckMat = null; // the storm puff material, flashed by lightning (emissive)
   let overcastCap = null; // the storm ceiling (one draw call of dark churn)
   let overcastBase = null;
   (function buildClouds() {
-    function cloudTexture() {
-      const W = 256; const H = 128;
-      const c = document.createElement('canvas');
-      c.width = W; c.height = H;
-      const ctx = c.getContext('2d');
-      const baseY = H * (0.62 + Math.random() * 0.08); // the flat base of the cloud
-      const puffs = 16 + Math.floor(Math.random() * 10);
-      for (let i = 0; i < puffs; i++) {
-        // Puffs cluster along the base line: big domes near the middle,
-        // smaller ones toward the ends; tops rise, bottoms hug the base.
-        const t = Math.random(); // 0..1 across the cloud
-        const px = W * (0.10 + 0.80 * t);
-        const centrality = 1 - Math.abs(t - 0.5) * 2; // 1 middle -> 0 ends
-        const r = (10 + 22 * centrality) * (0.7 + Math.random() * 0.6);
-        const py = baseY - r * (0.25 + Math.random() * 0.75);
-        // Lower puffs pick up a grey-blue shadow tint.
-        const shade = clamp((py + r - baseY) / r * 0.5 + Math.random() * 0.15, 0, 0.45);
-        const cr = Math.round(255 - 35 * shade);
-        const cg = Math.round(255 - 28 * shade);
-        const g = ctx.createRadialGradient(px, py, r * 0.12, px, py, r);
-        g.addColorStop(0, `rgba(${cr},${cg},255,0.92)`);
-        g.addColorStop(0.65, `rgba(${cr},${cg},255,0.45)`);
-        g.addColorStop(1, `rgba(${cr},${cg},255,0)`);
-        ctx.fillStyle = g;
-        ctx.fillRect(px - r, py - r, r * 2, r * 2);
-      }
-      // Erase everything below the base line with a soft gradient so the
-      // cloud sits on the flat bottom real cumulus have.
-      const cut = ctx.createLinearGradient(0, baseY - 6, 0, baseY + 18);
-      cut.addColorStop(0, 'rgba(0,0,0,0)');
-      cut.addColorStop(1, 'rgba(0,0,0,1)');
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.fillStyle = cut;
-      ctx.fillRect(0, baseY - 6, W, H - baseY + 6);
-      ctx.globalCompositeOperation = 'source-over';
-      const tex = new THREE.CanvasTexture(c);
-      tex.colorSpace = THREE.SRGBColorSpace;
-      return tex;
-    }
-    const variants = [cloudTexture(), cloudTexture(), cloudTexture(), cloudTexture()];
-    // One cloud = one material (so tint/opacity vary) behind 1-2 billboards.
-    const bbList = (group) => cloudBB.get(group);
-    function puff(group, cx, cy, cz, base, tint, opMin, opVar, ySquash = 0.5) {
-      const mat = new THREE.MeshBasicMaterial({
-        map: variants[Math.floor(Math.random() * variants.length)],
-        transparent: true,
-        depthWrite: false,
-        opacity: opMin + Math.random() * opVar,
-        color: tint,
-        fog: true,
-        side: THREE.DoubleSide,
+    const puffGeo = new THREE.IcosahedronGeometry(1, 1); // 42-vert soft sphere, shared by every puff
+
+    // A puff material whose fragments fade toward the silhouette, so a heap of
+    // overlapping spheres melts into one soft mass rather than reading as hard
+    // balls. Standard-lit so tops catch the sun and undersides shade (3-D form);
+    // per-instance greys ride instanceColor; lightning flashes the whole deck at
+    // once via emissive. depthWrite off + transparent = it blends over the world
+    // but still gets correctly occluded by terrain and the airframe (depthTest).
+    function cloudMaterial() {
+      const mat = new THREE.MeshStandardMaterial({
+        color: 0xffffff, roughness: 1, metalness: 0,
+        transparent: true, depthWrite: false, fog: true, side: THREE.FrontSide,
       });
-      const list = bbList(group);
-      const n = 1 + (Math.random() < 0.45 ? 1 : 0);
-      for (let k = 0; k < n; k++) {
-        const s = new THREE.Mesh(cloudGeo, mat);
-        s.position.set(
-          cx + k * base * (0.5 + Math.random() * 0.3),
-          cy + (Math.random() - 0.5) * base * 0.12,
-          cz + (Math.random() - 0.5) * base * 0.4,
-        );
-        const scl = base * (k ? 0.55 : 1) * (0.85 + Math.random() * 0.3);
-        s.scale.set(scl, scl * ySquash, 1);
-        // Seed a facing so the first frame (before updateClouds runs) is sane.
-        s.rotation.y = Math.random() * Math.PI * 2;
-        group.add(s);
-        list.push(s);
-      }
+      mat.onBeforeCompile = (sh) => {
+        sh.vertexShader = sh.vertexShader
+          .replace('#include <common>', '#include <common>\nvarying vec3 vPuffN;\nvarying vec3 vPuffP;\nvarying vec3 vPuffW;')
+          .replace('#include <project_vertex>', `#include <project_vertex>
+          vPuffN = normalize(transformedNormal);
+          vPuffP = mvPosition.xyz;
+          #ifdef USE_INSTANCING
+            vPuffW = (modelMatrix * instanceMatrix * vec4(position, 1.0)).xyz;
+          #else
+            vPuffW = (modelMatrix * vec4(position, 1.0)).xyz;
+          #endif`);
+        sh.fragmentShader = sh.fragmentShader
+          .replace('#include <common>', `#include <common>
+          varying vec3 vPuffN;
+          varying vec3 vPuffP;
+          varying vec3 vPuffW;
+          float _h3(vec3 p){ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+          float _vn(vec3 x){ vec3 i = floor(x); vec3 f = fract(x); f = f * f * (3.0 - 2.0 * f);
+            return mix(mix(mix(_h3(i + vec3(0,0,0)), _h3(i + vec3(1,0,0)), f.x),
+                           mix(_h3(i + vec3(0,1,0)), _h3(i + vec3(1,1,0)), f.x), f.y),
+                       mix(mix(_h3(i + vec3(0,0,1)), _h3(i + vec3(1,0,1)), f.x),
+                           mix(_h3(i + vec3(0,1,1)), _h3(i + vec3(1,1,1)), f.x), f.y), f.z); }
+          float _fbm(vec3 p){ return 0.6 * _vn(p) + 0.3 * _vn(p * 2.03 + 11.0) + 0.15 * _vn(p * 4.01 + 27.0); }`)
+          .replace('#include <dithering_fragment>', `#include <dithering_fragment>
+          // Soft silhouette: front-facing centres opaque, grazing rims fade out.
+          float _facing = abs(dot(normalize(vPuffN), normalize(-vPuffP)));
+          float _rim = smoothstep(0.0, 0.82, _facing);
+          // Ragged erosion so the perfect-sphere outline dissolves into cloud.
+          float _n = _fbm(vPuffW * 0.012);
+          gl_FragColor.a *= clamp(_rim * (0.4 + 1.05 * _n), 0.0, 1.0);`);
+      };
       return mat;
     }
-    // Fair-weather cumulus, scattered high — but a properly populated sky, not
-    // a handful of lonely puffs.
-    for (let i = 0; i < 70; i++) {
-      puff(cloudGroups.fair,
-        (Math.random() - 0.5) * CFG.BORDER * 2.4, 260 + Math.random() * 1100,
-        (Math.random() - 0.5) * CFG.BORDER * 2.4, 260 + Math.random() * 380,
-        0xffffff, 0.62, 0.3);
+
+    // Assemble one deck as a single InstancedMesh from a list of puffs
+    // {p:Vector3 position, s:Vector3 scale, c:Color tint}. One draw call.
+    const _m = new THREE.Matrix4();
+    const _q = new THREE.Quaternion();
+    function buildDeck(puffs, group, mat) {
+      const im = new THREE.InstancedMesh(puffGeo, mat, puffs.length);
+      for (let i = 0; i < puffs.length; i++) {
+        const pf = puffs[i];
+        _m.compose(pf.p, _q, pf.s);
+        im.setMatrixAt(i, _m);
+        im.setColorAt(i, pf.c);
+      }
+      im.instanceMatrix.needsUpdate = true;
+      if (im.instanceColor) im.instanceColor.needsUpdate = true;
+      im.frustumCulled = false; // a deck spans the world; whole-mesh culling is meaningless
+      group.add(im);
+      return im;
     }
-    // Cloudy: a few whites plus several broken-deck patches — lower, greyer,
-    // clustered — so some districts sit under cloud while sun gets through
-    // between the patches.
-    for (let i = 0; i < 26; i++) {
-      puff(cloudGroups.mid,
-        (Math.random() - 0.5) * CFG.BORDER * 2.4, 300 + Math.random() * 900,
-        (Math.random() - 0.5) * CFG.BORDER * 2.4, 240 + Math.random() * 320,
-        0xffffff, 0.6, 0.25);
-    }
-    for (let p = 0; p < 12; p++) {
-      const px = (Math.random() - 0.5) * CFG.BORDER * 2.0;
-      const pz = (Math.random() - 0.5) * CFG.BORDER * 2.0;
-      const py = 640 + Math.random() * 320;
-      const n = 7 + Math.floor(Math.random() * 4);
-      for (let i = 0; i < n; i++) {
-        puff(cloudGroups.mid,
-          px + (Math.random() - 0.5) * 1600, py + (Math.random() - 0.5) * 180,
-          pz + (Math.random() - 0.5) * 1600, 320 + Math.random() * 320,
-          0xd6dce2, 0.72, 0.2);
+
+    // Puff out one cumulus: a flattish disc of sphere puffs, domed higher and
+    // fatter toward the middle, thinning at the rim. `size` ~ horizontal
+    // half-extent; `height` ~ how far the crown climbs above the flat base.
+    const _c = new THREE.Color();
+    function cluster(out, cx, cy, cz, size, height, count, gTop, gBot) {
+      for (let i = 0; i < count; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const rad = Math.sqrt(Math.random()) * size * 0.9; // even fill, kept tight so puffs overlap
+        const central = 1 - rad / (size * 0.9); // 1 at the core -> 0 at the rim
+        const px = cx + Math.cos(ang) * rad;
+        const pz = cz + Math.sin(ang) * rad * 0.9;
+        const rise = central * height * (0.35 + Math.random() * 0.65);
+        const py = cy + rise;
+        // Fat puffs (heavy neighbour overlap) so a cluster fuses into one mass.
+        const r = size * (0.44 + Math.random() * 0.22) * (0.55 + central * 0.65);
+        // Tops (high rise, core) bright; undersides and rim shaded.
+        const lift = clamp(rise / (height + 1) - (1 - central) * 0.3, -0.4, 1);
+        _c.copy(gBot).lerp(gTop, clamp(0.3 + lift * 0.75, 0, 1));
+        out.push({
+          p: new THREE.Vector3(px, py, pz),
+          s: new THREE.Vector3(r, r * (0.7 + Math.random() * 0.22), r),
+          c: _c.clone(),
+        });
       }
     }
-    // Storm: a heavy, near-total overcast built in layers. Big LOW clouds you
-    // fly in and among, a dense mid deck, ragged scud, and towering cells — all
-    // under the overcast cap so the whole sky reads as covered.
-    // Large, low, slow-moving cloud masses — the ones you actually fly through.
-    for (let i = 0; i < 46; i++) {
-      stormCloudMats.push(puff(cloudGroups.storm,
-        (Math.random() - 0.5) * CFG.BORDER * 2.6, 140 + Math.random() * 240,
-        (Math.random() - 0.5) * CFG.BORDER * 2.6, 900 + Math.random() * 800,
-        0x4e535d, 0.92, 0.08, 0.62));
+    const span = () => (Math.random() - 0.5) * CFG.BORDER; // a random world coord across the map
+    const TOPW = new THREE.Color(0xffffff); const BOTW = new THREE.Color(0xc4cdd8);
+    // Fair-weather cumulus: a properly populated sky of scattered white puffs.
+    const fair = [];
+    for (let i = 0; i < 70; i++) {
+      cluster(fair, span() * 2.4, 300 + Math.random() * 1000, span() * 2.4,
+        220 + Math.random() * 260, 130 + Math.random() * 170, 7 + Math.floor(Math.random() * 4), TOPW, BOTW);
     }
-    // The main dark deck — dense enough to cover most of the sky.
-    for (let i = 0; i < 150; i++) {
-      stormCloudMats.push(puff(cloudGroups.storm,
-        (Math.random() - 0.5) * CFG.BORDER * 2.8, 440 + Math.random() * 300,
-        (Math.random() - 0.5) * CFG.BORDER * 2.8, 480 + Math.random() * 480,
-        0x565b66, 0.9, 0.1, 0.46));
+    buildDeck(fair, cloudGroups.fair, cloudMaterial());
+    // Cloudy: whites plus several broken-deck patches — lower, greyer, clustered
+    // — so some districts sit under cloud while the sun gets through the gaps.
+    const mid = [];
+    const MTOP = new THREE.Color(0xeef2f6); const MBOT = new THREE.Color(0xaeb8c4);
+    for (let i = 0; i < 26; i++) {
+      cluster(mid, span() * 2.4, 320 + Math.random() * 820, span() * 2.4,
+        220 + Math.random() * 220, 120 + Math.random() * 130, 7 + Math.floor(Math.random() * 4), TOPW, BOTW);
+    }
+    for (let p = 0; p < 12; p++) {
+      const px = span() * 2.0; const pz = span() * 2.0; const py = 620 + Math.random() * 300;
+      const n = 5 + Math.floor(Math.random() * 4);
+      for (let i = 0; i < n; i++) {
+        cluster(mid, px + (Math.random() - 0.5) * 1600, py + (Math.random() - 0.5) * 160,
+          pz + (Math.random() - 0.5) * 1600, 260 + Math.random() * 220, 110 + Math.random() * 120,
+          6 + Math.floor(Math.random() * 4), MTOP, MBOT);
+      }
+    }
+    buildDeck(mid, cloudGroups.mid, cloudMaterial());
+    // Storm: a heavy, near-total overcast built in layers. Big LOW masses you
+    // fly in and among, a dense mid deck, ragged scud, and towering cells — all
+    // under the overcast cap so the whole sky reads as covered. All dark greys.
+    const storm = [];
+    const lowT = new THREE.Color(0x6a707c); const lowB = new THREE.Color(0x4b515c);
+    const deckT = new THREE.Color(0x6d727e); const deckB = new THREE.Color(0x50555f);
+    const scudT = new THREE.Color(0x60656f); const scudB = new THREE.Color(0x474c56);
+    const towT = new THREE.Color(0x7a808c); const towB = new THREE.Color(0x565c68);
+    for (let i = 0; i < 46; i++) { // large, low, slow masses — the ones you fly through
+      cluster(storm, span() * 2.6, 160 + Math.random() * 220, span() * 2.6,
+        420 + Math.random() * 380, 190 + Math.random() * 220, 9 + Math.floor(Math.random() * 5), lowT, lowB);
+    }
+    for (let i = 0; i < 150; i++) { // the main dark deck — dense enough to cover the sky
+      cluster(storm, span() * 2.8, 460 + Math.random() * 300, span() * 2.8,
+        300 + Math.random() * 300, 150 + Math.random() * 160, 8 + Math.floor(Math.random() * 4), deckT, deckB);
     }
     for (let i = 0; i < 60; i++) { // ragged low scud between the big masses
-      stormCloudMats.push(puff(cloudGroups.storm,
-        (Math.random() - 0.5) * CFG.BORDER * 2.6, 280 + Math.random() * 200,
-        (Math.random() - 0.5) * CFG.BORDER * 2.6, 200 + Math.random() * 240,
-        0x464b55, 0.85, 0.15, 0.42));
+      cluster(storm, span() * 2.6, 300 + Math.random() * 200, span() * 2.6,
+        150 + Math.random() * 150, 80 + Math.random() * 90, 5 + Math.floor(Math.random() * 3), scudT, scudB);
     }
     for (let i = 0; i < 32; i++) { // towering cells climbing out of the deck
-      stormCloudMats.push(puff(cloudGroups.storm,
-        (Math.random() - 0.5) * CFG.BORDER * 2.4, 800 + Math.random() * 700,
-        (Math.random() - 0.5) * CFG.BORDER * 2.4, 380 + Math.random() * 380,
-        0x666c78, 0.92, 0.08, 0.85));
+      cluster(storm, span() * 2.4, 720 + Math.random() * 520, span() * 2.4,
+        260 + Math.random() * 220, 420 + Math.random() * 400, 12 + Math.floor(Math.random() * 6), towT, towB);
     }
-    for (const m of stormCloudMats) m.userData.base = m.color.clone();
+    stormDeckMat = cloudMaterial();
+    buildDeck(storm, cloudGroups.storm, stormDeckMat);
     // The overcast ceiling: a dark cap covering most of the sky (one draw call)
     // so the deck reads as continuous cloud cover. Its churn is drawn PER PIXEL
     // from the view direction in the fragment shader (smooth, pole-safe sines) —
@@ -1923,27 +1930,11 @@ gl_Position = projectionMatrix * mvPosition;
       bolts.length = 0;
       flashLight.intensity = 0;
       cloudFlash = 0;
-      for (const m of stormCloudMats) m.color.copy(m.userData.base);
+      if (stormDeckMat) stormDeckMat.emissive.setRGB(0, 0, 0);
       if (overcastCap) overcastCap.material.color.copy(overcastBase);
       boltTimer = 2.5;
     }
     audio.setRain(n === 'storm' ? 1 : 0);
-  }
-
-  // ---- Yaw-lock the visible cloud deck to the camera each frame. Only one
-  //      deck is ever visible, so this touches a single list. Clouds stay
-  //      upright and only rotate about the vertical axis toward the camera —
-  //      no whole-card tilt when you pitch, no obvious "spin to face you" that
-  //      the old spherical Sprites had on the big storm masses. ----
-  function updateClouds() {
-    const cx = camera.position.x; const cz = camera.position.z;
-    for (const [group, list] of cloudBB) {
-      if (!group.visible) continue;
-      for (let i = 0; i < list.length; i++) {
-        const m = list[i];
-        m.rotation.y = Math.atan2(cx - m.position.x, cz - m.position.z);
-      }
-    }
   }
 
   // ---- Per-frame weather tick: evolve the wind, push the shared sway
@@ -1977,7 +1968,7 @@ gl_Position = projectionMatrix * mvPosition;
     flashLight.intensity = flashLight.intensity > 0.01 ? flashLight.intensity * Math.exp(-dt * 9) : 0;
     if (cloudFlash > 0.004) {
       cloudFlash *= Math.exp(-dt * 7);
-      for (const m of stormCloudMats) m.color.copy(m.userData.base).lerp(FLASH_COL, cloudFlash * 0.75);
+      if (stormDeckMat) stormDeckMat.emissive.copy(FLASH_COL).multiplyScalar(cloudFlash * 0.9);
       if (overcastCap) overcastCap.material.color.copy(overcastBase).lerp(FLASH_COL, cloudFlash * 0.6);
     }
   }
@@ -5543,7 +5534,6 @@ gl_Position = projectionMatrix * mvPosition;
     if (cityGrassField && cityGroup.visible) cityGrassField.update(plane.position, dt);
 
     if (menuMode) menuCamera(dt); else updateCamera(dt);
-    updateClouds(); // yaw-lock the visible cloud deck to the finalized camera
     drawMap();
     renderer.render(scene, camera);
     // First frame is on screen -> fade the loading screen out over the hangar.
