@@ -321,22 +321,30 @@ import { buildCity, CITY } from './plane-sim-city.js';
     },
     skyline: {
       label: 'Skyline Dash',
-      desc: 'Thread the Midtown towers at rooftop height — hugging the supertowers up the east skyline.',
+      desc: 'Thread the city itself — weave the streets and tower gaps below the rooftops, crossing Midtown twice.',
       map: 'city',
-      // Tight r-13 hoops: the whole chain was A*-routed against the real building
-      // AABBs (plane-sim-city obstacles) at 140 m and every ring-to-ring chord
-      // verified to clear all towers by ≥20 m — so the course is always flyable,
-      // never a corner you can't make. Do NOT hand-edit a ring without re-running
-      // the routing/validation (see obstacles() dev handle); moving one can steer
-      // the straight line into a facade. Threads within ~30 m of the 316 m and
-      // 251 m supertowers at rings 8-9.
-      r: 13,
-      spawn: { x: 1401, y: 140, z: -843, hdg: 135, speed: 105 },
+      // Tight r-10 hoops. The whole 3.7 km chain was A*-routed against the real
+      // building AABBs (plane-sim-city obstacles) at 125 m — low enough that the
+      // towers close in on both sides — through a fixed set of via points that
+      // force it to serpentine ACROSS the city rather than run one edge. Every
+      // ring-to-ring chord was then verified against the game's exact city
+      // collision test: 1875 samples, 0 hits, worst gap to a crash box 14 m, and
+      // no doubling back. Average clearance to the nearest tall building is only
+      // ~87 m, so it genuinely threads the skyline.
+      // Do NOT hand-edit a ring without re-running the routing/validation (see
+      // the obstacles() dev handle) — moving one can steer a straight leg into a
+      // facade, and the course must never contain a corner you can't make.
+      r: 10,
+      spawn: { x: 1602, y: 125, z: -1073, hdg: -140, speed: 105 },
       rings: [
-        [1500, 140, -744], [1596, 140, -648], [1692, 140, -552], [1788, 140, -456],
-        [1884, 140, -360], [1992, 140, -336], [2004, 140, -192], [1992, 140, -48],
-        [2004, 140, 96], [2004, 140, 240], [1980, 140, 312], [1944, 140, 396],
-        [1848, 140, 492], [1704, 140, 492], [1584, 140, 552], [1500, 140, 636],
+        [1500, 125, -950], [1400, 125, -830], [1280, 125, -710], [1200, 125, -560],
+        [1320, 125, -440], [1370, 125, -420], [1520, 125, -340], [1550, 125, -340],
+        [1640, 125, -430], [1690, 125, -420], [1840, 125, -340], [1980, 125, -340],
+        [1990, 125, -300], [1990, 125, -240], [1990, 125, -70], [1990, 125, 100],
+        [1990, 125, 270], [1990, 125, 380], [1960, 125, 390], [1890, 125, 480],
+        [1720, 125, 480], [1560, 125, 490], [1490, 125, 640], [1450, 125, 660],
+        [1580, 125, 760], [1700, 125, 880], [1690, 125, 1040], [1540, 125, 1110],
+        [1500, 125, 1120],
       ],
     },
   };

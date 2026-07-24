@@ -815,7 +815,7 @@ export function PlaneSimPage(opts: {
           </div>
           <div class="ps-map-tile" data-stunt="skyline">
             <div class="ps-tile-ico">🏙️</div>
-            <div><p class="ps-map-name">Skyline Dash</p><p class="ps-map-desc">Thread the Midtown towers at rooftop height, hugging the supertowers up the east skyline. 16 rings.</p></div>
+            <div><p class="ps-map-name">Skyline Dash</p><p class="ps-map-desc">Thread the city itself — weave the streets and tower gaps below the rooftops, crossing Midtown twice. 29 rings.</p></div>
           </div>
           <div class="ps-menu-row">
             <button type="button" class="ps-back-btn" data-menuback>‹ Modes</button>
