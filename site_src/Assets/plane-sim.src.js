@@ -115,6 +115,19 @@ import {
   const FT = 3.28084; // m -> feet
   const clamp = (v, lo, hi) => (v < lo ? lo : (v > hi ? hi : v));
 
+  // Settings-tile helpers (every picker shares one shape). markPick highlights
+  // the [data-<attr>] whose value matches; onPick wires clicks, swallowing
+  // mousedown so a tile on the start overlay selects instead of launching.
+  const markPick = (attr, val, cls = 'ps-diff-active') => {
+    for (const el of document.querySelectorAll(`[data-${attr}]`)) el.classList.toggle(cls, el.dataset[attr] === String(val));
+  };
+  const onPick = (attr, handler) => {
+    for (const el of document.querySelectorAll(`[data-${attr}]`)) {
+      el.addEventListener('mousedown', (ev) => ev.stopPropagation());
+      el.addEventListener('click', (ev) => { ev.stopPropagation(); handler(el.dataset[attr]); });
+    }
+  };
+
   // ---- Maps. 'coastal' is the airfield valley; 'ocean' is open sea with two
   //      WW2 carrier groups (defend yours, then bomb the enemy's deck). ----
   const OCEAN = {
@@ -2129,14 +2142,9 @@ gl_Position = projectionMatrix * mvPosition;
     if (!validWeather(name)) return;
     weatherName = name;
     try { localStorage.setItem('ps-weather', name); } catch (_) { /* private mode */ }
-    for (const b of document.querySelectorAll('[data-weather]')) {
-      b.classList.toggle('ps-diff-active', b.dataset.weather === name);
-    }
+    markPick('weather', name);
   }
-  for (const b of document.querySelectorAll('[data-weather]')) {
-    b.addEventListener('mousedown', (ev) => ev.stopPropagation());
-    b.addEventListener('click', (ev) => { ev.stopPropagation(); setWeatherPref(b.dataset.weather); });
-  }
+  onPick('weather', setWeatherPref);
 
   // ---- World border: Minecraft-style translucent cyan walls, with a scrolling
   //      vertical-stripe texture so the boundary is unmistakable. ----
@@ -2892,7 +2900,7 @@ gl_Position = projectionMatrix * mvPosition;
     diff = DIFFS[name];
     try { localStorage.setItem('ps-diff', name); } catch (_) { /* private mode */ }
     if (hud.diff) hud.diff.textContent = diff.label;
-    if (diffBtns) for (const b of diffBtns) b.classList.toggle('ps-diff-active', b.dataset.diff === name);
+    markPick('diff', name);
   }
 
   function makeEnemy(spec) {
@@ -3062,9 +3070,7 @@ gl_Position = projectionMatrix * mvPosition;
     if (!(n >= 1 && n <= ENEMY_SPAWN.length)) return;
     enemyCountPref = n;
     try { localStorage.setItem('ps-count', String(n)); } catch (_) { /* private mode */ }
-    for (const b of document.querySelectorAll('[data-count]')) {
-      b.classList.toggle('ps-diff-active', +b.dataset.count === n);
-    }
+    markPick('count', n);
     // Not yet flying (or already over)? Apply immediately; mid-fight it waits
     // for the restart so the kill tally stays honest.
     if (!started || crashed || won || onGround) {
@@ -3089,9 +3095,7 @@ gl_Position = projectionMatrix * mvPosition;
     updateCombatHUD();
   }
   function syncPlaneUI() {
-    for (const b of document.querySelectorAll('[data-plane]')) {
-      b.classList.toggle('ps-diff-active', b.dataset.plane === planeName);
-    }
+    markPick('plane', planeName);
     const info = PLANE_TYPES[planeName];
     for (const el of document.querySelectorAll('.ps-plane-desc')) el.textContent = info.desc;
     if (hud.plane) hud.plane.textContent = info.label.toUpperCase();
@@ -3534,19 +3538,9 @@ gl_Position = projectionMatrix * mvPosition;
   // and the pause menu; wire them all. mousedown stopPropagation so clicking a
   // button on the start overlay selects it instead of also starting the game
   // (the stage's mousedown handler calls start()).
-  const diffBtns = document.querySelectorAll('[data-diff]');
-  for (const b of diffBtns) {
-    b.addEventListener('mousedown', (ev) => ev.stopPropagation());
-    b.addEventListener('click', (ev) => { ev.stopPropagation(); setDifficulty(b.dataset.diff); });
-  }
-  for (const b of document.querySelectorAll('[data-count]')) {
-    b.addEventListener('mousedown', (ev) => ev.stopPropagation());
-    b.addEventListener('click', (ev) => { ev.stopPropagation(); setEnemyCount(+b.dataset.count); });
-  }
-  for (const b of document.querySelectorAll('[data-plane]')) {
-    b.addEventListener('mousedown', (ev) => ev.stopPropagation());
-    b.addEventListener('click', (ev) => { ev.stopPropagation(); setPlaneType(b.dataset.plane); });
-  }
+  onPick('diff', setDifficulty);
+  onPick('count', (v) => setEnemyCount(+v));
+  onPick('plane', setPlaneType);
   // Swap the visible world without touching the saved sortie preference —
   // tutorial/stunt chapters borrow whichever map they need.
   function applyWorld(name) {
@@ -3582,29 +3576,19 @@ gl_Position = projectionMatrix * mvPosition;
   function setMap(name) {
     if (!validMap(name)) return;
     try { localStorage.setItem('ps-map', name); } catch (_) { /* private mode */ }
-    for (const t of document.querySelectorAll('[data-map]')) {
-      t.classList.toggle('ps-active', t.dataset.map === name);
-    }
+    markPick('map', name, 'ps-active');
     applyWorld(name);
     syncSortieMenu();
     respawnBase();
   }
-  for (const t of document.querySelectorAll('[data-map]')) {
-    t.addEventListener('mousedown', (ev) => ev.stopPropagation());
-    t.addEventListener('click', (ev) => { ev.stopPropagation(); setMap(t.dataset.map); });
-  }
+  onPick('map', setMap);
   function setCamPreset(name) {
     if (!CAM_PRESETS[name]) return;
     camName = name;
     try { localStorage.setItem('ps-cam', name); } catch (_) { /* private mode */ }
-    for (const b of document.querySelectorAll('[data-cam]')) {
-      b.classList.toggle('ps-diff-active', b.dataset.cam === name);
-    }
+    markPick('cam', name);
   }
-  for (const b of document.querySelectorAll('[data-cam]')) {
-    b.addEventListener('mousedown', (ev) => ev.stopPropagation());
-    b.addEventListener('click', (ev) => { ev.stopPropagation(); setCamPreset(b.dataset.cam); });
-  }
+  onPick('cam', setCamPreset);
   // Unit pickers (speed / altitude / distance).
   for (const [kind, table, key] of [
     ['speed', SPEED_UNITS, 'ps-u-speed'], ['alt', ALT_UNITS, 'ps-u-alt'], ['dist', DIST_UNITS, 'ps-u-dist'],
@@ -3919,34 +3903,15 @@ gl_Position = projectionMatrix * mvPosition;
   document.getElementById('ps-continue')?.addEventListener('click', () => setMenu('mode'));
   // Game-mode tiles -> that mode's chapter screen. The sortie screen also
   // re-parks the plane on the remembered map so the backdrop matches.
-  for (const b of document.querySelectorAll('[data-gamemode]')) {
-    b.addEventListener('mousedown', (ev) => ev.stopPropagation());
-    b.addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      setMenu(b.dataset.gamemode);
-    });
-  }
+  onPick('gamemode', setMenu);
   // Chapter tiles: a tutorial lesson / a stunt course starts immediately.
-  for (const b of document.querySelectorAll('[data-tut]')) {
-    b.addEventListener('mousedown', (ev) => ev.stopPropagation());
-    b.addEventListener('click', (ev) => { ev.stopPropagation(); startTutorial(b.dataset.tut); });
-  }
-  for (const b of document.querySelectorAll('[data-stunt]')) {
-    b.addEventListener('mousedown', (ev) => ev.stopPropagation());
-    b.addEventListener('click', (ev) => { ev.stopPropagation(); startStunt(b.dataset.stunt); });
-  }
+  onPick('tut', startTutorial);
+  onPick('stunt', startStunt);
   // Free-flight map tiles: click one and you're on its runway, wheels chocked.
-  for (const b of document.querySelectorAll('[data-freemap]')) {
-    b.addEventListener('mousedown', (ev) => ev.stopPropagation());
-    b.addEventListener('click', (ev) => { ev.stopPropagation(); startFree(b.dataset.freemap); });
-  }
-  for (const b of document.querySelectorAll('[data-menuback]')) {
-    b.addEventListener('click', (ev) => { ev.stopPropagation(); setMenu(b.dataset.menuback || 'mode'); });
-  }
+  onPick('freemap', startFree);
+  onPick('menuback', (v) => setMenu(v || 'mode'));
   document.getElementById('ps-takeoff')?.addEventListener('click', () => startSortie());
-  for (const b of document.querySelectorAll('[data-hangar]')) {
-    b.addEventListener('click', (ev) => { ev.stopPropagation(); enterHangar(); });
-  }
+  onPick('hangar', () => enterHangar());
 
   function start() {
     if (started) return;
@@ -5073,54 +5038,33 @@ gl_Position = projectionMatrix * mvPosition;
       onGround = false;
     }
 
-    // --- Obstacle collision (buildings, trees, rocks, vehicles). Scanned only
-    //     while low enough to hit something (an AABB reject keeps the ~2k-cyl
-    //     scan cheap; skipped above OBSTACLE_CEIL AGL). A hit is a crash.
-    // Ocean: carrier hulls + islands are the only obstacles. The deck itself is
-    // NOT one — its top sits above both boxes' `top`, so a landing never trips.
-    if (mapName === 'ocean' && started && !crashed && !dev.god && plane.position.y < DECK_TOP + 24) {
-      const px = plane.position.x; const pz = plane.position.z; const py = plane.position.y;
-      const PR = 2.6;
-      for (let i = 0; i < obBoxOcean.length; i++) {
-        const o = obBoxOcean[i];
-        if (o.kind === 'hull' && o.carrier === restingCarrier) continue; // resting on this deck
-        if (py > o.top + 1) continue;
-        if (px > o.x0 - PR && px < o.x1 + PR && pz > o.z0 - PR && pz < o.z1 + PR) {
-          crash(o.reason); break;
-        }
-      }
-    }
-    // City: the skyline + airfield structures are AABBs, only scanned when low.
-    if (mapName === 'city' && started && !crashed && !dev.god && plane.position.y < 340) {
-      const px = plane.position.x; const pz = plane.position.z; const py = plane.position.y;
-      const PR = 2.6;
-      for (let i = 0; i < obBoxCity.length; i++) {
-        const o = obBoxCity[i];
-        if (py > o.top + 1) continue;
-        if (px > o.x0 - PR && px < o.x1 + PR && pz > o.z0 - PR && pz < o.z1 + PR) {
-          crash(o.reason); break;
-        }
-      }
-    }
-    if (mapName === 'coastal' && started && !crashed && !dev.god && plane.position.y - gh < OBSTACLE_CEIL) {
+    // --- Obstacle collision (buildings, trees, rocks, vehicles), per map.
+    //     Scanned only while low enough to hit; a hit is a crash. ---
+    if (started && !crashed && !dev.god) {
       const px = plane.position.x; const pz = plane.position.z; const py = plane.position.y;
       const PR = 2.6; // plane collision radius (fuselage-ish, so gaps stay threadable)
-      for (let i = 0; i < obCyl.length; i++) {
-        const o = obCyl[i];
-        if (py > o.top + 1) continue;
-        const dx = px - o.x; const dz = pz - o.z; const rr = o.r + PR;
-        if (dx * dx + dz * dz < rr * rr) { crash(o.reason); break; }
-      }
-      if (!crashed) {
-        for (let i = 0; i < obBox.length; i++) {
-          const o = obBox[i];
-          if (py > o.top + 1) continue;
-          if (o.bot != null && py < o.bot) continue; // open underneath (bridge decks)
-          if (px > o.x0 - PR && px < o.x1 + PR && pz > o.z0 - PR && pz < o.z1 + PR) {
-            crash(o.reason); break;
-          }
+      // AABB hit: below the box top and (for bridge decks) above its open bottom.
+      const boxHit = (o) => py <= o.top + 1 && !(o.bot != null && py < o.bot)
+        && px > o.x0 - PR && px < o.x1 + PR && pz > o.z0 - PR && pz < o.z1 + PR;
+      let reason = null;
+      if (mapName === 'ocean' && py < DECK_TOP + 24) {
+        // Ocean: carrier hulls + islands only (the deck top sits above their
+        // `top`, so a landing never trips them). Skip the deck we rest on.
+        for (const o of obBoxOcean) {
+          if (o.kind === 'hull' && o.carrier === restingCarrier) continue;
+          if (boxHit(o)) { reason = o.reason; break; }
         }
+      } else if (mapName === 'city' && py < 340) {
+        for (const o of obBoxCity) if (boxHit(o)) { reason = o.reason; break; }
+      } else if (mapName === 'coastal' && py - gh < OBSTACLE_CEIL) {
+        for (const o of obCyl) {
+          if (py > o.top + 1) continue;
+          const dx = px - o.x; const dz = pz - o.z; const rr = o.r + PR;
+          if (dx * dx + dz * dz < rr * rr) { reason = o.reason; break; }
+        }
+        if (!reason) for (const o of obBox) if (boxHit(o)) { reason = o.reason; break; }
       }
+      if (reason) crash(reason);
     }
 
     // --- Keep the aircraft inside the world border (soft clamp + warning) ---
@@ -5326,7 +5270,7 @@ gl_Position = projectionMatrix * mvPosition;
   setWeatherPref(weatherName); // sync the weather-picker highlight (free-flight screen)
   syncModeHUD(); // hide the tutorial/stunt panels until their mode is live
   applyWorld(mapName); // show the remembered world (city/ocean/coastal) from the first frame
-  for (const t of document.querySelectorAll('[data-map]')) t.classList.toggle('ps-active', t.dataset.map === mapName);
+  markPick('map', mapName, 'ps-active');
   syncSortieMenu(); // adapt the sortie briefing to the remembered map
   setMenu('plane'); // boot into the hangar (the loading screen covers the first frame)
 
