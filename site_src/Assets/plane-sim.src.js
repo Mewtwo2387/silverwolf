@@ -1058,11 +1058,15 @@ gl_Position = projectionMatrix * mvPosition;
   //      genuinely rides the same waves you see rolling under it. Only shown in
   //      a storm (amplitude ramps 0↔1 so it fades in/out with the weather). ----
   const SWELL_WAVES = [ // dirX, dirZ (unit), wavelength m, amplitude m, speed m/s
-    [0.86, 0.51, 165, 4.1, 12.5],
-    [0.55, -0.84, 92, 2.6, 9.5],
-    [-0.30, 0.95, 52, 1.4, 7.5],
-    [0.94, 0.34, 30, 0.8, 6.2],
+    [0.86, 0.51, 190, 8.4, 14.0], // the big primary rolling swell — long & tall
+    [0.55, -0.84, 118, 4.8, 10.5], // secondary swell, crossing
+    [-0.30, 0.95, 62, 2.5, 8.0], // chop riding the swells
+    [0.94, 0.34, 34, 1.3, 6.2], // ripple/texture
   ];
+  // A 260 m ship spans more than a wavelength, so it doesn't ride the full crest
+  // height — it averages. The sea shows the big waves; the hull follows at this
+  // fraction, so large swells visibly tower around and roll past the ship.
+  const SHIP_FOLLOW = 0.5;
   const swellData = SWELL_WAVES.map(([dx, dz, len, amp, spd]) => {
     const k = (2 * Math.PI) / len; return { dx, dz, k, amp, w: spd * k };
   });
@@ -1076,73 +1080,76 @@ gl_Position = projectionMatrix * mvPosition;
     for (let i = 0; i < n; i++) { const s = swellData[i]; h += s.amp * Math.sin(s.k * (s.dx * x + s.dz * z) - s.w * t); }
     return h * swellAmp;
   }
-  const stormSwells = [];
+  let stormSwell = null; // ONE big swell patch that follows the player's ground
+  //                        track, so the whole storm sea has big rolling waves —
+  //                        not just little patches at the carriers. The wave
+  //                        field is world-locked, so the carriers (which rock on
+  //                        the same swellHeight) stay consistent with it.
+  const SWELL_SNAP = 10; // recentre on a 10 m grid = one PlaneGeometry cell
   (function buildStormSwell() {
-    const PATCH = 1000; const SEG = 120; // ~8 m cells — enough for the 30 m ripple
+    const PATCH = 1700; const SEG = 170; // ~10 m cells over a big patch
     const geo = new THREE.PlaneGeometry(PATCH, PATCH, SEG, SEG);
     geo.rotateX(-Math.PI / 2); // lie flat in XZ, displace along +Y
     const wavesVec = swellData.map((s) => new THREE.Vector4(s.dx, s.dz, s.k, s.amp));
     const wSpeeds = swellData.map((s) => s.w);
-    for (const c of carriers) {
-      const uniforms = {
-        uTime: { value: 0 }, uAmp: { value: 0 },
-        uWaves: { value: wavesVec }, uW: { value: wSpeeds },
-        uCenter: { value: new THREE.Vector2(c.x, c.z) },
-        uColor: { value: new THREE.Color(c.enemy ? 0x13303b : 0x16323d) },
-        uFoam: { value: new THREE.Color(0xbfccd4) },
-        uSun: { value: SUN_DIR.clone() },
-        uSunCol: { value: new THREE.Color(0x9fb0c2) },
-        uAmb: { value: new THREE.Color(0x2b3946) },
-        uFogCol: { value: new THREE.Color(scene.fog.color.getHex()) },
-        uFogNear: { value: scene.fog.near }, uFogFar: { value: scene.fog.far },
-      };
-      const mat = new THREE.ShaderMaterial({
-        uniforms, transparent: true, depthWrite: false, fog: false,
-        vertexShader: `
-          uniform float uTime, uAmp; uniform vec4 uWaves[4]; uniform float uW[4]; uniform vec2 uCenter;
-          varying float vHN; varying float vCrest; varying vec3 vN; varying float vViewZ; varying float vRad;
-          void main(){
-            vec3 p = position; vec2 wxz = p.xz + uCenter;
-            float h = 0.0, dhx = 0.0, dhz = 0.0, shortSteep = 0.0;
-            for(int i=0;i<4;i++){ vec4 w = uWaves[i];
-              float ph = w.z*(w.x*wxz.x + w.y*wxz.y) - uW[i]*uTime;
-              h += w.w*sin(ph); dhx += w.w*w.z*w.x*cos(ph); dhz += w.w*w.z*w.y*cos(ph);
-              if(i>=2) shortSteep += w.w*w.z*abs(cos(ph)); // the short choppy waves only
-            }
-            h *= uAmp; dhx *= uAmp; dhz *= uAmp;
-            p.y += h;
-            vN = normalize(vec3(-dhx, 1.0, -dhz));
-            vHN = h / max(0.5, uAmp * 5.5);              // normalized wave height (~-1..1)
-            vCrest = shortSteep * uAmp;                  // choppy-crest intensity, for scattered whitecaps
-            vRad = length(position.xz);
-            vec4 mv = modelViewMatrix * vec4(p,1.0); vViewZ = -mv.z;
-            gl_Position = projectionMatrix * mv;
-          }`,
-        fragmentShader: `
-          uniform vec3 uColor, uFoam, uSun, uSunCol, uAmb, uFogCol; uniform float uFogNear, uFogFar, uAmp;
-          varying float vHN; varying float vCrest; varying vec3 vN; varying float vViewZ; varying float vRad;
-          void main(){
-            float diff = max(dot(normalize(vN), normalize(uSun)), 0.0);
-            vec3 col = uColor * (uAmb + uSunCol * diff * 0.95);
-            col *= 0.72 + 0.5 * (vHN * 0.5 + 0.5);        // troughs dark, crests lit → the swell reads as relief
-            // Whitecaps: thin crests on the tallest swells, plus scattered spray
-            // where the short waves are steep. Kept sparse so it never sheets over.
-            float foam = smoothstep(0.88, 0.99, vHN) * 0.45 + smoothstep(0.62, 1.15, vCrest) * 0.75;
-            col = mix(col, uFoam, clamp(foam, 0.0, 0.85));
-            float fog = clamp((vViewZ - uFogNear) / (uFogFar - uFogNear), 0.0, 1.0);
-            col = mix(col, uFogCol, fog);
-            float edge = 1.0 - smoothstep(360.0, 480.0, vRad); // dissolve the patch rim into the flat sea
-            gl_FragColor = vec4(col, edge * 0.985 * clamp(uAmp*3.0, 0.0, 1.0));
-          }`,
-      });
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set(c.x, TERRAIN.WATER_Y + 0.06, c.z);
-      mesh.renderOrder = 1; // over the flat water plane
-      mesh.frustumCulled = false;
-      mesh.visible = false;
-      scene.add(mesh);
-      stormSwells.push({ mesh, uniforms, carrier: c });
-    }
+    const uniforms = {
+      uTime: { value: 0 }, uAmp: { value: 0 },
+      uWaves: { value: wavesVec }, uW: { value: wSpeeds },
+      uCenter: { value: new THREE.Vector2(0, 0) },
+      uColor: { value: new THREE.Color(0x16323d) },
+      uFoam: { value: new THREE.Color(0xbfccd4) },
+      uSun: { value: SUN_DIR.clone() },
+      uSunCol: { value: new THREE.Color(0x9fb0c2) },
+      uAmb: { value: new THREE.Color(0x2b3946) },
+      uFogCol: { value: new THREE.Color(scene.fog.color.getHex()) },
+      uFogNear: { value: scene.fog.near }, uFogFar: { value: scene.fog.far },
+    };
+    const mat = new THREE.ShaderMaterial({
+      uniforms, transparent: true, depthWrite: false, fog: false,
+      vertexShader: `
+        uniform float uTime, uAmp; uniform vec4 uWaves[4]; uniform float uW[4]; uniform vec2 uCenter;
+        varying float vHN; varying float vCrest; varying vec3 vN; varying float vViewZ; varying float vRad;
+        void main(){
+          vec3 p = position; vec2 wxz = p.xz + uCenter;
+          float h = 0.0, dhx = 0.0, dhz = 0.0, shortSteep = 0.0;
+          for(int i=0;i<4;i++){ vec4 w = uWaves[i];
+            float ph = w.z*(w.x*wxz.x + w.y*wxz.y) - uW[i]*uTime;
+            h += w.w*sin(ph); dhx += w.w*w.z*w.x*cos(ph); dhz += w.w*w.z*w.y*cos(ph);
+            if(i>=2) shortSteep += w.w*w.z*abs(cos(ph)); // the short choppy waves only
+          }
+          h *= uAmp; dhx *= uAmp; dhz *= uAmp;
+          p.y += h;
+          vN = normalize(vec3(-dhx, 1.0, -dhz));
+          vHN = h / max(0.5, uAmp * 8.0);              // normalized wave height (~-1..1)
+          vCrest = shortSteep * uAmp;                  // choppy-crest intensity, for scattered whitecaps
+          vRad = length(position.xz);
+          vec4 mv = modelViewMatrix * vec4(p,1.0); vViewZ = -mv.z;
+          gl_Position = projectionMatrix * mv;
+        }`,
+      fragmentShader: `
+        uniform vec3 uColor, uFoam, uSun, uSunCol, uAmb, uFogCol; uniform float uFogNear, uFogFar, uAmp;
+        varying float vHN; varying float vCrest; varying vec3 vN; varying float vViewZ; varying float vRad;
+        void main(){
+          float diff = max(dot(normalize(vN), normalize(uSun)), 0.0);
+          vec3 col = uColor * (uAmb + uSunCol * diff * 1.35);
+          col *= 0.5 + 0.95 * (vHN * 0.5 + 0.5);        // strong trough-dark / crest-lit banding so the big swells read from the air
+          // Whitecaps: thin crests on the tallest swells, plus scattered spray
+          // where the short waves are steep. Kept sparse so it never sheets over.
+          float foam = smoothstep(0.88, 0.99, vHN) * 0.45 + smoothstep(0.62, 1.15, vCrest) * 0.75;
+          col = mix(col, uFoam, clamp(foam, 0.0, 0.85));
+          float fog = clamp((vViewZ - uFogNear) / (uFogFar - uFogNear), 0.0, 1.0);
+          col = mix(col, uFogCol, fog);
+          float edge = 1.0 - smoothstep(660.0, 820.0, vRad); // dissolve the patch rim into the flat sea
+          gl_FragColor = vec4(col, edge * 0.985 * clamp(uAmp*3.0, 0.0, 1.0));
+        }`,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(0, TERRAIN.WATER_Y + 0.06, 0);
+    mesh.renderOrder = 1; // over the flat water plane
+    mesh.frustumCulled = false;
+    mesh.visible = false;
+    scene.add(mesh);
+    stormSwell = { mesh, uniforms };
   }());
   // Per-frame swell tick (runs every frame via stepWeather so it ramps in/out
   // smoothly): advance the wave clock, ramp amplitude, drive the mesh uniforms,
@@ -1153,15 +1160,20 @@ gl_Position = projectionMatrix * mvPosition;
     swellAmp += (swellAmpTarget - swellAmp) * Math.min(1, dt * 1.6);
     if (swellAmp < 0.001 && swellAmpTarget === 0) swellAmp = 0;
     swellT += dt;
-    const live = swellAmp > 0.004 && mapName === 'ocean'; // the swell patches live at the carrier coords
-    for (const s of stormSwells) {
-      s.mesh.visible = live;
-      if (!live) continue;
-      s.uniforms.uTime.value = swellT;
-      s.uniforms.uAmp.value = swellAmp;
-      s.uniforms.uFogCol.value.setHex(scene.fog.color.getHex());
-      s.uniforms.uFogNear.value = scene.fog.near;
-      s.uniforms.uFogFar.value = scene.fog.far;
+    const live = swellAmp > 0.004 && mapName === 'ocean';
+    stormSwell.mesh.visible = live;
+    if (live) {
+      // Recentre the patch on the player's ground track, snapped to a cell so
+      // the tessellation stays world-aligned and the crests don't crawl.
+      const cx = Math.round(plane.position.x / SWELL_SNAP) * SWELL_SNAP;
+      const cz = Math.round(plane.position.z / SWELL_SNAP) * SWELL_SNAP;
+      stormSwell.mesh.position.set(cx, TERRAIN.WATER_Y + 0.06, cz);
+      stormSwell.uniforms.uCenter.value.set(cx, cz);
+      stormSwell.uniforms.uTime.value = swellT;
+      stormSwell.uniforms.uAmp.value = swellAmp;
+      stormSwell.uniforms.uFogCol.value.setHex(scene.fog.color.getHex());
+      stormSwell.uniforms.uFogNear.value = scene.fog.near;
+      stormSwell.uniforms.uFogFar.value = scene.fog.far;
     }
     if (live) {
       for (const c of carriers) {
@@ -1169,11 +1181,11 @@ gl_Position = projectionMatrix * mvPosition;
         const cx = c.x; const cz = c.z;
         // pitch from the fore/aft height difference, roll from port/stbd — the
         // long swell tilts and heaves the whole 260 m hull.
-        const hC = swellHeight(cx, cz, swellT, true);
-        const hF = swellHeight(cx, cz - 120, swellT, true);
-        const hA = swellHeight(cx, cz + 120, swellT, true);
-        const hS = swellHeight(cx + 14, cz, swellT, true);
-        const hP = swellHeight(cx - 14, cz, swellT, true);
+        const hC = swellHeight(cx, cz, swellT, true) * SHIP_FOLLOW;
+        const hF = swellHeight(cx, cz - 120, swellT, true) * SHIP_FOLLOW;
+        const hA = swellHeight(cx, cz + 120, swellT, true) * SHIP_FOLLOW;
+        const hS = swellHeight(cx + 14, cz, swellT, true) * SHIP_FOLLOW;
+        const hP = swellHeight(cx - 14, cz, swellT, true) * SHIP_FOLLOW;
         // pitch reads the gentle fore/aft slope; roll is eased (0.6) so a 260 m
         // ship wallows heavily but doesn't flip like a dinghy.
         c.rockHeave = hC;
