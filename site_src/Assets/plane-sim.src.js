@@ -1,32 +1,19 @@
-// Plane Sim — a Three.js prop-plane flight simulator, modelled after a
-// Supermarine Spitfire. Bundled (with three) into a self-hosted static asset
-// (`plane-sim.js`) via `bun build`, exactly like app.src.js → app.js, because
-// the site CSP is `script-src 'self'` and forbids CDNs. Loaded by
-// site_src/pages/games/plane-sim.ts as a `<script type="module">`.
+// Plane Sim — a Three.js prop-plane flight sim (Spitfire), bundled with three
+// into the self-hosted asset plane-sim.js (CSP is script-src 'self', no CDNs)
+// and loaded by pages/games/plane-sim.ts as a module.
 //
-// The flight sim is entirely client-side. The one exception is achievements:
-// when logged in, the game posts semantic gameplay events (a kill, a lesson
-// passed, a sortie cleared, a stunt run) to /games/plane-sim/stats, which the
-// server validates + stores; play works fine logged out, just untracked.
-// Coordinates are metres,
-// Y is up, and the aircraft's local forward is -Z (so the chase camera sits on
-// +Z behind it and the plane's right wing, +X, reads as screen-right).
+// Entirely client-side except achievements: when logged in, semantic gameplay
+// events post to /games/plane-sim/stats (validated + stored server-side); play
+// works fine logged out, just untracked.
 //
-// Flight model (arcade but plausible): a single world-space velocity vector is
-// pushed each frame by thrust (along the nose), gravity, drag (against
-// velocity) and lift (along the wing's up axis). Lift uses a real-ish lift
-// curve driven by angle-of-attack, which is what makes a too-slow or
-// over-pulled wing STALL. On top of that sits the "instructor": the mouse
-// points AT something on screen and a pursuit controller (the same one the AI
-// uses) works the virtual stick to fly the nose there — so the plane goes
-// where you point, banking into coordinated turns by itself, instead of the
-// player juggling raw roll/pitch rates.
-//
-// The world is a ~12×12 km bordered box of procedural terrain (see
-// plane-sim-terrain.js): a flat airfield valley in the middle rising to ridged
-// mountains near the border, with lakes, instanced forests and rock fields.
-//
-// TUNING: all the feel constants live in the CFG block below.
+// Conventions: metres, Y up, aircraft forward is -Z (chase cam sits at +Z, the
+// right wing at +X reads as screen-right). Flight model: one world-space
+// velocity vector pushed each frame by thrust/gravity/drag/lift, lift on an
+// AoA curve so a slow or over-pulled wing STALLs. The "instructor" points the
+// mouse at a screen point and a pursuit controller (the AI's) flies the nose
+// there, so the plane banks into coordinated turns by itself. World: a ~12 km
+// bordered box of procedural terrain (plane-sim-terrain.js). Feel constants
+// live in the CFG block below.
 
 import * as THREE from 'three';
 import {
@@ -46,6 +33,8 @@ import {
   computeAchievements, unlockedIds, CATEGORIES, TIER_META,
 } from './plane-achievements.js';
 import { buildCity, CITY } from './plane-sim-city.js';
+import { createFx } from './plane-sim-fx.js';
+import { STUNTS } from './plane-sim-courses.js';
 import {
   buildWaves, sampleHeight, waveUniforms, WAVE_GLSL,
 } from './wave-field.js';
@@ -126,10 +115,8 @@ import {
   const FT = 3.28084; // m -> feet
   const clamp = (v, lo, hi) => (v < lo ? lo : (v > hi ? hi : v));
 
-  // ---- Maps. 'coastal' is the original airfield valley; 'ocean' is open sea
-  //      with two WW2 carrier groups — take off from yours, defend it from the
-  //      bandits, then fly out and put a bomb into the enemy's deck. Selected
-  //      on the sortie screen; remembered. ----
+  // ---- Maps. 'coastal' is the airfield valley; 'ocean' is open sea with two
+  //      WW2 carrier groups (defend yours, then bomb the enemy's deck). ----
   const OCEAN = {
     FLOOR: -80, // seabed (never seen; keeps every ground query "over water")
     ALLY: { x: 0, z: 0 }, // your carrier — the spawn deck (waterline origin)
@@ -137,10 +124,9 @@ import {
     DEFEND_R: 2600, // stray farther than this while bandits live and...
     ABANDON_S: 12, // ...this many seconds later your carrier is lost
   };
-  // ---- City defence. A third map: a 1940s-Manhattan island you protect from
-  //      bomber waves for two minutes. The map overloads the sortie ruleset (as
-  //      Ocean does) — see the CITY layout in plane-sim-city.js; the tuning below
-  //      is gameplay only. ----
+  // ---- City defence. A third map: a 1940s-Manhattan island (plane-sim-city.js)
+  //      protected from bomber waves for two minutes; overloads the sortie
+  //      ruleset like Ocean. Tuning below is gameplay only. ----
   const CITY_MODE = {
     DURATION: 120, // seconds on the clock
     LOSE_AT: 75, // mission lost when city integrity drops below this %
@@ -178,12 +164,9 @@ import {
   let sinkVictory = false; // victory() already fired for this sinking
   const liveBombs = []; // free-falling bombs
 
-  // ---- Game modes. 'sortie' is the combat game (the original); 'tutorial'
-  //      runs bite-size scripted lessons with one goal per step; 'stunt' is a
-  //      ring-chase time trial; 'free' is a no-enemies, no-objective roam on
-  //      any map (a crash still ends the flight). Chosen on the mode screen
-  //      after the hangar, then a chapter within it. `tut`/`stunt` hold the
-  //      live chapter state. ----
+  // ---- Game modes: 'sortie' (combat), 'tutorial' (scripted lessons), 'stunt'
+  //      (ring time-trial), 'free' (roam, a crash still ends it). Chosen on the
+  //      mode screen after the hangar; `tut`/`stunt` hold the live chapter. ----
   let gameMode = 'sortie';
   let tut = null; // { id, def, step, holdT, hitFlag }
   let stunt = null; // { id, def, rings[], i, score, hits, t, prev }
@@ -258,109 +241,12 @@ import {
   };
   const TUT_ORDER = ['takeoff', 'controls', 'guns', 'bombs'];
 
-  // Stunt courses: hand-plotted ring chains [x, y, z, radius?] (default radius
-  // per course). Plotted offline against the terrain module so every ring
-  // clears the ground; the two low rings on Valley Run thread UNDER the road
-  // bridges built at those spots.
-  const STUNTS = {
-    valley: {
-      label: 'Valley Run',
-      desc: 'Low through the central valley, under two bridges, home past the lakes.',
-      map: 'coastal',
-      r: 26,
-      spawn: { x: 0, y: 55, z: 100, hdg: 0, speed: 100 },
-      rings: [
-        [0, 45, -700], [0, 39, -1100], [0, 33, -1500], [0, 49, -1900], [0, 46, -2300],
-        [0, 33, -2650], [0, 4, -3000, 14], // under the north bridge
-        [-600, 74, -3250], [-1200, 144, -3100], [-1800, 186, -2850], [-2300, 193, -2400],
-        [-2450, 188, -1950], [-2600, 189, -1500], [-2575, 152, -1050], [-2550, 101, -600],
-        [-2450, 63, -150], [-2350, 33, 300], [-2275, 33, 800],
-        [-2200, 4, 1300, 14], // under the west bridge
-        [-2050, 53, 1650], [-1900, 63, 2000], [-1500, 37, 2100], [-1100, 33, 2200],
-        [-750, 33, 2050], [-400, 33, 1900], [-100, 33, 1600], [200, 44, 1300],
-        [250, 44, 900], [300, 45, 500], [250, 45, 150], [200, 45, -200],
-      ],
-    },
-    canyon: {
-      label: 'The Canyon',
-      desc: 'Tight below the rim: weave the gorge switchbacks slow and nimble, sprint the straight, then pull hard over the exit ridge.',
-      map: 'canyon',
-      r: 24,
-      spawn: {
-        x: 0, y: 470, z: 4400, hdg: 0, speed: 120,
-      },
-      rings: [
-        // Down the gorge — rings follow CANYON.PATH (scouted offline: floor
-        // ~-13 m, rims 400-700 m, every corner walled against cutting).
-        // Tight r-20 hoops mark the sharp 60-90° corners; the entry reach,
-        // the two sweepers and the mid-course sprint stay wide and straight.
-        [0, 18, 3400], [0, 18, 2950], [0, 18, 2500],
-        [-400, 18, 2050, 20], [150, 16, 1750, 20], [-150, 16, 1550], [-450, 16, 1350, 20],
-        [-175, 18, 1175], [100, 17, 1000, 20],
-        [-350, 16, 600], [-750, 17, 150],
-        [-1150, 17, -200, 20], [-650, 17, -600, 20], [-1050, 16, -1000, 20],
-        [-750, 17, -1150], [-450, 17, -1300], [-50, 17, -1425],
-        [350, 16, -1550], [750, 16, -1725], [1150, 15, -1900], [1450, 17, -2025], [1750, 17, -2150],
-        [2200, 17, -2500, 20], [1900, 16, -2900, 20],
-        [2350, 17, -3250], [2600, 17, -3575], [2850, 16, -3900],
-        // The gorge dead-ends into a ~620 m wall: a guide ring marks the
-        // pull-up point on the face, then pop over the crest and finish
-        // skimming the summit. Build speed on the run-in — it's a zoom climb.
-        [2900, 420, -4150, 30], [2950, 690, -4500, 30], [3080, 665, -4950],
-      ],
-    },
-    wavetop: {
-      label: 'Wavetop Circuit',
-      desc: 'A slalom off the carrier’s bow, wave-high out to the enemy fleet and home.',
-      map: 'ocean',
-      r: 22,
-      spawn: { x: 0, y: 45, z: 260, hdg: 0, speed: 100 },
-      rings: [
-        [60, 18, -300], [-60, 18, -700], [60, 18, -1100], [-60, 18, -1500], [0, 15, -1900],
-        [300, 60, -2300], [600, 90, -2700], [800, 40, -3300], [900, 25, -3900], [950, 16, -4400],
-        [950, 30, -5000], [600, 70, -5300], [200, 120, -4600], [0, 120, -3800], [0, 90, -3000],
-        [0, 60, -2200], [0, 30, -1200], [0, 25, -500],
-      ],
-    },
-    skyline: {
-      label: 'Skyline Dash',
-      desc: 'Thread the city itself — weave the streets and tower gaps below the rooftops, crossing Midtown twice.',
-      map: 'city',
-      // Tight r-10 hoops. The whole 3.7 km chain was A*-routed against the real
-      // building AABBs (plane-sim-city obstacles) at 125 m — low enough that the
-      // towers close in on both sides — through a fixed set of via points that
-      // force it to serpentine ACROSS the city rather than run one edge. Every
-      // ring-to-ring chord was then verified against the game's exact city
-      // collision test: 1875 samples, 0 hits, worst gap to a crash box 14 m, and
-      // no doubling back. Average clearance to the nearest tall building is only
-      // ~87 m, so it genuinely threads the skyline.
-      // Do NOT hand-edit a ring without re-running the routing/validation (see
-      // the obstacles() dev handle) — moving one can steer a straight leg into a
-      // facade, and the course must never contain a corner you can't make.
-      r: 10,
-      spawn: { x: 1602, y: 125, z: -1073, hdg: -140, speed: 105 },
-      rings: [
-        [1500, 125, -950], [1400, 125, -830], [1280, 125, -710], [1200, 125, -560],
-        [1320, 125, -440], [1370, 125, -420], [1520, 125, -340], [1550, 125, -340],
-        [1640, 125, -430], [1690, 125, -420], [1840, 125, -340], [1980, 125, -340],
-        [1990, 125, -300], [1990, 125, -240], [1990, 125, -70], [1990, 125, 100],
-        [1990, 125, 270], [1990, 125, 380], [1960, 125, 390], [1890, 125, 480],
-        [1720, 125, 480], [1560, 125, 490], [1490, 125, 640], [1450, 125, 660],
-        [1580, 125, 760], [1700, 125, 880], [1690, 125, 1040], [1540, 125, 1110],
-        [1500, 125, 1120],
-      ],
-    },
-  };
-  const STUNT_ORDER = ['valley', 'canyon', 'wavetop', 'skyline'];
-
-  // ---- Flyable aircraft: the catalogue (label / blurb / stat block) lives in
-  //      plane-sim-models.js (PLANE_INFO) so the game and the inspector share
-  //      one source of truth. Each type's quirks are real history expressed
-  //      through the SAME flight model: top speed ≈ sqrt(thrust/drag0); turn is
-  //      pitchRate bound by lift/stall; controlV is the airspeed where the
-  //      controls reach full authority; hiSpeedStiff is the Zero's infamous
-  //      control freeze-up in a dive. Both the player AND the bandits fly with
-  //      their type's stats. ----
+  // ---- Flyable aircraft: the catalogue (label / blurb / stats) lives in
+  //      plane-sim-models.js (PLANE_INFO), shared with the inspector. Each
+  //      type's quirks come through the SAME flight model (top speed ≈
+  //      sqrt(thrust/drag0), turn bound by lift/stall, controlV = full-authority
+  //      airspeed, hiSpeedStiff = the Zero's dive control freeze). Player and
+  //      bandits both fly their type's stats. ----
   const PLANE_TYPES = PLANE_INFO;
   const PLANE_ORDER = ['spitfire', 'p51', 'zero'];
   const validPlane = (n) => Object.prototype.hasOwnProperty.call(PLANE_TYPES, n);
@@ -438,10 +324,9 @@ import {
   renderer.shadowMap.enabled = GFX.shadows;
   renderer.shadowMap.type = THREE.PCFShadowMap; // PCFSoft is deprecated (aliases to PCF, but warns every frame)
 
-  // ---- Lighting: a warm sun that casts soft shadows, a cool sky/ground
-  //      hemisphere fill, and a dim back-fill so shadowed sides aren't dead
-  //      black. The sun's shadow frustum is a small ortho box that follows the
-  //      aircraft (see updateCamera) so shadows stay crisp anywhere in the map. ----
+  // ---- Lighting: warm sun (soft shadows) + hemisphere fill + dim back-fill.
+  //      The sun's shadow frustum is a small ortho box that follows the aircraft
+  //      (see updateCamera) so shadows stay crisp anywhere in the map. ----
   const SUN_DIR = new THREE.Vector3(-0.55, 1, 0.42).normalize();
   const sun = new THREE.DirectionalLight(0xfff2da, 2.4);
   sun.castShadow = GFX.shadows;
@@ -534,12 +419,10 @@ import {
     skyCtl.sunSpr = sunSpr;
   }());
 
-  // ---- Wind-sway shader hook (weather system). Shared uniforms — the
-  //      weather engine (further down) drives them each frame; the tree
-  //      materials in scatterVegetation get injectWindSway() applied so every
-  //      tree on the map bends with the SAME wind, in the vertex shader, with
-  //      zero per-frame CPU cost. Declared this early because the forests are
-  //      built long before the weather engine section. ----
+  // ---- Wind-sway shader hook. Shared uniforms driven by the weather engine;
+  //      injectWindSway() applies them to tree materials so every tree bends
+  //      with the SAME wind in the vertex shader, zero per-frame CPU. Declared
+  //      early because the forests are built before the weather section. ----
   const windUniforms = {
     uTime: { value: 0 },
     uWindDir: { value: new THREE.Vector2(1, 0) }, // unit XZ, where the wind blows TOWARD
@@ -579,11 +462,10 @@ gl_Position = projectionMatrix * mvPosition;
     mat.customProgramCacheKey = () => 'ps-wind-sway';
   }
 
-  // ---- Terrain: procedural mountains/valleys/lakes (plane-sim-terrain.js).
-  //      The airfield sits on a flattened disc at the origin. Everything
-  //      land-bound (terrain, airfield, forests, rocks) lives in landGroup so
-  //      the Ocean map can switch it all off; the water plane is shared (on
-  //      the ocean it IS the map). ----
+  // ---- Terrain: procedural mountains/valleys/lakes (plane-sim-terrain.js);
+  //      airfield on a flattened disc at the origin. All land-bound scenery
+  //      lives in landGroup so the Ocean map can switch it off; the water plane
+  //      is shared (on the ocean it IS the map). ----
   const landGroup = new THREE.Group();
   scene.add(landGroup);
   const terrainMesh = buildTerrain(renderer); // kept: the storm weather darkens it for wet ground
@@ -639,11 +521,10 @@ gl_Position = projectionMatrix * mvPosition;
   }
   scene.add(waterMesh);
 
-  // Paved footprint of the coastal airfield — the runway plus the west-side
-  // perimeter taxiway, hangar spurs, threshold links and apron pad. Mirrors
-  // buildAirfield()'s taxi() layout below; kept here (before the grass + tree
-  // scatter) so nothing sprouts through the tarmac. `onPaved` tests a point,
-  // optionally with an outward margin.
+  // Paved footprint of the coastal airfield (runway, taxiway, hangar spurs,
+  // threshold links, apron). Mirrors buildAirfield()'s taxi() layout; kept here
+  // before the grass/tree scatter so nothing sprouts through the tarmac.
+  // `onPaved` tests a point, optionally with an outward margin.
   const RW = CFG.RUNWAY_W;
   const RL = CFG.RUNWAY_LEN;
   const TAXI_X = -30;
@@ -709,13 +590,10 @@ gl_Position = projectionMatrix * mvPosition;
     canyonGroup.add(new THREE.HemisphereLight(0xbdd4ee, 0x46503e, 0.55));
   }
 
-  // ---- Obstacle registry for collision. Solid scenery registers a simple
-  //      volume here — a vertical cylinder {x,z,r,top} (trees, rocks, poles,
-  //      round tanks, the tower) or an axis-aligned box {x0,x1,z0,z1,top}
-  //      (hangars, huts, vehicles). `top` is an absolute world height; the
-  //      aircraft only collides below it. update() scans these each frame while
-  //      the plane is low enough to hit something. Populated by buildAirfield +
-  //      scatterVegetation as they build. ----
+  // ---- Obstacle registry for collision. Solid scenery registers a cylinder
+  //      {x,z,r,top} or an axis-aligned box {x0,x1,z0,z1,top}; `top` is an
+  //      absolute world height and the aircraft only collides below it. update()
+  //      scans these each frame while the plane is low enough to hit. ----
   const obCyl = [];
   const obBox = [];
   const windsocks = []; // fluttered each frame (userData.flutter)
@@ -977,10 +855,9 @@ gl_Position = projectionMatrix * mvPosition;
     }
   }());
 
-  // ---- The Ocean map: two carrier groups on an empty sea. Yours parked at
-  //      the origin (its deck is the runway), the enemy's a few km out. Deck
-  //      contact and hull/island collision are handled analytically in
-  //      update() via the DECK/ocean-obstacle data captured here. ----
+  // ---- The Ocean map: two carrier groups on an empty sea (yours at the origin,
+  //      its deck the runway; the enemy's a few km out). Deck contact and
+  //      hull/island collision are analytic in update(), via the data here. ----
   const oceanGroup = new THREE.Group();
   const DECK_TOP = TERRAIN.WATER_Y + CARRIER.DECK_Y; // absolute deck height
   const carriers = []; // { group, x, z, enemy } — both AABB-aligned (axis along Z)
@@ -994,12 +871,10 @@ gl_Position = projectionMatrix * mvPosition;
       c.group.position.set(cx, TERRAIN.WATER_Y, cz);
       c.group.rotation.y = rotY;
 
-      // Parked deck aircraft (decorative — no collision), spotted along the
-      // STERN half's deck edges per WW2 deck-park practice: aircraft are
-      // ranged aft (where they're readied and launched from) leaving the bow
-      // run clear. Kept clear of the centreline and of the spawn spot at the
-      // very stern. Children of the carrier group, so they ride (and sink)
-      // with the ship. Local coords: bow at -Z, stern at +Z.
+      // Parked deck aircraft (decorative — no collision), ranged along the
+      // stern-half deck edges per WW2 deck-park practice (bow run left clear).
+      // Children of the carrier group, so they ride/sink with the ship.
+      // Local coords: bow at -Z, stern at +Z.
       const spots = [
         { type: 'spitfire', x: -10, z: 48, ry: 2.6 },
         { type: 'p51', x: 10, z: 66, ry: -2.6 },
@@ -1060,20 +935,14 @@ gl_Position = projectionMatrix * mvPosition;
     return null;
   }
 
-  // ---- Storm sea: a REAL Gerstner swell, sharing wave-field.js with the Wave
-  //      Simulator (/games/wave-sim). The map's water is a flat 2-triangle plane
-  //      (the reflective Water addon on ultra, a plain slab elsewhere) and can't
-  //      take vertex waves, so a tessellated patch that follows the aircraft
-  //      carries the displacement. ONE field drives the surface, the carriers
-  //      riding it and the breaker heights, so they can't drift apart — and
-  //      being Gerstner, crests sharpen and troughs flatten (a sine sheet never
-  //      reads as swell) with phase speed from real deep-water dispersion.
-  //
-  //      The flat water is HIDDEN while the swell is live and replaced by a
-  //      far-sea sheet with a hole punched where the patch sits. Without that
-  //      hole the flat plane — opaque and depth-writing on ultra — covers every
-  //      trough that dips below it, which reads as big patches of flat,
-  //      untextured water showing through the waves.
+  // ---- Storm sea: a real Gerstner swell sharing wave-field.js with the Wave
+  //      Simulator (/games/wave-sim). The map's flat water can't take vertex
+  //      waves, so a tessellated patch that follows the aircraft carries the
+  //      displacement. ONE field drives the surface, the carriers riding it and
+  //      the breaker heights, so they can't drift apart.
+  //      While live, the flat water is HIDDEN and replaced by a far-sea sheet
+  //      with a hole where the patch sits — otherwise the opaque depth-writing
+  //      plane covers troughs that dip below it (flat untextured patches). ----
   const SEA_STATES = {
     // Open ocean: a heavy storm swell. Harbour water in the city is fetch-limited
     // — short, small chop, well clear of the island seawalls 12 m above it.
@@ -1563,19 +1432,12 @@ gl_Position = projectionMatrix * mvPosition;
     }
   }());
 
-  // ---- Clouds: REAL 3-D volumetric puffs, not billboards. Each cloud is a
-  //      cluster of soft, silhouette-faded sphere puffs, and a whole deck is a
-  //      single InstancedMesh (one draw call). Because they're genuine geometry
-  //      they never rotate to face you, and you can fly straight INTO a cloud
-  //      and out the far side — the one thing a flat billboard can never do
-  //      (it just turns edge-on and pops you out the back). A fresnel-style
-  //      fragment fade dissolves each puff's rim so the overlapping spheres
-  //      read as fluffy cumulus instead of hard balls, and the Standard shading
-  //      lets tops catch light while undersides shade for real form.
-  //      Three decks for the weather system: 'fair' (scattered cumulus), 'mid'
-  //      (broken patches with sunny gaps — the cloudy preset) and 'storm' (a
-  //      dark towering overcast + a ceiling cap). applyWeather toggles which
-  //      deck shows. ----
+  // ---- Clouds: real 3-D volumetric puffs, not billboards — each cloud is a
+  //      cluster of silhouette-faded sphere puffs, a whole deck one InstancedMesh
+  //      (one draw call). Being geometry, they never face you and you can fly
+  //      through them; a fresnel rim fade melts overlapping spheres into cumulus.
+  //      Three weather decks toggled by applyWeather: 'fair', 'mid', 'storm'
+  //      (dark overcast + ceiling cap). ----
   const cloudGroups = { fair: new THREE.Group(), mid: new THREE.Group(), storm: new THREE.Group() };
   let stormDeckMat = null; // the storm puff material, flashed by lightning (emissive)
   let overcastCap = null; // the storm ceiling (one draw call of dark churn)
@@ -1583,12 +1445,10 @@ gl_Position = projectionMatrix * mvPosition;
   (function buildClouds() {
     const puffGeo = new THREE.IcosahedronGeometry(1, 1); // 42-vert soft sphere, shared by every puff
 
-    // A puff material whose fragments fade toward the silhouette, so a heap of
-    // overlapping spheres melts into one soft mass rather than reading as hard
-    // balls. Standard-lit so tops catch the sun and undersides shade (3-D form);
-    // per-instance greys ride instanceColor; lightning flashes the whole deck at
-    // once via emissive. depthWrite off + transparent = it blends over the world
-    // but still gets correctly occluded by terrain and the airframe (depthTest).
+    // Fragments fade toward the silhouette so overlapping spheres melt into one
+    // soft mass. Standard-lit (tops catch sun, undersides shade); per-instance
+    // greys ride instanceColor; lightning flashes the deck via emissive.
+    // depthWrite off + transparent, but still occluded by terrain/airframe.
     function cloudMaterial() {
       const mat = new THREE.MeshStandardMaterial({
         color: 0xffffff, roughness: 1, metalness: 0,
@@ -1725,12 +1585,10 @@ gl_Position = projectionMatrix * mvPosition;
     }
     stormDeckMat = cloudMaterial();
     buildDeck(storm, cloudGroups.storm, stormDeckMat);
-    // The overcast ceiling: a dark cap covering most of the sky (one draw call)
-    // so the deck reads as continuous cloud cover. Its churn is drawn PER PIXEL
-    // from the view direction in the fragment shader (smooth, pole-safe sines) —
-    // a UV texture pinched into a bright "starburst" at the zenith where the
-    // sphere's UVs converge. The cap sweeps from the zenith down to ~65% toward
-    // the horizon (thetaLength 0.6π) so overhead is overcast in every direction.
+    // The overcast ceiling: a dark cap over most of the sky (one draw call).
+    // Its churn is drawn per-pixel from the view direction (pole-safe sines, no
+    // UV starburst at the zenith), sweeping zenith to ~65% toward the horizon
+    // (thetaLength 0.6π) so overhead is overcast in every direction.
     const capMat = new THREE.MeshBasicMaterial({
       color: 0x2b2f37, transparent: true, opacity: 0.97,
       side: THREE.BackSide, fog: false, depthWrite: false, dithering: true,
@@ -1766,21 +1624,13 @@ gl_Position = projectionMatrix * mvPosition;
   }());
 
   // ======================================================== WEATHER ========
-  // Experimental weather systems — FREE FLIGHT ONLY for now. The picker lives
-  // on the free-flight screen (remembered in localStorage); respawnBase is the
-  // single funnel that applies the picked weather for a free flight and forces
-  // 'sunny' for everything else. Three presets:
-  //   sunny — the original calm day (default).
-  //   cloudy — a broken deck with sunny gaps (light still gets through), a
-  //     steady breeze, light chop on the water.
-  //   storm — dark towering overcast over most of the sky, lightning +
-  //     distance-delayed thunder, rain, wet ground with puddles, heavy seas
-  //     crashing on the carriers, and a gusty wind that genuinely flies the
-  //     aeroplane (drift on the ground track + turbulence jolts).
-  // The wind is NOT pure random: it blows from one general heading per flight
-  // (chosen in applyWeather), slowly veering ±~25° and gusting — so every
-  // loose thing in the world (trees, windsocks, rain, sea foam) leans the
-  // SAME way at the SAME time.
+  // FREE FLIGHT ONLY. The picker (free-flight screen, remembered) feeds
+  // respawnBase — the single funnel that applies it and forces 'sunny' else.
+  // Presets: sunny (calm default), cloudy (broken deck + breeze + light chop),
+  // storm (overcast, lightning + delayed thunder, rain, wet ground, heavy seas,
+  // and a gusty wind that flies the aeroplane — ground drift + turbulence).
+  // The wind blows from one heading per flight (set in applyWeather), veering
+  // ±~25° and gusting, so every loose thing leans the SAME way at once.
   const WX = {
     sunny: {
       wind: 2.5, gust: 0.2, jolt: 0, sway: 0.05, vib: 0,
@@ -1990,12 +1840,10 @@ gl_Position = projectionMatrix * mvPosition;
   scene.add(rain);
   function stepRain(dt) {
     const cx = camera.position.x; const cy = camera.position.y; const cz = camera.position.z;
-    // The object rides the camera and its streak verts are written CAMERA-RELATIVE
-    // (below). A transparent object sorts by its ORIGIN's depth, so with the verts
-    // in world space and the object left at (0,0,0) the rain sorted as if it sat at
-    // the map origin — far from the plane — and drew behind the clouds/overcast at
-    // some view angles (rain "only visible looking up"). Riding the camera makes it
-    // sort as the nearest thing, so it's drawn over the deck in every direction.
+    // The object rides the camera with camera-relative streak verts (below). A
+    // transparent object sorts by its ORIGIN's depth: left at (0,0,0) the rain
+    // sorted as if at the map origin and drew behind the overcast at some angles
+    // ("only visible looking up"). Riding the camera makes it sort nearest.
     rain.position.set(cx, cy, cz);
     const fall = 52; // terminal-ish drop speed (m/s)
     const wx = windState.vec.x * 0.6; const wz = windState.vec.z * 0.6; // wind-driven slant
@@ -2324,11 +2172,9 @@ gl_Position = projectionMatrix * mvPosition;
   }());
 
   // ======================================================== AIRCRAFT ======
-  // The player's fighter. Geometry lives in plane-sim-models.js (shared with
-  // the model inspector) so the flown model and the inspected model are one
-  // and the same. `surf` holds the animatable handles (control surfaces, prop,
-  // gear); the physics below drives them. The airframe is player-selectable
-  // (start overlay / pause menu) and rebuilt in place on switch.
+  // The player's fighter. Geometry lives in plane-sim-models.js (shared with the
+  // inspector). `surf` holds the animatable handles (control surfaces, prop,
+  // gear) that the physics drives. Player-selectable, rebuilt in place on switch.
   let planeName = (() => {
     try { const p = localStorage.getItem('ps-plane'); return validPlane(p) ? p : 'spitfire'; } catch (_) { return 'spitfire'; }
   })();
@@ -2452,12 +2298,10 @@ gl_Position = projectionMatrix * mvPosition;
     return mapName === 'canyon' ? canyonHeight(x, z) : terrainHeight(x, z);
   };
 
-  // Velocity-vector "grip" + coordinated bank-to-turn — the arcade trick that
-  // stops a plane sliding sideways. The velocity DIRECTION is eased toward where
-  // the nose points (speed preserved, so turns don't bleed energy), and banking
-  // induces a coordinated yaw into the turn. Shared by the player and the AI so
-  // both fly the same way. `eff` is control effectiveness [0..~1.15] (fades in
-  // with airspeed), so grip/turn go mushy when slow or stalled.
+  // Velocity-vector "grip" + coordinated bank-to-turn (the arcade anti-slide
+  // trick), shared by player and AI. The velocity DIRECTION eases toward the
+  // nose (speed preserved) and bank induces a coordinated yaw. `eff` is control
+  // effectiveness [0..~1.15], fading with airspeed so it goes mushy when slow.
   const _faFwd = new THREE.Vector3();
   const _faRight = new THREE.Vector3();
   const _faDir = new THREE.Vector3();
@@ -2731,131 +2575,10 @@ gl_Position = projectionMatrix * mvPosition;
     return d2 > radius * radius ? -1 : t;
   }
 
-  // ---- Impact sparks / muzzle flashes: additive sprites that pop and fade. ----
-  const sparkTex = (() => {
-    const c = document.createElement('canvas');
-    c.width = c.height = 64;
-    const ctx = c.getContext('2d');
-    const g = ctx.createRadialGradient(32, 32, 1, 32, 32, 32);
-    g.addColorStop(0, 'rgba(255,240,200,1)');
-    g.addColorStop(0.4, 'rgba(255,150,40,0.9)');
-    g.addColorStop(1, 'rgba(255,80,20,0)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
-    const tex = new THREE.CanvasTexture(c);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
-  })();
-  // Sparks and smoke are pooled too (muzzle flashes alone are several sprites
-  // per trigger-second): each sprite keeps its own material for independent
-  // opacity, but the sprite+material pair is reused instead of re-allocated.
-  const sparks = [];
-  const sparkPool = [];
-  function spawnSpark(pos, size, life) {
-    const s = sparkPool.pop() || new THREE.Sprite(new THREE.SpriteMaterial({
-      map: sparkTex, depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
-    }));
-    s.material.opacity = 1;
-    s.position.copy(pos);
-    s.scale.setScalar(size);
-    s.userData = { life, maxLife: life, size };
-    scene.add(s);
-    sparks.push(s);
-  }
-  function stepSparks(dt) {
-    for (let i = sparks.length - 1; i >= 0; i--) {
-      const s = sparks[i];
-      s.userData.life -= dt;
-      const k = s.userData.life / s.userData.maxLife; // 1 -> 0
-      if (k <= 0) {
-        scene.remove(s);
-        sparkPool.push(s);
-        sparks.splice(i, 1);
-        continue;
-      }
-      s.material.opacity = k;
-      s.scale.setScalar(s.userData.size * (1 + (1 - k) * 1.6)); // expand as it fades
-    }
-  }
-
-  // ---- Smoke: soft grey sprites that drift up, expand and fade. Used for
-  //      damaged-engine trails and explosion aftermath. ----
-  const smokeTex = (() => {
-    const c = document.createElement('canvas');
-    c.width = c.height = 64;
-    const ctx = c.getContext('2d');
-    const g = ctx.createRadialGradient(32, 32, 3, 32, 32, 32);
-    g.addColorStop(0, 'rgba(70,70,74,0.85)');
-    g.addColorStop(0.7, 'rgba(60,60,64,0.35)');
-    g.addColorStop(1, 'rgba(55,55,58,0)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
-    return new THREE.CanvasTexture(c);
-  })();
-  const smokes = [];
-  const smokePool = [];
-  function spawnSmoke(pos, size, life) {
-    const s = smokePool.pop() || new THREE.Sprite(new THREE.SpriteMaterial({
-      map: smokeTex, depthWrite: false, transparent: true,
-    }));
-    s.material.opacity = 0.8;
-    s.position.copy(pos);
-    s.scale.setScalar(size);
-    s.userData = { life, maxLife: life, size };
-    scene.add(s);
-    smokes.push(s);
-  }
-  function stepSmokes(dt) {
-    for (let i = smokes.length - 1; i >= 0; i--) {
-      const s = smokes[i];
-      s.userData.life -= dt;
-      const k = s.userData.life / s.userData.maxLife;
-      if (k <= 0) {
-        scene.remove(s); smokePool.push(s); smokes.splice(i, 1);
-        continue;
-      }
-      s.position.y += dt * 2.5;
-      s.material.opacity = k * 0.8;
-      s.scale.setScalar(s.userData.size * (1 + (1 - k) * 2.2));
-    }
-  }
-
-  // ---- Debris: tumbling chunks thrown by a kill, falling under gravity. ----
-  const debris = [];
-  const debrisPool = [];
-  const debrisMat = new THREE.MeshStandardMaterial({ color: 0x2c2c30, roughness: 0.9 });
-  const debrisGeo = new THREE.BoxGeometry(1, 0.5, 1.4); // unit chunk, scaled per instance
-  function spawnDebris(pos, baseVel) {
-    for (let i = 0; i < 6; i++) {
-      const s = 0.3 + Math.random() * 0.9;
-      const d = debrisPool.pop() || new THREE.Mesh(debrisGeo, debrisMat);
-      d.scale.setScalar(s);
-      d.position.copy(pos);
-      if (!d.userData.vel) { d.userData.vel = new THREE.Vector3(); d.userData.rot = new THREE.Vector3(); }
-      d.userData.vel.copy(baseVel).multiplyScalar(0.6);
-      d.userData.vel.x += (Math.random() - 0.5) * 45;
-      d.userData.vel.y += Math.random() * 30;
-      d.userData.vel.z += (Math.random() - 0.5) * 45;
-      d.userData.rot.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
-      d.userData.life = 2.6;
-      scene.add(d);
-      debris.push(d);
-    }
-  }
-  function stepDebris(dt) {
-    for (let i = debris.length - 1; i >= 0; i--) {
-      const d = debris[i];
-      d.userData.life -= dt;
-      d.userData.vel.y -= CFG.G * 2 * dt;
-      d.position.addScaledVector(d.userData.vel, dt);
-      d.rotation.x += d.userData.rot.x * dt;
-      d.rotation.y += d.userData.rot.y * dt;
-      d.rotation.z += d.userData.rot.z * dt;
-      if (d.userData.life <= 0 || d.position.y < groundAt(d.position.x, d.position.z)) {
-        scene.remove(d);
-        debrisPool.push(d);
-        debris.splice(i, 1);
-      }
-    }
-  }
+  // Transient particle effects (sparks / smoke / debris) live in plane-sim-fx.js.
+  const {
+    spawnSpark, stepSparks, spawnSmoke, stepSmokes, spawnDebris, stepDebris,
+  } = createFx(scene, groundAt, CFG.G);
 
   // The player's wing guns: two amber tracers + a centreline hitscan (with the
   // same random spread the tracers show) that damages the nearest bandit.
@@ -3113,12 +2836,11 @@ gl_Position = projectionMatrix * mvPosition;
   }
 
   // ======================================================== ENEMIES =======
-  // AI bandits. Each keeps its own world-space velocity + throttle and is flown
-  // by a pursuit controller that outputs the SAME pitch/roll/yaw/throttle inputs
-  // a human would, then runs them through an integrator identical to the player's
-  // (same CFG). They therefore obey the same stall, turn-rate and speed limits —
-  // not over-assisted. Gunnery fires along the nose (+ jitter), so a bandit only
-  // hits as well as it actually tracks you.
+  // AI bandits. Each keeps its own velocity + throttle, flown by a pursuit
+  // controller whose pitch/roll/yaw/throttle outputs run through the player's
+  // exact integrator (same CFG) — so they obey the same stall/turn/speed limits,
+  // not over-assisted. Guns fire along the nose (+ jitter): a bandit hits only
+  // as well as it tracks you.
   const FWD_REF = new THREE.Vector3(0, 0, -1);
   const EN = { // enemy-only scratch (must not alias the player's _fwd/_q temps)
     fwd: new THREE.Vector3(), up: new THREE.Vector3(), right: new THREE.Vector3(),
@@ -3144,12 +2866,10 @@ gl_Position = projectionMatrix * mvPosition;
   })();
   let activeCount = enemyCountPref; // the count this engagement was started with
 
-  // ---- Difficulty. Scales the bandits' turn performance (turn = multiplier on
-  //      their control effectiveness, so <1 means you out-turn them), gunnery
-  //      (jitter/range/cone/interval), how long they'll grind a turn fight
-  //      before breaking off (breakAfter), and YOUR gun damage (dmgMul — a
-  //      rookie fight also means faster kills). Chosen on the start overlay or
-  //      with 1/2/3; remembered across sessions. ----
+  // ---- Difficulty. Scales bandit turn performance (turn <1 = you out-turn
+  //      them), gunnery (jitter/range/cone/interval), how long they grind a
+  //      turn fight (breakAfter), and YOUR gun damage (dmgMul). Chosen on the
+  //      start overlay or with 1/2/3; remembered. ----
   const DIFFS = {
     easy: {
       label: 'ROOKIE', turn: 0.55, jitterMul: 2.6, fireInt: 0.22, range: 520, cone: 0.990, breakAfter: 3.0, breakMin: 3.2, breakMax: 5.0, dmgMul: 3,
@@ -3513,12 +3233,10 @@ gl_Position = projectionMatrix * mvPosition;
     EN.toP.copy(plane.position).sub(g.position);
     const dist = EN.toP.length();
 
-    // --- Behaviour state machine: don't grind one endless turn circle. While
-    //     'engage', co-turn time builds up in a close fight (faster when we're
-    //     taking fire); once it tops out we 'break' — extend away + climb with
-    //     guns cold for a few seconds — then re-engage from a fresh merge. This
-    //     resets the geometry and lets the player convert instead of waiting
-    //     forever for an opening. ---
+    // --- Behaviour state machine: avoid an endless turn circle. In 'engage',
+    //     co-turn time builds in a close fight (faster under fire); when it tops
+    //     out we 'break' (extend + climb, guns cold) then re-merge fresh, so the
+    //     player can convert instead of waiting forever. ---
     e.underFire = Math.max(0, e.underFire - dt);
     if (e.mode === 'engage') {
       if (dist < 480) e.coTurn += dt * (e.underFire > 0 ? 2.6 : 1);
@@ -3897,12 +3615,11 @@ gl_Position = projectionMatrix * mvPosition;
     }
   }
 
-  // ---- Achievements. Login-gated career tracking rendered into the Medals
-  //      tab. The game calls achievements.emit({...}) at decisive moments; the
-  //      events queue and flush to /games/plane-sim/stats (the SERVER decides
-  //      what each event does — never a client total), and the returned stat
-  //      blob is diffed to toast fresh unlocks. Logged out: emit is a no-op and
-  //      the tab shows a login prompt. ----
+  // ---- Achievements. Login-gated career tracking in the Medals tab. The game
+  //      calls achievements.emit({...}) at decisive moments; events flush to
+  //      /games/plane-sim/stats (the SERVER decides what each does, never a
+  //      client total) and the returned stats are diffed to toast unlocks.
+  //      Logged out: emit is a no-op, the tab shows a login prompt. ----
   const achievements = (() => {
     let boot = { loggedIn: false, csrf: null, stats: null };
     try {
@@ -5158,13 +4875,11 @@ gl_Position = projectionMatrix * mvPosition;
     const speed = _vAir.length(); // AIRSPEED: lift, drag, AoA and the ASI all use it
     const v2 = speed * speed;
 
-    // --- The instructor: the mouse offset from screen centre is a COMMANDED
-    //     NOSE OFFSET (rate command), fed through the same bank-and-pull
-    //     controller the AI uses — the plane rolls into a coordinated turn by
-    //     itself. Mouse centred = fly straight; hold it on a bandit and the
-    //     nose walks onto him. Deliberately NOT a camera ray: putting the
-    //     chase camera inside the control loop feeds its lag back into pitch
-    //     and sets up a violent pilot-induced oscillation (found the hard way). ---
+    // --- The instructor: the mouse offset from centre is a COMMANDED nose
+    //     offset (rate command) fed through the AI's bank-and-pull controller,
+    //     so the plane rolls into a coordinated turn itself. Deliberately NOT a
+    //     camera ray — that feeds chase-cam lag into pitch and sets up a violent
+    //     pilot-induced oscillation (found the hard way). ---
     const dead = 0.04;
     const shape = (v) => {
       const a = Math.abs(v);
@@ -5358,14 +5073,11 @@ gl_Position = projectionMatrix * mvPosition;
       onGround = false;
     }
 
-    // --- Obstacle collision: buildings, trees, rocks, vehicles. Only scanned
-    //     while the aircraft is low enough to hit something (an AABB reject on
-    //     each keeps the ~2 k-cylinder scan cheap; it's skipped entirely above
-    //     OBSTACLE_CEIL AGL, i.e. almost always in normal flight). A hit is a
-    //     crash. ---
-    // Ocean: carrier hulls + islands are the only obstacles (few, always scanned
-    // when low over the sea). The deck itself is NOT an obstacle — its top is
-    // above both boxes' `top`, so a deck landing never trips them.
+    // --- Obstacle collision (buildings, trees, rocks, vehicles). Scanned only
+    //     while low enough to hit something (an AABB reject keeps the ~2k-cyl
+    //     scan cheap; skipped above OBSTACLE_CEIL AGL). A hit is a crash.
+    // Ocean: carrier hulls + islands are the only obstacles. The deck itself is
+    // NOT one — its top sits above both boxes' `top`, so a landing never trips.
     if (mapName === 'ocean' && started && !crashed && !dev.god && plane.position.y < DECK_TOP + 24) {
       const px = plane.position.x; const pz = plane.position.z; const py = plane.position.y;
       const PR = 2.6;
@@ -5899,14 +5611,11 @@ gl_Position = projectionMatrix * mvPosition;
     // its own, or every frame would queue two callbacks (exponential runaway).
   }
 
-  // ---- GPU warm-up, under the loading screen. Everything a sortie can show
-  //      is compiled/uploaded now: one enemy build of each airframe (their
-  //      shaders + sheet textures otherwise compile on the first frame the
-  //      camera catches a bandit — measured as a multi-second hitch mid-
-  //      flight), plus one of every transient effect (tracer/spark/smoke).
-  //      renderer.compile() links the programs and initTexture() uploads the
-  //      maps without waiting for the objects to enter the frustum; the warm
-  //      rig is then removed before the first visible frame. ----
+  // ---- GPU warm-up, under the loading screen. Everything a sortie can show is
+  //      compiled/uploaded now (each airframe, every transient effect) so
+  //      nothing hitches on first sight mid-flight: renderer.compile() links the
+  //      programs and initTexture() uploads the maps without waiting for the
+  //      frustum, then the warm rig is removed before the first visible frame. ----
   (() => {
     const warm = new THREE.Group();
     for (const t of ['spitfire', 'p51', 'zero']) warm.add(buildAircraft({ type: t, enemy: true }).group);
