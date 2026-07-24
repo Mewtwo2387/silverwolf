@@ -35,7 +35,7 @@ controls.dampingFactor = 0.08;
 controls.target.set(0, 0.5, 0);
 controls.maxPolarAngle = Math.PI * 0.495; // don't let the camera go under the sea
 controls.minDistance = 4;
-controls.maxDistance = 260;
+controls.maxDistance = 500;
 
 // ---- Sky + lighting -------------------------------------------------------
 // One canvas gradient serves as both the visible sky dome and the environment
@@ -76,13 +76,18 @@ let waves = buildWaves(params);
 let simTime = 0;
 
 // ---- Water ----------------------------------------------------------------
-// A finely tessellated patch carries the Gerstner displacement; a big flat
-// plane underneath runs out to the horizon so the sea doesn't just stop (the
-// seam disappears into the fog).
-const PATCH = 420; const PATCH_SEG = 400; // ~1.05 m cells
+// A finely tessellated patch carries the Gerstner displacement; a flat sea
+// fills in from the patch edge to the horizon. The flat sheet has a HOLE the
+// exact size of the patch — without it, the sheet spans the whole world at a
+// fixed height and every wave trough that dips below it gets covered by flat,
+// untextured water (which is exactly what it looked like). The patch also
+// tapers its displacement to zero at the rim, so it meets the flat sea flush
+// instead of ending in a step.
+const PATCH = 900; const PATCH_SEG = 560; // ~1.6 m cells
 const waterUniforms = waveUniforms(waves);
 waterUniforms.uWaveTime = { value: 0 };
 waterUniforms.uAmpSum = { value: 1 }; // total amplitude, so foam keys on relative crest height
+waterUniforms.uPatchHalf = { value: PATCH / 2 };
 
 const normalMap = new THREE.TextureLoader().load('/static/planes/water-normal.jpg');
 normalMap.wrapS = THREE.RepeatWrapping;
@@ -99,12 +104,17 @@ const waterMat = new THREE.MeshStandardMaterial({
 waterMat.onBeforeCompile = (sh) => {
   Object.assign(sh.uniforms, waterUniforms);
   sh.vertexShader = sh.vertexShader
-    .replace('#include <common>', `#include <common>\n${WAVE_GLSL}\nuniform float uAmpSum;\nvarying float vFoamK;`)
+    .replace('#include <common>', `#include <common>\n${WAVE_GLSL}\nuniform float uAmpSum;\nuniform float uPatchHalf;\nvarying float vFoamK;`)
     // Displace + rebuild the normal from the analytic Gerstner derivative.
     .replace('#include <beginnormal_vertex>', `
       vec3 gDisp; vec3 gNrm;
       gerstner(position.xz, gDisp, gNrm);
-      vec3 objectNormal = gNrm;
+      // Settle the sea to dead flat at the patch rim so it meets the far sea
+      // without a step (the far sea is a flat sheet at mean water level).
+      float _m = max(abs(position.x), abs(position.z)) / uPatchHalf;
+      float _fade = 1.0 - smoothstep(0.80, 0.995, _m);
+      gDisp *= _fade;
+      vec3 objectNormal = normalize(mix(vec3(0.0, 1.0, 0.0), gNrm, _fade));
       // Relative crest height (-1..1 over the whole wave stack) — only the
       // genuinely tall crests get spray, so foam never sheets over the sea.
       vFoamK = gDisp.y / max(0.001, uAmpSum);
@@ -123,12 +133,34 @@ const water = new THREE.Mesh(waterGeo, waterMat);
 water.frustumCulled = false;
 scene.add(water);
 
-const farSea = new THREE.Mesh(
-  new THREE.PlaneGeometry(11000, 11000),
-  new THREE.MeshStandardMaterial({ color: 0x11384d, roughness: 0.22, metalness: 0.02 }),
-);
-farSea.rotateX(-Math.PI / 2);
-farSea.position.y = -0.15;
+// Far sea: mean-level water from the patch rim out to the horizon, built as a
+// sheet with a square hole so it can NEVER sit underneath (and punch through)
+// the displaced patch. The hole is a metre inside the patch edge so the two
+// overlap slightly and leave no hairline gap.
+const FAR = 6000;
+const holeHalf = PATCH / 2 - 1;
+const farShape = new THREE.Shape();
+farShape.moveTo(-FAR, -FAR); farShape.lineTo(FAR, -FAR); farShape.lineTo(FAR, FAR); farShape.lineTo(-FAR, FAR);
+farShape.closePath();
+const farHole = new THREE.Path();
+farHole.moveTo(-holeHalf, -holeHalf); farHole.lineTo(-holeHalf, holeHalf);
+farHole.lineTo(holeHalf, holeHalf); farHole.lineTo(holeHalf, -holeHalf);
+farHole.closePath();
+farShape.holes.push(farHole);
+const farGeo = new THREE.ShapeGeometry(farShape);
+farGeo.rotateX(-Math.PI / 2);
+// ShapeGeometry lays UVs out in shape units (metres), so a small repeat gives
+// a sane ripple tile on the distant water instead of leaving it plastic-flat.
+// Loaded separately rather than cloned: a clone made before the image arrives
+// never gets the loader's needsUpdate and would stay blank.
+const farNormal = new THREE.TextureLoader().load('/static/planes/water-normal.jpg');
+farNormal.wrapS = THREE.RepeatWrapping;
+farNormal.wrapT = THREE.RepeatWrapping;
+farNormal.repeat.set(1 / 14, 1 / 14);
+const farSea = new THREE.Mesh(farGeo, new THREE.MeshStandardMaterial({
+  color: 0x11384d, roughness: 0.18, metalness: 0.02, normalMap: farNormal, normalScale: new THREE.Vector2(0.4, 0.4),
+}));
+farSea.position.y = -0.06; // a touch under the patch rim: no coplanar z-fighting
 scene.add(farSea);
 
 // ---- Boat -----------------------------------------------------------------
