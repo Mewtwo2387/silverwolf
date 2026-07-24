@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit",
     "build:css": "tailwindcss -i ./site_src/Assets/input.css -o ./site_src/Assets/styles.css --minify",
     "build:css:watch": "tailwindcss -i ./site_src/Assets/input.css -o ./site_src/Assets/styles.css --watch --minify",
-    "build:js": "bun build ./site_src/Assets/app.src.js --minify --outfile ./site_src/Assets/app.js && bun build ./site_src/Assets/plane-sim.src.js --minify --outfile ./site_src/Assets/plane-sim.js && bun build ./site_src/Assets/plane-viewer.src.js --minify --outfile ./site_src/Assets/plane-viewer.js",
+    "build:js": "bun build ./site_src/Assets/app.src.js --minify --outfile ./site_src/Assets/app.js && bun build ./site_src/Assets/plane-sim.src.js --minify --outfile ./site_src/Assets/plane-sim.js && bun build ./site_src/Assets/plane-viewer.src.js --minify --outfile ./site_src/Assets/plane-viewer.js && bun build ./site_src/Assets/wave-sim.src.js --minify --outfile ./site_src/Assets/wave-sim.js",
     "build:js:watch": "bun build ./site_src/Assets/app.src.js --minify --outfile ./site_src/Assets/app.js --watch",
     "build:images": "bun scripts/build-images.ts",
     "fetch:soundfont": "bun scripts/fetch-soundfont.ts",

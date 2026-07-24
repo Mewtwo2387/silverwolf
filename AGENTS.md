@@ -57,8 +57,8 @@ Boot locally: `bun install` → create `.env` (keys below; values in `.env.examp
 - `typecheck` = `tsc --noEmit`.
 - `build:css` / `build:css:watch` = compile `site_src/Assets/input.css` → `styles.css` (`--minify`).
 - `build:js` = bundle+minify the self-hosted client-JS entrypoints: `app.src.js`→`app.js`, plus the
-  Three.js Plane Sim bundles `plane-sim.src.js`→`plane-sim.js` and
-  `plane-viewer.src.js`→`plane-viewer.js`. Outputs are **gitignored** (rebuilt in the Dockerfile);
+  Three.js bundles `plane-sim.src.js`→`plane-sim.js`, `plane-viewer.src.js`→`plane-viewer.js` and
+  `wave-sim.src.js`→`wave-sim.js`. Outputs are **gitignored** (rebuilt in the Dockerfile);
   a new entrypoint must be added here **and** in the `Dockerfile` build+overlay steps.
 - `build:images` = `bun scripts/build-images.ts` (WebP/AVIF variants).
 
