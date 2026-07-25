@@ -13,6 +13,10 @@ site_src/Assets/styles.css
 site_src/Assets/app.js
 site_src/Assets/plane-sim.js
 site_src/Assets/plane-viewer.js
+site_src/Assets/wave-sim.js
+# Tests and the client-game dev harness — dev-only, nothing at runtime imports
+# them, and the harness would otherwise ship a second HTTP server in the image.
+tests/
 # Downloaded (checksum-verified) inside the Dockerfile by scripts/fetch-soundfont.ts
 # — never copy a stale local soundfont into the image.
 data/soundfonts/

@@ -53,6 +53,13 @@ Boot locally: `bun install` → create `.env` (keys below; values in `.env.examp
 - `start` = `bun run build:css && bun run build:js && bun index.ts` — production.
 - `dev` = builds CSS + JS, then `bun --watch index.ts` — hot-reload dev.
 - `test` / `test:watch` = `bun test [--watch] --preload ./tests/setup.ts`.
+- `test:harness` = `bun tests/harness/plane-sim-harness.ts` — a standalone dev server (port 7788,
+  `HARNESS_PORT` to override) that renders the Three.js game pages logged-out and serves `Assets/`
+  as `/static/`, so Plane Sim / the model inspector / Wave Sim can be loaded in a browser without
+  the bot, DB or OAuth. **`bun run build:js` does not catch undefined identifiers** — a forgotten
+  import bundles fine and only throws `ReferenceError` at runtime, so a green build is not enough:
+  load the page here after touching `plane-sim.src.js` or any `plane-sim-*.js` module. `tests/` is
+  `.dockerignore`d and never reaches the image.
 - `lint` / `lint:fix` = `eslint . [--fix]`.
 - `typecheck` = `tsc --noEmit`.
 - `build:css` / `build:css:watch` = compile `site_src/Assets/input.css` → `styles.css` (`--minify`).
