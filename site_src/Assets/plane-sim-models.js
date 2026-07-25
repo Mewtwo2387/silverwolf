@@ -760,7 +760,7 @@ function buildBomber(opts = {}) {
       normalScale = 0.12;
     }
 
-    const texName = (skin !== 'original' && (tex === 'bomber-hull' || tex === 'bomber-wing'))
+    const texName = (skin !== 'original' && (tex === 'bomber-hull' || tex === 'bomber-wing' || tex === 'bomber-det'))
       ? `${tex}-${skin}`
       : tex;
 

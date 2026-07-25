@@ -73,7 +73,7 @@ const TUT_IDS: Record<string, keyof PlaneStats> = {
 const isMap = (v: unknown): v is 'coastal' | 'ocean' => v === 'coastal' || v === 'ocean';
 const isMode = (v: unknown) => v === 'sortie' || v === 'tutorial' || v === 'stunt';
 const isDiff = (v: unknown) => v === 'easy' || v === 'normal' || v === 'hard';
-const isCourse = (v: unknown) => v === 'valley' || v === 'canyon' || v === 'wavetop';
+const isCourse = (v: unknown) => v === 'valley' || v === 'canyon' || v === 'wavetop' || v === 'skyline';
 const intIn = (v: unknown, lo: number, hi: number): number | null => (
   typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.floor(v))) : null
 );
