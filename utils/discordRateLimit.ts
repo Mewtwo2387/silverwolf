@@ -44,7 +44,7 @@ export async function getRateLimitErrorMessage(userId: string, db: Database): Pr
     ? `Your limit resets ${formatResetTimestamp(resetAt)}.`
     : 'Please wait for your limit to reset.';
 
-  return `⚠️ **${limitLabel} AI Rate Limit Reached**\nYou've used **${usageVal.toLocaleString()}** / **${limitVal.toLocaleString()}** tokens in the current ${windowLabel} window. ${resetNote}`;
+  return `⚠️ **${limitLabel} AI Rate Limit Reached**\nYou've used **${usageVal.toLocaleString()}** / **${limitVal.toLocaleString()}** credits in the current ${windowLabel} window. ${resetNote}`;
 }
 
 export async function handleRateLimitError(

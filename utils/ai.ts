@@ -3,9 +3,11 @@ import { OpenAI } from 'openai';
 import mime from 'mime';
 import type Database from '../database/Database';
 import { logError, logWarning } from './log';
-import { recordUsage } from './tokenCalibration';
+import { recordUsage, getCalibrationMultiplier } from './tokenCalibration';
 import { countTokensOpenRouterMessages } from './tokenizer';
 import { listSearchTools, listSearchToolsGemini, callSearchTool } from './mcp';
+import { creditsForTokens } from './aiPricing';
+import { createChatCompletionWithRetry } from './llmRetry';
 import {
   IMAGE_GEN_TOOL_NAME,
   IMAGE_GEN_DAILY_LIMIT,
@@ -34,6 +36,9 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_TOKEN!);
 const openrouter = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
   apiKey: process.env.OPENROUTER_API_KEY,
+  // Retries/timeouts are handled by createChatCompletionWithRetry (utils/llmRetry)
+  // — don't let the SDK's own retry loop stack on top of that schedule.
+  maxRetries: 0,
   defaultHeaders: {
     'HTTP-Referer': 'https://bot.silverwolf.dev/',
     'X-Title': 'Silverwolf',
@@ -169,6 +174,8 @@ export function formatHistoryEntryForModel(entry: Pick<HistoryEntry, 'role' | 'm
   return stripModelTimestampPrefix(entry.message);
 }
 
+// Per-user fixed-window budgets, metered in CREDITS (see utils/aiPricing.ts) —
+// cheap models get more raw tokens per credit than expensive ones.
 export const DAILY_LIMIT = 250000;
 export const WEEKLY_LIMIT = 1000000;
 
@@ -276,9 +283,6 @@ function getPersonaModelName(personaName: string): string {
 }
 
 /**
- * Generates content (text and/or images) from the specified AI provider and model.
- */
-/**
  * Model + output modalities used by the generate_image tool — config lives in the
  * non-invokable "Imgen" persona. Image-only models (Flux, Recraft…) must request
  * ["image"]; hybrid models (Gemini image, GPT image) want ["image", "text"].
@@ -290,17 +294,10 @@ function getImageGenConfig(): { model: string; modalities: string[] } {
   return { model: imgen?.model || IMAGE_GEN_FALLBACK_MODEL, modalities };
 }
 
-async function generateContent({
+async function generateContentInner({
   db, userId, provider, model, systemPrompt, prompt, history = [], webSearchEnabled = false, imageGen, musicGen,
   mediaParts = [], providerRouting,
 }: GenerateContentOptions): Promise<GenerateContentResult> {
-  if (db && userId) {
-    const isLimited = await db.aiUsage.isRateLimited(userId);
-    if (isLimited) {
-      throw new Error('RATE_LIMIT_EXCEEDED');
-    }
-  }
-
   let totalPromptTokens = 0;
   let totalCompletionTokens = 0;
 
@@ -399,8 +396,12 @@ ${systemPrompt || ''}
 
       let completion: any;
       try {
+        // Music composing turns emit a large composition JSON under a raised
+        // max_tokens cap — give them a longer per-attempt timeout.
         // eslint-disable-next-line no-await-in-loop
-        completion = await openrouter.chat.completions.create(requestBody);
+        completion = await createChatCompletionWithRetry(openrouter, requestBody, {
+          timeoutMs: musicGuideRead ? 480_000 : undefined,
+        });
       } catch (err: any) {
         const msg = (err?.message || '').toLowerCase();
         const status = err?.status;
@@ -808,6 +809,50 @@ ${systemPrompt || ''}
   throw new Error(`Unknown provider: ${provider}`);
 }
 
+// Flat completion-side allowance for the in-flight reservation estimate. Actual
+// usage is recorded from the provider's real usage fields — the estimate only
+// bounds how many concurrent requests can be in flight before the limit bites.
+const ESTIMATED_COMPLETION_TOKENS = 4096;
+
+/**
+ * Rough credit cost of a request, computed from its inputs before any API call.
+ * Used for the in-flight reservation (see AiUsageModel.tryReserve) — accuracy
+ * only needs to be same-order; tool loops and media are deliberately uncounted.
+ */
+function estimateRequestCredits({
+  provider, model, systemPrompt, prompt, history = [],
+}: GenerateContentOptions): number {
+  const estPromptTokens = countTokensOpenRouterMessages([
+    { role: 'system', content: systemPrompt },
+    ...history.map((h) => ({ role: h.role, content: h.message })),
+    { role: 'user', content: prompt },
+  ]) * (provider === 'openrouter' ? getCalibrationMultiplier(model) : 1);
+  return creditsForTokens(model, estPromptTokens, ESTIMATED_COMPLETION_TOKENS);
+}
+
+/**
+ * Generates content (text and/or images) from the specified AI provider and model.
+ * Enforces the per-user credit rate limit with an in-flight reservation: the
+ * estimated cost is held against the user's budget for the whole generation, so
+ * a spammed burst of concurrent requests can't all pass the check before any of
+ * them records usage (issue #213).
+ */
+async function generateContent(opts: GenerateContentOptions): Promise<GenerateContentResult> {
+  const { db, userId } = opts;
+  if (!db || !userId) return generateContentInner(opts);
+
+  const reserved = Math.ceil(estimateRequestCredits(opts));
+  const gate = db.aiUsage.tryReserve(userId, reserved);
+  if (!gate.ok) {
+    throw new Error('RATE_LIMIT_EXCEEDED');
+  }
+  try {
+    return await generateContentInner(opts);
+  } finally {
+    db.aiUsage.release(userId, reserved);
+  }
+}
+
 /**
  * Gets the Gemini AI instance for direct usage
  */
@@ -920,7 +965,7 @@ async function generateSessionTitle(conversation: string): Promise<string | null
         logError('TitleGen: OPENROUTER_API_KEY not set');
         return null;
       }
-      const completion = await openrouter.chat.completions.create({
+      const completion = await createChatCompletionWithRetry(openrouter, {
         model: persona.model,
         messages: [
           { role: 'system', content: systemPrompt },
@@ -929,7 +974,7 @@ async function generateSessionTitle(conversation: string): Promise<string | null
         ],
         max_tokens: 512,
         reasoning: { enabled: false },
-      } as any);
+      } as any, { timeoutMs: 60_000 });
       raw = completion.choices?.[0]?.message?.content ?? null;
     } else if (persona.provider === 'gemini') {
       const model = genAI.getGenerativeModel({

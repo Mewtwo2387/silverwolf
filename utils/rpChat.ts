@@ -1,6 +1,8 @@
 import { getOpenRouterClient } from './ai';
 import { countTokensOpenRouterMessages, countTokensOpenRouter } from './tokenizer';
 import { applyUserVar } from './rpIdentity';
+import { creditsForTokens } from './aiPricing';
+import { createChatCompletionWithRetry } from './llmRetry';
 import {
   collectTriggeredContexts, findRecallMarkers, stripRecallMarkers, formatRecallMarker,
   INJECTION_MAX_TOKENS,
@@ -24,6 +26,8 @@ import { logError, log } from './log';
 
 export const RP_MODEL = 'deepseek/deepseek-v4-flash';
 const RP_MAX_OUTPUT = 8192;
+// Completion-side allowance for the in-flight rate-limit reservation estimate.
+const RP_COMPLETION_ESTIMATE = 4096;
 // With reasoning enabled, thinking tokens draw from the same max_tokens budget as
 // the visible reply, so every call reserves this much extra headroom on top of its
 // intended output size — otherwise a long think can truncate (or empty) the content.
@@ -166,7 +170,7 @@ async function callDeepseek(
     throw new Error('OPENROUTER_API_KEY is not set');
   }
   const openrouter = getOpenRouterClient();
-  const completion = await openrouter.chat.completions.create({
+  const completion = await createChatCompletionWithRetry(openrouter, {
     model: RP_MODEL,
     messages,
     max_tokens: maxTokens + RP_REASONING_HEADROOM,
@@ -332,6 +336,11 @@ export async function generateRpReply(
   userVar: string | null = null,
   persona: string | null = null,
 ): Promise<RpReplyResult> {
+  // In-flight credit reservation against the triggering user's rate limit
+  // (released in the finally below) — closes the check-then-act race where a
+  // spammed burst all passed the limit check before any usage was recorded.
+  let reservedUserId: string | null = null;
+  let reservedCredits = 0;
   try {
     const wasFailed = spawn.compactionFailed;
     let memory = spawn.compactedMemory;
@@ -349,6 +358,8 @@ export async function generateRpReply(
     }
     const triggeringUserId = lastUserTurn?.speakerId;
     if (triggeringUserId) {
+      // Cheap early-out: skips lorebook/compaction work for clearly-limited
+      // users. The authoritative check is the reservation below.
       const isLimited = await db.aiUsage.isRateLimited(triggeringUserId);
       if (isLimited) {
         return { ok: false, reason: 'rate_limited' };
@@ -412,6 +423,21 @@ export async function generateRpReply(
       return res.text.trim();
     };
 
+    // Authoritative rate-limit gate: hold the estimated credit cost of this
+    // reply against the triggering user's budget for the whole generation, so
+    // concurrent replies can't all pass the early check before any records land.
+    if (triggeringUserId) {
+      reservedCredits = Math.ceil(
+        creditsForTokens(RP_MODEL, estimateTokens(systemPrompt, tail), RP_COMPLETION_ESTIMATE),
+      );
+      const gate = db.aiUsage.tryReserve(triggeringUserId, reservedCredits);
+      if (!gate.ok) {
+        reservedCredits = 0;
+        return { ok: false, reason: 'rate_limited' };
+      }
+      reservedUserId = triggeringUserId;
+    }
+
     let text = await generate(systemPrompt);
 
     // Skill recall: the model asked to consult reference notes. Inject them (within
@@ -472,5 +498,7 @@ export async function generateRpReply(
   } catch (err) {
     logError(`Rp: generation failed for spawn ${spawn.spawnId}:`, err);
     return { ok: false, reason: 'error' };
+  } finally {
+    if (reservedUserId) db.aiUsage.release(reservedUserId, reservedCredits);
   }
 }

@@ -6,7 +6,7 @@ Bun process**. It serves fun/games both as slash commands and as web pages, plus
 **The website is public, so security and performance are first-class concerns — code defensively:
 validate every input, never trust client data, keep the CSP tight.**
 
-**Last updated: 2026-07-02**
+**Last updated: 2026-07-27**
 
 > **Maintenance rule.** Edit this file only on *substantive architectural* change — new
 > architecture, new auth, new data flows/services, schema or security-model changes, or when
@@ -128,6 +128,18 @@ self-description injected in a `<userPersona>` block for **self-mode spawns only
 the compaction prompt). The `/ai rp-*` command replies are non-ephemeral (public) except admin
 `rp-setasset`, `rp-lorebook-view` (content dump is creator/dev-only) and the `rp-persona-*` pair.
 
+**AI usage limits** (`utils/ai.ts`, `utils/aiPricing.ts`, `AiUsageModel`): per-user fixed windows
+(250k/day, 1M/week) metered in **credits**, not raw tokens — `credits = tok_in×mult_in +
+tok_out×mult_out` where $0.28/M = 1x (DeepSeek-V4-Flash/MiMo-V2.5 0.5x in/1x out, Grok-4.5
+7x/10.5x, GPT-5.6-Luna 3.5x/10.5x, unlisted = 1x/1x). The `AiUsage` audit log keeps raw tokens +
+derived USD `cost`; the `AiRateLimitWindow.tokens` column stores credits (name kept, no rebuild).
+Enforcement is `db.aiUsage.tryReserve(userId, estCredits)` → `release()` in `finally` — an
+in-memory in-flight reservation held for the whole generation so concurrent spam can't all pass
+the check before usage lands (devs bypass). All OpenRouter chat calls go through
+`createChatCompletionWithRetry` (`utils/llmRetry.ts`: per-attempt timeout — 180s default, 480s
+music-compose, 60s titlegen — and 2s/4s/8s/16s backoff on 408/409/429/5xx/network only); the
+shared client sets `maxRetries: 0` so SDK retries don't stack.
+
 **Database** (`bun:sqlite`, `persistence/database.db`). Layered: `tables/` (TableDefinition schema
 objects) → `models/` (DAOs) → `queries/` (SQL strings). **Access pattern:**
 `this.client.db.<model>.<method>` (e.g. `db.user.getUser(id)`, `db.user.addUserAttrs(id, {...})`).
@@ -139,7 +151,10 @@ Rules an agent must follow:
 - **No formal migration system.** `Database.init()` does `CREATE TABLE IF NOT EXISTS`, `ALTER TABLE`
   to add missing columns, manual index creation, and `PRAGMA foreign_keys = ON`. Schema changes go
   there. Legacy `ServerRoles` rows auto-migrate into `ServerConfig` (`role:<name>` keys) on boot.
-- Multi-statement atomicity: `db.executeTransaction((rawDb) => { ... })`.
+- Multi-statement atomicity: `db.executeTransaction((rawDb) => { ... })`. Transactions are
+  serialized through an in-process FIFO queue (a single connection can't interleave BEGINs —
+  the second used to roll back the first's writes); never call `executeTransaction` from inside
+  a transaction fn (there is a guard that throws).
 - Per-guild settings: `ServerConfig` (`db.serverConfig`, keyed by `server_id` + `key`) — named roles
   use `role:<name>` keys; gameplay tuning via `/serverconfig setvalue`, `/serverconfig setchannel`,
   and `/serverconfig setrole`; `CommandConfig` remains

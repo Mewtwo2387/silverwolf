@@ -1,0 +1,60 @@
+/**
+ * Credit pricing for AI rate limits (issue #211).
+ *
+ * Rate limits are metered in CREDITS, not raw tokens: each model has an
+ * input/output multiplier where $0.28 per million tokens = 1x, so expensive
+ * models drain a user's budget faster and cheap models (DeepSeek, MiMo) get
+ * roughly double the headroom of the old flat token counter.
+ *
+ *   credits = (prompt_tokens × mult_in) + (completion_tokens × mult_out)
+ *
+ * The AiUsage audit log also stores the derived USD cost (credits × $0.28/M)
+ * per call in its `cost` column.
+ */
+
+/** $ per million tokens that defines the 1x multiplier. */
+export const CREDIT_BASE_USD_PER_MILLION = 0.28;
+
+interface ModelMultipliers {
+  input: number;
+  output: number;
+}
+
+// Multipliers per the issue #211 table ($0.28/M = 1x). Models not listed here
+// bill at 1x/1x (identical to the old raw-token accounting).
+const MODEL_MULTIPLIERS: Record<string, ModelMultipliers> = {
+  // $0.14/M in, $0.28/M out
+  'deepseek/deepseek-v4-flash': { input: 0.5, output: 1 },
+  // $0.14/M in, $0.28/M out
+  'xiaomi/mimo-v2.5': { input: 0.5, output: 1 },
+  // $2/M in, $6/M out
+  'x-ai/grok-4.5': { input: 7, output: 10.5 },
+  // $1/M in, $6/M out
+  'openai/gpt-5.6-luna': { input: 3.5, output: 10.5 },
+};
+
+const DEFAULT_MULTIPLIERS: ModelMultipliers = { input: 1, output: 1 };
+
+function getModelMultipliers(model: string): ModelMultipliers {
+  return MODEL_MULTIPLIERS[model] ?? DEFAULT_MULTIPLIERS;
+}
+
+/** Credits charged for a call. Fractional — callers round as needed. */
+export function creditsForTokens(
+  model: string,
+  promptTokens: number,
+  completionTokens: number,
+): number {
+  const mult = getModelMultipliers(model);
+  return promptTokens * mult.input + completionTokens * mult.output;
+}
+
+/** USD cost derived from the same multipliers (credits × $0.28 per 1M). */
+export function usdCostForTokens(
+  model: string,
+  promptTokens: number,
+  completionTokens: number,
+): number {
+  return (creditsForTokens(model, promptTokens, completionTokens)
+    * CREDIT_BASE_USD_PER_MILLION) / 1_000_000;
+}
