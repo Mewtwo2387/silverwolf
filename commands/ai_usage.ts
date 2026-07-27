@@ -14,7 +14,7 @@ function makeProgressBar(value: number, total: number, size = 15): string {
 
 class AiUsageSubcommand extends Command {
   constructor(client: any) {
-    super(client, 'usage', 'View your AI token usage and limits', [], {
+    super(client, 'usage', 'View your AI credit usage and limits', [], {
       isSubcommandOf: 'ai',
       blame: 'xei',
     });
@@ -40,15 +40,15 @@ class AiUsageSubcommand extends Command {
 
       const embed = new Discord.EmbedBuilder()
         .setColor('#0099ff')
-        .setTitle('🤖 Your AI Token Usage')
+        .setTitle('🤖 Your AI Credit Usage')
         .setThumbnail(interaction.user.displayAvatarURL({ size: 256 }))
         .setDescription(`
 **Daily Usage (24h):**
-${dailyUsage.toLocaleString()} / ${DAILY_LIMIT.toLocaleString()} tokens
+${dailyUsage.toLocaleString()} / ${DAILY_LIMIT.toLocaleString()} credits
 ${dailyBar}
 
 **Weekly Usage (7d):**
-${weeklyUsage.toLocaleString()} / ${WEEKLY_LIMIT.toLocaleString()} tokens
+${weeklyUsage.toLocaleString()} / ${WEEKLY_LIMIT.toLocaleString()} credits
 ${weeklyBar}
 
 **Status:** ${statusText}${resetLine}

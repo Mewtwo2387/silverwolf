@@ -1,6 +1,8 @@
 import { getOpenRouterClient } from './ai';
 import { countTokensOpenRouterMessages, countTokensOpenRouter } from './tokenizer';
 import { applyUserVar } from './rpIdentity';
+import { creditsForTokens, ESTIMATED_COMPLETION_TOKENS } from './aiPricing';
+import { createChatCompletionWithRetry } from './llmRetry';
 import {
   collectTriggeredContexts, findRecallMarkers, stripRecallMarkers, formatRecallMarker,
   INJECTION_MAX_TOKENS,
@@ -166,7 +168,7 @@ async function callDeepseek(
     throw new Error('OPENROUTER_API_KEY is not set');
   }
   const openrouter = getOpenRouterClient();
-  const completion = await openrouter.chat.completions.create({
+  const completion = await createChatCompletionWithRetry(openrouter, {
     model: RP_MODEL,
     messages,
     max_tokens: maxTokens + RP_REASONING_HEADROOM,
@@ -208,7 +210,7 @@ async function compact(
   tail: RpHistoryTurn[],
   priorMemory: string | null,
   persona: string | null,
-): Promise<{ ok: boolean; memory?: string; uptoId?: number }> {
+): Promise<{ ok: boolean; memory?: string; uptoId?: number; promptTokens?: number; completionTokens?: number }> {
   if (tail.length < MIN_ROWS_TO_COMPACT) return { ok: true };
 
   // Find the split so ~COMPACT_FRACTION of the tail's tokens are folded.
@@ -249,12 +251,16 @@ Output ONLY the updated memory wrapped exactly as ${MEMORY_OPEN}...${MEMORY_CLOS
   const userPrompt = `${priorMemory ? `Existing memory:\n${priorMemory}\n\n` : ''}Recent events to absorb:\n${transcript}\n\nProduce the updated memory now, wrapped in ${MEMORY_OPEN} and ${MEMORY_CLOSE}.`;
 
   let raw = '';
+  let promptTokens = 0;
+  let completionTokens = 0;
   try {
     const res = await callDeepseek(
       [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
       4096,
     );
     raw = res.text;
+    promptTokens = res.promptTokens;
+    completionTokens = res.completionTokens;
   } catch (err) {
     logError(`Rp: compaction request failed for spawn ${spawnId}:`, err);
     return { ok: false };
@@ -268,7 +274,9 @@ Output ONLY the updated memory wrapped exactly as ${MEMORY_OPEN}...${MEMORY_CLOS
 
   await db.rp.setCompactionState(spawnId, memory, newUptoId);
   log(`Rp: compacted spawn ${spawnId} (folded ${toFold.length} rows up to id ${newUptoId})`);
-  return { ok: true, memory, uptoId: newUptoId };
+  return {
+    ok: true, memory, uptoId: newUptoId, promptTokens, completionTokens,
+  };
 }
 
 export type RpReplyResult =
@@ -332,6 +340,11 @@ export async function generateRpReply(
   userVar: string | null = null,
   persona: string | null = null,
 ): Promise<RpReplyResult> {
+  // In-flight credit reservation against the triggering user's rate limit
+  // (released in the finally below) — closes the check-then-act race where a
+  // spammed burst all passed the limit check before any usage was recorded.
+  let reservedUserId: string | null = null;
+  let reservedCredits = 0;
   try {
     const wasFailed = spawn.compactionFailed;
     let memory = spawn.compactedMemory;
@@ -349,6 +362,8 @@ export async function generateRpReply(
     }
     const triggeringUserId = lastUserTurn?.speakerId;
     if (triggeringUserId) {
+      // Cheap early-out: skips lorebook/compaction work for clearly-limited
+      // users. The authoritative check is the reservation below.
       const isLimited = await db.aiUsage.isRateLimited(triggeringUserId);
       if (isLimited) {
         return { ok: false, reason: 'rate_limited' };
@@ -368,10 +383,33 @@ export async function generateRpReply(
     const extras = buildExtras(lorebooks, tail, persona);
     let systemPrompt = buildSystemPrompt(character, memory, userVar, extras);
 
+    // Authoritative rate-limit gate: hold the estimated credit cost of this reply
+    // (covering compaction if needed + up to two generation attempts) against
+    // the triggering user's budget before any LLM calls are issued.
+    if (triggeringUserId) {
+      const initialTokens = estimateTokens(systemPrompt, tail);
+      const willCompact = spawn.compactionEnabled && initialTokens > COMPACTION_TRIGGER_TOKENS;
+      const compactionEstCredits = willCompact
+        ? creditsForTokens(RP_MODEL, initialTokens, 4096)
+        : 0;
+      const maxGenCalls = extras.skills.length > 0 ? 2 : 1;
+      const genEstCredits = creditsForTokens(RP_MODEL, initialTokens, ESTIMATED_COMPLETION_TOKENS) * maxGenCalls;
+
+      reservedCredits = Math.ceil(compactionEstCredits + genEstCredits);
+      const gate = db.aiUsage.tryReserve(triggeringUserId, reservedCredits);
+      if (!gate.ok) {
+        reservedCredits = 0;
+        return { ok: false, reason: 'rate_limited' };
+      }
+      reservedUserId = triggeringUserId;
+    }
+
     if (estimateTokens(systemPrompt, tail) > COMPACTION_TRIGGER_TOKENS) {
       if (spawn.compactionEnabled) {
         const res = await compact(db, spawn.spawnId, character, tail, memory, persona);
         if (res.ok && res.memory) {
+          totalPromptTokens += res.promptTokens ?? 0;
+          totalCompletionTokens += res.completionTokens ?? 0;
           memory = res.memory;
           uptoId = res.uptoId ?? uptoId;
           tail = await loadTail(db, spawn.spawnId, uptoId);
@@ -472,5 +510,7 @@ export async function generateRpReply(
   } catch (err) {
     logError(`Rp: generation failed for spawn ${spawn.spawnId}:`, err);
     return { ok: false, reason: 'error' };
+  } finally {
+    if (reservedUserId) db.aiUsage.release(reservedUserId, reservedCredits);
   }
 }

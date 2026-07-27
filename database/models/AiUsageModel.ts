@@ -2,6 +2,7 @@ import type Database from '../Database';
 import aiUsageQueries from '../queries/aiUsageQueries';
 import { isUserDev } from '../../utils/accessControl';
 import { DAILY_LIMIT, WEEKLY_LIMIT } from '../../utils/ai';
+import { creditsForTokens, usdCostForTokens } from '../../utils/aiPricing';
 
 type WindowType = 'daily' | 'weekly';
 
@@ -11,8 +12,25 @@ const WINDOW_INTERVALS: Record<WindowType, { pos: string; neg: string }> = {
   weekly: { pos: '+7 days', neg: '-7 days' },
 };
 
+/**
+ * Rate limits are metered in credits (see utils/aiPricing.ts), not raw tokens:
+ * the fixed windows accumulate `creditsForTokens(model, in, out)` rounded to an
+ * integer per call, so a cheap model gets more headroom than an expensive one.
+ * The AiUsage audit log keeps the raw per-call token counts plus the derived
+ * USD cost.
+ */
 class AiUsageModel {
   private db: Database;
+
+  /**
+   * In-flight credits per user (generations started but not yet recorded).
+   * Single-process bot, so an in-memory map suffices: it lets tryReserve count
+   * concurrent in-progress requests toward the limit, closing the check-then-act
+   * race where a spammed burst all passed isRateLimited before any usage was
+   * recorded (issue #213). Entries always return to 0 via release() in a
+   * finally block, so a crash never strands a reservation.
+   */
+  private pending = new Map<string, number>();
 
   constructor(db: Database) {
     this.db = db;
@@ -23,28 +41,28 @@ class AiUsageModel {
     model: string,
     promptTokens: number,
     completionTokens: number,
-    cost = 0,
   ): Promise<void> {
     // Ensure user exists in User table
     await this.db.user.getUser(userId);
 
-    const total = promptTokens + completionTokens;
+    const credits = Math.round(creditsForTokens(model, promptTokens, completionTokens));
+    const usdCost = usdCostForTokens(model, promptTokens, completionTokens);
 
-    // Log the call (audit) and fold its tokens into both fixed windows atomically.
+    // Log the call (audit) and fold its credits into both fixed windows atomically.
     await this.db.executeTransaction((rawDb) => {
       const logResult = rawDb.query(aiUsageQueries.ADD_USAGE)
-        .run(userId, model, promptTokens, completionTokens, cost);
+        .run(userId, model, promptTokens, completionTokens, usdCost);
       if (!logResult || logResult.changes === 0) {
         throw new Error('Failed to record AI usage in the database');
       }
       (Object.keys(WINDOW_INTERVALS) as WindowType[]).forEach((type) => {
         const { pos } = WINDOW_INTERVALS[type];
-        rawDb.query(aiUsageQueries.UPSERT_WINDOW).run(userId, type, total, pos, pos);
+        rawDb.query(aiUsageQueries.UPSERT_WINDOW).run(userId, type, credits, pos, pos);
       });
     });
   }
 
-  /** Tokens used in the current fixed window (0 once it has lapsed) and when it resets. */
+  /** Credits used in the current fixed window (0 once it has lapsed) and when it resets. */
   private async getWindow(userId: string, type: WindowType): Promise<{ tokens: number; resetAt: Date | null }> {
     const { pos, neg } = WINDOW_INTERVALS[type];
     const row = await this.db.executeSelectQuery(aiUsageQueries.GET_WINDOW, [neg, neg, pos, userId, type]);
@@ -57,6 +75,13 @@ class AiUsageModel {
       if (!Number.isNaN(date.getTime())) resetAt = date;
     }
     return { tokens, resetAt };
+  }
+
+  /** Synchronous window read for tryReserve (bun:sqlite is sync under the hood). */
+  private getWindowTokensSync(userId: string, type: WindowType): number {
+    const { pos, neg } = WINDOW_INTERVALS[type];
+    const row = this.db.db.query(aiUsageQueries.GET_WINDOW).get(neg, neg, pos, userId, type) as any;
+    return typeof row?.tokens === 'number' ? row.tokens : 0;
   }
 
   async getDailyUsage(userId: string): Promise<number> {
@@ -106,6 +131,49 @@ class AiUsageModel {
   async isRateLimited(userId: string): Promise<boolean> {
     const status = await this.checkRateLimit(userId);
     return status.limited;
+  }
+
+  /**
+   * Atomically reserve estimated credits for a generation that is ABOUT to run.
+   * The check counts both recorded usage and other in-flight reservations, so a
+   * burst of concurrent requests can't all slip past the limit before any of
+   * them records usage. Fully synchronous (no awaits) — atomic in this
+   * single-threaded process. On success the caller MUST later call release()
+   * with the same amount (in a finally), and record real usage via addUsage().
+   * Devs are unlimited and never hold a reservation.
+   */
+  tryReserve(userId: string, estimatedCredits: number): {
+    ok: boolean;
+    reason?: WindowType;
+  } {
+    if (isUserDev(userId)) return { ok: true };
+
+    const amount = Math.max(0, Math.round(estimatedCredits));
+    const inFlight = this.pending.get(userId) ?? 0;
+
+    if (this.getWindowTokensSync(userId, 'daily') + inFlight + amount > DAILY_LIMIT) {
+      return { ok: false, reason: 'daily' };
+    }
+    if (this.getWindowTokensSync(userId, 'weekly') + inFlight + amount > WEEKLY_LIMIT) {
+      return { ok: false, reason: 'weekly' };
+    }
+
+    this.pending.set(userId, inFlight + amount);
+    return { ok: true };
+  }
+
+  /** Returns a reservation made by tryReserve. Safe against over-release. */
+  release(userId: string, estimatedCredits: number): void {
+    const inFlight = this.pending.get(userId);
+    if (inFlight === undefined) return;
+    const remaining = inFlight - Math.max(0, Math.round(estimatedCredits));
+    if (remaining > 0) this.pending.set(userId, remaining);
+    else this.pending.delete(userId);
+  }
+
+  /** In-flight reserved credits for a user (diagnostics/tests). */
+  getPendingCredits(userId: string): number {
+    return this.pending.get(userId) ?? 0;
   }
 }
 

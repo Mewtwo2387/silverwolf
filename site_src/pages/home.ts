@@ -283,7 +283,7 @@ export function HomePage(opts: {
     ? html`<span style="color: #ef4444;">Rate Limited</span>`
     : html`<span style="color: #10b981;">Active</span>`;
 
-  let aiStatusDetail = 'Token pool is cool';
+  let aiStatusDetail = 'Credit pool is cool';
   if (reachedDaily) {
     aiStatusDetail = 'Daily limit exceeded';
   } else if (reachedWeekly) {
@@ -327,12 +327,12 @@ export function HomePage(opts: {
           <div class="me-card">
             <div class="label">Daily Usage (24h)</div>
             <div class="value">${numSpan(profile.aiUsageDaily)}</div>
-            <div class="label" style="margin-top:0.25rem">of ${DAILY_LIMIT.toLocaleString()} tokens</div>
+            <div class="label" style="margin-top:0.25rem">of ${DAILY_LIMIT.toLocaleString()} credits</div>
           </div>
           <div class="me-card">
             <div class="label">Weekly Usage (7d)</div>
             <div class="value">${numSpan(profile.aiUsageWeekly)}</div>
-            <div class="label" style="margin-top:0.25rem">of ${WEEKLY_LIMIT.toLocaleString()} tokens</div>
+            <div class="label" style="margin-top:0.25rem">of ${WEEKLY_LIMIT.toLocaleString()} credits</div>
           </div>
           <div class="me-card">
             <div class="label">Status</div>

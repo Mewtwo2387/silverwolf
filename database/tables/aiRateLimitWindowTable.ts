@@ -7,7 +7,7 @@ export interface AiRateLimitWindowRow {
   window_type: string;
   /** SQLite datetime (UTC) when the current window opened (its first message). */
   window_start: string;
-  /** Tokens accumulated in the current window. */
+  /** Credits accumulated in the current window (see utils/aiPricing.ts). */
   tokens: number;
 }
 
@@ -25,6 +25,8 @@ const aiRateLimitWindowTable: TableDefinition = {
     { name: 'user_id', type: 'TEXT NOT NULL' },
     { name: 'window_type', type: 'TEXT NOT NULL' },
     { name: 'window_start', type: 'TIMESTAMP NOT NULL' },
+    // Column name predates credit metering (issue #211) — it now holds CREDITS,
+    // not raw tokens. Left as-is to avoid a table rebuild.
     { name: 'tokens', type: 'INTEGER NOT NULL DEFAULT 0' },
   ],
   primaryKey: ['id'],
