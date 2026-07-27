@@ -63,6 +63,8 @@ const CONTEXT_LIMITS: Record<string, number> = {
   // 1M on the pinned Xiaomi endpoint; media (base64 parts) is not counted by
   // the tokenizer, so leave the standard reserve headroom to absorb it.
   'xiaomi/mimo-v2.5': 1_000_000,
+  'x-ai/grok-4.5': 500_000,
+  'openai/gpt-5.6-luna': 1_050_000,
   // Default for unknown models
   default: 128_000,
 };

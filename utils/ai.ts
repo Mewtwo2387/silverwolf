@@ -6,7 +6,7 @@ import { logError, logWarning } from './log';
 import { recordUsage, getCalibrationMultiplier } from './tokenCalibration';
 import { countTokensOpenRouterMessages } from './tokenizer';
 import { listSearchTools, listSearchToolsGemini, callSearchTool } from './mcp';
-import { creditsForTokens } from './aiPricing';
+import { creditsForTokens, ESTIMATED_COMPLETION_TOKENS } from './aiPricing';
 import { createChatCompletionWithRetry } from './llmRetry';
 import {
   IMAGE_GEN_TOOL_NAME,
@@ -808,11 +808,6 @@ ${systemPrompt || ''}
 
   throw new Error(`Unknown provider: ${provider}`);
 }
-
-// Flat completion-side allowance for the in-flight reservation estimate. Actual
-// usage is recorded from the provider's real usage fields — the estimate only
-// bounds how many concurrent requests can be in flight before the limit bites.
-const ESTIMATED_COMPLETION_TOKENS = 4096;
 
 /**
  * Rough credit cost of a request, computed from its inputs before any API call.

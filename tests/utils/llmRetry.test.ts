@@ -90,6 +90,15 @@ describe('createChatCompletionWithRetry', () => {
     expect(calls()).toBe(1 + RETRY_DELAYS_MS.length);
   });
 
+  test('stops retrying once the overall time budget is exhausted', async () => {
+    const { client, calls } = fakeClient([() => apiError(503)]);
+    await expect(
+      createChatCompletionWithRetry(client, {}, { sleep: noSleep, overallTimeoutMs: 0 }),
+    ).rejects.toThrow('boom');
+    // The first attempt always runs; with no budget left, no retry is allowed.
+    expect(calls()).toBe(1);
+  });
+
   test('passes the per-attempt timeout through to the SDK', async () => {
     let seenOptions: any;
     const client = {

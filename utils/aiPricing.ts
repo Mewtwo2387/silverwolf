@@ -20,7 +20,7 @@ interface ModelMultipliers {
   output: number;
 }
 
-// Multipliers per the issue #211 table ($0.28/M = 1x). Models not listed here
+// Multipliers per live OpenRouter pricing ($0.28/M = 1x). Models not listed here
 // bill at 1x/1x (identical to the old raw-token accounting).
 const MODEL_MULTIPLIERS: Record<string, ModelMultipliers> = {
   // $0.14/M in, $0.28/M out
@@ -28,12 +28,20 @@ const MODEL_MULTIPLIERS: Record<string, ModelMultipliers> = {
   // $0.14/M in, $0.28/M out
   'xiaomi/mimo-v2.5': { input: 0.5, output: 1 },
   // $2/M in, $6/M out
-  'x-ai/grok-4.5': { input: 7, output: 10.5 },
+  'x-ai/grok-4.5': { input: 7, output: 21.43 },
   // $1/M in, $6/M out
-  'openai/gpt-5.6-luna': { input: 3.5, output: 10.5 },
+  'openai/gpt-5.6-luna': { input: 3.5, output: 21.43 },
 };
 
 const DEFAULT_MULTIPLIERS: ModelMultipliers = { input: 1, output: 1 };
+
+/**
+ * Flat completion-side allowance for in-flight rate-limit reservations (see
+ * AiUsageModel.tryReserve). Actual usage is recorded from the provider's real
+ * usage fields — the estimate only bounds how many concurrent requests can be
+ * in flight before the limit bites.
+ */
+export const ESTIMATED_COMPLETION_TOKENS = 4096;
 
 function getModelMultipliers(model: string): ModelMultipliers {
   return MODEL_MULTIPLIERS[model] ?? DEFAULT_MULTIPLIERS;

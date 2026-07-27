@@ -1,7 +1,7 @@
 import { getOpenRouterClient } from './ai';
 import { countTokensOpenRouterMessages, countTokensOpenRouter } from './tokenizer';
 import { applyUserVar } from './rpIdentity';
-import { creditsForTokens } from './aiPricing';
+import { creditsForTokens, ESTIMATED_COMPLETION_TOKENS } from './aiPricing';
 import { createChatCompletionWithRetry } from './llmRetry';
 import {
   collectTriggeredContexts, findRecallMarkers, stripRecallMarkers, formatRecallMarker,
@@ -26,8 +26,6 @@ import { logError, log } from './log';
 
 export const RP_MODEL = 'deepseek/deepseek-v4-flash';
 const RP_MAX_OUTPUT = 8192;
-// Completion-side allowance for the in-flight rate-limit reservation estimate.
-const RP_COMPLETION_ESTIMATE = 4096;
 // With reasoning enabled, thinking tokens draw from the same max_tokens budget as
 // the visible reply, so every call reserves this much extra headroom on top of its
 // intended output size — otherwise a long think can truncate (or empty) the content.
@@ -428,7 +426,7 @@ export async function generateRpReply(
     // concurrent replies can't all pass the early check before any records land.
     if (triggeringUserId) {
       reservedCredits = Math.ceil(
-        creditsForTokens(RP_MODEL, estimateTokens(systemPrompt, tail), RP_COMPLETION_ESTIMATE),
+        creditsForTokens(RP_MODEL, estimateTokens(systemPrompt, tail), ESTIMATED_COMPLETION_TOKENS),
       );
       const gate = db.aiUsage.tryReserve(triggeringUserId, reservedCredits);
       if (!gate.ok) {

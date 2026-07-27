@@ -18,12 +18,12 @@ describe('creditsForTokens', () => {
     expect(creditsForTokens('xiaomi/mimo-v2.5', 100000, 50000)).toBe(100000);
   });
 
-  test('bills grok-4.5 at 7x in / 10.5x out', () => {
-    expect(creditsForTokens('x-ai/grok-4.5', 10000, 10000)).toBe(175000);
+  test('bills grok-4.5 at 7x in / 21.43x out ($2/M in, $6/M out)', () => {
+    expect(creditsForTokens('x-ai/grok-4.5', 10000, 10000)).toBe(284300);
   });
 
-  test('bills gpt-5.6-luna at 3.5x in / 10.5x out', () => {
-    expect(creditsForTokens('openai/gpt-5.6-luna', 10000, 10000)).toBe(140000);
+  test('bills gpt-5.6-luna at 3.5x in / 21.43x out ($1/M in, $6/M out)', () => {
+    expect(creditsForTokens('openai/gpt-5.6-luna', 10000, 10000)).toBe(249300);
   });
 });
 

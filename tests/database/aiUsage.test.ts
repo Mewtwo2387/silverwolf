@@ -163,9 +163,9 @@ describe('AiUsageModel', () => {
     await aiUsageModel.addUsage('u2', 'some-unknown-model', 100000, 50000);
     expect(await aiUsageModel.getDailyUsage('u2')).toBe(150000);
 
-    // x-ai/grok-4.5: 7x input, 10.5x output
+    // x-ai/grok-4.5: 7x input, 21.43x output
     await aiUsageModel.addUsage('u3', 'x-ai/grok-4.5', 10000, 10000);
-    expect(await aiUsageModel.getDailyUsage('u3')).toBe(175000);
+    expect(await aiUsageModel.getDailyUsage('u3')).toBe(284300);
   });
 
   test('stores the derived USD cost on the audit row', async () => {

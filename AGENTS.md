@@ -131,14 +131,14 @@ the compaction prompt). The `/ai rp-*` command replies are non-ephemeral (public
 **AI usage limits** (`utils/ai.ts`, `utils/aiPricing.ts`, `AiUsageModel`): per-user fixed windows
 (250k/day, 1M/week) metered in **credits**, not raw tokens — `credits = tok_in×mult_in +
 tok_out×mult_out` where $0.28/M = 1x (DeepSeek-V4-Flash/MiMo-V2.5 0.5x in/1x out, Grok-4.5
-7x/10.5x, GPT-5.6-Luna 3.5x/10.5x, unlisted = 1x/1x). The `AiUsage` audit log keeps raw tokens +
+7x/21.4x, GPT-5.6-Luna 3.5x/21.4x, unlisted = 1x/1x). The `AiUsage` audit log keeps raw tokens +
 derived USD `cost`; the `AiRateLimitWindow.tokens` column stores credits (name kept, no rebuild).
 Enforcement is `db.aiUsage.tryReserve(userId, estCredits)` → `release()` in `finally` — an
 in-memory in-flight reservation held for the whole generation so concurrent spam can't all pass
 the check before usage lands (devs bypass). All OpenRouter chat calls go through
 `createChatCompletionWithRetry` (`utils/llmRetry.ts`: per-attempt timeout — 180s default, 480s
-music-compose, 60s titlegen — and 2s/4s/8s/16s backoff on 408/409/429/5xx/network only); the
-shared client sets `maxRetries: 0` so SDK retries don't stack.
+music-compose, 60s titlegen — a 600s overall budget across attempts, and 2s/4s/8s/16s backoff on
+408/409/429/5xx/network only); the shared client sets `maxRetries: 0` so SDK retries don't stack.
 
 **Database** (`bun:sqlite`, `persistence/database.db`). Layered: `tables/` (TableDefinition schema
 objects) → `models/` (DAOs) → `queries/` (SQL strings). **Access pattern:**

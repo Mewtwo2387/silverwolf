@@ -10,6 +10,12 @@ import { logWarning } from './log';
  * (bad request, auth, model rejects tools…) throws immediately so callers'
  * existing error handling (e.g. the tool-reject retry in ai.ts) is unaffected.
  *
+ * The whole operation is bounded by an overall deadline (default 10 minutes —
+ * the SDK's previous single-request timeout): each attempt gets
+ * min(per-attempt timeout, remaining budget), and retries stop once the budget
+ * is spent, so a pathologically slow provider can't hold a reply hostage
+ * longer than one old-style request would have.
+ *
  * The shared OpenRouter client is constructed with maxRetries: 0 so the SDK's
  * own retry loop doesn't stack on top of this schedule.
  */
@@ -20,6 +26,10 @@ export const RETRY_DELAYS_MS = [2000, 4000, 8000, 16000];
 /** Per-attempt request timeout. Long enough for reasoning models, short enough
  *  that a wedged connection errors instead of hanging for 10 minutes. */
 export const DEFAULT_TIMEOUT_MS = 180_000;
+
+/** Overall elapsed-time budget for the whole retry operation — the SDK's
+ *  previous single-request timeout (10 minutes). */
+export const DEFAULT_OVERALL_TIMEOUT_MS = 600_000;
 
 /** Is this failure worth retrying? Rate limits, server errors, timeouts and
  *  network failures are; client errors (400/401/402/403/404…) are not. */
@@ -42,6 +52,9 @@ interface ChatCompletionsClient {
 interface RetryOptions {
   /** Per-attempt timeout in ms (default DEFAULT_TIMEOUT_MS). */
   timeoutMs?: number;
+  /** Total elapsed-time budget across all attempts in ms
+   *  (default DEFAULT_OVERALL_TIMEOUT_MS). */
+  overallTimeoutMs?: number;
   /** Backoff schedule in ms (default RETRY_DELAYS_MS). */
   delaysMs?: number[];
   /** Sleep between attempts — injectable for tests. */
@@ -54,14 +67,23 @@ export async function createChatCompletionWithRetry(
   opts: RetryOptions = {},
 ): Promise<any> {
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const deadline = Date.now() + (opts.overallTimeoutMs ?? DEFAULT_OVERALL_TIMEOUT_MS);
   const delays = opts.delaysMs ?? RETRY_DELAYS_MS;
   const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((resolve) => { setTimeout(resolve, ms); }));
 
   let lastErr: any;
   for (let attempt = 0; attempt <= delays.length; attempt += 1) {
+    // The first attempt always runs; later ones only while budget remains.
+    const remaining = deadline - Date.now();
+    if (attempt > 0 && remaining <= 0) {
+      logWarning(`[llm] overall retry budget exhausted after ${attempt} attempt(s); giving up`);
+      break;
+    }
     try {
       // eslint-disable-next-line no-await-in-loop
-      return await client.chat.completions.create(body, { timeout: timeoutMs });
+      return await client.chat.completions.create(body, {
+        timeout: Math.max(1, Math.min(timeoutMs, remaining)),
+      });
     } catch (err: any) {
       lastErr = err;
       const hasRetryLeft = attempt < delays.length;
