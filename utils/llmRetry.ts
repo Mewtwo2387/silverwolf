@@ -1,4 +1,4 @@
-import { logWarning } from './log';
+import { log } from './log';
 
 /**
  * Timeout + retry wrapper for OpenRouter chat completions (issue #209).
@@ -35,10 +35,52 @@ export const DEFAULT_OVERALL_TIMEOUT_MS = 600_000;
  *  network failures are; client errors (400/401/402/403/404…) are not. */
 export function isRetryableCompletionError(err: any): boolean {
   const status = err?.status;
-  // No status = connection/timeout error before an HTTP response arrived.
-  if (typeof status !== 'number') return true;
-  if (status === 408 || status === 409 || status === 429) return true;
-  return status >= 500;
+  if (typeof status === 'number') {
+    if (status === 408 || status === 409 || status === 429) return true;
+    return status >= 500;
+  }
+
+  if (!err) return false;
+
+  const name = String(err.name || '');
+  const code = String(err.code || err.cause?.code || '');
+  const message = String(err.message || '').toLowerCase();
+
+  const networkNames = new Set([
+    'APIConnectionError',
+    'APIConnectionTimeoutError',
+    'TimeoutError',
+    'AbortError',
+    'FetchError',
+    'NetworkError',
+  ]);
+  if (networkNames.has(name)) return true;
+
+  const networkCodes = new Set([
+    'ECONNRESET',
+    'ETIMEDOUT',
+    'ECONNREFUSED',
+    'ENOTFOUND',
+    'EPIPE',
+    'UND_ERR_CONNECT_TIMEOUT',
+    'EAI_AGAIN',
+    'ABORT_ERR',
+    'ERR_NETWORK',
+  ]);
+  if (networkCodes.has(code)) return true;
+
+  if (
+    message.includes('fetch failed')
+    || message.includes('timeout')
+    || message.includes('network')
+    || message.includes('connection')
+    || message.includes('econnreset')
+    || message.includes('etimedout')
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 interface ChatCompletionsClient {
@@ -76,7 +118,7 @@ export async function createChatCompletionWithRetry(
     // The first attempt always runs; later ones only while budget remains.
     const remaining = deadline - Date.now();
     if (attempt > 0 && remaining <= 0) {
-      logWarning(`[llm] overall retry budget exhausted after ${attempt} attempt(s); giving up`);
+      log(`[llm] overall retry budget exhausted after ${attempt} attempt(s); giving up`);
       break;
     }
     try {
@@ -90,8 +132,13 @@ export async function createChatCompletionWithRetry(
       if (!hasRetryLeft || !isRetryableCompletionError(err)) {
         throw err;
       }
-      const delay = delays[attempt];
-      logWarning(
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) {
+        log(`[llm] overall retry budget exhausted after ${attempt + 1} attempt(s); giving up`);
+        break;
+      }
+      const delay = Math.min(delays[attempt], remainingMs);
+      log(
         `[llm] completion failed (status ${err?.status ?? 'network/timeout'}), `
         + `retrying in ${delay / 1000}s (attempt ${attempt + 1}/${delays.length})`,
       );

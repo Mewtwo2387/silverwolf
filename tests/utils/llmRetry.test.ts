@@ -47,8 +47,15 @@ describe('isRetryableCompletionError', () => {
   });
 
   test('retries network/timeout errors (no status)', () => {
-    expect(isRetryableCompletionError(apiError(undefined))).toBe(true);
     expect(isRetryableCompletionError(new Error('fetch failed'))).toBe(true);
+    expect(isRetryableCompletionError(new Error('request timeout'))).toBe(true);
+    expect(isRetryableCompletionError({ name: 'APIConnectionError' })).toBe(true);
+    expect(isRetryableCompletionError({ code: 'ECONNRESET' })).toBe(true);
+  });
+
+  test('does not retry local validation/type errors with no status', () => {
+    expect(isRetryableCompletionError(new TypeError('Cannot read property of undefined'))).toBe(false);
+    expect(isRetryableCompletionError(new Error('boom'))).toBe(false);
   });
 });
 
