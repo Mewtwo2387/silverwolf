@@ -26,32 +26,62 @@ export async function getResetLine(
   return resetAt ? `\n**Resets:** ${formatResetTimestamp(resetAt)}` : '';
 }
 
-export async function getRateLimitErrorMessage(userId: string, db: Database): Promise<string> {
+export interface RateLimitOptions {
+  reason?: 'daily' | 'weekly';
+  reservedCredits?: number;
+}
+
+export async function getRateLimitErrorMessage(
+  userId: string,
+  db: Database,
+  opts?: RateLimitOptions,
+): Promise<string> {
   const [dailyUsage, weeklyUsage] = await Promise.all([
     db.aiUsage.getDailyUsage(userId),
     db.aiUsage.getWeeklyUsage(userId),
   ]);
-  const reachedDaily = dailyUsage >= DAILY_LIMIT;
 
-  const reason: 'daily' | 'weekly' = reachedDaily ? 'daily' : 'weekly';
-  const limitLabel = reachedDaily ? 'Daily' : 'Weekly';
-  const usageVal = reachedDaily ? dailyUsage : weeklyUsage;
-  const limitVal = reachedDaily ? DAILY_LIMIT : WEEKLY_LIMIT;
-  const windowLabel = reachedDaily ? '24-hour' : '7-day';
+  let reason: 'daily' | 'weekly';
+  if (opts?.reason) {
+    reason = opts.reason;
+  } else if (dailyUsage >= DAILY_LIMIT) {
+    reason = 'daily';
+  } else if (weeklyUsage >= WEEKLY_LIMIT) {
+    reason = 'weekly';
+  } else {
+    // Neither recorded DB total alone reaches the limit (e.g. pre-flight reservation
+    // pushed usage over). Pick the window closer to its capacity limit.
+    const dailyRatio = dailyUsage / DAILY_LIMIT;
+    const weeklyRatio = weeklyUsage / WEEKLY_LIMIT;
+    reason = dailyRatio >= weeklyRatio ? 'daily' : 'weekly';
+  }
+
+  const isDaily = reason === 'daily';
+  const limitLabel = isDaily ? 'Daily' : 'Weekly';
+  const usageVal = isDaily ? dailyUsage : weeklyUsage;
+  const limitVal = isDaily ? DAILY_LIMIT : WEEKLY_LIMIT;
+  const windowLabel = isDaily ? '24-hour' : '7-day';
 
   const resetAt = await db.aiUsage.getResetAt(userId, reason);
   const resetNote = resetAt
     ? `Your limit resets ${formatResetTimestamp(resetAt)}.`
     : 'Please wait for your limit to reset.';
 
-  return `⚠️ **${limitLabel} AI Rate Limit Reached**\nYou've used **${usageVal.toLocaleString()}** / **${limitVal.toLocaleString()}** credits in the current ${windowLabel} window. ${resetNote}`;
+  const remaining = Math.max(0, limitVal - usageVal);
+  let detailNote = '';
+  if (typeof opts?.reservedCredits === 'number' && opts.reservedCredits > 0 && usageVal < limitVal) {
+    detailNote = `\nThis request requires ~**${opts.reservedCredits.toLocaleString()}** estimated credits, which exceeds your remaining **${remaining.toLocaleString()}** credits for this window.`;
+  }
+
+  return `⚠️ **${limitLabel} AI Rate Limit Reached**\nYou've used **${usageVal.toLocaleString()}** / **${limitVal.toLocaleString()}** credits in the current ${windowLabel} window.${detailNote}\n${resetNote}`;
 }
 
 export async function handleRateLimitError(
   interaction: ChatInputCommandInteraction,
   db: Database,
+  opts?: RateLimitOptions,
 ): Promise<void> {
-  const content = await getRateLimitErrorMessage(interaction.user.id, db);
+  const content = await getRateLimitErrorMessage(interaction.user.id, db, opts);
   await interaction.editReply({
     content,
   });

@@ -124,7 +124,10 @@ class AskSilverwolfAI extends Command {
       }
     } catch (error: any) {
       if (error?.message === 'RATE_LIMIT_EXCEEDED') {
-        await handleRateLimitError(interaction, this.client.db);
+        await handleRateLimitError(interaction, this.client.db, {
+          reason: error.reason,
+          reservedCredits: error.reservedCredits,
+        });
         return;
       }
       logError('Error generating text:', error);
