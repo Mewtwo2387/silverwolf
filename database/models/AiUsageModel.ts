@@ -145,17 +145,23 @@ class AiUsageModel {
   tryReserve(userId: string, estimatedCredits: number): {
     ok: boolean;
     reason?: WindowType;
+    remaining?: number;
   } {
     if (isUserDev(userId)) return { ok: true };
 
     const amount = Math.max(0, Math.round(estimatedCredits));
     const inFlight = this.pending.get(userId) ?? 0;
 
-    if (this.getWindowTokensSync(userId, 'daily') + inFlight + amount > DAILY_LIMIT) {
-      return { ok: false, reason: 'daily' };
+    const dailyTokens = this.getWindowTokensSync(userId, 'daily');
+    if (dailyTokens + inFlight + amount > DAILY_LIMIT) {
+      const remaining = Math.max(0, DAILY_LIMIT - (dailyTokens + inFlight));
+      return { ok: false, reason: 'daily', remaining };
     }
-    if (this.getWindowTokensSync(userId, 'weekly') + inFlight + amount > WEEKLY_LIMIT) {
-      return { ok: false, reason: 'weekly' };
+
+    const weeklyTokens = this.getWindowTokensSync(userId, 'weekly');
+    if (weeklyTokens + inFlight + amount > WEEKLY_LIMIT) {
+      const remaining = Math.max(0, WEEKLY_LIMIT - (weeklyTokens + inFlight));
+      return { ok: false, reason: 'weekly', remaining };
     }
 
     this.pending.set(userId, inFlight + amount);

@@ -73,6 +73,7 @@ class Summary extends Command {
         await handleRateLimitError(interaction, this.client.db, {
           reason: error.reason,
           reservedCredits: error.reservedCredits,
+          remainingCredits: error.remainingCredits,
         });
         return;
       }

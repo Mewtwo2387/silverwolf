@@ -828,12 +828,14 @@ function estimateRequestCredits({
 export class AiRateLimitError extends Error {
   reason: 'daily' | 'weekly';
   reservedCredits: number;
+  remainingCredits?: number;
 
-  constructor(reason: 'daily' | 'weekly', reservedCredits: number) {
+  constructor(reason: 'daily' | 'weekly', reservedCredits: number, remainingCredits?: number) {
     super('RATE_LIMIT_EXCEEDED');
     this.name = 'AiRateLimitError';
     this.reason = reason;
     this.reservedCredits = reservedCredits;
+    this.remainingCredits = remainingCredits;
   }
 }
 
@@ -851,7 +853,7 @@ async function generateContent(opts: GenerateContentOptions): Promise<GenerateCo
   const reserved = Math.ceil(estimateRequestCredits(opts));
   const gate = db.aiUsage.tryReserve(userId, reserved);
   if (!gate.ok) {
-    throw new AiRateLimitError(gate.reason ?? 'daily', reserved);
+    throw new AiRateLimitError(gate.reason ?? 'daily', reserved, gate.remaining);
   }
   try {
     return await generateContentInner(opts);

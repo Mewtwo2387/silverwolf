@@ -29,6 +29,7 @@ export async function getResetLine(
 export interface RateLimitOptions {
   reason?: 'daily' | 'weekly';
   reservedCredits?: number;
+  remainingCredits?: number;
 }
 
 export async function getRateLimitErrorMessage(
@@ -42,7 +43,7 @@ export async function getRateLimitErrorMessage(
   ]);
 
   let reason: 'daily' | 'weekly';
-  if (opts?.reason) {
+  if (opts?.reason === 'daily' || opts?.reason === 'weekly') {
     reason = opts.reason;
   } else if (dailyUsage >= DAILY_LIMIT) {
     reason = 'daily';
@@ -67,10 +68,12 @@ export async function getRateLimitErrorMessage(
     ? `Your limit resets ${formatResetTimestamp(resetAt)}.`
     : 'Please wait for your limit to reset.';
 
-  const remaining = Math.max(0, limitVal - usageVal);
   let detailNote = '';
   if (typeof opts?.reservedCredits === 'number' && opts.reservedCredits > 0 && usageVal < limitVal) {
-    detailNote = `\nThis request requires ~**${opts.reservedCredits.toLocaleString()}** estimated credits, which exceeds your remaining **${remaining.toLocaleString()}** credits for this window.`;
+    if (typeof opts.remainingCredits === 'number') {
+      const remaining = Math.max(0, opts.remainingCredits);
+      detailNote = `\nThis request requires ~**${opts.reservedCredits.toLocaleString()}** estimated credits, which exceeds your remaining **${remaining.toLocaleString()}** credits for this window.`;
+    }
   }
 
   return `⚠️ **${limitLabel} AI Rate Limit Reached**\nYou've used **${usageVal.toLocaleString()}** / **${limitVal.toLocaleString()}** credits in the current ${windowLabel} window.${detailNote}\n${resetNote}`;

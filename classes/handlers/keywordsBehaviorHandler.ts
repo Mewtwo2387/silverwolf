@@ -481,6 +481,7 @@ const scriptHandlers = {
         const content = await getRateLimitErrorMessage(message.author.id, db, {
           reason: err.reason,
           reservedCredits: err.reservedCredits,
+          remainingCredits: err.remainingCredits,
         });
         await message.reply(content);
         return;

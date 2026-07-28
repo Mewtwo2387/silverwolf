@@ -222,7 +222,7 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
         const dailyUsage = await silverwolf.db.aiUsage.getDailyUsage(auth.discordId);
         const weeklyUsage = await silverwolf.db.aiUsage.getWeeklyUsage(auth.discordId);
         let reason: 'daily' | 'weekly';
-        if (err.reason) {
+        if (err.reason === 'daily' || err.reason === 'weekly') {
           reason = err.reason;
         } else if (dailyUsage >= DAILY_LIMIT) {
           reason = 'daily';
@@ -236,6 +236,7 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
           error: 'rate_limited' as const,
           reason,
           reservedCredits: err.reservedCredits,
+          remainingCredits: err.remainingCredits,
           dailyUsage,
           weeklyUsage,
         }, 429);
