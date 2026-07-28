@@ -825,6 +825,20 @@ function estimateRequestCredits({
   return creditsForTokens(model, estPromptTokens, ESTIMATED_COMPLETION_TOKENS);
 }
 
+export class AiRateLimitError extends Error {
+  reason: 'daily' | 'weekly';
+  reservedCredits: number;
+  remainingCredits?: number;
+
+  constructor(reason: 'daily' | 'weekly', reservedCredits: number, remainingCredits?: number) {
+    super('RATE_LIMIT_EXCEEDED');
+    this.name = 'AiRateLimitError';
+    this.reason = reason;
+    this.reservedCredits = reservedCredits;
+    this.remainingCredits = remainingCredits;
+  }
+}
+
 /**
  * Generates content (text and/or images) from the specified AI provider and model.
  * Enforces the per-user credit rate limit with an in-flight reservation: the
@@ -839,7 +853,7 @@ async function generateContent(opts: GenerateContentOptions): Promise<GenerateCo
   const reserved = Math.ceil(estimateRequestCredits(opts));
   const gate = db.aiUsage.tryReserve(userId, reserved);
   if (!gate.ok) {
-    throw new Error('RATE_LIMIT_EXCEEDED');
+    throw new AiRateLimitError(gate.reason ?? 'daily', reserved, gate.remaining);
   }
   try {
     return await generateContentInner(opts);

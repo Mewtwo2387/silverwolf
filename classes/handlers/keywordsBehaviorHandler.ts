@@ -478,7 +478,11 @@ const scriptHandlers = {
       }
       if (err?.message === 'RATE_LIMIT_EXCEEDED') {
         const db = (message.client as any).db;
-        const content = await getRateLimitErrorMessage(message.author.id, db);
+        const content = await getRateLimitErrorMessage(message.author.id, db, {
+          reason: err.reason,
+          reservedCredits: err.reservedCredits,
+          remainingCredits: err.remainingCredits,
+        });
         await message.reply(content);
         return;
       }

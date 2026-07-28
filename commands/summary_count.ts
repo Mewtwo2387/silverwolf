@@ -70,7 +70,11 @@ class Summary extends Command {
       log(`Generated summary: ${summary.text}`);
     } catch (error: any) {
       if (error?.message === 'RATE_LIMIT_EXCEEDED') {
-        await handleRateLimitError(interaction, this.client.db);
+        await handleRateLimitError(interaction, this.client.db, {
+          reason: error.reason,
+          reservedCredits: error.reservedCredits,
+          remainingCredits: error.remainingCredits,
+        });
         return;
       }
       logError('Failed to generate summary:', error);
