@@ -30,6 +30,31 @@ const FONT_MAP: Record<string, { family: string }> = {
 // Numeric index for mention-based quote parameter parsing (font:1, font:2, etc.)
 const FONT_INDEX: string[] = Object.keys(FONT_MAP);
 
+export interface QuoteFlags {
+  background: string;
+  textColor: string | null;
+  profileColor: string;
+  avatarSource: string;
+  fontStyle: string;
+  format: string;
+}
+
+/**
+ * The single source of truth for "no preference given" — used by `quote()`
+ * itself, by the mention-flag resolver, and by what `/quote help` and
+ * `/quote settings` advertise as the default. Keep those in step: `server`
+ * degrades to the global avatar anyway when a member has no server-specific
+ * one, so it is the safe default in a guild context.
+ */
+export const QUOTE_FLAG_DEFAULTS: QuoteFlags = {
+  background: 'black',
+  textColor: null,
+  profileColor: 'normal',
+  avatarSource: 'server',
+  fontStyle: 'sans-serif',
+  format: 'landscape',
+};
+
 interface FontRegistration {
   file: string;
   family: string;
@@ -843,10 +868,10 @@ async function quote(
     ? `${messageChars.slice(0, MAX_QUOTE_CHARS).join('').trimEnd()}…`
     : resolvedMessage;
   const message = `"${clippedMessage}"`;
-  const backgroundColor = _backgroundColor || 'black';
-  const profileColor = _profileColor || 'normal';
-  const avatarSource = _avatarSource || 'global';
-  const fontStyle = _fontStyle || 'sans-serif';
+  const backgroundColor = _backgroundColor || QUOTE_FLAG_DEFAULTS.background;
+  const profileColor = _profileColor || QUOTE_FLAG_DEFAULTS.profileColor;
+  const avatarSource = _avatarSource || QUOTE_FLAG_DEFAULTS.avatarSource;
+  const fontStyle = _fontStyle || QUOTE_FLAG_DEFAULTS.fontStyle;
 
   // Resolve font family
   const fontFamily = (FONT_MAP[fontStyle] || FONT_MAP['sans-serif']).family;
@@ -1095,15 +1120,6 @@ export const fakeQuoteChoices = (
 // the table below; the legacy `key:value` spelling still works because the
 // value half is resolved with exactly the same table.
 
-export interface QuoteFlags {
-  background: string;
-  textColor: string | null;
-  profileColor: string;
-  avatarSource: string;
-  fontStyle: string;
-  format: string;
-}
-
 /** The fields a user can save as a personal default via `/quote settings`. */
 export type QuotePrefField = keyof QuoteFlags;
 export type QuotePreferences = Partial<Record<QuotePrefField, string>>;
@@ -1120,15 +1136,6 @@ export const QUOTE_PREF_LABELS: Record<QuotePrefField, string> = {
   fontStyle: 'Font',
   profileColor: 'Profile filter',
   avatarSource: 'Avatar source',
-};
-
-export const QUOTE_FLAG_DEFAULTS: QuoteFlags = {
-  background: 'black',
-  textColor: null,
-  profileColor: 'normal',
-  avatarSource: 'server',
-  fontStyle: 'sans-serif',
-  format: 'landscape',
 };
 
 // Bare aliases → the field they set. First match wins, so `b` is "black" and

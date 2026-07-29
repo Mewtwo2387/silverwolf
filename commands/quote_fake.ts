@@ -92,7 +92,8 @@ class QuoteFake extends Command {
       const saved = override ? {} : await this.client.db.quotePreference.getPreferences(interaction.user.id);
 
       // Explicit option wins; then the saved default; then null, which lets
-      // quote() apply its own built-in default.
+      // quote() fall back to QUOTE_FLAG_DEFAULTS — the same baseline the
+      // mention flags, /quote settings and /quote help all report.
       const pick = (option: string, field: QuotePrefField): string | null => (
         interaction.options.getString(option) ?? saved[field] ?? null
       );

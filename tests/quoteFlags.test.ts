@@ -4,6 +4,10 @@ import {
   resolveQuoteFlags,
   FONT_INDEX,
   FAKEQUOTE_FONT_VALUES,
+  FAKEQUOTE_FORMAT_VALUES,
+  FAKEQUOTE_BACKGROUND_VALUES,
+  FAKEQUOTE_PROFILE_COLOR_VALUES,
+  FAKEQUOTE_AVATAR_SOURCE_VALUES,
   QUOTE_FLAG_DEFAULTS,
 } from '../utils/quote';
 
@@ -64,6 +68,18 @@ describe('parseQuoteFlags', () => {
   // stay in the same order.
   test('numeric font index matches the slash-command font list', () => {
     expect(FONT_INDEX).toEqual(FAKEQUOTE_FONT_VALUES);
+  });
+
+  // quote(), the mention resolver and what /quote help and /quote settings
+  // advertise all read QUOTE_FLAG_DEFAULTS, so every default must be a value
+  // the slash-command choices actually offer.
+  test('declared defaults are all valid choice values', () => {
+    expect(FAKEQUOTE_FORMAT_VALUES).toContain(QUOTE_FLAG_DEFAULTS.format);
+    expect(FAKEQUOTE_BACKGROUND_VALUES).toContain(QUOTE_FLAG_DEFAULTS.background);
+    expect(FAKEQUOTE_FONT_VALUES).toContain(QUOTE_FLAG_DEFAULTS.fontStyle);
+    expect(FAKEQUOTE_PROFILE_COLOR_VALUES).toContain(QUOTE_FLAG_DEFAULTS.profileColor);
+    expect(FAKEQUOTE_AVATAR_SOURCE_VALUES).toContain(QUOTE_FLAG_DEFAULTS.avatarSource);
+    expect(QUOTE_FLAG_DEFAULTS.textColor).toBeNull(); // derived from the background
   });
 });
 
