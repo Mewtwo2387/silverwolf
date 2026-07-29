@@ -27,6 +27,7 @@ import type ServerConfigModel from './models/ServerConfigModel';
 import type BirthdayReminderModel from './models/BirthdayReminderModel';
 import type FootballMatchAnnouncementModel from './models/FootballMatchAnnouncementModel';
 import type PoopModel from './models/PoopModel';
+import type QuotePreferenceModel from './models/QuotePreferenceModel';
 import type RpModel from './models/RpModel';
 import type WebSessionModel from './models/WebSessionModel';
 
@@ -378,6 +379,7 @@ class Database {
   get musicGen(): MusicGenModel { return this.models.MusicGenModel; }
   get pokemon(): PokemonModel { return this.models.PokemonModel; }
   get poop(): PoopModel { return this.models.PoopModel; }
+  get quotePreference(): QuotePreferenceModel { return this.models.QuotePreferenceModel; }
   get rp(): RpModel { return this.models.RpModel; }
   get serverConfig(): ServerConfigModel { return this.models.ServerConfigModel; }
   get user(): UserModel { return this.models.UserModel; }

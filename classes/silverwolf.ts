@@ -18,11 +18,10 @@ import {
   ChristmasHandler, NormalHandler, HalloweenHandler, AprilFoolsHandler,
 } from './handlers/index';
 import scriptHandlers from './handlers/keywordsBehaviorHandler';
-import quoteDefault from '../utils/quote';
+import quoteDefault, { parseQuoteFlags, resolveQuoteFlags, QUOTE_FLAG_HELP } from '../utils/quote';
 import { loadAllowedServers } from '../utils/accessControl';
 import { loadResolvedServerConfig } from '../utils/serverConfig';
 
-const FONT_INDEX: string[] = (quoteDefault as any).FONT_INDEX;
 const MAX_MESSAGE_HISTORY = 100;
 
 const handlers: Record<string, any> = {
@@ -310,59 +309,20 @@ All wrongs reserved.
       const referencedMessageId = message.reference.messageId;
       message.channel.messages.fetch(referencedMessageId).then(async (referencedMessage: any) => {
         const sentMessage = await message.reply({
-          content: '<a:quoteLoading:1290494754202583110> Generating...',
+          content: `<a:quoteLoading:1290494754202583110> Generating... *${QUOTE_FLAG_HELP}*`,
         });
 
         // ── Parse parameters from message content ──────────────────────────
-        // Strip the bot mention to get raw parameter text
-        const paramText = message.content.replace(/<@!?\d+>/g, '').trim();
-
-        // Parse key:value pairs (no brackets needed)
-        const getParam = (key: string): string | null => {
-          const re = new RegExp(`(?:^|\\s)${key}:(\\S+)`, 'i');
-          const match = re.exec(paramText);
-          return match ? match[1].trim() : null;
-        };
-
-        // bg:b or bg:w → background colour
-        const bgParam = getParam('bg');
-        let background = 'black';
-        if (bgParam === 'w') background = 'white';
-        // 'b' or anything else stays black (default)
-
-        // pfp:server or pfp:global → avatar source
-        const pfpParam = getParam('pfp');
-        let avatarSource = 'server';
-        if (pfpParam === 'global') avatarSource = 'global';
-
-        // pfpc:normal/bw/inverted/sepia/nightmare → profile colour filter
-        const pfpcParam = getParam('pfpc');
-        const validPfpc = ['normal', 'bw', 'inverted', 'sepia', 'nightmare'];
-        const profileColor = (pfpcParam && validPfpc.includes(pfpcParam)) ? pfpcParam : 'normal';
-
-        // font:1-13 → font style (mapped via FONT_INDEX)
-        const fontParam = getParam('font');
-        let fontStyle = 'sans-serif';
-        if (fontParam) {
-          const fontNum = parseInt(fontParam, 10);
-          if (!Number.isNaN(fontNum) && fontNum >= 1 && fontNum <= FONT_INDEX.length) {
-            fontStyle = FONT_INDEX[fontNum - 1]; // 1-indexed for users
-          }
-        }
-
-        // format:v / format:vertical → portrait layout (default landscape)
-        const formatParam = getParam('format') || getParam('fmt');
-        let quoteFormat = 'landscape';
-        if (formatParam && /^v(ertical)?$/i.test(formatParam)) quoteFormat = 'vertical';
-
-        // txt:#hex → text colour
-        const txtParam = getParam('txt');
-        let textColor = null;
-        if (txtParam) {
-          // Accept with or without '#' prefix
-          const hexTest = /^#?([0-9A-Fa-f]{6})$/.exec(txtParam);
-          if (hexTest) textColor = `#${hexTest[1]}`;
-        }
+        // Compact space-separated flags, e.g. `@bot w v caveat #ff00aa bw`
+        // (the legacy `bg:w font:3 fmt:v` spelling still parses). Layered over
+        // the invoker's saved `/quote settings`, which `-o` opts out of.
+        const parsedFlags = parseQuoteFlags(message.content.replace(/<@!?\d+>/g, ''));
+        const savedFlags = parsedFlags.override
+          ? null
+          : await this.db.quotePreference.getPreferences(message.author.id);
+        const {
+          background, textColor, profileColor, avatarSource, fontStyle, format: quoteFormat,
+        } = resolveQuoteFlags(parsedFlags, savedFlags);
 
         const person = referencedMessage.author;
         let nickname: string;

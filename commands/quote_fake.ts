@@ -7,11 +7,12 @@ import quote, {
   FAKEQUOTE_PROFILE_COLORS,
   FAKEQUOTE_AVATAR_SOURCES,
   fakeQuoteChoices,
+  type QuotePrefField,
 } from '../utils/quote';
 
-class FakeQuote extends Command {
+class QuoteFake extends Command {
   constructor(client: any) {
-    super(client, 'fakequote', 'fake make it a quote', [
+    super(client, 'fake', 'fake make it a quote', [
       {
         name: 'person',
         description: 'person to quote',
@@ -71,7 +72,13 @@ class FakeQuote extends Command {
         required: false,
         choices: fakeQuoteChoices(FAKEQUOTE_AVATAR_SOURCES),
       },
-    ], { blame: 'both' });
+      {
+        name: 'override',
+        description: 'ignore your saved /quote settings for this one quote (same as -o when mention-quoting)',
+        type: 5,
+        required: false,
+      },
+    ], { isSubcommandOf: 'quote', blame: 'both' });
   }
 
   async run(interaction: any): Promise<void> {
@@ -81,17 +88,26 @@ class FakeQuote extends Command {
         fetchReply: true,
       });
 
+      const override = interaction.options.getBoolean('override') ?? false;
+      const saved = override ? {} : await this.client.db.quotePreference.getPreferences(interaction.user.id);
+
+      // Explicit option wins; then the saved default; then null, which lets
+      // quote() apply its own built-in default.
+      const pick = (option: string, field: QuotePrefField): string | null => (
+        interaction.options.getString(option) ?? saved[field] ?? null
+      );
+
       const result = await quote(
         interaction.guild,
         interaction.options.getUser('person'),
         interaction.options.getString('nickname'),
         interaction.options.getString('message'),
-        interaction.options.getString('background'),
-        interaction.options.getString('text_color'),
-        interaction.options.getString('profile_color'),
-        interaction.options.getString('avatar_source'),
-        interaction.options.getString('font_style'),
-        interaction.options.getString('format'),
+        pick('background', 'background'),
+        pick('text_color', 'textColor'),
+        pick('profile_color', 'profileColor'),
+        pick('avatar_source', 'avatarSource'),
+        pick('font_style', 'fontStyle'),
+        pick('format', 'format'),
       );
 
       await interaction.editReply({ content: null, files: [result] });
@@ -102,4 +118,4 @@ class FakeQuote extends Command {
   }
 }
 
-export default FakeQuote;
+export default QuoteFake;
