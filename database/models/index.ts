@@ -13,6 +13,7 @@ import MarriageModel from './MarriageModel';
 import MusicGenModel from './MusicGenModel';
 import PokemonModel from './PokemonModel';
 import PoopModel from './PoopModel';
+import QuotePreferenceModel from './QuotePreferenceModel';
 import RpModel from './RpModel';
 import ServerConfigModel from './ServerConfigModel';
 import UserModel from './UserModel';
@@ -34,6 +35,7 @@ export {
   MusicGenModel,
   PokemonModel,
   PoopModel,
+  QuotePreferenceModel,
   RpModel,
   ServerConfigModel,
   UserModel,

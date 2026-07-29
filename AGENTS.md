@@ -6,7 +6,7 @@ Bun process**. It serves fun/games both as slash commands and as web pages, plus
 **The website is public, so security and performance are first-class concerns — code defensively:
 validate every input, never trust client data, keep the CSP tight.**
 
-**Last updated: 2026-07-27**
+**Last updated: 2026-07-29**
 
 > **Maintenance rule.** Edit this file only on *substantive architectural* change — new
 > architecture, new auth, new data flows/services, schema or security-model changes, or when
@@ -155,6 +155,12 @@ Rules an agent must follow:
   serialized through an in-process FIFO queue (a single connection can't interleave BEGINs —
   the second used to roll back the first's writes); never call `executeTransaction` from inside
   a transaction fn (there is a guard that throws).
+- Per-user quote defaults: `QuotePreference` (`db.quotePreference`, one nullable-column row per
+  user) — saved via `/quote settings` and applied to every quote that user makes (slash **and**
+  mention). Resolution order is bot defaults → saved settings → flags on this invocation
+  (`utils/quote.ts`: `parseQuoteFlags` → `resolveQuoteFlags`); `-o` / `override:true` drops the
+  saved layer for one quote. Mention quoting takes compact space-separated flags
+  (`@bot w v caveat #ff0124`), documented in-bot by `/quote help`.
 - Per-guild settings: `ServerConfig` (`db.serverConfig`, keyed by `server_id` + `key`) — named roles
   use `role:<name>` keys; gameplay tuning via `/serverconfig setvalue`, `/serverconfig setchannel`,
   and `/serverconfig setrole`; `CommandConfig` remains
