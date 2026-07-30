@@ -29,8 +29,8 @@ const MODEL_MULTIPLIERS: Record<string, ModelMultipliers> = {
   'xiaomi/mimo-v2.5': { input: 0.5, output: 1 },
   // $2/M in, $6/M out
   'x-ai/grok-4.5': { input: 7, output: 21.43 },
-  // $1/M in, $6/M out
-  'openai/gpt-5.6-luna': { input: 3.5, output: 21.43 },
+  // $0.20/M in, $1.2/M out
+  'openai/gpt-5.6-luna': { input: 0.72, output: 4.3 },
 };
 
 const DEFAULT_MULTIPLIERS: ModelMultipliers = { input: 1, output: 1 };
