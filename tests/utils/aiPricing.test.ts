@@ -11,7 +11,7 @@ describe('creditsForTokens', () => {
   });
 
   test('bills deepseek-v4-flash at 0.5x in / 1x out', () => {
-    expect(creditsForTokens('deepseek/deepseek-v4-flash', 100000, 50000)).toBe(100000);
+    expect(creditsForTokens('deepseek/deepseek-v4-flash-0731', 100000, 50000)).toBe(100000);
   });
 
   test('bills mimo-v2.5 at 0.5x in / 1x out', () => {
@@ -38,7 +38,7 @@ describe('creditsForTokens', () => {
 describe('usdCostForTokens', () => {
   test('derives USD from credits at the $0.28/M base rate', () => {
     // 1M in @0.5x + 1M out @1x = 1.5M credits → $0.42
-    expect(usdCostForTokens('deepseek/deepseek-v4-flash', 1_000_000, 1_000_000))
+    expect(usdCostForTokens('deepseek/deepseek-v4-flash-0731', 1_000_000, 1_000_000))
       .toBeCloseTo(1.5 * CREDIT_BASE_USD_PER_MILLION, 10);
   });
 
