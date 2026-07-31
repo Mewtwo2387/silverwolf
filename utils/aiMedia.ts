@@ -97,6 +97,19 @@ export interface MediaCollectionResult {
   notices: string[];
 }
 
+/** Human-readable formats per modality, for the "not supported" notice. */
+const KIND_DESCRIPTIONS: Record<MediaKind, string> = {
+  image: 'images (png/jpg/webp/gif/bmp)',
+  video: 'video (mp4/webm/mov)',
+  audio: 'audio (ogg/mp3/wav/flac/m4a)',
+};
+
+/** "a", "a and b", "a, b and c" — keeps the notice readable at any length. */
+function joinWithAnd(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
 function classify(att: Attachment): { kind: MediaKind; mime: string } | null {
   const ct = (att.contentType || '').split(';')[0].trim().toLowerCase();
   if (IMAGE_TYPES[ct]) return { kind: 'image', mime: IMAGE_TYPES[ct] };
@@ -249,9 +262,13 @@ export async function collectMediaFromMessage(
       notices.push(`⚠ Only the first ${maxCounts[kind]} ${kind}${maxCounts[kind] === 1 ? '' : 's'} per request ${maxCounts[kind] === 1 ? 'is' : 'are'} processed — skipped ${skippedOverCount[kind]} extra.`);
     }
   }
-  const acceptsEverything = ALL_MEDIA_KINDS.every((k) => allowed.includes(k));
-  if (acceptsEverything && skippedUnsupported > 0 && parts.length === 0 && candidates.length === 0) {
-    notices.push('⚠ Attachment type not supported — I can read images (png/jpg/webp/gif/bmp), video (mp4/webm/mov) and audio (ogg/mp3/wav/flac/m4a).');
+  // Attachments that failed classify() entirely (a .zip, a .txt) — nothing here
+  // can use them, so say so. Distinct from the silent skip above, which drops
+  // types this caller can't consume but the module understands. Worded from
+  // `allowed` so a restricted caller doesn't advertise formats it will ignore.
+  if (skippedUnsupported > 0 && parts.length === 0 && candidates.length === 0 && allowed.length > 0) {
+    const supported = joinWithAnd(allowed.map((k) => KIND_DESCRIPTIONS[k]));
+    notices.push(`⚠ Attachment type not supported — I can take ${supported}.`);
   }
 
   return {
