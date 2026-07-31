@@ -22,8 +22,16 @@ describe('creditsForTokens', () => {
     expect(creditsForTokens('x-ai/grok-4.5', 10000, 10000)).toBe(284300);
   });
 
-  test('bills gpt-5.6-luna at 3.5x in / 21.43x out ($1/M in, $6/M out)', () => {
-    expect(creditsForTokens('openai/gpt-5.6-luna', 10000, 10000)).toBe(249300);
+  test('bills gpt-5.6-luna at 0.72x in / 4.3x out ($0.20/M in, $1.2/M out)', () => {
+    expect(creditsForTokens('openai/gpt-5.6-luna', 10000, 10000)).toBe(50200);
+  });
+
+  test('bills qwen3.7-flash at 0.11x in / 0.46x out ($0.03/M in, $0.13/M out)', () => {
+    expect(creditsForTokens('qwen/qwen3.7-flash', 10000, 10000)).toBeCloseTo(5700, 6);
+  });
+
+  test('free models cost nothing', () => {
+    expect(creditsForTokens('openrouter/free', 1_000_000, 1_000_000)).toBe(0);
   });
 });
 
