@@ -1,7 +1,7 @@
 import * as Discord from 'discord.js';
 import { Command } from './classes/Command';
 import { DAILY_LIMIT, WEEKLY_LIMIT } from '../utils/ai';
-import { getResetLine } from '../utils/discordRateLimit';
+import { getWindowResetLabel } from '../utils/discordRateLimit';
 
 function makeProgressBar(value: number, total: number, size = 15): string {
   const percentage = Math.min(Math.max(value / total, 0), 1);
@@ -23,10 +23,12 @@ class AiUsageSubcommand extends Command {
   async run(interaction: Discord.ChatInputCommandInteraction) {
     try {
       const userId = interaction.user.id;
-      const [dailyUsage, weeklyUsage, status] = await Promise.all([
+      const [dailyUsage, weeklyUsage, status, dailyReset, weeklyReset] = await Promise.all([
         this.client.db.aiUsage.getDailyUsage(userId),
         this.client.db.aiUsage.getWeeklyUsage(userId),
         this.client.db.aiUsage.checkRateLimit(userId),
+        getWindowResetLabel(this.client.db, userId, 'daily'),
+        getWindowResetLabel(this.client.db, userId, 'weekly'),
       ]);
 
       const dailyBar = makeProgressBar(dailyUsage, DAILY_LIMIT);
@@ -36,8 +38,6 @@ class AiUsageSubcommand extends Command {
         ? `🛑 **Rate Limited** (${status.reason === 'daily' ? 'Daily' : 'Weekly'} limit exceeded)`
         : '✅ **Active** (within limits)';
 
-      const resetLine = await getResetLine(this.client.db, userId, status);
-
       const embed = new Discord.EmbedBuilder()
         .setColor('#0099ff')
         .setTitle('🤖 Your AI Credit Usage')
@@ -46,12 +46,14 @@ class AiUsageSubcommand extends Command {
 **Daily Usage (24h):**
 ${dailyUsage.toLocaleString()} / ${DAILY_LIMIT.toLocaleString()} credits
 ${dailyBar}
+Resets: ${dailyReset}
 
 **Weekly Usage (7d):**
 ${weeklyUsage.toLocaleString()} / ${WEEKLY_LIMIT.toLocaleString()} credits
 ${weeklyBar}
+Resets: ${weeklyReset}
 
-**Status:** ${statusText}${resetLine}
+**Status:** ${statusText}
         `)
         .setFooter({ text: 'Note: AI roleplay cost is shared among active users in the chat.' })
         .setTimestamp();

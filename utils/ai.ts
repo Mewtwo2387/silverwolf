@@ -6,8 +6,9 @@ import { logError, logWarning } from './log';
 import { recordUsage, getCalibrationMultiplier } from './tokenCalibration';
 import { countTokensOpenRouterMessages } from './tokenizer';
 import { listSearchTools, listSearchToolsGemini, callSearchTool } from './mcp';
-import { creditsForTokens, ESTIMATED_COMPLETION_TOKENS } from './aiPricing';
+import { creditsForTokens, isFreeModel, ESTIMATED_COMPLETION_TOKENS } from './aiPricing';
 import { createChatCompletionWithRetry } from './llmRetry';
+import { ALL_MEDIA_KINDS, type MediaKind } from './aiMedia';
 import {
   IMAGE_GEN_TOOL_NAME,
   IMAGE_GEN_DAILY_LIMIT,
@@ -63,8 +64,23 @@ export interface Persona {
   webSearchEnabled?: boolean;
   /** OpenRouter provider-routing object (e.g. { only: ['xiaomi'], allow_fallbacks: false }). */
   providerRouting?: Record<string, any>;
-  /** When true, Discord image/video/audio attachments are sent to the model (openrouter only). */
-  mediaInput?: boolean;
+  /**
+   * Input modalities the model can read from Discord attachments (openrouter
+   * only). `true` means all of image/video/audio (omnimodal, e.g. MiMo);
+   * an explicit list narrows it — vision-only models take `["image"]`.
+   * Omitted/false = no media input.
+   */
+  mediaInput?: boolean | MediaKind[];
+}
+
+/**
+ * Attachment modalities a persona's chat model can actually consume. Empty when
+ * the persona has no media input or isn't on a provider that supports it.
+ */
+export function getPersonaMediaKinds(persona: Persona): MediaKind[] {
+  if (persona.provider !== 'openrouter' || !persona.mediaInput) return [];
+  if (persona.mediaInput === true) return [...ALL_MEDIA_KINDS];
+  return persona.mediaInput.filter((k): k is MediaKind => ALL_MEDIA_KINDS.includes(k as MediaKind));
 }
 
 export interface ToolCallRecord {
@@ -844,11 +860,12 @@ export class AiRateLimitError extends Error {
  * Enforces the per-user credit rate limit with an in-flight reservation: the
  * estimated cost is held against the user's budget for the whole generation, so
  * a spammed burst of concurrent requests can't all pass the check before any of
- * them records usage (issue #213).
+ * them records usage (issue #213). Free models (see aiPricing.isFreeModel) are
+ * exempt: they cost nothing, so they neither reserve nor spend credits.
  */
 async function generateContent(opts: GenerateContentOptions): Promise<GenerateContentResult> {
   const { db, userId } = opts;
-  if (!db || !userId) return generateContentInner(opts);
+  if (!db || !userId || isFreeModel(opts.model)) return generateContentInner(opts);
 
   const reserved = Math.ceil(estimateRequestCredits(opts));
   const gate = db.aiUsage.tryReserve(userId, reserved);

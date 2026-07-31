@@ -29,9 +29,25 @@ const MODEL_MULTIPLIERS: Record<string, ModelMultipliers> = {
   'xiaomi/mimo-v2.5': { input: 0.5, output: 1 },
   // $2/M in, $6/M out
   'x-ai/grok-4.5': { input: 7, output: 21.43 },
-  // $0.20/M in, $1.2/M out
+  // $0.20/M in, $1.2/M out. OpenRouter currently lists a further 50% off; that's
+  // treated as a temporary promo and deliberately NOT priced in here.
   'openai/gpt-5.6-luna': { input: 0.72, output: 4.3 },
+  // $0.03/M in, $0.13/M out
+  'qwen/qwen3.7-flash': { input: 0.11, output: 0.46 },
+  // Free tier — costs nothing, so it charges nothing (see FREE_MODELS).
+  'openrouter/free': { input: 0, output: 0 },
 };
+
+/**
+ * Models that are free to run. They bill 0 credits AND skip the rate-limit
+ * reservation entirely (see generateContent), so a user who has exhausted
+ * their paid budget can still talk to them.
+ */
+const FREE_MODELS = new Set<string>(['openrouter/free']);
+
+export function isFreeModel(model: string): boolean {
+  return FREE_MODELS.has(model);
+}
 
 const DEFAULT_MULTIPLIERS: ModelMultipliers = { input: 1, output: 1 };
 
