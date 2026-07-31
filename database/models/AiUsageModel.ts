@@ -1,6 +1,5 @@
 import type Database from '../Database';
 import aiUsageQueries from '../queries/aiUsageQueries';
-import { isUserDev } from '../../utils/accessControl';
 import { DAILY_LIMIT, WEEKLY_LIMIT } from '../../utils/ai';
 import { creditsForTokens, usdCostForTokens } from '../../utils/aiPricing';
 
@@ -107,10 +106,6 @@ class AiUsageModel {
     usage?: number;
     limit?: number;
   }> {
-    if (isUserDev(userId)) {
-      return { limited: false };
-    }
-
     const dailyUsage = await this.getDailyUsage(userId);
     if (dailyUsage >= DAILY_LIMIT) {
       return {
@@ -140,15 +135,13 @@ class AiUsageModel {
    * them records usage. Fully synchronous (no awaits) — atomic in this
    * single-threaded process. On success the caller MUST later call release()
    * with the same amount (in a finally), and record real usage via addUsage().
-   * Devs are unlimited and never hold a reservation.
+   * Everyone is metered — devs included (there is no bypass).
    */
   tryReserve(userId: string, estimatedCredits: number): {
     ok: boolean;
     reason?: WindowType;
     remaining?: number;
   } {
-    if (isUserDev(userId)) return { ok: true };
-
     const amount = Math.max(0, Math.round(estimatedCredits));
     const inFlight = this.pending.get(userId) ?? 0;
 

@@ -6,7 +6,7 @@ Bun process**. It serves fun/games both as slash commands and as web pages, plus
 **The website is public, so security and performance are first-class concerns — code defensively:
 validate every input, never trust client data, keep the CSP tight.**
 
-**Last updated: 2026-07-29**
+**Last updated: 2026-07-31**
 
 > **Maintenance rule.** Edit this file only on *substantive architectural* change — new
 > architecture, new auth, new data flows/services, schema or security-model changes, or when
@@ -131,11 +131,14 @@ the compaction prompt). The `/ai rp-*` command replies are non-ephemeral (public
 **AI usage limits** (`utils/ai.ts`, `utils/aiPricing.ts`, `AiUsageModel`): per-user fixed windows
 (250k/day, 1M/week) metered in **credits**, not raw tokens — `credits = tok_in×mult_in +
 tok_out×mult_out` where $0.28/M = 1x (DeepSeek-V4-Flash/MiMo-V2.5 0.5x in/1x out, Grok-4.5
-7x/21.4x, GPT-5.6-Luna 3.5x/21.4x, unlisted = 1x/1x). The `AiUsage` audit log keeps raw tokens +
+7x/21.4x, GPT-5.6-Luna 0.72x/4.3x, Qwen3.7-Flash 0.11x/0.46x, unlisted = 1x/1x; listed
+promotional discounts are ignored — multipliers track list price). Models in `FREE_MODELS`
+(`openrouter/free`, the `@fr` persona) are 0x/0x **and** skip the reservation entirely — free to
+run, so never metered or blocked. The `AiUsage` audit log keeps raw tokens +
 derived USD `cost`; the `AiRateLimitWindow.tokens` column stores credits (name kept, no rebuild).
 Enforcement is `db.aiUsage.tryReserve(userId, estCredits)` → `release()` in `finally` — an
 in-memory in-flight reservation held for the whole generation so concurrent spam can't all pass
-the check before usage lands (devs bypass). All OpenRouter chat calls go through
+the check before usage lands (**no dev bypass — everyone is metered**). All OpenRouter chat calls go through
 `createChatCompletionWithRetry` (`utils/llmRetry.ts`: per-attempt timeout — 180s default, 480s
 music-compose, 60s titlegen — a 600s overall budget across attempts, and 2s/4s/8s/16s backoff on
 408/409/429/5xx/network only); the shared client sets `maxRetries: 0` so SDK retries don't stack.

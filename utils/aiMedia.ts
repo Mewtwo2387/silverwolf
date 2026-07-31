@@ -81,15 +81,33 @@ const AUDIO_TYPES: Record<string, string> = {
   'audio/x-m4a': 'm4a',
 };
 
-type MediaKind = 'image' | 'video' | 'audio';
+export type MediaKind = 'image' | 'video' | 'audio';
+
+/** Every modality this module can turn into an OpenRouter content part. */
+export const ALL_MEDIA_KINDS: MediaKind[] = ['image', 'video', 'audio'];
 
 export interface MediaCollectionResult {
   /** OpenRouter content parts (image_url / video_url / input_audio). */
   parts: any[];
+  /** Modality of each entry in `parts` (index-aligned with `parts`/`placeholders`). */
+  kinds: MediaKind[];
   /** Text placeholders for the stored prompt, e.g. "[attached image: cat.png]". */
   placeholders: string[];
   /** User-facing notes about skipped/failed attachments. */
   notices: string[];
+}
+
+/** Human-readable formats per modality, for the "not supported" notice. */
+const KIND_DESCRIPTIONS: Record<MediaKind, string> = {
+  image: 'images (png/jpg/webp/gif/bmp)',
+  video: 'video (mp4/webm/mov)',
+  audio: 'audio (ogg/mp3/wav/flac/m4a)',
+};
+
+/** "a", "a and b", "a, b and c" — keeps the notice readable at any length. */
+function joinWithAnd(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
 }
 
 function classify(att: Attachment): { kind: MediaKind; mime: string } | null {
@@ -108,17 +126,18 @@ function fmtMB(bytes: number): string {
  * Cheap pre-check: does this message (or the replied-to message) carry at
  * least one attachment collectMediaFromMessage would actually process?
  * Used by callers to avoid burning a concurrency slot on e.g. a PDF-only
- * message. With `imagesOnly`, only image attachments qualify (the imageGen
- * edit-source path — video/audio are irrelevant there).
+ * message. `allowed` narrows it to the modalities the caller can use (e.g.
+ * `['image']` for a vision-less persona's imageGen edit-source path, or a
+ * persona whose model takes images but not video/audio).
  */
 export function hasQualifyingMedia(
   message: Message,
   contextMsg: Message | null = null,
-  imagesOnly = false,
+  allowed: MediaKind[] = ALL_MEDIA_KINDS,
 ): boolean {
   const check = (msg: Message) => [...msg.attachments.values()].some((att) => {
     const cls = classify(att);
-    return cls !== null && (!imagesOnly || cls.kind === 'image');
+    return cls !== null && allowed.includes(cls.kind);
   });
   return check(message) || (contextMsg ? check(contextMsg) : false);
 }
@@ -147,16 +166,17 @@ async function downloadAttachment(att: Attachment, cap: number): Promise<Buffer 
  * Gathers media from `message` first, then from the replied-to message (so a
  * "@mi what's in this?" reply to a voice message / image works). Enforces
  * per-type counts, per-file and total byte budgets; everything over a cap is
- * skipped with a notice rather than failing the request. With `imagesOnly`,
- * video/audio attachments are silently ignored (imageGen edit-source path for
- * personas whose chat model has no media input).
+ * skipped with a notice rather than failing the request. Modalities outside
+ * `allowed` are silently ignored — the caller either can't consume them
+ * (imageGen edit-source path) or its model can't read them.
  */
 export async function collectMediaFromMessage(
   message: Message,
   contextMsg: Message | null = null,
-  imagesOnly = false,
+  allowed: MediaKind[] = ALL_MEDIA_KINDS,
 ): Promise<MediaCollectionResult> {
   const parts: any[] = [];
+  const kinds: MediaKind[] = [];
   const placeholders: string[] = [];
   const notices: string[] = [];
 
@@ -179,8 +199,8 @@ export async function collectMediaFromMessage(
         skippedUnsupported += 1;
         continue;
       }
-      // imagesOnly: non-image media simply isn't relevant, not "unsupported".
-      if (imagesOnly && cls.kind !== 'image') continue;
+      // Out-of-scope modalities simply aren't relevant here, not "unsupported".
+      if (!allowed.includes(cls.kind)) continue;
       candidates.push({
         att, kind: cls.kind, mime: cls.mime, fromReply,
       });
@@ -190,7 +210,9 @@ export async function collectMediaFromMessage(
   if (contextMsg) gather(contextMsg, true);
 
   if (candidates.length === 0 && skippedUnsupported === 0) {
-    return { parts, placeholders, notices };
+    return {
+      parts, kinds, placeholders, notices,
+    };
   }
 
   for (const { att, kind, mime } of candidates) {
@@ -231,6 +253,7 @@ export async function collectMediaFromMessage(
     } else {
       parts.push({ type: 'input_audio', input_audio: { data: b64, format: AUDIO_TYPES[mime] || 'mp3' } });
     }
+    kinds.push(kind);
     placeholders.push(`[attached ${kind}: ${att.name || 'file'}]`);
   }
 
@@ -239,9 +262,16 @@ export async function collectMediaFromMessage(
       notices.push(`⚠ Only the first ${maxCounts[kind]} ${kind}${maxCounts[kind] === 1 ? '' : 's'} per request ${maxCounts[kind] === 1 ? 'is' : 'are'} processed — skipped ${skippedOverCount[kind]} extra.`);
     }
   }
-  if (!imagesOnly && skippedUnsupported > 0 && parts.length === 0 && candidates.length === 0) {
-    notices.push('⚠ Attachment type not supported — I can read images (png/jpg/webp/gif/bmp), video (mp4/webm/mov) and audio (ogg/mp3/wav/flac/m4a).');
+  // Attachments that failed classify() entirely (a .zip, a .txt) — nothing here
+  // can use them, so say so. Distinct from the silent skip above, which drops
+  // types this caller can't consume but the module understands. Worded from
+  // `allowed` so a restricted caller doesn't advertise formats it will ignore.
+  if (skippedUnsupported > 0 && parts.length === 0 && candidates.length === 0 && allowed.length > 0) {
+    const supported = joinWithAnd(allowed.map((k) => KIND_DESCRIPTIONS[k]));
+    notices.push(`⚠ Attachment type not supported — I can take ${supported}.`);
   }
 
-  return { parts, placeholders, notices };
+  return {
+    parts, kinds, placeholders, notices,
+  };
 }

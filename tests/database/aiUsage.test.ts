@@ -142,7 +142,7 @@ describe('AiUsageModel', () => {
     expect(Math.abs((resetAt as Date).getTime() - expected)).toBeLessThan(2 * 60 * 1000);
   });
 
-  test('bypasses rate limit checks for developers', async () => {
+  test('rate limits developers too (no dev bypass)', async () => {
     const devId = process.env.ALLOWED_USERS?.split(',')[0];
     if (!devId) {
       // Skip if no ALLOWED_USERS configured
@@ -151,7 +151,15 @@ describe('AiUsageModel', () => {
 
     await aiUsageModel.addUsage(devId, 'test-model', DAILY_LIMIT * 5, 0);
     const status = await aiUsageModel.checkRateLimit(devId);
-    expect(status.limited).toBe(false);
+    expect(status.limited).toBe(true);
+    expect(status.reason).toBe('daily');
+    expect(aiUsageModel.tryReserve(devId, 1).ok).toBe(false);
+  });
+
+  test('free models charge no credits', async () => {
+    await aiUsageModel.addUsage('u9', 'openrouter/free', 500000, 500000);
+    expect(await aiUsageModel.getDailyUsage('u9')).toBe(0);
+    expect(await aiUsageModel.getWeeklyUsage('u9')).toBe(0);
   });
 
   test('meters credit-priced models by multiplier, not raw tokens', async () => {
@@ -195,13 +203,14 @@ describe('AiUsageModel', () => {
     aiUsageModel.release('u1', 8000);
   });
 
-  test('tryReserve is unlimited for developers', async () => {
+  test('tryReserve meters developers like everyone else', async () => {
     const devId = process.env.ALLOWED_USERS?.split(',')[0];
     if (!devId) return; // skip if no ALLOWED_USERS configured
 
     await aiUsageModel.addUsage(devId, 'test-model', DAILY_LIMIT * 5, 0);
     const gate = aiUsageModel.tryReserve(devId, 100000);
-    expect(gate.ok).toBe(true);
+    expect(gate.ok).toBe(false);
+    expect(gate.reason).toBe('daily');
     expect(aiUsageModel.getPendingCredits(devId)).toBe(0);
   });
 
