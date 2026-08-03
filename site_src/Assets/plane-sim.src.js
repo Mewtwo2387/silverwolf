@@ -343,7 +343,18 @@ import {
   // ---- Lighting: warm sun (soft shadows) + hemisphere fill + dim back-fill.
   //      The sun's shadow frustum is a small ortho box that follows the aircraft
   //      (see updateCamera) so shadows stay crisp anywhere in the map. ----
+  // The sun vector is MUTATED IN PLACE by the time-of-day system (never
+  // reassigned) — everything that reads it every frame (the shadow rig, the
+  // sea shaders) then follows the sun across the sky for free. SHADOW_DIR is
+  // the same vector with its elevation floored: at a dawn/dusk sun altitude of
+  // ~3° the true shadows would run for kilometres and fall straight out of the
+  // small ortho shadow box, so shadows keep a plausible low-sun rake instead.
   const SUN_DIR = new THREE.Vector3(-0.55, 1, 0.42).normalize();
+  const SHADOW_DIR = SUN_DIR.clone();
+  function refreshShadowDir() {
+    SHADOW_DIR.copy(SUN_DIR);
+    if (SHADOW_DIR.y < 0.42) { SHADOW_DIR.y = 0.42; SHADOW_DIR.normalize(); }
+  }
   const sun = new THREE.DirectionalLight(0xfff2da, 2.4);
   sun.castShadow = GFX.shadows;
   sun.shadow.mapSize.set(GFX.shadowMapSize, GFX.shadowMapSize);
@@ -367,7 +378,9 @@ import {
   // ---- A gradient sky dome (top deep-blue -> pale horizon haze) + sun disc.
   //      skyCtl exposes the canvas/texture/sun-sprite so the weather system
   //      can repaint the gradient (and dim the sun) when the sky changes. ----
-  const skyCtl = { canvas: null, ctx: null, tex: null, sunSpr: null };
+  const skyCtl = {
+    canvas: null, ctx: null, tex: null, sunSpr: null, stars: null,
+  };
   // Paint the vertical sky gradient. Kept CLEAN (no per-texel dither): this
   // texture is tiny (16×512) and stretched across a 15 km dome, so per-texel
   // noise smears into big blotches — the "blocky, stitched" artifact. Banding
@@ -433,6 +446,45 @@ import {
     sunSpr.scale.setScalar(2400);
     scene.add(sunSpr);
     skyCtl.sunSpr = sunSpr;
+
+    // Stars: one Points cloud on the inside of the dome (14 800 < the dome's
+    // 15 500, so it draws in front of the gradient), faded in by the
+    // time-of-day system and invisible by day. depthTest stays ON so the
+    // horizon and the terrain cut the field off correctly; depthWrite is off
+    // so the stars never punch holes in anything drawn after them.
+    const N = 1300;
+    const pos = new Float32Array(N * 3);
+    const sizes = new Float32Array(N);
+    for (let i = 0; i < N; i++) {
+      // Cosine-free uniform sphere point, kept above the horizon.
+      const u = Math.random() * 2 - 1;
+      const th = Math.random() * Math.PI * 2;
+      const r = Math.sqrt(1 - u * u);
+      pos[i * 3] = Math.cos(th) * r * 14800;
+      pos[i * 3 + 1] = Math.abs(u) * 14800 + 200;
+      pos[i * 3 + 2] = Math.sin(th) * r * 14800;
+      sizes[i] = Math.random() < 0.12 ? 3.4 : 1.4 + Math.random() * 1.2;
+    }
+    const starGeo = new THREE.BufferGeometry();
+    starGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    starGeo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+    const starMat = new THREE.PointsMaterial({
+      color: 0xdfe8ff, size: 2, sizeAttenuation: false, fog: false,
+      transparent: true, opacity: 0, depthWrite: false,
+    });
+    // Per-star size (PointsMaterial has one size for the whole cloud), so the
+    // field reads as a few bright stars in a lot of faint ones.
+    starMat.onBeforeCompile = (sh) => {
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', '#include <common>\nattribute float aSize;')
+        .replace('gl_PointSize = size;', 'gl_PointSize = aSize;');
+    };
+    starMat.customProgramCacheKey = () => 'ps-stars';
+    const stars = new THREE.Points(starGeo, starMat);
+    stars.frustumCulled = false;
+    stars.visible = false;
+    scene.add(stars);
+    skyCtl.stars = stars;
   }());
 
   // ---- Wind-sway shader hook. Shared uniforms driven by the weather engine;
@@ -1173,6 +1225,81 @@ gl_Position = projectionMatrix * mvPosition;
   })();
   let weather = WX.sunny; // the LIVE preset actually driving the world
 
+  // ==================================================== TIME OF DAY ========
+  // FREE FLIGHT ONLY, and picked on the same screen as the weather — the two
+  // are orthogonal, so any of the 18 combinations is flyable.
+  //
+  // A time-of-day preset is a TRANSFORM LAYERED ON TOP of whatever the weather
+  // produced, never a replacement: it swings the sun vector, tints each sky
+  // gradient stop toward its own palette, and scales the light rig. 'midday'
+  // is the deliberate IDENTITY (skyMix 0, every multiplier 1), so the default
+  // look — and every mode that funnels back to a clear day — renders exactly as
+  // it did before this existed. That layering is also what keeps a night
+  // thunderstorm sane: the storm still greys the world, the night still drains
+  // and cools it, and the result is a dark storm rather than either preset
+  // fighting the other.
+  //
+  // The six read as one continuous day: the sun climbs out of the east at
+  // dawn, crosses overhead at midday, and rakes back down through the golden
+  // hour into dusk before the moon takes over. `dir` is the sun (or moon)
+  // vector, elevation-first: y ~0.05 is a disc sitting on the horizon.
+  const TOD = {
+    dawn: { // first light — the sun ON the horizon, the land still cold
+      dir: [0.92, 0.11, 0.36],
+      sky: ['#122a58', '#7d4767', '#c06a3c'], skyMix: 0.88, fogMul: 0.78,
+      sunCol: 0xffab6b, lightMix: 0.85, sunMul: 0.5,
+      hemiSky: 0x6f7fa8, hemiGround: 0x3c3a33, hemiMul: 0.6, backMul: 0.7,
+      expo: 1.0, sprite: 0xffa25c, spriteScale: 2.4, spriteMul: 1,
+      stars: 0.32, seaMul: 0.62, glow: 0.5,
+    },
+    morning: { // the sun well up, air still clean and a touch golden
+      dir: [0.62, 0.6, 0.5],
+      sky: ['#3a74b4', '#93b9dd', '#f3e2c8'], skyMix: 0.45, fogMul: 0.95,
+      sunCol: 0xffe7bc, lightMix: 0.6, sunMul: 0.9,
+      hemiSky: 0xc2dcff, hemiGround: 0x6e785a, hemiMul: 0.95, backMul: 0.9,
+      expo: 1.04, sprite: 0xfff0c8, spriteScale: 1.5, spriteMul: 1,
+      stars: 0, seaMul: 0.94, glow: 0.1,
+    },
+    midday: { // IDENTITY — the original scene, untouched
+      dir: [-0.55, 1, 0.42],
+      sky: ['#2b66a8', '#68a4d6', '#d5e4ee'], skyMix: 0, fogMul: 1,
+      sunCol: 0xfff2da, lightMix: 0, sunMul: 1,
+      hemiSky: 0xcce2ff, hemiGround: 0x6e785a, hemiMul: 1, backMul: 1,
+      expo: 1, sprite: 0xffffff, spriteScale: 1, spriteMul: 1,
+      stars: 0, seaMul: 1, glow: 0,
+    },
+    golden: { // late afternoon, sun ~12° up: deep amber and long rakes of light
+      dir: [-0.86, 0.23, 0.45],
+      sky: ['#1f4d85', '#c07a3f', '#eba85e'], skyMix: 0.8, fogMul: 0.88,
+      sunCol: 0xffb066, lightMix: 0.85, sunMul: 0.82,
+      hemiSky: 0xa9c0e0, hemiGround: 0x6b6144, hemiMul: 0.78, backMul: 0.8,
+      expo: 1.02, sprite: 0xffab55, spriteScale: 2.6, spriteMul: 1,
+      stars: 0, seaMul: 0.86, glow: 0.3,
+    },
+    dusk: { // the sun just gone: burnt orange band under a violet zenith
+      dir: [-0.96, 0.05, 0.28],
+      sky: ['#211a44', '#7a406e', '#e0703e'], skyMix: 0.9, fogMul: 0.72,
+      sunCol: 0xff8a4d, lightMix: 0.9, sunMul: 0.28,
+      hemiSky: 0x4c3b66, hemiGround: 0x2a2733, hemiMul: 0.45, backMul: 0.55,
+      expo: 0.98, sprite: 0xff7a3c, spriteScale: 3.6, spriteMul: 0.8,
+      stars: 0.5, seaMul: 0.5, glow: 0.85,
+    },
+    night: { // moonlight: the "sun" is a small cold disc, and the city is lit
+      dir: [-0.42, 0.78, -0.52],
+      sky: ['#050a1c', '#0a1230', '#141d3a'], skyMix: 0.95, fogMul: 0.62,
+      sunCol: 0xbcd2ff, lightMix: 1, sunMul: 0.15,
+      hemiSky: 0x2b3a63, hemiGround: 0x13161e, hemiMul: 0.3, backMul: 0.35,
+      expo: 0.92, sprite: 0xe4edff, spriteScale: 0.5, spriteMul: 1,
+      stars: 1, seaMul: 0.3, glow: 1,
+    },
+  };
+  const TOD_NAMES = ['dawn', 'morning', 'midday', 'golden', 'dusk', 'night'];
+  const validTod = (n) => TOD_NAMES.indexOf(n) !== -1;
+  let todName = (() => { // the MENU preference (remembered)
+    try { const t = localStorage.getItem('ps-tod'); return validTod(t) ? t : 'midday'; } catch (_) { return 'midday'; }
+  })();
+  let tod = TOD.midday; // the LIVE preset actually driving the world
+
   // ---- Wind state: one general heading, slowly veering, gusting in slow
   //      envelopes. vec is the current wind vector (m/s, world XZ). ----
   const windState = {
@@ -1189,6 +1316,17 @@ gl_Position = projectionMatrix * mvPosition;
   // ---- Scene-wide weather application ----
   const FOG0 = { near: GFX.fogNear, far: GFX.fogFar };
   const WATER0 = { color: 0x1d5d75, ultraColor: 0x0c4254 }; // buildWater/Water defaults
+  // Scratch colours for the weather × time-of-day blends (blending happens in
+  // three's linear working space, so a half-mix of blue and orange stays a
+  // colour and not mud).
+  const _todA = new THREE.Color();
+  const _todB = new THREE.Color();
+  const _todC = new THREE.Color();
+  // One gradient stop of the WEATHER sky, pulled toward the hour's palette.
+  const todStop = (baseCss, tintCss, amt) => {
+    _todA.set(baseCss);
+    return (amt > 0 ? _todA.lerp(_todB.set(tintCss), amt) : _todA).getStyle();
+  };
   function paintSky(topCss, midCss, hazeCss) {
     if (!skyCtl.ctx) return;
     paintSkyGradient(skyCtl.ctx, skyCtl.canvas, topCss, midCss, hazeCss);
@@ -1202,12 +1340,25 @@ gl_Position = projectionMatrix * mvPosition;
     if (waterMesh.isWater) { // ultra: the planar-reflection Water addon
       m.uniforms.distortionScale.value = p.seaDistort;
       m.uniforms.size.value = p.seaSize;
-      m.uniforms.waterColor.value.setHex(p.seaTint || WATER0.ultraColor);
+      m.uniforms.waterColor.value.setHex(p.seaTint || WATER0.ultraColor).multiplyScalar(tod.seaMul);
+      m.uniforms.sunDirection.value.copy(SUN_DIR);
+      m.uniforms.sunColor.value.setHex(tod.sunCol);
     } else { // the cheap translucent plane: rougher normal chop, darker body
       m.normalScale.set(p.seaN, p.seaN);
       m.roughness = p.seaRough;
-      m.color.setHex(p.seaTint || WATER0.color);
+      m.color.setHex(p.seaTint || WATER0.color).multiplyScalar(tod.seaMul);
     }
+  }
+  // The storm swell is its own hand-written shader with a baked-in sun: point
+  // it at the live sun and scale its lit/ambient terms with the hour, or a
+  // night storm's seas come out lit like noon.
+  const SWELL0 = { sunCol: 0x9fb0c2, amb: 0x2b3946 };
+  function applySwellLight() {
+    const u = stormSwell.uniforms;
+    u.uSun.value.copy(SUN_DIR);
+    u.uSunCol.value.setHex(SWELL0.sunCol).lerp(_todC.setHex(tod.sunCol), tod.lightMix)
+      .multiplyScalar(clamp(tod.sunMul, 0.12, 1));
+    u.uAmb.value.setHex(SWELL0.amb).multiplyScalar(clamp(tod.hemiMul, 0.25, 1));
   }
   // Per-map puddle sheets (one InstancedMesh each) + the city ground materials,
   // both driven by applyWetGround. Populated by buildPuddles below; referenced
@@ -1216,6 +1367,9 @@ gl_Position = projectionMatrix * mvPosition;
   const cityWetMats = cityWorld.groundMats
     ? cityWorld.groundMats.map((mat) => ({ mat, rough: mat.roughness }))
     : [];
+  // The skyline's facade materials carry a window-glow emissive map, held at 0
+  // by day and raised by the time of day (see applyWeather).
+  const cityFacadeMats = cityWorld.facadeMats || [];
 
   // Wet ground: darken + slick the terrain and pavement, and show puddles —
   // now on every land map (coastal terrain, city streets, carrier decks).
@@ -1566,27 +1720,55 @@ gl_Position = projectionMatrix * mvPosition;
     }
   }
 
-  // ---- The one funnel: swap the whole world to a preset. Called from
-  //      respawnBase with the menu pick for free flights, 'sunny' otherwise. ----
-  function applyWeather(name) {
+  // ---- The one funnel: swap the whole world to a weather × time-of-day pair.
+  //      Called from respawnBase with the menu picks for free flights, and with
+  //      ('sunny', 'midday') — the original clear noon — for every other mode.
+  function applyWeather(name, todPick) {
     const n = validWeather(name) ? name : 'sunny';
+    const t = validTod(todPick) ? todPick : 'midday';
     weather = WX[n];
+    tod = TOD[t];
+    // Move the sun (or moon) first: the sea shaders and the sprite read it.
+    SUN_DIR.set(tod.dir[0], tod.dir[1], tod.dir[2]).normalize();
+    refreshShadowDir();
     // cloud decks (the storm deck replaces the fair-weather cumulus)
     cloudGroups.fair.visible = n !== 'storm';
     cloudGroups.mid.visible = n === 'cloudy';
     cloudGroups.storm.visible = n === 'storm';
-    // sky, fog, lights, exposure
-    paintSky(weather.sky[0], weather.sky[1], weather.sky[2]);
-    scene.fog.near = FOG0.near * weather.fogMul;
-    scene.fog.far = FOG0.far * weather.fogMul;
-    sun.intensity = weather.sun;
-    sun.color.setHex(weather.sunCol);
-    hemi.intensity = weather.hemi;
-    backFill.intensity = weather.back;
-    renderer.toneMappingExposure = weather.expo;
-    if (skyCtl.sunSpr) skyCtl.sunSpr.material.opacity = weather.sunSprite;
+    // sky, fog, lights, exposure — the weather sets the base, the hour tints it
+    paintSky(
+      todStop(weather.sky[0], tod.sky[0], tod.skyMix),
+      todStop(weather.sky[1], tod.sky[1], tod.skyMix),
+      todStop(weather.sky[2], tod.sky[2], tod.skyMix),
+    );
+    scene.fog.near = FOG0.near * weather.fogMul * tod.fogMul;
+    scene.fog.far = FOG0.far * weather.fogMul * tod.fogMul;
+    sun.intensity = weather.sun * tod.sunMul;
+    sun.color.setHex(weather.sunCol).lerp(_todC.setHex(tod.sunCol), tod.lightMix);
+    hemi.intensity = weather.hemi * tod.hemiMul;
+    hemi.color.setHex(tod.hemiSky);
+    hemi.groundColor.setHex(tod.hemiGround);
+    backFill.intensity = weather.back * tod.backMul;
+    renderer.toneMappingExposure = weather.expo * tod.expo;
+    if (skyCtl.sunSpr) {
+      const spr = skyCtl.sunSpr;
+      spr.material.opacity = weather.sunSprite * tod.spriteMul;
+      spr.material.color.setHex(tod.sprite);
+      spr.position.copy(SUN_DIR).multiplyScalar(12500);
+      spr.scale.setScalar(2400 * tod.spriteScale);
+    }
+    // Stars: only ever visible through a sky that isn't overcast, so a storm
+    // night is starless (and the cost is skipped entirely by day).
+    if (skyCtl.stars) {
+      const starAmt = tod.stars * (n === 'storm' ? 0 : (n === 'cloudy' ? 0.35 : 1));
+      skyCtl.stars.visible = starAmt > 0.01;
+      skyCtl.stars.material.opacity = starAmt;
+    }
+    // The city's windows come on after dark.
+    for (const m of cityFacadeMats) m.emissiveIntensity = tod.glow;
     // sea + ground
     applyWaterWeather(weather);
+    applySwellLight();
     applyWetGround(weather.wet);
     // rain / lightning / heavy seas churn only in a live storm
     rain.visible = n === 'storm';
@@ -1640,7 +1822,8 @@ gl_Position = projectionMatrix * mvPosition;
     }
   }
 
-  // ---- Weather picker (free-flight screen; remembered). ----
+  // ---- Weather + time-of-day pickers (free-flight screen; both remembered).
+  //      They only record the preference — respawnBase is what applies it. ----
   function setWeatherPref(name) {
     if (!validWeather(name)) return;
     weatherName = name;
@@ -1648,6 +1831,13 @@ gl_Position = projectionMatrix * mvPosition;
     markPick('weather', name);
   }
   onPick('weather', setWeatherPref);
+  function setTodPref(name) {
+    if (!validTod(name)) return;
+    todName = name;
+    try { localStorage.setItem('ps-tod', name); } catch (_) { /* private mode */ }
+    markPick('tod', name);
+  }
+  onPick('tod', setTodPref);
 
   // ---- World border: Minecraft-style translucent cyan walls, with a scrolling
   //      vertical-stripe texture so the boundary is unmistakable. ----
@@ -4027,9 +4217,10 @@ gl_Position = projectionMatrix * mvPosition;
     resetPlane();
     vel.set(0, 0, 0);
     throttle = 0;
-    // Weather is free-flight only: a free flight gets the menu pick, every
-    // other mode funnels back to a clear day.
-    applyWeather(gameMode === 'free' ? weatherName : 'sunny');
+    // Weather and time of day are free-flight only: a free flight gets the
+    // menu picks, every other mode funnels back to a clear midday.
+    if (gameMode === 'free') applyWeather(weatherName, todName);
+    else applyWeather('sunny', 'midday');
     crashed = false;
     won = false;
     onGround = true;
@@ -4699,7 +4890,7 @@ gl_Position = projectionMatrix * mvPosition;
   // Hangar turntable: a slow orbit around the fighter parked on the runway,
   // never sinking into the apron. Replaces the chase rig while a menu is up.
   function menuCamera(dt) {
-    sun.position.copy(plane.position).addScaledVector(SUN_DIR, 170);
+    sun.position.copy(plane.position).addScaledVector(SHADOW_DIR, 170);
     sun.target.position.copy(plane.position);
     sun.target.updateMatrixWorld();
     menuAngle += dt * 0.12;
@@ -4722,7 +4913,7 @@ gl_Position = projectionMatrix * mvPosition;
   function updateCamera(dt) {
     // Keep the sun's shadow frustum centred on the aircraft — it's a small ortho
     // box, so shadows stay crisp wherever you fly across the map.
-    sun.position.copy(plane.position).addScaledVector(SUN_DIR, 170);
+    sun.position.copy(plane.position).addScaledVector(SHADOW_DIR, 170);
     sun.target.position.copy(plane.position);
     sun.target.updateMatrixWorld();
 
@@ -4783,6 +4974,7 @@ gl_Position = projectionMatrix * mvPosition;
   syncUnitUI(); // sync the unit-picker highlights
   syncPlaneUI(); // sync the aircraft picker highlight + description + HUD label
   setWeatherPref(weatherName); // sync the weather-picker highlight (free-flight screen)
+  setTodPref(todName); // sync the time-of-day picker highlight (free-flight screen)
   syncModeHUD(); // hide the tutorial/stunt panels until their mode is live
   applyWorld(mapName); // show the remembered world (city/ocean/coastal) from the first frame
   markPick('map', mapName, 'ps-active');
@@ -4918,8 +5110,14 @@ gl_Position = projectionMatrix * mvPosition;
     // live (any mode — tooling/screenshots). Normal play only applies the
     // picker choice to free flight, via respawnBase.
     weather(n) {
-      if (n) { setWeatherPref(n); applyWeather(n); }
+      if (n) { setWeatherPref(n); applyWeather(n, todName); }
       return weatherName;
+    },
+    // Time-of-day dev handle, same contract as weather(): tod() reads,
+    // tod('night') forces the hour live in any mode.
+    tod(n) {
+      if (n) { setTodPref(n); applyWeather(weatherName, n); }
+      return todName;
     },
     // Storm-swell handle: swell() reads the current 0..1 amplitude, swell(v)
     // forces it (the weather ramp needs real frames, which a throttled preview

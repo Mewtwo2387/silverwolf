@@ -840,13 +840,22 @@ export function PlaneSimPage(opts: {
             <div class="ps-tile-ico">🏙️</div>
             <div><p class="ps-map-name">The City</p><p class="ps-map-desc">The island airfield and the 1940s skyline, all to yourself. Mind the towers — they're solid.</p></div>
           </div>
+          <div class="ps-diff-row" id="ps-tod-row">
+            <span class="ps-diff-lbl">Time of day</span>
+            <button type="button" class="ps-diff-btn" data-tod="dawn">🌅 Dawn</button>
+            <button type="button" class="ps-diff-btn" data-tod="morning">🌄 Morning</button>
+            <button type="button" class="ps-diff-btn" data-tod="midday">☀ Midday</button>
+            <button type="button" class="ps-diff-btn" data-tod="golden">🌇 Golden Hour</button>
+            <button type="button" class="ps-diff-btn" data-tod="dusk">🌆 Dusk</button>
+            <button type="button" class="ps-diff-btn" data-tod="night">🌙 Night</button>
+          </div>
           <div class="ps-diff-row" id="ps-weather-row">
             <span class="ps-diff-lbl">Weather</span>
             <button type="button" class="ps-diff-btn" data-weather="sunny">☀ Sunny</button>
             <button type="button" class="ps-diff-btn" data-weather="cloudy">☁ Cloudy</button>
             <button type="button" class="ps-diff-btn" data-weather="storm">⛈ Thunderstorms</button>
           </div>
-          <p class="ps-hint">Pick the weather, then a map. Thunderstorms bring gusty crosswinds, turbulence, rain and lightning — and heavy seas out on the ocean.</p>
+          <p class="ps-hint">Set the hour and the weather, then pick a map — they combine. The sun climbs from a low dawn to overhead at midday and rakes back down through the golden hour into dusk; after dark the stars come out, the moon takes over and the city lights up. Thunderstorms bring gusty crosswinds, turbulence, rain and lightning — and heavy seas out on the ocean.</p>
           <div class="ps-menu-row">
             <button type="button" class="ps-back-btn" data-menuback>‹ Modes</button>
           </div>

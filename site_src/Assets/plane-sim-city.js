@@ -106,6 +106,16 @@ function createFacadeMaterial(style, variant) {
   cRough.width = cRough.height = S;
   const ctxRough = cRough.getContext('2d');
 
+  // Night glow (emissiveMap): black except the windows that are lit after
+  // dark. Held at emissiveIntensity 0 by day and raised by the sim's
+  // time-of-day system, so the skyline lights up at dusk for free — no extra
+  // draw calls, no extra lights.
+  const cGlow = document.createElement('canvas');
+  cGlow.width = cGlow.height = S;
+  const ctxGlow = cGlow.getContext('2d');
+  ctxGlow.fillStyle = '#000';
+  ctxGlow.fillRect(0, 0, S, S);
+
   const cfg = {
     brick: [
       { // Variant 0: Classic Red Brick
@@ -305,6 +315,7 @@ function createFacadeMaterial(style, variant) {
   }
 
   // Draw Windows
+  const styleSeed = ['stone', 'deco', 'brick', 'brownstone'].indexOf(style) + 1;
   const cols = 3; const rows = 3;
   const cw = S / cols; const rh = S / rows;
   const wpad = (style === 'brick' || style === 'brownstone') ? cw * 0.30 : cw * 0.22;
@@ -341,6 +352,21 @@ function createFacadeMaterial(style, variant) {
       const wId = (r + col * 2) % 6;
       const isLit = wId === 0;
       const isBlind = wId === 1 || wId === 4;
+      // After dark more windows are on than the daylight texture shows, and
+      // WHICH ones is hashed per style/variant so the skyline doesn't light up
+      // in one repeated column. Each lamp gets its own brightness too — a
+      // binary on/off grid reads as pixel art, an uneven one reads as a city.
+      // A blind still glows, dimmer, through the slats.
+      const wHash = (((r * 73856093) ^ (col * 19349663) ^ (variant * 83492791) ^ (styleSeed * 2654435761)) >>> 0);
+      if (isLit || (wHash % 100) < 32) {
+        const gl = ctxGlow.createLinearGradient(gx0, gy0, gx0, gy1);
+        gl.addColorStop(0, isLit ? '#fff0d2' : '#e8c98c');
+        gl.addColorStop(1, cfg.winLit);
+        ctxGlow.globalAlpha = (isBlind ? 0.4 : 1) * (0.45 + 0.55 * (((wHash >>> 9) % 100) / 100));
+        ctxGlow.fillStyle = gl;
+        ctxGlow.fillRect(gx0, gy0, gw, gh);
+        ctxGlow.globalAlpha = 1;
+      }
 
       if (isLit) {
         const g = ctx.createLinearGradient(gx0, gy0, gx0, gy1);
@@ -468,6 +494,11 @@ function createFacadeMaterial(style, variant) {
   roughTex.wrapS = roughTex.wrapT = THREE.RepeatWrapping;
   roughTex.anisotropy = GFX.aniso;
 
+  const glowTex = new THREE.CanvasTexture(cGlow);
+  glowTex.colorSpace = THREE.SRGBColorSpace;
+  glowTex.wrapS = glowTex.wrapT = THREE.RepeatWrapping;
+  glowTex.anisotropy = GFX.aniso;
+
   return new THREE.MeshStandardMaterial({
     map: mapTex,
     bumpMap: bumpTex,
@@ -476,6 +507,11 @@ function createFacadeMaterial(style, variant) {
     roughness: 1.0,
     metalness: 0.1,
     vertexColors: true,
+    // Lit windows after dark. Off by day — the sim raises emissiveIntensity
+    // with the time of day (see applyConditions in plane-sim.src.js).
+    emissiveMap: glowTex,
+    emissive: 0xffffff,
+    emissiveIntensity: 0,
   });
 }
 
@@ -1430,5 +1466,6 @@ export function buildCity() {
     groundAt,
     inCity: inCityXZ,
     groundMats: [streetMat, grassFieldMat], // wetted by the storm weather system
+    facadeMats: Object.values(facadeMaterials), // window glow, raised after dark
   };
 }
