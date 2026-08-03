@@ -39,7 +39,7 @@ import { scatterVegetation, buildCoast } from './plane-sim-scatter.js';
 import { createFx } from './plane-sim-fx.js';
 import { STUNTS } from './plane-sim-courses.js';
 import {
-  buildWaves, sampleHeight, waveUniforms, WAVE_GLSL,
+  buildWaves, sampleHeight, waveUniforms, WAVE_GLSL, MAX_WAVES,
 } from './wave-field.js';
 
 (() => {
@@ -756,8 +756,17 @@ gl_Position = projectionMatrix * mvPosition;
   // fraction, so large swells visibly tower around and roll past the ship.
   const SHIP_FOLLOW = 0.5;
   const SWELL_SNAP = 8; // recentre on one cell so the tessellation stays world-aligned
-  const SWELL_PATCH = 1600; const SWELL_SEG = 200; // 8 m cells
-  const SWELL_HALF = SWELL_PATCH / 2;
+  // The patch is a DISC, not a square — a square rim is a straight line on the
+  // horizon and the eye finds it instantly, while a circle has no corner to
+  // catch on and its rim is the same distance away whichever way you look. It
+  // reaches all the way out to the fog, so the sea you can see is all patch and
+  // the flat far sheet only exists behind the haze.
+  const SWELL_R = GFX.fogFar * 1.05;
+  // Rings are spaced r = R * t^POW, so cells are metres wide under the aircraft
+  // and stretch out toward the rim where a cell is a pixel or two anyway.
+  const SWELL_POW = 2.2;
+  const SWELL_RINGS = Math.round(210 * GFX.segScale);
+  const SWELL_SPOKES = Math.round(224 * GFX.segScale);
   let swellWaves = buildWaves({ ...SEA_STATES.ocean, windDeg: 40 });
   let swellAmpSum = 1;
   let swellAmp = 0; // current 0..1 (lerped toward the target set by applyWeather)
@@ -766,8 +775,9 @@ gl_Position = projectionMatrix * mvPosition;
   let swellSeaKey = '';
   // The patch settles to flat over its outer rim so it meets the far sea without
   // a step; the CPU side applies the SAME taper so a ship near the rim rocks by
-  // exactly as much as the water under it actually moves.
-  const swellFade = (x, z, cx, cz) => 1 - smoothstep(0.80, 0.995, Math.max(Math.abs(x - cx), Math.abs(z - cz)) / SWELL_HALF);
+  // exactly as much as the water under it actually moves. The band is a thin
+  // 6% of the radius because the rim now sits past the fog — nobody sees it.
+  const swellFade = (x, z, cx, cz) => 1 - smoothstep(0.94, 1, Math.hypot(x - cx, z - cz) / SWELL_R);
   let swellCx = 0; let swellCz = 0; // current patch centre
   let swellWavesLong = swellWaves; // the long trains only — what a big hull responds to
   function swellHeight(x, z) {
@@ -778,16 +788,84 @@ gl_Position = projectionMatrix * mvPosition;
   function swellHeightLong(x, z) {
     return sampleHeight(swellWavesLong, x, z, swellT) * swellAmp * swellFade(x, z, swellCx, swellCz);
   }
+  // A radially-graded disc in the XZ plane: one centre vertex, then `rings`
+  // rings of `spokes` vertices at r = R * (i/rings)^POW. The power law is what
+  // buys the range — the same vertex budget that used to cover 800 m of square
+  // now reaches kilometres, because a ring out near the rim is allowed to be
+  // 100 m wide while the ones under the aircraft stay a couple of metres.
+  function buildSwellDisc(radius, rings, spokes, power) {
+    const pos = new Float32Array((rings * spokes + 1) * 3); // centre + rings
+    let v = 3; // [0,0,0] centre is already zeroed
+    for (let i = 1; i <= rings; i++) {
+      const r = radius * ((i / rings) ** power);
+      for (let s = 0; s < spokes; s++) {
+        const a = (s / spokes) * Math.PI * 2;
+        pos[v] = Math.cos(a) * r; pos[v + 2] = Math.sin(a) * r; v += 3;
+      }
+    }
+    const idx = [];
+    for (let s = 0; s < spokes; s++) idx.push(0, 1 + ((s + 1) % spokes), 1 + s);
+    for (let i = 1; i < rings; i++) {
+      const a0 = 1 + (i - 1) * spokes; const b0 = 1 + i * spokes;
+      for (let s = 0; s < spokes; s++) {
+        const s1 = (s + 1) % spokes;
+        idx.push(a0 + s, b0 + s1, b0 + s, a0 + s, a0 + s1, b0 + s1);
+      }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setIndex(idx);
+    return g;
+  }
+  // The same Gerstner sum as wave-field.js, but each train is faded out once its
+  // wavelength drops under a few screen pixels. Two things fall out of that:
+  // the far sea stops shimmering (undersampled crests alias horribly), and —
+  // because this runs per FRAGMENT as well as per vertex — the shading keeps
+  // full wave detail no matter how coarse the triangles under it get. That is
+  // what removes the visible "detail ends here" ring: the geometry LOD still
+  // happens, it just isn't something you can see.
+  const WAVE_LOD_GLSL = /* glsl */`
+    void gerstnerLod(vec2 p0, float px, out vec3 disp, out vec3 nrm) {
+      disp = vec3(0.0);
+      vec3 n = vec3(0.0, 1.0, 0.0);
+      for (int i = 0; i < ${MAX_WAVES}; i++) {
+        if (i >= uWaveCount) break;
+        vec4 a = uWaveA[i];
+        vec2 b = uWaveB[i];
+        vec2 d = a.xy;
+        float k = a.z, amp = a.w, omega = b.x, qa = b.y;
+        // Keep a train while its wavelength spans >6 px; drop it under 2 px.
+        float w = smoothstep(px * 2.0, px * 6.0, 6.28318530718 / k);
+        if (w <= 0.0) continue;
+        float ph = k * dot(d, p0) - omega * uWaveTime;
+        float c = cos(ph) * w, s = sin(ph) * w;
+        disp.xz += qa * d * c;
+        disp.y  += amp * s;
+        float wa = k * amp;
+        n.x -= d.x * wa * c;
+        n.z -= d.y * wa * c;
+        n.y -= qa * k * s;
+      }
+      nrm = normalize(n);
+    }`;
   let stormSwell = null;
   (function buildStormSwell() {
-    const geo = new THREE.PlaneGeometry(SWELL_PATCH, SWELL_PATCH, SWELL_SEG, SWELL_SEG);
-    geo.rotateX(-Math.PI / 2); // lie flat in XZ, displace along +Y
+    const geo = buildSwellDisc(SWELL_R, SWELL_RINGS, SWELL_SPOKES, SWELL_POW);
     const uniforms = waveUniforms(swellWaves);
     Object.assign(uniforms, {
       uWaveTime: { value: 0 },
       uAmp: { value: 0 },
       uAmpSum: { value: 1 },
-      uPatchHalf: { value: SWELL_HALF },
+      // Whitecaps key off the NORMALISED crest height, which knows nothing
+      // about how big the sea actually is — left ungated, the city's 0.5 m
+      // harbour chop broke into as much foam as a 2.4 m ocean swell, and over
+      // the new range that read as a regular field of dots. Gate it on the
+      // absolute wave height instead: only a sea with real waves gets foam.
+      uFoamGain: { value: 1 },
+      uPatchR: { value: SWELL_R },
+      // Metres covered by one screen pixel per metre of view depth — the wave
+      // LOD's yardstick. Refreshed with the camera FOV / drawing buffer.
+      uPixM: { value: 0.001 },
       uCenter: { value: new THREE.Vector2(0, 0) },
       uColor: { value: new THREE.Color(0x16323d) },
       uFoam: { value: new THREE.Color(0xbfccd4) },
@@ -810,38 +888,59 @@ gl_Position = projectionMatrix * mvPosition;
       // should be in front of (it renders as big flat dark holes).
       vertexShader: `
         ${WAVE_GLSL}
+        ${WAVE_LOD_GLSL}
         #include <common>
         #include <logdepthbuf_pars_vertex>
-        uniform float uAmp, uAmpSum, uPatchHalf; uniform vec2 uCenter;
-        varying float vHN; varying vec3 vN; varying float vViewZ;
+        uniform float uAmp, uPatchR, uPixM; uniform vec2 uCenter;
+        varying vec2 vP0; varying float vFade; varying float vViewZ;
         void main(){
           vec3 p = position;
+          vec2 p0 = p.xz + uCenter;
+          // LOD cutoff from the UNdisplaced depth: a couple of metres of wave
+          // height can't meaningfully change which trains are resolvable.
+          float px = max(0.0, -(modelViewMatrix * vec4(p, 1.0)).z) * uPixM;
+          float fade = (1.0 - smoothstep(0.94, 1.0, length(p.xz) / uPatchR)) * uAmp;
           vec3 d; vec3 n;
-          gerstner(p.xz + uCenter, d, n);
-          float m = max(abs(p.x), abs(p.z)) / uPatchHalf;
-          float fade = (1.0 - smoothstep(0.80, 0.995, m)) * uAmp;
-          d *= fade;
-          vN = normalize(mix(vec3(0.0, 1.0, 0.0), n, fade));
-          p += d;
-          vHN = d.y / max(0.001, uAmpSum * max(uAmp, 0.001));
+          gerstnerLod(p0, px, d, n);
+          p += d * fade;
+          vP0 = p0; vFade = fade;
           vec4 mv = modelViewMatrix * vec4(p, 1.0); vViewZ = -mv.z;
           gl_Position = projectionMatrix * mv;
           #include <logdepthbuf_vertex>
         }`,
+      // NOTE the trailing tonemapping/colorspace chunks: three appends those to
+      // every built-in material but NOT to a hand-written one, and raw linear
+      // output reads MUCH darker than the rest of the scene — that mismatch is
+      // exactly what drew a hard square of "different water" around the player.
+      // (Only the `_fragment` halves belong here; the `_pars_` declarations are
+      // already in the ShaderMaterial prefix and redeclaring them fails to
+      // compile.)
       fragmentShader: `
+        ${WAVE_GLSL}
+        ${WAVE_LOD_GLSL}
         #include <common>
         #include <logdepthbuf_pars_fragment>
-        uniform vec3 uColor, uFoam, uSun, uSunCol, uAmb, uFogCol; uniform float uFogNear, uFogFar;
-        varying float vHN; varying vec3 vN; varying float vViewZ;
+        uniform vec3 uColor, uFoam, uSun, uSunCol, uAmb, uFogCol;
+        uniform float uFogNear, uFogFar, uAmp, uAmpSum, uPixM, uFoamGain;
+        varying vec2 vP0; varying float vFade; varying float vViewZ;
         void main(){
           #include <logdepthbuf_fragment>
-          float diff = max(dot(normalize(vN), normalize(uSun)), 0.0);
+          // Re-evaluate the wave field per pixel. The triangles out here may be
+          // 100 m across, but the shading is computed at full resolution, so the
+          // sea keeps its texture and whitecaps right out to the fog.
+          vec3 d; vec3 n;
+          gerstnerLod(vP0, vViewZ * uPixM, d, n);
+          vec3 nrm = normalize(mix(vec3(0.0, 1.0, 0.0), n, vFade));
+          float hN = (d.y * vFade) / max(0.001, uAmpSum * max(uAmp, 0.001));
+          float diff = max(dot(nrm, normalize(uSun)), 0.0);
           vec3 col = uColor * (uAmb + uSunCol * diff * 1.35);
-          col *= 0.5 + 0.95 * (vHN * 0.5 + 0.5); // trough-dark / crest-lit, so the swell reads from the air
+          col *= 0.5 + 0.95 * (hN * 0.5 + 0.5); // trough-dark / crest-lit, so the swell reads from the air
           // Whitecaps only on the genuinely tall crests — never a sheet of white.
-          col = mix(col, uFoam, smoothstep(0.62, 0.95, vHN) * 0.75);
+          col = mix(col, uFoam, smoothstep(0.62, 0.95, hN) * 0.75 * uFoamGain);
           float fog = clamp((vViewZ - uFogNear) / (uFogFar - uFogNear), 0.0, 1.0);
           gl_FragColor = vec4(mix(col, uFogCol, fog), 1.0);
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
         }`,
     });
     const mesh = new THREE.Mesh(geo, mat);
@@ -850,27 +949,35 @@ gl_Position = projectionMatrix * mvPosition;
     mesh.visible = false;
     scene.add(mesh);
 
-    // Far sea: mean-level water from the patch rim out past the fog, as a sheet
-    // with a hole exactly where the patch is, so it can never underlie (and
-    // punch through) the waves. Rides along with the patch.
-    const FAR = 26000; const hole = SWELL_HALF - 1;
+    // Far sea: mean-level water from the patch rim out to the camera's far
+    // plane, as a sheet with a ROUND hole exactly where the patch is, so it can
+    // never underlie (and punch through) the waves. Rides along with the patch.
+    // With the patch now reaching past the fog this is a backstop, not scenery:
+    // every pixel of it is fully hazed.
+    const FAR = 25500; // inside the camera's 26 km far plane
+    const hole = SWELL_R * 0.995; // inside the rim polygon, where the taper is flat
     const shape = new THREE.Shape();
     shape.moveTo(-FAR, -FAR); shape.lineTo(FAR, -FAR); shape.lineTo(FAR, FAR); shape.lineTo(-FAR, FAR);
     shape.closePath();
     const cut = new THREE.Path();
-    cut.moveTo(-hole, -hole); cut.lineTo(-hole, hole); cut.lineTo(hole, hole); cut.lineTo(hole, -hole);
-    cut.closePath();
+    cut.absarc(0, 0, hole, 0, Math.PI * 2, true); // clockwise = a hole in a CCW shape
     shape.holes.push(cut);
-    const farGeo = new THREE.ShapeGeometry(shape);
+    const farGeo = new THREE.ShapeGeometry(shape, SWELL_SPOKES);
     farGeo.rotateX(-Math.PI / 2);
-    const farMat = new THREE.MeshBasicMaterial({ color: 0x16323d, fog: true });
-    const farMesh = new THREE.Mesh(farGeo, farMat);
+    // It shares the PATCH's material rather than carrying a flat colour of its
+    // own. Out here `length(p.xz) / uPatchR >= 0.995`, so the taper has already
+    // driven the displacement to nothing and the shader reduces to flat lit
+    // water — the sheet is the patch's own rim shading, continued. That makes
+    // the seam exactly zero by construction instead of by two formulas that
+    // have to be kept in step (they weren't: the flat sheet used to be handed
+    // the raw unlit body colour, which is what drew the visible boundary).
+    const farMesh = new THREE.Mesh(farGeo, mat);
     farMesh.position.y = TERRAIN.WATER_Y - 0.06; // just under the flat rim: no z-fighting
     farMesh.frustumCulled = false;
     farMesh.visible = false;
     scene.add(farMesh);
 
-    stormSwell = { mesh, uniforms, farMesh, farMat };
+    stormSwell = { mesh, uniforms, farMesh };
   }());
   // Rebuild the wave trains when the map (or the flight's wind heading) changes.
   // Held stable across a flight so the sea doesn't visibly swing direction.
@@ -883,6 +990,8 @@ gl_Position = projectionMatrix * mvPosition;
     swellAmpSum = 0;
     for (const w of swellWaves) swellAmpSum += w.amp;
     stormSwell.uniforms.uAmpSum.value = Math.max(0.001, swellAmpSum);
+    // ~1 m of summed amplitude is ripple, ~3 m is a sea that breaks.
+    stormSwell.uniforms.uFoamGain.value = smoothstep(1.2, 3.0, swellAmpSum);
   }
   // Per-frame swell tick (runs every frame via stepWeather so it ramps in/out
   // smoothly): advance the wave clock, ramp amplitude, drive the mesh uniforms,
@@ -914,7 +1023,11 @@ gl_Position = projectionMatrix * mvPosition;
       stormSwell.uniforms.uFogCol.value.setHex(scene.fog.color.getHex());
       stormSwell.uniforms.uFogNear.value = scene.fog.near;
       stormSwell.uniforms.uFogFar.value = scene.fog.far;
-      stormSwell.farMat.color.copy(stormSwell.uniforms.uColor.value);
+      // Metres per pixel per metre of depth: the vertical FOV in radians over
+      // the drawing-buffer height. Re-read every frame because the camera zooms
+      // and the canvas resizes.
+      const bufH = renderer.getContext().drawingBufferHeight || 1;
+      stormSwell.uniforms.uPixM.value = (2 * Math.tan((camera.fov * Math.PI) / 360)) / bufH;
     } else {
       swellSeaKey = '';
     }
