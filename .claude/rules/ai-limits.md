@@ -14,7 +14,7 @@ paths:
 Per-user fixed windows (`DAILY_LIMIT` / `WEEKLY_LIMIT` in `utils/ai.ts`) metered in **credits**, not
 raw tokens:
 
-```
+```text
 credits = tok_in × mult_in + tok_out × mult_out
 ```
 

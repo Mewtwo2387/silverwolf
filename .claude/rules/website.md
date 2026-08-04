@@ -34,8 +34,10 @@ CSS: edit `Assets/input.css`, run `build:css` → minified `styles.css`. Client 
 `Assets/app.src.js`, run `build:js` → bundled `app.js`. Both are served `immutable,
 max-age=31536000` and cache-busted by content hash (`asset-version.ts`, `?v=<hash>`).
 
-> `Assets/*.js` build **outputs** are lint-ignored and generated — edit the `.src.js` source, not
-> the bundle. A green build does not prove the bundle works; check for undefined globals.
+> `Assets/app.js` and `Assets/styles.css` are generated — edit `app.src.js` / `input.css`, never
+> the bundle. Note that **all** of `site_src/Assets/` is lint-ignored (`.eslintrc.json`
+> `ignorePatterns`), so `app.src.js` is unlinted source too: nothing catches a typo there. A green
+> build does not prove the bundle works; check for undefined globals.
 
 Fonts are self-hosted woff2 (`font-src 'self'`, `font-display: swap`). Search index ships as a JSON
 `<script>` data-island; renders coalesce per animation frame; below-fold images lazy-load.
