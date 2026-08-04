@@ -3,11 +3,13 @@ import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import { assetVersion, assetVersionMap } from '../../asset-version';
 import { inlineJSON } from '../../inline';
+import { MODEL_CREDITS } from './plane-credits';
 
 // Plane Sim — Model Inspector. A standalone turntable viewer for the Plane Sim
 // 3D assets (the aircraft + scenery), so the models can be examined and iterated
-// on outside the game and exported (.glb/.obj/.png) for tools like Blender. The
-// 3D lives in the bundled site_src/Assets/plane-viewer.js, which imports the
+// on outside the game. Viewing only — there is no model export/download, since
+// the airframes follow third-party references credited in the panel (see
+// plane-credits.ts). The 3D lives in the bundled site_src/Assets/plane-viewer.js, which imports the
 // same shared builders the game uses (plane-sim-models.js).
 const PLANE_VIEWER_JS = path.resolve(import.meta.dir, '..', '..', 'Assets', 'plane-viewer.js');
 const PLANES_DIR = path.resolve(import.meta.dir, '..', '..', 'Assets', 'planes');
@@ -66,14 +68,21 @@ export function PlaneViewerPage(opts: {
   .pv-slider .pv-sl-top { display: flex; justify-content: space-between; font-size: 0.72rem; }
   .pv-slider input[type=range] { width: 100%; accent-color: var(--accent, #22d3ff); }
 
-  .pv-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem; }
-  .pv-btns button, .pv-wide {
+  .pv-wide {
     padding: 0.42rem 0.4rem; font: inherit; font-size: 0.76rem; cursor: pointer;
     color: var(--fog-100, #eef4f7); background: color-mix(in oklab, var(--accent, #22d3ff) 14%, transparent);
     border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 35%, transparent); border-radius: 0.4rem; transition: all 0.15s;
   }
-  .pv-btns button:hover, .pv-wide:hover { background: color-mix(in oklab, var(--accent, #22d3ff) 26%, transparent); border-color: var(--accent, #22d3ff); }
+  .pv-wide:hover { background: color-mix(in oklab, var(--accent, #22d3ff) 26%, transparent); border-color: var(--accent, #22d3ff); }
   .pv-wide { width: 100%; margin-top: 0.35rem; }
+
+  /* Credits: attribution for the third-party model references (plane-credits.ts). */
+  .pv-credits { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+  .pv-credits li { display: flex; flex-direction: column; line-height: 1.3; }
+  .pv-credits a { color: var(--accent-light, #7fdfff); font-size: 0.74rem; text-decoration: none; }
+  .pv-credits a:hover { text-decoration: underline; }
+  .pv-credits span { font-size: 0.64rem; color: var(--fog-400, #8aa0ad); }
+  .pv-credit-note { margin: 0.55rem 0 0; font-size: 0.62rem; line-height: 1.4; color: var(--fog-400, #8aa0ad); }
 
   .pv-dims { margin-top: 0.5rem; font-size: 0.7rem; color: var(--accent-light, #7fdfff); }
   .pv-livery-container {
@@ -129,7 +138,7 @@ export function PlaneViewerPage(opts: {
 
       <div class="pv-panel">
         <h1>Model Inspector</h1>
-        <p class="pv-sub">Same models the game flies — inspect &amp; export.</p>
+        <p class="pv-sub">Same models the game flies — inspect them up close.</p>
 
         <div class="pv-group">
           <div class="pv-h">Model</div>
@@ -194,13 +203,20 @@ export function PlaneViewerPage(opts: {
         </div>
 
         <div class="pv-group">
-          <div class="pv-h">Export</div>
-          <div class="pv-btns">
-            <button type="button" id="pv-glb">.glb</button>
-            <button type="button" id="pv-obj">.obj</button>
-            <button type="button" id="pv-png">.png</button>
-            <button type="button" id="pv-reset">Reset</button>
-          </div>
+          <button type="button" class="pv-wide" id="pv-reset">Reset</button>
+        </div>
+
+        <div class="pv-group">
+          <div class="pv-h">Credits</div>
+          <ul class="pv-credits">
+            ${MODEL_CREDITS.map((c) => html`
+              <li>
+                <a href="${c.url}" target="_blank" rel="noopener noreferrer nofollow">${c.title}</a>
+                <span>by ${c.author} · ${c.license}</span>
+              </li>
+            `)}
+          </ul>
+          <p class="pv-credit-note">Aircraft modelled after these Sketchfab references.</p>
         </div>
       </div>
 

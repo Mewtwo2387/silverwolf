@@ -3,6 +3,7 @@ import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import { assetVersion, assetVersionMap } from '../../asset-version';
 import { inlineJSON } from '../../inline';
+import { MODEL_CREDITS } from './plane-credits';
 
 // Plane Sim — a fullscreen Three.js flight simulator (a Spitfire-ish prop
 // fighter). The heavy lifting lives in the self-hosted, bundled
@@ -505,6 +506,24 @@ export function PlaneSimPage(opts: {
     border-color: var(--ps-edge);
   }
   .ps-tabpane { min-height: 12.5rem; }
+
+  /* ---- Credits tab: attribution for the aircraft references (plane-credits.ts). ---- */
+  .ps-credits {
+    list-style: none; margin: 0.6rem 0 0; padding: 0; text-align: left;
+    display: flex; flex-direction: column; gap: 0.5rem;
+  }
+  .ps-credits li {
+    display: grid; grid-template-columns: 5.5rem 1fr; align-items: baseline; gap: 0.1rem 0.7rem;
+    padding-bottom: 0.45rem; border-bottom: 1px solid var(--ps-edge-soft);
+  }
+  .ps-credits li:last-child { border-bottom: none; padding-bottom: 0; }
+  .ps-credit-plane {
+    grid-row: span 2; font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ps-brass); text-align: right;
+  }
+  .ps-credits a { font-size: 0.82rem; font-weight: 700; color: var(--ps-parch); text-decoration: none; }
+  .ps-credits a:hover { color: var(--ps-brass-hi); text-decoration: underline; }
+  .ps-credit-by { font-size: 0.66rem; color: var(--ps-parch-dim); }
   #ps-pause .ps-card { max-height: 94vh; overflow-y: auto; }
 
   /* ---- Achievements tab ---- */
@@ -973,6 +992,7 @@ export function PlaneSimPage(opts: {
             <button type="button" class="ps-tab" data-tab="achievements" role="tab" aria-label="Achievements">🏆 <span class="ps-tab-txt">Medals</span></button>
             <button type="button" class="ps-tab ps-tab-active" data-tab="general" role="tab">General</button>
             <button type="button" class="ps-tab" data-tab="graphics" role="tab">Graphics</button>
+            <button type="button" class="ps-tab" data-tab="credits" role="tab">Credits</button>
           </div>
           <div class="ps-tabpane" data-pane="achievements" style="display:none">
             <div id="ps-ach-body" class="ps-ach-body"></div>
@@ -1017,6 +1037,18 @@ export function PlaneSimPage(opts: {
               <button type="button" class="ps-diff-btn" data-gfx="ultra">Ultra</button>
             </div>
             <p class="ps-hint" id="ps-gfx-hint">Low halves texture and terrain detail and drops shadows. High sharpens shadows and adds richer trees and lighting. Ultra maxes everything and adds reflective waves and real grass — needs a beefy GPU. Changing it reloads the sim.</p>
+          </div>
+          <div class="ps-tabpane" data-pane="credits" style="display:none">
+            <p class="ps-hint">The aircraft you fly are modelled after these reference models — thanks to their authors.</p>
+            <ul class="ps-credits">
+              ${MODEL_CREDITS.map((c) => html`
+                <li>
+                  <span class="ps-credit-plane">${c.plane}</span>
+                  <a href="${c.url}" target="_blank" rel="noopener noreferrer nofollow">${c.title}</a>
+                  <span class="ps-credit-by">${c.author} · ${c.license}</span>
+                </li>
+              `)}
+            </ul>
           </div>
           <div class="ps-menu-row">
             <button type="button" class="ps-back-btn" data-hangar>‹ Hangar</button>

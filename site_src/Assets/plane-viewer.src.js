@@ -2,14 +2,13 @@
 // assets, so the models can be examined and iterated on outside the game. It
 // imports the SAME builders the game uses (plane-sim-models.js), so what you see
 // here is exactly what flies. Orbit/zoom/pan, toggle wireframe, deflect the
-// control surfaces, retract the gear, and export the model to .glb / .obj (for
-// Blender or any glTF viewer) or grab a .png screenshot.
+// control surfaces and retract the gear. There is deliberately no model export /
+// download — the airframes are derived from third-party Sketchfab references
+// (see the Credits panel), so the meshes are for viewing here, not redistribution.
 //
 // Bundled to a self-hosted /static/plane-viewer.js (CSP is script-src 'self').
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
-import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
 import {
   buildAircraft, makeTree, makeHangar, makeControlTower, applyControlSurfaces,
   makeWindsock, makeFuelTank, makeBowser, makeNissenHut, PLANE_INFO, planeSpecs,
@@ -38,8 +37,7 @@ import { planeUrl } from './plane-sim-assets.js';
 
   let renderer;
   try {
-    // preserveDrawingBuffer lets us read pixels back for the PNG export.
-    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   } catch (e) {
     const ov = document.getElementById('pv-error');
     if (ov) ov.style.display = 'flex';
@@ -127,7 +125,7 @@ import { planeUrl } from './plane-sim-assets.js';
   controls.target.set(0, 1.5, 0);
 
   // The model hangs under a turntable group so auto-rotate spins it without
-  // touching the model's own transform (keeps exports clean).
+  // touching the model's own transform.
   const turntable = new THREE.Group();
   scene.add(turntable);
 
@@ -136,7 +134,6 @@ import { planeUrl } from './plane-sim-assets.js';
   let currentSurf = null; // control-surface handles (aircraft only)
   let currentPlaneType = null; // airframe key while an aircraft is loaded
   let currentBombs = []; // wing bombs, when the "Wing bombs" toggle is on
-  let modelName = 'model';
   const opts = {
     wire: false, autoRotate: true, spinProp: true, grid: true, bombs: false,
   };
@@ -256,23 +253,23 @@ import { planeUrl } from './plane-sim-assets.js';
       planeType = kind === 'aircraft' ? 'spitfire' : kind;
       const skin = localStorage.getItem(`ps-skin-${planeType}`) || 'original';
       const a = buildAircraft({ type: planeType, gearDown: true, skin });
-      current = a.group; currentSurf = a.surf; modelName = `plane-sim-${planeType}`;
+      current = a.group; currentSurf = a.surf;
     } else if (kind === 'carrier') {
-      current = makeCarrier().group; modelName = 'plane-sim-carrier'; sitOnGround = false;
+      current = makeCarrier().group; sitOnGround = false;
     } else if (kind === 'tree') {
-      current = makeTree(); modelName = 'plane-sim-tree';
+      current = makeTree();
     } else if (kind === 'hangar') {
-      current = makeHangar(); modelName = 'plane-sim-hangar'; sitOnGround = false; // base already at y=0
+      current = makeHangar(); sitOnGround = false; // base already at y=0
     } else if (kind === 'windsock') {
-      current = makeWindsock(); modelName = 'plane-sim-windsock';
+      current = makeWindsock();
     } else if (kind === 'fueltank') {
-      current = makeFuelTank(); modelName = 'plane-sim-fuel-tank'; sitOnGround = false;
+      current = makeFuelTank(); sitOnGround = false;
     } else if (kind === 'bowser') {
-      current = makeBowser(); modelName = 'plane-sim-bowser';
+      current = makeBowser();
     } else if (kind === 'nissen') {
-      current = makeNissenHut(); modelName = 'plane-sim-nissen-hut'; sitOnGround = false;
+      current = makeNissenHut(); sitOnGround = false;
     } else {
-      current = makeControlTower(); modelName = 'plane-sim-control-tower';
+      current = makeControlTower();
     }
     currentPlaneType = planeType;
     renderStats(planeType);
@@ -304,33 +301,6 @@ import { planeUrl } from './plane-sim-assets.js';
     if (panel) panel.style.display = currentSurf ? '' : 'none';
     // Reflect active model button.
     document.querySelectorAll('[data-model]').forEach((b) => b.classList.toggle('active', b.dataset.model === kind));
-  }
-
-  // ---- Exports ----
-  function downloadBlob(data, filename, mime) {
-    const blob = new Blob([data], { type: mime });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click();
-    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1500);
-  }
-  function exportGLB() {
-    if (!current) return;
-    new GLTFExporter().parse(
-      current,
-      (result) => downloadBlob(result, `${modelName}.glb`, 'model/gltf-binary'),
-      (err) => console.error('GLB export failed', err),
-      { binary: true },
-    );
-  }
-  function exportOBJ() {
-    if (!current) return;
-    downloadBlob(new OBJExporter().parse(current), `${modelName}.obj`, 'text/plain');
-  }
-  function exportPNG() {
-    renderer.render(scene, camera); // ensure the buffer is fresh
-    canvas.toBlob((blob) => { if (blob) downloadBlob(blob, `${modelName}.png`, 'image/png'); }, 'image/png');
   }
 
   // ---- UI wiring ----
@@ -378,9 +348,6 @@ import { planeUrl } from './plane-sim-assets.js';
     const active = document.querySelector('[data-model].active');
     load(active ? active.dataset.model : 'aircraft');
   });
-  $('pv-glb')?.addEventListener('click', exportGLB);
-  $('pv-obj')?.addEventListener('click', exportOBJ);
-  $('pv-png')?.addEventListener('click', exportPNG);
   $('pv-bg')?.addEventListener('click', () => {
     bgMode = bgMode === 'dark' ? 'light' : 'dark';
     scene.background = new THREE.Color(BG[bgMode]);
