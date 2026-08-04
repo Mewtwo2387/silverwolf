@@ -103,4 +103,3 @@ Apply everywhere, but read `.claude/rules/website.md` before touching anything p
 - A website crash is caught and logged while the bot continues, so a broken page won't page you via
   a dead bot. Check the logs.
 - `canvas` ^3.2 is a native dep needing system build libs — see the `Dockerfile` before bumping it.
-- `site_src/Assets/` is lint-ignored, and `app.js`/`styles.css` there are build **outputs**.
