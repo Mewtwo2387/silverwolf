@@ -30,6 +30,31 @@ const FONT_MAP: Record<string, { family: string }> = {
 // Numeric index for mention-based quote parameter parsing (font:1, font:2, etc.)
 const FONT_INDEX: string[] = Object.keys(FONT_MAP);
 
+export interface QuoteFlags {
+  background: string;
+  textColor: string | null;
+  profileColor: string;
+  avatarSource: string;
+  fontStyle: string;
+  format: string;
+}
+
+/**
+ * The single source of truth for "no preference given" — used by `quote()`
+ * itself, by the mention-flag resolver, and by what `/quote help` and
+ * `/quote settings` advertise as the default. Keep those in step: `server`
+ * degrades to the global avatar anyway when a member has no server-specific
+ * one, so it is the safe default in a guild context.
+ */
+export const QUOTE_FLAG_DEFAULTS: QuoteFlags = {
+  background: 'black',
+  textColor: null,
+  profileColor: 'normal',
+  avatarSource: 'server',
+  fontStyle: 'sans-serif',
+  format: 'landscape',
+};
+
 interface FontRegistration {
   file: string;
   family: string;
@@ -87,7 +112,7 @@ FONT_REGISTRATIONS.forEach(({
 // ─── Hex Colour Validation ────────────────────────────────────────────────────
 const HEX_RE = /^#?([0-9A-Fa-f]{6})$/;
 
-function validateAndNormaliseHex(hex: string): string {
+export function validateAndNormaliseHex(hex: string): string {
   const match = HEX_RE.exec(hex);
   if (!match) {
     throw new Error(`Invalid hex colour "${hex}". Please use a 6-digit hex value like #FF00AA.`);
@@ -412,6 +437,7 @@ function adjustFontSize(
   _fontSize: number,
   fontFamily: string,
   maxHeight?: number,
+  minFontSize: number = MIN_QUOTE_FONT_SIZE,
 ): number {
   let fontSize = _fontSize;
   const height = maxHeight !== undefined ? maxHeight : 350;
@@ -421,7 +447,7 @@ function adjustFontSize(
   let totalHeight = lines.length * lineHeight;
 
   while (
-    fontSize > MIN_QUOTE_FONT_SIZE
+    fontSize > minFontSize
     && (
       totalHeight > height
       || anyLineExceedsWidth(ctx, lines, fontSize, maxWidth)
@@ -648,10 +674,10 @@ function truncateWithEllipsis(
 
 function resolveAvatarUrl(person: User | APIUser): string {
   if (typeof (person as User).displayAvatarURL === 'function') {
-    return (person as User).displayAvatarURL({ extension: 'png', size: 512 });
+    return (person as User).displayAvatarURL({ extension: 'png', size: 1024 });
   }
   if (person.avatar) {
-    return `https://cdn.discordapp.com/avatars/${person.id}/${person.avatar}.png?size=512`;
+    return `https://cdn.discordapp.com/avatars/${person.id}/${person.avatar}.png?size=1024`;
   }
   // eslint-disable-next-line no-bitwise, node/no-unsupported-features/es-builtins
   const defaultIndex = (BigInt(person.id) >> 22n) % 6n;
@@ -684,8 +710,15 @@ async function renderVerticalQuote(input: VerticalQuoteInput): Promise<Buffer> {
   const HEIGHT = 800;
   const AVATAR_SIZE = 640; // full-width square at the top
   const MAX_TEXT_WIDTH = 560;
-  const MAX_TEXT_HEIGHT = 250;
-  const CONTENT_BOTTOM = 760; // baseline the content block sits above
+  // The content block is bottom-anchored and grows upwards, so these two caps
+  // are what keep a long quote from swallowing the avatar: the text can never
+  // be taller than MAX_TEXT_HEIGHT (it gets truncated instead), and the block
+  // as a whole never starts above CONTENT_TOP_MIN.
+  const MAX_TEXT_HEIGHT = 170;
+  const CONTENT_BOTTOM = 762; // baseline the content block sits above
+  const CONTENT_TOP_MIN = 430; // avatar always keeps the top ~54% of the canvas
+  // Shrinking below this is unreadable at portrait size — truncate instead.
+  const VERTICAL_MIN_FONT_SIZE = 22;
 
   const canvas = Canvas.createCanvas(WIDTH, HEIGHT);
   const ctx = canvas.getContext('2d');
@@ -709,7 +742,7 @@ async function renderVerticalQuote(input: VerticalQuoteInput): Promise<Buffer> {
   ctx.textBaseline = 'top';
 
   let lines = wrapSegments(ctx, rawSegments, MAX_TEXT_WIDTH, fontSize);
-  fontSize = adjustFontSize(ctx, lines, MAX_TEXT_WIDTH, fontSize, fontFamily, MAX_TEXT_HEIGHT);
+  fontSize = adjustFontSize(ctx, lines, MAX_TEXT_WIDTH, fontSize, fontFamily, MAX_TEXT_HEIGHT, VERTICAL_MIN_FONT_SIZE);
   ctx.font = buildFont(fontSize, fontFamily);
   lines = wrapSegments(ctx, rawSegments, MAX_TEXT_WIDTH, fontSize);
 
@@ -727,28 +760,31 @@ async function renderVerticalQuote(input: VerticalQuoteInput): Promise<Buffer> {
   const userFontSize = Math.min(20, Math.max(12, nickFontSize - 10));
   const showUser = username !== nickname;
 
-  const glyphSize = 56;
-  const gapAfterGlyph = 14;
+  const glyphSize = 48;
+  const gapAfterGlyph = 12;
   const textHeight = lines.length * lineHeight;
-  const gapAfterText = 26;
-  const gapAfterDivider = 18;
+  const gapAfterText = 24;
+  const gapAfterDivider = 16;
   const nickHeight = nickFontSize * 1.2;
   const userHeight = showUser ? userFontSize * 1.3 + 4 : 0;
 
   const totalHeight = glyphSize + gapAfterGlyph + textHeight
     + gapAfterText + gapAfterDivider + nickHeight + userHeight;
-  let y = CONTENT_BOTTOM - totalHeight;
+  let y = Math.max(CONTENT_TOP_MIN, CONTENT_BOTTOM - totalHeight);
   const centerX = WIDTH / 2;
 
   // ── Gradient fade (avatar → content) ──────────────────────────────────────
   // Anchored to wherever the content block starts so the text always sits on
-  // an opaque background, however tall the quote is.
-  const fadeBottom = Math.min(AVATAR_SIZE, y + 50);
-  const fadeTop = Math.max(0, fadeBottom - 320);
+  // an opaque background, however tall the quote is. The gradient is fully
+  // opaque a little *above* the content, and the solid fill picks up exactly
+  // where it lands, so there is never a visible seam across the avatar.
+  const fadeBottom = Math.min(AVATAR_SIZE, y - 8);
+  const fadeTop = Math.max(0, fadeBottom - 380);
   const gradient = ctx.createLinearGradient(0, fadeTop, 0, fadeBottom);
   gradient.addColorStop(0, `rgba(${bgRgb}, 0)`);
-  gradient.addColorStop(0.5, `rgba(${bgRgb}, 0.55)`);
-  gradient.addColorStop(0.8, `rgba(${bgRgb}, 0.9)`);
+  gradient.addColorStop(0.35, `rgba(${bgRgb}, 0.18)`);
+  gradient.addColorStop(0.65, `rgba(${bgRgb}, 0.6)`);
+  gradient.addColorStop(0.85, `rgba(${bgRgb}, 0.9)`);
   gradient.addColorStop(1, `rgba(${bgRgb}, 1)`);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, fadeTop, WIDTH, fadeBottom - fadeTop);
@@ -832,10 +868,10 @@ async function quote(
     ? `${messageChars.slice(0, MAX_QUOTE_CHARS).join('').trimEnd()}…`
     : resolvedMessage;
   const message = `"${clippedMessage}"`;
-  const backgroundColor = _backgroundColor || 'black';
-  const profileColor = _profileColor || 'normal';
-  const avatarSource = _avatarSource || 'global';
-  const fontStyle = _fontStyle || 'sans-serif';
+  const backgroundColor = _backgroundColor || QUOTE_FLAG_DEFAULTS.background;
+  const profileColor = _profileColor || QUOTE_FLAG_DEFAULTS.profileColor;
+  const avatarSource = _avatarSource || QUOTE_FLAG_DEFAULTS.avatarSource;
+  const fontStyle = _fontStyle || QUOTE_FLAG_DEFAULTS.fontStyle;
 
   // Resolve font family
   const fontFamily = (FONT_MAP[fontStyle] || FONT_MAP['sans-serif']).family;
@@ -854,7 +890,7 @@ async function quote(
     try {
       const member = guild.members.cache.get(_person.id);
       if (member && member.avatar) {
-        pfp = member.displayAvatarURL({ extension: 'png', size: 512 });
+        pfp = member.displayAvatarURL({ extension: 'png', size: 1024 });
       } else {
         throw new Error('Server avatar not found, falling back to global avatar.');
       }
@@ -1076,6 +1112,134 @@ export const FAKEQUOTE_AVATAR_SOURCE_VALUES = valuesOf(FAKEQUOTE_AVATAR_SOURCES)
 export const fakeQuoteChoices = (
   opts: FakeQuoteOption[],
 ): { name: string; value: string }[] => opts.map(({ label, value }) => ({ name: label, value }));
+
+// ─── Mention-style flag parsing ───────────────────────────────────────────────
+// `@bot w v caveat #ff00aa bw` instead of
+// `@bot bg:w format:v font:3 txt:#ff00aa pfpc:bw`.
+// Tokens are order-independent, all optional, and each one is matched against
+// the table below; the legacy `key:value` spelling still works because the
+// value half is resolved with exactly the same table.
+
+/** The fields a user can save as a personal default via `/quote settings`. */
+export type QuotePrefField = keyof QuoteFlags;
+export type QuotePreferences = Partial<Record<QuotePrefField, string>>;
+
+export const QUOTE_PREF_FIELDS: QuotePrefField[] = [
+  'format', 'background', 'textColor', 'fontStyle', 'profileColor', 'avatarSource',
+];
+
+/** Human labels for the saved-settings readout. */
+export const QUOTE_PREF_LABELS: Record<QuotePrefField, string> = {
+  format: 'Format',
+  background: 'Background',
+  textColor: 'Text colour',
+  fontStyle: 'Font',
+  profileColor: 'Profile filter',
+  avatarSource: 'Avatar source',
+};
+
+// Bare aliases → the field they set. First match wins, so `b` is "black" and
+// never "bebas-neue"; fonts are always addressed by full slug or by number.
+const BACKGROUND_ALIASES: Record<string, string> = {
+  w: 'white', white: 'white', b: 'black', black: 'black',
+};
+const FORMAT_ALIASES: Record<string, string> = {
+  v: 'vertical',
+  vert: 'vertical',
+  vertical: 'vertical',
+  portrait: 'vertical',
+  h: 'landscape',
+  land: 'landscape',
+  landscape: 'landscape',
+};
+const PROFILE_COLOR_ALIASES: Record<string, string> = {
+  normal: 'normal', bw: 'bw', inv: 'inverted', inverted: 'inverted', sepia: 'sepia', nightmare: 'nightmare',
+};
+const AVATAR_SOURCE_ALIASES: Record<string, string> = {
+  srv: 'server', server: 'server', glob: 'global', global: 'global',
+};
+const FONT_ALIASES: Record<string, string> = {
+  sans: 'sans-serif', default: 'sans-serif', hp: 'harrypotter', comic: 'comic-sans', bebas: 'bebas-neue',
+};
+
+/** Resolves one token against every field. Returns null when nothing matches. */
+function resolveQuoteToken(raw: string): Partial<QuoteFlags> | null {
+  const t = raw.toLowerCase();
+  if (BACKGROUND_ALIASES[t]) return { background: BACKGROUND_ALIASES[t] };
+  if (FORMAT_ALIASES[t]) return { format: FORMAT_ALIASES[t] };
+  if (PROFILE_COLOR_ALIASES[t]) return { profileColor: PROFILE_COLOR_ALIASES[t] };
+  if (AVATAR_SOURCE_ALIASES[t]) return { avatarSource: AVATAR_SOURCE_ALIASES[t] };
+  if (FONT_ALIASES[t]) return { fontStyle: FONT_ALIASES[t] };
+  if (FONT_MAP[t]) return { fontStyle: t };
+
+  const hex = HEX_RE.exec(t);
+  if (hex) return { textColor: `#${hex[1]}` };
+
+  // font by 1-based number, matching the order of FONT_MAP / FAKEQUOTE_FONTS
+  if (/^\d+$/.test(t)) {
+    const n = parseInt(t, 10);
+    if (n >= 1 && n <= FONT_INDEX.length) return { fontStyle: FONT_INDEX[n - 1] };
+  }
+  return null;
+}
+
+// Legacy `key:value` spellings, kept working so old muscle memory doesn't break.
+const LEGACY_KEYS = ['bg', 'txt', 'pfpc', 'pfp', 'font', 'format', 'fmt'];
+
+// Opts this one quote out of the invoker's saved `/quote settings` defaults.
+// Flags passed alongside it still apply — `-o` drops the saved layer only.
+const OVERRIDE_TOKENS = ['-o', '--override', '-d', '--default', '--defaults'];
+
+export interface ParsedQuoteFlags extends Partial<QuoteFlags> {
+  /** True when the message asked to ignore the invoker's saved settings. */
+  override: boolean;
+}
+
+/**
+ * Parses mention-style quote options out of free text (the message content with
+ * the bot mention already stripped). Only the fields actually named are
+ * returned, so callers can layer defaults → saved settings → these. Unknown
+ * tokens are ignored, so ordinary words in the message never break a quote.
+ */
+export function parseQuoteFlags(text: string): ParsedQuoteFlags {
+  const flags: ParsedQuoteFlags = { override: false };
+
+  text.split(/\s+/).filter(Boolean).forEach((token) => {
+    if (OVERRIDE_TOKENS.includes(token.toLowerCase())) {
+      flags.override = true;
+      return;
+    }
+    const key = LEGACY_KEYS.find((k) => token.toLowerCase().startsWith(`${k}:`));
+    const value = key ? token.slice(key.length + 1) : token;
+    if (!value) return;
+    const resolved = resolveQuoteToken(value);
+    if (resolved) Object.assign(flags, resolved);
+  });
+
+  return flags;
+}
+
+/**
+ * Layers the three sources of truth into the values `quote()` is called with:
+ * bot defaults → the invoker's saved settings → flags given on this invocation.
+ * The saved layer is skipped when the invocation used the override flag.
+ */
+export function resolveQuoteFlags(
+  parsed: ParsedQuoteFlags,
+  saved: QuotePreferences | null,
+  base: QuoteFlags = QUOTE_FLAG_DEFAULTS,
+): QuoteFlags {
+  const { override, ...explicit } = parsed;
+  return {
+    ...base,
+    ...(override || !saved ? {} : saved),
+    ...explicit,
+  };
+}
+
+/** One-line usage hint shown while a mention quote renders. */
+export const QUOTE_FLAG_HELP = 'flags: w/b · v/h · #hex · bw/inverted/sepia/nightmare · server/global · font '
+  + `1-${FONT_INDEX.length} or name · -o to ignore your saved settings · /quote help`;
 
 export default quote;
 export { FONT_MAP, FONT_INDEX };

@@ -17,6 +17,7 @@ import planeStatsTable from './planeStatsTable';
 import pokemonTable from './pokemonTable';
 import poopEntryTable from './poopEntryTable';
 import poopProfileTable from './poopProfileTable';
+import quotePreferenceTable from './quotePreferenceTable';
 import rpCharacterTable from './rpCharacterTable';
 import rpSpawnTable from './rpSpawnTable';
 import rpHistoryTable from './rpHistoryTable';
@@ -46,6 +47,7 @@ export {
   pokemonTable,
   poopEntryTable,
   poopProfileTable,
+  quotePreferenceTable,
   rpCharacterTable,
   rpSpawnTable,
   rpHistoryTable,
@@ -74,6 +76,7 @@ export type { MusicGenLogRow } from './musicGenLogTable';
 export type { PlaneStatsRow } from './planeStatsTable';
 export type { PokemonRow } from './pokemonTable';
 export type { PoopEntryRow } from './poopEntryTable';
+export type { QuotePreferenceRow } from './quotePreferenceTable';
 export type { RpCharacterRow } from './rpCharacterTable';
 export type { RpSpawnRow } from './rpSpawnTable';
 export type { RpHistoryRow } from './rpHistoryTable';

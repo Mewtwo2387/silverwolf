@@ -142,7 +142,7 @@ describe('AiUsageModel', () => {
     expect(Math.abs((resetAt as Date).getTime() - expected)).toBeLessThan(2 * 60 * 1000);
   });
 
-  test('bypasses rate limit checks for developers', async () => {
+  test('rate limits developers too (no dev bypass)', async () => {
     const devId = process.env.ALLOWED_USERS?.split(',')[0];
     if (!devId) {
       // Skip if no ALLOWED_USERS configured
@@ -151,6 +151,75 @@ describe('AiUsageModel', () => {
 
     await aiUsageModel.addUsage(devId, 'test-model', DAILY_LIMIT * 5, 0);
     const status = await aiUsageModel.checkRateLimit(devId);
-    expect(status.limited).toBe(false);
+    expect(status.limited).toBe(true);
+    expect(status.reason).toBe('daily');
+    expect(aiUsageModel.tryReserve(devId, 1).ok).toBe(false);
+  });
+
+  test('free models charge no credits', async () => {
+    await aiUsageModel.addUsage('u9', 'openrouter/free', 500000, 500000);
+    expect(await aiUsageModel.getDailyUsage('u9')).toBe(0);
+    expect(await aiUsageModel.getWeeklyUsage('u9')).toBe(0);
+  });
+
+  test('meters credit-priced models by multiplier, not raw tokens', async () => {
+    // deepseek/deepseek-v4-flash-0731: 0.5x input, 1x output ($0.14/M in, $0.28/M out)
+    await aiUsageModel.addUsage('u1', 'deepseek/deepseek-v4-flash-0731', 100000, 50000);
+    expect(await aiUsageModel.getDailyUsage('u1')).toBe(100000); // 50k + 50k credits
+
+    // Unlisted models keep the old 1x/1x accounting
+    await aiUsageModel.addUsage('u2', 'some-unknown-model', 100000, 50000);
+    expect(await aiUsageModel.getDailyUsage('u2')).toBe(150000);
+
+    // x-ai/grok-4.5: 7x input, 21.43x output
+    await aiUsageModel.addUsage('u3', 'x-ai/grok-4.5', 10000, 10000);
+    expect(await aiUsageModel.getDailyUsage('u3')).toBe(284300);
+  });
+
+  test('stores the derived USD cost on the audit row', async () => {
+    await aiUsageModel.addUsage('u1', 'deepseek/deepseek-v4-flash-0731', 1_000_000, 1_000_000);
+    const row = await db.executeSelectQuery('SELECT cost FROM AiUsage WHERE user_id = ?', ['u1']);
+    // 0.5M + 1M = 1.5M credits × $0.28/M
+    expect(row!.cost).toBeCloseTo(0.42, 5);
+  });
+
+  test('tryReserve counts in-flight usage toward the limit', async () => {
+    await aiUsageModel.addUsage('u1', 'test-model', DAILY_LIMIT - 10000, 0);
+
+    const first = aiUsageModel.tryReserve('u1', 8000);
+    expect(first.ok).toBe(true);
+    expect(aiUsageModel.getPendingCredits('u1')).toBe(8000);
+
+    // 240k recorded + 8k in flight + another 8k would exceed 250k — blocked.
+    const second = aiUsageModel.tryReserve('u1', 8000);
+    expect(second.ok).toBe(false);
+    expect(second.reason).toBe('daily');
+
+    // Releasing the reservation opens the gate again.
+    aiUsageModel.release('u1', 8000);
+    expect(aiUsageModel.getPendingCredits('u1')).toBe(0);
+    const third = aiUsageModel.tryReserve('u1', 8000);
+    expect(third.ok).toBe(true);
+    aiUsageModel.release('u1', 8000);
+  });
+
+  test('tryReserve meters developers like everyone else', async () => {
+    const devId = process.env.ALLOWED_USERS?.split(',')[0];
+    if (!devId) return; // skip if no ALLOWED_USERS configured
+
+    await aiUsageModel.addUsage(devId, 'test-model', DAILY_LIMIT * 5, 0);
+    const gate = aiUsageModel.tryReserve(devId, 100000);
+    expect(gate.ok).toBe(false);
+    expect(gate.reason).toBe('daily');
+    expect(aiUsageModel.getPendingCredits(devId)).toBe(0);
+  });
+
+  test('release never drives pending negative', async () => {
+    aiUsageModel.release('u1', 5000); // no reservation held
+    expect(aiUsageModel.getPendingCredits('u1')).toBe(0);
+
+    aiUsageModel.tryReserve('u1', 1000);
+    aiUsageModel.release('u1', 99999);
+    expect(aiUsageModel.getPendingCredits('u1')).toBe(0);
   });
 });

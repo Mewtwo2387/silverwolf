@@ -7,6 +7,7 @@ import {
   resolvePersona,
   generateContent,
   generateTitleForHistory,
+  getPersonaMediaKinds,
 } from '../../utils/ai';
 import { getRateLimitErrorMessage } from '../../utils/discordRateLimit';
 import { IMAGE_GEN_TOOL_NAME, IMAGE_EDIT_MAX_SOURCES } from '../../utils/imageGen';
@@ -15,6 +16,7 @@ import { trimHistoryToFit } from '../../utils/tokenizer';
 import { extractPdfsFromMessage } from '../../utils/pdf';
 import {
   collectMediaFromMessage, hasQualifyingMedia, tryAcquireMediaSlot, releaseMediaSlot,
+  type MediaKind,
 } from '../../utils/aiMedia';
 
 const WEBHOOK_NAME = process.env.WEBHOOK_NAME || 'grok-webhook';
@@ -126,7 +128,7 @@ const scriptHandlers = {
 
     // Media (image/video/audio) attachments. Two consumers:
     //  - vision input (mediaParts → the chat model's user turn): persona-gated
-    //    (mediaInput), openrouter-only;
+    //    by the model's own input modalities (mediaInput), openrouter-only;
     //  - image editing (imageEditParts → the generate_image tool as edit
     //    sources): any persona with imageGen enabled, images only.
     // Base64 buffers live in these arrays for the duration of this generation
@@ -137,34 +139,48 @@ const scriptHandlers = {
     let editOnlyPlaceholders: string[] = [];
     const mediaNotices: string[] = [];
     let mediaSlotHeld = false;
-    const visionCapable = !!persona.mediaInput && persona.provider === 'openrouter';
+    // Modalities this persona's model can read (e.g. MiMo: all three; Grok /
+    // GPT: images only). Anything outside this set is collected only if the
+    // generate_image edit path can still use it.
+    const visionKinds = getPersonaMediaKinds(persona);
     const imageGenEnabled = hasMemory;
-    const shouldCollectMedia = (visionCapable && hasQualifyingMedia(message, contextMsg))
-      || (imageGenEnabled && hasQualifyingMedia(message, contextMsg, true));
+    const collectKinds = [...new Set<MediaKind>([
+      ...visionKinds,
+      ...(imageGenEnabled ? ['image' as MediaKind] : []),
+    ])];
+    const shouldCollectMedia = collectKinds.length > 0
+      && hasQualifyingMedia(message, contextMsg, collectKinds);
     if (shouldCollectMedia) {
       if (!tryAcquireMediaSlot()) {
         mediaNotices.push('⚠ Too many attachment-reading requests in flight right now — answering without your attachments. Try again in a moment.');
       } else {
         mediaSlotHeld = true;
         try {
-          // Non-vision personas only ever need the images (for editing).
-          const collected = await collectMediaFromMessage(message, contextMsg, !visionCapable);
-          imageEditParts = collected.parts.filter((p: any) => p?.type === 'image_url');
-          if (visionCapable) {
-            mediaParts = collected.parts;
-            mediaPlaceholders = collected.placeholders;
-          } else {
-            // The chat model can't see these — placeholders tell it the images
-            // exist so it can offer/perform edits via generate_image. Only a
-            // single attached image is editable (tool hard cap), so with
-            // several the placeholders stay plain and the system note tells
-            // the model to refuse edits.
-            editOnlyPlaceholders = imageEditParts.length <= IMAGE_EDIT_MAX_SOURCES
-              ? collected.placeholders.map(
-                (p) => `${p} (you cannot view this image, but your generate_image tool can edit it)`,
-              )
-              : collected.placeholders.map((p) => `${p} (you cannot view this image)`);
+          const collected = await collectMediaFromMessage(message, contextMsg, collectKinds);
+          const items = collected.parts.map((part: any, i: number) => ({
+            part,
+            kind: collected.kinds[i],
+            placeholder: collected.placeholders[i],
+          }));
+          if (imageGenEnabled) {
+            imageEditParts = items.filter((m) => m.kind === 'image').map((m) => m.part);
           }
+          // Split by what the chat model can actually read.
+          const readable = items.filter((m) => visionKinds.includes(m.kind));
+          const unreadable = items.filter((m) => !visionKinds.includes(m.kind));
+          mediaParts = readable.map((m) => m.part);
+          mediaPlaceholders = readable.map((m) => m.placeholder);
+          // The chat model can't see the rest (always images — nothing else is
+          // collected for a model that can't read it) — placeholders tell it
+          // they exist so it can offer/perform edits via generate_image. Only
+          // IMAGE_EDIT_MAX_SOURCES images are editable (tool hard cap), so with
+          // more the placeholders stay plain and the system note tells the
+          // model to refuse edits.
+          editOnlyPlaceholders = imageEditParts.length <= IMAGE_EDIT_MAX_SOURCES
+            ? unreadable.map(
+              (m) => `${m.placeholder} (you cannot view this image, but your generate_image tool can edit it)`,
+            )
+            : unreadable.map((m) => `${m.placeholder} (you cannot view this image)`);
           mediaNotices.push(...collected.notices);
         } catch (mediaErr) {
           logError('AiChat: media collection failed, proceeding without attachments:', mediaErr);
@@ -478,7 +494,11 @@ const scriptHandlers = {
       }
       if (err?.message === 'RATE_LIMIT_EXCEEDED') {
         const db = (message.client as any).db;
-        const content = await getRateLimitErrorMessage(message.author.id, db);
+        const content = await getRateLimitErrorMessage(message.author.id, db, {
+          reason: err.reason,
+          reservedCredits: err.reservedCredits,
+          remainingCredits: err.remainingCredits,
+        });
         await message.reply(content);
         return;
       }

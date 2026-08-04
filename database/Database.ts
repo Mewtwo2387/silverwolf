@@ -28,6 +28,7 @@ import type BirthdayReminderModel from './models/BirthdayReminderModel';
 import type FootballMatchAnnouncementModel from './models/FootballMatchAnnouncementModel';
 import type PlaneStatsModel from './models/PlaneStatsModel';
 import type PoopModel from './models/PoopModel';
+import type QuotePreferenceModel from './models/QuotePreferenceModel';
 import type RpModel from './models/RpModel';
 import type WebSessionModel from './models/WebSessionModel';
 
@@ -35,6 +36,15 @@ class Database {
   db!: BunDatabase;
   models: Record<string, any>;
   ready: Promise<void>;
+
+  // Transactions are serialized through this FIFO queue. bun:sqlite runs on a
+  // single connection, so two overlapping executeTransaction calls would nest
+  // BEGIN inside an open transaction — the second fails and its catch-block
+  // ROLLBACK silently discards the FIRST transaction's writes (this ate AI
+  // usage records under load, issue #213).
+  private transactionQueue: Promise<void> = Promise.resolve();
+
+  private inTransaction = false;
 
   constructor(databasePath: string) {
     this.models = {};
@@ -265,20 +275,35 @@ class Database {
   }
 
   async executeTransaction(transactionFn: (db: BunDatabase) => any): Promise<any> {
-    try {
-      this.db.run('BEGIN IMMEDIATE TRANSACTION');
-      const result = await transactionFn(this.db);
-      this.db.run('COMMIT');
-      return result;
-    } catch (error) {
-      try {
-        this.db.run('ROLLBACK');
-      } catch (rollbackError) {
-        logError('Error during transaction rollback:', rollbackError);
-      }
-      logError('Error executing transaction:', error);
-      throw error;
+    // A transaction fn must never start another transaction — that would
+    // deadlock the queue. Fail loudly instead of hanging.
+    if (this.inTransaction) {
+      const err = new Error('executeTransaction cannot be nested');
+      logError('Error executing transaction:', err);
+      throw err;
     }
+    const run = this.transactionQueue.then(async () => {
+      this.inTransaction = true;
+      this.db.run('BEGIN IMMEDIATE TRANSACTION');
+      try {
+        const result = await transactionFn(this.db);
+        this.db.run('COMMIT');
+        return result;
+      } catch (error) {
+        try {
+          this.db.run('ROLLBACK');
+        } catch (rollbackError) {
+          logError('Error during transaction rollback:', rollbackError);
+        }
+        logError('Error executing transaction:', error);
+        throw error;
+      } finally {
+        this.inTransaction = false;
+      }
+    });
+    // Keep the queue alive regardless of this transaction's outcome.
+    this.transactionQueue = run.then(() => undefined, () => undefined);
+    return run;
   }
 
   async executeSelectQuery(query: string, params: any[] = []): Promise<Record<string, any> | null> {
@@ -356,6 +381,7 @@ class Database {
   get planeStats(): PlaneStatsModel { return this.models.PlaneStatsModel; }
   get pokemon(): PokemonModel { return this.models.PokemonModel; }
   get poop(): PoopModel { return this.models.PoopModel; }
+  get quotePreference(): QuotePreferenceModel { return this.models.QuotePreferenceModel; }
   get rp(): RpModel { return this.models.RpModel; }
   get serverConfig(): ServerConfigModel { return this.models.ServerConfigModel; }
   get user(): UserModel { return this.models.UserModel; }

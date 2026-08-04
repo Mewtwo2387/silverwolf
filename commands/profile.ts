@@ -344,8 +344,8 @@ ${getNuggieNuggieMultiplierInfo(user.nuggieNuggieMultiplierLevel, INFO_LEVEL.THI
       .setThumbnail(avatarURL)
       .setDescription(`
 ## AI Usage
-**Daily Usage (24h):** ${dailyUsage.toLocaleString()} / ${DAILY_LIMIT.toLocaleString()} tokens
-**Weekly Usage (7d):** ${weeklyUsage.toLocaleString()} / ${WEEKLY_LIMIT.toLocaleString()} tokens
+**Daily Usage (24h):** ${dailyUsage.toLocaleString()} / ${DAILY_LIMIT.toLocaleString()} credits
+**Weekly Usage (7d):** ${weeklyUsage.toLocaleString()} / ${WEEKLY_LIMIT.toLocaleString()} credits
 **Status:** ${statusText}${resetLine}
       `)
       .setTimestamp();

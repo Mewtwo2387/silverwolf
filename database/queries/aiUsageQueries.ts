@@ -9,10 +9,10 @@ const aiUsageQueries = {
   // Fixed-window (Claude-style) rate-limit counter. A window opens on the first
   // message after the previous one lapsed and resets wholesale one interval later.
   // On conflict: if the stored window has lapsed (now >= window_start + interval),
-  // open a fresh window at `now` seeded with this call's tokens; otherwise keep the
-  // anchor and accumulate. `?` order: user_id, window_type, tokens, interval, interval
+  // open a fresh window at `now` seeded with this call's credits; otherwise keep the
+  // anchor and accumulate. `?` order: user_id, window_type, credits, interval, interval
   // (interval e.g. '+1 day' / '+7 days'). 'now' is fixed within a statement, so all
-  // three references agree.
+  // three references agree. NOTE: the `tokens` column stores CREDITS (issue #211).
   UPSERT_WINDOW: `
     INSERT INTO AiRateLimitWindow (user_id, window_type, window_start, tokens)
     VALUES (?, ?, datetime('now'), ?)

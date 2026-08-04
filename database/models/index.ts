@@ -14,6 +14,7 @@ import MusicGenModel from './MusicGenModel';
 import PlaneStatsModel from './PlaneStatsModel';
 import PokemonModel from './PokemonModel';
 import PoopModel from './PoopModel';
+import QuotePreferenceModel from './QuotePreferenceModel';
 import RpModel from './RpModel';
 import ServerConfigModel from './ServerConfigModel';
 import UserModel from './UserModel';
@@ -36,6 +37,7 @@ export {
   PlaneStatsModel,
   PokemonModel,
   PoopModel,
+  QuotePreferenceModel,
   RpModel,
   ServerConfigModel,
   UserModel,

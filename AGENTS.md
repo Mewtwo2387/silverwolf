@@ -6,7 +6,7 @@ Bun process**. It serves fun/games both as slash commands and as web pages, plus
 **The website is public, so security and performance are first-class concerns — code defensively:
 validate every input, never trust client data, keep the CSP tight.**
 
-**Last updated: 2026-07-02**
+**Last updated: 2026-07-31**
 
 > **Maintenance rule.** Edit this file only on *substantive architectural* change — new
 > architecture, new auth, new data flows/services, schema or security-model changes, or when
@@ -17,6 +17,7 @@ validate every input, never trust client data, keep the CSP tight.**
 ---
 
 ## 1. Stack & runtime
+
 - **Runtime:** Bun (also the test runner; auto-loads `.env`, no dotenv). Lockfile `bun.lock`.
 - **Language:** TypeScript, strict. `tsconfig.json`: target ES2022, module ESNext,
   moduleResolution `bundler`, typeRoots `./types`. `any` is allowed by lint config.
@@ -32,8 +33,9 @@ validate every input, never trust client data, keep the CSP tight.**
 - **Single process:** the bot boots, then starts the website in-process — see §4 and §6.
 
 ## 2. Repo layout
+
 | Path | What |
-|------|------|
+| ------ | ------ |
 | `index.ts` | Entry point. Boots the client, logs in, registers commands, starts the website. |
 | `classes/` | `silverwolf.ts` (the Client subclass), `handlers/` (seasonal Pokémon summon), schedulers. |
 | `commands/` | One file per slash command; `classes/` (base classes), `commandgroups/` (subcommand containers). |
@@ -47,9 +49,11 @@ validate every input, never trust client data, keep the CSP tight.**
 | `.github/workflows/` | CI/CD (`deploy.yml`, `claude_code*.yml`). |
 
 ## 3. Setup & commands
+
 Boot locally: `bun install` → create `.env` (keys below; values in `.env.example`) → `bun run dev`.
 
 `package.json` scripts (verbatim):
+
 - `start` = `bun run build:css && bun run build:js && bun index.ts` — production.
 - `dev` = builds CSS + JS, then `bun --watch index.ts` — hot-reload dev.
 - `test` / `test:watch` = `bun test [--watch] --preload ./tests/setup.ts`.
@@ -76,6 +80,7 @@ Boot locally: `bun install` → create `.env` (keys below; values in `.env.examp
 table (allowed servers, birthday channels, global `banned` kill-switch) and override/augment env.
 
 ## 4. Bot architecture
+
 **Startup** (`index.ts` → `classes/silverwolf.ts`): construct `Silverwolf` (extends discord.js
 `Client`) → `init()` loads commands, keywords, listeners; awaits `db.ready`; loads allowed servers;
 starts schedulers → `login()` → `registerCommands(CLIENT_ID)` → `startWebsite(silverwolf)` (wrapped
@@ -84,6 +89,7 @@ in try/catch: a website failure is logged and the **bot keeps running**). `SIGTE
 
 **Commands.** Base classes in `commands/classes/`: `Command` (normal), `DevCommand` (dev-gated, see
 § access control), `commandGroup.ts` (`CommandGroup` for subcommands). Conventions:
+
 - One file per command in `commands/`. The constructor calls `super(client, name, description,
   options[], opts)` where `opts = { ephemeral, skipDefer, isSubcommandOf, blame }`; implement
   `async run(interaction)`.
@@ -115,7 +121,7 @@ min); plus a 30s `setInterval` roleplay scheduler (`classes/rpScheduler.ts`).
 user-defined characters (`/ai rp-create-char`) spawned per-channel (`/ai rp-spawn`, ≤5/channel) that
 reply through the shared AI webhook as themselves — name + a 128×128 avatar re-hosted in a per-server
 asset channel (ServerConfig key `rp_asset_channel`, set via `/ai rp-setasset`; signed CDN URLs are
-refreshed from the stored message id). Model `deepseek/deepseek-v4-flash` (reasoning on), no
+refreshed from the stored message id). Model `deepseek/deepseek-v4-flash-0731` (reasoning on), no
 function-calling, **per-character private history** with auto-compaction (oldest ~80% folded into a
 first-person memory) near the 128k window. Spawns are **soft-deleted** so history survives removal/re-spawn. Names allow letters,
 numbers, underscores and single spaces (no dashes); `@name` / `@id` / `@name-id` mentions route in
@@ -141,10 +147,26 @@ self-description injected in a `<userPersona>` block for **self-mode spawns only
 the compaction prompt). The `/ai rp-*` command replies are non-ephemeral (public) except admin
 `rp-setasset`, `rp-lorebook-view` (content dump is creator/dev-only) and the `rp-persona-*` pair.
 
+**AI usage limits** (`utils/ai.ts`, `utils/aiPricing.ts`, `AiUsageModel`): per-user fixed windows
+(250k/day, 1M/week) metered in **credits**, not raw tokens — `credits = tok_in×mult_in +
+tok_out×mult_out` where $0.28/M = 1x (DeepSeek-V4-Flash/MiMo-V2.5 0.5x in/1x out, Grok-4.5
+7x/21.4x, GPT-5.6-Luna 0.72x/4.3x, Qwen3.7-Flash 0.11x/0.46x, unlisted = 1x/1x; listed
+promotional discounts are ignored — multipliers track list price). Models in `FREE_MODELS`
+(`openrouter/free`, the `@fr` persona) are 0x/0x **and** skip the reservation entirely — free to
+run, so never metered or blocked. The `AiUsage` audit log keeps raw tokens +
+derived USD `cost`; the `AiRateLimitWindow.tokens` column stores credits (name kept, no rebuild).
+Enforcement is `db.aiUsage.tryReserve(userId, estCredits)` → `release()` in `finally` — an
+in-memory in-flight reservation held for the whole generation so concurrent spam can't all pass
+the check before usage lands (**no dev bypass — everyone is metered**). All OpenRouter chat calls go through
+`createChatCompletionWithRetry` (`utils/llmRetry.ts`: per-attempt timeout — 180s default, 480s
+music-compose, 60s titlegen — a 600s overall budget across attempts, and 2s/4s/8s/16s backoff on
+408/409/429/5xx/network only); the shared client sets `maxRetries: 0` so SDK retries don't stack.
+
 **Database** (`bun:sqlite`, `persistence/database.db`). Layered: `tables/` (TableDefinition schema
 objects) → `models/` (DAOs) → `queries/` (SQL strings). **Access pattern:**
 `this.client.db.<model>.<method>` (e.g. `db.user.getUser(id)`, `db.user.addUserAttrs(id, {...})`).
 Rules an agent must follow:
+
 - **Never** write raw SQL outside `database/queries/`, and **never** interpolate user data into SQL
   — queries use `?` placeholders / prepared statements.
 - Field names auto-convert camelCase ↔ snake_case (`camelToSnake` / `snakeToCamelJSON`); pass
@@ -152,13 +174,23 @@ Rules an agent must follow:
 - **No formal migration system.** `Database.init()` does `CREATE TABLE IF NOT EXISTS`, `ALTER TABLE`
   to add missing columns, manual index creation, and `PRAGMA foreign_keys = ON`. Schema changes go
   there. Legacy `ServerRoles` rows auto-migrate into `ServerConfig` (`role:<name>` keys) on boot.
-- Multi-statement atomicity: `db.executeTransaction((rawDb) => { ... })`.
+- Multi-statement atomicity: `db.executeTransaction((rawDb) => { ... })`. Transactions are
+  serialized through an in-process FIFO queue (a single connection can't interleave BEGINs —
+  the second used to roll back the first's writes); never call `executeTransaction` from inside
+  a transaction fn (there is a guard that throws).
+- Per-user quote defaults: `QuotePreference` (`db.quotePreference`, one nullable-column row per
+  user) — saved via `/quote settings` and applied to every quote that user makes (slash **and**
+  mention). Resolution order is bot defaults → saved settings → flags on this invocation
+  (`utils/quote.ts`: `parseQuoteFlags` → `resolveQuoteFlags`); `-o` / `override:true` drops the
+  saved layer for one quote. Mention quoting takes compact space-separated flags
+  (`@bot w v caveat #ff0124`), documented in-bot by `/quote help`.
 - Per-guild settings: `ServerConfig` (`db.serverConfig`, keyed by `server_id` + `key`) — named roles
   use `role:<name>` keys; gameplay tuning via `/serverconfig setvalue`, `/serverconfig setchannel`,
   and `/serverconfig setrole`; `CommandConfig` remains
   separate for per-guild command blacklists.
 
 ## 5. Website architecture (`site_src/`)
+
 **Server** (`server.ts`): a Hono app served by `Bun.serve` on **`PORT 6769` / host `0.0.0.0`**
 (prod publishes it to `127.0.0.1:8080` behind a reverse proxy — see `docker-compose.yaml`). It runs
 in the **same process** as the bot and receives the `Silverwolf` instance, so it can use the Discord
@@ -202,6 +234,7 @@ a user see their own dashboard/stats and play account-tied games — there is **
 surface on the web.
 
 ## 6. Security & performance guardrails (read before touching the website)
+
 - **Validate/whitelist every input.** `Number.isFinite` / `Number.isInteger` / `Math.trunc`, enum
   whitelists, `checkValidBetRaw` for bets. Coerce, then check; reject otherwise.
 - **Never interpolate untrusted data** into SQL/HTML/JS. Use prepared statements (`?`), Hono `html`
@@ -215,11 +248,13 @@ surface on the web.
 - **Logging:** use `log()` / `logError()` (`utils/log.ts`) → `persistence/`. **Never log secrets.**
 
 ## 7. Shared code (bot ↔ website)
+
 Both halves read the **same** SQLite DB and share `utils/` (math, betting, blackjack, roulette,
 slots, claim, eat, upgrades, leaderboards, birthdays). `site_src/bot-bridge.ts` is the bridge for
 website-facing data access and the leaderboard/birthday cache.
 
 ## 8. CI/CD & Docker (mechanism — specifics live in the workflow files)
+
 - `.github/workflows/deploy.yml`: push to `master` → Buildx builds & pushes the Docker image →
   SSH to the prod VM and `docker compose pull && docker compose up -d`. (Host/SSH user/image name
   are in `deploy.yml` — not duplicated here.)
@@ -232,6 +267,7 @@ website-facing data access and the leaderboard/birthday cache.
   `./persistence` (SQLite persistence), publishes `127.0.0.1:8080:6769`, `mem_limit: 1g`.
 
 ## 9. Conventions, tooling & gotchas
+
 - **Lint:** `.eslintrc.json` = airbnb-base + node + promise. TS overrides: `no-explicit-any` off,
   unused vars ignored when `_`-prefixed, `max-len` 120, `no-console` off. `site_src/Assets/` is
   lint-ignored. `eslint-by-rule.sh` (needs `jq`) lists issues by rule.
