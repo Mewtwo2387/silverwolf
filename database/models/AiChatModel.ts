@@ -209,30 +209,37 @@ class AiChatModel {
       return { ok: false, reason: 'no_session' };
     }
 
-    const lastUser = await this.db.executeSelectQuery(
-      aiChatQueries.GET_LAST_USER_HISTORY,
-      [session.sessionId],
-    );
-    if (!lastUser) {
-      return { ok: false, reason: 'empty' };
-    }
+    const outcome = await this.db.executeTransaction((rawDb: any) => {
+      const lastUser = rawDb.query(aiChatQueries.GET_LAST_USER_HISTORY)
+        .get(session.sessionId) as { id: number; message: string } | null;
+      if (!lastUser) {
+        return { ok: false as const, reason: 'empty' as const };
+      }
 
-    const deletedCount = await this.db.executeTransaction((rawDb: any) => {
       const result = rawDb.query(aiChatQueries.DELETE_HISTORY_FROM_ID)
         .run(session.sessionId, lastUser.id);
-      return Number(result.changes ?? 0);
+      const deletedCount = Number(result.changes ?? 0);
+      if (deletedCount <= 0) {
+        return { ok: false as const, reason: 'empty' as const };
+      }
+
+      return {
+        ok: true as const,
+        deletedCount,
+        userMessage: typeof lastUser.message === 'string' ? lastUser.message : '',
+      };
     });
 
-    if (deletedCount <= 0) {
+    if (!outcome.ok) {
       return { ok: false, reason: 'empty' };
     }
 
-    log(`AiChat: Undid last turn (${deletedCount} rows) in session ${session.sessionId} for user ${userId}`);
+    log(`AiChat: Undid last turn (${outcome.deletedCount} rows) in session ${session.sessionId} for user ${userId}`);
     return {
       ok: true,
       sessionId: session.sessionId,
-      deletedCount,
-      userMessage: typeof lastUser.message === 'string' ? lastUser.message : '',
+      deletedCount: outcome.deletedCount,
+      userMessage: outcome.userMessage,
     };
   }
 

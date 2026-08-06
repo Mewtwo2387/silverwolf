@@ -21,24 +21,31 @@ import {
 
 const WEBHOOK_NAME = process.env.WEBHOOK_NAME || 'grok-webhook';
 
+/** Collapse whitespace and lowercase for exact trigger+command matching. */
+function normalizeSessionCommandText(text: string): string {
+  return text.replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
 /**
- * True when `query` is exactly `<persona trigger(s)> <command>` (case-insensitive),
- * e.g. "@grok kys" / "jarvis amnesia" — not "@grok what is amnesia".
+ * True when `query` is exactly one `<trigger> <command>` phrase (case-insensitive),
+ * e.g. "@grok kys" / "jarvis amnesia" — not "@grok what is amnesia", bare
+ * "amnesia", or reordered "amnesia @grok".
  */
 function isExactSessionCommand(
   query: string,
   persona: { triggers?: string[] },
   command: string,
 ): boolean {
-  let rest = query;
-  const triggers = [...(persona.triggers ?? [])]
-    .filter((t): t is string => typeof t === 'string' && t.length > 0)
-    .sort((a, b) => b.length - a.length);
-  for (const trigger of triggers) {
-    const escaped = trigger.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    rest = rest.replace(new RegExp(escaped, 'gi'), ' ');
-  }
-  return rest.replace(/\s+/g, ' ').trim().toLowerCase() === command.toLowerCase();
+  const normalizedQuery = normalizeSessionCommandText(query);
+  if (!normalizedQuery) return false;
+  const normalizedCommand = normalizeSessionCommandText(command);
+  if (!normalizedCommand) return false;
+
+  return (persona.triggers ?? []).some((trigger) => {
+    if (typeof trigger !== 'string' || !trigger.trim()) return false;
+    const phrase = normalizeSessionCommandText(`${trigger} ${normalizedCommand}`);
+    return phrase.length > 0 && normalizedQuery === phrase;
+  });
 }
 
 const scriptHandlers = {
@@ -172,8 +179,8 @@ const scriptHandlers = {
           .setTitle('Amnesia')
           .setDescription(
             `Forgot the last turn from **${displayName}** session **#${result.sessionId}**`
-            + ` (${result.deletedCount} row${result.deletedCount === 1 ? '' : 's'}).`
-            + (previewSnippet ? `\n\n> ${previewSnippet}` : ''),
+            + ` (${result.deletedCount} row${result.deletedCount === 1 ? '' : 's'}).${
+              previewSnippet ? `\n\n> ${previewSnippet}` : ''}`,
           )
           .setFooter({ text: 'Use "kys" for a fresh session · "amnesia" to forget the last turn' });
         await message.reply({ embeds: [amnesiaEmbed] });
