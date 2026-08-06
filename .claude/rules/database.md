@@ -1,6 +1,6 @@
 ---
 paths:
-  - "database/**"
+  - 'database/**'
 ---
 
 # Database layer

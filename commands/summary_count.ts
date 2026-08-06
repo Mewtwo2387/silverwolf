@@ -22,14 +22,20 @@ function splitForEmbed(text: string, max = 4096): string[] {
 
 class Summary extends Command {
   constructor(client: any) {
-    super(client, 'count', 'Summarize the last n messages', [
-      {
-        name: 'n',
-        description: 'The number of past messages to summarize',
-        type: 4,
-        required: true,
-      },
-    ], { isSubcommandOf: 'summary', blame: 'ei' });
+    super(
+      client,
+      'count',
+      'Summarize the last n messages',
+      [
+        {
+          name: 'n',
+          description: 'The number of past messages to summarize',
+          type: 4,
+          required: true,
+        },
+      ],
+      { isSubcommandOf: 'summary', blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -83,15 +89,9 @@ class Summary extends Command {
     }
 
     const chunks = splitForEmbed(summary.text);
-    await interaction.editReply(
-      {
-        embeds: [
-          new EmbedBuilder()
-            .setTitle(`Summary of ${messages.length} messages`)
-            .setDescription(chunks[0]),
-        ],
-      },
-    );
+    await interaction.editReply({
+      embeds: [new EmbedBuilder().setTitle(`Summary of ${messages.length} messages`).setDescription(chunks[0])],
+    });
     for (let i = 1; i < chunks.length; i += 1) {
       // eslint-disable-next-line no-await-in-loop
       await interaction.followUp({

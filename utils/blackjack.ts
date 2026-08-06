@@ -3,9 +3,16 @@
 // pages (which drive a stateful REST API). Keeps deck shuffling, hand scoring,
 // dealer resolution, and the per-outcome stat updates in one place.
 
-export interface Card { suit: string; value: string; }
+export interface Card {
+  suit: string;
+  value: string;
+}
 
-export interface BlackjackWinResult { multi: number; streak: number; winnings: number; }
+export interface BlackjackWinResult {
+  multi: number;
+  streak: number;
+  winnings: number;
+}
 
 export type BlackjackOutcome = 'win' | 'loss' | 'tie';
 

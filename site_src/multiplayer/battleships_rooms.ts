@@ -18,8 +18,13 @@ import type { WSContext } from 'hono/ws';
 import { logError } from '../../utils/log';
 import type { Silverwolf } from '../../classes/silverwolf';
 import {
-  BOARD_CELLS, FLEET, SIZE, validateFleet, randomFleet,
-  type PlayerSymbol, type ShipPlacement,
+  BOARD_CELLS,
+  FLEET,
+  SIZE,
+  validateFleet,
+  randomFleet,
+  type PlayerSymbol,
+  type ShipPlacement,
 } from './battleships';
 
 export type RoomStatus = 'waiting' | 'placing' | 'active' | 'ended';
@@ -131,13 +136,10 @@ export const ROOMS_PER_USER_CAP = 5;
 export const MAX_ACTIVE_ROOMS_GLOBAL = 5_000;
 const GC_SWEEP_MS = 60_000;
 
-export type CreateResult =
-  | { ok: true; room: MatchRoom }
-  | { ok: false; reason: 'too_many_rooms' | 'server_full' };
+export type CreateResult = { ok: true; room: MatchRoom } | { ok: false; reason: 'too_many_rooms' | 'server_full' };
 
 export type AttachResult =
-  | { ok: true; slot: PlayerSlot; firstSeat: boolean }
-  | { ok: false; reason: 'room_full' | 'game_ended' };
+  { ok: true; slot: PlayerSlot; firstSeat: boolean } | { ok: false; reason: 'room_full' | 'game_ended' };
 
 function freshSide(): SideState {
   return { fleet: null, placed: false, incoming: new Map() };
@@ -226,10 +228,11 @@ class BattleshipsRoomManager {
 
   listForUser(discordId: string): MatchRoom[] {
     return [...this.rooms.values()].filter(
-      (r) => r.status !== 'ended'
-        && (r.creatorDiscordId === discordId
-          || r.players.X?.discordId === discordId
-          || r.players.O?.discordId === discordId),
+      (r) =>
+        r.status !== 'ended' &&
+        (r.creatorDiscordId === discordId ||
+          r.players.X?.discordId === discordId ||
+          r.players.O?.discordId === discordId),
     );
   }
 
@@ -293,8 +296,7 @@ class BattleshipsRoomManager {
     room.sides[sym] = { fleet: buildFleet(placement), placed: true, incoming: new Map() };
   }
 
-  submitPlacement(room: MatchRoom, user: UserInfo, fleetInput: unknown):
-    { ok: true } | { ok: false; reason: string } {
+  submitPlacement(room: MatchRoom, user: UserInfo, fleetInput: unknown): { ok: true } | { ok: false; reason: string } {
     if (room.status !== 'placing') return { ok: false, reason: 'not_placing' };
     const sym = this.symbolFor(room, user.discordId);
     if (!sym) return { ok: false, reason: 'not_player' };
@@ -336,8 +338,7 @@ class BattleshipsRoomManager {
     return allSunk(side);
   }
 
-  applyShotFromUser(room: MatchRoom, user: UserInfo, index: number):
-    { ok: true } | { ok: false; reason: string } {
+  applyShotFromUser(room: MatchRoom, user: UserInfo, index: number): { ok: true } | { ok: false; reason: string } {
     if (room.status !== 'active') return { ok: false, reason: 'game_not_active' };
     const slot = room.players[room.currentPlayer];
     if (!slot || slot.discordId !== user.discordId) return { ok: false, reason: 'not_your_turn' };
@@ -406,7 +407,11 @@ class BattleshipsRoomManager {
     const sockets = [...slot.sockets];
     slot.sockets.clear();
     for (const ws of sockets) {
-      try { ws.close(1000, 'left'); } catch { /* already closed */ }
+      try {
+        ws.close(1000, 'left');
+      } catch {
+        /* already closed */
+      }
     }
   }
 
@@ -429,7 +434,7 @@ class BattleshipsRoomManager {
 
   private slotFor(room: MatchRoom, discordId: string): PlayerSlot | null {
     const sym = this.symbolFor(room, discordId);
-    return sym ? room.players[sym] ?? null : null;
+    return sym ? (room.players[sym] ?? null) : null;
   }
 
   private setTurnTimer(room: MatchRoom) {
@@ -515,15 +520,17 @@ class BattleshipsRoomManager {
       if (result.winner === 'X') winnerDiscordId = x.discordId;
       else if (result.winner === 'O') winnerDiscordId = o.discordId;
       // room.id is reused across rematches; generate a fresh per-game id.
-      this.silverwolf.db.battleshipsMatch.recordMatch({
-        id: randomBytes(16).toString('base64url'),
-        xDiscordId: x.discordId,
-        oDiscordId: o.discordId,
-        winnerDiscordId,
-        endReason: result.reason,
-        createdAt: room.createdAt,
-        endedAt: room.endedAt,
-      }).catch((err: unknown) => logError('battleships match record failed:', err));
+      this.silverwolf.db.battleshipsMatch
+        .recordMatch({
+          id: randomBytes(16).toString('base64url'),
+          xDiscordId: x.discordId,
+          oDiscordId: o.discordId,
+          winnerDiscordId,
+          endReason: result.reason,
+          createdAt: room.createdAt,
+          endedAt: room.endedAt,
+        })
+        .catch((err: unknown) => logError('battleships match record failed:', err));
     }
   }
 
@@ -533,7 +540,10 @@ class BattleshipsRoomManager {
       const ship = side.fleet?.find((s) => s.id === def.id) ?? null;
       const sunk = ship ? ship.hits.size === ship.len : false;
       return {
-        id: def.id, name: def.name, len: def.len, sunk,
+        id: def.id,
+        name: def.name,
+        len: def.len,
+        sunk,
       };
     });
   }
@@ -548,20 +558,21 @@ class BattleshipsRoomManager {
   // during play, or the whole fleet once the match has ended (reveal).
   private revealedShips(side: SideState, full: boolean): RevealedShip[] {
     if (!side.fleet) return [];
-    return side.fleet
-      .filter((s) => full || s.hits.size === s.len)
-      .map((s) => ({ id: s.id, cells: [...s.cells] }));
+    return side.fleet.filter((s) => full || s.hits.size === s.len).map((s) => ({ id: s.id, cells: [...s.cells] }));
   }
 
   snapshotFor(room: MatchRoom, discordId: string | null): ViewerSnapshot {
-    const pub = (slot?: PlayerSlot): PublicPlayer | null => (slot ? {
-      discordId: slot.discordId,
-      username: slot.username,
-      avatarURL: slot.avatarURL,
-      symbol: slot.symbol,
-      connected: slot.sockets.size > 0,
-      rematchAccepted: slot.rematchAccepted,
-    } : null);
+    const pub = (slot?: PlayerSlot): PublicPlayer | null =>
+      slot
+        ? {
+            discordId: slot.discordId,
+            username: slot.username,
+            avatarURL: slot.avatarURL,
+            symbol: slot.symbol,
+            connected: slot.sockets.size > 0,
+            rematchAccepted: slot.rematchAccepted,
+          }
+        : null;
 
     const you = discordId ? this.symbolFor(room, discordId) : null;
     const ended = room.status === 'ended';
@@ -604,7 +615,11 @@ class BattleshipsRoomManager {
       // Built once per seat — every socket for that seat sees the same view.
       const msg = JSON.stringify({ type: 'state', room: this.snapshotFor(room, slot.discordId) });
       for (const ws of slot.sockets) {
-        try { ws.send(msg); } catch { /* socket closing; will be detached */ }
+        try {
+          ws.send(msg);
+        } catch {
+          /* socket closing; will be detached */
+        }
       }
     }
   }

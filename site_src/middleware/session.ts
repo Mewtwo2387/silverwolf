@@ -2,13 +2,7 @@ import type { Context, Next } from 'hono';
 import { logError } from '../../utils/log';
 import type { Silverwolf } from '../../classes/silverwolf';
 import { resolveUser } from '../bot-bridge';
-import {
-  clearSessionCookie,
-  loadSession,
-  readSessionId,
-  setSessionCookie,
-  SESSION_TTL_MS,
-} from '../auth/session';
+import { clearSessionCookie, loadSession, readSessionId, setSessionCookie, SESSION_TTL_MS } from '../auth/session';
 import type { AppEnv } from '../shared';
 
 export function sessionMiddleware(silverwolf: Silverwolf) {

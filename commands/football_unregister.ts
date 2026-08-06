@@ -5,15 +5,21 @@ import { parseChannelIds } from '../utils/parseChannelIds';
 
 class FootballUnregister extends DevCommand {
   constructor(client: any) {
-    super(client, 'unregister', 'Unregister a channel from World Cup match announcements', [
-      {
-        name: 'channel',
-        description: 'The channel to stop sending World Cup announcements to',
-        type: 7,
-        required: true,
-        channel_types: [0],
-      },
-    ], { isSubcommandOf: 'football', blame: 'ei' });
+    super(
+      client,
+      'unregister',
+      'Unregister a channel from World Cup match announcements',
+      [
+        {
+          name: 'channel',
+          description: 'The channel to stop sending World Cup announcements to',
+          type: 7,
+          required: true,
+          channel_types: [0],
+        },
+      ],
+      { isSubcommandOf: 'football', blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {

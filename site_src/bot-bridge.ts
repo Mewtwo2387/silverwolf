@@ -1,15 +1,7 @@
 import type { Silverwolf } from '../classes/silverwolf';
 import { logError } from '../utils/log';
-import {
-  fetchGamblingPageStats,
-  type GamblingStreakAttr,
-  type GamblingPageStats,
-} from './gambling-stats';
-import {
-  checkValidBetRaw,
-  mapBetCode,
-  type BetErrorCode as BetingErrorCode,
-} from '../utils/betting';
+import { fetchGamblingPageStats, type GamblingStreakAttr, type GamblingPageStats } from './gambling-stats';
+import { checkValidBetRaw, mapBetCode, type BetErrorCode as BetingErrorCode } from '../utils/betting';
 import {
   type Card,
   createDeck,
@@ -26,7 +18,8 @@ import { processClaim, type ClaimResult } from '../utils/claim';
 import { processEat, type EatResult, formatEatItemLine } from '../utils/eat';
 import { processBuyUpgrade, type BuyUpgradeResult } from '../utils/buyUpgrade';
 import {
-  processBuyAscensionUpgrade, type BuyAscensionResult,
+  processBuyAscensionUpgrade,
+  type BuyAscensionResult,
   ASCENSION_UPGRADES,
   ASCENSION_AMPLIFIERS,
   ASCENSION_LEVEL_ATTR,
@@ -34,9 +27,7 @@ import {
   MAX_ASCENSION_PURCHASE,
   type AscensionUpgradeKey,
 } from '../utils/buyAscensionUpgrade';
-import {
-  getAscensionState, processAscend, type AscensionState, type AscendResult,
-} from '../utils/ascend';
+import { getAscensionState, processAscend, type AscensionState, type AscendResult } from '../utils/ascend';
 import {
   getMaxLevel,
   getNextUpgradeCost,
@@ -75,12 +66,7 @@ function valueLabelFields(
   return valueTitle ? { valueLabel, valueTitle } : { valueLabel };
 }
 
-function displayArrow(
-  cur: number,
-  nxt: number,
-  suffix = '',
-  alwaysFixed = false,
-): { v: string; vTitle?: string } {
+function displayArrow(cur: number, nxt: number, suffix = '', alwaysFixed = false): { v: string; vTitle?: string } {
   const a = formatDisplay(cur, alwaysFixed);
   const b = formatDisplay(nxt, alwaysFixed);
   const v = `${a.label}${suffix} → ${b.label}${suffix}`;
@@ -109,12 +95,18 @@ function ascensionEffectDisplay(key: AscensionUpgradeKey, level: number): Format
 
 function ascensionEffectSuffix(key: AscensionUpgradeKey): string {
   switch (key) {
-    case 'nuggieFlatMultiplier': return 'x flat';
-    case 'nuggieStreakMultiplier': return '%/day';
-    case 'nuggieCreditsMultiplier': return '% * log2(credits)';
-    case 'nuggiePokeMultiplier': return '%/pokemon';
-    case 'nuggieNuggieMultiplier': return '% * log2(nuggies)';
-    default: return '';
+    case 'nuggieFlatMultiplier':
+      return 'x flat';
+    case 'nuggieStreakMultiplier':
+      return '%/day';
+    case 'nuggieCreditsMultiplier':
+      return '% * log2(credits)';
+    case 'nuggiePokeMultiplier':
+      return '%/pokemon';
+    case 'nuggieNuggieMultiplier':
+      return '% * log2(nuggies)';
+    default:
+      return '';
   }
 }
 
@@ -132,8 +124,13 @@ export type LeaderboardKind = 'gambler' | 'murder' | 'nuggie' | 'poop';
 // Web-only extension of the shared bet error codes — adds states that only
 // matter for stateful HTTP games (blackjack rounds in flight, expired games).
 export type BetErrorCode = BetingErrorCode | 'in_progress' | 'no_game' | 'expired' | 'invalid_bet_value';
-export interface BetError { error: BetErrorCode; }
-export interface BetSuccess<T> { ok: true; data: T; }
+export interface BetError {
+  error: BetErrorCode;
+}
+export interface BetSuccess<T> {
+  ok: true;
+  data: T;
+}
 export type BetResult<T> = BetSuccess<T> | BetError;
 
 async function appendGamblingPageStats<T extends object>(
@@ -161,8 +158,18 @@ export interface LeaderboardResult {
 }
 
 const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 // Local shapes for the command objects on `silverwolf.commands` (typed as Map<string, any> upstream).
@@ -180,17 +187,11 @@ interface AttrLeaderboardCommand {
 }
 
 interface GamblerBoardCommand {
-  fetchData(
-    leaderboardType: string,
-    page: number,
-  ): Promise<{ winnings: { id: string; relativeWon: number }[] }>;
+  fetchData(leaderboardType: string, page: number): Promise<{ winnings: { id: string; relativeWon: number }[] }>;
 }
 
 interface PoopBoardCommand {
-  fetchData(
-    period: string,
-    page: number,
-  ): Promise<{ attrs: { id: string; poopCount: number }[]; periodLabel: string }>;
+  fetchData(period: string, page: number): Promise<{ attrs: { id: string; poopCount: number }[]; periodLabel: string }>;
 }
 
 interface BirthdayRow {
@@ -226,22 +227,25 @@ const RESULT_TTL = 15 * 60 * 1000; // 15 minutes
 const leaderboardResultCache = new Map<string, { value: LeaderboardResult; expiresAt: number }>();
 let birthdayResultCache: { value: Record<string, BirthdayUser[]>; expiresAt: number } | null = null;
 
-setInterval(() => {
-  const now = Date.now();
-  for (const [id, cached] of userCache.entries()) {
-    if (cached.expiresAt < now) {
-      userCache.delete(id);
+setInterval(
+  () => {
+    const now = Date.now();
+    for (const [id, cached] of userCache.entries()) {
+      if (cached.expiresAt < now) {
+        userCache.delete(id);
+      }
     }
-  }
-  for (const [key, cached] of leaderboardResultCache.entries()) {
-    if (cached.expiresAt < now) {
-      leaderboardResultCache.delete(key);
+    for (const [key, cached] of leaderboardResultCache.entries()) {
+      if (cached.expiresAt < now) {
+        leaderboardResultCache.delete(key);
+      }
     }
-  }
-  if (birthdayResultCache && birthdayResultCache.expiresAt < now) {
-    birthdayResultCache = null;
-  }
-}, 30 * 60 * 1000).unref();
+    if (birthdayResultCache && birthdayResultCache.expiresAt < now) {
+      birthdayResultCache = null;
+    }
+  },
+  30 * 60 * 1000,
+).unref();
 
 export async function resolveUser(silverwolf: Silverwolf, id: string) {
   const now = Date.now();
@@ -280,18 +284,20 @@ async function getLeaderboardUncached(
     const { attribute, counter, title } = command;
     return {
       title,
-      rows: await Promise.all(attrs.map(async (row, i) => {
-        const u = await resolveUser(silverwolf, row.id);
-        const value = Number(row[attribute] ?? 0);
-        const labels = valueLabelFields(value, ` ${counter}`);
-        return {
-          rank: i + 1,
-          username: u.username,
-          avatarURL: u.avatarURL,
-          value,
-          ...labels,
-        };
-      })),
+      rows: await Promise.all(
+        attrs.map(async (row, i) => {
+          const u = await resolveUser(silverwolf, row.id);
+          const value = Number(row[attribute] ?? 0);
+          const labels = valueLabelFields(value, ` ${counter}`);
+          return {
+            rank: i + 1,
+            username: u.username,
+            avatarURL: u.avatarURL,
+            value,
+            ...labels,
+          };
+        }),
+      ),
     };
   }
 
@@ -301,18 +307,20 @@ async function getLeaderboardUncached(
     const { winnings } = await command.fetchData(type, 0);
     return {
       title: gamblerBoardTitle(type),
-      rows: await Promise.all(winnings.map(async (row, i) => {
-        const u = await resolveUser(silverwolf, row.id);
-        const prefix = row.relativeWon > 0 ? '+' : '';
-        const labels = valueLabelFields(row.relativeWon, ' bets', false, prefix);
-        return {
-          rank: i + 1,
-          username: u.username,
-          avatarURL: u.avatarURL,
-          value: row.relativeWon,
-          ...labels,
-        };
-      })),
+      rows: await Promise.all(
+        winnings.map(async (row, i) => {
+          const u = await resolveUser(silverwolf, row.id);
+          const prefix = row.relativeWon > 0 ? '+' : '';
+          const labels = valueLabelFields(row.relativeWon, ' bets', false, prefix);
+          return {
+            rank: i + 1,
+            username: u.username,
+            avatarURL: u.avatarURL,
+            value: row.relativeWon,
+            ...labels,
+          };
+        }),
+      ),
     };
   }
 
@@ -322,17 +330,19 @@ async function getLeaderboardUncached(
     const { attrs, periodLabel } = await command.fetchData(period, 0);
     return {
       title: `Poop Leaderboard — ${periodLabel}`,
-      rows: await Promise.all(attrs.map(async (row, i) => {
-        const u = await resolveUser(silverwolf, row.id);
-        const labels = valueLabelFields(row.poopCount, ' Poops');
-        return {
-          rank: i + 1,
-          username: u.username,
-          avatarURL: u.avatarURL,
-          value: row.poopCount,
-          ...labels,
-        };
-      })),
+      rows: await Promise.all(
+        attrs.map(async (row, i) => {
+          const u = await resolveUser(silverwolf, row.id);
+          const labels = valueLabelFields(row.poopCount, ' Poops');
+          return {
+            rank: i + 1,
+            username: u.username,
+            avatarURL: u.avatarURL,
+            value: row.poopCount,
+            ...labels,
+          };
+        }),
+      ),
     };
   }
 
@@ -371,14 +381,15 @@ export async function getLeaderboard(
   return value;
 }
 
-async function getAllBirthdaysByMonthUncached(
-  silverwolf: Silverwolf,
-): Promise<Record<string, BirthdayUser[]>> {
+async function getAllBirthdaysByMonthUncached(silverwolf: Silverwolf): Promise<Record<string, BirthdayUser[]>> {
   const rows = await db(silverwolf).user.getAllBirthdays();
-  const grouped: Record<string, BirthdayUser[]> = MONTHS.reduce((acc, m) => {
-    acc[m] = [];
-    return acc;
-  }, {} as Record<string, BirthdayUser[]>);
+  const grouped: Record<string, BirthdayUser[]> = MONTHS.reduce(
+    (acc, m) => {
+      acc[m] = [];
+      return acc;
+    },
+    {} as Record<string, BirthdayUser[]>,
+  );
 
   const parsed: { row: BirthdayRow; date: Date }[] = [];
   for (const row of rows) {
@@ -387,16 +398,18 @@ async function getAllBirthdaysByMonthUncached(
     if (!Number.isNaN(date.getTime())) parsed.push({ row, date });
   }
 
-  await Promise.all(parsed.map(async ({ row, date }) => {
-    const u = await resolveUser(silverwolf, row.id);
-    grouped[MONTHS[date.getUTCMonth()]].push({
-      id: row.id,
-      username: u.username,
-      avatarURL: u.avatarURL,
-      nextBirthday: formatNextBirthday(row.birthdays as string),
-      day: date.getUTCDate(),
-    });
-  }));
+  await Promise.all(
+    parsed.map(async ({ row, date }) => {
+      const u = await resolveUser(silverwolf, row.id);
+      grouped[MONTHS[date.getUTCMonth()]].push({
+        id: row.id,
+        username: u.username,
+        avatarURL: u.avatarURL,
+        nextBirthday: formatNextBirthday(row.birthdays as string),
+        day: date.getUTCDate(),
+      });
+    }),
+  );
 
   // Promise.all resolves in arbitrary order; sort each month to present a stable view.
   for (const name of MONTHS) grouped[name].sort((a, b) => a.day - b.day);
@@ -404,9 +417,7 @@ async function getAllBirthdaysByMonthUncached(
   return grouped;
 }
 
-export async function getAllBirthdaysByMonth(
-  silverwolf: Silverwolf,
-): Promise<Record<string, BirthdayUser[]>> {
+export async function getAllBirthdaysByMonth(silverwolf: Silverwolf): Promise<Record<string, BirthdayUser[]>> {
   const now = Date.now();
   if (birthdayResultCache && birthdayResultCache.expiresAt > now) {
     return birthdayResultCache.value;
@@ -463,7 +474,12 @@ export function startWebsiteCachePrewarm(silverwolf: Silverwolf): undefined {
   if (prewarmInterval) return undefined;
   prewarmOnce(silverwolf).catch(() => {});
   // Refresh slightly under RESULT_TTL so a request never lands on an expired slot.
-  prewarmInterval = setInterval(() => { prewarmOnce(silverwolf).catch(() => {}); }, 10 * 60 * 1000);
+  prewarmInterval = setInterval(
+    () => {
+      prewarmOnce(silverwolf).catch(() => {});
+    },
+    10 * 60 * 1000,
+  );
   prewarmInterval.unref?.();
   return undefined;
 }
@@ -489,7 +505,10 @@ export { MONTHS };
 // may only have one active game; starting a new one while a game is live
 // returns 'in_progress'.
 
-export interface SerializableCard { suit: string; value: string; }
+export interface SerializableCard {
+  suit: string;
+  value: string;
+}
 
 interface BlackjackGameState {
   deck: Card[];
@@ -584,25 +603,32 @@ export async function startBlackjack(
   (timeoutHandle as unknown as { unref?: () => void }).unref?.();
 
   blackjackGames.set(userId, {
-    deck, playerHand, dealerHand, amount, expiresAt, timeoutHandle, finalized: false,
+    deck,
+    playerHand,
+    dealerHand,
+    amount,
+    expiresAt,
+    timeoutHandle,
+    finalized: false,
   });
 
   return {
     ok: true,
-    data: applyNumLabel({
-      playerHand,
-      dealerUpCard: dealerHand[0],
-      playerTotal: calculateHand(playerHand),
+    data: applyNumLabel(
+      {
+        playerHand,
+        dealerUpCard: dealerHand[0],
+        playerTotal: calculateHand(playerHand),
+        amount,
+        expiresAt,
+      },
+      'amount',
       amount,
-      expiresAt,
-    }, 'amount', amount),
+    ),
   };
 }
 
-export async function hitBlackjack(
-  silverwolf: Silverwolf,
-  userId: string,
-): Promise<BetResult<BlackjackHitData>> {
+export async function hitBlackjack(silverwolf: Silverwolf, userId: string): Promise<BetResult<BlackjackHitData>> {
   const game = blackjackGames.get(userId);
   if (!game || game.finalized) return { error: 'no_game' };
   if (Date.now() > game.expiresAt) {
@@ -620,17 +646,26 @@ export async function hitBlackjack(
     await recordBlackjackLoss(silverwolf, userId, game.amount);
     return {
       ok: true,
-      data: await appendGamblingPageStats(silverwolf, userId, 'blackjackStreak', applyNumLabel({
-        playerHand: game.playerHand,
-        dealerHand: game.dealerHand,
-        dealerTotal: calculateHand(game.dealerHand),
-        playerTotal,
-        busted: true,
-        expiresAt: game.expiresAt,
-        result: 'loss',
-        message: 'You busted!',
-        amount: game.amount,
-      }, 'amount', game.amount)),
+      data: await appendGamblingPageStats(
+        silverwolf,
+        userId,
+        'blackjackStreak',
+        applyNumLabel(
+          {
+            playerHand: game.playerHand,
+            dealerHand: game.dealerHand,
+            dealerTotal: calculateHand(game.dealerHand),
+            playerTotal,
+            busted: true,
+            expiresAt: game.expiresAt,
+            result: 'loss',
+            message: 'You busted!',
+            amount: game.amount,
+          },
+          'amount',
+          game.amount,
+        ),
+      ),
     };
   }
 
@@ -645,10 +680,7 @@ export async function hitBlackjack(
   };
 }
 
-export async function standBlackjack(
-  silverwolf: Silverwolf,
-  userId: string,
-): Promise<BetResult<BlackjackStandData>> {
+export async function standBlackjack(silverwolf: Silverwolf, userId: string): Promise<BetResult<BlackjackStandData>> {
   const game = blackjackGames.get(userId);
   if (!game || game.finalized) return { error: 'no_game' };
   if (Date.now() > game.expiresAt) {
@@ -660,28 +692,37 @@ export async function standBlackjack(
   game.finalized = true;
   blackjackGames.delete(userId);
 
-  const { outcome, playerTotal, dealerTotal } = resolveBlackjackStand(
-    game.deck,
-    game.playerHand,
-    game.dealerHand,
-  );
+  const { outcome, playerTotal, dealerTotal } = resolveBlackjackStand(game.deck, game.playerHand, game.dealerHand);
 
   if (outcome === 'win') {
     const win = await recordBlackjackWin(silverwolf, userId, game.amount);
     return {
       ok: true,
-      data: await appendGamblingPageStats(silverwolf, userId, 'blackjackStreak', applyNumLabel(applyNumLabel({
-        playerHand: game.playerHand,
-        dealerHand: game.dealerHand,
-        playerTotal,
-        dealerTotal,
-        result: 'win',
-        message: 'You win!',
-        multi: win.multi,
-        winnings: win.winnings,
-        streak: win.streak,
-        amount: game.amount,
-      }, 'winnings', win.winnings), 'amount', game.amount)),
+      data: await appendGamblingPageStats(
+        silverwolf,
+        userId,
+        'blackjackStreak',
+        applyNumLabel(
+          applyNumLabel(
+            {
+              playerHand: game.playerHand,
+              dealerHand: game.dealerHand,
+              playerTotal,
+              dealerTotal,
+              result: 'win',
+              message: 'You win!',
+              multi: win.multi,
+              winnings: win.winnings,
+              streak: win.streak,
+              amount: game.amount,
+            },
+            'winnings',
+            win.winnings,
+          ),
+          'amount',
+          game.amount,
+        ),
+      ),
     };
   }
 
@@ -689,30 +730,48 @@ export async function standBlackjack(
     await recordBlackjackLoss(silverwolf, userId, game.amount);
     return {
       ok: true,
-      data: await appendGamblingPageStats(silverwolf, userId, 'blackjackStreak', applyNumLabel({
-        playerHand: game.playerHand,
-        dealerHand: game.dealerHand,
-        playerTotal,
-        dealerTotal,
-        result: 'loss',
-        message: 'Silverwolf wins!',
-        amount: game.amount,
-      }, 'amount', game.amount)),
+      data: await appendGamblingPageStats(
+        silverwolf,
+        userId,
+        'blackjackStreak',
+        applyNumLabel(
+          {
+            playerHand: game.playerHand,
+            dealerHand: game.dealerHand,
+            playerTotal,
+            dealerTotal,
+            result: 'loss',
+            message: 'Silverwolf wins!',
+            amount: game.amount,
+          },
+          'amount',
+          game.amount,
+        ),
+      ),
     };
   }
 
   await recordBlackjackTie(silverwolf, userId, game.amount);
   return {
     ok: true,
-    data: await appendGamblingPageStats(silverwolf, userId, 'blackjackStreak', applyNumLabel({
-      playerHand: game.playerHand,
-      dealerHand: game.dealerHand,
-      playerTotal,
-      dealerTotal,
-      result: 'tie',
-      message: 'No one wins!',
-      amount: game.amount,
-    }, 'amount', game.amount)),
+    data: await appendGamblingPageStats(
+      silverwolf,
+      userId,
+      'blackjackStreak',
+      applyNumLabel(
+        {
+          playerHand: game.playerHand,
+          dealerHand: game.dealerHand,
+          playerTotal,
+          dealerTotal,
+          result: 'tie',
+          message: 'No one wins!',
+          amount: game.amount,
+        },
+        'amount',
+        game.amount,
+      ),
+    ),
   };
 }
 
@@ -762,10 +821,23 @@ export async function playRouletteWeb(
   );
   return {
     ok: true,
-    data: await appendGamblingPageStats(silverwolf, userId, 'rouletteStreak', applyNumLabel(applyNumLabel({
-      ...result,
-      amount,
-    }, 'winnings', result.winnings), 'amount', amount)),
+    data: await appendGamblingPageStats(
+      silverwolf,
+      userId,
+      'rouletteStreak',
+      applyNumLabel(
+        applyNumLabel(
+          {
+            ...result,
+            amount,
+          },
+          'winnings',
+          result.winnings,
+        ),
+        'amount',
+        amount,
+      ),
+    ),
   };
 }
 
@@ -784,10 +856,23 @@ export async function playSlotsWeb(
   const result = await spinSlots(silverwolf, userId, amount);
   return {
     ok: true,
-    data: await appendGamblingPageStats(silverwolf, userId, undefined, applyNumLabel(applyNumLabel({
-      ...result,
-      amount,
-    }, 'winnings', result.winnings), 'amount', amount)),
+    data: await appendGamblingPageStats(
+      silverwolf,
+      userId,
+      undefined,
+      applyNumLabel(
+        applyNumLabel(
+          {
+            ...result,
+            amount,
+          },
+          'winnings',
+          result.winnings,
+        ),
+        'amount',
+        amount,
+      ),
+    ),
   };
 }
 
@@ -800,10 +885,7 @@ export type WebClaimResult = ClaimResult & {
   newDinonuggiesLabel?: string;
 };
 
-export async function claimWeb(
-  silverwolf: Silverwolf,
-  userId: string,
-): Promise<WebClaimResult> {
+export async function claimWeb(silverwolf: Silverwolf, userId: string): Promise<WebClaimResult> {
   const result = await processClaim(silverwolf, userId);
   if (result.status === 'broken_streak' || result.status === 'success') {
     return applyNumLabel(
@@ -876,7 +958,10 @@ function upgradeDisplayLines(
   ];
 }
 
-function cumulativeUpgradeCosts(level: number, maxLevel: number): {
+function cumulativeUpgradeCosts(
+  level: number,
+  maxLevel: number,
+): {
   costsByQty: FormattedNumber[];
   costValuesByQty: number[];
 } {
@@ -892,7 +977,10 @@ function cumulativeUpgradeCosts(level: number, maxLevel: number): {
   return { costsByQty, costValuesByQty };
 }
 
-function cumulativeAscensionCosts(level: number, amplifier: number): {
+function cumulativeAscensionCosts(
+  level: number,
+  amplifier: number,
+): {
   costsByQty: FormattedNumber[];
   costValuesByQty: number[];
 } {
@@ -961,25 +1049,20 @@ export interface DinoUpgradesState {
   };
 }
 
-export async function getDinoUpgradesStateWeb(
-  silverwolf: Silverwolf,
-  userId: string,
-): Promise<DinoUpgradesState> {
+export async function getDinoUpgradesStateWeb(silverwolf: Silverwolf, userId: string): Promise<DinoUpgradesState> {
   const client = silverwolf as any;
   const ascensionLevel = await client.db.user.getUserAttr(userId, 'ascensionLevel');
   const maxLevel = getMaxLevel(ascensionLevel);
 
-  const [
-    dinonuggies, credits, heavenlyNuggies,
-    multiplierAmountLevel, multiplierRarityLevel, bekiLevel,
-  ] = await Promise.all([
-    client.db.user.getUserAttr(userId, 'dinonuggies'),
-    client.db.user.getUserAttr(userId, 'credits'),
-    client.db.user.getUserAttr(userId, 'heavenlyNuggies'),
-    client.db.user.getUserAttr(userId, 'multiplierAmountLevel'),
-    client.db.user.getUserAttr(userId, 'multiplierRarityLevel'),
-    client.db.user.getUserAttr(userId, 'bekiLevel'),
-  ]);
+  const [dinonuggies, credits, heavenlyNuggies, multiplierAmountLevel, multiplierRarityLevel, bekiLevel] =
+    await Promise.all([
+      client.db.user.getUserAttr(userId, 'dinonuggies'),
+      client.db.user.getUserAttr(userId, 'credits'),
+      client.db.user.getUserAttr(userId, 'heavenlyNuggies'),
+      client.db.user.getUserAttr(userId, 'multiplierAmountLevel'),
+      client.db.user.getUserAttr(userId, 'multiplierRarityLevel'),
+      client.db.user.getUserAttr(userId, 'bekiLevel'),
+    ]);
 
   const buildRow = (key: UpgradeRowKey, upgradeId: number, level: number): UpgradeRowState => {
     const costs = cumulativeUpgradeCosts(level, maxLevel);
@@ -1010,9 +1093,7 @@ export async function getDinoUpgradesStateWeb(
       const cur = ascensionEffectLine(key, lvl);
       const nxt = ascensionEffectLine(key, lvl + 1);
       const effectLabel = `${cur.label} → ${nxt.label}`;
-      const effectTitle = (cur.title || nxt.title)
-        ? `${cur.title ?? cur.label} → ${nxt.title ?? nxt.label}`
-        : undefined;
+      const effectTitle = cur.title || nxt.title ? `${cur.title ?? cur.label} → ${nxt.title ?? nxt.label}` : undefined;
       return {
         key,
         upgradeId: i + 1,
@@ -1067,27 +1148,23 @@ export type WebEatResult = EatResult & {
   itemLines?: string[];
 };
 
-export async function eatWeb(
-  silverwolf: Silverwolf,
-  userId: string,
-  amount: number,
-): Promise<WebEatResult> {
+export async function eatWeb(silverwolf: Silverwolf, userId: string, amount: number): Promise<WebEatResult> {
   const result = await processEat(silverwolf as any, userId, amount);
   switch (result.status) {
     case 'not_enough':
     case 'cheat':
-      return applyNumLabel(
-        applyNumLabel(result, 'amount', result.amount),
-        'dinonuggies',
-        result.dinonuggies,
-      );
+      return applyNumLabel(applyNumLabel(result, 'amount', result.amount), 'dinonuggies', result.dinonuggies);
     case 'single':
       return { ...result, itemLine: formatEatItemLine(result.item) };
     case 'batch':
-      return applyNumLabel({
-        ...result,
-        itemLines: result.items.map(formatEatItemLine),
-      }, 'totalEarned', result.totalEarned);
+      return applyNumLabel(
+        {
+          ...result,
+          itemLines: result.items.map(formatEatItemLine),
+        },
+        'totalEarned',
+        result.totalEarned,
+      );
     default:
       return result;
   }
@@ -1109,11 +1186,7 @@ export async function buyUpgradeWeb(
   const result = await processBuyUpgrade(silverwolf as any, userId, upgradeId, amount);
   if (result.status === 'success' || result.status === 'poor') {
     return result.status === 'poor'
-      ? applyNumLabel(
-        applyNumLabel(result, 'cost', result.cost),
-        'credits',
-        result.credits,
-      )
+      ? applyNumLabel(applyNumLabel(result, 'cost', result.cost), 'credits', result.credits)
       : applyNumLabel(result, 'cost', result.cost);
   }
   return result;
@@ -1135,11 +1208,7 @@ export async function buyAscensionUpgradeWeb(
   const result = await processBuyAscensionUpgrade(silverwolf as any, userId, upgradeId, amount);
   if (result.status === 'success' || result.status === 'poor') {
     return result.status === 'poor'
-      ? applyNumLabel(
-        applyNumLabel(result, 'cost', result.cost),
-        'heavenlyNuggies',
-        result.heavenlyNuggies,
-      )
+      ? applyNumLabel(applyNumLabel(result, 'cost', result.cost), 'heavenlyNuggies', result.heavenlyNuggies)
       : applyNumLabel(result, 'cost', result.cost);
   }
   return result;
@@ -1152,10 +1221,7 @@ export type WebAscendResult = AscendResult & {
   dinonuggiesTitle?: string;
 };
 
-export async function ascendWeb(
-  silverwolf: Silverwolf,
-  userId: string,
-): Promise<WebAscendResult> {
+export async function ascendWeb(silverwolf: Silverwolf, userId: string): Promise<WebAscendResult> {
   const result = await processAscend(silverwolf as any, userId);
   if (result.status === 'too_few') {
     return applyNumLabel(result, 'dinonuggies', result.dinonuggies);
@@ -1165,7 +1231,9 @@ export async function ascendWeb(
 
 // ─── Poop log ──────────────────────────────────────────────────────────────
 
-export interface PoopLogResult { count: number | null; }
+export interface PoopLogResult {
+  count: number | null;
+}
 
 export async function logPoopWeb(
   silverwolf: Silverwolf,
@@ -1176,13 +1244,17 @@ export async function logPoopWeb(
   duration: number | null,
 ): Promise<PoopLogResult> {
   type PoopDb = {
-    db: { poop: { logPoop(
-      u: string,
-      c: string | null,
-      s: string | null,
-      t: string | null,
-      d: number | null,
-    ): Promise<number | null> } };
+    db: {
+      poop: {
+        logPoop(
+          u: string,
+          c: string | null,
+          s: string | null,
+          t: string | null,
+          d: number | null,
+        ): Promise<number | null>;
+      };
+    };
   };
   const dbAny = silverwolf as unknown as PoopDb;
   const count = await dbAny.db.poop.logPoop(userId, colour, size, type, duration);
@@ -1192,15 +1264,18 @@ export async function logPoopWeb(
 // ─── Fake quote ────────────────────────────────────────────────────────────
 
 export type FakeQuoteErrorCode =
-  | 'rate_limited'
-  | 'invalid_uid'
-  | 'user_not_found'
-  | 'invalid_message'
-  | 'invalid_options'
-  | 'render_failed';
+  'rate_limited' | 'invalid_uid' | 'user_not_found' | 'invalid_message' | 'invalid_options' | 'render_failed';
 
-export interface FakeQuoteSuccess { ok: true; image: string; }
-export interface FakeQuoteError { ok: false; error: FakeQuoteErrorCode; message?: string; retryAfter?: number; }
+export interface FakeQuoteSuccess {
+  ok: true;
+  image: string;
+}
+export interface FakeQuoteError {
+  ok: false;
+  error: FakeQuoteErrorCode;
+  message?: string;
+  retryAfter?: number;
+}
 export type FakeQuoteResult = FakeQuoteSuccess | FakeQuoteError;
 
 const FAKEQUOTE_RATE_WINDOW_MS = 60_000;
@@ -1221,14 +1296,17 @@ function rateLimitCheck(userId: string): { ok: true } | { ok: false; retryAfter:
   return { ok: true };
 }
 
-setInterval(() => {
-  const now = Date.now();
-  for (const [id, hits] of fakeQuoteHits.entries()) {
-    const fresh = hits.filter((t) => now - t < FAKEQUOTE_RATE_WINDOW_MS);
-    if (fresh.length === 0) fakeQuoteHits.delete(id);
-    else fakeQuoteHits.set(id, fresh);
-  }
-}, 5 * 60 * 1000).unref();
+setInterval(
+  () => {
+    const now = Date.now();
+    for (const [id, hits] of fakeQuoteHits.entries()) {
+      const fresh = hits.filter((t) => now - t < FAKEQUOTE_RATE_WINDOW_MS);
+      if (fresh.length === 0) fakeQuoteHits.delete(id);
+      else fakeQuoteHits.set(id, fresh);
+    }
+  },
+  5 * 60 * 1000,
+).unref();
 
 // Discord snowflake: 17–20 digits.
 const SNOWFLAKE_RE = /^\d{17,20}$/;

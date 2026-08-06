@@ -16,11 +16,7 @@ export const userLocks = new Map<string, Promise<any>>();
 // inner work. (A `while (existing) await existing` loop that re-reads the map after
 // awaiting can let callers resume in parallel as soon as a predecessor settles —
 // this avoids that.)
-export function withUserLock<T>(
-  locks: Map<string, Promise<any>>,
-  userId: string,
-  inner: () => Promise<T>,
-): Promise<T> {
+export function withUserLock<T>(locks: Map<string, Promise<any>>, userId: string, inner: () => Promise<T>): Promise<T> {
   const previous = locks.get(userId);
   const run: Promise<T> = (async () => {
     if (previous) await previous.catch(() => undefined);

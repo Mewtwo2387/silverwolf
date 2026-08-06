@@ -27,9 +27,7 @@ const aiChatSessionTable: TableDefinition = {
   ],
   primaryKey: ['session_id'],
   specialConstraints: [],
-  constraints: [
-    'FOREIGN KEY (user_id) REFERENCES User(id)',
-  ],
+  constraints: ['FOREIGN KEY (user_id) REFERENCES User(id)'],
 };
 
 export default aiChatSessionTable;

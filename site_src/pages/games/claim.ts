@@ -171,20 +171,21 @@ export function ClaimPage(opts: { nonce: string; lv999?: boolean; user?: NavUser
     <h1 class="text-center">Claim</h1>
     <p class="text-center text-fog-300 mb-4">claim yer dinonuggies</p>
     <div class="claim-container">
-      ${loggedOut
-    ? html`<div class="login-cta">Log in with <a href="/auth/discord/login">Discord</a> to claim.</div>`
-    : html`
-            <div id="claim-display" class="claim-display">
-              <img id="claim-img" src="/static/game-dinonuggie.webp" alt="dinonuggie" />
-            </div>
-            <button id="claim-btn" class="btn-accent">claim</button>
-            <div id="claim-message" class="claim-message">
-              <h2>Press claim to receive your daily dinonuggies.</h2>
-            </div>
-          `}
+      ${
+        loggedOut
+          ? html`<div class="login-cta">Log in with <a href="/auth/discord/login">Discord</a> to claim.</div>`
+          : html`
+              <div id="claim-display" class="claim-display">
+                <img id="claim-img" src="/static/game-dinonuggie.webp" alt="dinonuggie" />
+              </div>
+              <button id="claim-btn" class="btn-accent">claim</button>
+              <div id="claim-message" class="claim-message">
+                <h2>Press claim to receive your daily dinonuggies.</h2>
+              </div>
+            `
+      }
     </div>
-    ${extras}
-    ${loggedOut ? '' : script}
+    ${extras} ${loggedOut ? '' : script}
   `;
 
   return Layout({

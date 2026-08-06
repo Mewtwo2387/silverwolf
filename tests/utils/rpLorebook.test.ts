@@ -1,8 +1,15 @@
 import { describe, it, expect } from 'bun:test';
 import {
-  validateLorebookName, parseKeywordLorebook, validateSkillContent, triggerMatches,
-  collectTriggeredContexts, findRecallMarkers, stripRecallMarkers, formatRecallMarker,
-  MAX_KEYWORD_ENTRIES, KEYWORD_CONTEXT_MAX_TOKENS,
+  validateLorebookName,
+  parseKeywordLorebook,
+  validateSkillContent,
+  triggerMatches,
+  collectTriggeredContexts,
+  findRecallMarkers,
+  stripRecallMarkers,
+  formatRecallMarker,
+  MAX_KEYWORD_ENTRIES,
+  KEYWORD_CONTEXT_MAX_TOKENS,
 } from '../../utils/rpLorebook';
 
 describe('validateLorebookName', () => {
@@ -86,17 +93,24 @@ describe('triggerMatches', () => {
 
 describe('collectTriggeredContexts', () => {
   const book = (entries: object[]): any => ({
-    name: 'lore', type: 'keywords', description: '', content: JSON.stringify(entries),
+    name: 'lore',
+    type: 'keywords',
+    description: '',
+    content: JSON.stringify(entries),
   });
 
   it('collects contexts for triggered entries in order', () => {
-    const books = [book([
-      { triggers: ['casino'], context: 'about the casino' },
-      { triggers: ['nowhere'], context: 'never injected' },
-      { triggers: ['festival'], context: 'about the festival' },
-    ])];
-    expect(collectTriggeredContexts(books, 'the casino festival is on'))
-      .toEqual(['about the casino', 'about the festival']);
+    const books = [
+      book([
+        { triggers: ['casino'], context: 'about the casino' },
+        { triggers: ['nowhere'], context: 'never injected' },
+        { triggers: ['festival'], context: 'about the festival' },
+      ]),
+    ];
+    expect(collectTriggeredContexts(books, 'the casino festival is on')).toEqual([
+      'about the casino',
+      'about the festival',
+    ]);
     expect(collectTriggeredContexts(books, 'unrelated message')).toEqual([]);
     expect(collectTriggeredContexts(books, '')).toEqual([]);
   });
@@ -104,7 +118,10 @@ describe('collectTriggeredContexts', () => {
   it('stops at the token budget and skips malformed stored content', () => {
     const books = [
       {
-        name: 'broken', type: 'keywords', description: '', content: 'not json',
+        name: 'broken',
+        type: 'keywords',
+        description: '',
+        content: 'not json',
       },
       book([
         { triggers: ['hit'], context: 'short one' },
@@ -116,9 +133,14 @@ describe('collectTriggeredContexts', () => {
   });
 
   it('ignores skill-type lorebooks', () => {
-    const books = [{
-      name: 's', type: 'skill', description: 'd', content: 'hit',
-    }];
+    const books = [
+      {
+        name: 's',
+        type: 'skill',
+        description: 'd',
+        content: 'hit',
+      },
+    ];
     expect(collectTriggeredContexts(books as any, 'hit')).toEqual([]);
   });
 });

@@ -4,13 +4,7 @@ import { logError } from '../utils/log';
 
 class PoopGacha extends Command {
   constructor(client: any) {
-    super(
-      client,
-      'gacha',
-      'Pull a random poop... from the members...',
-      [],
-      { isSubcommandOf: 'poop', blame: 'ei' },
-    );
+    super(client, 'gacha', 'Pull a random poop... from the members...', [], { isSubcommandOf: 'poop', blame: 'ei' });
   }
 
   async run(interaction: any): Promise<void> {
@@ -32,7 +26,7 @@ class PoopGacha extends Command {
       const embed = new Discord.EmbedBuilder()
         .setTitle('💩 Poop Gacha Pull')
         .setDescription(`Congratulations! You pulled <@${randomPoop.userId}>'s poop!`)
-        .setColor(0x8B4513)
+        .setColor(0x8b4513)
         .addFields(
           { name: '👤 User', value: `<@${randomPoop.userId}>`, inline: true },
           { name: '🎨 Colour', value: colour, inline: true },

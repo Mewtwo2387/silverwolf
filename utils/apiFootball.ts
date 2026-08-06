@@ -113,12 +113,7 @@ function isShootoutEvent(event: ApiFootballEvent): boolean {
   return lower.includes('penalty');
 }
 
-function goalCreditedToHome(
-  event: ApiFootballEvent,
-  homeId: number,
-  awayId: number,
-  homeName: string,
-): boolean {
+function goalCreditedToHome(event: ApiFootballEvent, homeId: number, awayId: number, homeName: string): boolean {
   if (event.team.id === homeId) return true;
   if (event.team.id === awayId) return false;
   return normalizeTeamName(event.team.name) === homeName;
@@ -136,9 +131,7 @@ function parseShootoutKicks(
 
   return shootoutEvents.map((event) => {
     const player = event.player?.name?.trim() || 'Unknown';
-    const team = goalCreditedToHome(event, item.teams.home.id, item.teams.away.id, team1)
-      ? team1
-      : team2;
+    const team = goalCreditedToHome(event, item.teams.home.id, item.teams.away.id, team1) ? team1 : team2;
     return {
       team,
       player,
@@ -243,9 +236,7 @@ function mergeFixtureDetail(
     goals: detail?.goals ?? item.goals,
     score: detail?.score ?? item.score,
     events: events ?? item.events,
-    fixture: detail
-      ? { ...item.fixture, status: detail.fixture.status }
-      : item.fixture,
+    fixture: detail ? { ...item.fixture, status: detail.fixture.status } : item.fixture,
   };
 }
 
@@ -257,7 +248,7 @@ async function apiFootballRequest<T>(path: string, key: string): Promise<T> {
     throw new Error(`api-football request failed: HTTP ${response.status} (${path})`);
   }
 
-  const data = await response.json() as ApiFootballResponse<T>;
+  const data = (await response.json()) as ApiFootballResponse<T>;
   if (Array.isArray(data.errors) ? data.errors.length > 0 : Object.keys(data.errors ?? {}).length > 0) {
     throw new Error(`api-football request failed: ${JSON.stringify(data.errors)} (${path})`);
   }
@@ -313,9 +304,9 @@ export async function fetchWorldCupMatches(): Promise<WorldCupMatch[]> {
     if (detail.events) eventsById.set(id, detail.events);
   }
 
-  const matches = (fixtures ?? []).map((item) => mapApiFootballFixture(
-    mergeFixtureDetail(item, fetchedDetailsById, eventsById),
-  ));
+  const matches = (fixtures ?? []).map((item) =>
+    mapApiFootballFixture(mergeFixtureDetail(item, fetchedDetailsById, eventsById)),
+  );
 
   cachedMatches = matches;
   cacheExpiresAt = now + CACHE_TTL_MS;

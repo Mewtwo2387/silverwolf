@@ -3,15 +3,21 @@ import { log } from '../utils/log';
 
 class BirthdayRegister extends DevCommand {
   constructor(client: any) {
-    super(client, 'register', 'Register a channel for birthday announcements', [
-      {
-        name: 'channel',
-        description: 'The channel to send birthday messages to',
-        type: 7,
-        required: true,
-        channel_types: [0],
-      },
-    ], { isSubcommandOf: 'birthday', blame: 'ei' });
+    super(
+      client,
+      'register',
+      'Register a channel for birthday announcements',
+      [
+        {
+          name: 'channel',
+          description: 'The channel to send birthday messages to',
+          type: 7,
+          required: true,
+          channel_types: [0],
+        },
+      ],
+      { isSubcommandOf: 'birthday', blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {

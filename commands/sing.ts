@@ -15,13 +15,15 @@ class Sing extends Command {
       client,
       'sing',
       'sing a song',
-      [{
-        name: 'song',
-        description: 'song to sing',
-        type: 3,
-        required: true,
-        choices: songChoices,
-      }],
+      [
+        {
+          name: 'song',
+          description: 'song to sing',
+          type: 3,
+          required: true,
+          choices: songChoices,
+        },
+      ],
       { blame: 'both' },
     );
   }
@@ -30,15 +32,17 @@ class Sing extends Command {
     if (this.client.singing) {
       await interaction.editReply({
         content: 'Lettme finish this one first. I only have one mouth.',
-      }); return;
+      });
+      return;
     }
     this.client.singing = true;
     const song = interaction.options.getString('song');
     const lyrics = songs[song].lyrics;
     await interaction.editReply(lyrics[0]);
-    const delay = (ms: number) => new Promise((resolve) => {
-      setTimeout(resolve, ms);
-    });
+    const delay = (ms: number) =>
+      new Promise((resolve) => {
+        setTimeout(resolve, ms);
+      });
     await lyrics.slice(1).reduce(async (promise, lyric) => {
       await promise;
       await delay(1000);

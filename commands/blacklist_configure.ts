@@ -4,36 +4,42 @@ import { logError } from '../utils/log';
 
 class BlacklistConfigure extends DevCommand {
   constructor(client: any) {
-    super(client, 'configure', 'Add or remove a command from the blacklist for a specific server', [
-      {
-        name: 'command',
-        description: 'The name of the command to blacklist or remove',
-        type: 3,
-        required: true,
-      },
-      {
-        name: 'server',
-        description: 'The ID of the server to blacklist the command in',
-        type: 3,
-        required: true,
-      },
-      {
-        name: 'action',
-        description: 'Add or remove the command from the blacklist',
-        type: 3,
-        required: true,
-        choices: [
-          { name: 'Add', value: 'add' },
-          { name: 'Remove', value: 'remove' },
-        ],
-      },
-      {
-        name: 'reason',
-        description: 'Reason for blacklisting the command (optional)',
-        type: 3,
-        required: false,
-      },
-    ], { isSubcommandOf: 'blacklist', blame: 'xei' });
+    super(
+      client,
+      'configure',
+      'Add or remove a command from the blacklist for a specific server',
+      [
+        {
+          name: 'command',
+          description: 'The name of the command to blacklist or remove',
+          type: 3,
+          required: true,
+        },
+        {
+          name: 'server',
+          description: 'The ID of the server to blacklist the command in',
+          type: 3,
+          required: true,
+        },
+        {
+          name: 'action',
+          description: 'Add or remove the command from the blacklist',
+          type: 3,
+          required: true,
+          choices: [
+            { name: 'Add', value: 'add' },
+            { name: 'Remove', value: 'remove' },
+          ],
+        },
+        {
+          name: 'reason',
+          description: 'Reason for blacklisting the command (optional)',
+          type: 3,
+          required: false,
+        },
+      ],
+      { isSubcommandOf: 'blacklist', blame: 'xei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {

@@ -27,16 +27,18 @@ export class CommandGroup {
     return {
       name: this.name,
       description: this.description,
-      options: this.commands.map((command) => {
-        const commandClass = this.client.commands.get(`${this.name}.${command}`);
-        if (!commandClass) return null;
-        return {
-          name: commandClass.name,
-          description: commandClass.description,
-          type: 1,
-          options: commandClass.options,
-        };
-      }).filter(Boolean),
+      options: this.commands
+        .map((command) => {
+          const commandClass = this.client.commands.get(`${this.name}.${command}`);
+          if (!commandClass) return null;
+          return {
+            name: commandClass.name,
+            description: commandClass.description,
+            type: 1,
+            options: commandClass.options,
+          };
+        })
+        .filter(Boolean),
     };
   }
 }

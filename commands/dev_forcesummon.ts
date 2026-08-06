@@ -4,19 +4,25 @@ import { loadResolvedServerConfig } from '../utils/serverConfig';
 
 class ForceSummon extends DevCommand {
   constructor(client: any) {
-    super(client, 'forcesummon', 'force summon a pokemon', [
-      {
-        name: 'mode',
-        description: 'mode',
-        type: 3,
-        required: false,
-        choices: [
-          { name: 'normal', value: 'normal' },
-          { name: 'shiny', value: 'shiny' },
-          { name: 'mystery', value: 'mystery' },
-        ],
-      },
-    ], { ephemeral: true, isSubcommandOf: 'dev', blame: 'ei' });
+    super(
+      client,
+      'forcesummon',
+      'force summon a pokemon',
+      [
+        {
+          name: 'mode',
+          description: 'mode',
+          type: 3,
+          required: false,
+          choices: [
+            { name: 'normal', value: 'normal' },
+            { name: 'shiny', value: 'shiny' },
+            { name: 'mystery', value: 'mystery' },
+          ],
+        },
+      ],
+      { ephemeral: true, isSubcommandOf: 'dev', blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {

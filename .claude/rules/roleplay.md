@@ -1,9 +1,9 @@
 ---
 paths:
-  - "utils/rp*.ts"
-  - "commands/ai_rp_*.ts"
-  - "database/models/Rp*.ts"
-  - "database/tables/Rp*.ts"
+  - 'utils/rp*.ts'
+  - 'commands/ai_rp_*.ts'
+  - 'database/models/Rp*.ts'
+  - 'database/tables/Rp*.ts'
 ---
 
 # Roleplay subsystem

@@ -20,11 +20,7 @@ interface DivorceSettlementResult {
 
 // divorceSettlement.ts
 
-async function divorceSettlement(
-  client: any,
-  initiatorId: string,
-  targetId: string,
-): Promise<DivorceSettlementResult> {
+async function divorceSettlement(client: any, initiatorId: string, targetId: string): Promise<DivorceSettlementResult> {
   log(`Fetching assets for users: ${initiatorId} ${targetId}`);
 
   // Fetch current dinonuggies and credits for both users
@@ -39,8 +35,8 @@ async function divorceSettlement(
 
   // Fixed fees as percentages
   const fixedFees = [
-    { name: 'Lawyer Fees', percentage: 0.30 },
-    { name: 'Court Fees', percentage: 0.20 },
+    { name: 'Lawyer Fees', percentage: 0.3 },
+    { name: 'Court Fees', percentage: 0.2 },
   ];
 
   const dynamicFeeOptions = [
@@ -58,9 +54,7 @@ async function divorceSettlement(
   const totalDinonuggiesFixedFees = Math.floor(
     fixedFees.reduce((acc, fee) => acc + totalDinonuggies * fee.percentage, 0),
   );
-  const totalCreditsFixedFees = Math.floor(
-    fixedFees.reduce((acc, fee) => acc + totalCredits * fee.percentage, 0),
-  );
+  const totalCreditsFixedFees = Math.floor(fixedFees.reduce((acc, fee) => acc + totalCredits * fee.percentage, 0));
 
   // Randomly pick 4 dynamic fees
   const selectedDynamicFees = dynamicFeeOptions.sort(() => 0.5 - Math.random()).slice(0, 4);

@@ -55,8 +55,9 @@ function buildSettingsEmbed(prefs: QuotePreferences, note: string | null): Embed
     .setTitle('Your quote settings')
     .setDescription(lines.join('\n'))
     .setFooter({
-      text: 'Applied to every quote you make. Skip them once with /quote fake override:true, '
-        + 'or -o when mention-quoting.',
+      text:
+        'Applied to every quote you make. Skip them once with /quote fake override:true, ' +
+        'or -o when mention-quoting.',
     });
 
   if (note) embed.addFields({ name: '​', value: note });
@@ -65,56 +66,62 @@ function buildSettingsEmbed(prefs: QuotePreferences, note: string | null): Embed
 
 class QuoteSettings extends Command {
   constructor(client: any) {
-    super(client, 'settings', 'save your personal quote defaults (run with no options to view them)', [
-      {
-        name: 'format',
-        description: 'default image layout',
-        type: 3,
-        required: false,
-        choices: fakeQuoteChoices(FAKEQUOTE_FORMATS),
-      },
-      {
-        name: 'background',
-        description: 'default background colour',
-        type: 3,
-        required: false,
-        choices: fakeQuoteChoices(FAKEQUOTE_BACKGROUNDS),
-      },
-      {
-        name: 'font_style',
-        description: 'default font',
-        type: 3,
-        required: false,
-        choices: fakeQuoteChoices(FAKEQUOTE_FONTS),
-      },
-      {
-        name: 'text_color',
-        description: 'default text colour as hex, e.g. #FF0124',
-        type: 3,
-        required: false,
-      },
-      {
-        name: 'profile_color',
-        description: 'default profile picture filter',
-        type: 3,
-        required: false,
-        choices: fakeQuoteChoices(FAKEQUOTE_PROFILE_COLORS),
-      },
-      {
-        name: 'avatar_source',
-        description: 'default avatar source',
-        type: 3,
-        required: false,
-        choices: fakeQuoteChoices(FAKEQUOTE_AVATAR_SOURCES),
-      },
-      {
-        name: 'clear',
-        description: 'unset a saved default (or all of them)',
-        type: 3,
-        required: false,
-        choices: CLEAR_CHOICES,
-      },
-    ], { ephemeral: true, isSubcommandOf: 'quote', blame: 'both' });
+    super(
+      client,
+      'settings',
+      'save your personal quote defaults (run with no options to view them)',
+      [
+        {
+          name: 'format',
+          description: 'default image layout',
+          type: 3,
+          required: false,
+          choices: fakeQuoteChoices(FAKEQUOTE_FORMATS),
+        },
+        {
+          name: 'background',
+          description: 'default background colour',
+          type: 3,
+          required: false,
+          choices: fakeQuoteChoices(FAKEQUOTE_BACKGROUNDS),
+        },
+        {
+          name: 'font_style',
+          description: 'default font',
+          type: 3,
+          required: false,
+          choices: fakeQuoteChoices(FAKEQUOTE_FONTS),
+        },
+        {
+          name: 'text_color',
+          description: 'default text colour as hex, e.g. #FF0124',
+          type: 3,
+          required: false,
+        },
+        {
+          name: 'profile_color',
+          description: 'default profile picture filter',
+          type: 3,
+          required: false,
+          choices: fakeQuoteChoices(FAKEQUOTE_PROFILE_COLORS),
+        },
+        {
+          name: 'avatar_source',
+          description: 'default avatar source',
+          type: 3,
+          required: false,
+          choices: fakeQuoteChoices(FAKEQUOTE_AVATAR_SOURCES),
+        },
+        {
+          name: 'clear',
+          description: 'unset a saved default (or all of them)',
+          type: 3,
+          required: false,
+          choices: CLEAR_CHOICES,
+        },
+      ],
+      { ephemeral: true, isSubcommandOf: 'quote', blame: 'both' },
+    );
   }
 
   async run(interaction: any): Promise<void> {

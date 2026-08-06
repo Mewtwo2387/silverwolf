@@ -3,14 +3,20 @@ import { handleSuccessfulClaim } from '../utils/claim';
 
 class BuyDonation extends Command {
   constructor(client: any) {
-    super(client, 'donation', 'buy stuff with stellar nuggies', [
-      {
-        name: 'upgrade',
-        description: 'The upgrade to buy',
-        type: 4,
-        required: true,
-      },
-    ], { isSubcommandOf: 'buy', blame: 'ei' });
+    super(
+      client,
+      'donation',
+      'buy stuff with stellar nuggies',
+      [
+        {
+          name: 'upgrade',
+          description: 'The upgrade to buy',
+          type: 4,
+          required: true,
+        },
+      ],
+      { isSubcommandOf: 'buy', blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -24,7 +30,9 @@ class BuyDonation extends Command {
           await interaction.editReply({ content: 'You successfully bought a dinonuggie claim!' });
           await handleSuccessfulClaim(this.client, interaction, true);
         } else {
-          await interaction.editReply({ content: "You don't have enough stellar nuggies to buy this! Get more with /donate" });
+          await interaction.editReply({
+            content: "You don't have enough stellar nuggies to buy this! Get more with /donate",
+          });
         }
         break;
       case 2:
@@ -35,7 +43,9 @@ class BuyDonation extends Command {
             handleSuccessfulClaim(this.client, interaction, true);
           }
         } else {
-          await interaction.editReply({ content: "You don't have enough stellar nuggies to buy this! Get more with /donate" });
+          await interaction.editReply({
+            content: "You don't have enough stellar nuggies to buy this! Get more with /donate",
+          });
         }
         break;
       case 3:
@@ -46,7 +56,9 @@ class BuyDonation extends Command {
             handleSuccessfulClaim(this.client, interaction, true);
           }
         } else {
-          await interaction.editReply({ content: "You don't have enough stellar nuggies to buy this! Get more with /donate" });
+          await interaction.editReply({
+            content: "You don't have enough stellar nuggies to buy this! Get more with /donate",
+          });
         }
         break;
       case 4:
@@ -57,19 +69,25 @@ class BuyDonation extends Command {
             handleSuccessfulClaim(this.client, interaction, true);
           }
         } else {
-          await interaction.editReply({ content: "You don't have enough stellar nuggies to buy this! Get more with /donate" });
+          await interaction.editReply({
+            content: "You don't have enough stellar nuggies to buy this! Get more with /donate",
+          });
         }
         break;
       case 5: {
         const ascensionLevel = await this.client.db.user.getUserAttr(interaction.user.id, 'ascensionLevel');
-        if (stellarNuggies >= 60 + (ascensionLevel * 10)) {
-          await this.client.db.user.addUserAttr(interaction.user.id, 'stellarNuggies', -60 - (ascensionLevel * 10));
+        if (stellarNuggies >= 60 + ascensionLevel * 10) {
+          await this.client.db.user.addUserAttr(interaction.user.id, 'stellarNuggies', -60 - ascensionLevel * 10);
           const nuggies = await this.client.db.user.getUserAttr(interaction.user.id, 'dinonuggies');
           await this.client.db.user.addUserAttr(interaction.user.id, 'heavenlyNuggies', nuggies);
           await this.client.db.user.addUserAttr(interaction.user.id, 'ascensionLevel', 1);
-          await interaction.editReply({ content: `You obtained ${nuggies} heavenly nuggies and reached ascension level ${ascensionLevel + 1}!` });
+          await interaction.editReply({
+            content: `You obtained ${nuggies} heavenly nuggies and reached ascension level ${ascensionLevel + 1}!`,
+          });
         } else {
-          await interaction.editReply({ content: "You don't have enough stellar nuggies to buy this! Get more with /donate" });
+          await interaction.editReply({
+            content: "You don't have enough stellar nuggies to buy this! Get more with /donate",
+          });
         }
         break;
       }

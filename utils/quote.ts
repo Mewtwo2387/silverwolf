@@ -64,43 +64,74 @@ interface FontRegistration {
 
 const FONT_REGISTRATIONS: FontRegistration[] = [
   {
-    file: 'PlayfairDisplay-Italic.ttf', family: 'Playfair Display', style: 'italic', weight: '400',
+    file: 'PlayfairDisplay-Italic.ttf',
+    family: 'Playfair Display',
+    style: 'italic',
+    weight: '400',
   },
   {
-    file: 'PlayfairDisplay-Italic.ttf', family: 'Playfair Display', style: 'normal', weight: '400',
+    file: 'PlayfairDisplay-Italic.ttf',
+    family: 'Playfair Display',
+    style: 'normal',
+    weight: '400',
   },
   {
-    file: 'Caveat-Regular.ttf', family: 'Caveat', style: 'normal', weight: '400',
+    file: 'Caveat-Regular.ttf',
+    family: 'Caveat',
+    style: 'normal',
+    weight: '400',
   },
   {
-    file: 'Cinzel-Regular.ttf', family: 'Cinzel', style: 'normal', weight: '400',
+    file: 'Cinzel-Regular.ttf',
+    family: 'Cinzel',
+    style: 'normal',
+    weight: '400',
   },
   {
-    file: 'Righteous-Regular.ttf', family: 'Righteous', style: 'normal', weight: '400',
+    file: 'Righteous-Regular.ttf',
+    family: 'Righteous',
+    style: 'normal',
+    weight: '400',
   },
   {
-    file: 'SpecialElite-Regular.ttf', family: 'Special Elite', style: 'normal', weight: '400',
+    file: 'SpecialElite-Regular.ttf',
+    family: 'Special Elite',
+    style: 'normal',
+    weight: '400',
   },
   {
-    file: 'Minecraft-Regular.ttf', family: 'Minecraft', style: 'normal', weight: '400',
+    file: 'Minecraft-Regular.ttf',
+    family: 'Minecraft',
+    style: 'normal',
+    weight: '400',
   },
   {
-    file: 'HarryP-Regular.ttf', family: 'Harry P', style: 'normal', weight: '400',
+    file: 'HarryP-Regular.ttf',
+    family: 'Harry P',
+    style: 'normal',
+    weight: '400',
   },
   {
-    file: 'GenshinImpact-Regular.ttf', family: 'Genshin Impact', style: 'normal', weight: '400',
+    file: 'GenshinImpact-Regular.ttf',
+    family: 'Genshin Impact',
+    style: 'normal',
+    weight: '400',
   },
   {
-    file: 'ComicNeue-Regular.ttf', family: 'Comic Neue', style: 'normal', weight: '400',
+    file: 'ComicNeue-Regular.ttf',
+    family: 'Comic Neue',
+    style: 'normal',
+    weight: '400',
   },
   {
-    file: 'BebasNeue-Regular.ttf', family: 'Bebas Neue', style: 'normal', weight: '400',
+    file: 'BebasNeue-Regular.ttf',
+    family: 'Bebas Neue',
+    style: 'normal',
+    weight: '400',
   },
 ];
 
-FONT_REGISTRATIONS.forEach(({
-  file, family, style, weight,
-}) => {
+FONT_REGISTRATIONS.forEach(({ file, family, style, weight }) => {
   try {
     Canvas.registerFont(path.join(FONTS_DIR, file), { family, style, weight });
     log(`Registered font: ${family} (${style})`);
@@ -185,11 +216,11 @@ async function resolveMentions(guild: Guild | null, text: string): Promise<strin
     let name: string | null = null;
     try {
       if (guild) {
-        const member = guild.members.cache.get(id) || await guild.members.fetch(id).catch(() => null);
+        const member = guild.members.cache.get(id) || (await guild.members.fetch(id).catch(() => null));
         if (member) name = member.nickname || member.user.username;
       }
       if (!name && guild?.client) {
-        const user = guild.client.users.cache.get(id) || await guild.client.users.fetch(id).catch(() => null);
+        const user = guild.client.users.cache.get(id) || (await guild.client.users.fetch(id).catch(() => null));
         if (user) name = user.username;
       }
     } catch {
@@ -216,9 +247,9 @@ async function resolveMentions(guild: Guild | null, text: string): Promise<strin
 
 // Matches Unicode emoji sequences (presentations, ZWJ, skin tones, flags, keycaps, etc.)
 const UNICODE_EMOJI_RE = new RegExp(
-  '(\\p{Emoji_Presentation}|\\p{Extended_Pictographic})'
-  + '(?:\\uFE0F)?'
-  + '(?:\\u200D(?:\\p{Emoji_Presentation}|\\p{Extended_Pictographic})(?:\\uFE0F)?)*',
+  '(\\p{Emoji_Presentation}|\\p{Extended_Pictographic})' +
+    '(?:\\uFE0F)?' +
+    '(?:\\u200D(?:\\p{Emoji_Presentation}|\\p{Extended_Pictographic})(?:\\uFE0F)?)*',
   'gu',
 );
 
@@ -446,13 +477,7 @@ function adjustFontSize(
   let lineHeight = fontSize * 1.2;
   let totalHeight = lines.length * lineHeight;
 
-  while (
-    fontSize > minFontSize
-    && (
-      totalHeight > height
-      || anyLineExceedsWidth(ctx, lines, fontSize, maxWidth)
-    )
-  ) {
+  while (fontSize > minFontSize && (totalHeight > height || anyLineExceedsWidth(ctx, lines, fontSize, maxWidth))) {
     fontSize -= 1;
     ctx.font = buildFont(fontSize, fontFamily);
     lineHeight = fontSize * 1.2;
@@ -575,7 +600,9 @@ function drawFilteredAvatar(ctx: CanvasCtx, pfpImage: any, w: number, h: number,
     const { data } = imageData;
     for (let i = 0; i < data.length; i += 4) {
       const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-      data[i] = avg; data[i + 1] = avg; data[i + 2] = avg;
+      data[i] = avg;
+      data[i + 1] = avg;
+      data[i + 2] = avg;
     }
     ctx.putImageData(imageData, 0, 0);
     log('Converted pfp to black and white');
@@ -702,9 +729,7 @@ interface VerticalQuoteInput {
  * quotation-mark glyph, centred quote text, divider, name and @username.
  */
 async function renderVerticalQuote(input: VerticalQuoteInput): Promise<Buffer> {
-  const {
-    message, nickname, username, backgroundColor, textColor, profileColor, pfp, fontFamily,
-  } = input;
+  const { message, nickname, username, backgroundColor, textColor, profileColor, pfp, fontFamily } = input;
 
   const WIDTH = 640;
   const HEIGHT = 800;
@@ -768,8 +793,7 @@ async function renderVerticalQuote(input: VerticalQuoteInput): Promise<Buffer> {
   const nickHeight = nickFontSize * 1.2;
   const userHeight = showUser ? userFontSize * 1.3 + 4 : 0;
 
-  const totalHeight = glyphSize + gapAfterGlyph + textHeight
-    + gapAfterText + gapAfterDivider + nickHeight + userHeight;
+  const totalHeight = glyphSize + gapAfterGlyph + textHeight + gapAfterText + gapAfterDivider + nickHeight + userHeight;
   let y = Math.max(CONTENT_TOP_MIN, CONTENT_BOTTOM - totalHeight);
   const centerX = WIDTH / 2;
 
@@ -864,9 +888,10 @@ async function quote(
     // eslint-disable-next-line no-control-regex
     .replace(/[\x00-\x08\x0B-\x1F\x7F]/g, '');
   const messageChars = [...resolvedMessage];
-  const clippedMessage = messageChars.length > MAX_QUOTE_CHARS
-    ? `${messageChars.slice(0, MAX_QUOTE_CHARS).join('').trimEnd()}…`
-    : resolvedMessage;
+  const clippedMessage =
+    messageChars.length > MAX_QUOTE_CHARS
+      ? `${messageChars.slice(0, MAX_QUOTE_CHARS).join('').trimEnd()}…`
+      : resolvedMessage;
   const message = `"${clippedMessage}"`;
   const backgroundColor = _backgroundColor || QUOTE_FLAG_DEFAULTS.background;
   const profileColor = _profileColor || QUOTE_FLAG_DEFAULTS.profileColor;
@@ -1058,7 +1083,10 @@ async function quote(
 
 // ─── Shared option lists for the fakequote command + web page ────────────────
 
-export interface FakeQuoteOption { value: string; label: string }
+export interface FakeQuoteOption {
+  value: string;
+  label: string;
+}
 
 // Source of truth for the font picker; order matches what the Discord slash
 // command displays. The web page builds <select> options from this list, and
@@ -1109,9 +1137,8 @@ export const FAKEQUOTE_PROFILE_COLOR_VALUES = valuesOf(FAKEQUOTE_PROFILE_COLORS)
 export const FAKEQUOTE_AVATAR_SOURCE_VALUES = valuesOf(FAKEQUOTE_AVATAR_SOURCES);
 
 // Discord slash-command `choices` shape ({ name, value }).
-export const fakeQuoteChoices = (
-  opts: FakeQuoteOption[],
-): { name: string; value: string }[] => opts.map(({ label, value }) => ({ name: label, value }));
+export const fakeQuoteChoices = (opts: FakeQuoteOption[]): { name: string; value: string }[] =>
+  opts.map(({ label, value }) => ({ name: label, value }));
 
 // ─── Mention-style flag parsing ───────────────────────────────────────────────
 // `@bot w v caveat #ff00aa bw` instead of
@@ -1125,7 +1152,12 @@ export type QuotePrefField = keyof QuoteFlags;
 export type QuotePreferences = Partial<Record<QuotePrefField, string>>;
 
 export const QUOTE_PREF_FIELDS: QuotePrefField[] = [
-  'format', 'background', 'textColor', 'fontStyle', 'profileColor', 'avatarSource',
+  'format',
+  'background',
+  'textColor',
+  'fontStyle',
+  'profileColor',
+  'avatarSource',
 ];
 
 /** Human labels for the saved-settings readout. */
@@ -1141,7 +1173,10 @@ export const QUOTE_PREF_LABELS: Record<QuotePrefField, string> = {
 // Bare aliases → the field they set. First match wins, so `b` is "black" and
 // never "bebas-neue"; fonts are always addressed by full slug or by number.
 const BACKGROUND_ALIASES: Record<string, string> = {
-  w: 'white', white: 'white', b: 'black', black: 'black',
+  w: 'white',
+  white: 'white',
+  b: 'black',
+  black: 'black',
 };
 const FORMAT_ALIASES: Record<string, string> = {
   v: 'vertical',
@@ -1153,13 +1188,25 @@ const FORMAT_ALIASES: Record<string, string> = {
   landscape: 'landscape',
 };
 const PROFILE_COLOR_ALIASES: Record<string, string> = {
-  normal: 'normal', bw: 'bw', inv: 'inverted', inverted: 'inverted', sepia: 'sepia', nightmare: 'nightmare',
+  normal: 'normal',
+  bw: 'bw',
+  inv: 'inverted',
+  inverted: 'inverted',
+  sepia: 'sepia',
+  nightmare: 'nightmare',
 };
 const AVATAR_SOURCE_ALIASES: Record<string, string> = {
-  srv: 'server', server: 'server', glob: 'global', global: 'global',
+  srv: 'server',
+  server: 'server',
+  glob: 'global',
+  global: 'global',
 };
 const FONT_ALIASES: Record<string, string> = {
-  sans: 'sans-serif', default: 'sans-serif', hp: 'harrypotter', comic: 'comic-sans', bebas: 'bebas-neue',
+  sans: 'sans-serif',
+  default: 'sans-serif',
+  hp: 'harrypotter',
+  comic: 'comic-sans',
+  bebas: 'bebas-neue',
 };
 
 /** Resolves one token against every field. Returns null when nothing matches. */
@@ -1204,17 +1251,20 @@ export interface ParsedQuoteFlags extends Partial<QuoteFlags> {
 export function parseQuoteFlags(text: string): ParsedQuoteFlags {
   const flags: ParsedQuoteFlags = { override: false };
 
-  text.split(/\s+/).filter(Boolean).forEach((token) => {
-    if (OVERRIDE_TOKENS.includes(token.toLowerCase())) {
-      flags.override = true;
-      return;
-    }
-    const key = LEGACY_KEYS.find((k) => token.toLowerCase().startsWith(`${k}:`));
-    const value = key ? token.slice(key.length + 1) : token;
-    if (!value) return;
-    const resolved = resolveQuoteToken(value);
-    if (resolved) Object.assign(flags, resolved);
-  });
+  text
+    .split(/\s+/)
+    .filter(Boolean)
+    .forEach((token) => {
+      if (OVERRIDE_TOKENS.includes(token.toLowerCase())) {
+        flags.override = true;
+        return;
+      }
+      const key = LEGACY_KEYS.find((k) => token.toLowerCase().startsWith(`${k}:`));
+      const value = key ? token.slice(key.length + 1) : token;
+      if (!value) return;
+      const resolved = resolveQuoteToken(value);
+      if (resolved) Object.assign(flags, resolved);
+    });
 
   return flags;
 }
@@ -1238,8 +1288,9 @@ export function resolveQuoteFlags(
 }
 
 /** One-line usage hint shown while a mention quote renders. */
-export const QUOTE_FLAG_HELP = 'flags: w/b · v/h · #hex · bw/inverted/sepia/nightmare · server/global · font '
-  + `1-${FONT_INDEX.length} or name · -o to ignore your saved settings · /quote help`;
+export const QUOTE_FLAG_HELP =
+  'flags: w/b · v/h · #hex · bw/inverted/sepia/nightmare · server/global · font ' +
+  `1-${FONT_INDEX.length} or name · -o to ignore your saved settings · /quote help`;
 
 export default quote;
 export { FONT_MAP, FONT_INDEX };

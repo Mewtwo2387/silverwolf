@@ -44,11 +44,7 @@ class ShopUpgrades extends Command {
     }
 
     await interaction.editReply({
-      embeds: [new Discord.EmbedBuilder()
-        .setColor('#00AA00')
-        .setTitle('Upgrades')
-        .setDescription(desc),
-      ],
+      embeds: [new Discord.EmbedBuilder().setColor('#00AA00').setTitle('Upgrades').setDescription(desc)],
     });
   }
 }

@@ -21,9 +21,7 @@ class Gongyoo extends Command {
       const cooldownEmbed = new Discord.EmbedBuilder()
         .setColor('#FF0000')
         .setTitle('Cooldown Active')
-        .setDescription(
-          `You can use this command again in ${COOLDOWN_HOURS - diff / HOUR_LENGTH} hours.`,
-        )
+        .setDescription(`You can use this command again in ${COOLDOWN_HOURS - diff / HOUR_LENGTH} hours.`)
         .setImage('https://media1.tenor.com/m/MUGXIqovlEoAAAAd/salesman-gong-yoo.gif');
 
       await interaction.editReply({ embeds: [cooldownEmbed] });
@@ -36,33 +34,34 @@ class Gongyoo extends Command {
     const dinonuggies = await this.client.db.user.getUserAttr(interaction.user.id, 'dinonuggies');
 
     const fee = Math.floor(credits * 0.05);
-    const winCredits = Math.floor(credits * 0.20);
-    const loseCredits = Math.floor(credits * 0.20);
+    const winCredits = Math.floor(credits * 0.2);
+    const loseCredits = Math.floor(credits * 0.2);
 
     const multiplier = Math.max(1, Math.min(100, Math.log2(dinonuggies)));
 
     const embed = new Discord.EmbedBuilder()
       .setColor('#00AAFF')
       .setTitle('Win or Bust!')
-      .setDescription(`Test your luck! You have 60 seconds to decide:
+      .setDescription(
+        `Test your luck! You have 60 seconds to decide:
 
 **Left Button**: Gain **20%** of your current credits (**+${format(winCredits)} credits**).
 **Right Button**: Risk **20%** of your credits (**-${format(loseCredits)} credits**) for:
-- A chance to win **${format(multiplier, true)}x your current dinonuggie count! (Multiplier is based on your dinonuggie count)**`)
+- A chance to win **${format(multiplier, true)}x your current dinonuggie count! (Multiplier is based on your dinonuggie count)**`,
+      )
       .setFooter({ text: 'Make your choice wisely!' })
       .setImage('https://media1.tenor.com/m/jYKFyMNCsPgAAAAC/choose-one-squid-game-season-2.gif');
 
-    const row = new Discord.ActionRowBuilder()
-      .addComponents(
-        new Discord.ButtonBuilder()
-          .setCustomId('winOrBustLeft')
-          .setLabel('Take +20% Credits')
-          .setStyle(Discord.ButtonStyle.Success),
-        new Discord.ButtonBuilder()
-          .setCustomId('winOrBustRight')
-          .setLabel("Nah I'd Gamble")
-          .setStyle(Discord.ButtonStyle.Danger),
-      );
+    const row = new Discord.ActionRowBuilder().addComponents(
+      new Discord.ButtonBuilder()
+        .setCustomId('winOrBustLeft')
+        .setLabel('Take +20% Credits')
+        .setStyle(Discord.ButtonStyle.Success),
+      new Discord.ButtonBuilder()
+        .setCustomId('winOrBustRight')
+        .setLabel("Nah I'd Gamble")
+        .setStyle(Discord.ButtonStyle.Danger),
+    );
 
     const message = await interaction.editReply({
       embeds: [embed],
@@ -104,8 +103,10 @@ class Gongyoo extends Command {
           const jackpotEmbed = new Discord.EmbedBuilder()
             .setColor('#FFD700')
             .setTitle('Jackpot!')
-            .setDescription(`🎉 YOU WON **${format(multiplier, true)}x YOUR DINONUGGIE COUNT**! 🎉
-You gained **+${format(winnings)} dinonuggies**!`)
+            .setDescription(
+              `🎉 YOU WON **${format(multiplier, true)}x YOUR DINONUGGIE COUNT**! 🎉
+You gained **+${format(winnings)} dinonuggies**!`,
+            )
             .setImage('https://media1.tenor.com/m/dGx7QjIRZ7wAAAAd/celebrating-seong-gi-hun.gif');
 
           await interaction.editReply({ embeds: [jackpotEmbed], components: [] });

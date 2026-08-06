@@ -9,20 +9,26 @@ const PERSONA_NAME = 'Silverwolf';
 
 class AskSilverwolfAI extends Command {
   constructor(client: any) {
-    super(client, 'ask-silverwolf-ai', 'wow this is so cool, should i add an ai art command ?', [
-      {
-        name: 'prompt',
-        description: 'The prompt',
-        type: 3,
-        required: true,
-      },
-      {
-        name: 'reset',
-        description: 'Reset the chat session',
-        type: 5,
-        required: false,
-      },
-    ], { blame: 'both' });
+    super(
+      client,
+      'ask-silverwolf-ai',
+      'wow this is so cool, should i add an ai art command ?',
+      [
+        {
+          name: 'prompt',
+          description: 'The prompt',
+          type: 3,
+          required: true,
+        },
+        {
+          name: 'reset',
+          description: 'Reset the chat session',
+          type: 5,
+          required: false,
+        },
+      ],
+      { blame: 'both' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -71,9 +77,7 @@ class AskSilverwolfAI extends Command {
       });
 
       const processedText = (text || '').replace('(Trailblazer)', username);
-      const searchPrefix = toolCalls && toolCalls.length > 0
-        ? `-# 🔎 searched the web (${toolCalls.length})\n`
-        : '';
+      const searchPrefix = toolCalls && toolCalls.length > 0 ? `-# 🔎 searched the web (${toolCalls.length})\n` : '';
       const description = `${searchPrefix}${processedText}`;
 
       log(`Original: ${text}`);
@@ -83,7 +87,11 @@ class AskSilverwolfAI extends Command {
         .setTitle('Silverwolf Ai says:')
         .setDescription(description.slice(0, 4096))
         .setColor(0x0099ff)
-        .setFooter({ text: 'Powered by ChatTGP', iconURL: 'https://media.discordapp.net/attachments/969953667597893675/1272422507533828106/Qzrb7Us.png?ex=66baeb4e&is=66b999ce&hm=cf4e7ed0da32e823e5ceb90cd94b1abf3e54cc19f447e38a0aef572af68cd04b&=&format=webp&quality=lossless&width=899&height=899' });
+        .setFooter({
+          text: 'Powered by ChatTGP',
+          iconURL:
+            'https://media.discordapp.net/attachments/969953667597893675/1272422507533828106/Qzrb7Us.png?ex=66baeb4e&is=66b999ce&hm=cf4e7ed0da32e823e5ceb90cd94b1abf3e54cc19f447e38a0aef572af68cd04b&=&format=webp&quality=lossless&width=899&height=899',
+        });
 
       await interaction.editReply({ content: null, embeds: [embed] });
 
@@ -92,7 +100,9 @@ class AskSilverwolfAI extends Command {
         const trimEmbed = new EmbedBuilder()
           .setColor('#FEE75C')
           .setTitle('Context limit reached')
-          .setDescription(`Trimmed **${trimWarning.trimmedCount}** old message${trimWarning.trimmedCount === 1 ? '' : 's'} to fit this model's context window. Use \`reset: True\` or \`/ai chatnew\` to start fresh.`);
+          .setDescription(
+            `Trimmed **${trimWarning.trimmedCount}** old message${trimWarning.trimmedCount === 1 ? '' : 's'} to fit this model's context window. Use \`reset: True\` or \`/ai chatnew\` to start fresh.`,
+          );
         await interaction.followUp({ embeds: [trimEmbed] }).catch((err: unknown) => {
           logError('Failed to send trim warning:', err);
         });
@@ -110,7 +120,8 @@ class AskSilverwolfAI extends Command {
       }
 
       if (!hadRawHistory && text) {
-        this.client.db.aiChat.getHistory(aiSession.sessionId, 100)
+        this.client.db.aiChat
+          .getHistory(aiSession.sessionId, 100)
           .then((savedHistory: { role: string; message: string }[]) => generateTitleForHistory(savedHistory))
           .then((title: string | null) => {
             if (title) {

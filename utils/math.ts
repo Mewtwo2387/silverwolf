@@ -118,11 +118,7 @@ function formatHoverTitle(
   return label !== full ? full : undefined;
 }
 
-function formatDisplay(
-  num: number | null | undefined,
-  alwaysFixed = false,
-  shortenThreshold = 6,
-): FormattedNumber {
+function formatDisplay(num: number | null | undefined, alwaysFixed = false, shortenThreshold = 6): FormattedNumber {
   const label = format(num, alwaysFixed, shortenThreshold);
   const title = formatHoverTitle(num, alwaysFixed, shortenThreshold);
   return title ? { label, title } : { label };
@@ -132,7 +128,8 @@ function antiFormat(input: string): number {
   const cleanInput = input.replace(/,/g, '').trim();
   // pure numerical
   // eslint-disable-next-line no-restricted-globals
-  if (!isNaN(cleanInput as any)) { // Number.isNan does not work here
+  if (!isNaN(cleanInput as any)) {
+    // Number.isNan does not work here
     return parseFloat(cleanInput);
   }
   // Extract the numeric part and the prefix
@@ -159,12 +156,4 @@ function antiFormat(input: string): number {
   return number * 10 ** exponent;
 }
 
-export {
-  format,
-  formatFull,
-  formatDisplay,
-  formatHoverTitle,
-  antiFormat,
-  getPrefix,
-  getNumberFromPrefix,
-};
+export { format, formatFull, formatDisplay, formatHoverTitle, antiFormat, getPrefix, getNumberFromPrefix };

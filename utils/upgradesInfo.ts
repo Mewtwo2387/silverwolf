@@ -14,7 +14,7 @@ export const INFO_LEVEL = {
   COST_TOTAL: 3,
 } as const;
 
-export type InfoLevel = typeof INFO_LEVEL[keyof typeof INFO_LEVEL];
+export type InfoLevel = (typeof INFO_LEVEL)[keyof typeof INFO_LEVEL];
 
 function getMultiplierAmountInfo(level: number, infoLevel: InfoLevel, amount = 1): string {
   const multiplierAmount = getMultiplierAmount(level);
@@ -33,19 +33,20 @@ function getMultiplierAmountInfo(level: number, infoLevel: InfoLevel, amount = 1
     `;
   }
 
-  if (infoLevel === INFO_LEVEL.NEXT_LEVEL
-    || infoLevel === INFO_LEVEL.SHOP_INFO
-    || infoLevel === INFO_LEVEL.COST_TOTAL) {
+  if (
+    infoLevel === INFO_LEVEL.NEXT_LEVEL ||
+    infoLevel === INFO_LEVEL.SHOP_INFO ||
+    infoLevel === INFO_LEVEL.COST_TOTAL
+  ) {
     multiplierAmountInfo += `
-    **Level:** ${level} -> ${(level + amount)}
+    **Level:** ${level} -> ${level + amount}
     **Gold Multiplier:** ${format(multiplierAmount.gold, true)}x -> ${format(multiplierAmountNext.gold, true)}x
     **Silver Multiplier:** ${format(multiplierAmount.silver, true)}x -> ${format(multiplierAmountNext.silver, true)}x
     **Bronze Multiplier:** ${format(multiplierAmount.bronze, true)}x -> ${format(multiplierAmountNext.bronze, true)}x
     `;
   }
 
-  if (infoLevel === INFO_LEVEL.NEXT_LEVEL
-    || infoLevel === INFO_LEVEL.SHOP_INFO) {
+  if (infoLevel === INFO_LEVEL.NEXT_LEVEL || infoLevel === INFO_LEVEL.SHOP_INFO) {
     multiplierAmountInfo += `**Cost:** ${format(cost)} mystic credits\n`;
   }
 
@@ -78,19 +79,20 @@ function getMultiplierChanceInfo(level: number, infoLevel: InfoLevel, amount = 1
     `;
   }
 
-  if (infoLevel === INFO_LEVEL.NEXT_LEVEL
-    || infoLevel === INFO_LEVEL.SHOP_INFO
-    || infoLevel === INFO_LEVEL.COST_TOTAL) {
+  if (
+    infoLevel === INFO_LEVEL.NEXT_LEVEL ||
+    infoLevel === INFO_LEVEL.SHOP_INFO ||
+    infoLevel === INFO_LEVEL.COST_TOTAL
+  ) {
     multiplierChanceInfo += `
-    **Level:** ${level} -> ${(level + amount)}
+    **Level:** ${level} -> ${level + amount}
     **Gold Chance:** ${format(multiplierChance.gold * 100, true)}% -> ${format(multiplierChanceNext.gold * 100, true)}%
     **Silver Chance:** ${format(multiplierChance.silver * 100, true)}% -> ${format(multiplierChanceNext.silver * 100, true)}%
     **Bronze Chance:** ${format(multiplierChance.bronze * 100, true)}% -> ${format(multiplierChanceNext.bronze * 100, true)}%
     `;
   }
 
-  if (infoLevel === INFO_LEVEL.NEXT_LEVEL
-    || infoLevel === INFO_LEVEL.SHOP_INFO) {
+  if (infoLevel === INFO_LEVEL.NEXT_LEVEL || infoLevel === INFO_LEVEL.SHOP_INFO) {
     multiplierChanceInfo += `**Cost:** ${format(cost)} mystic credits\n`;
   }
 
@@ -121,17 +123,18 @@ function getBekiCooldownInfo(level: number, infoLevel: InfoLevel, amount = 1): s
     `;
   }
 
-  if (infoLevel === INFO_LEVEL.NEXT_LEVEL
-    || infoLevel === INFO_LEVEL.SHOP_INFO
-    || infoLevel === INFO_LEVEL.COST_TOTAL) {
+  if (
+    infoLevel === INFO_LEVEL.NEXT_LEVEL ||
+    infoLevel === INFO_LEVEL.SHOP_INFO ||
+    infoLevel === INFO_LEVEL.COST_TOTAL
+  ) {
     bekiCooldownInfo += `
-    **Level:** ${level} -> ${(level + amount)}
+    **Level:** ${level} -> ${level + amount}
     **Cooldown:** ${format(bekiCooldown, true)} hours -> ${format(bekiCooldownNext, true)} hours
     `;
   }
 
-  if (infoLevel === INFO_LEVEL.NEXT_LEVEL
-    || infoLevel === INFO_LEVEL.SHOP_INFO) {
+  if (infoLevel === INFO_LEVEL.NEXT_LEVEL || infoLevel === INFO_LEVEL.SHOP_INFO) {
     bekiCooldownInfo += `**Cost:** ${format(cost)} mystic credits\n`;
   }
 
@@ -147,8 +150,4 @@ function getBekiCooldownInfo(level: number, infoLevel: InfoLevel, amount = 1): s
   return bekiCooldownInfo;
 }
 
-export {
-  getMultiplierAmountInfo,
-  getMultiplierChanceInfo,
-  getBekiCooldownInfo,
-};
+export { getMultiplierAmountInfo, getMultiplierChanceInfo, getBekiCooldownInfo };

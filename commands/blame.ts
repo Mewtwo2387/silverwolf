@@ -3,14 +3,20 @@ import { Command } from './classes/Command';
 
 class Blame extends Command {
   constructor(client: any) {
-    super(client, 'blame', 'spam ping the author of a command', [
-      {
-        name: 'command',
-        description: 'the name of the command to blame',
-        type: 3,
-        required: true,
-      },
-    ], { blame: 'ei' });
+    super(
+      client,
+      'blame',
+      'spam ping the author of a command',
+      [
+        {
+          name: 'command',
+          description: 'the name of the command to blame',
+          type: 3,
+          required: true,
+        },
+      ],
+      { blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -54,10 +60,7 @@ class Blame extends Command {
 
   async sendEmbed(interaction: any, name: string, commandName: string): Promise<void> {
     await interaction.editReply({
-      embeds: [new EmbedBuilder()
-        .setColor('#00AA00')
-        .setTitle(`blame ${name} for ${commandName}`),
-      ],
+      embeds: [new EmbedBuilder().setColor('#00AA00').setTitle(`blame ${name} for ${commandName}`)],
     });
   }
 }

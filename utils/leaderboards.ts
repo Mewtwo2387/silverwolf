@@ -2,11 +2,7 @@
 // + `/poopboard` commands and the web `/leaderboards` page use these so the
 // titles stay in sync.
 
-export type GamblerBoardType =
-  | 'all'
-  | 'slots'
-  | 'blackjack'
-  | 'roulette';
+export type GamblerBoardType = 'all' | 'slots' | 'blackjack' | 'roulette';
 
 export function gamblerBoardTitle(type: GamblerBoardType | string): string {
   if (type === 'all') return 'The Ultimate Gambler Leaderboard';

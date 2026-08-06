@@ -73,7 +73,12 @@ const AVIF_QUALITY = 63;
 const checkOnly = process.argv.includes('--check');
 
 async function fileExists(p: string): Promise<boolean> {
-  try { await fs.access(p); return true; } catch { return false; }
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function mtime(p: string): Promise<number> {
@@ -95,25 +100,28 @@ async function recompressLv999(): Promise<boolean> {
     return false;
   }
   if (checkOnly) {
-    console.error(`[stale] ${path.basename(HERO_LV999)} is ${(stat.size / 1024 / 1024).toFixed(2)} MB — needs recompression`);
+    console.error(
+      `[stale] ${path.basename(HERO_LV999)} is ${(stat.size / 1024 / 1024).toFixed(2)} MB — needs recompression`,
+    );
     process.exitCode = 1;
     return true;
   }
-  console.log(`[recompress] ${path.basename(HERO_LV999)} (${(stat.size / 1024 / 1024).toFixed(2)} MB → q${LV999_QUALITY})`);
+  console.log(
+    `[recompress] ${path.basename(HERO_LV999)} (${(stat.size / 1024 / 1024).toFixed(2)} MB → q${LV999_QUALITY})`,
+  );
   const tmp = `${HERO_LV999}.tmp.webp`;
   let renamed = false;
   try {
-    await run([
-      'magick', HERO_LV999,
-      '-quality', String(LV999_QUALITY),
-      '-define', 'webp:method=6',
-      tmp,
-    ]);
+    await run(['magick', HERO_LV999, '-quality', String(LV999_QUALITY), '-define', 'webp:method=6', tmp]);
     await fs.rename(tmp, HERO_LV999);
     renamed = true;
   } finally {
-    if (!renamed && await fileExists(tmp)) {
-      try { await fs.unlink(tmp); } catch { /* best-effort cleanup */ }
+    if (!renamed && (await fileExists(tmp))) {
+      try {
+        await fs.unlink(tmp);
+      } catch {
+        /* best-effort cleanup */
+      }
     }
   }
   const after = await fs.stat(HERO_LV999);
@@ -135,11 +143,7 @@ async function encodeAvif(src: string, dst: string): Promise<void> {
     return;
   }
   console.log(`[encode] ${path.basename(dst)}`);
-  await run([
-    'magick', src,
-    '-quality', String(AVIF_QUALITY),
-    dst,
-  ]);
+  await run(['magick', src, '-quality', String(AVIF_QUALITY), dst]);
   const [srcStat, dstStat] = await Promise.all([fs.stat(src), fs.stat(dst)]);
   const pct = ((1 - dstStat.size / srcStat.size) * 100).toFixed(0);
   console.log(`         ${(srcStat.size / 1024).toFixed(0)} KB → ${(dstStat.size / 1024).toFixed(0)} KB (-${pct}%)`);
@@ -172,9 +176,12 @@ async function encodeResize(src: string, width: number, dstDir?: string): Promis
   console.log(`[resize] ${path.basename(dst)} (${width}w)`);
   // `${width}x` (no height) preserves aspect ratio; `>` so we never upscale.
   await run([
-    'magick', src,
-    '-resize', `${width}x${width}>`,
-    '-quality', String(/\.avif$/i.test(dst) ? AVIF_QUALITY : 82),
+    'magick',
+    src,
+    '-resize',
+    `${width}x${width}>`,
+    '-quality',
+    String(/\.avif$/i.test(dst) ? AVIF_QUALITY : 82),
     dst,
   ]);
   const [srcStat, dstStat] = await Promise.all([fs.stat(src), fs.stat(dst)]);

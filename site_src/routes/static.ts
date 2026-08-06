@@ -30,47 +30,122 @@ const STATIC_ASSETS: Record<string, StaticEntry> = {
 // Hero responsive variants — emitted by scripts/build-images.ts. The about-page
 // <picture> picks the smallest width that covers its slot (sizes attribute).
 for (const w of [512, 1024, 1600]) {
-  STATIC_ASSETS[`/static/silverwolf-${w}w.webp`] = { path: path.join(IMAGES_DIR, `silverwolf-${w}w.webp`), contentType: 'image/webp' };
-  STATIC_ASSETS[`/static/silverwolf-${w}w.avif`] = { path: path.join(IMAGES_DIR, `silverwolf-${w}w.avif`), contentType: 'image/avif' };
-  STATIC_ASSETS[`/static/silverwolfLv.999-${w}w.webp`] = { path: path.join(IMAGES_DIR, `silverwolfLv.999-${w}w.webp`), contentType: 'image/webp' };
-  STATIC_ASSETS[`/static/silverwolfLv.999-${w}w.avif`] = { path: path.join(IMAGES_DIR, `silverwolfLv.999-${w}w.avif`), contentType: 'image/avif' };
+  STATIC_ASSETS[`/static/silverwolf-${w}w.webp`] = {
+    path: path.join(IMAGES_DIR, `silverwolf-${w}w.webp`),
+    contentType: 'image/webp',
+  };
+  STATIC_ASSETS[`/static/silverwolf-${w}w.avif`] = {
+    path: path.join(IMAGES_DIR, `silverwolf-${w}w.avif`),
+    contentType: 'image/avif',
+  };
+  STATIC_ASSETS[`/static/silverwolfLv.999-${w}w.webp`] = {
+    path: path.join(IMAGES_DIR, `silverwolfLv.999-${w}w.webp`),
+    contentType: 'image/webp',
+  };
+  STATIC_ASSETS[`/static/silverwolfLv.999-${w}w.avif`] = {
+    path: path.join(IMAGES_DIR, `silverwolfLv.999-${w}w.avif`),
+    contentType: 'image/avif',
+  };
 }
 // Stickers power the favicon (WebP) and the social-embed thumbnail. The PNG
 // twin of each is served as a universally-decodable fallback for link-preview
 // scrapers that won't fetch WebP (see site_src/embed-meta.ts).
 for (const stem of ALL_STICKER_STEMS) {
-  STATIC_ASSETS[`/static/stickers/${stem}.webp`] = { path: path.join(IMAGES_DIR, `${stem}.webp`), contentType: 'image/webp' };
-  STATIC_ASSETS[`/static/stickers/${stem}-128w.webp`] = { path: path.join(IMAGES_DIR, `${stem}-128w.webp`), contentType: 'image/webp' };
-  STATIC_ASSETS[`/static/stickers/${stem}.png`] = { path: path.join(IMAGES_DIR, `${stem}.png`), contentType: 'image/png' };
+  STATIC_ASSETS[`/static/stickers/${stem}.webp`] = {
+    path: path.join(IMAGES_DIR, `${stem}.webp`),
+    contentType: 'image/webp',
+  };
+  STATIC_ASSETS[`/static/stickers/${stem}-128w.webp`] = {
+    path: path.join(IMAGES_DIR, `${stem}-128w.webp`),
+    contentType: 'image/webp',
+  };
+  STATIC_ASSETS[`/static/stickers/${stem}.png`] = {
+    path: path.join(IMAGES_DIR, `${stem}.png`),
+    contentType: 'image/png',
+  };
 }
 // Eidolons: serve both WebP and AVIF; <picture> in pages/about.ts picks the best.
 for (let i = 1; i <= 6; i += 1) {
   for (const variant of ['', 'LV.999_']) {
     const stem = `Character_Silver_Wolf_${variant}Eidolon_${i}`;
-    STATIC_ASSETS[`/static/eidolons/${stem}.webp`] = { path: path.join(IMAGES_DIR, `${stem}.webp`), contentType: 'image/webp' };
-    STATIC_ASSETS[`/static/eidolons/${stem}.avif`] = { path: path.join(IMAGES_DIR, `${stem}.avif`), contentType: 'image/avif' };
-    STATIC_ASSETS[`/static/eidolons/${stem}-768w.webp`] = { path: path.join(IMAGES_DIR, `${stem}-768w.webp`), contentType: 'image/webp' };
-    STATIC_ASSETS[`/static/eidolons/${stem}-768w.avif`] = { path: path.join(IMAGES_DIR, `${stem}-768w.avif`), contentType: 'image/avif' };
+    STATIC_ASSETS[`/static/eidolons/${stem}.webp`] = {
+      path: path.join(IMAGES_DIR, `${stem}.webp`),
+      contentType: 'image/webp',
+    };
+    STATIC_ASSETS[`/static/eidolons/${stem}.avif`] = {
+      path: path.join(IMAGES_DIR, `${stem}.avif`),
+      contentType: 'image/avif',
+    };
+    STATIC_ASSETS[`/static/eidolons/${stem}-768w.webp`] = {
+      path: path.join(IMAGES_DIR, `${stem}-768w.webp`),
+      contentType: 'image/webp',
+    };
+    STATIC_ASSETS[`/static/eidolons/${stem}-768w.avif`] = {
+      path: path.join(IMAGES_DIR, `${stem}-768w.avif`),
+      contentType: 'image/avif',
+    };
   }
 }
-STATIC_ASSETS['/static/svg/pool-8-ball-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'pool-8-ball-svgrepo-com.svg'), contentType: 'image/svg+xml' };
-STATIC_ASSETS['/static/svg/fortune-cookie-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'fortune-cookie-svgrepo-com.svg'), contentType: 'image/svg+xml' };
-STATIC_ASSETS['/static/svg/poker-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'poker-svgrepo-com.svg'), contentType: 'image/svg+xml' };
-STATIC_ASSETS['/static/svg/pile-of-poo-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'pile-of-poo-svgrepo-com.svg'), contentType: 'image/svg+xml' };
-STATIC_ASSETS['/static/svg/roulette-casino-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'roulette-casino-svgrepo-com.svg'), contentType: 'image/svg+xml' };
-STATIC_ASSETS['/static/svg/slots-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'slots-svgrepo-com.svg'), contentType: 'image/svg+xml' };
-STATIC_ASSETS['/static/svg/toilet-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'toilet-svgrepo-com.svg'), contentType: 'image/svg+xml' };
-STATIC_ASSETS['/static/svg/love-heart-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'love-heart-svgrepo-com.svg'), contentType: 'image/svg+xml' };
-STATIC_ASSETS['/static/svg/coin-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'coin-svgrepo-com.svg'), contentType: 'image/svg+xml' };
-STATIC_ASSETS['/static/svg/wrench-screwdriver-svgrepo-com.svg'] = { path: path.join(SVG_DIR, 'wrench-screwdriver-svgrepo-com.svg'), contentType: 'image/svg+xml' };
-STATIC_ASSETS['/static/svg/battleship-badge.svg'] = { path: path.join(SVG_DIR, 'battleship-badge.svg'), contentType: 'image/svg+xml' };
+STATIC_ASSETS['/static/svg/pool-8-ball-svgrepo-com.svg'] = {
+  path: path.join(SVG_DIR, 'pool-8-ball-svgrepo-com.svg'),
+  contentType: 'image/svg+xml',
+};
+STATIC_ASSETS['/static/svg/fortune-cookie-svgrepo-com.svg'] = {
+  path: path.join(SVG_DIR, 'fortune-cookie-svgrepo-com.svg'),
+  contentType: 'image/svg+xml',
+};
+STATIC_ASSETS['/static/svg/poker-svgrepo-com.svg'] = {
+  path: path.join(SVG_DIR, 'poker-svgrepo-com.svg'),
+  contentType: 'image/svg+xml',
+};
+STATIC_ASSETS['/static/svg/pile-of-poo-svgrepo-com.svg'] = {
+  path: path.join(SVG_DIR, 'pile-of-poo-svgrepo-com.svg'),
+  contentType: 'image/svg+xml',
+};
+STATIC_ASSETS['/static/svg/roulette-casino-svgrepo-com.svg'] = {
+  path: path.join(SVG_DIR, 'roulette-casino-svgrepo-com.svg'),
+  contentType: 'image/svg+xml',
+};
+STATIC_ASSETS['/static/svg/slots-svgrepo-com.svg'] = {
+  path: path.join(SVG_DIR, 'slots-svgrepo-com.svg'),
+  contentType: 'image/svg+xml',
+};
+STATIC_ASSETS['/static/svg/toilet-svgrepo-com.svg'] = {
+  path: path.join(SVG_DIR, 'toilet-svgrepo-com.svg'),
+  contentType: 'image/svg+xml',
+};
+STATIC_ASSETS['/static/svg/love-heart-svgrepo-com.svg'] = {
+  path: path.join(SVG_DIR, 'love-heart-svgrepo-com.svg'),
+  contentType: 'image/svg+xml',
+};
+STATIC_ASSETS['/static/svg/coin-svgrepo-com.svg'] = {
+  path: path.join(SVG_DIR, 'coin-svgrepo-com.svg'),
+  contentType: 'image/svg+xml',
+};
+STATIC_ASSETS['/static/svg/wrench-screwdriver-svgrepo-com.svg'] = {
+  path: path.join(SVG_DIR, 'wrench-screwdriver-svgrepo-com.svg'),
+  contentType: 'image/svg+xml',
+};
+STATIC_ASSETS['/static/svg/battleship-badge.svg'] = {
+  path: path.join(SVG_DIR, 'battleship-badge.svg'),
+  contentType: 'image/svg+xml',
+};
 // Self-hosted fonts (latin-subset variable woff2). See Assets/input.css @font-face.
 for (const fontFile of ['Outfit.woff2', 'JetBrainsMono.woff2', 'JetBrainsMono-Italic.woff2']) {
   STATIC_ASSETS[`/static/fonts/${fontFile}`] = { path: path.join(FONTS_DIR, fontFile), contentType: 'font/woff2' };
 }
-STATIC_ASSETS['/static/game-dinonuggie.webp'] = { path: path.join(IMAGES_DIR, 'game-dinonuggie.webp'), contentType: 'image/webp' };
-STATIC_ASSETS['/static/game-awdangit.jpeg'] = { path: path.join(IMAGES_DIR, 'game-awdangit.jpeg'), contentType: 'image/jpeg' };
-STATIC_ASSETS['/static/game-fakequote.webp'] = { path: path.join(IMAGES_DIR, 'game-fakequote.webp'), contentType: 'image/webp' };
+STATIC_ASSETS['/static/game-dinonuggie.webp'] = {
+  path: path.join(IMAGES_DIR, 'game-dinonuggie.webp'),
+  contentType: 'image/webp',
+};
+STATIC_ASSETS['/static/game-awdangit.jpeg'] = {
+  path: path.join(IMAGES_DIR, 'game-awdangit.jpeg'),
+  contentType: 'image/jpeg',
+};
+STATIC_ASSETS['/static/game-fakequote.webp'] = {
+  path: path.join(IMAGES_DIR, 'game-fakequote.webp'),
+  contentType: 'image/webp',
+};
 for (const rarity of ['gold', 'silver', 'bronze']) {
   STATIC_ASSETS[`/static/dinonuggie-${rarity}.png`] = {
     path: path.join(ROOT_DIR, 'data', 'images', `dinonuggie-${rarity}.png`),

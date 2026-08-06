@@ -17,9 +17,7 @@ const serverConfigTable: TableDefinition = {
   ],
   primaryKey: ['id'],
   specialConstraints: [],
-  constraints: [
-    'UNIQUE (server_id, key)',
-  ],
+  constraints: ['UNIQUE (server_id, key)'],
 };
 
 export default serverConfigTable;

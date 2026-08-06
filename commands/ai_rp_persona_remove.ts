@@ -5,7 +5,9 @@ import { logError } from '../utils/log';
 class AiRpPersonaRemove extends Command {
   constructor(client: any) {
     super(client, 'rp-persona-remove', 'Remove your roleplay persona', [], {
-      isSubcommandOf: 'ai', blame: 'xei', ephemeral: true,
+      isSubcommandOf: 'ai',
+      blame: 'xei',
+      ephemeral: true,
     });
   }
 
@@ -15,7 +17,7 @@ class AiRpPersonaRemove extends Command {
       await interaction.editReply(
         removed
           ? 'Your persona was removed. Characters will no longer be told about you.'
-          : 'You don\'t have a persona set. Add one with `/ai rp-persona-add`.',
+          : "You don't have a persona set. Add one with `/ai rp-persona-add`.",
       );
     } catch (err) {
       logError('AiRpPersonaRemove error:', err);

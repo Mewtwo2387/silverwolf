@@ -31,11 +31,7 @@ export async function getResetLine(
  * they can watch the countdown. A fixed window only exists once it has been
  * opened by a first charged request, hence the "Not yet started" wording.
  */
-export async function getWindowResetLabel(
-  db: Database,
-  userId: string,
-  window: 'daily' | 'weekly',
-): Promise<string> {
+export async function getWindowResetLabel(db: Database, userId: string, window: 'daily' | 'weekly'): Promise<string> {
   const resetAt = await db.aiUsage.getResetAt(userId, window);
   return resetAt ? formatResetTimestamp(resetAt) : 'Not yet started (no usage in this window)';
 }
@@ -46,11 +42,7 @@ export interface RateLimitOptions {
   remainingCredits?: number;
 }
 
-export async function getRateLimitErrorMessage(
-  userId: string,
-  db: Database,
-  opts?: RateLimitOptions,
-): Promise<string> {
+export async function getRateLimitErrorMessage(userId: string, db: Database, opts?: RateLimitOptions): Promise<string> {
   const [dailyUsage, weeklyUsage] = await Promise.all([
     db.aiUsage.getDailyUsage(userId),
     db.aiUsage.getWeeklyUsage(userId),

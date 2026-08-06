@@ -4,7 +4,11 @@ import { embedMetaTags } from '../embed-meta';
 
 const TITLE_RE = /<title[^>]*>([\s\S]*?)<\/title>/i;
 const ENTITY_DECODE: Record<string, string> = {
-  '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'",
+  '&amp;': '&',
+  '&lt;': '<',
+  '&gt;': '>',
+  '&quot;': '"',
+  '&#39;': "'",
 };
 
 // Reuse the page's own <title> as the embed title. It arrives HTML-escaped from
@@ -72,8 +76,9 @@ export async function embedMetaMiddleware(c: Context<AppEnv>, next: Next) {
   });
 
   // eslint-disable-next-line no-param-reassign -- the Hono idiom for replacing the response body
-  c.res = new Response(
-    `${body.slice(0, headClose)}${tags}\n${body.slice(headClose)}`,
-    { status: c.res.status, statusText: c.res.statusText, headers: { 'content-type': contentType } },
-  );
+  c.res = new Response(`${body.slice(0, headClose)}${tags}\n${body.slice(headClose)}`, {
+    status: c.res.status,
+    statusText: c.res.statusText,
+    headers: { 'content-type': contentType },
+  });
 }

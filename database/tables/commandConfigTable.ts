@@ -19,9 +19,7 @@ const commandConfigTable: TableDefinition = {
   ],
   primaryKey: ['id'],
   specialConstraints: [],
-  constraints: [
-    'UNIQUE (command_name, server_id)',
-  ],
+  constraints: ['UNIQUE (command_name, server_id)'],
 };
 
 export default commandConfigTable;

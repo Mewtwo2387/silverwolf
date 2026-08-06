@@ -63,27 +63,35 @@ export async function exchangeCode(code: string): Promise<{ accessToken: string 
     code,
     redirect_uri: getRedirectUri(),
   });
-  const res = await fetchWithTimeout(TOKEN_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body,
-  }, 'Discord token exchange');
+  const res = await fetchWithTimeout(
+    TOKEN_URL,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body,
+    },
+    'Discord token exchange',
+  );
   if (!res.ok) {
     // Body intentionally not interpolated: Discord echoes the OAuth `code` on
     // invalid_grant, and that ends up in persistence/logs_error.txt.
     throw new Error(`Discord token exchange failed: ${res.status}`);
   }
-  const json = await res.json() as { access_token?: string };
+  const json = (await res.json()) as { access_token?: string };
   if (!json.access_token) throw new Error('Discord token response missing access_token');
   return { accessToken: json.access_token };
 }
 
 export async function fetchDiscordMe(accessToken: string): Promise<DiscordMe> {
-  const res = await fetchWithTimeout(USERS_ME_URL, {
-    headers: { authorization: `Bearer ${accessToken}` },
-  }, 'Discord /users/@me');
+  const res = await fetchWithTimeout(
+    USERS_ME_URL,
+    {
+      headers: { authorization: `Bearer ${accessToken}` },
+    },
+    'Discord /users/@me',
+  );
   if (!res.ok) {
     throw new Error(`Discord /users/@me failed: ${res.status}`);
   }
-  return await res.json() as DiscordMe;
+  return (await res.json()) as DiscordMe;
 }

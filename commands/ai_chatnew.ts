@@ -15,18 +15,24 @@ const personaChoices = (personasData.personas || [])
 
 class AiChatnew extends Command {
   constructor(client: any) {
-    super(client, 'chatnew', 'Start a new chat session for a specific AI', [
+    super(
+      client,
+      'chatnew',
+      'Start a new chat session for a specific AI',
+      [
+        {
+          name: 'ai',
+          description: 'The AI persona to start a new chat with',
+          type: 3,
+          required: true,
+          choices: personaChoices,
+        },
+      ],
       {
-        name: 'ai',
-        description: 'The AI persona to start a new chat with',
-        type: 3,
-        required: true,
-        choices: personaChoices,
+        isSubcommandOf: 'ai',
+        blame: 'ei',
       },
-    ], {
-      isSubcommandOf: 'ai',
-      blame: 'ei',
-    });
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -42,8 +48,8 @@ class AiChatnew extends Command {
             .setColor('#57F287')
             .setTitle('New Session Started')
             .setDescription(
-              `Started a new **${personaName}** chat session: **#${session.sessionId}**.\n`
-              + `Mentioning \`@${personaName.toLowerCase()}\` will now continue this new conversation.`,
+              `Started a new **${personaName}** chat session: **#${session.sessionId}**.\n` +
+                `Mentioning \`@${personaName.toLowerCase()}\` will now continue this new conversation.`,
             ),
         ],
       });

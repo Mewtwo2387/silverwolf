@@ -42,16 +42,13 @@ export function coerceInt(value: unknown): number | null {
 
 export async function readGameBody(c: Context<AppEnv>): Promise<GameBody | null> {
   try {
-    return await c.req.json() as GameBody;
+    return (await c.req.json()) as GameBody;
   } catch {
     return null;
   }
 }
 
-export function authedGameRequest(
-  c: Context<AppEnv>,
-  body: GameBody | null,
-): SessionUser | Response {
+export function authedGameRequest(c: Context<AppEnv>, body: GameBody | null): SessionUser | Response {
   const user = c.get('user');
   if (!user) return c.json({ error: 'unauthenticated' }, 401);
   if (!body) return c.json({ error: 'invalid_body' }, 400);

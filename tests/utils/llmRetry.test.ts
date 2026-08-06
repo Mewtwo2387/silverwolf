@@ -1,11 +1,5 @@
-import {
-  describe, test, expect,
-} from 'bun:test';
-import {
-  createChatCompletionWithRetry,
-  isRetryableCompletionError,
-  RETRY_DELAYS_MS,
-} from '../../utils/llmRetry';
+import { describe, test, expect } from 'bun:test';
+import { createChatCompletionWithRetry, isRetryableCompletionError, RETRY_DELAYS_MS } from '../../utils/llmRetry';
 
 function fakeClient(behavior: ((call: number) => any)[]): { client: any; calls: () => number } {
   let calls = 0;
@@ -68,15 +62,18 @@ describe('createChatCompletionWithRetry', () => {
   });
 
   test('retries transient failures with the 2/4/8/16 backoff', async () => {
-    const { client, calls } = fakeClient([
-      () => apiError(500),
-      () => apiError(429),
-      () => ({ ok: true }),
-    ]);
+    const { client, calls } = fakeClient([() => apiError(500), () => apiError(429), () => ({ ok: true })]);
     const sleeps: number[] = [];
-    const res = await createChatCompletionWithRetry(client, {}, {
-      sleep: (ms) => { sleeps.push(ms); return Promise.resolve(); },
-    });
+    const res = await createChatCompletionWithRetry(
+      client,
+      {},
+      {
+        sleep: (ms) => {
+          sleeps.push(ms);
+          return Promise.resolve();
+        },
+      },
+    );
     expect(res).toEqual({ ok: true });
     expect(calls()).toBe(3);
     expect(sleeps).toEqual([RETRY_DELAYS_MS[0], RETRY_DELAYS_MS[1]]);
@@ -84,24 +81,22 @@ describe('createChatCompletionWithRetry', () => {
 
   test('does not retry non-retryable errors', async () => {
     const { client, calls } = fakeClient([() => apiError(400, 'bad request')]);
-    await expect(createChatCompletionWithRetry(client, {}, { sleep: noSleep }))
-      .rejects.toThrow('bad request');
+    await expect(createChatCompletionWithRetry(client, {}, { sleep: noSleep })).rejects.toThrow('bad request');
     expect(calls()).toBe(1);
   });
 
   test('gives up after the backoff schedule is exhausted', async () => {
     const { client, calls } = fakeClient([() => apiError(503)]);
-    await expect(createChatCompletionWithRetry(client, {}, { sleep: noSleep }))
-      .rejects.toThrow('boom');
+    await expect(createChatCompletionWithRetry(client, {}, { sleep: noSleep })).rejects.toThrow('boom');
     // 1 initial attempt + one per backoff delay
     expect(calls()).toBe(1 + RETRY_DELAYS_MS.length);
   });
 
   test('stops retrying once the overall time budget is exhausted', async () => {
     const { client, calls } = fakeClient([() => apiError(503)]);
-    await expect(
-      createChatCompletionWithRetry(client, {}, { sleep: noSleep, overallTimeoutMs: 0 }),
-    ).rejects.toThrow('boom');
+    await expect(createChatCompletionWithRetry(client, {}, { sleep: noSleep, overallTimeoutMs: 0 })).rejects.toThrow(
+      'boom',
+    );
     // The first attempt always runs; with no budget left, no retry is allowed.
     expect(calls()).toBe(1);
   });
@@ -111,7 +106,10 @@ describe('createChatCompletionWithRetry', () => {
     const client = {
       chat: {
         completions: {
-          create: async (_body: any, options?: any) => { seenOptions = options; return { ok: true }; },
+          create: async (_body: any, options?: any) => {
+            seenOptions = options;
+            return { ok: true };
+          },
         },
       },
     };

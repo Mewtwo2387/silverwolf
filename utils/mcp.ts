@@ -18,9 +18,7 @@ export interface McpToolDefinition {
   };
 }
 
-export type McpCallResult =
-  | { ok: true; content: string }
-  | { ok: false; error: string };
+export type McpCallResult = { ok: true; content: string } | { ok: false; error: string };
 
 type State = 'disconnected' | 'connecting' | 'ready' | 'crashed';
 
@@ -46,7 +44,10 @@ function sanitizeName(raw: string): string {
 }
 
 function sanitizeText(raw: string): string {
-  return (raw || '').replace(/exa/gi, 'web search').replace(/\s{2,}/g, ' ').trim();
+  return (raw || '')
+    .replace(/exa/gi, 'web search')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 }
 
 function computeBackoffMs(): number {
@@ -109,8 +110,14 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
     p.then(
-      (v) => { clearTimeout(timer); resolve(v); },
-      (e) => { clearTimeout(timer); reject(e); },
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(timer);
+        reject(e);
+      },
     );
   });
 }
@@ -147,7 +154,9 @@ async function listSanitizedTools(): Promise<SanitizedTool[]> {
   });
 
   if (!loggedToolList) {
-    const summary = sanitized.map((t) => `  - ${t.publicName} (real: ${t.realName}): ${t.description.slice(0, 120)}`).join('\n');
+    const summary = sanitized
+      .map((t) => `  - ${t.publicName} (real: ${t.realName}): ${t.description.slice(0, 120)}`)
+      .join('\n');
     log(`[mcp] tools/list returned ${sanitized.length} tool(s):\n${summary}`);
     loggedToolList = true;
   }
@@ -195,13 +204,15 @@ export async function listSearchToolsGemini(): Promise<{ functionDeclarations: a
   try {
     const sanitized = await listSanitizedTools();
     if (sanitized.length === 0) return [];
-    return [{
-      functionDeclarations: sanitized.map((t) => ({
-        name: t.publicName,
-        description: t.description,
-        parameters: toGeminiSchema(t.parameters),
-      })),
-    }];
+    return [
+      {
+        functionDeclarations: sanitized.map((t) => ({
+          name: t.publicName,
+          description: t.description,
+          parameters: toGeminiSchema(t.parameters),
+        })),
+      },
+    ];
   } catch (err) {
     logError('[mcp] listSearchToolsGemini failed:', err);
     return [];
@@ -227,9 +238,8 @@ export async function callSearchTool(name: string, args: Record<string, any>): P
     if (!joined) return { ok: true, content: 'No results.' };
     // Scrub provider name from result text so the model doesn't echo it back.
     joined = joined.replace(/exa/gi, 'web search');
-    const truncated = joined.length > MAX_TOOL_CONTENT_CHARS
-      ? `${joined.slice(0, MAX_TOOL_CONTENT_CHARS)}\n[…truncated]`
-      : joined;
+    const truncated =
+      joined.length > MAX_TOOL_CONTENT_CHARS ? `${joined.slice(0, MAX_TOOL_CONTENT_CHARS)}\n[…truncated]` : joined;
     return { ok: true, content: truncated };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -242,7 +252,11 @@ export async function shutdownMcp(): Promise<void> {
   isShuttingDown = true;
   try {
     if (client) {
-      try { await client.close(); } catch (err) { logError('[mcp] close failed:', err); }
+      try {
+        await client.close();
+      } catch (err) {
+        logError('[mcp] close failed:', err);
+      }
     }
     client = null;
     transport = null;

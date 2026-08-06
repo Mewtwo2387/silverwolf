@@ -87,16 +87,18 @@ describe('footballAnnouncements', () => {
   test('getNewGoalEvents returns only unannounced goals', () => {
     const events = getGoalEvents(sampleMatch);
     expect(getNewGoalEvents(sampleMatch, null)).toHaveLength(2);
-    expect(getNewGoalEvents(sampleMatch, {
-      matchId: 'x',
-      preMatchSent: true,
-      lastHomeScore: 1,
-      lastAwayScore: 0,
-      lastAnnouncedGoalCount: 1,
-      fullTimeSent: false,
-      lastShootoutKickCount: 0,
-      shootoutMessageIds: {},
-    })).toEqual([events[1]]);
+    expect(
+      getNewGoalEvents(sampleMatch, {
+        matchId: 'x',
+        preMatchSent: true,
+        lastHomeScore: 1,
+        lastAwayScore: 0,
+        lastAnnouncedGoalCount: 1,
+        fullTimeSent: false,
+        lastShootoutKickCount: 0,
+        shootoutMessageIds: {},
+      }),
+    ).toEqual([events[1]]);
   });
 
   test('getNewGoalEvents uses goal count not score totals during extra time', () => {
@@ -115,26 +117,30 @@ describe('footballAnnouncements', () => {
       goals2: [{ name: 'D. Duarte', minute: '59' }],
     };
     const events = getGoalEvents(etMatch);
-    expect(getNewGoalEvents(etMatch, {
-      matchId: 'x',
-      preMatchSent: true,
-      lastHomeScore: 1,
-      lastAwayScore: 1,
-      lastAnnouncedGoalCount: 2,
-      fullTimeSent: false,
-      lastShootoutKickCount: 0,
-      shootoutMessageIds: {},
-    })).toEqual([events[2]]);
-    expect(getNewGoalEvents(etMatch, {
-      matchId: 'x',
-      preMatchSent: true,
-      lastHomeScore: 2,
-      lastAwayScore: 1,
-      lastAnnouncedGoalCount: 3,
-      fullTimeSent: false,
-      lastShootoutKickCount: 0,
-      shootoutMessageIds: {},
-    })).toEqual([]);
+    expect(
+      getNewGoalEvents(etMatch, {
+        matchId: 'x',
+        preMatchSent: true,
+        lastHomeScore: 1,
+        lastAwayScore: 1,
+        lastAnnouncedGoalCount: 2,
+        fullTimeSent: false,
+        lastShootoutKickCount: 0,
+        shootoutMessageIds: {},
+      }),
+    ).toEqual([events[2]]);
+    expect(
+      getNewGoalEvents(etMatch, {
+        matchId: 'x',
+        preMatchSent: true,
+        lastHomeScore: 2,
+        lastAwayScore: 1,
+        lastAnnouncedGoalCount: 3,
+        fullTimeSent: false,
+        lastShootoutKickCount: 0,
+        shootoutMessageIds: {},
+      }),
+    ).toEqual([]);
   });
 
   test('buildReplayEmbedsForMatch includes pre-match, goals, and full time', () => {
@@ -208,19 +214,25 @@ describe('footballAnnouncements', () => {
   });
 
   test('isPenaltyShootoutPhase includes finished penalty results', () => {
-    expect(isPenaltyShootoutPhase({
-      ...sampleMatch,
-      status: 'P',
-    })).toBe(true);
-    expect(isPenaltyShootoutPhase({
-      ...sampleMatch,
-      status: 'FINISHED',
-      score: { ft: [1, 1], penalty: [3, 4] },
-    })).toBe(true);
-    expect(isPenaltyShootoutPhase({
-      ...sampleMatch,
-      status: 'FINISHED',
-      score: { ft: [2, 0] },
-    })).toBe(false);
+    expect(
+      isPenaltyShootoutPhase({
+        ...sampleMatch,
+        status: 'P',
+      }),
+    ).toBe(true);
+    expect(
+      isPenaltyShootoutPhase({
+        ...sampleMatch,
+        status: 'FINISHED',
+        score: { ft: [1, 1], penalty: [3, 4] },
+      }),
+    ).toBe(true);
+    expect(
+      isPenaltyShootoutPhase({
+        ...sampleMatch,
+        status: 'FINISHED',
+        score: { ft: [2, 0] },
+      }),
+    ).toBe(false);
   });
 });

@@ -804,12 +804,27 @@ export function BottleFlipPage(opts: {
       <div class="bf-stage">
         <canvas id="bf-canvas" aria-label="Bottle flip game"></canvas>
         <div class="bf-hud">
-          <div class="bf-stat"><div class="lbl" id="bf-flips-lbl">Flips</div><div class="val" id="bf-flips">0</div></div>
-          <div class="bf-stat timer" id="bf-timer-stat"><div class="lbl">Time</div><div class="val" id="bf-timer-val">30</div></div>
+          <div class="bf-stat">
+            <div class="lbl" id="bf-flips-lbl">Flips</div>
+            <div class="val" id="bf-flips">0</div>
+          </div>
+          <div class="bf-stat timer" id="bf-timer-stat">
+            <div class="lbl">Time</div>
+            <div class="val" id="bf-timer-val">30</div>
+          </div>
           <div style="display:flex; gap:0.6rem;">
-            <div class="bf-stat"><div class="lbl">Lands</div><div class="val" id="bf-lands">0</div></div>
-            <div class="bf-stat"><div class="lbl">Streak</div><div class="val" id="bf-streak">0</div></div>
-            <div class="bf-stat"><div class="lbl">Best</div><div class="val" id="bf-best">0</div></div>
+            <div class="bf-stat">
+              <div class="lbl">Lands</div>
+              <div class="val" id="bf-lands">0</div>
+            </div>
+            <div class="bf-stat">
+              <div class="lbl">Streak</div>
+              <div class="val" id="bf-streak">0</div>
+            </div>
+            <div class="bf-stat">
+              <div class="lbl">Best</div>
+              <div class="val" id="bf-best">0</div>
+            </div>
           </div>
         </div>
         <div class="bf-flash" id="bf-flash"></div>
@@ -820,7 +835,15 @@ export function BottleFlipPage(opts: {
         <div class="bf-field">
           <span class="lbl">Water fill</span>
           <div class="bf-water-row">
-            <input type="range" id="bf-water" min="0" max="100" value="40" step="1" aria-label="Water fill percentage" />
+            <input
+              type="range"
+              id="bf-water"
+              min="0"
+              max="100"
+              value="40"
+              step="1"
+              aria-label="Water fill percentage"
+            />
             <span class="pct" id="bf-water-pct">40%</span>
           </div>
         </div>
@@ -844,7 +867,10 @@ export function BottleFlipPage(opts: {
           </div>
         </div>
       </div>
-      <p class="text-fog-400 text-sm">Tip: a bottle filled ~30–40% self-rights best. Landing balanced on the cap is worth <strong>2 points</strong> in Timer mode.</p>
+      <p class="text-fog-400 text-sm">
+        Tip: a bottle filled ~30–40% self-rights best. Landing balanced on the cap is worth <strong>2 points</strong> in
+        Timer mode.
+      </p>
     </div>
     ${extras}
   `;

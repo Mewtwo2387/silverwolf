@@ -16,9 +16,7 @@ export function BattleshipsMultiplayerLandingPage(opts: {
   csrf?: string | null;
   activeRooms?: ActiveRoomBrief[];
 }) {
-  const {
-    nonce, lv999, user, csrf = null, activeRooms = [],
-  } = opts;
+  const { nonce, lv999, user, csrf = null, activeRooms = [] } = opts;
 
   const loggedOut = !user;
 
@@ -128,7 +126,9 @@ export function BattleshipsMultiplayerLandingPage(opts: {
       <p style="text-align:center; color: var(--fog-300); margin: 0 0 1rem;">
         Multiplayer requires a Discord account so we can match you with the other player.
       </p>
-      <a href="/auth/discord/login?return=%2Fgames%2Fbattleships%2Fmultiplayer" class="bsmp-btn bsmp-loginbtn">[ Log in with Discord ]</a>
+      <a href="/auth/discord/login?return=%2Fgames%2Fbattleships%2Fmultiplayer" class="bsmp-btn bsmp-loginbtn"
+        >[ Log in with Discord ]</a
+      >
     </div>
   `;
 
@@ -146,32 +146,38 @@ export function BattleshipsMultiplayerLandingPage(opts: {
 
     <div class="bsmp-panel">
       <p class="bsmp-subtitle">Your Active Rooms</p>
-      ${activeRooms.length === 0
-    ? html`<p class="bsmp-empty">No active rooms. Create one above and share the link.</p>`
-    : html`
-      <ul class="bsmp-rooms">
-        ${activeRooms.map((r) => html`
-          <li class="bsmp-room" data-room-id="${r.id}">
-            <div class="bsmp-room-meta">
-              <span class="room-status">${r.status}</span>
-              ${r.opponentUsername
-    ? html`vs @${r.opponentUsername}`
-    : html`<span style="color: var(--fog-400)">waiting for opponent</span>`}
-            </div>
-            <a class="bsmp-btn" href="/games/battleships/multiplayer/${r.id}">[ open ]</a>
-            <button type="button" class="bsmp-btn bsmp-copy" data-room-id="${r.id}">[ copy link ]</button>
-          </li>
-        `)}
-      </ul>
-    `}
+      ${
+        activeRooms.length === 0
+          ? html`<p class="bsmp-empty">No active rooms. Create one above and share the link.</p>`
+          : html`
+              <ul class="bsmp-rooms">
+                ${activeRooms.map(
+          (r) => html`
+            <li class="bsmp-room" data-room-id="${r.id}">
+              <div class="bsmp-room-meta">
+                <span class="room-status">${r.status}</span>
+                ${
+                r.opponentUsername
+                  ? html`vs @${r.opponentUsername}`
+                  : html`<span style="color: var(--fog-400)">waiting for opponent</span>`
+              }
+              </div>
+              <a class="bsmp-btn" href="/games/battleships/multiplayer/${r.id}">[ open ]</a>
+              <button type="button" class="bsmp-btn bsmp-copy" data-room-id="${r.id}">[ copy link ]</button>
+            </li>
+          `,
+        )}
+              </ul>
+            `
+      }
     </div>
 
     <div class="bsmp-rules">
-      Standard rules — a fleet of <span class="accent">5 ships</span> (Carrier, Battleship, Cruiser, Submarine, Destroyer)
-      on a <span class="accent">10×10</span> grid. You have <span class="accent">2 minutes</span> to deploy;
-      unplaced ships are auto-positioned. Then take turns firing — first to sink the enemy fleet wins.
-      Each shot has <span class="accent">30 seconds</span>; running the clock auto-fires a random shot.
-      Disconnect for 30s and you forfeit.
+      Standard rules — a fleet of <span class="accent">5 ships</span> (Carrier, Battleship, Cruiser, Submarine,
+      Destroyer) on a <span class="accent">10×10</span> grid. You have <span class="accent">2 minutes</span> to deploy;
+      unplaced ships are auto-positioned. Then take turns firing — first to sink the enemy fleet wins. Each shot has
+      <span class="accent">30 seconds</span>; running the clock auto-fires a random shot. Disconnect for 30s and you
+      forfeit.
     </div>
   `;
 
@@ -228,9 +234,7 @@ export function BattleshipsMultiplayerLandingPage(opts: {
     ${styles}
     <h1 class="text-center">Battleships — Multiplayer</h1>
     <p class="text-center text-fog-300">Create a room, share the link, sink someone else's fleet.</p>
-    <div class="bsmp-wrap">
-      ${loggedOut ? loginPanel : loggedInPanel}
-    </div>
+    <div class="bsmp-wrap">${loggedOut ? loginPanel : loggedInPanel}</div>
     ${loggedOut ? '' : script}
   `;
 

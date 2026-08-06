@@ -14,22 +14,22 @@ export type EatResult =
   | { status: 'not_enough'; dinonuggies: number; amount: number }
   | { status: 'cheat'; amount: number; dinonuggies: number }
   | {
-    status: 'single';
-    amount: 1;
-    item: EatItem;
-    previousDinonuggies: number;
-    earned: number;
-    bonusNuggies: number;
-  }
+      status: 'single';
+      amount: 1;
+      item: EatItem;
+      previousDinonuggies: number;
+      earned: number;
+      bonusNuggies: number;
+    }
   | {
-    status: 'batch';
-    amount: number;
-    items: EatItem[];
-    totalEarned: number;
-    totalNuggiesEarned: number;
-    remainingLost: number;
-    previousDinonuggies: number;
-  };
+      status: 'batch';
+      amount: number;
+      items: EatItem[];
+      totalEarned: number;
+      totalNuggiesEarned: number;
+      remainingLost: number;
+      previousDinonuggies: number;
+    };
 
 export const MAX_EAT = 10_000;
 
@@ -93,7 +93,12 @@ async function processEatInner(client: any, userId: string, amount: number): Pro
       await client.db.user.addUserAttr(userId, 'dinonuggies', 5);
     }
     return {
-      status: 'single', amount: 1, item, previousDinonuggies: dinonuggies, earned, bonusNuggies,
+      status: 'single',
+      amount: 1,
+      item,
+      previousDinonuggies: dinonuggies,
+      earned,
+      bonusNuggies,
     };
   }
 

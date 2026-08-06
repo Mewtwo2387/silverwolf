@@ -4,25 +4,31 @@ import { logError } from '../utils/log';
 
 class BirthdayNotify extends Command {
   constructor(client: any) {
-    super(client, 'notify', 'Get a DM reminder before someone\'s birthday', [
-      {
-        name: 'user',
-        description: 'The user whose birthday you want to be reminded about',
-        type: 6,
-        required: true,
-      },
-      {
-        name: 'days-before',
-        description: 'How many days in advance to remind you',
-        type: 4,
-        required: true,
-        choices: [
-          { name: '14 days before', value: 14 },
-          { name: '7 days before', value: 7 },
-          { name: '1 day before', value: 1 },
-        ],
-      },
-    ], { isSubcommandOf: 'birthday', blame: 'xei' });
+    super(
+      client,
+      'notify',
+      "Get a DM reminder before someone's birthday",
+      [
+        {
+          name: 'user',
+          description: 'The user whose birthday you want to be reminded about',
+          type: 6,
+          required: true,
+        },
+        {
+          name: 'days-before',
+          description: 'How many days in advance to remind you',
+          type: 4,
+          required: true,
+          choices: [
+            { name: '14 days before', value: 14 },
+            { name: '7 days before', value: 7 },
+            { name: '1 day before', value: 1 },
+          ],
+        },
+      ],
+      { isSubcommandOf: 'birthday', blame: 'xei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -42,8 +48,10 @@ class BirthdayNotify extends Command {
 
       const embed = new EmbedBuilder()
         .setTitle('Reminder Set!')
-        .setDescription(`You will receive a DM **${daysBefore} day${daysBefore === 1 ? '' : 's'}** before **${trackedUser.username}**'s birthday.`)
-        .setColor(0x00AAFF);
+        .setDescription(
+          `You will receive a DM **${daysBefore} day${daysBefore === 1 ? '' : 's'}** before **${trackedUser.username}**'s birthday.`,
+        )
+        .setColor(0x00aaff);
 
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {

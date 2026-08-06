@@ -2,10 +2,14 @@ import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import { inlineJSON } from '../../inline';
 
-export function EightBallPage(opts: { normal: string[]; savage: string[]; nonce: string; lv999?: boolean; user?: import('../../components/navbar').NavUser | null }) {
-  const {
-    normal, savage, nonce, lv999, user,
-  } = opts;
+export function EightBallPage(opts: {
+  normal: string[];
+  savage: string[];
+  nonce: string;
+  lv999?: boolean;
+  user?: import('../../components/navbar').NavUser | null;
+}) {
+  const { normal, savage, nonce, lv999, user } = opts;
 
   const extras = raw(`
 <style>
@@ -137,7 +141,12 @@ export function EightBallPage(opts: { normal: string[]; savage: string[]; nonce:
         <div id="eightball-text" class="eightball-inner">ASK A QUESTION</div>
       </div>
       <div class="input-group">
-        <input type="text" id="question-input" aria-label="Ask a yes or no question" placeholder="Will I ever touch grass?" />
+        <input
+          type="text"
+          id="question-input"
+          aria-label="Ask a yes or no question"
+          placeholder="Will I ever touch grass?"
+        />
         <button id="ask-btn" class="btn-accent btn-sm">Ask</button>
       </div>
       <p class="text-fog-400 text-sm mt-4">The combined magic 8-ball sees all.</p>

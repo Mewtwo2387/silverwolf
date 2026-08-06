@@ -29,7 +29,7 @@ const rpCharacterTable: TableDefinition = {
     { name: 'name', type: 'VARCHAR NOT NULL' },
     { name: 'name_lower', type: 'VARCHAR NOT NULL' },
     { name: 'details', type: 'TEXT NOT NULL' },
-    { name: 'starting_message', type: 'TEXT NOT NULL DEFAULT \'\'' },
+    { name: 'starting_message', type: "TEXT NOT NULL DEFAULT ''" },
     { name: 'pfp_url', type: 'TEXT DEFAULT NULL' },
     { name: 'pfp_message_id', type: 'TEXT DEFAULT NULL' },
     { name: 'pfp_channel_id', type: 'TEXT DEFAULT NULL' },
@@ -38,9 +38,7 @@ const rpCharacterTable: TableDefinition = {
   ],
   primaryKey: ['char_id'],
   specialConstraints: [],
-  constraints: [
-    'FOREIGN KEY (creator_id) REFERENCES User(id)',
-  ],
+  constraints: ['FOREIGN KEY (creator_id) REFERENCES User(id)'],
 };
 
 export default rpCharacterTable;

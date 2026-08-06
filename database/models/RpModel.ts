@@ -11,9 +11,7 @@ export interface SpawnResult {
   spawnId?: number;
 }
 
-export type CreateCharacterResult =
-  | { ok: true; character: Record<string, any> }
-  | { ok: false; reason: 'limit' };
+export type CreateCharacterResult = { ok: true; character: Record<string, any> } | { ok: false; reason: 'limit' };
 
 /** DAO for roleplay characters, their per-channel spawns, and private history. */
 class RpModel {
@@ -42,15 +40,18 @@ class RpModel {
    * creates can't both slip past the limit. Throws (rather than silently returning a
    * phantom "not found") if the insert doesn't actually persist.
    */
-  async createCharacter(params: {
-    creatorId: string;
-    name: string;
-    details: string;
-    startingMessage: string;
-    pfpUrl?: string | null;
-    pfpMessageId?: string | null;
-    pfpChannelId?: string | null;
-  }, maxPerCreator?: number): Promise<CreateCharacterResult> {
+  async createCharacter(
+    params: {
+      creatorId: string;
+      name: string;
+      details: string;
+      startingMessage: string;
+      pfpUrl?: string | null;
+      pfpMessageId?: string | null;
+      pfpChannelId?: string | null;
+    },
+    maxPerCreator?: number,
+  ): Promise<CreateCharacterResult> {
     await this.db.user.getUser(params.creatorId);
     const charId = await this.generateUniqueCharId();
     const outcome: { limited: boolean } = await this.db.executeTransaction((rawDb: any) => {
@@ -58,17 +59,19 @@ class RpModel {
         const countRow = rawDb.query(rpQueries.COUNT_CHARACTERS_BY_CREATOR).get(params.creatorId) as any;
         if ((countRow?.count ?? 0) >= maxPerCreator) return { limited: true };
       }
-      const res = rawDb.query(rpQueries.INSERT_CHARACTER).run(
-        charId,
-        params.creatorId,
-        params.name,
-        params.name.toLowerCase(),
-        params.details,
-        params.startingMessage,
-        params.pfpUrl ?? null,
-        params.pfpMessageId ?? null,
-        params.pfpChannelId ?? null,
-      );
+      const res = rawDb
+        .query(rpQueries.INSERT_CHARACTER)
+        .run(
+          charId,
+          params.creatorId,
+          params.name,
+          params.name.toLowerCase(),
+          params.details,
+          params.startingMessage,
+          params.pfpUrl ?? null,
+          params.pfpMessageId ?? null,
+          params.pfpChannelId ?? null,
+        );
       if ((res?.changes ?? 0) !== 1) {
         throw new Error(`Failed to create RP character ${params.name} (${charId})`);
       }
@@ -92,11 +95,15 @@ class RpModel {
   }
 
   /** Updates definition fields; returns false if the requester isn't the owner. */
-  async updateCharacter(charId: string, creatorId: string, params: {
-    name: string;
-    details: string;
-    startingMessage: string;
-  }): Promise<boolean> {
+  async updateCharacter(
+    charId: string,
+    creatorId: string,
+    params: {
+      name: string;
+      details: string;
+      startingMessage: string;
+    },
+  ): Promise<boolean> {
     const res = await this.db.executeQuery(rpQueries.UPDATE_CHARACTER, [
       params.name,
       params.name.toLowerCase(),
@@ -108,14 +115,15 @@ class RpModel {
     return (res.changes ?? 0) > 0;
   }
 
-  async updateCharacterPfp(charId: string, pfp: {
-    url: string | null;
-    messageId: string | null;
-    channelId: string | null;
-  }): Promise<void> {
-    await this.db.executeQuery(rpQueries.UPDATE_CHARACTER_PFP, [
-      pfp.url, pfp.messageId, pfp.channelId, charId,
-    ]);
+  async updateCharacterPfp(
+    charId: string,
+    pfp: {
+      url: string | null;
+      messageId: string | null;
+      channelId: string | null;
+    },
+  ): Promise<void> {
+    await this.db.executeQuery(rpQueries.UPDATE_CHARACTER_PFP, [pfp.url, pfp.messageId, pfp.channelId, charId]);
   }
 
   /** Marks the cached CDN url as broken so delivery falls back to a default avatar. */
@@ -131,10 +139,7 @@ class RpModel {
   /** Search scoped to one creator, so the owner's matches aren't crowded out of the top-25. */
   async searchOwnCharacters(creatorId: string, term: string): Promise<Record<string, any>[]> {
     const cleaned = term.toLowerCase().replace(/[%_]/g, '');
-    return this.db.executeSelectAllQuery(
-      rpQueries.SEARCH_OWN_CHARACTERS,
-      [creatorId, `%${cleaned}%`, `${cleaned}%`],
-    );
+    return this.db.executeSelectAllQuery(rpQueries.SEARCH_OWN_CHARACTERS, [creatorId, `%${cleaned}%`, `${cleaned}%`]);
   }
 
   // ── Spawns ──────────────────────────────────────────────────────────────
@@ -174,7 +179,7 @@ class RpModel {
    */
   async hasUnansweredHumanTurn(spawnId: number): Promise<boolean> {
     const row = await this.db.executeSelectQuery(rpQueries.HAS_UNANSWERED_HUMAN_TURN, [spawnId, spawnId]);
-    return !!(row?.has);
+    return !!row?.has;
   }
 
   /**
@@ -203,23 +208,15 @@ class RpModel {
       }
 
       if (existing) {
-        rawDb.query(rpQueries.REACTIVATE_SPAWN).run(
-          params.spawnerId,
-          params.interactability,
-          compactionInt,
-          existing.spawn_id,
-        );
+        rawDb
+          .query(rpQueries.REACTIVATE_SPAWN)
+          .run(params.spawnerId, params.interactability, compactionInt, existing.spawn_id);
         return { ok: true, reconfigured: isActive, spawnId: existing.spawn_id } as SpawnResult;
       }
 
-      rawDb.query(rpQueries.INSERT_SPAWN).run(
-        params.channelId,
-        params.guildId,
-        params.charId,
-        params.spawnerId,
-        params.interactability,
-        compactionInt,
-      );
+      rawDb
+        .query(rpQueries.INSERT_SPAWN)
+        .run(params.channelId, params.guildId, params.charId, params.spawnerId, params.interactability, compactionInt);
       const newId = (rawDb.query('SELECT last_insert_rowid() AS id').get() as any).id;
       return { ok: true, reconfigured: false, spawnId: newId } as SpawnResult;
     });
@@ -273,26 +270,24 @@ class RpModel {
    * unique-name constraint inside one transaction (two concurrent adds can't both
    * slip past either).
    */
-  async createLorebook(params: {
-    charId: string;
-    name: string;
-    type: 'keywords' | 'skill';
-    description: string;
-    content: string;
-  }, maxPerChar: number): Promise<{ ok: true } | { ok: false; reason: 'limit' | 'duplicate' }> {
+  async createLorebook(
+    params: {
+      charId: string;
+      name: string;
+      type: 'keywords' | 'skill';
+      description: string;
+      content: string;
+    },
+    maxPerChar: number,
+  ): Promise<{ ok: true } | { ok: false; reason: 'limit' | 'duplicate' }> {
     const outcome = await this.db.executeTransaction((rawDb: any) => {
       const existing = rawDb.query(rpQueries.GET_LOREBOOK).get(params.charId, params.name.toLowerCase());
       if (existing) return { ok: false, reason: 'duplicate' };
       const countRow = rawDb.query(rpQueries.COUNT_LOREBOOKS_BY_CHAR).get(params.charId) as any;
       if ((countRow?.count ?? 0) >= maxPerChar) return { ok: false, reason: 'limit' };
-      rawDb.query(rpQueries.INSERT_LOREBOOK).run(
-        params.charId,
-        params.name,
-        params.name.toLowerCase(),
-        params.type,
-        params.description,
-        params.content,
-      );
+      rawDb
+        .query(rpQueries.INSERT_LOREBOOK)
+        .run(params.charId, params.name, params.name.toLowerCase(), params.type, params.description, params.content);
       return { ok: true };
     });
     if (outcome.ok) log(`Rp: added ${params.type} lorebook "${params.name}" to character ${params.charId}`);
@@ -341,7 +336,12 @@ class RpModel {
     fromBot = false,
   ): Promise<void> {
     await this.db.executeQuery(rpQueries.ADD_HISTORY, [
-      spawnId, role, speaker?.id ?? null, speaker?.name ?? null, message, fromBot ? 1 : 0,
+      spawnId,
+      role,
+      speaker?.id ?? null,
+      speaker?.name ?? null,
+      message,
+      fromBot ? 1 : 0,
     ]);
   }
 

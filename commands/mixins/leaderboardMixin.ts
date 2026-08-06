@@ -40,19 +40,18 @@ function LeaderboardMixin<TBase extends Constructor>(BaseClass: TBase) {
         const maxPage = Math.ceil(totalCount / this.itemsPerPage) - 1;
         const leaderboard = await this.generateLeaderboard(attrs, currentPage);
 
-        const row = new Discord.ActionRowBuilder()
-          .addComponents(
-            new Discord.ButtonBuilder()
-              .setCustomId('prev_page')
-              .setLabel('⬅️ Back')
-              .setStyle(Discord.ButtonStyle.Primary)
-              .setDisabled(true),
-            new Discord.ButtonBuilder()
-              .setCustomId('next_page')
-              .setLabel('Next ➡️')
-              .setStyle(Discord.ButtonStyle.Primary)
-              .setDisabled(currentPage === maxPage),
-          );
+        const row = new Discord.ActionRowBuilder().addComponents(
+          new Discord.ButtonBuilder()
+            .setCustomId('prev_page')
+            .setLabel('⬅️ Back')
+            .setStyle(Discord.ButtonStyle.Primary)
+            .setDisabled(true),
+          new Discord.ButtonBuilder()
+            .setCustomId('next_page')
+            .setLabel('Next ➡️')
+            .setStyle(Discord.ButtonStyle.Primary)
+            .setDisabled(currentPage === maxPage),
+        );
 
         const message = await interaction.editReply({
           embeds: [leaderboard],
@@ -71,37 +70,35 @@ function LeaderboardMixin<TBase extends Constructor>(BaseClass: TBase) {
           const { attrs: newAttrs } = await this.fetchData(currentPage);
           const newLeaderboard = await this.generateLeaderboard(newAttrs, currentPage);
 
-          const newRow = new Discord.ActionRowBuilder()
-            .addComponents(
-              new Discord.ButtonBuilder()
-                .setCustomId('prev_page')
-                .setLabel('⬅️ Back')
-                .setStyle(Discord.ButtonStyle.Primary)
-                .setDisabled(currentPage === 0),
-              new Discord.ButtonBuilder()
-                .setCustomId('next_page')
-                .setLabel('Next ➡️')
-                .setStyle(Discord.ButtonStyle.Primary)
-                .setDisabled(currentPage === maxPage),
-            );
+          const newRow = new Discord.ActionRowBuilder().addComponents(
+            new Discord.ButtonBuilder()
+              .setCustomId('prev_page')
+              .setLabel('⬅️ Back')
+              .setStyle(Discord.ButtonStyle.Primary)
+              .setDisabled(currentPage === 0),
+            new Discord.ButtonBuilder()
+              .setCustomId('next_page')
+              .setLabel('Next ➡️')
+              .setStyle(Discord.ButtonStyle.Primary)
+              .setDisabled(currentPage === maxPage),
+          );
 
           await i.update({ embeds: [newLeaderboard], components: [newRow] });
         });
 
         collector.on('end', async () => {
-          const disabledRow = new Discord.ActionRowBuilder()
-            .addComponents(
-              new Discord.ButtonBuilder()
-                .setCustomId('prev_page')
-                .setLabel('⬅️ Back')
-                .setStyle(Discord.ButtonStyle.Primary)
-                .setDisabled(true),
-              new Discord.ButtonBuilder()
-                .setCustomId('next_page')
-                .setLabel('Next ➡️')
-                .setStyle(Discord.ButtonStyle.Primary)
-                .setDisabled(true),
-            );
+          const disabledRow = new Discord.ActionRowBuilder().addComponents(
+            new Discord.ButtonBuilder()
+              .setCustomId('prev_page')
+              .setLabel('⬅️ Back')
+              .setStyle(Discord.ButtonStyle.Primary)
+              .setDisabled(true),
+            new Discord.ButtonBuilder()
+              .setCustomId('next_page')
+              .setLabel('Next ➡️')
+              .setStyle(Discord.ButtonStyle.Primary)
+              .setDisabled(true),
+          );
           await message.edit({ components: [disabledRow] });
         });
       } catch (error) {
@@ -113,7 +110,7 @@ function LeaderboardMixin<TBase extends Constructor>(BaseClass: TBase) {
     async generateLeaderboard(attrs: any[], page: number): Promise<Discord.EmbedBuilder> {
       let result = '';
       for (let i = 0; i < attrs.length; i += 1) {
-        result += `${i + 1 + (page * this.itemsPerPage)}. <@${attrs[i].id}>: ${format(attrs[i][this.attribute])} ${this.counter}\n`;
+        result += `${i + 1 + page * this.itemsPerPage}. <@${attrs[i].id}>: ${format(attrs[i][this.attribute])} ${this.counter}\n`;
       }
       if (result === '') {
         result = this.noneSentence;

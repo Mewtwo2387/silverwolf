@@ -3,12 +3,20 @@ import { logError } from '../utils/log';
 
 class Eval extends DevCommand {
   constructor(client: any) {
-    super(client, 'eval', 'evaluate js code. most dangerous command???', [{
-      name: 'code',
-      description: 'js code',
-      type: 3,
-      required: true,
-    }], { blame: 'ei' });
+    super(
+      client,
+      'eval',
+      'evaluate js code. most dangerous command???',
+      [
+        {
+          name: 'code',
+          description: 'js code',
+          type: 3,
+          required: true,
+        },
+      ],
+      { blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {

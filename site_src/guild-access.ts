@@ -5,19 +5,22 @@ const memberCache = new Map<string, { ok: boolean; at: number }>();
 
 export function getConfiguredGuildIds(): string[] {
   const raw = process.env.GUILD_ID ?? '';
-  return raw.split(',').map((id) => id.trim()).filter(Boolean);
+  return raw
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean);
 }
 
 function isDevUser(discordId: string): boolean {
   const raw = process.env.ALLOWED_USERS ?? '';
-  return raw.split(',').map((id) => id.trim()).filter(Boolean).includes(discordId);
+  return raw
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean)
+    .includes(discordId);
 }
 
-async function isMemberOfGuild(
-  silverwolf: Silverwolf,
-  guildId: string,
-  discordId: string,
-): Promise<boolean> {
+async function isMemberOfGuild(silverwolf: Silverwolf, guildId: string, discordId: string): Promise<boolean> {
   const guild = silverwolf.guilds.cache.get(guildId);
   if (!guild) return false;
   try {
@@ -43,9 +46,7 @@ export async function canUseAiSlop(silverwolf: Silverwolf, discordId: string): P
 
   if (!silverwolf.isReady()) return false;
 
-  const checks = await Promise.all(
-    guildIds.map((guildId) => isMemberOfGuild(silverwolf, guildId, discordId)),
-  );
+  const checks = await Promise.all(guildIds.map((guildId) => isMemberOfGuild(silverwolf, guildId, discordId)));
   const ok = checks.some(Boolean);
   memberCache.set(discordId, { ok, at: Date.now() });
   return ok;

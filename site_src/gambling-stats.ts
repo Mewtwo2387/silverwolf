@@ -63,10 +63,7 @@ export async function fetchGamblingPageStats(
   return stats;
 }
 
-export function renderGambleStatsBar(
-  stats: GamblingPageStats,
-  opts?: { showStreak?: boolean },
-) {
+export function renderGambleStatsBar(stats: GamblingPageStats, opts?: { showStreak?: boolean }) {
   const showStreak = opts?.showStreak ?? stats.streak !== undefined;
   return html`
     <div class="gamble-stats">
@@ -74,12 +71,16 @@ export function renderGambleStatsBar(
         <span class="label">Balance</span>
         <span id="gamble-balance" class="value">${numSpan(stats.credits, true)}</span>
       </div>
-      ${showStreak ? html`
-        <div class="gamble-stat">
-          <span class="label">Streak</span>
-          <span id="gamble-streak" class="value">${stats.streak ?? 0}</span>
-        </div>
-      ` : ''}
+      ${
+        showStreak
+          ? html`
+              <div class="gamble-stat">
+                <span class="label">Streak</span>
+                <span id="gamble-streak" class="value">${stats.streak ?? 0}</span>
+              </div>
+            `
+          : ''
+      }
     </div>
   `;
 }

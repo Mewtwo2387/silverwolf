@@ -19,18 +19,10 @@ class WebSessionModel {
     this.db = database;
   }
 
-  async createSession(
-    id: string,
-    discordId: string,
-    csrfToken: string,
-    ttlMs: number,
-  ): Promise<void> {
+  async createSession(id: string, discordId: string, csrfToken: string, ttlMs: number): Promise<void> {
     const now = Date.now();
     const expiresAt = now + ttlMs;
-    await this.db.executeQuery(
-      webSessionQueries.INSERT_SESSION,
-      [id, discordId, csrfToken, now, expiresAt, now],
-    );
+    await this.db.executeQuery(webSessionQueries.INSERT_SESSION, [id, discordId, csrfToken, now, expiresAt, now]);
     // Anonymize discord_id in logs: PII shouldn't appear in plaintext.
     const discordIdHash = createHash('sha256').update(discordId).digest('hex').slice(0, 12);
     log(`Created web session for discord_id=${discordIdHash}`);

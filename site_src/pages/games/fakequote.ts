@@ -213,15 +213,9 @@ export function FakeQuotePage(opts: { nonce: string; lv999?: boolean; user?: Nav
 </style>
 `);
 
-  const fontOptions = FONTS.map(
-    (f) => html`<option value="${f.value}">${f.label}</option>`,
-  );
-  const profileOptions = PROFILE_COLOURS.map(
-    (p) => html`<option value="${p.value}">${p.label}</option>`,
-  );
-  const formatOptions = FORMATS.map(
-    (f) => html`<option value="${f.value}">${f.label}</option>`,
-  );
+  const fontOptions = FONTS.map((f) => html`<option value="${f.value}">${f.label}</option>`);
+  const profileOptions = PROFILE_COLOURS.map((p) => html`<option value="${p.value}">${p.label}</option>`);
+  const formatOptions = FORMATS.map((f) => html`<option value="${f.value}">${f.label}</option>`);
 
   const formScript = raw(`
 <script nonce="${nonce}">
@@ -422,7 +416,14 @@ export function FakeQuotePage(opts: { nonce: string; lv999?: boolean; user?: Nav
     <form id="fq-form" class="fq-form" onsubmit="return false">
       <label class="full">
         <span class="req">Discord User ID (UID)</span>
-        <input type="text" name="uid" inputmode="numeric" pattern="\\d{17,20}" placeholder="e.g. 123456789012345678" autocomplete="off" />
+        <input
+          type="text"
+          name="uid"
+          inputmode="numeric"
+          pattern="\\d{17,20}"
+          placeholder="e.g. 123456789012345678"
+          autocomplete="off"
+        />
       </label>
 
       <label class="full">
@@ -437,12 +438,16 @@ export function FakeQuotePage(opts: { nonce: string; lv999?: boolean; user?: Nav
 
       <label>
         Profile colour
-        <select name="profileColor">${profileOptions}</select>
+        <select name="profileColor">
+          ${profileOptions}
+        </select>
       </label>
 
       <label class="full">
         Format
-        <select name="format">${formatOptions}</select>
+        <select name="format">
+          ${formatOptions}
+        </select>
       </label>
 
       <label class="full">
@@ -465,7 +470,9 @@ export function FakeQuotePage(opts: { nonce: string; lv999?: boolean; user?: Nav
 
       <label class="full">
         Font style
-        <select name="fontStyle">${fontOptions}</select>
+        <select name="fontStyle">
+          ${fontOptions}
+        </select>
       </label>
     </form>
   `;
@@ -483,24 +490,25 @@ export function FakeQuotePage(opts: { nonce: string; lv999?: boolean; user?: Nav
         <img id="fq-image" alt="Generated quote" style="display:none" />
       </div>
 
-      ${loggedOut
-    ? html`<div class="login-cta">
-            Log in with <a href="/auth/discord/login">Discord</a> to make a fake quote.
-          </div>`
-    : html`
-            ${form}
-            <div class="fq-actions">
-              <button id="fq-generate" class="btn-accent fq-generate" type="button" disabled>
-                <span class="cooldown-fill"></span>
-                <span class="label-text">Generate Quote</span>
-              </button>
-              <div id="fq-message" class="fq-message" role="status" aria-live="polite" aria-atomic="true"></div>
-              <p class="text-fog-400 text-sm text-center">Limit: 3 quotes per minute.</p>
-            </div>
-          `}
+      ${
+        loggedOut
+          ? html`<div class="login-cta">
+              Log in with <a href="/auth/discord/login">Discord</a> to make a fake quote.
+            </div>`
+          : html`
+              ${form}
+              <div class="fq-actions">
+                <button id="fq-generate" class="btn-accent fq-generate" type="button" disabled>
+                  <span class="cooldown-fill"></span>
+                  <span class="label-text">Generate Quote</span>
+                </button>
+                <div id="fq-message" class="fq-message" role="status" aria-live="polite" aria-atomic="true"></div>
+                <p class="text-fog-400 text-sm text-center">Limit: 3 quotes per minute.</p>
+              </div>
+            `
+      }
     </div>
-    ${extras}
-    ${loggedOut ? '' : formScript}
+    ${extras} ${loggedOut ? '' : formScript}
   `;
 
   return Layout({

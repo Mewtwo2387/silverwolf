@@ -5,14 +5,20 @@ import { getNextBirthdayInfo } from '../utils/birthdays';
 
 class BirthdayGet extends Command {
   constructor(client: any) {
-    super(client, 'get', "Retrieve a user's birthday", [
-      {
-        name: 'user',
-        description: 'The user whose birthday you want to retrieve',
-        type: 6,
-        required: true,
-      },
-    ], { isSubcommandOf: 'birthday', blame: 'xei' });
+    super(
+      client,
+      'get',
+      "Retrieve a user's birthday",
+      [
+        {
+          name: 'user',
+          description: 'The user whose birthday you want to retrieve',
+          type: 6,
+          required: true,
+        },
+      ],
+      { isSubcommandOf: 'birthday', blame: 'xei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -41,7 +47,7 @@ class BirthdayGet extends Command {
 
       const embed = new EmbedBuilder()
         .setTitle(`${user.username}'s Birthday`)
-        .setColor(0x00AAFF)
+        .setColor(0x00aaff)
         .addFields([
           { name: 'Birthday', value: `<t:${birthdayTimestamp}:D>`, inline: true },
           { name: 'Years Ago', value: `${yearsAgo} years ago`, inline: true },

@@ -3,60 +3,66 @@ import { Command } from './classes/Command';
 
 class Timestamp extends Command {
   constructor(client: any) {
-    super(client, 'discord_timestamp', 'Displays the current or specified time in various formats', [
-      {
-        name: 'timezone',
-        description: 'Timezone offset in ±HH:MM format (e.g. +08:00)',
-        type: 3,
-        required: false,
-      },
-      {
-        name: 'hour',
-        description: 'Hour (1-12)',
-        type: 4,
-        required: false,
-      },
-      {
-        name: 'minute',
-        description: 'Minute (0-59)',
-        type: 4,
-        required: false,
-      },
-      {
-        name: 'second',
-        description: 'Second (0-59)',
-        type: 4,
-        required: false,
-      },
-      {
-        name: 'meridiem',
-        description: 'AM or PM',
-        type: 3,
-        required: false,
-        choices: [
-          { name: 'AM', value: 'AM' },
-          { name: 'PM', value: 'PM' },
-        ],
-      },
-      {
-        name: 'date',
-        description: 'Day of the month (1-31)',
-        type: 4,
-        required: false,
-      },
-      {
-        name: 'month',
-        description: 'Month (1-12)',
-        type: 4,
-        required: false,
-      },
-      {
-        name: 'year',
-        description: 'Year (e.g., 2024)',
-        type: 4,
-        required: false,
-      },
-    ], { blame: 'xei' });
+    super(
+      client,
+      'discord_timestamp',
+      'Displays the current or specified time in various formats',
+      [
+        {
+          name: 'timezone',
+          description: 'Timezone offset in ±HH:MM format (e.g. +08:00)',
+          type: 3,
+          required: false,
+        },
+        {
+          name: 'hour',
+          description: 'Hour (1-12)',
+          type: 4,
+          required: false,
+        },
+        {
+          name: 'minute',
+          description: 'Minute (0-59)',
+          type: 4,
+          required: false,
+        },
+        {
+          name: 'second',
+          description: 'Second (0-59)',
+          type: 4,
+          required: false,
+        },
+        {
+          name: 'meridiem',
+          description: 'AM or PM',
+          type: 3,
+          required: false,
+          choices: [
+            { name: 'AM', value: 'AM' },
+            { name: 'PM', value: 'PM' },
+          ],
+        },
+        {
+          name: 'date',
+          description: 'Day of the month (1-31)',
+          type: 4,
+          required: false,
+        },
+        {
+          name: 'month',
+          description: 'Month (1-12)',
+          type: 4,
+          required: false,
+        },
+        {
+          name: 'year',
+          description: 'Year (e.g., 2024)',
+          type: 4,
+          required: false,
+        },
+      ],
+      { blame: 'xei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -85,7 +91,7 @@ class Timestamp extends Command {
 
       if (timezone) {
         const [sign, hours, minutes] = timezone.match(/([+-])(\d{2}):(\d{2})/)!.slice(1);
-        const offsetMinutes = (parseInt(hours, 10) * 60) + parseInt(minutes, 10);
+        const offsetMinutes = parseInt(hours, 10) * 60 + parseInt(minutes, 10);
         const gmt8Offset = 8 * 60;
         let totalOffsetMinutes: number;
 

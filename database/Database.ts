@@ -156,7 +156,9 @@ class Database {
             FOREIGN KEY (session_id) REFERENCES AiChatSession(session_id)
           )
         `);
-        this.db.run('INSERT INTO AiChatHistory_new (id, session_id, role, message, timestamp) SELECT id, session_id, role, message, timestamp FROM AiChatHistory');
+        this.db.run(
+          'INSERT INTO AiChatHistory_new (id, session_id, role, message, timestamp) SELECT id, session_id, role, message, timestamp FROM AiChatHistory',
+        );
         this.db.run('DROP TABLE AiChatHistory');
         this.db.run('ALTER TABLE AiChatHistory_new RENAME TO AiChatHistory');
         this.db.run('COMMIT');
@@ -218,23 +220,18 @@ class Database {
   }
 
   migrateLegacyServerRolesIfNeeded(): void {
-    const legacyTable = this.db
-      .query("SELECT name FROM sqlite_master WHERE type='table' AND name='ServerRoles'")
-      .get();
+    const legacyTable = this.db.query("SELECT name FROM sqlite_master WHERE type='table' AND name='ServerRoles'").get();
     if (!legacyTable) return;
 
-    const rowCount = (this.db
-      .query(serverConfigQueries.COUNT_LEGACY_SERVER_ROLES)
-      .get() as { count: number }).count;
+    const rowCount = (this.db.query(serverConfigQueries.COUNT_LEGACY_SERVER_ROLES).get() as { count: number }).count;
 
     log(`Migrating ${rowCount} legacy ServerRoles row(s) to ServerConfig`);
     this.db.run('BEGIN IMMEDIATE TRANSACTION');
     try {
       this.db.run(serverConfigQueries.MIGRATE_FROM_SERVER_ROLES);
 
-      const unmigrated = (this.db
-        .query(serverConfigQueries.COUNT_UNMIGRATED_SERVER_ROLES)
-        .get() as { count: number }).count;
+      const unmigrated = (this.db.query(serverConfigQueries.COUNT_UNMIGRATED_SERVER_ROLES).get() as { count: number })
+        .count;
       if (unmigrated > 0) {
         throw new Error(`${unmigrated} ServerRoles row(s) failed to migrate into ServerConfig`);
       }
@@ -301,7 +298,10 @@ class Database {
       }
     });
     // Keep the queue alive regardless of this transaction's outcome.
-    this.transactionQueue = run.then(() => undefined, () => undefined);
+    this.transactionQueue = run.then(
+      () => undefined,
+      () => undefined,
+    );
     return run;
   }
 
@@ -354,36 +354,92 @@ class Database {
     return csv.join('\n');
   }
 
-  async dumpUser(): Promise<string> { return this.dumpTable('User', ['id']); }
-  async dumpPokemon(): Promise<string> { return this.dumpTable('Pokemon', ['user_id']); }
-  async dumpMarriage(): Promise<string> { return this.dumpTable('Marriage', ['user1_id', 'user2_id']); }
-  async dumpBaby(): Promise<string> { return this.dumpTable('Baby', ['mother_id', 'father_id']); }
-  async dumpCommandConfig(): Promise<string> { return this.dumpTable('CommandConfig', []); }
-  async dumpServerConfig(): Promise<string> { return this.dumpTable('ServerConfig', []); }
-  async dumpGlobalConfig(): Promise<string> { return this.dumpTable('GlobalConfig', []); }
-  async dumpGameUID(): Promise<string> { return this.dumpTable('GameUID', ['user_id']); }
+  async dumpUser(): Promise<string> {
+    return this.dumpTable('User', ['id']);
+  }
+  async dumpPokemon(): Promise<string> {
+    return this.dumpTable('Pokemon', ['user_id']);
+  }
+  async dumpMarriage(): Promise<string> {
+    return this.dumpTable('Marriage', ['user1_id', 'user2_id']);
+  }
+  async dumpBaby(): Promise<string> {
+    return this.dumpTable('Baby', ['mother_id', 'father_id']);
+  }
+  async dumpCommandConfig(): Promise<string> {
+    return this.dumpTable('CommandConfig', []);
+  }
+  async dumpServerConfig(): Promise<string> {
+    return this.dumpTable('ServerConfig', []);
+  }
+  async dumpGlobalConfig(): Promise<string> {
+    return this.dumpTable('GlobalConfig', []);
+  }
+  async dumpGameUID(): Promise<string> {
+    return this.dumpTable('GameUID', ['user_id']);
+  }
 
-  get aiChat(): AiChatModel { return this.models.AiChatModel; }
-  get aiUsage(): AiUsageModel { return this.models.AiUsageModel; }
-  get birthdayReminder(): BirthdayReminderModel { return this.models.BirthdayReminderModel; }
-  get footballMatchAnnouncement(): FootballMatchAnnouncementModel { return this.models.FootballMatchAnnouncementModel; }
-  get baby(): BabyModel { return this.models.BabyModel; }
+  get aiChat(): AiChatModel {
+    return this.models.AiChatModel;
+  }
+  get aiUsage(): AiUsageModel {
+    return this.models.AiUsageModel;
+  }
+  get birthdayReminder(): BirthdayReminderModel {
+    return this.models.BirthdayReminderModel;
+  }
+  get footballMatchAnnouncement(): FootballMatchAnnouncementModel {
+    return this.models.FootballMatchAnnouncementModel;
+  }
+  get baby(): BabyModel {
+    return this.models.BabyModel;
+  }
 
-  get battleshipsMatch(): BattleshipsMatchModel { return this.models.BattleshipsMatchModel; }
-  get commandConfig(): CommandConfigModel { return this.models.CommandConfigModel; }
-  get cyclicTttMatch(): CyclicTttMatchModel { return this.models.CyclicTttMatchModel; }
-  get gameUID(): GameUIDModel { return this.models.GameUIDModel; }
-  get globalConfig(): GlobalConfigModel { return this.models.GlobalConfigModel; }
-  get imageGen(): ImageGenModel { return this.models.ImageGenModel; }
-  get marriage(): MarriageModel { return this.models.MarriageModel; }
-  get musicGen(): MusicGenModel { return this.models.MusicGenModel; }
-  get pokemon(): PokemonModel { return this.models.PokemonModel; }
-  get poop(): PoopModel { return this.models.PoopModel; }
-  get quotePreference(): QuotePreferenceModel { return this.models.QuotePreferenceModel; }
-  get rp(): RpModel { return this.models.RpModel; }
-  get serverConfig(): ServerConfigModel { return this.models.ServerConfigModel; }
-  get user(): UserModel { return this.models.UserModel; }
-  get webSession(): WebSessionModel { return this.models.WebSessionModel; }
+  get battleshipsMatch(): BattleshipsMatchModel {
+    return this.models.BattleshipsMatchModel;
+  }
+  get commandConfig(): CommandConfigModel {
+    return this.models.CommandConfigModel;
+  }
+  get cyclicTttMatch(): CyclicTttMatchModel {
+    return this.models.CyclicTttMatchModel;
+  }
+  get gameUID(): GameUIDModel {
+    return this.models.GameUIDModel;
+  }
+  get globalConfig(): GlobalConfigModel {
+    return this.models.GlobalConfigModel;
+  }
+  get imageGen(): ImageGenModel {
+    return this.models.ImageGenModel;
+  }
+  get marriage(): MarriageModel {
+    return this.models.MarriageModel;
+  }
+  get musicGen(): MusicGenModel {
+    return this.models.MusicGenModel;
+  }
+  get pokemon(): PokemonModel {
+    return this.models.PokemonModel;
+  }
+  get poop(): PoopModel {
+    return this.models.PoopModel;
+  }
+  get quotePreference(): QuotePreferenceModel {
+    return this.models.QuotePreferenceModel;
+  }
+  get rp(): RpModel {
+    return this.models.RpModel;
+  }
+  get serverConfig(): ServerConfigModel {
+    return this.models.ServerConfigModel;
+  }
+  get user(): UserModel {
+    return this.models.UserModel;
+  }
+  get webSession(): WebSessionModel {
+    return this.models.WebSessionModel;
+  }
 }
 
 export default Database;

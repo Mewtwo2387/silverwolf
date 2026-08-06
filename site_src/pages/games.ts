@@ -909,10 +909,18 @@ const styles = raw(`
 </style>
 `);
 
-const ICON_GRID_3 = raw('<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="9.5" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="9.5" width="5" height="5" rx="1"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><rect x="16" y="9.5" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><rect x="9.5" y="16" width="5" height="5" rx="1"/><rect x="16" y="16" width="5" height="5" rx="1"/></svg>');
-const ICON_GRID_4 = raw('<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="3"  y="3"  width="3.5" height="3.5" rx="0.6"/><rect x="8"  y="3"  width="3.5" height="3.5" rx="0.6"/><rect x="13" y="3"  width="3.5" height="3.5" rx="0.6"/><rect x="18" y="3"  width="3.5" height="3.5" rx="0.6"/><rect x="3"  y="8"  width="3.5" height="3.5" rx="0.6"/><rect x="8"  y="8"  width="3.5" height="3.5" rx="0.6"/><rect x="13" y="8"  width="3.5" height="3.5" rx="0.6"/><rect x="18" y="8"  width="3.5" height="3.5" rx="0.6"/><rect x="3"  y="13" width="3.5" height="3.5" rx="0.6"/><rect x="8"  y="13" width="3.5" height="3.5" rx="0.6"/><rect x="13" y="13" width="3.5" height="3.5" rx="0.6"/><rect x="18" y="13" width="3.5" height="3.5" rx="0.6"/><rect x="3"  y="18" width="3.5" height="3.5" rx="0.6"/><rect x="8"  y="18" width="3.5" height="3.5" rx="0.6"/><rect x="13" y="18" width="3.5" height="3.5" rx="0.6"/><rect x="18" y="18" width="3.5" height="3.5" rx="0.6"/></svg>');
-const ICON_LIST = raw('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="4.5" cy="6" r="0.6" fill="currentColor"/><circle cx="4.5" cy="12" r="0.6" fill="currentColor"/><circle cx="4.5" cy="18" r="0.6" fill="currentColor"/></svg>');
-const ICON_CHEVRON = raw('<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>');
+const ICON_GRID_3 = raw(
+  '<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="9.5" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="9.5" width="5" height="5" rx="1"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><rect x="16" y="9.5" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><rect x="9.5" y="16" width="5" height="5" rx="1"/><rect x="16" y="16" width="5" height="5" rx="1"/></svg>',
+);
+const ICON_GRID_4 = raw(
+  '<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="3"  y="3"  width="3.5" height="3.5" rx="0.6"/><rect x="8"  y="3"  width="3.5" height="3.5" rx="0.6"/><rect x="13" y="3"  width="3.5" height="3.5" rx="0.6"/><rect x="18" y="3"  width="3.5" height="3.5" rx="0.6"/><rect x="3"  y="8"  width="3.5" height="3.5" rx="0.6"/><rect x="8"  y="8"  width="3.5" height="3.5" rx="0.6"/><rect x="13" y="8"  width="3.5" height="3.5" rx="0.6"/><rect x="18" y="8"  width="3.5" height="3.5" rx="0.6"/><rect x="3"  y="13" width="3.5" height="3.5" rx="0.6"/><rect x="8"  y="13" width="3.5" height="3.5" rx="0.6"/><rect x="13" y="13" width="3.5" height="3.5" rx="0.6"/><rect x="18" y="13" width="3.5" height="3.5" rx="0.6"/><rect x="3"  y="18" width="3.5" height="3.5" rx="0.6"/><rect x="8"  y="18" width="3.5" height="3.5" rx="0.6"/><rect x="13" y="18" width="3.5" height="3.5" rx="0.6"/><rect x="18" y="18" width="3.5" height="3.5" rx="0.6"/></svg>',
+);
+const ICON_LIST = raw(
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="4.5" cy="6" r="0.6" fill="currentColor"/><circle cx="4.5" cy="12" r="0.6" fill="currentColor"/><circle cx="4.5" cy="18" r="0.6" fill="currentColor"/></svg>',
+);
+const ICON_CHEVRON = raw(
+  '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>',
+);
 
 function CoinImage() {
   return html`
@@ -994,8 +1002,9 @@ function BlackjackImage() {
 // moulded grip ridges, side gloss and knurled cap — just drawn declaratively
 // and animated with a flip + slosh so the card previews the real thing.
 // Coordinates mirror the game's local-space geometry (origin at the centre).
-const BOTTLE_OUTLINE_D = 'M13 -132 L13 -112 L10 -112 L10 -90 L34 -60 L34 104 L27 116 L0 118 '
-  + 'L-27 116 L-34 104 L-34 -60 L-10 -90 L-10 -112 L-13 -112 L-13 -132 Z';
+const BOTTLE_OUTLINE_D =
+  'M13 -132 L13 -112 L10 -112 L10 -90 L34 -60 L34 104 L27 116 L0 118 ' +
+  'L-27 116 L-34 104 L-34 -60 L-10 -90 L-10 -112 L-13 -112 L-13 -132 Z';
 const BOTTLE_INTERIOR_D = 'M6 -86 L28 -54 L28 102 L21 112 L0 114 L-21 112 L-28 102 L-28 -54 L-6 -86 Z';
 function bottleRidges() {
   let lines = '';
@@ -1091,7 +1100,8 @@ function HoloIcon(fileName: string, extraClass = '') {
 // Map a public /static/svg/... URL back to its source filename.
 const svgFileName = (src: string): string => src.split('/').pop() ?? '';
 
-const layoutScript = (nonce: string) => raw(`
+const layoutScript = (nonce: string) =>
+  raw(`
 <script nonce="${nonce}">
 (function(){
   var KEY = 'games-layout';
@@ -1160,7 +1170,8 @@ const layoutScript = (nonce: string) => raw(`
 // dark, e.g. the black 8-ball, so the outline doesn't vanish on the dark UI) as
 // its stroke. We also pick each icon's dominant colour (by painted area) to
 // drive --holo-glow, so the glow matches the art instead of the accent blue.
-const holoScript = (nonce: string) => raw(`
+const holoScript = (nonce: string) =>
+  raw(`
 <script nonce="${nonce}">
 (function(){
   var SHAPES = 'path,circle,rect,ellipse,polygon,polyline,line';
@@ -1246,7 +1257,11 @@ const holoScript = (nonce: string) => raw(`
 </script>
 `);
 
-export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import('../components/navbar').NavUser | null }) {
+export function GamesPage(opts: {
+  nonce: string;
+  lv999?: boolean;
+  user?: import('../components/navbar').NavUser | null;
+}) {
   const body = html`
     ${styles}
     <div class="games-header">
@@ -1272,35 +1287,46 @@ export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import(
       </div>
     </div>
     <div class="games-grid">
-      ${GAMES.map(
-    (game) => {
-      const slug = game.href.split('/').pop() ?? '';
-      return html`
+      ${GAMES.map((game) => {
+        const slug = game.href.split('/').pop() ?? '';
+        return html`
           <a href="${game.href}" class="game-card game-${slug}">
             <div class="card-image">
               ${(() => {
-    if (game.imageType === 'coin') return CoinImage();
-    if (game.imageType === 'ai-slop') return AiSlopImage();
-    if (game.imageType === 'cyclic') return CyclicImage();
-    if (game.imageType === 'cards') return BlackjackImage();
-    if (game.imageType === 'bottle') return BottleImage();
-    if (game.imageType === 'composite') {
-      const overlaySrc = (game as any).overlaySrc as string;
-      const overlay = overlaySrc.endsWith('.svg')
-        ? HoloIcon(svgFileName(overlaySrc), 'holo-overlay')
-        : null;
-      return html`<div class="composite-icon">
-              <img class="base holo-raster" src="${(game as any).imageSrc}" alt="${game.name}" loading="lazy" decoding="async" />
-              ${overlay ?? html`<img class="overlay" src="${overlaySrc}" alt="" loading="lazy" decoding="async" />`}
-            </div>`;
-    }
-    const src = (game as any).imageSrc as string;
-    if (src?.endsWith('.svg')) {
-      const holo = HoloIcon(svgFileName(src));
-      if (holo) return holo;
-    }
-    return html`<img class="holo-raster" src="${src}" alt="${game.name}" loading="lazy" decoding="async" />`;
-  })()}
+                if (game.imageType === 'coin') return CoinImage();
+                if (game.imageType === 'ai-slop') return AiSlopImage();
+                if (game.imageType === 'cyclic') return CyclicImage();
+                if (game.imageType === 'cards') return BlackjackImage();
+                if (game.imageType === 'bottle') return BottleImage();
+                if (game.imageType === 'composite') {
+                  const overlaySrc = (game as any).overlaySrc as string;
+                  const overlay = overlaySrc.endsWith('.svg')
+                    ? HoloIcon(svgFileName(overlaySrc), 'holo-overlay')
+                    : null;
+                  return html`<div class="composite-icon">
+                    <img
+                      class="base holo-raster"
+                      src="${(game as any).imageSrc}"
+                      alt="${game.name}"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                    ${overlay ?? html`<img class="overlay" src="${overlaySrc}" alt="" loading="lazy" decoding="async" />`}
+                  </div>`;
+                }
+                const src = (game as any).imageSrc as string;
+                if (src?.endsWith('.svg')) {
+                  const holo = HoloIcon(svgFileName(src));
+                  if (holo) return holo;
+                }
+                return html`<img
+                  class="holo-raster"
+                  src="${src}"
+                  alt="${game.name}"
+                  loading="lazy"
+                  decoding="async"
+                />`;
+              })()}
             </div>
             <div class="card-content">
               <div class="card-header-bar">
@@ -1314,11 +1340,9 @@ export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import(
             </div>
           </a>
         `;
-    },
-  )}
+      })}
     </div>
-    ${layoutScript(opts.nonce)}
-    ${holoScript(opts.nonce)}
+    ${layoutScript(opts.nonce)} ${holoScript(opts.nonce)}
   `;
 
   return Layout({

@@ -4,14 +4,20 @@ import { logError } from '../utils/log';
 
 class BirthdayUnnotify extends Command {
   constructor(client: any) {
-    super(client, 'unnotify', 'Remove a birthday reminder for a user', [
-      {
-        name: 'user',
-        description: 'The user whose birthday reminder you want to remove',
-        type: 6,
-        required: true,
-      },
-    ], { isSubcommandOf: 'birthday', blame: 'xei' });
+    super(
+      client,
+      'unnotify',
+      'Remove a birthday reminder for a user',
+      [
+        {
+          name: 'user',
+          description: 'The user whose birthday reminder you want to remove',
+          type: 6,
+          required: true,
+        },
+      ],
+      { isSubcommandOf: 'birthday', blame: 'xei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -31,7 +37,7 @@ class BirthdayUnnotify extends Command {
       const embed = new EmbedBuilder()
         .setTitle('Reminder Removed')
         .setDescription(`Birthday reminder for **${trackedUser.username}** has been removed.`)
-        .setColor(0xFF4444);
+        .setColor(0xff4444);
 
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {

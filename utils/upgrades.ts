@@ -20,11 +20,13 @@ function getNextUpgradeCost(level: number): number {
     // ascension 1
     // level 1->2 to 9->10: linear from 5k to 45k
     return 5000 * level;
-  } if (level < 20) {
+  }
+  if (level < 20) {
     // ascension 1
     // level 10 to 19: quadratic from 50k to 180k
     return 500 * level * level;
-  } if (level < 30) {
+  }
+  if (level < 30) {
     // ascension 1
     // level 20->21 to 29->30: cubic from 200k to 610k
     return 25 * level * level * level;
@@ -46,7 +48,9 @@ function getTotalUpgradeCost(level: number): number {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function dump(): void {
   for (let i = 1; i < MAX_LEVEL; i += 1) {
-    log(`Level ${String(i).padStart(2, '0')} -> ${String(i + 1).padStart(2, '0')} cost: ${String(getNextUpgradeCost(i)).padStart(15, ' ')} Total cost: ${String(getTotalUpgradeCost(i + 1)).padStart(7, ' ')}`);
+    log(
+      `Level ${String(i).padStart(2, '0')} -> ${String(i + 1).padStart(2, '0')} cost: ${String(getNextUpgradeCost(i)).padStart(15, ' ')} Total cost: ${String(getTotalUpgradeCost(i + 1)).padStart(7, ' ')}`,
+    );
   }
 }
 
@@ -80,11 +84,13 @@ function getBekiCooldown(level: number): number {
     // ascension 1
     // level 1 to 30: 24h to 6h
     return 24 * 0.25 ** ((level - 1) / 29);
-  } if (level <= 40) {
+  }
+  if (level <= 40) {
     // ascension 2
     // level 30 to 40: 6h to 4h
     return 6 * (4 / 6) ** ((level - 30) / 10);
-  } if (level <= 50) {
+  }
+  if (level <= 50) {
     // ascension 3
     // level 40 to 50: 4h to 3h
     return 4 * (3 / 4) ** ((level - 40) / 10);

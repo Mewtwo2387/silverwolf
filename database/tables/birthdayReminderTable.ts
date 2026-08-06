@@ -17,10 +17,7 @@ const birthdayReminderTable: TableDefinition = {
   ],
   primaryKey: ['notifier_id', 'tracked_user_id'],
   specialConstraints: ['PRIMARY KEY (notifier_id, tracked_user_id)'],
-  constraints: [
-    'FOREIGN KEY (notifier_id) REFERENCES User(id)',
-    'FOREIGN KEY (tracked_user_id) REFERENCES User(id)',
-  ],
+  constraints: ['FOREIGN KEY (notifier_id) REFERENCES User(id)', 'FOREIGN KEY (tracked_user_id) REFERENCES User(id)'],
 };
 
 export default birthdayReminderTable;

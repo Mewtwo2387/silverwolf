@@ -14,13 +14,11 @@ export const GLOBAL_CHANNEL_LIST_KEYS = [
   GLOBAL_CONFIG_KEYS.FOOTBALL_CHANNELS,
 ] as const;
 
-export const GLOBAL_SERVER_LIST_KEYS = [
-  GLOBAL_CONFIG_KEYS.ALLOWED_SERVERS,
-] as const;
+export const GLOBAL_SERVER_LIST_KEYS = [GLOBAL_CONFIG_KEYS.ALLOWED_SERVERS] as const;
 
-export type GlobalChannelListKey = typeof GLOBAL_CHANNEL_LIST_KEYS[number];
-export type GlobalServerListKey = typeof GLOBAL_SERVER_LIST_KEYS[number];
-export type DocumentedGlobalConfigKey = typeof GLOBAL_CONFIG_KEYS[keyof typeof GLOBAL_CONFIG_KEYS];
+export type GlobalChannelListKey = (typeof GLOBAL_CHANNEL_LIST_KEYS)[number];
+export type GlobalServerListKey = (typeof GLOBAL_SERVER_LIST_KEYS)[number];
+export type DocumentedGlobalConfigKey = (typeof GLOBAL_CONFIG_KEYS)[keyof typeof GLOBAL_CONFIG_KEYS];
 
 export const DOCUMENTED_GLOBAL_CONFIG_KEYS: {
   key: DocumentedGlobalConfigKey;
@@ -61,14 +59,12 @@ export const DOCUMENTED_GLOBAL_CONFIG_KEYS: {
 
 /** Keys managed via `/globalconfig set` (not list keys managed by register commands). */
 export const SETTABLE_GLOBAL_VALUE_KEYS = DOCUMENTED_GLOBAL_CONFIG_KEYS.filter(
-  (entry) => !(GLOBAL_CHANNEL_LIST_KEYS as readonly string[]).includes(entry.key)
-    && !(GLOBAL_SERVER_LIST_KEYS as readonly string[]).includes(entry.key),
+  (entry) =>
+    !(GLOBAL_CHANNEL_LIST_KEYS as readonly string[]).includes(entry.key) &&
+    !(GLOBAL_SERVER_LIST_KEYS as readonly string[]).includes(entry.key),
 );
 
-const BOOLEAN_VALUE_KEYS = new Set<string>([
-  GLOBAL_CONFIG_KEYS.FOOTBALL,
-  GLOBAL_CONFIG_KEYS.BANNED,
-]);
+const BOOLEAN_VALUE_KEYS = new Set<string>([GLOBAL_CONFIG_KEYS.FOOTBALL, GLOBAL_CONFIG_KEYS.BANNED]);
 
 const DOCUMENTED_KEY_SET = new Set<string>(DOCUMENTED_GLOBAL_CONFIG_KEYS.map((entry) => entry.key));
 
@@ -104,26 +100,16 @@ export function validateGlobalConfigValue(key: string, value: string): string | 
   return null;
 }
 
-export function formatGlobalChannelListValue(
-  key: GlobalChannelListKey,
-  raw: string | null | undefined,
-): string {
+export function formatGlobalChannelListValue(key: GlobalChannelListKey, raw: string | null | undefined): string {
   if (!raw?.trim()) return formatUnsetDisplay(documentedDefault(key));
   const ids = parseChannelIds(raw);
-  return ids.length > 0
-    ? ids.map((id) => `<#${id}>`).join(', ')
-    : formatUnsetDisplay(documentedDefault(key));
+  return ids.length > 0 ? ids.map((id) => `<#${id}>`).join(', ') : formatUnsetDisplay(documentedDefault(key));
 }
 
-export function formatGlobalServerListValue(
-  key: GlobalServerListKey,
-  raw: string | null | undefined,
-): string {
+export function formatGlobalServerListValue(key: GlobalServerListKey, raw: string | null | undefined): string {
   if (!raw?.trim()) return formatUnsetDisplay(documentedDefault(key));
   const ids = parseChannelIds(raw);
-  return ids.length > 0
-    ? ids.map((id) => `\`${id}\``).join(', ')
-    : formatUnsetDisplay(documentedDefault(key));
+  return ids.length > 0 ? ids.map((id) => `\`${id}\``).join(', ') : formatUnsetDisplay(documentedDefault(key));
 }
 
 export function formatGlobalConfigOverview(rows: { key: string; value: string }[]): string {

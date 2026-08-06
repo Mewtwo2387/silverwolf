@@ -19,8 +19,9 @@ type ChannelClient = {
 };
 
 async function getTextChannel(client: ChannelClient, channelId: string): Promise<TextChannelLike | null> {
-  const channel = client.channels.cache.get(channelId.trim()) as TextChannelLike | undefined
-    ?? await client.channels.fetch(channelId.trim()).catch(() => null) as TextChannelLike | null;
+  const channel =
+    (client.channels.cache.get(channelId.trim()) as TextChannelLike | undefined) ??
+    ((await client.channels.fetch(channelId.trim()).catch(() => null)) as TextChannelLike | null);
   if (!channel?.isTextBased()) {
     logError(`Football channel ${channelId} is invalid or not text-based.`);
     return null;

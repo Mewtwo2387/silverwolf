@@ -4,24 +4,30 @@ import { timestampedFileName } from '../utils/dumpFileName';
 
 class LogDump extends DevCommand {
   constructor(client: any) {
-    super(client, 'logdump', 'dump the log files', [
-      {
-        name: 'lines',
-        description: 'last n lines of the error logs',
-        type: 4,
-        required: true,
-      },
-      {
-        name: 'type',
-        description: 'the type of log to dump',
-        type: 3,
-        required: true,
-        choices: [
-          { name: 'error', value: 'error' },
-          { name: 'log', value: 'log' },
-        ],
-      },
-    ], { blame: 'ei' });
+    super(
+      client,
+      'logdump',
+      'dump the log files',
+      [
+        {
+          name: 'lines',
+          description: 'last n lines of the error logs',
+          type: 4,
+          required: true,
+        },
+        {
+          name: 'type',
+          description: 'the type of log to dump',
+          type: 3,
+          required: true,
+          choices: [
+            { name: 'error', value: 'error' },
+            { name: 'log', value: 'log' },
+          ],
+        },
+      ],
+      { blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {

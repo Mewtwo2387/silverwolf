@@ -32,13 +32,18 @@ class PoopProfileCreate extends Command {
       const sign = timezone >= 0 ? '+' : '';
       const embed = new Discord.EmbedBuilder()
         .setTitle('💩 Poop Profile Updated!')
-        .setDescription(`Your timezone has been set to **UTC${sign}${timezone}**.\nYour poop logs will now be displayed in your local time.`)
-        .setColor(0x8B4513);
+        .setDescription(
+          `Your timezone has been set to **UTC${sign}${timezone}**.\nYour poop logs will now be displayed in your local time.`,
+        )
+        .setColor(0x8b4513);
 
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       logError('Failed to create poop profile:', error);
-      await interaction.followUp({ content: 'Failed to save your timezone. Please try again.', flags: Discord.MessageFlags.Ephemeral });
+      await interaction.followUp({
+        content: 'Failed to save your timezone. Please try again.',
+        flags: Discord.MessageFlags.Ephemeral,
+      });
     }
   }
 }

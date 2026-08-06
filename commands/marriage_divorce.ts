@@ -15,34 +15,39 @@ class MarriageDivorce extends Command {
 
     if (!marriageStatus.isMarried) {
       await interaction.editReply({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#AA0000')
-          .setTitle('Divorce Status')
-          .setDescription('You are not married, so you cannot initiate a divorce.')
-          .setImage('https://media1.tenor.com/m/8h3p86xYBSsAAAAC/how-to-lose-a-guy-in10days-andy.gif')],
+        embeds: [
+          new Discord.EmbedBuilder()
+            .setColor('#AA0000')
+            .setTitle('Divorce Status')
+            .setDescription('You are not married, so you cannot initiate a divorce.')
+            .setImage('https://media1.tenor.com/m/8h3p86xYBSsAAAAC/how-to-lose-a-guy-in10days-andy.gif'),
+        ],
       });
       return;
     }
 
     const { partnerId } = marriageStatus;
 
-    const row = new Discord.ActionRowBuilder()
-      .addComponents(
-        new Discord.ButtonBuilder()
-          .setCustomId('confirmDivorce')
-          .setLabel('Confirm Divorce')
-          .setStyle(Discord.ButtonStyle.Danger),
-        new Discord.ButtonBuilder()
-          .setCustomId('cancelDivorce')
-          .setLabel('Cancel Divorce')
-          .setStyle(Discord.ButtonStyle.Secondary),
-      );
+    const row = new Discord.ActionRowBuilder().addComponents(
+      new Discord.ButtonBuilder()
+        .setCustomId('confirmDivorce')
+        .setLabel('Confirm Divorce')
+        .setStyle(Discord.ButtonStyle.Danger),
+      new Discord.ButtonBuilder()
+        .setCustomId('cancelDivorce')
+        .setLabel('Cancel Divorce')
+        .setStyle(Discord.ButtonStyle.Secondary),
+    );
 
     await interaction.editReply({
-      embeds: [new Discord.EmbedBuilder()
-        .setColor('#FFAA00')
-        .setTitle('Divorce Confirmation')
-        .setDescription(`Are you sure you want to divorce <@${partnerId}>? You will receive 20% of <@${partnerId}>'s total assets and they will receive 80% of your total assets.`)],
+      embeds: [
+        new Discord.EmbedBuilder()
+          .setColor('#FFAA00')
+          .setTitle('Divorce Confirmation')
+          .setDescription(
+            `Are you sure you want to divorce <@${partnerId}>? You will receive 20% of <@${partnerId}>'s total assets and they will receive 80% of your total assets.`,
+          ),
+      ],
       components: [row],
     });
 
@@ -70,11 +75,13 @@ class MarriageDivorce extends Command {
         const randomGif = gifs[Math.floor(Math.random() * gifs.length)];
 
         await i.reply({
-          embeds: [new Discord.EmbedBuilder()
-            .setColor('#FFAA00')
-            .setTitle('Hold On!')
-            .setDescription(randomResponse)
-            .setImage(randomGif)],
+          embeds: [
+            new Discord.EmbedBuilder()
+              .setColor('#FFAA00')
+              .setTitle('Hold On!')
+              .setDescription(randomResponse)
+              .setImage(randomGif),
+          ],
           flags: Discord.MessageFlags.Ephemeral,
         });
         return;
@@ -92,25 +99,29 @@ class MarriageDivorce extends Command {
           .join('\n');
 
         await i.update({
-          embeds: [new Discord.EmbedBuilder()
-            .setColor('#00AA00')
-            .setTitle('Divorce Successful')
-            .setDescription(
-              `You have successfully divorced <@${partnerId}>.\n\n`
-              + `**Fixed Fees:**\n${fixedFeesBreakdown}\n\n`
-              + `**Dynamic Fees:**\n${dynamicFeesBreakdown}\n\n`
-              + '**Post-Settlement Distribution:**\n'
-              + `**You received:** ${format(settlement.initiator.dinonuggies)} dinonuggies and ${format(settlement.initiator.credits)} credits.\n`
-              + `**<@${partnerId}> received:** ${format(settlement.target.dinonuggies)} dinonuggies and ${format(settlement.target.credits)} credits.`,
-            )],
+          embeds: [
+            new Discord.EmbedBuilder()
+              .setColor('#00AA00')
+              .setTitle('Divorce Successful')
+              .setDescription(
+                `You have successfully divorced <@${partnerId}>.\n\n` +
+                  `**Fixed Fees:**\n${fixedFeesBreakdown}\n\n` +
+                  `**Dynamic Fees:**\n${dynamicFeesBreakdown}\n\n` +
+                  '**Post-Settlement Distribution:**\n' +
+                  `**You received:** ${format(settlement.initiator.dinonuggies)} dinonuggies and ${format(settlement.initiator.credits)} credits.\n` +
+                  `**<@${partnerId}> received:** ${format(settlement.target.dinonuggies)} dinonuggies and ${format(settlement.target.credits)} credits.`,
+              ),
+          ],
           components: [],
         });
       } else if (i.customId === 'cancelDivorce') {
         await i.update({
-          embeds: [new Discord.EmbedBuilder()
-            .setColor('#00AA00')
-            .setTitle('Divorce Canceled')
-            .setDescription('The divorce request has been canceled.')],
+          embeds: [
+            new Discord.EmbedBuilder()
+              .setColor('#00AA00')
+              .setTitle('Divorce Canceled')
+              .setDescription('The divorce request has been canceled.'),
+          ],
           components: [],
         });
       }
@@ -121,10 +132,12 @@ class MarriageDivorce extends Command {
     collector.on('end', async (collected: any) => {
       if (collected.size === 0) {
         await interaction.editReply({
-          embeds: [new Discord.EmbedBuilder()
-            .setColor('#AA0000')
-            .setTitle('Divorce Request Timed Out')
-            .setDescription('The divorce request has timed out.')],
+          embeds: [
+            new Discord.EmbedBuilder()
+              .setColor('#AA0000')
+              .setTitle('Divorce Request Timed Out')
+              .setDescription('The divorce request has timed out.'),
+          ],
           components: [],
         });
       }

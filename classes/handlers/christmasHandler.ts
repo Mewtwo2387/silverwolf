@@ -1,6 +1,4 @@
-import {
-  EmbedBuilder, escapeMarkdown, AttachmentBuilder,
-} from 'discord.js';
+import { EmbedBuilder, escapeMarkdown, AttachmentBuilder } from 'discord.js';
 import path from 'path';
 import Canvas from 'canvas';
 import { log } from '../../utils/log';
@@ -74,11 +72,12 @@ class ChristmasHandler extends Handler {
     const buffer = canvas.toBuffer();
     const attachment = new AttachmentBuilder(buffer, { name: 'mystery.png' });
     message.channel.send({
-      embeds: [new EmbedBuilder()
-        .setTitle('A wild ??? appeared!')
-        .setImage('attachment://mystery.png')
-        .setColor('#00FF00')
-        .setFooter({ text: 'guess the username and catch with /catch [username]!' }),
+      embeds: [
+        new EmbedBuilder()
+          .setTitle('A wild ??? appeared!')
+          .setImage('attachment://mystery.png')
+          .setColor('#00FF00')
+          .setFooter({ text: 'guess the username and catch with /catch [username]!' }),
       ],
       files: [attachment],
     });
@@ -107,11 +106,12 @@ class ChristmasHandler extends Handler {
     const buffer = canvas.toBuffer();
     const attachment = new AttachmentBuilder(buffer, { name: 'normal.png' });
     message.channel.send({
-      embeds: [new EmbedBuilder()
-        .setTitle(`A wild ${escapeMarkdown(member.user.username)} appeared!`)
-        .setImage('attachment://normal.png')
-        .setColor('#00FF00')
-        .setFooter({ text: 'catch them with /catch [username]!' }),
+      embeds: [
+        new EmbedBuilder()
+          .setTitle(`A wild ${escapeMarkdown(member.user.username)} appeared!`)
+          .setImage('attachment://normal.png')
+          .setColor('#00FF00')
+          .setFooter({ text: 'catch them with /catch [username]!' }),
       ],
       files: [attachment],
     });

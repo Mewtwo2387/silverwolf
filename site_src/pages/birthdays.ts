@@ -238,12 +238,16 @@ function daysUntil(nextBirthday: string): number {
 
 function renderUser(u: BirthdayUser, upcoming = false) {
   const avatar = u.avatarURL
-    ? html`<img src="${u.avatarURL}" alt="" loading="lazy" decoding="async" class="w-[22px] h-[22px] rounded-full object-cover bg-ink-500 shrink-0" />`
+    ? html`<img
+        src="${u.avatarURL}"
+        alt=""
+        loading="lazy"
+        decoding="async"
+        class="w-[22px] h-[22px] rounded-full object-cover bg-ink-500 shrink-0"
+      />`
     : html`<div class="w-[22px] h-[22px] rounded-full bg-ink-500 shrink-0"></div>`;
   const upcomingClass = upcoming ? ' bday-user-upcoming' : '';
-  const upcomingBadge = upcoming
-    ? html`<span class="upcoming-tag">Upcoming!</span>`
-    : '';
+  const upcomingBadge = upcoming ? html`<span class="upcoming-tag">Upcoming!</span>` : '';
   return html`
     <span
       class="bday-user${upcomingClass} relative inline-flex items-center gap-[0.4rem] pl-1 pr-[0.6rem] py-[0.2rem] bg-ink-700 border border-ink-600 rounded-full text-[0.85rem] cursor-pointer select-none transition-colors hover:border-ink-500"
@@ -281,7 +285,8 @@ const birthdayModal = raw(`
 </div>
 `);
 
-const birthdayModalScript = (nonce: string) => raw(`
+const birthdayModalScript = (nonce: string) =>
+  raw(`
 <script nonce="${nonce}">
 (() => {
   const backdrop = document.getElementById('bday-modal-backdrop');
@@ -396,9 +401,7 @@ export function BirthdaysPage(opts: {
   lv999?: boolean;
   user?: import('../components/navbar').NavUser | null;
 }) {
-  const {
-    grouped, error, nonce, lv999, user,
-  } = opts;
+  const { grouped, error, nonce, lv999, user } = opts;
 
   const currentMonth = MONTHS[new Date().getUTCMonth()];
 
@@ -424,20 +427,23 @@ export function BirthdaysPage(opts: {
         <h1 class="text-center">Birthdays</h1>
         <div class="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-6 mt-6">
           ${MONTHS.map((month) => {
-    const users = grouped[month] ?? [];
-    const isCurrent = month === currentMonth;
-    return html`
+            const users = grouped[month] ?? [];
+            const isCurrent = month === currentMonth;
+            return html`
               <section class="${`month-card ${isCurrent ? 'month-current' : ''}`}">
                 <h3 class="text-accent-light font-mono text-sm tracking-wider uppercase mb-1">// ${month}</h3>
-                ${users.length === 0
-    ? html`<div class="text-fog-500 text-[0.85rem] font-mono mt-2">&gt; NO RECORDED BIRTHDAYS</div>`
-    : html`<div class="flex flex-wrap gap-[0.45rem] pt-3">${users.map((u) => renderUser(u, upcomingIds.has(u.id)))}</div>`}
+                ${
+                  users.length === 0
+                    ? html`<div class="text-fog-500 text-[0.85rem] font-mono mt-2">&gt; NO RECORDED BIRTHDAYS</div>`
+                    : html`<div class="flex flex-wrap gap-[0.45rem] pt-3">
+                        ${users.map((u) => renderUser(u, upcomingIds.has(u.id)))}
+                      </div>`
+                }
               </section>
             `;
-  })}
+          })}
         </div>
-        ${birthdayModal}
-        ${birthdayModalScript(nonce)}
+        ${birthdayModal} ${birthdayModalScript(nonce)}
       `;
 
   return Layout({

@@ -122,30 +122,39 @@ class UserModel {
   }
 
   // eslint-disable-next-line max-len
-  async getEveryoneAttr(attribute: string, limit: number | null = null, offset: number = 0): Promise<Record<string, any>[]> {
+  async getEveryoneAttr(
+    attribute: string,
+    limit: number | null = null,
+    offset: number = 0,
+  ): Promise<Record<string, any>[]> {
     const attr = camelToSnake(attribute);
-    const query = (limit !== null)
-      ? userQueries.GET_EVERYONE_ATTR_LIMIT(attr, limit, offset)
-      : userQueries.GET_EVERYONE_ATTR(attr);
+    const query =
+      limit !== null ? userQueries.GET_EVERYONE_ATTR_LIMIT(attr, limit, offset) : userQueries.GET_EVERYONE_ATTR(attr);
     const rows = await this.db.executeSelectAllQuery(query);
     log(JSON.stringify(rows));
     return rows;
   }
 
   // eslint-disable-next-line max-len
-  async getRelativeNetWinnings(type: string, limit: number | null = null, offset: number = 0): Promise<Record<string, any>[]> {
-    const query = (limit !== null)
-      ? userQueries.GET_EVERYONE_RELATIVE_NET_WINNINGS_LIMIT(type, limit, offset)
-      : userQueries.GET_EVERYONE_RELATIVE_NET_WINNINGS(type);
+  async getRelativeNetWinnings(
+    type: string,
+    limit: number | null = null,
+    offset: number = 0,
+  ): Promise<Record<string, any>[]> {
+    const query =
+      limit !== null
+        ? userQueries.GET_EVERYONE_RELATIVE_NET_WINNINGS_LIMIT(type, limit, offset)
+        : userQueries.GET_EVERYONE_RELATIVE_NET_WINNINGS(type);
     const rows = await this.db.executeSelectAllQuery(query);
     log(JSON.stringify(rows));
     return rows;
   }
 
   async getAllRelativeNetWinnings(limit: number | null = null, offset: number = 0): Promise<Record<string, any>[]> {
-    const query = (limit !== null)
-      ? userQueries.GET_EVERYONE_RELATIVE_NET_WINNINGS_ALL_LIMIT(limit, offset)
-      : userQueries.GET_EVERYONE_RELATIVE_NET_WINNINGS_ALL;
+    const query =
+      limit !== null
+        ? userQueries.GET_EVERYONE_RELATIVE_NET_WINNINGS_ALL_LIMIT(limit, offset)
+        : userQueries.GET_EVERYONE_RELATIVE_NET_WINNINGS_ALL;
     const rows = await this.db.executeSelectAllQuery(query);
     log(JSON.stringify(rows));
     return rows;

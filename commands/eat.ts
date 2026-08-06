@@ -5,14 +5,20 @@ import { processEat, formatEatItemLine } from '../utils/eat';
 
 class Eat extends Command {
   constructor(client: any) {
-    super(client, 'eat', 'Eat one or more dinonuggies', [
-      {
-        name: 'amount',
-        description: 'The amount of dinonuggies to eat',
-        type: 4,
-        required: false,
-      },
-    ], { blame: 'ei' });
+    super(
+      client,
+      'eat',
+      'Eat one or more dinonuggies',
+      [
+        {
+          name: 'amount',
+          description: 'The amount of dinonuggies to eat',
+          type: 4,
+          required: false,
+        },
+      ],
+      { blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -30,7 +36,9 @@ class Eat extends Command {
     }
 
     if (result.status === 'cheat') {
-      await interaction.editReply(`You ate ${amount} dinonuggies! You now have ${result.dinonuggies - amount} dinonuggies.`);
+      await interaction.editReply(
+        `You ate ${amount} dinonuggies! You now have ${result.dinonuggies - amount} dinonuggies.`,
+      );
       setTimeout(() => {
         interaction.followUp("You're spotted cheating. Your dinonuggies have been reset to 0.");
       }, 5000);

@@ -16,14 +16,20 @@ import {
 
 class Blackjack extends Command {
   constructor(client: any) {
-    super(client, 'blackjack', 'bj with silverwolf', [
-      {
-        name: 'amount',
-        description: 'the amount of mystic credits to bet',
-        type: 3,
-        required: true,
-      },
-    ], { blame: 'ei' });
+    super(
+      client,
+      'blackjack',
+      'bj with silverwolf',
+      [
+        {
+          name: 'amount',
+          description: 'the amount of mystic credits to bet',
+          type: 3,
+          required: true,
+        },
+      ],
+      { blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -56,7 +62,10 @@ class Blackjack extends Command {
         if (playerTotal > 21) {
           collector.stop('busted');
         } else {
-          await i.update({ embeds: [this.buildEmbed(playerHand, dealerHand, 'Hit')], components: [this.buildButtons()] });
+          await i.update({
+            embeds: [this.buildEmbed(playerHand, dealerHand, 'Hit')],
+            components: [this.buildButtons()],
+          });
         }
       } else if (i.customId === 'stand') {
         collector.stop('stand');
@@ -90,33 +99,30 @@ class Blackjack extends Command {
     return new Discord.EmbedBuilder()
       .setColor('#0099ff')
       .setTitle(`Blackjack - ${title}`)
-      .setDescription(`Your hand: ${formatHand(playerHand)} (${calculateHand(playerHand)})\nSilverwolf's hand: ${formatHand([dealerHand[0]])} (??)\n\nHit or Stand?`);
+      .setDescription(
+        `Your hand: ${formatHand(playerHand)} (${calculateHand(playerHand)})\nSilverwolf's hand: ${formatHand([dealerHand[0]])} (??)\n\nHit or Stand?`,
+      );
   }
 
   buildButtons() {
-    return new Discord.ActionRowBuilder()
-      .addComponents(
-        new Discord.ButtonBuilder()
-          .setCustomId('hit')
-          .setLabel('Hit')
-          .setStyle(Discord.ButtonStyle.Primary),
-        new Discord.ButtonBuilder()
-          .setCustomId('stand')
-          .setLabel('Stand')
-          .setStyle(Discord.ButtonStyle.Secondary),
-      );
+    return new Discord.ActionRowBuilder().addComponents(
+      new Discord.ButtonBuilder().setCustomId('hit').setLabel('Hit').setStyle(Discord.ButtonStyle.Primary),
+      new Discord.ButtonBuilder().setCustomId('stand').setLabel('Stand').setStyle(Discord.ButtonStyle.Secondary),
+    );
   }
 
   async handleWin(interaction: any, amount: number, playerHand: Card[], dealerHand: Card[], message: string) {
     const { multi, streak } = await recordBlackjackWin(this.client, interaction.user.id, amount);
 
     await interaction.editReply({
-      embeds: [new Discord.EmbedBuilder()
-        .setColor('#00AA00')
-        .setTitle(`${message} You won ${format(amount * multi)} mystic credits!`)
-        .setDescription(`Your hand: ${formatHand(playerHand)} (${calculateHand(playerHand)})
+      embeds: [
+        new Discord.EmbedBuilder()
+          .setColor('#00AA00')
+          .setTitle(`${message} You won ${format(amount * multi)} mystic credits!`)
+          .setDescription(`Your hand: ${formatHand(playerHand)} (${calculateHand(playerHand)})
 Silverwolf's hand: ${formatHand(dealerHand)} (${calculateHand(dealerHand)})
-You are now on a streak of ${streak}`)],
+You are now on a streak of ${streak}`),
+      ],
       components: [],
     });
   }
@@ -125,11 +131,11 @@ You are now on a streak of ${streak}`)],
     await recordBlackjackLoss(this.client, interaction.user.id, amount);
 
     await interaction.editReply({
-      embeds: [new Discord.EmbedBuilder()
-        .setColor('#AA0000')
-        .setTitle(`${message} You lost ${format(amount)} mystic credits!`)
-        .setDescription(`Your hand: ${formatHand(playerHand)} (${calculateHand(playerHand)})
-Silverwolf's hand: ${formatHand(dealerHand)} (${calculateHand(dealerHand)})`)],
+      embeds: [
+        new Discord.EmbedBuilder().setColor('#AA0000').setTitle(`${message} You lost ${format(amount)} mystic credits!`)
+          .setDescription(`Your hand: ${formatHand(playerHand)} (${calculateHand(playerHand)})
+Silverwolf's hand: ${formatHand(dealerHand)} (${calculateHand(dealerHand)})`),
+      ],
       components: [],
     });
   }
@@ -137,11 +143,13 @@ Silverwolf's hand: ${formatHand(dealerHand)} (${calculateHand(dealerHand)})`)],
   async handleTie(interaction: any, amount: number, playerHand: Card[], dealerHand: Card[], message: string) {
     await recordBlackjackTie(this.client, interaction.user.id, amount);
     await interaction.editReply({
-      embeds: [new Discord.EmbedBuilder()
-        .setColor('#FFFF00')
-        .setTitle(`${message} Nothing happened to your ${format(amount)} mystic credits, boring.`)
-        .setDescription(`Your hand: ${formatHand(playerHand)} (${calculateHand(playerHand)})
-Silverwolf's hand: ${formatHand(dealerHand)} (${calculateHand(dealerHand)})`)],
+      embeds: [
+        new Discord.EmbedBuilder()
+          .setColor('#FFFF00')
+          .setTitle(`${message} Nothing happened to your ${format(amount)} mystic credits, boring.`)
+          .setDescription(`Your hand: ${formatHand(playerHand)} (${calculateHand(playerHand)})
+Silverwolf's hand: ${formatHand(dealerHand)} (${calculateHand(dealerHand)})`),
+      ],
       components: [],
     });
   }

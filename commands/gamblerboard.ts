@@ -8,37 +8,42 @@ class GamblerBoard extends Command {
   itemsPerPage: number;
 
   constructor(client: any) {
-    super(client, 'gamblerboard', 'gambler leaderboard', [
-      {
-        name: 'leaderboard',
-        description: 'The leaderboard to display',
-        type: 3,
-        required: true,
-        choices: [
-          { name: 'Slots', value: 'slots' },
-          { name: 'Roulette', value: 'roulette' },
-          { name: 'Blackjack', value: 'blackjack' },
-          { name: 'ALL', value: 'all' },
-        ],
-      },
-    ], { blame: 'both' });
+    super(
+      client,
+      'gamblerboard',
+      'gambler leaderboard',
+      [
+        {
+          name: 'leaderboard',
+          description: 'The leaderboard to display',
+          type: 3,
+          required: true,
+          choices: [
+            { name: 'Slots', value: 'slots' },
+            { name: 'Roulette', value: 'roulette' },
+            { name: 'Blackjack', value: 'blackjack' },
+            { name: 'ALL', value: 'all' },
+          ],
+        },
+      ],
+      { blame: 'both' },
+    );
     this.itemsPerPage = 10;
   }
 
   async fetchData(leaderboardType: string, page: number = 0): Promise<{ winnings: any[]; totalCount: number }> {
-    const winnings = (leaderboardType === 'all')
-      ? await this.client.db.user.getAllRelativeNetWinnings(
-        this.itemsPerPage,
-        page * this.itemsPerPage,
-      )
-      : await this.client.db.user.getRelativeNetWinnings(
-        leaderboardType,
-        this.itemsPerPage,
-        page * this.itemsPerPage,
-      );
-    const totalCount = (leaderboardType === 'all')
-      ? await this.client.db.user.getAllRelativeNetWinningsCount()
-      : await this.client.db.user.getEveryoneAttrCount(`${leaderboardType}TimesPlayed`);
+    const winnings =
+      leaderboardType === 'all'
+        ? await this.client.db.user.getAllRelativeNetWinnings(this.itemsPerPage, page * this.itemsPerPage)
+        : await this.client.db.user.getRelativeNetWinnings(
+            leaderboardType,
+            this.itemsPerPage,
+            page * this.itemsPerPage,
+          );
+    const totalCount =
+      leaderboardType === 'all'
+        ? await this.client.db.user.getAllRelativeNetWinningsCount()
+        : await this.client.db.user.getEveryoneAttrCount(`${leaderboardType}TimesPlayed`);
     return { winnings, totalCount };
   }
 
@@ -50,19 +55,18 @@ class GamblerBoard extends Command {
       const maxPage = Math.ceil(totalCount / this.itemsPerPage) - 1;
       const leaderboard = await this.generateLeaderboard(winnings, currentPage, leaderboardType);
 
-      const row = new Discord.ActionRowBuilder()
-        .addComponents(
-          new Discord.ButtonBuilder()
-            .setCustomId('prevPage')
-            .setLabel('⬅️ Back')
-            .setStyle(Discord.ButtonStyle.Primary)
-            .setDisabled(true),
-          new Discord.ButtonBuilder()
-            .setCustomId('nextPage')
-            .setLabel('Next ➡️')
-            .setStyle(Discord.ButtonStyle.Primary)
-            .setDisabled(currentPage === maxPage),
-        );
+      const row = new Discord.ActionRowBuilder().addComponents(
+        new Discord.ButtonBuilder()
+          .setCustomId('prevPage')
+          .setLabel('⬅️ Back')
+          .setStyle(Discord.ButtonStyle.Primary)
+          .setDisabled(true),
+        new Discord.ButtonBuilder()
+          .setCustomId('nextPage')
+          .setLabel('Next ➡️')
+          .setStyle(Discord.ButtonStyle.Primary)
+          .setDisabled(currentPage === maxPage),
+      );
 
       const message = await interaction.editReply({
         embeds: [leaderboard],
@@ -81,37 +85,35 @@ class GamblerBoard extends Command {
         const { winnings: newWinnings } = await this.fetchData(leaderboardType, currentPage);
         const newLeaderboard = await this.generateLeaderboard(newWinnings, currentPage, leaderboardType);
 
-        const newRow = new Discord.ActionRowBuilder()
-          .addComponents(
-            new Discord.ButtonBuilder()
-              .setCustomId('prevPage')
-              .setLabel('⬅️ Back')
-              .setStyle(Discord.ButtonStyle.Primary)
-              .setDisabled(currentPage === 0),
-            new Discord.ButtonBuilder()
-              .setCustomId('nextPage')
-              .setLabel('Next ➡️')
-              .setStyle(Discord.ButtonStyle.Primary)
-              .setDisabled(currentPage === maxPage),
-          );
+        const newRow = new Discord.ActionRowBuilder().addComponents(
+          new Discord.ButtonBuilder()
+            .setCustomId('prevPage')
+            .setLabel('⬅️ Back')
+            .setStyle(Discord.ButtonStyle.Primary)
+            .setDisabled(currentPage === 0),
+          new Discord.ButtonBuilder()
+            .setCustomId('nextPage')
+            .setLabel('Next ➡️')
+            .setStyle(Discord.ButtonStyle.Primary)
+            .setDisabled(currentPage === maxPage),
+        );
 
         await i.update({ embeds: [newLeaderboard], components: [newRow] });
       });
 
       collector.on('end', async () => {
-        const disabledRow = new Discord.ActionRowBuilder()
-          .addComponents(
-            new Discord.ButtonBuilder()
-              .setCustomId('prevPage')
-              .setLabel('⬅️ Back')
-              .setStyle(Discord.ButtonStyle.Primary)
-              .setDisabled(true),
-            new Discord.ButtonBuilder()
-              .setCustomId('nextPage')
-              .setLabel('Next ➡️')
-              .setStyle(Discord.ButtonStyle.Primary)
-              .setDisabled(true),
-          );
+        const disabledRow = new Discord.ActionRowBuilder().addComponents(
+          new Discord.ButtonBuilder()
+            .setCustomId('prevPage')
+            .setLabel('⬅️ Back')
+            .setStyle(Discord.ButtonStyle.Primary)
+            .setDisabled(true),
+          new Discord.ButtonBuilder()
+            .setCustomId('nextPage')
+            .setLabel('Next ➡️')
+            .setStyle(Discord.ButtonStyle.Primary)
+            .setDisabled(true),
+        );
         await message.edit({ components: [disabledRow] });
       });
     } catch (error) {
@@ -123,7 +125,7 @@ class GamblerBoard extends Command {
   async generateLeaderboard(winnings: any[], page: number, leaderboardType: string) {
     let result = '';
     for (let i = 0; i < winnings.length; i += 1) {
-      result += `${i + 1 + (page * this.itemsPerPage)}. <@${winnings[i].id}>: ${winnings[i].relativeWon > 0 ? '+' : ''}${format(winnings[i].relativeWon, true)} bets\n`;
+      result += `${i + 1 + page * this.itemsPerPage}. <@${winnings[i].id}>: ${winnings[i].relativeWon > 0 ? '+' : ''}${format(winnings[i].relativeWon, true)} bets\n`;
     }
 
     return new Discord.EmbedBuilder()

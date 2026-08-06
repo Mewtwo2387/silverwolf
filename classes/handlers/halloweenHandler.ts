@@ -1,6 +1,4 @@
-import {
-  EmbedBuilder, escapeMarkdown, AttachmentBuilder,
-} from 'discord.js';
+import { EmbedBuilder, escapeMarkdown, AttachmentBuilder } from 'discord.js';
 import Canvas from 'canvas';
 import { log } from '../../utils/log';
 import Handler from './handler';
@@ -65,11 +63,12 @@ class HalloweenHandler extends Handler {
     const attachment = new AttachmentBuilder(buffer, { name: 'shiny.png' });
 
     message.channel.send({
-      embeds: [new EmbedBuilder()
-        .setTitle(`A nightmare mode ${escapeMarkdown(member.user.username)} appeared!`)
-        .setImage('attachment://shiny.png')
-        .setColor('#00FF00')
-        .setFooter({ text: 'Nightmarish Halloween! Catch it with /catch Nightmare mode [username]!' }),
+      embeds: [
+        new EmbedBuilder()
+          .setTitle(`A nightmare mode ${escapeMarkdown(member.user.username)} appeared!`)
+          .setImage('attachment://shiny.png')
+          .setColor('#00FF00')
+          .setFooter({ text: 'Nightmarish Halloween! Catch it with /catch Nightmare mode [username]!' }),
       ],
       files: [attachment],
     });
@@ -88,11 +87,12 @@ class HalloweenHandler extends Handler {
     const attachment = new AttachmentBuilder(buffer, { name: 'mystery.png' });
 
     message.channel.send({
-      embeds: [new EmbedBuilder()
-        .setTitle('A wild ??? appeared!')
-        .setImage('attachment://mystery.png')
-        .setColor('#00FF00')
-        .setFooter({ text: 'Horror Halloween! Guess the username and catch with /catch [username]!' }),
+      embeds: [
+        new EmbedBuilder()
+          .setTitle('A wild ??? appeared!')
+          .setImage('attachment://mystery.png')
+          .setColor('#00FF00')
+          .setFooter({ text: 'Horror Halloween! Guess the username and catch with /catch [username]!' }),
       ],
       files: [attachment],
     });
@@ -111,11 +111,12 @@ class HalloweenHandler extends Handler {
     const attachment = new AttachmentBuilder(buffer, { name: 'normal.png' });
 
     message.channel.send({
-      embeds: [new EmbedBuilder()
-        .setTitle(`A wild ${escapeMarkdown(member.user.username)} appeared!`)
-        .setImage('attachment://normal.png')
-        .setColor('#00FF00')
-        .setFooter({ text: 'Spooky Halloween! Catch it with /catch [username]!' }),
+      embeds: [
+        new EmbedBuilder()
+          .setTitle(`A wild ${escapeMarkdown(member.user.username)} appeared!`)
+          .setImage('attachment://normal.png')
+          .setColor('#00FF00')
+          .setFooter({ text: 'Spooky Halloween! Catch it with /catch [username]!' }),
       ],
       files: [attachment],
     });

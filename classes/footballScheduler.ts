@@ -132,13 +132,13 @@ class FootballScheduler {
       await this.announceFullTime(match, score, channelIds);
       await this.client.db.footballMatchAnnouncement.markFullTimeSent(id, score.home, score.away, goalCount);
     } else if (
-      !finished
-      && !isLiveMatch(match)
-      && inLiveWindow
-      && score
-      && getGoalEvents(match).length === 0
-      && getNewGoalEvents(match, state).length === 0
-      && this.shouldAnnounceScore(score, state, false)
+      !finished &&
+      !isLiveMatch(match) &&
+      inLiveWindow &&
+      score &&
+      getGoalEvents(match).length === 0 &&
+      getNewGoalEvents(match, state).length === 0 &&
+      this.shouldAnnounceScore(score, state, false)
     ) {
       await this.announceScoreUpdate(match, score, channelIds, state);
       await this.client.db.footballMatchAnnouncement.markScoreAnnounced(id, score.home, score.away);
@@ -161,12 +161,7 @@ class FootballScheduler {
         await broadcastGoalAnnouncement(this.client, channelId, match, goal);
       }
       announcedGoals += 1;
-      await this.client.db.footballMatchAnnouncement.markGoalAnnounced(
-        id,
-        goal.home,
-        goal.away,
-        announcedGoals,
-      );
+      await this.client.db.footballMatchAnnouncement.markGoalAnnounced(id, goal.home, goal.away, announcedGoals);
       currentState = await this.client.db.footballMatchAnnouncement.getState(id);
     }
     return currentState;
@@ -184,9 +179,8 @@ class FootballScheduler {
     const lastKickCount = state?.lastShootoutKickCount ?? 0;
     const messageIds = { ...(state?.shootoutMessageIds ?? {}) };
     const hasMessages = Object.keys(messageIds).length > 0;
-    const needsUpdate = kickCount !== lastKickCount
-      || (finished && !state?.fullTimeSent)
-      || (!hasMessages && isPenaltyShootout(match));
+    const needsUpdate =
+      kickCount !== lastKickCount || (finished && !state?.fullTimeSent) || (!hasMessages && isPenaltyShootout(match));
 
     if (!needsUpdate) return;
 
@@ -210,8 +204,8 @@ class FootballScheduler {
         pen.away,
       );
       log(
-        `Football penalties finished: ${match.team1} ${match.score?.ft?.[0] ?? 0}-`
-        + `${match.score?.ft?.[1] ?? 0} ${match.team2} (${pen.home}-${pen.away} pens)`,
+        `Football penalties finished: ${match.team1} ${match.score?.ft?.[0] ?? 0}-` +
+          `${match.score?.ft?.[1] ?? 0} ${match.team2} (${pen.home}-${pen.away} pens)`,
       );
       return;
     }
@@ -261,8 +255,9 @@ class FootballScheduler {
   private async broadcast(channelIds: string[], payload: { embeds: EmbedBuilder[] }): Promise<void> {
     for (const channelId of channelIds) {
       try {
-        const channel = this.client.channels.cache.get(channelId.trim())
-          ?? await this.client.channels.fetch(channelId.trim()).catch(() => null);
+        const channel =
+          this.client.channels.cache.get(channelId.trim()) ??
+          (await this.client.channels.fetch(channelId.trim()).catch(() => null));
         if (!channel?.isTextBased()) {
           logError(`Football channel ${channelId} is invalid or not text-based.`);
           continue;

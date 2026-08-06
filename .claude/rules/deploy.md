@@ -1,9 +1,9 @@
 ---
 paths:
-  - "Dockerfile"
-  - "docker-compose.yaml"
-  - ".github/workflows/**"
-  - "scripts/**"
+  - 'Dockerfile'
+  - 'docker-compose.yaml'
+  - '.github/workflows/**'
+  - 'scripts/**'
 ---
 
 # CI/CD & Docker

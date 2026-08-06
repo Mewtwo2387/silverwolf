@@ -1,9 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import {
-  creditsForTokens,
-  usdCostForTokens,
-  CREDIT_BASE_USD_PER_MILLION,
-} from '../../utils/aiPricing';
+import { creditsForTokens, usdCostForTokens, CREDIT_BASE_USD_PER_MILLION } from '../../utils/aiPricing';
 
 describe('creditsForTokens', () => {
   test('bills unknown models at 1x/1x (legacy raw-token behavior)', () => {
@@ -38,12 +34,13 @@ describe('creditsForTokens', () => {
 describe('usdCostForTokens', () => {
   test('derives USD from credits at the $0.28/M base rate', () => {
     // 1M in @0.5x + 1M out @1x = 1.5M credits → $0.42
-    expect(usdCostForTokens('deepseek/deepseek-v4-flash-0731', 1_000_000, 1_000_000))
-      .toBeCloseTo(1.5 * CREDIT_BASE_USD_PER_MILLION, 10);
+    expect(usdCostForTokens('deepseek/deepseek-v4-flash-0731', 1_000_000, 1_000_000)).toBeCloseTo(
+      1.5 * CREDIT_BASE_USD_PER_MILLION,
+      10,
+    );
   });
 
   test('1x model: 1M tokens costs exactly the base rate', () => {
-    expect(usdCostForTokens('unknown/model', 1_000_000, 0))
-      .toBeCloseTo(CREDIT_BASE_USD_PER_MILLION, 10);
+    expect(usdCostForTokens('unknown/model', 1_000_000, 0)).toBeCloseTo(CREDIT_BASE_USD_PER_MILLION, 10);
   });
 });

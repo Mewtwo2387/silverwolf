@@ -24,16 +24,16 @@ export function getAvatarUrlCacheSize(): number {
   return urlCache.size;
 }
 
-export type ProcessResult =
-  | { ok: true; buffer: Buffer }
-  | { ok: false; error: string };
+export type ProcessResult = { ok: true; buffer: Buffer } | { ok: false; error: string };
 
 /**
  * Validates and normalizes an uploaded attachment to a 128×128 PNG buffer.
  * `attachment` is a discord.js Attachment (url/contentType/size).
  */
 export async function processAvatar(attachment: {
-  url: string; contentType?: string | null; size?: number;
+  url: string;
+  contentType?: string | null;
+  size?: number;
 }): Promise<ProcessResult> {
   if (attachment.contentType && !attachment.contentType.startsWith('image/')) {
     return { ok: false, error: 'The pfp must be an image (PNG, JPG, WebP, or GIF).' };
@@ -68,13 +68,11 @@ export async function processAvatar(attachment: {
     return { ok: true, buffer: canvas.toBuffer('image/png') };
   } catch (err) {
     logError('Rp: failed to process avatar image:', err);
-    return { ok: false, error: 'That image couldn\'t be processed. Try a standard PNG or JPG.' };
+    return { ok: false, error: "That image couldn't be processed. Try a standard PNG or JPG." };
   }
 }
 
-export type HostResult =
-  | { ok: true; url: string; messageId: string; channelId: string }
-  | { ok: false; error: string };
+export type HostResult = { ok: true; url: string; messageId: string; channelId: string } | { ok: false; error: string };
 
 /**
  * Uploads the processed pfp to the guild's configured asset channel and returns the
@@ -107,11 +105,14 @@ export async function hostAvatar(
     if (!url) return { ok: false, error: 'Upload failed — no attachment URL returned.' };
     urlCache.set(charId, { url, at: Date.now() });
     return {
-      ok: true, url, messageId: sent.id, channelId,
+      ok: true,
+      url,
+      messageId: sent.id,
+      channelId,
     };
   } catch (err) {
     logError('Rp: failed to host avatar:', err);
-    return { ok: false, error: 'Could not upload to the asset channel. Check the bot\'s permissions there.' };
+    return { ok: false, error: "Could not upload to the asset channel. Check the bot's permissions there." };
   }
 }
 
@@ -133,12 +134,16 @@ async function refreshAvatarUrl(client: any, channelId: string, messageId: strin
  * stale and marking the pfp broken (returns null → caller uses the default avatar)
  * when the asset message has been deleted.
  */
-export async function resolveAvatarUrl(client: any, db: any, character: {
-  charId: string;
-  pfpUrl?: string | null;
-  pfpMessageId?: string | null;
-  pfpChannelId?: string | null;
-}): Promise<string | null> {
+export async function resolveAvatarUrl(
+  client: any,
+  db: any,
+  character: {
+    charId: string;
+    pfpUrl?: string | null;
+    pfpMessageId?: string | null;
+    pfpChannelId?: string | null;
+  },
+): Promise<string | null> {
   if (!character.pfpMessageId || !character.pfpChannelId) {
     return character.pfpUrl ?? null;
   }
@@ -148,9 +153,13 @@ export async function resolveAvatarUrl(client: any, db: any, character: {
   const fresh = await refreshAvatarUrl(client, character.pfpChannelId, character.pfpMessageId);
   if (fresh) {
     urlCache.set(character.charId, { url: fresh, at: Date.now() });
-    db.rp.updateCharacterPfp(character.charId, {
-      url: fresh, messageId: character.pfpMessageId, channelId: character.pfpChannelId,
-    }).catch(() => {});
+    db.rp
+      .updateCharacterPfp(character.charId, {
+        url: fresh,
+        messageId: character.pfpMessageId,
+        channelId: character.pfpChannelId,
+      })
+      .catch(() => {});
     return fresh;
   }
 

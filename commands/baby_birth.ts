@@ -6,14 +6,20 @@ const PREGNANCY_DURATION = 7 * 24 * 60 * 60 * 1000;
 
 class BabyBirth extends Command {
   constructor(client: any) {
-    super(client, 'birth', 'give birth to your baby', [
-      {
-        name: 'id',
-        description: 'The id of the baby',
-        type: 4,
-        required: true,
-      },
-    ], { isSubcommandOf: 'baby', blame: 'ei' });
+    super(
+      client,
+      'birth',
+      'give birth to your baby',
+      [
+        {
+          name: 'id',
+          description: 'The id of the baby',
+          type: 4,
+          required: true,
+        },
+      ],
+      { isSubcommandOf: 'baby', blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -58,11 +64,7 @@ class BabyBirth extends Command {
 
     if (baby.status !== 'unborn') {
       await interaction.editReply({
-        embeds: [
-          new EmbedBuilder()
-            .setColor('#FF0000')
-            .setTitle('Your baby is already born!'),
-        ],
+        embeds: [new EmbedBuilder().setColor('#FF0000').setTitle('Your baby is already born!')],
       });
       return;
     }
@@ -77,7 +79,9 @@ class BabyBirth extends Command {
           new EmbedBuilder()
             .setColor('#FF0000')
             .setTitle('Your baby is not ready to be born yet!')
-            .setDescription(`Can give birth in ${format((PREGNANCY_DURATION - diffTime) / (1000 * 60 * 60 * 24), true)} days!`),
+            .setDescription(
+              `Can give birth in ${format((PREGNANCY_DURATION - diffTime) / (1000 * 60 * 60 * 24), true)} days!`,
+            ),
         ],
       });
       return;

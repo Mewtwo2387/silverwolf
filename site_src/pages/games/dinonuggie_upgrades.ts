@@ -231,7 +231,9 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
 </style>
 `);
 
-  const script = loggedOut ? '' : raw(`
+  const script = loggedOut
+    ? ''
+    : raw(`
 <script nonce="${nonce}">
 (() => {
   ${NUM_FMT_JS}
@@ -612,57 +614,67 @@ export function DinonuggieUpgradesPage(opts: { nonce: string; lv999?: boolean; u
     <h1 class="text-center">Dinonuggie Upgrades</h1>
     <p class="text-center text-fog-300 mb-4">a hub for eating and upgrading</p>
 
-    ${loggedOut
-    ? html`<div class="login-cta">Log in with <a href="/auth/discord/login">Discord</a> to eat and upgrade.</div>`
-    : html`
-      <div class="dnu-wrap">
-        <div class="dnu-section">
-          <h2>Eat</h2>
-          <div class="dnu-stats" id="eat-stats"></div>
-          <div class="eat-row">
-            <img class="dino" src="/static/game-dinonuggie.webp" alt="dinonuggie" />
-            <input id="eat-amount" type="number" min="1" value="1" />
-            <button id="eat-btn" class="btn-accent btn-sm" type="button">Eat</button>
-          </div>
-          <div id="eat-status" class="eat-status"><div class="eat-line eat-nom">Press eat to munch on a dinonuggie.</div></div>
-        </div>
+    ${
+      loggedOut
+        ? html`<div class="login-cta">Log in with <a href="/auth/discord/login">Discord</a> to eat and upgrade.</div>`
+        : html`
+            <div class="dnu-wrap">
+              <div class="dnu-section">
+                <h2>Eat</h2>
+                <div class="dnu-stats" id="eat-stats"></div>
+                <div class="eat-row">
+                  <img class="dino" src="/static/game-dinonuggie.webp" alt="dinonuggie" />
+                  <input id="eat-amount" type="number" min="1" value="1" />
+                  <button id="eat-btn" class="btn-accent btn-sm" type="button">Eat</button>
+                </div>
+                <div id="eat-status" class="eat-status">
+                  <div class="eat-line eat-nom">Press eat to munch on a dinonuggie.</div>
+                </div>
+              </div>
 
-        <div class="dnu-section">
-          <h2>Upgrades</h2>
-          <div class="dnu-stats">
-            <div><span class="stat-label">Mystic Credits:</span><span class="stat-val" id="upgrade-credits">…</span></div>
-          </div>
-          <div id="upgrades-list"></div>
-        </div>
+              <div class="dnu-section">
+                <h2>Upgrades</h2>
+                <div class="dnu-stats">
+                  <div>
+                    <span class="stat-label">Mystic Credits:</span><span class="stat-val" id="upgrade-credits">…</span>
+                  </div>
+                </div>
+                <div id="upgrades-list"></div>
+              </div>
 
-        <div class="dnu-section">
-          <h2>Ascension</h2>
-          <div class="dnu-stats">
-            <div><span class="stat-label">Heavenly Nuggies:</span><span class="stat-val" id="asc-heavenly">…</span></div>
-            <div><span class="stat-label">Ascension Level:</span><span class="stat-val" id="asc-level">…</span></div>
-          </div>
-          <div id="ascension-list"></div>
-          <div class="ascend-box" id="ascend-box">
-            <h3>Ascend</h3>
-            <ul>
-              <li>Convert all your dinonuggies into the same number of heavenly nuggies.</li>
-              <li>Resets upgrades, credits, bitcoins, dinonuggies, and streak.</li>
-              <li>If all 3 upgrades are maxed, your ascension level increases by 1 (raising the upgrade cap by 10).</li>
-            </ul>
-            <div>Current dinonuggies: <span id="ascend-current-nuggies">…</span></div>
-            <div>Multiplier amount: <span id="ascend-mam">…</span></div>
-            <div>Multiplier rarity: <span id="ascend-mrm">…</span></div>
-            <div>Beki cooldown: <span id="ascend-bk">…</span></div>
-            <div id="ascend-status" class="status"></div>
-            <button id="ascend-btn" class="btn-accent btn-sm" type="button" disabled>Ascend</button>
-            <div id="ascend-toast" class="toast"></div>
-          </div>
-        </div>
-      </div>
-    `}
-
-    ${extras}
-    ${loggedOut ? '' : script}
+              <div class="dnu-section">
+                <h2>Ascension</h2>
+                <div class="dnu-stats">
+                  <div>
+                    <span class="stat-label">Heavenly Nuggies:</span><span class="stat-val" id="asc-heavenly">…</span>
+                  </div>
+                  <div>
+                    <span class="stat-label">Ascension Level:</span><span class="stat-val" id="asc-level">…</span>
+                  </div>
+                </div>
+                <div id="ascension-list"></div>
+                <div class="ascend-box" id="ascend-box">
+                  <h3>Ascend</h3>
+                  <ul>
+                    <li>Convert all your dinonuggies into the same number of heavenly nuggies.</li>
+                    <li>Resets upgrades, credits, bitcoins, dinonuggies, and streak.</li>
+                    <li>
+                      If all 3 upgrades are maxed, your ascension level increases by 1 (raising the upgrade cap by 10).
+                    </li>
+                  </ul>
+                  <div>Current dinonuggies: <span id="ascend-current-nuggies">…</span></div>
+                  <div>Multiplier amount: <span id="ascend-mam">…</span></div>
+                  <div>Multiplier rarity: <span id="ascend-mrm">…</span></div>
+                  <div>Beki cooldown: <span id="ascend-bk">…</span></div>
+                  <div id="ascend-status" class="status"></div>
+                  <button id="ascend-btn" class="btn-accent btn-sm" type="button" disabled>Ascend</button>
+                  <div id="ascend-toast" class="toast"></div>
+                </div>
+              </div>
+            </div>
+          `
+    }
+    ${extras} ${loggedOut ? '' : script}
   `;
 
   return Layout({

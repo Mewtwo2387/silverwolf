@@ -2,11 +2,7 @@ import type { Hono } from 'hono';
 import { html, raw as rawHtml } from 'hono/html';
 import { logError } from '../../utils/log';
 import type { Silverwolf } from '../../classes/silverwolf';
-import {
-  buildAuthorizeUrl,
-  exchangeCode,
-  fetchDiscordMe,
-} from '../auth/discord-oauth';
+import { buildAuthorizeUrl, exchangeCode, fetchDiscordMe } from '../auth/discord-oauth';
 import {
   clearOAuthStateCookie,
   clearReturnCookie,
@@ -78,20 +74,30 @@ export function registerAuthRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
         // tappable fallback (a click is always allowed to leave the browser).
         const deepLink = `silverwolf://login?session=${signedToken(sessionId)}`;
         const nonce = c.get('nonce');
-        return c.html(html`<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="refresh" content="0;url=${deepLink}">
-  <title>Returning to the app…</title>
-</head>
-<body style="background:#06080F;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:1.5rem;margin:0">
-  <p>Logged in! Sending you back to the app…</p>
-  <a href="${deepLink}" style="background:#4C6EF5;color:#fff;padding:.75rem 1.5rem;border-radius:.5rem;text-decoration:none">Open the app</a>
-  <script nonce="${nonce}">location.href = ${rawHtml(JSON.stringify(deepLink))};</script>
-</body>
-</html>`);
+        return c.html(
+          html`<!DOCTYPE html>
+            <html lang="en">
+              <head>
+                <meta charset="utf-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1" />
+                <meta http-equiv="refresh" content="0;url=${deepLink}" />
+                <title>Returning to the app…</title>
+              </head>
+              <body
+                style="background:#06080F;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:1.5rem;margin:0"
+              >
+                <p>Logged in! Sending you back to the app…</p>
+                <a
+                  href="${deepLink}"
+                  style="background:#4C6EF5;color:#fff;padding:.75rem 1.5rem;border-radius:.5rem;text-decoration:none"
+                  >Open the app</a
+                >
+                <script nonce="${nonce}">
+                  location.href = ${rawHtml(JSON.stringify(deepLink))};
+                </script>
+              </body>
+            </html>`,
+        );
       }
 
       const returnTo = readReturnCookie(c);

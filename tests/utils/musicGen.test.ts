@@ -2,29 +2,41 @@ import { describe, test, expect } from 'bun:test';
 import { parsePitch, parseComposition } from '../../utils/musicGen';
 import { GM_INSTRUMENTS, GM_DRUMS } from '../../utils/gmInstruments';
 
-const validComposition = (overrides: Record<string, any> = {}) => JSON.stringify({
-  tempo: 120,
-  tracks: [
-    {
-      instrument: 'acoustic_grand_piano',
-      notes: [
-        {
-          time: 0, pitch: 'C4', dur: 1, vel: 90,
-        },
-        {
-          time: 1, pitch: 64, dur: 0.5, vel: 80,
-        },
-      ],
-    },
-    {
-      instrument: 'drums',
-      notes: [{
-        time: 0, pitch: 'kick', dur: 0.1, vel: 110,
-      }],
-    },
-  ],
-  ...overrides,
-});
+const validComposition = (overrides: Record<string, any> = {}) =>
+  JSON.stringify({
+    tempo: 120,
+    tracks: [
+      {
+        instrument: 'acoustic_grand_piano',
+        notes: [
+          {
+            time: 0,
+            pitch: 'C4',
+            dur: 1,
+            vel: 90,
+          },
+          {
+            time: 1,
+            pitch: 64,
+            dur: 0.5,
+            vel: 80,
+          },
+        ],
+      },
+      {
+        instrument: 'drums',
+        notes: [
+          {
+            time: 0,
+            pitch: 'kick',
+            dur: 0.1,
+            vel: 110,
+          },
+        ],
+      },
+    ],
+    ...overrides,
+  });
 
 describe('parsePitch', () => {
   test('parses note names', () => {
@@ -109,58 +121,70 @@ describe('parseComposition', () => {
   });
 
   test('rejects unknown instruments with an actionable error', () => {
-    const res = parseComposition(JSON.stringify({
-      tempo: 120,
-      tracks: [{ instrument: 'guitar', notes: [{ time: 0, pitch: 'C4', dur: 1 }] }],
-    }));
+    const res = parseComposition(
+      JSON.stringify({
+        tempo: 120,
+        tracks: [{ instrument: 'guitar', notes: [{ time: 0, pitch: 'C4', dur: 1 }] }],
+      }),
+    );
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error).toContain('unknown instrument');
   });
 
   test('accepts GM program numbers as instruments', () => {
-    const res = parseComposition(JSON.stringify({
-      tempo: 120,
-      tracks: [{ instrument: 40, notes: [{ time: 0, pitch: 'C4', dur: 1 }] }],
-    }));
+    const res = parseComposition(
+      JSON.stringify({
+        tempo: 120,
+        tracks: [{ instrument: 40, notes: [{ time: 0, pitch: 'C4', dur: 1 }] }],
+      }),
+    );
     expect(res.ok).toBe(true);
     if (res.ok) expect(res.comp.programs).toEqual([{ channel: 0, program: 40 }]);
   });
 
   test('rejects a second drums track', () => {
-    const res = parseComposition(JSON.stringify({
-      tempo: 120,
-      tracks: [
-        { instrument: 'drums', notes: [{ time: 0, pitch: 'kick', dur: 0.1 }] },
-        { instrument: 'drums', notes: [{ time: 1, pitch: 'snare', dur: 0.1 }] },
-      ],
-    }));
+    const res = parseComposition(
+      JSON.stringify({
+        tempo: 120,
+        tracks: [
+          { instrument: 'drums', notes: [{ time: 0, pitch: 'kick', dur: 0.1 }] },
+          { instrument: 'drums', notes: [{ time: 1, pitch: 'snare', dur: 0.1 }] },
+        ],
+      }),
+    );
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error).toContain('only one "drums" track');
   });
 
   test('rejects unknown drum names', () => {
-    const res = parseComposition(JSON.stringify({
-      tempo: 120,
-      tracks: [{ instrument: 'drums', notes: [{ time: 0, pitch: 'boom', dur: 1 }] }],
-    }));
+    const res = parseComposition(
+      JSON.stringify({
+        tempo: 120,
+        tracks: [{ instrument: 'drums', notes: [{ time: 0, pitch: 'boom', dur: 1 }] }],
+      }),
+    );
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error).toContain('unknown drum');
   });
 
   test('enforces the 30-second cap at the chosen tempo', () => {
     // 61 beats at 120 BPM = 30.5s > 30s
-    const res = parseComposition(JSON.stringify({
-      tempo: 120,
-      tracks: [{ instrument: 'violin', notes: [{ time: 60, pitch: 'C4', dur: 1 }] }],
-    }));
+    const res = parseComposition(
+      JSON.stringify({
+        tempo: 120,
+        tracks: [{ instrument: 'violin', notes: [{ time: 60, pitch: 'C4', dur: 1 }] }],
+      }),
+    );
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error).toContain('30');
 
     // exactly at the edge: 60 beats at 120 BPM = 30s
-    const edge = parseComposition(JSON.stringify({
-      tempo: 120,
-      tracks: [{ instrument: 'violin', notes: [{ time: 59, pitch: 'C4', dur: 1 }] }],
-    }));
+    const edge = parseComposition(
+      JSON.stringify({
+        tempo: 120,
+        tracks: [{ instrument: 'violin', notes: [{ time: 59, pitch: 'C4', dur: 1 }] }],
+      }),
+    );
     expect(edge.ok).toBe(true);
   });
 
@@ -173,30 +197,42 @@ describe('parseComposition', () => {
       { time: 0, pitch: 'C4' },
     ];
     for (const note of bad) {
-      const res = parseComposition(JSON.stringify({
-        tempo: 120,
-        tracks: [{ instrument: 'violin', notes: [note] }],
-      }));
+      const res = parseComposition(
+        JSON.stringify({
+          tempo: 120,
+          tracks: [{ instrument: 'violin', notes: [note] }],
+        }),
+      );
       expect(res.ok).toBe(false);
     }
   });
 
   test('clamps velocity into 1-127 with default 96', () => {
-    const res = parseComposition(JSON.stringify({
-      tempo: 120,
-      tracks: [{
-        instrument: 'violin',
-        notes: [
+    const res = parseComposition(
+      JSON.stringify({
+        tempo: 120,
+        tracks: [
           {
-            time: 0, pitch: 'C4', dur: 1, vel: 900,
+            instrument: 'violin',
+            notes: [
+              {
+                time: 0,
+                pitch: 'C4',
+                dur: 1,
+                vel: 900,
+              },
+              {
+                time: 1,
+                pitch: 'C4',
+                dur: 1,
+                vel: -5,
+              },
+              { time: 2, pitch: 'C4', dur: 1 },
+            ],
           },
-          {
-            time: 1, pitch: 'C4', dur: 1, vel: -5,
-          },
-          { time: 2, pitch: 'C4', dur: 1 },
         ],
-      }],
-    }));
+      }),
+    );
     expect(res.ok).toBe(true);
     if (!res.ok) return;
     expect(res.comp.events[0].velocity).toBe(127);
@@ -216,22 +252,26 @@ describe('parseComposition', () => {
 
     const manyNotes = {
       tempo: 240,
-      tracks: [{
-        instrument: 'violin',
-        notes: Array.from({ length: 1501 }, (_, i) => ({ time: (i % 100) * 0.1, pitch: 'C4', dur: 0.1 })),
-      }],
+      tracks: [
+        {
+          instrument: 'violin',
+          notes: Array.from({ length: 1501 }, (_, i) => ({ time: (i % 100) * 0.1, pitch: 'C4', dur: 0.1 })),
+        },
+      ],
     };
     expect(parseComposition(JSON.stringify(manyNotes)).ok).toBe(false);
   });
 
   test('melodic channel assignment skips the drum channel', () => {
-    const res = parseComposition(JSON.stringify({
-      tempo: 120,
-      tracks: Array.from({ length: 11 }, () => ({
-        instrument: 'violin',
-        notes: [{ time: 0, pitch: 'C4', dur: 1 }],
-      })),
-    }));
+    const res = parseComposition(
+      JSON.stringify({
+        tempo: 120,
+        tracks: Array.from({ length: 11 }, () => ({
+          instrument: 'violin',
+          notes: [{ time: 0, pitch: 'C4', dur: 1 }],
+        })),
+      }),
+    );
     expect(res.ok).toBe(true);
     if (!res.ok) return;
     const channels = res.comp.programs.map((p) => p.channel);

@@ -1,30 +1,33 @@
 import { DevCommand } from './classes/DevCommand';
-import {
-  SERVER_CHANNEL_LIST_KEYS,
-  validateSettableChannelKey,
-} from '../utils/serverConfig';
+import { SERVER_CHANNEL_LIST_KEYS, validateSettableChannelKey } from '../utils/serverConfig';
 
 class ServerConfigSetChannel extends DevCommand {
   constructor(client: any) {
-    super(client, 'setchannel', 'Toggle a channel in a server channel list', [
-      {
-        name: 'key',
-        description: 'Channel list config key',
-        type: 3,
-        required: true,
-        choices: SERVER_CHANNEL_LIST_KEYS.map((key) => ({
-          name: key,
-          value: key,
-        })),
-      },
-      {
-        name: 'channel',
-        description: 'The Discord channel',
-        type: 7,
-        required: true,
-        channel_types: [0],
-      },
-    ], { isSubcommandOf: 'serverconfig', blame: 'ei' });
+    super(
+      client,
+      'setchannel',
+      'Toggle a channel in a server channel list',
+      [
+        {
+          name: 'key',
+          description: 'Channel list config key',
+          type: 3,
+          required: true,
+          choices: SERVER_CHANNEL_LIST_KEYS.map((key) => ({
+            name: key,
+            value: key,
+          })),
+        },
+        {
+          name: 'channel',
+          description: 'The Discord channel',
+          type: 7,
+          required: true,
+          channel_types: [0],
+        },
+      ],
+      { isSubcommandOf: 'serverconfig', blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {

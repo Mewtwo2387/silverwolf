@@ -4,14 +4,20 @@ import eightBallData from '../data/8ball.json';
 
 class EightBall extends Command {
   constructor(client: any) {
-    super(client, '8ball', 'Ask the combined magic 8-ball a question', [
-      {
-        name: 'question',
-        description: 'The question you want to ask the magic 8-ball',
-        type: 3,
-        required: true,
-      },
-    ], { blame: 'xei' });
+    super(
+      client,
+      '8ball',
+      'Ask the combined magic 8-ball a question',
+      [
+        {
+          name: 'question',
+          description: 'The question you want to ask the magic 8-ball',
+          type: 3,
+          required: true,
+        },
+      ],
+      { blame: 'xei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {

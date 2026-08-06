@@ -14,7 +14,11 @@ const HEART_SYMBOL = raw(`
 </svg>
 `);
 
-export function LovePage(opts: { nonce: string; lv999?: boolean; user?: import('../../components/navbar').NavUser | null }) {
+export function LovePage(opts: {
+  nonce: string;
+  lv999?: boolean;
+  user?: import('../../components/navbar').NavUser | null;
+}) {
   const { nonce, lv999, user } = opts;
 
   const extras = raw(`

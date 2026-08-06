@@ -21,10 +21,7 @@ const gameUIDTable: TableDefinition = {
   ],
   primaryKey: ['id'],
   specialConstraints: [],
-  constraints: [
-    'UNIQUE (user_id, game)',
-    'FOREIGN KEY (user_id) REFERENCES User(id)',
-  ],
+  constraints: ['UNIQUE (user_id, game)', 'FOREIGN KEY (user_id) REFERENCES User(id)'],
 };
 
 export default gameUIDTable;

@@ -9,7 +9,7 @@ export const ASCENSION_UPGRADES = [
   'nuggieNuggieMultiplier',
 ] as const;
 
-export type AscensionUpgradeKey = typeof ASCENSION_UPGRADES[number];
+export type AscensionUpgradeKey = (typeof ASCENSION_UPGRADES)[number];
 
 /** User column keys for ascension upgrade levels (camelCase, as returned by getUser). */
 export const ASCENSION_LEVEL_ATTR: Record<AscensionUpgradeKey, string> = {
@@ -42,26 +42,26 @@ export type BuyAscensionResult =
   | { status: 'invalid_upgrade' }
   | { status: 'invalid_amount' }
   | {
-    status: 'locked';
-    required: number;
-    ascensionLevel: number;
-    upgrade: AscensionUpgradeKey;
-  }
+      status: 'locked';
+      required: number;
+      ascensionLevel: number;
+      upgrade: AscensionUpgradeKey;
+    }
   | {
-    status: 'poor';
-    cost: number;
-    heavenlyNuggies: number;
-    upgrade: AscensionUpgradeKey;
-  }
+      status: 'poor';
+      cost: number;
+      heavenlyNuggies: number;
+      upgrade: AscensionUpgradeKey;
+    }
   | {
-    status: 'success';
-    upgrade: AscensionUpgradeKey;
-    upgradeId: number;
-    level: number;
-    amount: number;
-    cost: number;
-    heavenlyNuggies: number;
-  };
+      status: 'success';
+      upgrade: AscensionUpgradeKey;
+      upgradeId: number;
+      level: number;
+      amount: number;
+      cost: number;
+      heavenlyNuggies: number;
+    };
 
 async function processBuyAscensionUpgradeInner(
   client: any,
@@ -83,7 +83,10 @@ async function processBuyAscensionUpgradeInner(
 
   if (ascensionLevel < ASCENSION_LEVEL_REQ[upgrade]) {
     return {
-      status: 'locked', required: ASCENSION_LEVEL_REQ[upgrade], ascensionLevel, upgrade,
+      status: 'locked',
+      required: ASCENSION_LEVEL_REQ[upgrade],
+      ascensionLevel,
+      upgrade,
     };
   }
 
@@ -95,7 +98,10 @@ async function processBuyAscensionUpgradeInner(
   const heavenlyNuggies = await client.db.user.getUserAttr(userId, 'heavenlyNuggies');
   if (heavenlyNuggies < cost) {
     return {
-      status: 'poor', cost, heavenlyNuggies, upgrade,
+      status: 'poor',
+      cost,
+      heavenlyNuggies,
+      upgrade,
     };
   }
 
@@ -104,7 +110,13 @@ async function processBuyAscensionUpgradeInner(
     [levelAttr]: amount,
   });
   return {
-    status: 'success', upgrade, upgradeId, level, amount, cost, heavenlyNuggies,
+    status: 'success',
+    upgrade,
+    upgradeId,
+    level,
+    amount,
+    cost,
+    heavenlyNuggies,
   };
 }
 

@@ -9,10 +9,7 @@ class ImageGenModel {
   }
 
   async logGeneration(userId: string, prompt: string, model: string | null, success: boolean): Promise<void> {
-    await this.db.executeQuery(
-      imageGenQueries.LOG_GENERATION,
-      [userId, prompt, model, success ? 1 : 0],
-    );
+    await this.db.executeQuery(imageGenQueries.LOG_GENERATION, [userId, prompt, model, success ? 1 : 0]);
   }
 
   /**

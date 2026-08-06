@@ -21,7 +21,10 @@ async function loadHsrData() {
       Bun.file(path.join(__dirname, '../data/hsrLC.json')).json(),
     ]).then(([avatarData, characterData, namesData, lightconeData]) => {
       dataCache = {
-        avatarData, characterData, namesData, lightconeData,
+        avatarData,
+        characterData,
+        namesData,
+        lightconeData,
       };
       dataCachePromise = null;
       return dataCache;
@@ -32,14 +35,20 @@ async function loadHsrData() {
 
 class HsrProfile extends Command {
   constructor(client: any) {
-    super(client, 'hsrprofile', 'Get Honkai Star Rail player data.', [
-      {
-        name: 'uid',
-        description: 'The UID of the Honkai Star Rail player',
-        type: 3,
-        required: true,
-      },
-    ], { blame: 'xei' });
+    super(
+      client,
+      'hsrprofile',
+      'Get Honkai Star Rail player data.',
+      [
+        {
+          name: 'uid',
+          description: 'The UID of the Honkai Star Rail player',
+          type: 3,
+          required: true,
+        },
+      ],
+      { blame: 'xei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -50,19 +59,21 @@ class HsrProfile extends Command {
     };
 
     try {
-      const {
-        avatarData, characterData, namesData, lightconeData,
-      } = await loadHsrData();
+      const { avatarData, characterData, namesData, lightconeData } = await loadHsrData();
       const response = await fetch(url, { headers });
       if (!response.ok) {
         logError(`HTTP Error Response: Status ${response.status} ${response.statusText}`);
-        await interaction.editReply({ content: `Failed to fetch data: HTTP status ${response.status}. Please contact mystichunterz for assistance.` });
+        await interaction.editReply({
+          content: `Failed to fetch data: HTTP status ${response.status}. Please contact mystichunterz for assistance.`,
+        });
         return;
       }
       const data = await response.json();
 
       if (!data.detailInfo) {
-        await interaction.editReply({ content: 'No data found for the given UID. Please check the UID and try again.' });
+        await interaction.editReply({
+          content: 'No data found for the given UID. Please check the UID and try again.',
+        });
         return;
       }
 
@@ -104,22 +115,28 @@ class HsrProfile extends Command {
         }
       });
 
-      const charactersDisplayString = charactersOnDisplay.map((character) => `**${character.name}**\nLvl: ${character.level} | ${character.rarity}⭐\nLightcone: ${character.lightconeName} | Lvl: ${character.equipmentLevel || 'N/A'}\n\n`).join('');
+      const charactersDisplayString = charactersOnDisplay
+        .map(
+          (character) =>
+            `**${character.name}**\nLvl: ${character.level} | ${character.rarity}⭐\nLightcone: ${character.lightconeName} | Lvl: ${character.equipmentLevel || 'N/A'}\n\n`,
+        )
+        .join('');
 
       const embed = {
-        color: 0x00AA00,
+        color: 0x00aa00,
         title: `${detailInfo.nickname ?? 'Unknown'}'s Honkai Star Rail Profile`,
-        description: `**Level:** ${detailInfo.level ?? 'Unknown'}\n`
-          + `**World Level:** ${detailInfo.worldLevel ?? 'Unknown'}\n`
-          + `**Signature:** ${detailInfo.signature ?? 'No signature provided'}\n`
-          + `**Achievements:** ${detailInfo.recordInfo?.achievementCount ?? '0'}\n`
-          + `**Avatar Count:** ${detailInfo.recordInfo?.avatarCount ?? '0'}\n`
-          + `**Equipment Count:** ${detailInfo.recordInfo?.equipmentCount ?? '0'}\n`
-          + `**Max Rogue Challenge Score:** ${detailInfo.recordInfo?.maxRogueChallengeScore ?? 'N/A'}\n`
-          + `**Friend Count:** ${detailInfo.friendCount ?? '0'}\n`
-          + `**Books Owned:** ${detailInfo.recordInfo?.bookCount ?? '0'}\n`
-          + `**Relics Owned:** ${detailInfo.recordInfo?.relicCount ?? '0'}\n`
-          + `**Music Count:** ${detailInfo.recordInfo?.musicCount ?? '0'}`,
+        description:
+          `**Level:** ${detailInfo.level ?? 'Unknown'}\n` +
+          `**World Level:** ${detailInfo.worldLevel ?? 'Unknown'}\n` +
+          `**Signature:** ${detailInfo.signature ?? 'No signature provided'}\n` +
+          `**Achievements:** ${detailInfo.recordInfo?.achievementCount ?? '0'}\n` +
+          `**Avatar Count:** ${detailInfo.recordInfo?.avatarCount ?? '0'}\n` +
+          `**Equipment Count:** ${detailInfo.recordInfo?.equipmentCount ?? '0'}\n` +
+          `**Max Rogue Challenge Score:** ${detailInfo.recordInfo?.maxRogueChallengeScore ?? 'N/A'}\n` +
+          `**Friend Count:** ${detailInfo.friendCount ?? '0'}\n` +
+          `**Books Owned:** ${detailInfo.recordInfo?.bookCount ?? '0'}\n` +
+          `**Relics Owned:** ${detailInfo.recordInfo?.relicCount ?? '0'}\n` +
+          `**Music Count:** ${detailInfo.recordInfo?.musicCount ?? '0'}`,
         thumbnail: avatarUrl ? { url: avatarUrl } : undefined,
         fields: [
           {
@@ -137,7 +154,9 @@ class HsrProfile extends Command {
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       logError('Error fetching data from Honkai Star Rail API:', error);
-      await interaction.editReply({ content: 'Failed to fetch data from Honkai Star Rail API. Please contact mystichunterz for assistance.' });
+      await interaction.editReply({
+        content: 'Failed to fetch data from Honkai Star Rail API. Please contact mystichunterz for assistance.',
+      });
     }
   }
 }

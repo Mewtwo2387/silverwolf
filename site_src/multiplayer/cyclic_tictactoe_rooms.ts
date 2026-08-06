@@ -15,13 +15,28 @@ import type { WSContext } from 'hono/ws';
 import { logError } from '../../utils/log';
 import type { Silverwolf } from '../../classes/silverwolf';
 import {
-  applyMove, checkWin, clampBoardSize, emptyBoard, markLimitFor,
-  type Cell, type PlayerSymbol,
+  applyMove,
+  checkWin,
+  clampBoardSize,
+  emptyBoard,
+  markLimitFor,
+  type Cell,
+  type PlayerSymbol,
 } from './cyclicTicTacToe';
 import {
-  castSkill, canCast, freshSkillSide, maybeDisrupt, applyAirBonus, turnUpkeep,
-  SKILL_MIN_SIZE, SKILL_LOG_CAP, SKILLS,
-  type SkillCtx, type SkillId, type SkillSide, type SkillLogEntry,
+  castSkill,
+  canCast,
+  freshSkillSide,
+  maybeDisrupt,
+  applyAirBonus,
+  turnUpkeep,
+  SKILL_MIN_SIZE,
+  SKILL_LOG_CAP,
+  SKILLS,
+  type SkillCtx,
+  type SkillId,
+  type SkillSide,
+  type SkillLogEntry,
 } from './cyclicTttSkills';
 
 export type RoomStatus = 'waiting' | 'active' | 'ended';
@@ -103,13 +118,10 @@ export const ROOMS_PER_USER_CAP = 5;
 export const MAX_ACTIVE_ROOMS_GLOBAL = 5_000;
 const GC_SWEEP_MS = 60_000;
 
-export type CreateResult =
-  | { ok: true; room: MatchRoom }
-  | { ok: false; reason: 'too_many_rooms' | 'server_full' };
+export type CreateResult = { ok: true; room: MatchRoom } | { ok: false; reason: 'too_many_rooms' | 'server_full' };
 
 export type AttachResult =
-  | { ok: true; slot: PlayerSlot; firstSeat: boolean }
-  | { ok: false; reason: 'room_full' | 'game_ended' };
+  { ok: true; slot: PlayerSlot; firstSeat: boolean } | { ok: false; reason: 'room_full' | 'game_ended' };
 
 class RoomManager {
   private rooms = new Map<string, MatchRoom>();
@@ -135,9 +147,7 @@ class RoomManager {
     // Count all of the creator's rooms, including 'ended' ones still pending GC.
     // Excluding ended rooms here would let one creator cycle through unlimited
     // ended rooms that linger for ENDED_TTL_MS and exhaust the global ceiling.
-    const active = [...this.rooms.values()].filter(
-      (r) => r.creatorDiscordId === creator.discordId,
-    );
+    const active = [...this.rooms.values()].filter((r) => r.creatorDiscordId === creator.discordId);
     if (active.length >= ROOMS_PER_USER_CAP) return { ok: false, reason: 'too_many_rooms' };
 
     const n = clampBoardSize(boardSize);
@@ -188,10 +198,11 @@ class RoomManager {
 
   listForUser(discordId: string): MatchRoom[] {
     return [...this.rooms.values()].filter(
-      (r) => r.status !== 'ended'
-        && (r.creatorDiscordId === discordId
-          || r.players.X?.discordId === discordId
-          || r.players.O?.discordId === discordId),
+      (r) =>
+        r.status !== 'ended' &&
+        (r.creatorDiscordId === discordId ||
+          r.players.X?.discordId === discordId ||
+          r.players.O?.discordId === discordId),
     );
   }
 
@@ -262,8 +273,7 @@ class RoomManager {
     return false;
   }
 
-  applyMoveFromUser(room: MatchRoom, user: UserInfo, index: number):
-    { ok: true } | { ok: false; reason: string } {
+  applyMoveFromUser(room: MatchRoom, user: UserInfo, index: number): { ok: true } | { ok: false; reason: string } {
     if (room.status !== 'active') return { ok: false, reason: 'game_not_active' };
     const slot = room.players[room.currentPlayer];
     if (!slot || slot.discordId !== user.discordId) return { ok: false, reason: 'not_your_turn' };
@@ -288,7 +298,10 @@ class RoomManager {
 
     const res = applyMove(
       {
-        board: room.board, history: room.history, size: room.boardSize, markLimit: room.markLimit,
+        board: room.board,
+        history: room.history,
+        size: room.boardSize,
+        markLimit: room.markLimit,
       },
       player,
       target,
@@ -313,8 +326,12 @@ class RoomManager {
 
   // A skill cast by the player whose turn it is. Instant skills keep the turn
   // (the caster still places a mark afterward); Bomb consumes the turn.
-  applySkillFromUser(room: MatchRoom, user: UserInfo, skillId: string, targetIndex?: number):
-    { ok: true } | { ok: false; reason: string } {
+  applySkillFromUser(
+    room: MatchRoom,
+    user: UserInfo,
+    skillId: string,
+    targetIndex?: number,
+  ): { ok: true } | { ok: false; reason: string } {
     if (!room.skillsEnabled) return { ok: false, reason: 'skills_disabled' };
     if (room.status !== 'active') return { ok: false, reason: 'game_not_active' };
     const slot = room.players[room.currentPlayer];
@@ -394,7 +411,11 @@ class RoomManager {
     const sockets = [...slot.sockets];
     slot.sockets.clear();
     for (const ws of sockets) {
-      try { ws.close(1000, 'left'); } catch { /* already closed */ }
+      try {
+        ws.close(1000, 'left');
+      } catch {
+        /* already closed */
+      }
     }
   }
 
@@ -464,10 +485,7 @@ class RoomManager {
     }
   }
 
-  private endRoom(
-    room: MatchRoom,
-    result: { winner: PlayerSymbol | null; line?: number[]; reason: EndReason },
-  ) {
+  private endRoom(room: MatchRoom, result: { winner: PlayerSymbol | null; line?: number[]; reason: EndReason }) {
     if (room.status === 'ended') return;
     this.clearTurnTimer(room);
     for (const t of room.disconnectTimers.values()) clearTimeout(t);
@@ -485,28 +503,33 @@ class RoomManager {
       else if (result.winner === 'O') winnerDiscordId = o.discordId;
       // The match record id must be unique per *game*; room.id is reused across
       // rematches, so we generate a fresh id here.
-      this.silverwolf.db.cyclicTttMatch.recordMatch({
-        id: randomBytes(16).toString('base64url'),
-        xDiscordId: x.discordId,
-        oDiscordId: o.discordId,
-        winnerDiscordId,
-        endReason: result.reason,
-        boardSize: room.boardSize,
-        createdAt: room.createdAt,
-        endedAt: room.endedAt,
-      }).catch((err: unknown) => logError('cyclic-ttt match record failed:', err));
+      this.silverwolf.db.cyclicTttMatch
+        .recordMatch({
+          id: randomBytes(16).toString('base64url'),
+          xDiscordId: x.discordId,
+          oDiscordId: o.discordId,
+          winnerDiscordId,
+          endReason: result.reason,
+          boardSize: room.boardSize,
+          createdAt: room.createdAt,
+          endedAt: room.endedAt,
+        })
+        .catch((err: unknown) => logError('cyclic-ttt match record failed:', err));
     }
   }
 
   snapshot(room: MatchRoom): RoomSnapshot {
-    const pub = (slot?: PlayerSlot): PublicPlayer | null => (slot ? {
-      discordId: slot.discordId,
-      username: slot.username,
-      avatarURL: slot.avatarURL,
-      symbol: slot.symbol,
-      connected: slot.sockets.size > 0,
-      rematchAccepted: slot.rematchAccepted,
-    } : null);
+    const pub = (slot?: PlayerSlot): PublicPlayer | null =>
+      slot
+        ? {
+            discordId: slot.discordId,
+            username: slot.username,
+            avatarURL: slot.avatarURL,
+            symbol: slot.symbol,
+            connected: slot.sockets.size > 0,
+            rematchAccepted: slot.rematchAccepted,
+          }
+        : null;
     return {
       id: room.id,
       boardSize: room.boardSize,
@@ -538,7 +561,11 @@ class RoomManager {
       const slot = room.players[sym];
       if (!slot) continue;
       for (const ws of slot.sockets) {
-        try { ws.send(msg); } catch { /* socket closing; will be detached */ }
+        try {
+          ws.send(msg);
+        } catch {
+          /* socket closing; will be detached */
+        }
       }
     }
   }

@@ -14,17 +14,23 @@ const toMB = (bytes: number): string => (bytes / 1024 / 1024).toFixed(2);
  */
 class RamStats extends DevCommand {
   constructor(client: any) {
-    super(client, 'ramstats', 'show RAM usage breakdown for the bot process', [
+    super(
+      client,
+      'ramstats',
+      'show RAM usage breakdown for the bot process',
+      [
+        {
+          name: 'gc',
+          description: 'Force a full GC before measuring (synchronous — briefly stalls the bot)',
+          type: 5,
+          required: false,
+        },
+      ],
       {
-        name: 'gc',
-        description: 'Force a full GC before measuring (synchronous — briefly stalls the bot)',
-        type: 5,
-        required: false,
+        isSubcommandOf: 'dev',
+        blame: 'ei',
       },
-    ], {
-      isSubcommandOf: 'dev',
-      blame: 'ei',
-    });
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -32,9 +38,7 @@ class RamStats extends DevCommand {
       const stats = await collectMemStats(this.client, interaction.options.getBoolean('gc') ?? false);
       const { mem, before } = stats;
 
-      const {
-        rss, heapTotal, heapUsed, external, arrayBuffers,
-      } = mem;
+      const { rss, heapTotal, heapUsed, external, arrayBuffers } = mem;
       const other = Math.max(0, rss - heapTotal - external);
 
       const embed = new Discord.EmbedBuilder()
@@ -52,10 +56,7 @@ class RamStats extends DevCommand {
           },
           {
             name: '🧠 Heap Detail',
-            value: [
-              `**Used**  \`${toMB(heapUsed)} MB\``,
-              `**Total** \`${toMB(heapTotal)} MB\``,
-            ].join('\n'),
+            value: [`**Used**  \`${toMB(heapUsed)} MB\``, `**Total** \`${toMB(heapTotal)} MB\``].join('\n'),
           },
         );
 
@@ -76,8 +77,9 @@ class RamStats extends DevCommand {
         },
         {
           name: '🎭 Roleplay In-Memory State',
-          value: `**Active channels** \`${stats.rp.activeChannels}\` | **In-flight spawns** \`${stats.rp.inFlightSpawns}\``
-            + ` | **Webhook ids** \`${stats.rp.webhookIds}\` | **Avatar URL cache** \`${stats.rp.avatarUrlCache}\``,
+          value:
+            `**Active channels** \`${stats.rp.activeChannels}\` | **In-flight spawns** \`${stats.rp.inFlightSpawns}\`` +
+            ` | **Webhook ids** \`${stats.rp.webhookIds}\` | **Avatar URL cache** \`${stats.rp.avatarUrlCache}\``,
         },
         {
           name: '📝 Tracked Message History',
@@ -85,15 +87,14 @@ class RamStats extends DevCommand {
         },
         {
           name: '💾 Persistence',
-          value: `**database.db** \`${toMB(stats.dbFileBytes)} MB\``
-            + ` | **RpHistory rows** \`${stats.rpHistory.count.toLocaleString()}\``
-            + ` (\`${toMB(stats.rpHistory.bytes)} MB\` of message text)`,
+          value:
+            `**database.db** \`${toMB(stats.dbFileBytes)} MB\`` +
+            ` | **RpHistory rows** \`${stats.rpHistory.count.toLocaleString()}\`` +
+            ` (\`${toMB(stats.rpHistory.bytes)} MB\` of message text)`,
         },
       );
 
-      embed
-        .setFooter({ text: `PID ${process.pid} · uptime ${(process.uptime() / 60).toFixed(1)} min` })
-        .setTimestamp();
+      embed.setFooter({ text: `PID ${process.pid} · uptime ${(process.uptime() / 60).toFixed(1)} min` }).setTimestamp();
 
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {

@@ -70,12 +70,12 @@ export function isRetryableCompletionError(err: any): boolean {
   if (networkCodes.has(code)) return true;
 
   if (
-    message.includes('fetch failed')
-    || message.includes('timeout')
-    || message.includes('network')
-    || message.includes('connection')
-    || message.includes('econnreset')
-    || message.includes('etimedout')
+    message.includes('fetch failed') ||
+    message.includes('timeout') ||
+    message.includes('network') ||
+    message.includes('connection') ||
+    message.includes('econnreset') ||
+    message.includes('etimedout')
   ) {
     return true;
   }
@@ -111,7 +111,12 @@ export async function createChatCompletionWithRetry(
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const deadline = Date.now() + (opts.overallTimeoutMs ?? DEFAULT_OVERALL_TIMEOUT_MS);
   const delays = opts.delaysMs ?? RETRY_DELAYS_MS;
-  const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((resolve) => { setTimeout(resolve, ms); }));
+  const sleep =
+    opts.sleep ??
+    ((ms: number) =>
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, ms);
+      }));
 
   let lastErr: any;
   for (let attempt = 0; attempt <= delays.length; attempt += 1) {
@@ -139,8 +144,8 @@ export async function createChatCompletionWithRetry(
       }
       const delay = Math.min(delays[attempt], remainingMs);
       log(
-        `[llm] completion failed (status ${err?.status ?? 'network/timeout'}), `
-        + `retrying in ${delay / 1000}s (attempt ${attempt + 1}/${delays.length})`,
+        `[llm] completion failed (status ${err?.status ?? 'network/timeout'}), ` +
+          `retrying in ${delay / 1000}s (attempt ${attempt + 1}/${delays.length})`,
       );
       // eslint-disable-next-line no-await-in-loop
       await sleep(delay);

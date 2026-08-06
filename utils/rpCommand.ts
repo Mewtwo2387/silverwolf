@@ -91,9 +91,10 @@ export async function buildCharacterView(
   const startingMessage = character.startingMessage || '—';
   const files: AttachmentBuilder[] = [];
 
-  const detailsPreview = details.length > DETAILS_PREVIEW_CHARS
-    ? `${details.slice(0, DETAILS_PREVIEW_CHARS)}…\n\n*(full details attached as \`details.txt\`)*`
-    : details;
+  const detailsPreview =
+    details.length > DETAILS_PREVIEW_CHARS
+      ? `${details.slice(0, DETAILS_PREVIEW_CHARS)}…\n\n*(full details attached as \`details.txt\`)*`
+      : details;
 
   const embed = new EmbedBuilder()
     .setColor('#9B59B6')

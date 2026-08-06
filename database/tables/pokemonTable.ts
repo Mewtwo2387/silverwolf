@@ -17,10 +17,7 @@ const pokemonTable: TableDefinition = {
   ],
   primaryKey: ['id'],
   specialConstraints: [],
-  constraints: [
-    'FOREIGN KEY (user_id) REFERENCES User(id)',
-    'UNIQUE (user_id, pokemon_name)',
-  ],
+  constraints: ['FOREIGN KEY (user_id) REFERENCES User(id)', 'UNIQUE (user_id, pokemon_name)'],
 };
 
 export default pokemonTable;

@@ -50,7 +50,11 @@ try {
 
 const gracefulShutdown = async (signal: string) => {
   log(`Received ${signal}; shutting down`);
-  try { await shutdownMcp(); } catch (err) { logError('shutdown: mcp close failed', err); }
+  try {
+    await shutdownMcp();
+  } catch (err) {
+    logError('shutdown: mcp close failed', err);
+  }
   // eslint-disable-next-line no-process-exit
   process.exit(0);
 };

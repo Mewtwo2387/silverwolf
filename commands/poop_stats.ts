@@ -44,18 +44,14 @@ class PoopStats extends Command {
         return `${localDate.toUTCString().replace(' GMT', '')} (UTC${sign}${timezone})`;
       };
 
-      const avgDuration = stats.avgDuration != null
-        ? `${Math.round(stats.avgDuration)} min`
-        : 'N/A';
+      const avgDuration = stats.avgDuration != null ? `${Math.round(stats.avgDuration)} min` : 'N/A';
 
-      const avgDaily = stats.avgDaily != null
-        ? parseFloat(stats.avgDaily).toFixed(2)
-        : 'N/A';
+      const avgDaily = stats.avgDaily != null ? parseFloat(stats.avgDaily).toFixed(2) : 'N/A';
 
       const embed = new Discord.EmbedBuilder()
         .setTitle(`💩 Poop Stats — ${targetUser.username}`)
         .setThumbnail(targetUser.displayAvatarURL())
-        .setColor(0x8B4513)
+        .setColor(0x8b4513)
         .addFields(
           { name: '💩 Total Poops', value: String(stats.totalPoops ?? 'N/A'), inline: true },
           { name: '📅 Avg Daily Poops', value: String(avgDaily), inline: true },

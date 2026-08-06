@@ -43,13 +43,13 @@ class PokemonModel {
   async getUniquePokemonCount(userId: string): Promise<number> {
     const query = pokemonQueries.GET_UNIQUE_POKEMON_COUNT;
     const row = await this.db.executeSelectQuery(query, [userId]);
-    return row ? (row.count || 0) : 0;
+    return row ? row.count || 0 : 0;
   }
 
   async getTotalPokemonCount(userId: string): Promise<number> {
     const query = pokemonQueries.GET_TOTAL_POKEMON_COUNT;
     const row = await this.db.executeSelectQuery(query, [userId]);
-    return row ? (row.count || 0) : 0;
+    return row ? row.count || 0 : 0;
   }
 
   async getUsersWithPokemon(type: string): Promise<Record<string, any>[]> {

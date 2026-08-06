@@ -1,21 +1,16 @@
-import {
-  ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, type Message,
-  type TextChannel,
-} from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, type Message, type TextChannel } from 'discord.js';
 import { log, logError } from '../../utils/log';
-import {
-  resolvePersona,
-  generateContent,
-  generateTitleForHistory,
-  getPersonaMediaKinds,
-} from '../../utils/ai';
+import { resolvePersona, generateContent, generateTitleForHistory, getPersonaMediaKinds } from '../../utils/ai';
 import { getRateLimitErrorMessage } from '../../utils/discordRateLimit';
 import { IMAGE_GEN_TOOL_NAME, IMAGE_EDIT_MAX_SOURCES } from '../../utils/imageGen';
 import { MUSIC_GEN_TOOL_NAME, MUSIC_GUIDE_TOOL_NAME } from '../../utils/musicGen';
 import { trimHistoryToFit } from '../../utils/tokenizer';
 import { extractPdfsFromMessage } from '../../utils/pdf';
 import {
-  collectMediaFromMessage, hasQualifyingMedia, tryAcquireMediaSlot, releaseMediaSlot,
+  collectMediaFromMessage,
+  hasQualifyingMedia,
+  tryAcquireMediaSlot,
+  releaseMediaSlot,
   type MediaKind,
 } from '../../utils/aiMedia';
 
@@ -31,11 +26,7 @@ function normalizeSessionCommandText(text: string): string {
  * e.g. "@grok kys" / "jarvis amnesia" — not "@grok what is amnesia", bare
  * "amnesia", or reordered "amnesia @grok".
  */
-function isExactSessionCommand(
-  query: string,
-  persona: { triggers?: string[] },
-  command: string,
-): boolean {
+function isExactSessionCommand(query: string, persona: { triggers?: string[] }, command: string): boolean {
   const normalizedQuery = normalizeSessionCommandText(query);
   if (!normalizedQuery) return false;
   const normalizedCommand = normalizeSessionCommandText(command);
@@ -51,7 +42,10 @@ function isExactSessionCommand(
 const scriptHandlers = {
   girlCockx: async (message: Message): Promise<void> => {
     const xLinkRegex = /https:\/\/(?:x\.com|twitter\.com)\/([^/]+)\/status\/(\d+)(?:\?[^\s]*)?/g;
-    const girlcockxContent = message.content.replace(xLinkRegex, (_, user, id) => `https://fxtwitter.com/${user}/status/${id}/en`);
+    const girlcockxContent = message.content.replace(
+      xLinkRegex,
+      (_, user, id) => `https://fxtwitter.com/${user}/status/${id}/en`,
+    );
 
     try {
       const webhooks = await (message.channel as TextChannel).fetchWebhooks();
@@ -97,8 +91,8 @@ const scriptHandlers = {
 
       await webhook!.send({
         content,
-        username: (message.member?.displayName || message.author.username),
-        avatarURL: (message.member?.displayAvatarURL() || message.author.displayAvatarURL()),
+        username: message.member?.displayName || message.author.username,
+        avatarURL: message.member?.displayAvatarURL() || message.author.displayAvatarURL(),
         components,
         allowedMentions: { parse: ['users'] },
       });
@@ -110,15 +104,11 @@ const scriptHandlers = {
   },
 
   grok: async (message: Message): Promise<void> => {
-    const username = message.author?.username
-      ? message.author.username.toLowerCase()
-      : 'user';
+    const username = message.author?.username ? message.author.username.toLowerCase() : 'user';
     const query = message.content || '';
 
     const contextMsg = message.reference
-      ? await message.channel.messages
-        .fetch(message.reference.messageId!)
-        .catch(() => null)
+      ? await message.channel.messages.fetch(message.reference.messageId!).catch(() => null)
       : null;
 
     const persona = await resolvePersona(query);
@@ -131,17 +121,14 @@ const scriptHandlers = {
 
     if (shouldStartNewSession && hasMemory) {
       try {
-        const newSession = await (message.client as any).db.aiChat.startNewSession(
-          message.author.id,
-          displayName,
-        );
+        const newSession = await (message.client as any).db.aiChat.startNewSession(message.author.id, displayName);
 
         const startedEmbed = new EmbedBuilder()
           .setColor('#57F287')
           .setTitle('New Session Started')
           .setDescription(
-            `Started a new **${displayName}** chat session: **#${newSession.sessionId}**.\n`
-            + 'Send your next message to begin the new conversation.',
+            `Started a new **${displayName}** chat session: **#${newSession.sessionId}**.\n` +
+              'Send your next message to begin the new conversation.',
           );
 
         await message.reply({ embeds: [startedEmbed] });
@@ -154,10 +141,7 @@ const scriptHandlers = {
 
     if (shouldAmnesia && hasMemory) {
       try {
-        const result = await (message.client as any).db.aiChat.undoLastTurn(
-          message.author.id,
-          displayName,
-        );
+        const result = await (message.client as any).db.aiChat.undoLastTurn(message.author.id, displayName);
 
         if (!result.ok) {
           const emptyEmbed = new EmbedBuilder()
@@ -178,9 +162,10 @@ const scriptHandlers = {
           .setColor('#57F287')
           .setTitle('Amnesia')
           .setDescription(
-            `Forgot the last turn from **${displayName}** session **#${result.sessionId}**`
-            + ` (${result.deletedCount} row${result.deletedCount === 1 ? '' : 's'}).${
-              previewSnippet ? `\n\n> ${previewSnippet}` : ''}`,
+            `Forgot the last turn from **${displayName}** session **#${result.sessionId}**` +
+              ` (${result.deletedCount} row${result.deletedCount === 1 ? '' : 's'}).${
+                previewSnippet ? `\n\n> ${previewSnippet}` : ''
+              }`,
           )
           .setFooter({ text: 'Use "kys" for a fresh session · "amnesia" to forget the last turn' });
         await message.reply({ embeds: [amnesiaEmbed] });
@@ -211,15 +196,13 @@ const scriptHandlers = {
     // generate_image edit path can still use it.
     const visionKinds = getPersonaMediaKinds(persona);
     const imageGenEnabled = hasMemory;
-    const collectKinds = [...new Set<MediaKind>([
-      ...visionKinds,
-      ...(imageGenEnabled ? ['image' as MediaKind] : []),
-    ])];
-    const shouldCollectMedia = collectKinds.length > 0
-      && hasQualifyingMedia(message, contextMsg, collectKinds);
+    const collectKinds = [...new Set<MediaKind>([...visionKinds, ...(imageGenEnabled ? ['image' as MediaKind] : [])])];
+    const shouldCollectMedia = collectKinds.length > 0 && hasQualifyingMedia(message, contextMsg, collectKinds);
     if (shouldCollectMedia) {
       if (!tryAcquireMediaSlot()) {
-        mediaNotices.push('⚠ Too many attachment-reading requests in flight right now — answering without your attachments. Try again in a moment.');
+        mediaNotices.push(
+          '⚠ Too many attachment-reading requests in flight right now — answering without your attachments. Try again in a moment.',
+        );
       } else {
         mediaSlotHeld = true;
         try {
@@ -243,15 +226,16 @@ const scriptHandlers = {
           // IMAGE_EDIT_MAX_SOURCES images are editable (tool hard cap), so with
           // more the placeholders stay plain and the system note tells the
           // model to refuse edits.
-          editOnlyPlaceholders = imageEditParts.length <= IMAGE_EDIT_MAX_SOURCES
-            ? unreadable.map(
-              (m) => `${m.placeholder} (you cannot view this image, but your generate_image tool can edit it)`,
-            )
-            : unreadable.map((m) => `${m.placeholder} (you cannot view this image)`);
+          editOnlyPlaceholders =
+            imageEditParts.length <= IMAGE_EDIT_MAX_SOURCES
+              ? unreadable.map(
+                  (m) => `${m.placeholder} (you cannot view this image, but your generate_image tool can edit it)`,
+                )
+              : unreadable.map((m) => `${m.placeholder} (you cannot view this image)`);
           mediaNotices.push(...collected.notices);
         } catch (mediaErr) {
           logError('AiChat: media collection failed, proceeding without attachments:', mediaErr);
-          mediaNotices.push('⚠ Couldn\'t process your attachments — answering without them.');
+          mediaNotices.push("⚠ Couldn't process your attachments — answering without them.");
           mediaParts = [];
           imageEditParts = [];
           mediaPlaceholders = [];
@@ -262,8 +246,9 @@ const scriptHandlers = {
 
     for (const notice of [...pdfNotices, ...mediaNotices]) {
       // eslint-disable-next-line no-await-in-loop
-      await message.reply({ content: notice, allowedMentions: { repliedUser: false } })
-        .catch((e) => { logError('Attachment notice reply failed:', e); });
+      await message.reply({ content: notice, allowedMentions: { repliedUser: false } }).catch((e) => {
+        logError('Attachment notice reply failed:', e);
+      });
     }
     const pdfPrefix = pdfBlocks.length > 0 ? `${pdfBlocks.join('\n\n')}\n\n` : '';
     const allPlaceholders = [...mediaPlaceholders, ...editOnlyPlaceholders];
@@ -272,7 +257,7 @@ const scriptHandlers = {
     let prompt = '';
 
     if (contextMsg) {
-      const promptName = (contextMsg.author.username === displayName) ? 'You' : contextMsg.author.username;
+      const promptName = contextMsg.author.username === displayName ? 'You' : contextMsg.author.username;
       prompt = `${pdfPrefix}Previous message by ${promptName}: "${contextMsg.content}"
 
       User ${username} said: ${query}${mediaSuffix}`;
@@ -291,10 +276,7 @@ const scriptHandlers = {
     let contextWarnings: { level: number; message: string; wasTrimmed: boolean; trimmedCount: number }[] = [];
     if (hasMemory) {
       try {
-        aiSession = await (message.client as any).db.aiChat.getOrCreateSession(
-          message.author.id,
-          displayName,
-        );
+        aiSession = await (message.client as any).db.aiChat.getOrCreateSession(message.author.id, displayName);
         const rawHistory = await (message.client as any).db.aiChat.getHistory(aiSession.sessionId, 100);
         hadRawHistory = rawHistory.length > 0;
 
@@ -316,7 +298,9 @@ const scriptHandlers = {
         historyLoaded = true;
 
         if (filteredHistory.length !== trimmedHistory.length) {
-          log(`AiChat: Trimmed history from ${filteredHistory.length} to ${trimmedHistory.length} messages for session ${aiSession.sessionId}`);
+          log(
+            `AiChat: Trimmed history from ${filteredHistory.length} to ${trimmedHistory.length} messages for session ${aiSession.sessionId}`,
+          );
         }
       } catch (histErr) {
         logError('AiChat: Failed to load history, proceeding without it:', histErr);
@@ -327,29 +311,28 @@ const scriptHandlers = {
       const webhooks = await (message.channel as TextChannel).fetchWebhooks();
       let webhook = webhooks.find((wh: any) => wh.name === WEBHOOK_NAME && wh.token);
 
-      const generateOnce = (withMedia: boolean) => generateContent({
-        db: (message.client as any).db,
-        userId: message.author.id,
-        provider: persona.provider,
-        model: persona.model,
-        systemPrompt: persona.systemPrompt ?? '',
-        prompt,
-        history,
-        webSearchEnabled: persona.webSearchEnabled,
-        mediaParts: withMedia ? mediaParts : [],
-        providerRouting: persona.providerRouting,
-        // Image generation is Discord-only (delivery rides this webhook); the
-        // rate limit is keyed to the requesting Discord user. Attached images
-        // ride along as edit sources for the generate_image tool.
-        imageGen: hasMemory
-          ? { userId: message.author.id, db: (message.client as any).db, imageParts: imageEditParts }
-          : undefined,
-        // Music generation rides the same webhook delivery; rate limit keyed
-        // to the requesting Discord user.
-        musicGen: hasMemory
-          ? { userId: message.author.id, db: (message.client as any).db }
-          : undefined,
-      });
+      const generateOnce = (withMedia: boolean) =>
+        generateContent({
+          db: (message.client as any).db,
+          userId: message.author.id,
+          provider: persona.provider,
+          model: persona.model,
+          systemPrompt: persona.systemPrompt ?? '',
+          prompt,
+          history,
+          webSearchEnabled: persona.webSearchEnabled,
+          mediaParts: withMedia ? mediaParts : [],
+          providerRouting: persona.providerRouting,
+          // Image generation is Discord-only (delivery rides this webhook); the
+          // rate limit is keyed to the requesting Discord user. Attached images
+          // ride along as edit sources for the generate_image tool.
+          imageGen: hasMemory
+            ? { userId: message.author.id, db: (message.client as any).db, imageParts: imageEditParts }
+            : undefined,
+          // Music generation rides the same webhook delivery; rate limit keyed
+          // to the requesting Discord user.
+          musicGen: hasMemory ? { userId: message.author.id, db: (message.client as any).db } : undefined,
+        });
 
       let genResult;
       let mediaDropped = false;
@@ -389,7 +372,9 @@ const scriptHandlers = {
         const trimEmbed = new EmbedBuilder()
           .setColor('#FEE75C')
           .setTitle('⚠ Context limit reached')
-          .setDescription(`Trimmed **${trimWarning.trimmedCount}** old message${trimWarning.trimmedCount === 1 ? '' : 's'} to fit this model's context window. The oldest parts of the conversation are no longer visible to me.`)
+          .setDescription(
+            `Trimmed **${trimWarning.trimmedCount}** old message${trimWarning.trimmedCount === 1 ? '' : 's'} to fit this model's context window. The oldest parts of the conversation are no longer visible to me.`,
+          )
           .setFooter({ text: 'Use "kys" for a fresh session · "amnesia" to forget the last turn' });
         try {
           await message.reply({ embeds: [trimEmbed], allowedMentions: { repliedUser: false } });
@@ -403,17 +388,14 @@ const scriptHandlers = {
       const searchCallCount = (toolCalls ?? []).filter((tc: any) => !nonSearchTools.includes(tc.name)).length;
       const imageCallHappened = (toolCalls ?? []).some((tc: any) => tc.name === IMAGE_GEN_TOOL_NAME && tc.ok);
       const musicCallHappened = (toolCalls ?? []).some((tc: any) => tc.name === MUSIC_GEN_TOOL_NAME && tc.ok);
-      const searchPrefix = searchCallCount > 0
-        ? `-# 🔎 searched the web (${searchCallCount})\n`
-        : '';
+      const searchPrefix = searchCallCount > 0 ? `-# 🔎 searched the web (${searchCallCount})\n` : '';
       const imagePrefix = imageCallHappened ? '-# 🎨 generated an image\n' : '';
       const musicPrefix = musicCallHappened ? '-# 🎵 composed music\n' : '';
-      const mediaReadPrefix = mediaPlaceholders.length > 0 && !mediaDropped
-        ? `-# 📎 read ${mediaPlaceholders.length} attachment${mediaPlaceholders.length === 1 ? '' : 's'}\n`
-        : '';
-      const mediaFailPrefix = mediaDropped
-        ? '-# ⚠ the model rejected the attachments — answered without them\n'
-        : '';
+      const mediaReadPrefix =
+        mediaPlaceholders.length > 0 && !mediaDropped
+          ? `-# 📎 read ${mediaPlaceholders.length} attachment${mediaPlaceholders.length === 1 ? '' : 's'}\n`
+          : '';
+      const mediaFailPrefix = mediaDropped ? '-# ⚠ the model rejected the attachments — answered without them\n' : '';
       let remainingText = `${searchPrefix}${imagePrefix}${musicPrefix}${mediaReadPrefix}${mediaFailPrefix}${(text || '').toString()}`;
       let previousMsg: any = null;
       let filesToAttach: any[] = images || [];
@@ -442,17 +424,15 @@ const scriptHandlers = {
       previousMsg = sentInitial;
       // Discord CDN URLs of attached generated images — saved to history so the
       // model has a reference to what it sent (links are signed and expire ~24h).
-      const imageCdnUrls: string[] = filesToAttach.length > 0
-        ? [...(sentInitial.attachments?.values() ?? [])].map((a: any) => a.url).filter(Boolean)
-        : [];
+      const imageCdnUrls: string[] =
+        filesToAttach.length > 0
+          ? [...(sentInitial.attachments?.values() ?? [])].map((a: any) => a.url).filter(Boolean)
+          : [];
       filesToAttach = [];
 
       while (remainingText.length > 0) {
         currentChunk = remainingText.slice(0, MAX_LENGTH);
-        const breakIndex = Math.max(
-          currentChunk.lastIndexOf('\n'),
-          currentChunk.lastIndexOf(' '),
-        );
+        const breakIndex = Math.max(currentChunk.lastIndexOf('\n'), currentChunk.lastIndexOf(' '));
 
         if (breakIndex > 0 && remainingText.length > MAX_LENGTH) {
           currentChunk = remainingText.slice(0, breakIndex);
@@ -463,10 +443,7 @@ const scriptHandlers = {
         const componentsForFollowUp: ActionRowBuilder<ButtonBuilder>[] = [];
         const jumpLinkToPrevious = `https://discord.com/channels/${message.guildId}/${message.channelId}/${previousMsg.id}`;
         const previousButton = new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder()
-            .setLabel('⬅ Previous')
-            .setStyle(ButtonStyle.Link)
-            .setURL(jumpLinkToPrevious),
+          new ButtonBuilder().setLabel('⬅ Previous').setStyle(ButtonStyle.Link).setURL(jumpLinkToPrevious),
         );
         componentsForFollowUp.push(previousButton);
 
@@ -486,7 +463,8 @@ const scriptHandlers = {
       const pctWarning = contextWarnings.find((w) => w.level >= 75 || (w.level >= 50 && !w.wasTrimmed));
       if (pctWarning) {
         let warningColor = '#5865F2'; // blue for 50%
-        if (pctWarning.level >= 95) warningColor = '#ED4245'; // red
+        if (pctWarning.level >= 95)
+          warningColor = '#ED4245'; // red
         else if (pctWarning.level >= 75) warningColor = '#FEE75C'; // yellow
 
         const warningEmbed = new EmbedBuilder()
@@ -512,11 +490,7 @@ const scriptHandlers = {
             // they're filtered out when history is replayed to the model.
             for (const tc of toolCalls) {
               // eslint-disable-next-line no-await-in-loop
-              await (message.client as any).db.aiChat.addHistory(
-                aiSession.sessionId,
-                'tool',
-                JSON.stringify(tc),
-              );
+              await (message.client as any).db.aiChat.addHistory(aiSession.sessionId, 'tool', JSON.stringify(tc));
             }
           }
           if (text) {
@@ -538,7 +512,8 @@ const scriptHandlers = {
           }
 
           if (historyLoaded && !hadRawHistory && text) {
-            (message.client as any).db.aiChat.getHistory(aiSession.sessionId, 100)
+            (message.client as any).db.aiChat
+              .getHistory(aiSession.sessionId, 100)
               .then((savedHistory: { role: string; message: string }[]) => generateTitleForHistory(savedHistory))
               .then((title: string | null) => {
                 if (title) {
@@ -587,7 +562,9 @@ const scriptHandlers = {
       const sticker = referenced.stickers?.first();
 
       if (!sticker) {
-        await message.reply('CAN YOU LOCK TF IN? THAT MESSAGE DOESNT HAVE A STICKER...[.](https://tenor.com/view/silver-wolf-gif-16998478984526443945)');
+        await message.reply(
+          'CAN YOU LOCK TF IN? THAT MESSAGE DOESNT HAVE A STICKER...[.](https://tenor.com/view/silver-wolf-gif-16998478984526443945)',
+        );
         return;
       }
 
@@ -646,7 +623,9 @@ const scriptHandlers = {
 
     try {
       await message.guild!.bans.create(targetId, { reason: 'Avada Kedavra' });
-      await message.reply(`<@${targetId}> has been Avada Kedavra'd[.](https://tenor.com/view/avada-kadavra-star-wars-voldemort-spell-gif-16160198)`);
+      await message.reply(
+        `<@${targetId}> has been Avada Kedavra'd[.](https://tenor.com/view/avada-kadavra-star-wars-voldemort-spell-gif-16160198)`,
+      );
     } catch (err) {
       logError('Error executing Avada Kedavra:', err);
       await message.reply('https://tenor.com/view/voldemort-death-harry-potter-dust-gif-21709239 ');

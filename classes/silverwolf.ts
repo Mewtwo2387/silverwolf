@@ -1,6 +1,4 @@
-import {
-  Client, REST, Routes, MessageFlags, type ClientOptions, type Message, type Interaction,
-} from 'discord.js';
+import { Client, REST, Routes, MessageFlags, type ClientOptions, type Message, type Interaction } from 'discord.js';
 import path from 'path';
 import { createRequire } from 'node:module';
 import Database from '../database/Database';
@@ -14,9 +12,7 @@ import { handleRpMessage, recomputeActiveRpChannels } from '../utils/rpRuntime';
 import seasonConfig from '../data/config/skin/pokemon.json';
 import keywordsJson from '../data/keywords.json';
 import statusJson from '../data/status.json';
-import {
-  ChristmasHandler, NormalHandler, HalloweenHandler, AprilFoolsHandler,
-} from './handlers/index';
+import { ChristmasHandler, NormalHandler, HalloweenHandler, AprilFoolsHandler } from './handlers/index';
 import scriptHandlers from './handlers/keywordsBehaviorHandler';
 import quoteDefault, { parseQuoteFlags, resolveQuoteFlags, QUOTE_FLAG_HELP } from '../utils/quote';
 import { loadAllowedServers } from '../utils/accessControl';
@@ -129,10 +125,14 @@ All wrongs reserved.
       const command = new CommandClass(this);
       if (command.isSubcommandOf === null) {
         this.commands.set(command.name, command);
-        log(`Command ${command.name} loaded. ${command.ephemeral ? 'ephemeral' : ''} ${command.skipDefer ? 'skipDefer' : ''} ${command.isSubcommand ? 'isSubcommand' : ''}`);
+        log(
+          `Command ${command.name} loaded. ${command.ephemeral ? 'ephemeral' : ''} ${command.skipDefer ? 'skipDefer' : ''} ${command.isSubcommand ? 'isSubcommand' : ''}`,
+        );
       } else {
         this.commands.set(`${command.isSubcommandOf}.${command.name}`, command);
-        log(`Command ${command.isSubcommandOf}.${command.name} loaded. ${command.ephemeral ? 'ephemeral' : ''} ${command.skipDefer ? 'skipDefer' : ''} ${command.isSubcommand ? 'isSubcommand' : ''}`);
+        log(
+          `Command ${command.isSubcommandOf}.${command.name} loaded. ${command.ephemeral ? 'ephemeral' : ''} ${command.skipDefer ? 'skipDefer' : ''} ${command.isSubcommand ? 'isSubcommand' : ''}`,
+        );
       }
       commandCount += 1;
     }
@@ -174,7 +174,9 @@ All wrongs reserved.
       }
       if (!entry.triggers.every((t: any) => typeof t === 'string' && t.trim().length > 0)) {
         const blanks = entry.triggers.filter((t: any) => typeof t !== 'string' || t.trim().length === 0);
-        log(`Warning: skipping keywords entry at index ${i} (triggers contains non-string or blank values: ${JSON.stringify(blanks)}).`);
+        log(
+          `Warning: skipping keywords entry at index ${i} (triggers contains non-string or blank values: ${JSON.stringify(blanks)}).`,
+        );
         return false;
       }
       return true;
@@ -219,7 +221,9 @@ All wrongs reserved.
       }
       const command = this.commands.get(interaction.commandName);
       if (!command) return;
-      log(`> Command ${command.name} executed by ${interaction.user.username} (${interaction.user.id}) in ${interaction.channel.name} (${interaction.channel.id}) in ${interaction.guild.name} (${interaction.guild.id})`);
+      log(
+        `> Command ${command.name} executed by ${interaction.user.username} (${interaction.user.id}) in ${interaction.channel.name} (${interaction.channel.id}) in ${interaction.guild.name} (${interaction.guild.id})`,
+      );
       try {
         await command.execute(interaction);
       } catch (error) {
@@ -254,7 +258,11 @@ All wrongs reserved.
       }
     } catch (error) {
       logError('Error handling autocomplete:', error);
-      try { await interaction.respond([]); } catch { /* interaction already closed */ }
+      try {
+        await interaction.respond([]);
+      } catch {
+        /* interaction already closed */
+      }
     }
   }
 
@@ -271,18 +279,19 @@ All wrongs reserved.
     handleRpMessage(this, message).catch((err) => logError('Rp: message handling failed:', err));
 
     if (message.author.bot) {
-      log(`Bot message received from ${message.author.username} (${message.author.id}) in ${message.channel.name} (${message.channel.id}) in ${message.guild.name} (${message.guild.id}): ${message.content}`);
+      log(
+        `Bot message received from ${message.author.username} (${message.author.id}) in ${message.channel.name} (${message.channel.id}) in ${message.guild.name} (${message.guild.id}): ${message.content}`,
+      );
       return;
     }
 
-    log(`> Message received from ${message.author.username} (${message.author.id}) in ${message.channel.name} (${message.channel.id}) in ${message.guild.name} (${message.guild.id}): ${message.content}`);
+    log(
+      `> Message received from ${message.author.username} (${message.author.id}) in ${message.channel.name} (${message.channel.id}) in ${message.guild.name} (${message.guild.id}): ${message.content}`,
+    );
 
     const guildConfig = await loadResolvedServerConfig(this.db, message.guild.id);
 
-    if (
-      Math.random() < guildConfig.pokemonSpawnRate
-      && !guildConfig.seriousChannelIds.includes(message.channel.id)
-    ) {
+    if (Math.random() < guildConfig.pokemonSpawnRate && !guildConfig.seriousChannelIds.includes(message.channel.id)) {
       log('Summoning a pokemon...');
       const handler = await this.getHandler();
       await handler.summonPokemon(message, 'normal', guildConfig);
@@ -295,9 +304,7 @@ All wrongs reserved.
           await message.reply(content);
         },
         // eslint-disable-next-line no-unused-vars
-        followUp: async (_content: any) => {
-
-        },
+        followUp: async (_content: any) => {},
       };
       arlecchino.run(interaction);
     }
@@ -307,68 +314,85 @@ All wrongs reserved.
     // Check if the message mentions the bot and references another message
     if (message.mentions.has(this.user!.id) && message.reference && message.content.includes(this.user!.id)) {
       const referencedMessageId = message.reference.messageId;
-      message.channel.messages.fetch(referencedMessageId).then(async (referencedMessage: any) => {
-        const sentMessage = await message.reply({
-          content: `<a:quoteLoading:1290494754202583110> Generating... *${QUOTE_FLAG_HELP}*`,
-        });
+      message.channel.messages
+        .fetch(referencedMessageId)
+        .then(async (referencedMessage: any) => {
+          const sentMessage = await message.reply({
+            content: `<a:quoteLoading:1290494754202583110> Generating... *${QUOTE_FLAG_HELP}*`,
+          });
 
-        // ── Parse parameters from message content ──────────────────────────
-        // Compact space-separated flags, e.g. `@bot w v caveat #ff00aa bw`
-        // (the legacy `bg:w font:3 fmt:v` spelling still parses). Layered over
-        // the invoker's saved `/quote settings`, which `-o` opts out of.
-        const parsedFlags = parseQuoteFlags(message.content.replace(/<@!?\d+>/g, ''));
-        const savedFlags = parsedFlags.override
-          ? null
-          : await this.db.quotePreference.getPreferences(message.author.id);
-        const {
-          background, textColor, profileColor, avatarSource, fontStyle, format: quoteFormat,
-        } = resolveQuoteFlags(parsedFlags, savedFlags);
+          // ── Parse parameters from message content ──────────────────────────
+          // Compact space-separated flags, e.g. `@bot w v caveat #ff00aa bw`
+          // (the legacy `bg:w font:3 fmt:v` spelling still parses). Layered over
+          // the invoker's saved `/quote settings`, which `-o` opts out of.
+          const parsedFlags = parseQuoteFlags(message.content.replace(/<@!?\d+>/g, ''));
+          const savedFlags = parsedFlags.override
+            ? null
+            : await this.db.quotePreference.getPreferences(message.author.id);
+          const {
+            background,
+            textColor,
+            profileColor,
+            avatarSource,
+            fontStyle,
+            format: quoteFormat,
+          } = resolveQuoteFlags(parsedFlags, savedFlags);
 
-        const person = referencedMessage.author;
-        let nickname: string;
-        if (referencedMessage.webhookId) {
-          nickname = referencedMessage.author.username;
-        } else {
-          let guildMember = null;
-          try {
-            guildMember = await message.guild.members.fetch(referencedMessage.author.id);
-          } catch {
-            guildMember = null;
+          const person = referencedMessage.author;
+          let nickname: string;
+          if (referencedMessage.webhookId) {
+            nickname = referencedMessage.author.username;
+          } else {
+            let guildMember = null;
+            try {
+              guildMember = await message.guild.members.fetch(referencedMessage.author.id);
+            } catch {
+              guildMember = null;
+            }
+            nickname = guildMember?.nickname || person.username;
           }
-          nickname = guildMember?.nickname || person.username;
-        }
-        const originalMessage = referencedMessage.content;
+          const originalMessage = referencedMessage.content;
 
-        log(`original message: ${originalMessage}`);
-        log(`quote params: ${JSON.stringify({
-          background, avatarSource, profileColor, fontStyle, textColor, quoteFormat,
-        })}`);
+          log(`original message: ${originalMessage}`);
+          log(
+            `quote params: ${JSON.stringify({
+              background,
+              avatarSource,
+              profileColor,
+              fontStyle,
+              textColor,
+              quoteFormat,
+            })}`,
+          );
 
-        const result = await (quoteDefault as any)(
-          message.guild,
-          person,
-          nickname,
-          originalMessage,
-          background,
-          textColor,
-          profileColor,
-          avatarSource,
-          fontStyle,
-          quoteFormat,
-        );
+          const result = await (quoteDefault as any)(
+            message.guild,
+            person,
+            nickname,
+            originalMessage,
+            background,
+            textColor,
+            profileColor,
+            avatarSource,
+            fontStyle,
+            quoteFormat,
+          );
 
-        await sentMessage.edit({ content: null, files: [result] });
-      }).catch(console.error);
+          await sentMessage.edit({ content: null, files: [result] });
+        })
+        .catch(console.error);
       return;
     }
 
-    const matchedEntries = this.keywords.filter((entry: any) => entry.triggers.some((trigger: string) => {
-      if (trigger.startsWith('/') && trigger.endsWith('/g')) {
-        const regex = new RegExp(trigger.slice(1, -2), 'g');
-        return regex.test(msg);
-      }
-      return msg.includes(trigger);
-    }));
+    const matchedEntries = this.keywords.filter((entry: any) =>
+      entry.triggers.some((trigger: string) => {
+        if (trigger.startsWith('/') && trigger.endsWith('/g')) {
+          const regex = new RegExp(trigger.slice(1, -2), 'g');
+          return regex.test(msg);
+        }
+        return msg.includes(trigger);
+      }),
+    );
 
     if (matchedEntries.length > 0 && guildConfig.messageReactsEnabled) {
       const promises = matchedEntries.map(async (matchedEntry: any) => {
@@ -426,16 +450,22 @@ All wrongs reserved.
 
   processEdit(oldMessage: any, newMessage: any): void {
     if (!oldMessage.guild) {
-      log(`> Message edited by ${oldMessage.author.username} (${oldMessage.author.id}) in DM: ${oldMessage.content} -> ${newMessage.content}`);
+      log(
+        `> Message edited by ${oldMessage.author.username} (${oldMessage.author.id}) in DM: ${oldMessage.content} -> ${newMessage.content}`,
+      );
       return;
     }
 
     if (oldMessage.author.bot) {
-      log(`Bot message edited by ${oldMessage.author.username} (${oldMessage.author.id}) in ${oldMessage.channel.name} (${oldMessage.channel.id}) in ${oldMessage.guild.name} (${oldMessage.guild.id}): ${oldMessage.content} -> ${newMessage.content}`);
+      log(
+        `Bot message edited by ${oldMessage.author.username} (${oldMessage.author.id}) in ${oldMessage.channel.name} (${oldMessage.channel.id}) in ${oldMessage.guild.name} (${oldMessage.guild.id}): ${oldMessage.content} -> ${newMessage.content}`,
+      );
       return;
     }
 
-    log(`> Message edited by ${oldMessage.author.username} (${oldMessage.author.id}) in ${oldMessage.channel.name} (${oldMessage.channel.id}) in ${oldMessage.guild.name} (${oldMessage.guild.id}): ${oldMessage.content} -> ${newMessage.content}`);
+    log(
+      `> Message edited by ${oldMessage.author.username} (${oldMessage.author.id}) in ${oldMessage.channel.name} (${oldMessage.channel.id}) in ${oldMessage.guild.name} (${oldMessage.guild.id}): ${oldMessage.content} -> ${newMessage.content}`,
+    );
     this.editedMessages.unshift({ old: oldMessage, new: newMessage });
     if (this.editedMessages.length > MAX_MESSAGE_HISTORY) this.editedMessages.length = MAX_MESSAGE_HISTORY;
   }
@@ -468,55 +498,56 @@ All wrongs reserved.
     log(`Registered ${globalCommands.length} global command(s) (keeping /server).`);
 
     // Loop over each guild ID
-    await Promise.all(guildIds.map(async (guildId: string) => {
-      try {
-        // Retrieve blacklisted commands for the guild
-        const blacklistedCommandsData = await this.db.commandConfig.getBlacklistedCommands(guildId);
-        log(`Blacklisted commands for guild ${guildId}: ${blacklistedCommandsData}`);
+    await Promise.all(
+      guildIds.map(async (guildId: string) => {
+        try {
+          // Retrieve blacklisted commands for the guild
+          const blacklistedCommandsData = await this.db.commandConfig.getBlacklistedCommands(guildId);
+          log(`Blacklisted commands for guild ${guildId}: ${blacklistedCommandsData}`);
 
-        // Extract just the command names from the data
-        const blacklistedCommands = blacklistedCommandsData.map((item: any) => item.commandName);
+          // Extract just the command names from the data
+          const blacklistedCommands = blacklistedCommandsData.map((item: any) => item.commandName);
 
-        // Create a copy of the commands array
-        const guildCommandValues = Array.from(this.commands.values());
-        // eslint-disable-next-line max-len
-        const guildValidCommands = guildCommandValues.filter((command: any) => command !== null && command.isSubcommandOf === null);
-        const commandsArray = guildValidCommands.map((command: any) => command.toJSON());
-
-        // If there are no blacklisted commands, register all commands
-        if (blacklistedCommands.length === 0) {
-          log(`No blacklisted commands for guild ${guildId}. Registering all commands.`);
-          await rest.put(
-            Routes.applicationGuildCommands(clientId!, guildId),
-            { body: commandsArray },
+          // Create a copy of the commands array
+          const guildCommandValues = Array.from(this.commands.values());
+          // eslint-disable-next-line max-len
+          const guildValidCommands = guildCommandValues.filter(
+            (command: any) => command !== null && command.isSubcommandOf === null,
           );
+          const commandsArray = guildValidCommands.map((command: any) => command.toJSON());
 
-          log(`Successfully registered ${commandsArray.length} commands for guild ${guildId}.`);
-        } else {
-          // Remove blacklisted commands from the array
-          const filteredCommandsArray = commandsArray.filter((command: any) => {
-            if (blacklistedCommands.includes(command.name)) {
-              log(`Excluding blacklisted command "${command.name}" for guild: ${guildId}`);
-              return false; // Exclude the command if blacklisted
-            } if (!this.commands.has(command.name)) {
-              console.warn(`Warning: Command "${command.name}" not found in the registered commands for guild: ${guildId}. It may have been misspelled.`);
-            }
-            return true; // Include non-blacklisted commands
-          });
+          // If there are no blacklisted commands, register all commands
+          if (blacklistedCommands.length === 0) {
+            log(`No blacklisted commands for guild ${guildId}. Registering all commands.`);
+            await rest.put(Routes.applicationGuildCommands(clientId!, guildId), { body: commandsArray });
 
-          // Register the filtered commands for this guild
-          log(`Registering commands for guild: ${guildId}`);
-          await rest.put(
-            Routes.applicationGuildCommands(clientId!, guildId),
-            { body: filteredCommandsArray },
-          );
+            log(`Successfully registered ${commandsArray.length} commands for guild ${guildId}.`);
+          } else {
+            // Remove blacklisted commands from the array
+            const filteredCommandsArray = commandsArray.filter((command: any) => {
+              if (blacklistedCommands.includes(command.name)) {
+                log(`Excluding blacklisted command "${command.name}" for guild: ${guildId}`);
+                return false; // Exclude the command if blacklisted
+              }
+              if (!this.commands.has(command.name)) {
+                console.warn(
+                  `Warning: Command "${command.name}" not found in the registered commands for guild: ${guildId}. It may have been misspelled.`,
+                );
+              }
+              return true; // Include non-blacklisted commands
+            });
 
-          log(`Successfully registered ${filteredCommandsArray.length} commands for guild ${guildId}.`);
+            // Register the filtered commands for this guild
+            log(`Registering commands for guild: ${guildId}`);
+            await rest.put(Routes.applicationGuildCommands(clientId!, guildId), { body: filteredCommandsArray });
+
+            log(`Successfully registered ${filteredCommandsArray.length} commands for guild ${guildId}.`);
+          }
+        } catch (error) {
+          logError(`Error registering commands for guild ${guildId}:`, error);
         }
-      } catch (error) {
-        logError(`Error registering commands for guild ${guildId}:`, error);
-      }
-    }));
+      }),
+    );
 
     log('All commands registered successfully.');
     log('Successfully finished startup.');
@@ -527,10 +558,12 @@ All wrongs reserved.
     if (!this.games || this.games.length === 0) return;
     const randomGame = this.games[Math.floor(Math.random() * this.games.length)];
     this.user!.setPresence({
-      activities: [{
-        name: randomGame,
-        type: 0, // 0 is for playing, 1 is for streaming, 2 is for listening, etc.
-      }],
+      activities: [
+        {
+          name: randomGame,
+          type: 0, // 0 is for playing, 1 is for streaming, 2 is for listening, etc.
+        },
+      ],
       status: 'online', // Modify this if you want different statuses like 'idle', 'dnd', etc.
     });
 
@@ -566,7 +599,7 @@ All wrongs reserved.
   }
 
   async getHandler(): Promise<any> {
-    const currentSeason = await this.db.globalConfig.getGlobalConfig('season') || 'normal';
+    const currentSeason = (await this.db.globalConfig.getGlobalConfig('season')) || 'normal';
     const seasons = (seasonConfig as any).seasons;
     const resolvedSeason = seasons[currentSeason] ? currentSeason : 'normal';
     const HandlerClass = handlers[seasons[resolvedSeason].handler];

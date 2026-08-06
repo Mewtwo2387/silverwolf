@@ -21,30 +21,35 @@ Bun loads `.env` automatically. Allowed servers are configured in the database, 
 ## Run
 
 For dev (hot reload via `bun --watch`):
+
 ```bash
 bun run dev
 ```
 
 For prod:
+
 ```bash
 bun run start
 ```
 
-
 ## Lint
 
 To list all issues:
+
 ```bash
 bun run lint
 ```
 
 To fix all fixable issues:
+
 ```bash
 bun run lint:fix
 ```
+
 This only fixes stuff like indentations and line breaks, so good luck with the rest.
 
 To list issues by rule:
+
 ```bash
 ./eslint-by-rule.sh <rule-name> [directory-or-file]
 ```
@@ -61,7 +66,24 @@ If you get a `required file not found` error on Linux, try running:
 ```bash
 dos2unix eslint-by-rule.sh
 ```
+
 Yea this repo is CRLF, uh.
+
+## Format
+
+Check formatting with Prettier:
+
+```bash
+bun run format:check
+```
+
+Write formatting fixes:
+
+```bash
+bun run format
+```
+
+The repo is not fully Prettier-formatted yet — run `format` when you want to adopt it for touched files or the whole tree.
 
 ## Deploy
 

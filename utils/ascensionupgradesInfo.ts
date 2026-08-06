@@ -33,14 +33,15 @@ function getAscensionUpgradeInfo(
     info += thisInfo;
   }
 
-  if (infoLevel === INFO_LEVEL.NEXT_LEVEL
-    || infoLevel === INFO_LEVEL.SHOP_INFO
-    || infoLevel === INFO_LEVEL.COST_TOTAL) {
+  if (
+    infoLevel === INFO_LEVEL.NEXT_LEVEL ||
+    infoLevel === INFO_LEVEL.SHOP_INFO ||
+    infoLevel === INFO_LEVEL.COST_TOTAL
+  ) {
     info += nextInfo;
   }
 
-  if (infoLevel === INFO_LEVEL.NEXT_LEVEL
-    || infoLevel === INFO_LEVEL.SHOP_INFO) {
+  if (infoLevel === INFO_LEVEL.NEXT_LEVEL || infoLevel === INFO_LEVEL.SHOP_INFO) {
     info += `**Cost:** ${format(cost)} heavenly nuggies\n`;
   }
 
@@ -68,7 +69,7 @@ function getNuggieFlatMultiplierInfo(level: number, infoLevel: InfoLevel, amount
     `**Level:** ${level}
     **Multiplier:** ${format(nuggieFlatMultiplier, true)}x
     `,
-    `**Level:** ${level} -> ${(level + amount)}
+    `**Level:** ${level} -> ${level + amount}
     **Multiplier:** ${format(nuggieFlatMultiplier, true)}x -> ${format(nuggieFlatMultiplierNext, true)}x
     `,
     1,
@@ -88,7 +89,7 @@ function getNuggieStreakMultiplierInfo(level: number, infoLevel: InfoLevel, amou
     `**Level:** ${level}
     **Multiplier:** ${format(nuggieStreakMultiplier * 100, true)}%/day
     `,
-    `**Level:** ${level} -> ${(level + amount)}
+    `**Level:** ${level} -> ${level + amount}
     **Multiplier:** ${format(nuggieStreakMultiplier * 100, true)}%/day -> ${format(nuggieStreakMultiplierNext * 100, true)}%/day
     `,
     2,
@@ -108,7 +109,7 @@ function getNuggieCreditsMultiplierInfo(level: number, infoLevel: InfoLevel, amo
     `**Level:** ${level}
     **Multiplier:** +${format(nuggieCreditsMultiplier * 100)}% * log2(credits)
     `,
-    `**Level:** ${level} -> ${(level + amount)}
+    `**Level:** ${level} -> ${level + amount}
     **Multiplier:** +${format(nuggieCreditsMultiplier * 100)}% * log2(credits) -> +${format(nuggieCreditsMultiplierNext * 100)}% * log2(credits)
     `,
     3,
@@ -128,7 +129,7 @@ function getNuggiePokeMultiplierInfo(level: number, infoLevel: InfoLevel, amount
     `**Level:** ${level}
     **Multiplier:** +${format(nuggiePokeMultiplier * 100)}%/pokemon
     `,
-    `**Level:** ${level} -> ${(level + amount)}
+    `**Level:** ${level} -> ${level + amount}
     **Multiplier:** +${format(nuggiePokeMultiplier * 100)}%/pokemon -> +${format(nuggiePokeMultiplierNext * 100)}%/pokemon
     `,
     4,
@@ -148,7 +149,7 @@ function getNuggieNuggieMultiplierInfo(level: number, infoLevel: InfoLevel, amou
     `**Level:** ${level}
     **Multiplier:** +${format(nuggieNuggieMultiplier * 100)}% * log2(nuggies)
     `,
-    `**Level:** ${level} -> ${(level + amount)}
+    `**Level:** ${level} -> ${level + amount}
     **Multiplier:** +${format(nuggieNuggieMultiplier * 100)}% * log2(nuggies) -> +${format(nuggieNuggieMultiplierNext * 100)}% * log2(nuggies)
     `,
     5,

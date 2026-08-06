@@ -4,7 +4,10 @@ import { log, logError } from '../utils/log';
 
 class BirthdayTestReminder extends DevCommand {
   constructor(client: any) {
-    super(client, 'testreminder', 'Immediately fires all your pending birthday reminders as DMs', [], { isSubcommandOf: 'birthday', blame: 'xei' });
+    super(client, 'testreminder', 'Immediately fires all your pending birthday reminders as DMs', [], {
+      isSubcommandOf: 'birthday',
+      blame: 'xei',
+    });
   }
 
   async run(interaction: any): Promise<void> {
@@ -15,7 +18,9 @@ class BirthdayTestReminder extends DevCommand {
     const mine = pending.filter((r: any) => r.notifierId === notifierId);
 
     if (mine.length === 0) {
-      await interaction.editReply('No pending reminders found for your account. Set one with `/birthday notify` first.');
+      await interaction.editReply(
+        'No pending reminders found for your account. Set one with `/birthday notify` first.',
+      );
       return;
     }
 
@@ -28,10 +33,10 @@ class BirthdayTestReminder extends DevCommand {
       const reminderEmbed = new EmbedBuilder()
         .setTitle('🎂 Birthday Reminder! (TEST)')
         .setDescription(
-          `**${trackedName}**'s birthday is in **${entry.daysBefore} day${entry.daysBefore === 1 ? '' : 's'}**!\n`
-          + 'Be sure to ready a gift or a wish! 🎁',
+          `**${trackedName}**'s birthday is in **${entry.daysBefore} day${entry.daysBefore === 1 ? '' : 's'}**!\n` +
+            'Be sure to ready a gift or a wish! 🎁',
         )
-        .setColor(0xFFAA00);
+        .setColor(0xffaa00);
 
       try {
         await interaction.user.send({ embeds: [reminderEmbed] });

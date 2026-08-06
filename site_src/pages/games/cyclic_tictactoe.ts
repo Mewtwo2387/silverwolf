@@ -1,7 +1,11 @@
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 
-export function CyclicTicTacToePage(opts: { nonce: string; lv999?: boolean; user?: import('../../components/navbar').NavUser | null }) {
+export function CyclicTicTacToePage(opts: {
+  nonce: string;
+  lv999?: boolean;
+  user?: import('../../components/navbar').NavUser | null;
+}) {
   const { nonce, lv999, user } = opts;
 
   const extras = raw(`
@@ -1099,9 +1103,12 @@ export function CyclicTicTacToePage(opts: { nonce: string; lv999?: boolean; user
   const body = html`
     <h1 class="text-center">Cyclic Tic-Tac-Toe</h1>
     <p class="text-center text-fog-300">
-      Win while your old pieces expire.
-      &nbsp;·&nbsp;
-      <a href="/games/cyclic-tictactoe/multiplayer" style="color: var(--accent-light); text-decoration: none; border-bottom: 1px dashed currentColor;">play a friend →</a>
+      Win while your old pieces expire. &nbsp;·&nbsp;
+      <a
+        href="/games/cyclic-tictactoe/multiplayer"
+        style="color: var(--accent-light); text-decoration: none; border-bottom: 1px dashed currentColor;"
+        >play a friend →</a
+      >
     </p>
     <div class="cyc-wrap">
       <div class="cyc-panel">
@@ -1158,9 +1165,11 @@ export function CyclicTicTacToePage(opts: { nonce: string; lv999?: boolean; user
       </div>
 
       <div class="cyc-rule">
-        Rule: you may keep <span id="cyc-limit-rule" class="lim">5</span> marks (⌈1.5n⌉).
-        Placing the <span id="cyc-limit-next" class="nxt">6th</span> expires your oldest mark.
-        <span id="cyc-skills-rule" style="display:none;"><br/>Skills are on — spend ⚡ (it fills as you play) on the panel; some have cooldowns.</span>
+        Rule: you may keep <span id="cyc-limit-rule" class="lim">5</span> marks (⌈1.5n⌉). Placing the
+        <span id="cyc-limit-next" class="nxt">6th</span> expires your oldest mark.
+        <span id="cyc-skills-rule" style="display:none;"
+          ><br />Skills are on — spend ⚡ (it fills as you play) on the panel; some have cooldowns.</span
+        >
       </div>
     </div>
     ${extras}

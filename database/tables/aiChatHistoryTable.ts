@@ -19,9 +19,7 @@ const aiChatHistoryTable: TableDefinition = {
   ],
   primaryKey: ['id'],
   specialConstraints: [],
-  constraints: [
-    'FOREIGN KEY (session_id) REFERENCES AiChatSession(session_id)',
-  ],
+  constraints: ['FOREIGN KEY (session_id) REFERENCES AiChatSession(session_id)'],
 };
 
 export default aiChatHistoryTable;

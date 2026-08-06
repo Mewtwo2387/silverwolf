@@ -12,73 +12,79 @@ import quote, {
 
 class QuoteFake extends Command {
   constructor(client: any) {
-    super(client, 'fake', 'fake make it a quote', [
-      {
-        name: 'person',
-        description: 'person to quote',
-        type: 6,
-        required: true,
-      },
-      {
-        name: 'message',
-        description: 'message to put in the quote',
-        type: 3,
-        required: true,
-      },
-      {
-        name: 'nickname',
-        description: 'override the display name shown below the quote',
-        type: 3,
-        required: false,
-      },
-      {
-        name: 'format',
-        description: 'image layout (default: landscape)',
-        type: 3,
-        required: false,
-        choices: fakeQuoteChoices(FAKEQUOTE_FORMATS),
-      },
-      {
-        name: 'background',
-        description: 'background colour (default: black)',
-        type: 3,
-        required: false,
-        choices: fakeQuoteChoices(FAKEQUOTE_BACKGROUNDS),
-      },
-      {
-        name: 'font_style',
-        description: 'font style for the quote text (default: sans-serif)',
-        type: 3,
-        required: false,
-        choices: fakeQuoteChoices(FAKEQUOTE_FONTS),
-      },
-      {
-        name: 'text_color',
-        description: 'hex colour for quote text, e.g. #FF00AA (default: white on black, black on white)',
-        type: 3,
-        required: false,
-      },
-      {
-        name: 'profile_color',
-        description: 'profile picture colour filter',
-        type: 3,
-        required: false,
-        choices: fakeQuoteChoices(FAKEQUOTE_PROFILE_COLORS),
-      },
-      {
-        name: 'avatar_source',
-        description: 'choose between the server avatar or global avatar',
-        type: 3,
-        required: false,
-        choices: fakeQuoteChoices(FAKEQUOTE_AVATAR_SOURCES),
-      },
-      {
-        name: 'override',
-        description: 'ignore your saved /quote settings for this one quote (same as -o when mention-quoting)',
-        type: 5,
-        required: false,
-      },
-    ], { isSubcommandOf: 'quote', blame: 'both' });
+    super(
+      client,
+      'fake',
+      'fake make it a quote',
+      [
+        {
+          name: 'person',
+          description: 'person to quote',
+          type: 6,
+          required: true,
+        },
+        {
+          name: 'message',
+          description: 'message to put in the quote',
+          type: 3,
+          required: true,
+        },
+        {
+          name: 'nickname',
+          description: 'override the display name shown below the quote',
+          type: 3,
+          required: false,
+        },
+        {
+          name: 'format',
+          description: 'image layout (default: landscape)',
+          type: 3,
+          required: false,
+          choices: fakeQuoteChoices(FAKEQUOTE_FORMATS),
+        },
+        {
+          name: 'background',
+          description: 'background colour (default: black)',
+          type: 3,
+          required: false,
+          choices: fakeQuoteChoices(FAKEQUOTE_BACKGROUNDS),
+        },
+        {
+          name: 'font_style',
+          description: 'font style for the quote text (default: sans-serif)',
+          type: 3,
+          required: false,
+          choices: fakeQuoteChoices(FAKEQUOTE_FONTS),
+        },
+        {
+          name: 'text_color',
+          description: 'hex colour for quote text, e.g. #FF00AA (default: white on black, black on white)',
+          type: 3,
+          required: false,
+        },
+        {
+          name: 'profile_color',
+          description: 'profile picture colour filter',
+          type: 3,
+          required: false,
+          choices: fakeQuoteChoices(FAKEQUOTE_PROFILE_COLORS),
+        },
+        {
+          name: 'avatar_source',
+          description: 'choose between the server avatar or global avatar',
+          type: 3,
+          required: false,
+          choices: fakeQuoteChoices(FAKEQUOTE_AVATAR_SOURCES),
+        },
+        {
+          name: 'override',
+          description: 'ignore your saved /quote settings for this one quote (same as -o when mention-quoting)',
+          type: 5,
+          required: false,
+        },
+      ],
+      { isSubcommandOf: 'quote', blame: 'both' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -94,9 +100,8 @@ class QuoteFake extends Command {
       // Explicit option wins; then the saved default; then null, which lets
       // quote() fall back to QUOTE_FLAG_DEFAULTS — the same baseline the
       // mention flags, /quote settings and /quote help all report.
-      const pick = (option: string, field: QuotePrefField): string | null => (
-        interaction.options.getString(option) ?? saved[field] ?? null
-      );
+      const pick = (option: string, field: QuotePrefField): string | null =>
+        interaction.options.getString(option) ?? saved[field] ?? null;
 
       const result = await quote(
         interaction.guild,

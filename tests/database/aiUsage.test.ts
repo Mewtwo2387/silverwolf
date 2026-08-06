@@ -1,6 +1,4 @@
-import {
-  describe, test, expect, beforeAll, afterAll, beforeEach,
-} from 'bun:test';
+import { describe, test, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
 import Database from '../../database/Database';
 import type AiUsageModel from '../../database/models/AiUsageModel';
 import { DAILY_LIMIT, WEEKLY_LIMIT } from '../../utils/ai';

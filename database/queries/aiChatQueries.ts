@@ -4,7 +4,8 @@ const aiChatQueries = {
   // Web-created sessions: explicit source='web' AND active=0 so they never
   // contend with the bot's per-persona active-session unique index.
   START_WEB_SESSION: "INSERT INTO AiChatSession (user_id, persona_name, active, source) VALUES (?, ?, 0, 'web')",
-  GET_ACTIVE_SESSION: 'SELECT * FROM AiChatSession WHERE user_id = ? AND persona_name = ? AND active = 1 ORDER BY session_id DESC LIMIT 1',
+  GET_ACTIVE_SESSION:
+    'SELECT * FROM AiChatSession WHERE user_id = ? AND persona_name = ? AND active = 1 ORDER BY session_id DESC LIMIT 1',
   GET_SESSION_BY_ID: 'SELECT * FROM AiChatSession WHERE session_id = ?',
   GET_ALL_USER_SESSIONS: `
     SELECT

@@ -11,10 +11,9 @@ class Donate extends Command {
   async run(interaction: any): Promise<void> {
     if (interaction.guild.id === BASEMENT_ID) {
       await interaction.editReply({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#00AA00')
-          .setTitle('«« ━━ ✦・Donation Links and Rewards・✦ ━━ »»')
-          .setDescription(`Donate for a series of rewards! (real)
+        embeds: [
+          new Discord.EmbedBuilder().setColor('#00AA00').setTitle('«« ━━ ✦・Donation Links and Rewards・✦ ━━ »»')
+            .setDescription(`Donate for a series of rewards! (real)
 
 Silverwolf funds:
 https://www.gofundme.com/f/melissa-fahns-family-needs-your-support
@@ -60,10 +59,9 @@ Send a screenshot of your donation to get your rewards!
       });
     } else {
       await interaction.editReply({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#00AA00')
-          .setTitle('«« ━━ ✦・Donation Links and Rewards・✦ ━━ »»')
-          .setDescription(`Donate for a series of rewards! (real)
+        embeds: [
+          new Discord.EmbedBuilder().setColor('#00AA00').setTitle('«« ━━ ✦・Donation Links and Rewards・✦ ━━ »»')
+            .setDescription(`Donate for a series of rewards! (real)
 
 Silverwolf funds:
 https://www.gofundme.com/f/melissa-fahns-family-needs-your-support

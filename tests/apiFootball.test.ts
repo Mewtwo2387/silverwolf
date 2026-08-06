@@ -44,19 +44,22 @@ describe('apiFootball', () => {
         halftime: { home: 1, away: 0 },
         fulltime: { home: 2, away: 0 },
       },
-      events: [{
-        time: { elapsed: 9, extra: null },
-        team: { id: 16, name: 'Mexico' },
-        player: { id: 1, name: 'J. Quinones' },
-        type: 'Goal',
-        detail: 'Normal Goal',
-      }, {
-        time: { elapsed: 67, extra: null },
-        team: { id: 16, name: 'Mexico' },
-        player: { id: 2, name: 'R. Jiménez' },
-        type: 'Goal',
-        detail: 'Normal Goal',
-      }],
+      events: [
+        {
+          time: { elapsed: 9, extra: null },
+          team: { id: 16, name: 'Mexico' },
+          player: { id: 1, name: 'J. Quinones' },
+          type: 'Goal',
+          detail: 'Normal Goal',
+        },
+        {
+          time: { elapsed: 67, extra: null },
+          team: { id: 16, name: 'Mexico' },
+          player: { id: 2, name: 'R. Jiménez' },
+          type: 'Goal',
+          detail: 'Normal Goal',
+        },
+      ],
     });
 
     expect(mapped.status).toBe('FINISHED');
@@ -80,13 +83,15 @@ describe('apiFootball', () => {
         halftime: { home: 0, away: 0 },
         fulltime: { home: 1, away: 0 },
       },
-      events: [{
-        time: { elapsed: 45, extra: 2 },
-        team: { id: 1, name: 'Argentina' },
-        player: { id: 10, name: 'L. Messi' },
-        type: 'Goal',
-        detail: 'Penalty',
-      }],
+      events: [
+        {
+          time: { elapsed: 45, extra: 2 },
+          team: { id: 1, name: 'Argentina' },
+          player: { id: 10, name: 'L. Messi' },
+          type: 'Goal',
+          detail: 'Penalty',
+        },
+      ],
     });
 
     expect(mapped.goals1?.[0].penalty).toBe(true);
@@ -106,13 +111,15 @@ describe('apiFootball', () => {
         halftime: { home: 0, away: 0 },
         fulltime: { home: 0, away: 0 },
       },
-      events: [{
-        time: { elapsed: 55, extra: null },
-        team: { id: 1, name: 'Argentina' },
-        player: { id: 10, name: 'L. Messi' },
-        type: 'Goal',
-        detail: 'Missed Penalty',
-      }],
+      events: [
+        {
+          time: { elapsed: 55, extra: null },
+          team: { id: 1, name: 'Argentina' },
+          player: { id: 10, name: 'L. Messi' },
+          type: 'Goal',
+          detail: 'Missed Penalty',
+        },
+      ],
     });
 
     expect(mapped.goals1).toBeUndefined();
@@ -132,25 +139,29 @@ describe('apiFootball', () => {
         halftime: { home: 2, away: 1 },
         fulltime: { home: null, away: null },
       },
-      events: [{
-        time: { elapsed: 29, extra: null },
-        team: { id: 1113, name: 'Bosnia & Herzegovina' },
-        player: { id: 1, name: 'K. Alajbegovic' },
-        type: 'Goal',
-        detail: 'Normal Goal',
-      }, {
-        time: { elapsed: 34, extra: null },
-        team: { id: 1113, name: 'Bosnia & Herzegovina' },
-        player: { id: 2, name: 'S. Al Brake' },
-        type: 'Goal',
-        detail: 'Own Goal',
-      }, {
-        time: { elapsed: 42, extra: null },
-        team: { id: 1569, name: 'Qatar' },
-        player: { id: 3, name: 'H. Al Haydos' },
-        type: 'Goal',
-        detail: 'Normal Goal',
-      }],
+      events: [
+        {
+          time: { elapsed: 29, extra: null },
+          team: { id: 1113, name: 'Bosnia & Herzegovina' },
+          player: { id: 1, name: 'K. Alajbegovic' },
+          type: 'Goal',
+          detail: 'Normal Goal',
+        },
+        {
+          time: { elapsed: 34, extra: null },
+          team: { id: 1113, name: 'Bosnia & Herzegovina' },
+          player: { id: 2, name: 'S. Al Brake' },
+          type: 'Goal',
+          detail: 'Own Goal',
+        },
+        {
+          time: { elapsed: 42, extra: null },
+          team: { id: 1569, name: 'Qatar' },
+          player: { id: 3, name: 'H. Al Haydos' },
+          type: 'Goal',
+          detail: 'Normal Goal',
+        },
+      ],
     });
 
     expect(mapped.goals1).toHaveLength(2);
@@ -172,13 +183,15 @@ describe('apiFootball', () => {
         halftime: { home: 0, away: 0 },
         fulltime: { home: null, away: null },
       },
-      events: [{
-        time: { elapsed: 7, extra: null },
-        team: { id: 2384, name: 'USA' },
-        player: { id: 1, name: 'D. Bobadilla' },
-        type: 'Goal',
-        detail: 'Own Goal',
-      }],
+      events: [
+        {
+          time: { elapsed: 7, extra: null },
+          team: { id: 2384, name: 'USA' },
+          player: { id: 1, name: 'D. Bobadilla' },
+          type: 'Goal',
+          detail: 'Own Goal',
+        },
+      ],
     });
 
     expect(mapped.goals1).toHaveLength(1);
@@ -199,25 +212,29 @@ describe('apiFootball', () => {
         fulltime: { home: 1, away: 1 },
         extratime: { home: 1, away: 0 },
       },
-      events: [{
-        time: { elapsed: 29, extra: null },
-        team: { id: 1, name: 'Argentina' },
-        player: { id: 1, name: 'L. Messi' },
-        type: 'Goal',
-        detail: 'Normal Goal',
-      }, {
-        time: { elapsed: 59, extra: null },
-        team: { id: 2, name: 'Cape Verde' },
-        player: { id: 2, name: 'D. Duarte' },
-        type: 'Goal',
-        detail: 'Normal Goal',
-      }, {
-        time: { elapsed: 92, extra: null },
-        team: { id: 1, name: 'Argentina' },
-        player: { id: 3, name: 'L. Martinez' },
-        type: 'Goal',
-        detail: 'Normal Goal',
-      }],
+      events: [
+        {
+          time: { elapsed: 29, extra: null },
+          team: { id: 1, name: 'Argentina' },
+          player: { id: 1, name: 'L. Messi' },
+          type: 'Goal',
+          detail: 'Normal Goal',
+        },
+        {
+          time: { elapsed: 59, extra: null },
+          team: { id: 2, name: 'Cape Verde' },
+          player: { id: 2, name: 'D. Duarte' },
+          type: 'Goal',
+          detail: 'Normal Goal',
+        },
+        {
+          time: { elapsed: 92, extra: null },
+          team: { id: 1, name: 'Argentina' },
+          player: { id: 3, name: 'L. Martinez' },
+          type: 'Goal',
+          detail: 'Normal Goal',
+        },
+      ],
     });
 
     expect(mapped.status).toBe('ET');
@@ -238,37 +255,43 @@ describe('apiFootball', () => {
         fulltime: { home: 1, away: 1 },
         penalty: { home: 1, away: 1 },
       },
-      events: [{
-        time: { elapsed: 42, extra: null },
-        team: { id: 2, name: 'Paraguay' },
-        player: { id: 1, name: 'Scorer' },
-        type: 'Goal',
-        detail: 'Normal Goal',
-      }, {
-        time: { elapsed: 54, extra: null },
-        team: { id: 1, name: 'Germany' },
-        player: { id: 2, name: 'K. Havertz' },
-        type: 'Goal',
-        detail: 'Normal Goal',
-      }, {
-        time: { elapsed: 54, extra: null },
-        team: { id: 1, name: 'Germany' },
-        player: { id: 3, name: 'K. Havertz' },
-        type: 'Goal',
-        detail: 'Penalty',
-      }, {
-        time: { elapsed: 120, extra: 1 },
-        team: { id: 2, name: 'Paraguay' },
-        player: { id: 4, name: 'Taker' },
-        type: 'Goal',
-        detail: 'Penalty',
-      }, {
-        time: { elapsed: 120, extra: 2 },
-        team: { id: 1, name: 'Germany' },
-        player: { id: 5, name: 'Taker' },
-        type: 'Goal',
-        detail: 'Penalty',
-      }],
+      events: [
+        {
+          time: { elapsed: 42, extra: null },
+          team: { id: 2, name: 'Paraguay' },
+          player: { id: 1, name: 'Scorer' },
+          type: 'Goal',
+          detail: 'Normal Goal',
+        },
+        {
+          time: { elapsed: 54, extra: null },
+          team: { id: 1, name: 'Germany' },
+          player: { id: 2, name: 'K. Havertz' },
+          type: 'Goal',
+          detail: 'Normal Goal',
+        },
+        {
+          time: { elapsed: 54, extra: null },
+          team: { id: 1, name: 'Germany' },
+          player: { id: 3, name: 'K. Havertz' },
+          type: 'Goal',
+          detail: 'Penalty',
+        },
+        {
+          time: { elapsed: 120, extra: 1 },
+          team: { id: 2, name: 'Paraguay' },
+          player: { id: 4, name: 'Taker' },
+          type: 'Goal',
+          detail: 'Penalty',
+        },
+        {
+          time: { elapsed: 120, extra: 2 },
+          team: { id: 1, name: 'Germany' },
+          player: { id: 5, name: 'Taker' },
+          type: 'Goal',
+          detail: 'Penalty',
+        },
+      ],
     });
 
     expect(mapped.status).toBe('FINISHED');

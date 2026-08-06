@@ -7,9 +7,7 @@
 // functions mutate it in place — same ownership pattern as applyMove.
 /* eslint-disable no-param-reassign */
 
-import {
-  checkWin, type Cell, type PlayerSymbol,
-} from './cyclicTicTacToe';
+import { checkWin, type Cell, type PlayerSymbol } from './cyclicTicTacToe';
 
 // Skills are only offered on grids this size or larger. Below it a single skill
 // decides the game instantly, so the lobby refuses to enable them.
@@ -30,19 +28,39 @@ export interface SkillMeta {
 // Tunable balance constants. cost in energy, cooldown in the caster's turns.
 export const SKILLS: Record<SkillId, SkillMeta> = {
   bomb: {
-    name: 'Bomb', cost: 7, cooldown: 12, target: true, desc: 'Fill a 3×3 area with your marks (overrides foes). Ends your turn.',
+    name: 'Bomb',
+    cost: 7,
+    cooldown: 12,
+    target: true,
+    desc: 'Fill a 3×3 area with your marks (overrides foes). Ends your turn.',
   },
   dome: {
-    name: 'Iron Dome', cost: 4, cooldown: 10, target: false, desc: 'Deflect the next enemy skill (75%). Lasts 10 turns.',
+    name: 'Iron Dome',
+    cost: 4,
+    cooldown: 10,
+    target: false,
+    desc: 'Deflect the next enemy skill (75%). Lasts 10 turns.',
   },
   collapse: {
-    name: 'Collapse', cost: 0, cooldown: 0, target: false, desc: 'Clear the 2 most-filled lines. Once per game; foe gains +3⚡.',
+    name: 'Collapse',
+    cost: 0,
+    cooldown: 0,
+    target: false,
+    desc: 'Clear the 2 most-filled lines. Once per game; foe gains +3⚡.',
   },
   dissonance: {
-    name: 'Dissonance', cost: 6, cooldown: 14, target: false, desc: 'Foe misplaces (75%) for their next 5 turns.',
+    name: 'Dissonance',
+    cost: 6,
+    cooldown: 14,
+    target: false,
+    desc: 'Foe misplaces (75%) for their next 5 turns.',
   },
   air: {
-    name: 'Air Support', cost: 8, cooldown: 20, target: false, desc: 'A bonus auto-placed mark each of your next 5 turns.',
+    name: 'Air Support',
+    cost: 8,
+    cooldown: 20,
+    target: false,
+    desc: 'A bonus auto-placed mark each of your next 5 turns.',
   },
 };
 
@@ -61,7 +79,10 @@ export function freshSkillSide(): SkillSide {
   return {
     energy: 0,
     cd: {
-      bomb: 0, dome: 0, dissonance: 0, air: 0,
+      bomb: 0,
+      dome: 0,
+      dissonance: 0,
+      air: 0,
     },
     collapseUsed: false,
     shieldTurns: 0,
@@ -81,8 +102,7 @@ export interface SkillCtx {
 // One entry in the per-room activity feed. `by` is the actor; clients phrase the
 // event relative to themselves (you / opponent).
 export type SkillEvent =
-  | 'bomb' | 'dome' | 'air' | 'collapse' | 'dissonance'
-  | 'dissonance_blocked' | 'bomb_blocked' | 'scramble';
+  'bomb' | 'dome' | 'air' | 'collapse' | 'dissonance' | 'dissonance_blocked' | 'bomb_blocked' | 'scramble';
 export interface SkillLogEntry {
   by: PlayerSymbol;
   event: SkillEvent;
@@ -163,7 +183,12 @@ function evaluatePosition(board: Cell[], size: number, index: number, player: Pl
   let score = 0;
   const r = Math.floor(index / size);
   const c = index % size;
-  const dirs = [{ dr: 0, dc: 1 }, { dr: 1, dc: 0 }, { dr: 1, dc: 1 }, { dr: 1, dc: -1 }];
+  const dirs = [
+    { dr: 0, dc: 1 },
+    { dr: 1, dc: 0 },
+    { dr: 1, dc: 1 },
+    { dr: 1, dc: -1 },
+  ];
   for (const { dr, dc } of dirs) {
     let count = 0;
     for (let step = 1; step < size; step += 1) {
@@ -172,7 +197,10 @@ function evaluatePosition(board: Cell[], size: number, index: number, player: Pl
       if (nr < 0 || nr >= size || nc < 0 || nc >= size) break;
       const v = board[nr * size + nc];
       if (v === player) count += 1;
-      else if (v !== null) { count = -1; break; }
+      else if (v !== null) {
+        count = -1;
+        break;
+      }
     }
     if (count !== -1) {
       for (let step = 1; step < size; step += 1) {
@@ -181,7 +209,10 @@ function evaluatePosition(board: Cell[], size: number, index: number, player: Pl
         if (nr < 0 || nr >= size || nc < 0 || nc >= size) break;
         const v = board[nr * size + nc];
         if (v === player) count += 1;
-        else if (v !== null) { count = -1; break; }
+        else if (v !== null) {
+          count = -1;
+          break;
+        }
       }
     }
     if (count !== -1) score += 10 ** count;
@@ -212,7 +243,10 @@ export function heuristicMove(board: Cell[], size: number, me: PlayerSymbol): nu
     let score = -(Math.abs(r - (size - 1) / 2) + Math.abs(c - (size - 1) / 2));
     score += evaluatePosition(board, size, idx, me) * 1.5;
     score += evaluatePosition(board, size, idx, opp);
-    if (score > bestScore) { bestScore = score; bestIdx = idx; }
+    if (score > bestScore) {
+      bestScore = score;
+      bestIdx = idx;
+    }
   }
   return bestIdx;
 }
@@ -246,10 +280,7 @@ export function maybeDisrupt(
 // Air Support: if active, place one heuristic bonus mark for the caster. Returns
 // the placed index (and any expired mark) so the room can paint/win-check, or
 // null if no bonus was placed.
-export function applyAirBonus(
-  ctx: SkillCtx,
-  player: PlayerSymbol,
-): { placed: number; expired: number | null } | null {
+export function applyAirBonus(ctx: SkillCtx, player: PlayerSymbol): { placed: number; expired: number | null } | null {
   const st = ctx.skills[player];
   if (st.airTurns <= 0) return null;
   st.airTurns -= 1;
@@ -260,7 +291,10 @@ export function applyAirBonus(
   let expired: number | null = null;
   if (ctx.history[player].length > ctx.markLimit) {
     const oldest = ctx.history[player].shift();
-    if (oldest !== undefined) { ctx.board[oldest] = null; expired = oldest; }
+    if (oldest !== undefined) {
+      ctx.board[oldest] = null;
+      expired = oldest;
+    }
   }
   return { placed: bonus, expired };
 }
@@ -303,7 +337,10 @@ function resolveCollapse(ctx: SkillCtx, player: PlayerSymbol) {
   for (const line of lines.slice(0, 2)) {
     for (const idx of line) {
       const owner = ctx.board[idx];
-      if (owner) { removeFromHistory(ctx.history[owner], idx); ctx.board[idx] = null; }
+      if (owner) {
+        removeFromHistory(ctx.history[owner], idx);
+        ctx.board[idx] = null;
+      }
     }
   }
   ctx.skills[player].collapseUsed = true;
@@ -314,26 +351,20 @@ function resolveCollapse(ctx: SkillCtx, player: PlayerSymbol) {
 export type CastOutcome =
   | { ok: false; reason: 'unknown_skill' | 'cannot_cast' | 'bad_target' }
   | {
-    ok: true;
-    consumesTurn: boolean; // true for Bomb
-    events: SkillEvent[]; // activity-feed events attributed to the caster
-  };
+      ok: true;
+      consumesTurn: boolean; // true for Bomb
+      events: SkillEvent[]; // activity-feed events attributed to the caster
+    };
 
 // Spend + resolve a skill for `player`. Mutates ctx. Does NOT advance the turn,
 // run win checks, or persist — the room orchestrates that based on the result.
-export function castSkill(
-  ctx: SkillCtx,
-  player: PlayerSymbol,
-  id: SkillId,
-  targetIndex?: number,
-): CastOutcome {
+export function castSkill(ctx: SkillCtx, player: PlayerSymbol, id: SkillId, targetIndex?: number): CastOutcome {
   if (!(id in SKILLS)) return { ok: false, reason: 'unknown_skill' };
   if (!canCast(ctx, player, id)) return { ok: false, reason: 'cannot_cast' };
   const opp = otherSym(player);
 
   if (id === 'bomb') {
-    if (!Number.isInteger(targetIndex) || (targetIndex as number) < 0
-      || (targetIndex as number) >= ctx.board.length) {
+    if (!Number.isInteger(targetIndex) || (targetIndex as number) < 0 || (targetIndex as number) >= ctx.board.length) {
       return { ok: false, reason: 'bad_target' };
     }
     spendSkill(ctx.skills[player], id);

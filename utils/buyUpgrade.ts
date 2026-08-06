@@ -2,7 +2,7 @@ import { getNextUpgradeCost, getMaxLevel } from './upgrades';
 import { withUserLock, userLocks } from './userLock';
 
 export const UPGRADES = ['multiplierAmount', 'multiplierRarity', 'beki'] as const;
-export type UpgradeKey = typeof UPGRADES[number];
+export type UpgradeKey = (typeof UPGRADES)[number];
 
 export type BuyUpgradeResult =
   | { status: 'invalid_upgrade' }
@@ -11,14 +11,14 @@ export type BuyUpgradeResult =
   | { status: 'too_many'; maxLevel: number; level: number; upgrade: UpgradeKey }
   | { status: 'poor'; cost: number; credits: number; upgrade: UpgradeKey }
   | {
-    status: 'success';
-    upgrade: UpgradeKey;
-    upgradeId: number;
-    level: number;
-    amount: number;
-    cost: number;
-    credits: number;
-  };
+      status: 'success';
+      upgrade: UpgradeKey;
+      upgradeId: number;
+      level: number;
+      amount: number;
+      cost: number;
+      credits: number;
+    };
 
 async function processBuyUpgradeInner(
   client: any,
@@ -40,12 +40,18 @@ async function processBuyUpgradeInner(
 
   if (level >= maxLevel) {
     return {
-      status: 'maxed', maxLevel, level, upgrade,
+      status: 'maxed',
+      maxLevel,
+      level,
+      upgrade,
     };
   }
   if (level + amount > maxLevel) {
     return {
-      status: 'too_many', maxLevel, level, upgrade,
+      status: 'too_many',
+      maxLevel,
+      level,
+      upgrade,
     };
   }
 
@@ -54,7 +60,10 @@ async function processBuyUpgradeInner(
   const credits = await client.db.user.getUserAttr(userId, 'credits');
   if (credits < cost) {
     return {
-      status: 'poor', cost, credits, upgrade,
+      status: 'poor',
+      cost,
+      credits,
+      upgrade,
     };
   }
 
@@ -63,7 +72,13 @@ async function processBuyUpgradeInner(
     [`${upgrade}Level`]: amount,
   });
   return {
-    status: 'success', upgrade, upgradeId, level, amount, cost, credits,
+    status: 'success',
+    upgrade,
+    upgradeId,
+    level,
+    amount,
+    cost,
+    credits,
   };
 }
 

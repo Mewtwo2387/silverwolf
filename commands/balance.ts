@@ -5,14 +5,20 @@ import { log } from '../utils/log';
 
 class Balance extends Command {
   constructor(client: any) {
-    super(client, 'balance', 'check your mystic credits and bitcoin', [
-      {
-        name: 'member',
-        description: 'member to check the balance of (default: you)',
-        type: 6,
-        required: false,
-      },
-    ], { blame: 'ei' });
+    super(
+      client,
+      'balance',
+      'check your mystic credits and bitcoin',
+      [
+        {
+          name: 'member',
+          description: 'member to check the balance of (default: you)',
+          type: 6,
+          required: false,
+        },
+      ],
+      { blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -26,15 +32,22 @@ class Balance extends Command {
     const heavenlyNuggies = await this.client.db.user.getUserAttr(member.id, 'heavenlyNuggies');
 
     const name = member.username ? member.username : member.displayName;
-    log(`${name} have ${format(credits)} mystic credits, ${bitcoin} bitcoin, ${format(dinonuggies)} dinonuggies, and ${format(heavenlyNuggies)} heavenly nuggies`);
+    log(
+      `${name} have ${format(credits)} mystic credits, ${bitcoin} bitcoin, ${format(dinonuggies)} dinonuggies, and ${format(heavenlyNuggies)} heavenly nuggies`,
+    );
     await interaction.editReply({
-      embeds: [new Discord.EmbedBuilder()
-        .setColor('#00AA00')
-        .setTitle(`${isSelf ? 'You' : name} have ${format(credits)} mystic credits, ${bitcoin} bitcoin, ${format(dinonuggies)} dinonuggies, and ${format(heavenlyNuggies)} heavenly nuggies`)
-        .setDescription(`Exact Credits: ${format(credits, false, 1000)}
+      embeds: [
+        new Discord.EmbedBuilder()
+          .setColor('#00AA00')
+          .setTitle(
+            `${isSelf ? 'You' : name} have ${format(credits)} mystic credits, ${bitcoin} bitcoin, ${format(dinonuggies)} dinonuggies, and ${format(heavenlyNuggies)} heavenly nuggies`,
+          )
+          .setDescription(
+            `Exact Credits: ${format(credits, false, 1000)}
 Exact Nuggies: ${format(dinonuggies, false, 1000)}
-Dinonuggies claim streak: ${dinonuggiesStreak}`)
-        .setFooter({ text: 'mommy mystic uwu' }),
+Dinonuggies claim streak: ${dinonuggiesStreak}`,
+          )
+          .setFooter({ text: 'mommy mystic uwu' }),
       ],
     });
   }

@@ -12,7 +12,7 @@ class Joke extends Command {
     try {
       const response = await fetch(jokeUrl);
       if (!response.ok) throw new Error('Failed to fetch joke');
-      const data = await response.json() as { setup: string; punchline: string };
+      const data = (await response.json()) as { setup: string; punchline: string };
 
       await interaction.editReply({ content: data.setup });
 

@@ -21,27 +21,33 @@ const jobs = [
 
 class BabyEnslave extends Command {
   constructor(client: any) {
-    super(client, 'enslave', 'enslave a baby', [
-      {
-        name: 'id',
-        description: 'The id of the baby',
-        type: 4,
-        required: true,
-      },
-      {
-        name: 'job',
-        description: 'The job to force the baby to do',
-        type: 3,
-        required: true,
-        choices: jobs,
-      },
-      {
-        name: 'pinger_target',
-        description: 'The user to ping if the job is pinger',
-        type: 6,
-        required: false,
-      },
-    ], { isSubcommandOf: 'baby', blame: 'ei' });
+    super(
+      client,
+      'enslave',
+      'enslave a baby',
+      [
+        {
+          name: 'id',
+          description: 'The id of the baby',
+          type: 4,
+          required: true,
+        },
+        {
+          name: 'job',
+          description: 'The job to force the baby to do',
+          type: 3,
+          required: true,
+          choices: jobs,
+        },
+        {
+          name: 'pinger_target',
+          description: 'The user to ping if the job is pinger',
+          type: 6,
+          required: false,
+        },
+      ],
+      { isSubcommandOf: 'baby', blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -76,22 +82,14 @@ class BabyEnslave extends Command {
 
     if (baby.status === 'unborn') {
       await interaction.editReply({
-        embeds: [
-          new Discord.EmbedBuilder()
-            .setColor('#FF0000')
-            .setTitle('This baby is not born yet!'),
-        ],
+        embeds: [new Discord.EmbedBuilder().setColor('#FF0000').setTitle('This baby is not born yet!')],
       });
       return;
     }
 
     if (baby.status === 'dead') {
       await interaction.editReply({
-        embeds: [
-          new Discord.EmbedBuilder()
-            .setColor('#FF0000')
-            .setTitle('This baby is dead!'),
-        ],
+        embeds: [new Discord.EmbedBuilder().setColor('#FF0000').setTitle('This baby is dead!')],
       });
       return;
     }
@@ -100,11 +98,7 @@ class BabyEnslave extends Command {
       const pingerTarget = interaction.options.get('pinger_target');
       if (!pingerTarget) {
         await interaction.editReply({
-          embeds: [
-            new Discord.EmbedBuilder()
-              .setColor('#FF0000')
-              .setTitle('No pinger target provided!'),
-          ],
+          embeds: [new Discord.EmbedBuilder().setColor('#FF0000').setTitle('No pinger target provided!')],
         });
         return;
       }

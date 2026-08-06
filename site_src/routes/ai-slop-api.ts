@@ -98,11 +98,9 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
     // a slot.
     const quota = aiSlopRateLimitCheck(auth.discordId);
     if (!quota.ok) {
-      return c.json(
-        { ok: false, error: 'rate_limited' as const, retryAfter: quota.retryAfter },
-        429,
-        { 'retry-after': String(quota.retryAfter) },
-      );
+      return c.json({ ok: false, error: 'rate_limited' as const, retryAfter: quota.retryAfter }, 429, {
+        'retry-after': String(quota.retryAfter),
+      });
     }
 
     const sessionIdRaw = body!.sessionId;
@@ -180,11 +178,7 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
       if (result.toolCalls && result.toolCalls.length > 0) {
         for (const tc of result.toolCalls) {
           // eslint-disable-next-line no-await-in-loop
-          await silverwolf.db.aiChat.addHistory(
-            session.sessionId,
-            'tool',
-            JSON.stringify(tc),
-          );
+          await silverwolf.db.aiChat.addHistory(session.sessionId, 'tool', JSON.stringify(tc));
         }
       }
       const aiRole = persona.provider === 'openrouter' ? 'assistant' : 'model';
@@ -229,17 +223,20 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
         } else if (weeklyUsage >= WEEKLY_LIMIT) {
           reason = 'weekly';
         } else {
-          reason = (dailyUsage / DAILY_LIMIT) >= (weeklyUsage / WEEKLY_LIMIT) ? 'daily' : 'weekly';
+          reason = dailyUsage / DAILY_LIMIT >= weeklyUsage / WEEKLY_LIMIT ? 'daily' : 'weekly';
         }
-        return c.json({
-          ok: false,
-          error: 'rate_limited' as const,
-          reason,
-          reservedCredits: err.reservedCredits,
-          remainingCredits: err.remainingCredits,
-          dailyUsage,
-          weeklyUsage,
-        }, 429);
+        return c.json(
+          {
+            ok: false,
+            error: 'rate_limited' as const,
+            reason,
+            reservedCredits: err.reservedCredits,
+            remainingCredits: err.remainingCredits,
+            dailyUsage,
+            weeklyUsage,
+          },
+          429,
+        );
       }
       logError('[ai-slop] send failed:', err);
       // If this was a brand-new session and the AI call failed without producing

@@ -2,18 +2,13 @@ import type { Hono } from 'hono';
 import type { UpgradeWebSocket } from 'hono/ws';
 import { logError } from '../../utils/log';
 import type { Silverwolf } from '../../classes/silverwolf';
-import {
-  type AppEnv, authedGameRequest, navUser, readGameBody,
-} from '../shared';
+import { type AppEnv, authedGameRequest, navUser, readGameBody } from '../shared';
 import {
   CyclicTicTacToeMultiplayerLandingPage,
   type ActiveRoomBrief,
 } from '../pages/games/cyclic_tictactoe_multiplayer_landing';
 import { CyclicTicTacToeMultiplayerRoomPage } from '../pages/games/cyclic_tictactoe_multiplayer_room';
-import {
-  roomManager,
-  ROOMS_PER_USER_CAP,
-} from '../multiplayer/cyclic_tictactoe_rooms';
+import { roomManager, ROOMS_PER_USER_CAP } from '../multiplayer/cyclic_tictactoe_rooms';
 import { clampBoardSize } from '../multiplayer/cyclicTicTacToe';
 import { createCyclicTttWsEvents } from '../multiplayer/ws';
 
@@ -35,7 +30,11 @@ export function registerCyclicTttMpRoutes(
     if (!user) {
       return c.html(
         CyclicTicTacToeMultiplayerLandingPage({
-          nonce, lv999, user: nav, csrf: null, activeRooms: [],
+          nonce,
+          lv999,
+          user: nav,
+          csrf: null,
+          activeRooms: [],
         }).toString(),
       );
     }
@@ -45,9 +44,7 @@ export function registerCyclicTttMpRoutes(
       const x = r.players.X;
       const o = r.players.O;
       const otherSlot = youAreCreator ? o : x;
-      const opp = (otherSlot && otherSlot.discordId !== user.discordId)
-        ? otherSlot.username
-        : null;
+      const opp = otherSlot && otherSlot.discordId !== user.discordId ? otherSlot.username : null;
       return {
         id: r.id,
         boardSize: r.boardSize,
@@ -59,7 +56,11 @@ export function registerCyclicTttMpRoutes(
     });
     return c.html(
       CyclicTicTacToeMultiplayerLandingPage({
-        nonce, lv999, user: nav, csrf: user.csrfToken, activeRooms: briefs,
+        nonce,
+        lv999,
+        user: nav,
+        csrf: user.csrfToken,
+        activeRooms: briefs,
       }).toString(),
     );
   });
@@ -82,10 +83,13 @@ export function registerCyclicTttMpRoutes(
     );
     if (!result.ok) {
       if (result.reason === 'too_many_rooms') {
-        return c.json({
-          ok: false,
-          error: `You're at the limit of ${ROOMS_PER_USER_CAP} rooms. Recently finished rooms still count for a few minutes — wait for them to clear, or leave one.`,
-        }, 429);
+        return c.json(
+          {
+            ok: false,
+            error: `You're at the limit of ${ROOMS_PER_USER_CAP} rooms. Recently finished rooms still count for a few minutes — wait for them to clear, or leave one.`,
+          },
+          429,
+        );
       }
       // server_full
       return c.json({ ok: false, error: 'Server is at capacity. Try again later.' }, 503);

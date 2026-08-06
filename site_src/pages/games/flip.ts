@@ -2,7 +2,11 @@ import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import { FLIP_HEAD_THRESHOLD, FLIP_TAIL_THRESHOLD } from '../../../utils/flip';
 
-export function FlipPage(opts: { nonce: string; lv999?: boolean; user?: import('../../components/navbar').NavUser | null }) {
+export function FlipPage(opts: {
+  nonce: string;
+  lv999?: boolean;
+  user?: import('../../components/navbar').NavUser | null;
+}) {
   const { nonce, lv999, user } = opts;
 
   const extras = raw(`

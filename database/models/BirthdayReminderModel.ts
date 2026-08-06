@@ -43,7 +43,9 @@ class BirthdayReminderModel {
     const query = birthdayReminderQueries.UPDATE_REMINDED_YEAR;
     const result = await this.db.executeQuery(query, [year, notifierId, trackedUserId]);
     if (!result.changes) {
-      throw new Error(`Failed to mark reminder sent for year ${year}: notifier=${notifierId}, tracked=${trackedUserId}`);
+      throw new Error(
+        `Failed to mark reminder sent for year ${year}: notifier=${notifierId}, tracked=${trackedUserId}`,
+      );
     }
     log(`Marked reminder sent for year ${year}: notifier=${notifierId}, tracked=${trackedUserId}`);
   }

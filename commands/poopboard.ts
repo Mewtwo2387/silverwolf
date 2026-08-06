@@ -31,7 +31,10 @@ class PoopBoard extends (LeaderboardMixin(Command) as any) {
     ];
   }
 
-  async fetchData(period: string = 'all-time', page: number = 0): Promise<{ attrs: any[]; totalCount: number; periodLabel: string }> {
+  async fetchData(
+    period: string = 'all-time',
+    page: number = 0,
+  ): Promise<{ attrs: any[]; totalCount: number; periodLabel: string }> {
     const totalCount = await this.client.db.poop.getLeaderboardCount(period);
     const attrs = await this.client.db.poop.getLeaderboard(period, this.itemsPerPage, page * this.itemsPerPage);
     return { attrs, totalCount, periodLabel: poopPeriodLabel(period) };
@@ -48,19 +51,18 @@ class PoopBoard extends (LeaderboardMixin(Command) as any) {
 
       leaderboard.setTitle(`Poop Leaderboard 💩 — ${label}`);
 
-      const row = new Discord.ActionRowBuilder()
-        .addComponents(
-          new Discord.ButtonBuilder()
-            .setCustomId('prev_page')
-            .setLabel('⬅️ Back')
-            .setStyle(Discord.ButtonStyle.Primary)
-            .setDisabled(true),
-          new Discord.ButtonBuilder()
-            .setCustomId('next_page')
-            .setLabel('Next ➡️')
-            .setStyle(Discord.ButtonStyle.Primary)
-            .setDisabled(currentPage === maxPage),
-        );
+      const row = new Discord.ActionRowBuilder().addComponents(
+        new Discord.ButtonBuilder()
+          .setCustomId('prev_page')
+          .setLabel('⬅️ Back')
+          .setStyle(Discord.ButtonStyle.Primary)
+          .setDisabled(true),
+        new Discord.ButtonBuilder()
+          .setCustomId('next_page')
+          .setLabel('Next ➡️')
+          .setStyle(Discord.ButtonStyle.Primary)
+          .setDisabled(currentPage === maxPage),
+      );
 
       const message = await interaction.editReply({ embeds: [leaderboard], components: [row] });
 
@@ -82,37 +84,35 @@ class PoopBoard extends (LeaderboardMixin(Command) as any) {
         const newLeaderboard = await this.generateLeaderboard(newAttrs, currentPage);
         newLeaderboard.setTitle(`Poop Leaderboard 💩 — ${poopPeriodLabel(period)}`);
 
-        const newRow = new Discord.ActionRowBuilder()
-          .addComponents(
-            new Discord.ButtonBuilder()
-              .setCustomId('prev_page')
-              .setLabel('⬅️ Back')
-              .setStyle(Discord.ButtonStyle.Primary)
-              .setDisabled(currentPage === 0),
-            new Discord.ButtonBuilder()
-              .setCustomId('next_page')
-              .setLabel('Next ➡️')
-              .setStyle(Discord.ButtonStyle.Primary)
-              .setDisabled(currentPage === maxPage),
-          );
+        const newRow = new Discord.ActionRowBuilder().addComponents(
+          new Discord.ButtonBuilder()
+            .setCustomId('prev_page')
+            .setLabel('⬅️ Back')
+            .setStyle(Discord.ButtonStyle.Primary)
+            .setDisabled(currentPage === 0),
+          new Discord.ButtonBuilder()
+            .setCustomId('next_page')
+            .setLabel('Next ➡️')
+            .setStyle(Discord.ButtonStyle.Primary)
+            .setDisabled(currentPage === maxPage),
+        );
 
         await i.update({ embeds: [newLeaderboard], components: [newRow] });
       });
 
       collector.on('end', async () => {
-        const disabledRow = new Discord.ActionRowBuilder()
-          .addComponents(
-            new Discord.ButtonBuilder()
-              .setCustomId('prev_page')
-              .setLabel('⬅️ Back')
-              .setStyle(Discord.ButtonStyle.Primary)
-              .setDisabled(true),
-            new Discord.ButtonBuilder()
-              .setCustomId('next_page')
-              .setLabel('Next ➡️')
-              .setStyle(Discord.ButtonStyle.Primary)
-              .setDisabled(true),
-          );
+        const disabledRow = new Discord.ActionRowBuilder().addComponents(
+          new Discord.ButtonBuilder()
+            .setCustomId('prev_page')
+            .setLabel('⬅️ Back')
+            .setStyle(Discord.ButtonStyle.Primary)
+            .setDisabled(true),
+          new Discord.ButtonBuilder()
+            .setCustomId('next_page')
+            .setLabel('Next ➡️')
+            .setStyle(Discord.ButtonStyle.Primary)
+            .setDisabled(true),
+        );
         await message.edit({ components: [disabledRow] });
       });
     } catch (error) {

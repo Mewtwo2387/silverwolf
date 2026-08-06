@@ -30,14 +30,10 @@ export function buildPreMatchEmbed(match: WorldCupMatch, kickoff: Date): EmbedBu
     .setDescription(
       `${context ? `${context}\n` : ''}Kickoff in **5 minutes** (<t:${Math.floor(kickoff.getTime() / 1000)}:R>).`,
     )
-    .setColor(0x1E90FF);
+    .setColor(0x1e90ff);
 }
 
-export function formatHighlightedScore(
-  home: number,
-  away: number,
-  scoringSide: 'home' | 'away',
-): string {
+export function formatHighlightedScore(home: number, away: number, scoringSide: 'home' | 'away'): string {
   const homeStr = scoringSide === 'home' ? `[${home}]` : `${home}`;
   const awayStr = scoringSide === 'away' ? `[${away}]` : `${away}`;
   return `${homeStr} – ${awayStr}`;
@@ -59,12 +55,7 @@ function formatMatchScoreTitleWithHighlight(
   score: { home: number; away: number },
   prevScore: { home: number; away: number },
 ): string {
-  const scoreLine = formatHighlightedScoreFromDelta(
-    score.home,
-    score.away,
-    prevScore.home,
-    prevScore.away,
-  );
+  const scoreLine = formatHighlightedScoreFromDelta(score.home, score.away, prevScore.home, prevScore.away);
   return `${formatFootballTeam(match.team1)}  ${scoreLine}  ${formatFootballTeam(match.team2, 'after')}`;
 }
 
@@ -84,7 +75,7 @@ export function buildGoalEmbed(match: WorldCupMatch, goal: GoalEvent): EmbedBuil
   return new EmbedBuilder()
     .setTitle(formatGoalTitle(match, goal))
     .setDescription(context ? `${formatGoalScorerLine(goal)}\n${context}` : formatGoalScorerLine(goal))
-    .setColor(0xFFD700);
+    .setColor(0xffd700);
 }
 
 export function buildScoreUpdateEmbed(
@@ -96,7 +87,7 @@ export function buildScoreUpdateEmbed(
   return new EmbedBuilder()
     .setTitle(formatMatchScoreTitleWithHighlight(match, score, prevScore))
     .setDescription(context || 'Live score')
-    .setColor(0xFFD700);
+    .setColor(0xffd700);
 }
 
 function parseGoalMinute(minute: string): number {
@@ -138,13 +129,12 @@ export function getGoalEvents(match: WorldCupMatch): GoalEvent[] {
 }
 
 function formatGoalSummary(match: WorldCupMatch): string {
-  return getGoalEvents(match).map((goal) => formatGoalScorerLine(goal)).join('\n');
+  return getGoalEvents(match)
+    .map((goal) => formatGoalScorerLine(goal))
+    .join('\n');
 }
 
-export function buildFullTimeEmbed(
-  match: WorldCupMatch,
-  score: { home: number; away: number },
-): EmbedBuilder {
+export function buildFullTimeEmbed(match: WorldCupMatch, score: { home: number; away: number }): EmbedBuilder {
   const context = formatMatchContext(match);
   const scorers = formatGoalSummary(match);
   const header = context ? `Full Time · ${context}` : 'Full Time';
@@ -153,7 +143,7 @@ export function buildFullTimeEmbed(
   return new EmbedBuilder()
     .setTitle(formatMatchScoreTitle(match, score))
     .setDescription(description)
-    .setColor(0x228B22);
+    .setColor(0x228b22);
 }
 
 function formatShootoutKickLine(kick: NonNullable<WorldCupMatch['shootoutKicks']>[number]): string {
@@ -161,10 +151,7 @@ function formatShootoutKickLine(kick: NonNullable<WorldCupMatch['shootoutKicks']
   return `${icon} **${kick.player}** · ${formatFootballTeam(kick.team)}`;
 }
 
-export function buildPenaltyShootoutEmbed(
-  match: WorldCupMatch,
-  options: { finished?: boolean } = {},
-): EmbedBuilder {
+export function buildPenaltyShootoutEmbed(match: WorldCupMatch, options: { finished?: boolean } = {}): EmbedBuilder {
   const regulation = getDisplayedScore(match);
   const penalties = getPenaltyShootoutTally(match);
   const context = formatMatchContext(match);
@@ -173,28 +160,21 @@ export function buildPenaltyShootoutEmbed(
   const regulationLine = regulation
     ? `${formatMatchScoreTitle(match, regulation)} · Pens **${penalties.home}–${penalties.away}**`
     : `Pens **${penalties.home}–${penalties.away}**`;
-  const descriptionParts = [
-    context ? `${header} · ${context}` : header,
-    '',
-    regulationLine,
-  ];
+  const descriptionParts = [context ? `${header} · ${context}` : header, '', regulationLine];
   if (kickLines.length > 0) {
     descriptionParts.push('', ...kickLines);
   }
   return new EmbedBuilder()
     .setTitle(`⚽ ${formatMatchTeams(match)}`)
     .setDescription(descriptionParts.join('\n'))
-    .setColor(options.finished ? 0x228B22 : 0xFFD700);
+    .setColor(options.finished ? 0x228b22 : 0xffd700);
 }
 
 export function announcedGoalCount(state: FootballMatchAnnouncementState | null): number {
   return state?.lastAnnouncedGoalCount ?? 0;
 }
 
-export function getNewGoalEvents(
-  match: WorldCupMatch,
-  state: FootballMatchAnnouncementState | null,
-): GoalEvent[] {
+export function getNewGoalEvents(match: WorldCupMatch, state: FootballMatchAnnouncementState | null): GoalEvent[] {
   return getGoalEvents(match).slice(announcedGoalCount(state));
 }
 

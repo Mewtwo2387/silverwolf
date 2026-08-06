@@ -45,18 +45,21 @@ const DRUM_CHANNEL = 9;
 /** Renders are CPU-bound on the shared bot process — refuse pile-ups. */
 const MAX_CONCURRENT_RENDERS = 2;
 
-const GEN_TOOL_DESCRIPTION = 'Render an original ≤30-second piece of music from a JSON composition and attach it to '
-  + 'your reply as an audio file. Use ONLY when the user explicitly asks you to make/compose/generate music, a song, '
-  + 'a jingle, a melody, or a beat. You MUST call get_music_guide first in this same reply — calls without it are '
-  + 'rejected. The audio is attached automatically; never claim you cannot make music and never invent audio links. '
-  + `Users are limited to ${MUSIC_GEN_DAILY_LIMIT} generations per 24 hours.`;
+const GEN_TOOL_DESCRIPTION =
+  'Render an original ≤30-second piece of music from a JSON composition and attach it to ' +
+  'your reply as an audio file. Use ONLY when the user explicitly asks you to make/compose/generate music, a song, ' +
+  'a jingle, a melody, or a beat. You MUST call get_music_guide first in this same reply — calls without it are ' +
+  'rejected. The audio is attached automatically; never claim you cannot make music and never invent audio links. ' +
+  `Users are limited to ${MUSIC_GEN_DAILY_LIMIT} generations per 24 hours.`;
 
-const GUIDE_TOOL_DESCRIPTION = 'Returns the JAYDON music composition guide: the exact JSON format accepted by '
-  + 'generate_music, the full instrument/drum name lists, and composition tips. Call this BEFORE generate_music '
-  + 'whenever the user asks for music.';
+const GUIDE_TOOL_DESCRIPTION =
+  'Returns the JAYDON music composition guide: the exact JSON format accepted by ' +
+  'generate_music, the full instrument/drum name lists, and composition tips. Call this BEFORE generate_music ' +
+  'whenever the user asks for music.';
 
-const COMPOSITION_ARG_DESCRIPTION = 'The composition as a JSON *string* in the exact format documented by '
-  + 'get_music_guide (tempo, tracks, notes with time/pitch/dur/vel in beats).';
+const COMPOSITION_ARG_DESCRIPTION =
+  'The composition as a JSON *string* in the exact format documented by ' +
+  'get_music_guide (tempo, tracks, notes with time/pitch/dur/vel in beats).';
 
 export interface MusicGenContext {
   /** Discord user id of the requester (rate-limit key). */
@@ -71,8 +74,7 @@ export interface MusicGenAttachment {
 }
 
 export type MusicGenResult =
-  | { ok: true; attachment: MusicGenAttachment; resultText: string }
-  | { ok: false; error: string };
+  { ok: true; attachment: MusicGenAttachment; resultText: string } | { ok: false; error: string };
 
 export function musicToolDefs(): any[] {
   return [
@@ -130,10 +132,12 @@ export function musicGeminiDecls(): any[] {
 /** System-prompt note advertising the music tools (kept tiny — details live in the guide). */
 export function buildMusicGenNote(musicGen?: MusicGenContext): string {
   if (!musicGen) return '';
-  return `\n\nYou can compose real, playable music (up to ${MUSIC_MAX_SECONDS}s, full General MIDI instrument set). `
-    + `When the user asks you to make music/a song/a beat, FIRST call ${MUSIC_GUIDE_TOOL_NAME} to learn the format, `
-    + `then call ${MUSIC_GEN_TOOL_NAME}. The audio file is attached to your reply automatically — never claim you `
-    + `cannot make music, and never invent audio links. Limit: ${MUSIC_GEN_DAILY_LIMIT} generations per user per 24 hours.`;
+  return (
+    `\n\nYou can compose real, playable music (up to ${MUSIC_MAX_SECONDS}s, full General MIDI instrument set). ` +
+    `When the user asks you to make music/a song/a beat, FIRST call ${MUSIC_GUIDE_TOOL_NAME} to learn the format, ` +
+    `then call ${MUSIC_GEN_TOOL_NAME}. The audio file is attached to your reply automatically — never claim you ` +
+    `cannot make music, and never invent audio links. Limit: ${MUSIC_GEN_DAILY_LIMIT} generations per user per 24 hours.`
+  );
 }
 
 let cachedGuide: string | null = null;
@@ -171,7 +175,13 @@ async function getSoundBank(): Promise<BasicSoundBank | null> {
 
 const NOTE_NAME_RE = /^([A-Ga-g])([#b]?)(-?\d{1,2})$/;
 const SEMITONES: Record<string, number> = {
-  C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11,
+  C: 0,
+  D: 2,
+  E: 4,
+  F: 5,
+  G: 7,
+  A: 9,
+  B: 11,
 };
 
 /** "C4" / "F#3" / "Bb5" / plain 0-127 → MIDI note number, or null when invalid. */
@@ -221,16 +231,25 @@ function clampInt(raw: any, min: number, max: number, fallback: number): number 
  */
 export function parseComposition(raw: any): ParseResult {
   if (typeof raw !== 'string' || !raw.trim()) {
-    return { ok: false, error: 'Error: "composition" must be a non-empty JSON string. Call get_music_guide for the format.' };
+    return {
+      ok: false,
+      error: 'Error: "composition" must be a non-empty JSON string. Call get_music_guide for the format.',
+    };
   }
   if (raw.length > MAX_COMPOSITION_CHARS) {
-    return { ok: false, error: `Error: composition JSON is too large (${raw.length} chars, max ${MAX_COMPOSITION_CHARS}). Use fewer notes.` };
+    return {
+      ok: false,
+      error: `Error: composition JSON is too large (${raw.length} chars, max ${MAX_COMPOSITION_CHARS}). Use fewer notes.`,
+    };
   }
   let data: any;
   try {
     data = JSON.parse(raw);
   } catch (err: any) {
-    return { ok: false, error: `Error: composition is not valid JSON (${err?.message ?? 'parse error'}). Re-emit it as strict JSON.` };
+    return {
+      ok: false,
+      error: `Error: composition is not valid JSON (${err?.message ?? 'parse error'}). Re-emit it as strict JSON.`,
+    };
   }
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
     return { ok: false, error: 'Error: composition must be a JSON object like {"tempo":120,"tracks":[...]}.' };
@@ -238,7 +257,10 @@ export function parseComposition(raw: any): ParseResult {
 
   const tempo = typeof data.tempo === 'number' && Number.isFinite(data.tempo) ? Math.trunc(data.tempo) : NaN;
   if (!(tempo >= MIN_TEMPO && tempo <= MAX_TEMPO)) {
-    return { ok: false, error: `Error: "tempo" must be a number between ${MIN_TEMPO} and ${MAX_TEMPO} (beats per minute).` };
+    return {
+      ok: false,
+      error: `Error: "tempo" must be a number between ${MIN_TEMPO} and ${MAX_TEMPO} (beats per minute).`,
+    };
   }
   const secPerBeat = 60 / tempo;
 
@@ -246,7 +268,10 @@ export function parseComposition(raw: any): ParseResult {
     return { ok: false, error: 'Error: "tracks" must be a non-empty array of {instrument, notes} objects.' };
   }
   if (data.tracks.length > MAX_TRACKS) {
-    return { ok: false, error: `Error: too many tracks (${data.tracks.length}, max ${MAX_TRACKS}). Merge or drop some.` };
+    return {
+      ok: false,
+      error: `Error: too many tracks (${data.tracks.length}, max ${MAX_TRACKS}). Merge or drop some.`,
+    };
   }
 
   const events: NoteEvent[] = [];
@@ -256,7 +281,7 @@ export function parseComposition(raw: any): ParseResult {
   let nextMelodicChannel = 0;
   let noteCount = 0;
   let maxEndSec = 0;
-  const maxSongBeats = (MUSIC_MAX_SECONDS / secPerBeat) + 0.001;
+  const maxSongBeats = MUSIC_MAX_SECONDS / secPerBeat + 0.001;
 
   let drumsTrackSeen = false;
   for (let t = 0; t < data.tracks.length; t += 1) {
@@ -270,7 +295,10 @@ export function parseComposition(raw: any): ParseResult {
     let channel: number;
     if (isDrums) {
       if (drumsTrackSeen) {
-        return { ok: false, error: `Error: track ${t} — only one "drums" track is allowed. Merge all drum notes into a single track.` };
+        return {
+          ok: false,
+          error: `Error: track ${t} — only one "drums" track is allowed. Merge all drum notes into a single track.`,
+        };
       }
       drumsTrackSeen = true;
       channel = DRUM_CHANNEL;
@@ -325,22 +353,34 @@ export function parseComposition(raw: any): ParseResult {
       if (isDrums && typeof note.pitch === 'string') {
         key = GM_DRUMS[note.pitch] ?? null;
         if (key === null) {
-          return { ok: false, error: `Error: track ${t} note ${n} has unknown drum ${JSON.stringify(note.pitch)}. Use names from get_music_guide (e.g. "kick", "snare", "closed_hihat") or GM key numbers 35-81.` };
+          return {
+            ok: false,
+            error: `Error: track ${t} note ${n} has unknown drum ${JSON.stringify(note.pitch)}. Use names from get_music_guide (e.g. "kick", "snare", "closed_hihat") or GM key numbers 35-81.`,
+          };
         }
       } else {
         key = parsePitch(note.pitch);
         if (key === null) {
-          return { ok: false, error: `Error: track ${t} note ${n} has invalid pitch ${JSON.stringify(note.pitch)}. Use note names like "C4"/"F#3"/"Bb5" or MIDI numbers 0-127.` };
+          return {
+            ok: false,
+            error: `Error: track ${t} note ${n} has invalid pitch ${JSON.stringify(note.pitch)}. Use note names like "C4"/"F#3"/"Bb5" or MIDI numbers 0-127.`,
+          };
         }
       }
 
       const time = typeof note.time === 'number' && Number.isFinite(note.time) ? note.time : NaN;
       if (!(time >= 0)) {
-        return { ok: false, error: `Error: track ${t} note ${n} has invalid "time" (${JSON.stringify(note.time)}) — must be a beat number ≥ 0.` };
+        return {
+          ok: false,
+          error: `Error: track ${t} note ${n} has invalid "time" (${JSON.stringify(note.time)}) — must be a beat number ≥ 0.`,
+        };
       }
       const dur = typeof note.dur === 'number' && Number.isFinite(note.dur) && note.dur > 0 ? note.dur : NaN;
       if (!(dur > 0)) {
-        return { ok: false, error: `Error: track ${t} note ${n} has invalid "dur" (${JSON.stringify(note.dur)}) — must be a positive number of beats.` };
+        return {
+          ok: false,
+          error: `Error: track ${t} note ${n} has invalid "dur" (${JSON.stringify(note.dur)}) — must be a positive number of beats.`,
+        };
       }
       if (time + dur > maxSongBeats) {
         return {
@@ -353,7 +393,11 @@ export function parseComposition(raw: any): ParseResult {
       const timeSec = time * secPerBeat;
       const durSec = Math.max(0.02, dur * secPerBeat);
       events.push({
-        timeSec, channel, key, velocity, durSec,
+        timeSec,
+        channel,
+        key,
+        velocity,
+        durSec,
       });
       maxEndSec = Math.max(maxEndSec, timeSec + durSec);
     }
@@ -397,7 +441,7 @@ async function renderComposition(comp: ParsedComposition): Promise<Buffer | null
     timeline.push({ timeSec: ev.timeSec, order: 1, fire: (s) => s.noteOn(ev.channel, ev.key, ev.velocity) });
     timeline.push({ timeSec: ev.timeSec + ev.durSec, order: 0, fire: (s) => s.noteOff(ev.channel, ev.key) });
   }
-  timeline.sort((a, b) => (a.timeSec - b.timeSec) || (a.order - b.order));
+  timeline.sort((a, b) => a.timeSec - b.timeSec || a.order - b.order);
 
   const renderSeconds = Math.min(comp.totalSeconds, MUSIC_MAX_SECONDS) + RELEASE_TAIL_SECONDS;
   const totalSamples = Math.ceil(SAMPLE_RATE * renderSeconds);
@@ -422,7 +466,9 @@ async function renderComposition(comp: ParsedComposition): Promise<Buffer | null
     if (blocksSinceYield >= YIELD_EVERY_BLOCKS) {
       blocksSinceYield = 0;
       // eslint-disable-next-line no-await-in-loop
-      await new Promise((resolve) => { setImmediate(resolve); });
+      await new Promise((resolve) => {
+        setImmediate(resolve);
+      });
     }
   }
 
@@ -447,9 +493,14 @@ async function renderComposition(comp: ParsedComposition): Promise<Buffer | null
 }
 
 function sanitizeTitle(raw: any): string {
-  const cleaned = typeof raw === 'string'
-    ? raw.trim().replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_').slice(0, MAX_TITLE_CHARS)
-    : '';
+  const cleaned =
+    typeof raw === 'string'
+      ? raw
+          .trim()
+          .replace(/[^a-zA-Z0-9 _-]/g, '')
+          .replace(/\s+/g, '_')
+          .slice(0, MAX_TITLE_CHARS)
+      : '';
   return cleaned || 'jaydon_track';
 }
 
@@ -475,7 +526,10 @@ export async function runMusicGeneration(opts: {
   const { comp } = parsed;
 
   if (inFlightRenders >= MAX_CONCURRENT_RENDERS) {
-    return { ok: false, error: 'Error: too many music renders in flight right now. Tell the user to try again in a moment.' };
+    return {
+      ok: false,
+      error: 'Error: too many music renders in flight right now. Tell the user to try again in a moment.',
+    };
   }
   // Claim the slot synchronously — no await between the guard and this line,
   // so concurrent tool calls cannot all pass the check before it takes effect.
@@ -505,9 +559,11 @@ export async function runMusicGeneration(opts: {
       });
     };
 
-    log(`[musicgen] user ${ctx.userId} rendering "${title}": ${comp.noteCount} notes, `
-      + `${comp.instrumentSummary.length} track(s) [${comp.instrumentSummary.join(', ')}], `
-      + `${comp.totalSeconds.toFixed(1)}s @ ${comp.tempo} BPM`);
+    log(
+      `[musicgen] user ${ctx.userId} rendering "${title}": ${comp.noteCount} notes, ` +
+        `${comp.instrumentSummary.length} track(s) [${comp.instrumentSummary.join(', ')}], ` +
+        `${comp.totalSeconds.toFixed(1)}s @ ${comp.tempo} BPM`,
+    );
 
     try {
       wav = await renderComposition(comp);
@@ -519,16 +575,20 @@ export async function runMusicGeneration(opts: {
 
     if (!wav) {
       await releaseQuota();
-      return { ok: false, error: 'Error: music generation is unavailable or produced silence. Tell the user to try again later.' };
+      return {
+        ok: false,
+        error: 'Error: music generation is unavailable or produced silence. Tell the user to try again later.',
+      };
     }
 
     return {
       ok: true,
       attachment: { attachment: wav, name: `${title}.wav` },
-      resultText: `Music generated successfully: "${title}" — ${comp.totalSeconds.toFixed(1)}s at ${comp.tempo} BPM, `
-        + `${comp.noteCount} notes across ${comp.instrumentSummary.length} track(s) (${comp.instrumentSummary.join(', ')}). `
-        + 'The audio file is attached to your reply automatically — do not write a link or placeholder for it; just '
-        + 'describe the piece briefly.',
+      resultText:
+        `Music generated successfully: "${title}" — ${comp.totalSeconds.toFixed(1)}s at ${comp.tempo} BPM, ` +
+        `${comp.noteCount} notes across ${comp.instrumentSummary.length} track(s) (${comp.instrumentSummary.join(', ')}). ` +
+        'The audio file is attached to your reply automatically — do not write a link or placeholder for it; just ' +
+        'describe the piece briefly.',
     };
   } finally {
     inFlightRenders -= 1;

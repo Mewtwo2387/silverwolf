@@ -62,23 +62,16 @@ export function registerPageRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
         }
       };
 
-      const [
-        stats,
-        pokemonCount,
-        marriageBenefits,
-        poopStats,
-        poopProfile,
-        aiUsageDaily,
-        aiUsageWeekly,
-      ] = await Promise.all([
-        silverwolf.db.user.getUser(user.discordId),
-        silverwolf.db.pokemon.getUniquePokemonCount(user.discordId),
-        silverwolf.db.marriage.getMarriageBenefits(user.discordId),
-        silverwolf.db.poop.getUserStats(user.discordId),
-        silverwolf.db.poop.getProfile(user.discordId),
-        getDailyUsageSafe(),
-        getWeeklyUsageSafe(),
-      ]);
+      const [stats, pokemonCount, marriageBenefits, poopStats, poopProfile, aiUsageDaily, aiUsageWeekly] =
+        await Promise.all([
+          silverwolf.db.user.getUser(user.discordId),
+          silverwolf.db.pokemon.getUniquePokemonCount(user.discordId),
+          silverwolf.db.marriage.getMarriageBenefits(user.discordId),
+          silverwolf.db.poop.getUserStats(user.discordId),
+          silverwolf.db.poop.getProfile(user.discordId),
+          getDailyUsageSafe(),
+          getWeeklyUsageSafe(),
+        ]);
 
       const profile: DashboardProfile = {
         discordId: user.discordId,
@@ -92,9 +85,14 @@ export function registerPageRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
         aiUsageDaily,
         aiUsageWeekly,
       };
-      return c.html(HomePage({
-        profile, user: user.nav, nonce, lv999,
-      }).toString());
+      return c.html(
+        HomePage({
+          profile,
+          user: user.nav,
+          nonce,
+          lv999,
+        }).toString(),
+      );
     } catch (err) {
       logError('website /me dashboard failed:', err);
       return c.text('Failed to load dashboard', 500);
@@ -106,12 +104,16 @@ export function registerPageRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
     return c.redirect(user ? '/me' : '/about');
   });
 
-  app.get('/about', (c) => c.html(AboutPage({
-    nonce: c.get('nonce'),
-    lv999: c.req.query('lv') === '999',
-    goof: c.req.query('theme') === 'goof',
-    user: navUser(c),
-  }).toString()));
+  app.get('/about', (c) =>
+    c.html(
+      AboutPage({
+        nonce: c.get('nonce'),
+        lv999: c.req.query('lv') === '999',
+        goof: c.req.query('theme') === 'goof',
+        user: navUser(c),
+      }).toString(),
+    ),
+  );
 
   app.get('/leaderboards', async (c) => {
     const raw = c.req.query('board');
@@ -126,14 +128,24 @@ export function registerPageRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
 
     try {
       const result = await getLeaderboard(silverwolf, selected);
-      return c.html(LeaderboardsPage({
-        selected, result, nonce, lv999, user,
-      }).toString());
+      return c.html(
+        LeaderboardsPage({
+          selected,
+          result,
+          nonce,
+          lv999,
+          user,
+        }).toString(),
+      );
     } catch (err) {
       logError('website /leaderboards failed:', err);
       return c.html(
         LeaderboardsPage({
-          selected, error: 'Failed to load leaderboard.', nonce, lv999, user,
+          selected,
+          error: 'Failed to load leaderboard.',
+          nonce,
+          lv999,
+          user,
         }).toString(),
         500,
       );
@@ -146,113 +158,202 @@ export function registerPageRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
     const user = navUser(c);
     try {
       const grouped = await getAllBirthdaysByMonth(silverwolf);
-      return c.html(BirthdaysPage({
-        grouped, nonce, lv999, user,
-      }).toString());
+      return c.html(
+        BirthdaysPage({
+          grouped,
+          nonce,
+          lv999,
+          user,
+        }).toString(),
+      );
     } catch (err) {
       logError('website /birthdays failed:', err);
-      return c.html(BirthdaysPage({
-        grouped: {}, error: 'Failed to load birthdays.', nonce, lv999, user,
-      }).toString(), 500);
+      return c.html(
+        BirthdaysPage({
+          grouped: {},
+          error: 'Failed to load birthdays.',
+          nonce,
+          lv999,
+          user,
+        }).toString(),
+        500,
+      );
     }
   });
 
-  app.get('/games', (c) => c.html(GamesPage({
-    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
-  }).toString()));
+  app.get('/games', (c) =>
+    c.html(
+      GamesPage({
+        nonce: c.get('nonce'),
+        lv999: c.req.query('lv') === '999',
+        user: navUser(c),
+      }).toString(),
+    ),
+  );
 
   app.get('/games/8ball', (c) => {
     const { normal, savage } = getEightBallResponses();
-    return c.html(EightBallPage({
-      normal, savage, nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
-    }).toString());
+    return c.html(
+      EightBallPage({
+        normal,
+        savage,
+        nonce: c.get('nonce'),
+        lv999: c.req.query('lv') === '999',
+        user: navUser(c),
+      }).toString(),
+    );
   });
 
-  app.get('/games/flip', (c) => c.html(FlipPage({
-    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
-  }).toString()));
+  app.get('/games/flip', (c) =>
+    c.html(
+      FlipPage({
+        nonce: c.get('nonce'),
+        lv999: c.req.query('lv') === '999',
+        user: navUser(c),
+      }).toString(),
+    ),
+  );
 
   app.get('/games/fortune', (c) => {
     const fortunes = getFortunes();
-    return c.html(FortunePage({
-      fortunes, nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
-    }).toString());
+    return c.html(
+      FortunePage({
+        fortunes,
+        nonce: c.get('nonce'),
+        lv999: c.req.query('lv') === '999',
+        user: navUser(c),
+      }).toString(),
+    );
   });
 
-  app.get('/games/love', (c) => c.html(LovePage({
-    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
-  }).toString()));
+  app.get('/games/love', (c) =>
+    c.html(
+      LovePage({
+        nonce: c.get('nonce'),
+        lv999: c.req.query('lv') === '999',
+        user: navUser(c),
+      }).toString(),
+    ),
+  );
 
-  app.get('/games/cyclic-tictactoe', (c) => c.html(CyclicTicTacToePage({
-    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
-  }).toString()));
+  app.get('/games/cyclic-tictactoe', (c) =>
+    c.html(
+      CyclicTicTacToePage({
+        nonce: c.get('nonce'),
+        lv999: c.req.query('lv') === '999',
+        user: navUser(c),
+      }).toString(),
+    ),
+  );
 
-  app.get('/games/battleships', (c) => c.html(BattleshipsPage({
-    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
-  }).toString()));
+  app.get('/games/battleships', (c) =>
+    c.html(
+      BattleshipsPage({
+        nonce: c.get('nonce'),
+        lv999: c.req.query('lv') === '999',
+        user: navUser(c),
+      }).toString(),
+    ),
+  );
 
-  app.get('/games/bottle-flip', (c) => c.html(BottleFlipPage({
-    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
-  }).toString()));
+  app.get('/games/bottle-flip', (c) =>
+    c.html(
+      BottleFlipPage({
+        nonce: c.get('nonce'),
+        lv999: c.req.query('lv') === '999',
+        user: navUser(c),
+      }).toString(),
+    ),
+  );
 
   app.get('/games/blackjack', async (c) => {
     const user = c.get('user');
-    const gambleStats = user
-      ? await fetchGamblingPageStats(silverwolf, user.discordId, 'blackjackStreak')
-      : null;
-    return c.html(BlackjackPage({
-      nonce: c.get('nonce'),
-      lv999: c.req.query('lv') === '999',
-      user: navUser(c),
-      gambleStats,
-    }).toString());
+    const gambleStats = user ? await fetchGamblingPageStats(silverwolf, user.discordId, 'blackjackStreak') : null;
+    return c.html(
+      BlackjackPage({
+        nonce: c.get('nonce'),
+        lv999: c.req.query('lv') === '999',
+        user: navUser(c),
+        gambleStats,
+      }).toString(),
+    );
   });
 
-  app.get('/games/poop', (c) => c.html(PoopPage({
-    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
-  }).toString()));
+  app.get('/games/poop', (c) =>
+    c.html(
+      PoopPage({
+        nonce: c.get('nonce'),
+        lv999: c.req.query('lv') === '999',
+        user: navUser(c),
+      }).toString(),
+    ),
+  );
 
   app.get('/games/roulette', async (c) => {
     const user = c.get('user');
-    const gambleStats = user
-      ? await fetchGamblingPageStats(silverwolf, user.discordId, 'rouletteStreak')
-      : null;
-    return c.html(RoulettePage({
-      nonce: c.get('nonce'),
-      lv999: c.req.query('lv') === '999',
-      user: navUser(c),
-      gambleStats,
-    }).toString());
+    const gambleStats = user ? await fetchGamblingPageStats(silverwolf, user.discordId, 'rouletteStreak') : null;
+    return c.html(
+      RoulettePage({
+        nonce: c.get('nonce'),
+        lv999: c.req.query('lv') === '999',
+        user: navUser(c),
+        gambleStats,
+      }).toString(),
+    );
   });
 
   app.get('/games/slots', async (c) => {
     const user = c.get('user');
-    const gambleStats = user
-      ? await fetchGamblingPageStats(silverwolf, user.discordId)
-      : null;
-    return c.html(SlotsPage({
-      nonce: c.get('nonce'),
-      lv999: c.req.query('lv') === '999',
-      user: navUser(c),
-      gambleStats,
-    }).toString());
+    const gambleStats = user ? await fetchGamblingPageStats(silverwolf, user.discordId) : null;
+    return c.html(
+      SlotsPage({
+        nonce: c.get('nonce'),
+        lv999: c.req.query('lv') === '999',
+        user: navUser(c),
+        gambleStats,
+      }).toString(),
+    );
   });
 
-  app.get('/games/claim', (c) => c.html(ClaimPage({
-    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
-  }).toString()));
+  app.get('/games/claim', (c) =>
+    c.html(
+      ClaimPage({
+        nonce: c.get('nonce'),
+        lv999: c.req.query('lv') === '999',
+        user: navUser(c),
+      }).toString(),
+    ),
+  );
 
-  app.get('/games/dinonuggie-upgrades', (c) => c.html(DinonuggieUpgradesPage({
-    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
-  }).toString()));
+  app.get('/games/dinonuggie-upgrades', (c) =>
+    c.html(
+      DinonuggieUpgradesPage({
+        nonce: c.get('nonce'),
+        lv999: c.req.query('lv') === '999',
+        user: navUser(c),
+      }).toString(),
+    ),
+  );
 
-  app.get('/games/awdangit', (c) => c.html(AwdangitPage({
-    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
-  }).toString()));
+  app.get('/games/awdangit', (c) =>
+    c.html(
+      AwdangitPage({
+        nonce: c.get('nonce'),
+        lv999: c.req.query('lv') === '999',
+        user: navUser(c),
+      }).toString(),
+    ),
+  );
 
-  app.get('/games/fakequote', (c) => c.html(FakeQuotePage({
-    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
-  }).toString()));
+  app.get('/games/fakequote', (c) =>
+    c.html(
+      FakeQuotePage({
+        nonce: c.get('nonce'),
+        lv999: c.req.query('lv') === '999',
+        user: navUser(c),
+      }).toString(),
+    ),
+  );
 
   app.get('/games/ai-slop', async (c) => {
     const user = c.get('user');
@@ -260,25 +361,42 @@ export function registerPageRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
     const lv999 = c.req.query('lv') === '999';
 
     if (!user) {
-      return c.html(AiSlopPage({
-        nonce, lv999, user: null, sessions: [], guildAccess: false,
-      }).toString());
+      return c.html(
+        AiSlopPage({
+          nonce,
+          lv999,
+          user: null,
+          sessions: [],
+          guildAccess: false,
+        }).toString(),
+      );
     }
 
     const guildAccess = await canUseAiSlop(silverwolf, user.discordId);
 
     try {
-      const sessions = guildAccess
-        ? await silverwolf.db.aiChat.getUserWebSessions(user.discordId)
-        : [];
-      return c.html(AiSlopPage({
-        nonce, lv999, user: user.nav, sessions, guildAccess,
-      }).toString());
+      const sessions = guildAccess ? await silverwolf.db.aiChat.getUserWebSessions(user.discordId) : [];
+      return c.html(
+        AiSlopPage({
+          nonce,
+          lv999,
+          user: user.nav,
+          sessions,
+          guildAccess,
+        }).toString(),
+      );
     } catch (err) {
       logError('website /games/ai-slop failed:', err);
-      return c.html(AiSlopPage({
-        nonce, lv999, user: user.nav, sessions: [], guildAccess,
-      }).toString(), 500);
+      return c.html(
+        AiSlopPage({
+          nonce,
+          lv999,
+          user: user.nav,
+          sessions: [],
+          guildAccess,
+        }).toString(),
+        500,
+      );
     }
   });
 }

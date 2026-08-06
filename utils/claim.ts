@@ -9,11 +9,7 @@ import {
   getNuggiePokeMultiplier,
   getNuggieNuggieMultiplier,
 } from './ascensionupgrades';
-import {
-  getMultiplierAmount,
-  getMultiplierChance,
-  getBekiCooldown,
-} from './upgrades';
+import { getMultiplierAmount, getMultiplierChance, getBekiCooldown } from './upgrades';
 import { format } from './math';
 import { withUserLock, userLocks } from './userLock';
 
@@ -21,8 +17,14 @@ const DAY_LENGTH = 24 * 60 * 60 * 1000;
 const HOUR_LENGTH = 60 * 60 * 1000;
 
 const BEKI_COOLDOWN_RESPONSES: { title: string; gifUrl: string }[] = [
-  { title: 'Beki is currently cooking the next batch of dinonuggies please wait', gifUrl: 'https://c.tenor.com/i6sOwD66MAEAAAAC/tenor.gif' },
-  { title: 'Beki is having a little bit of an issue. Please hold', gifUrl: 'https://c.tenor.com/h6XlgMwYBnkAAAAd/tenor.gif' },
+  {
+    title: 'Beki is currently cooking the next batch of dinonuggies please wait',
+    gifUrl: 'https://c.tenor.com/i6sOwD66MAEAAAAC/tenor.gif',
+  },
+  {
+    title: 'Beki is having a little bit of an issue. Please hold',
+    gifUrl: 'https://c.tenor.com/h6XlgMwYBnkAAAAd/tenor.gif',
+  },
   { title: 'Ah shit i forgottt, hang on a momentt-', gifUrl: 'https://c.tenor.com/TYW-RNzp6hEAAAAC/tenor.gif' },
   { title: 'uhhh what is beki doing ?', gifUrl: 'https://media.tenor.com/RYGLfSXNIRIAAAAi/frieren.gif' },
   { title: 'Beki fucking dies of exhaustion', gifUrl: 'https://c.tenor.com/kU_EwdsrkLkAAAAC/tenor.gif' },
@@ -68,17 +70,17 @@ async function getBaseAmount(client: any, uid: string, streak: number): Promise<
   const nuggies = await client.db.user.getUserAttr(uid, 'dinonuggies');
   const log2Nuggies = nuggies > 1 ? Math.log2(nuggies) : 0;
 
-  let baseAmount = (5 + streak);
+  let baseAmount = 5 + streak;
   log(`Base amount: ${baseAmount}`);
   baseAmount *= getNuggieFlatMultiplier(nuggieFlatMultiplierLevel);
   log(`Base amount after flat multiplier: ${baseAmount}`);
-  baseAmount *= (1 + streak * getNuggieStreakMultiplier(nuggieStreakMultiplierLevel));
+  baseAmount *= 1 + streak * getNuggieStreakMultiplier(nuggieStreakMultiplierLevel);
   log(`Base amount after streak multiplier: ${baseAmount}`);
-  baseAmount *= (1 + log2Credits * getNuggieCreditsMultiplier(nuggieCreditsMultiplierLevel));
+  baseAmount *= 1 + log2Credits * getNuggieCreditsMultiplier(nuggieCreditsMultiplierLevel);
   log(`Base amount after credits multiplier: ${baseAmount}`);
-  baseAmount *= (1 + pokemonCount * getNuggiePokeMultiplier(nuggiePokemonMultiplierLevel));
+  baseAmount *= 1 + pokemonCount * getNuggiePokeMultiplier(nuggiePokemonMultiplierLevel);
   log(`Base amount after pokemon multiplier: ${baseAmount}`);
-  baseAmount *= (1 + log2Nuggies * getNuggieNuggieMultiplier(nuggieNuggieMultiplierLevel));
+  baseAmount *= 1 + log2Nuggies * getNuggieNuggieMultiplier(nuggieNuggieMultiplierLevel);
   log(`Base amount after nuggie multiplier: ${baseAmount}`);
   baseAmount *= marriageBenefitsMultiplier;
   log(`Base amount after marriage benefits: ${baseAmount}`);
@@ -92,7 +94,7 @@ async function formatReward(
   multiplier: MultiplierAmount,
   percentage: MultiplierChance,
 ): Promise<RewardResult> {
-  const season = await client.db.globalConfig.getGlobalConfig('season') || 'normal';
+  const season = (await client.db.globalConfig.getGlobalConfig('season')) || 'normal';
   const json = claimSkinConfig as any;
   const resolvedSeason = json[season] ? season : 'normal';
   log(`season: ${season}`);
@@ -139,15 +141,15 @@ async function getAmount(client: any, uid: string, streak: number): Promise<Rewa
   log('claiming dinonuggies');
 
   if (rand < percentage.gold) {
-    const amount = Math.ceil(await getBaseAmount(client, uid, streak) * multiplier.gold);
+    const amount = Math.ceil((await getBaseAmount(client, uid, streak)) * multiplier.gold);
     return formatReward(client, 'gold', amount, multiplier, percentage);
   }
   if (rand < percentage.gold + percentage.silver) {
-    const amount = Math.ceil(await getBaseAmount(client, uid, streak) * multiplier.silver);
+    const amount = Math.ceil((await getBaseAmount(client, uid, streak)) * multiplier.silver);
     return formatReward(client, 'silver', amount, multiplier, percentage);
   }
   if (rand < percentage.gold + percentage.silver + percentage.bronze) {
-    const amount = Math.ceil(await getBaseAmount(client, uid, streak) * multiplier.bronze);
+    const amount = Math.ceil((await getBaseAmount(client, uid, streak)) * multiplier.bronze);
     return formatReward(client, 'bronze', amount, multiplier, percentage);
   }
   const amount = Math.ceil(await getBaseAmount(client, uid, streak));
@@ -156,30 +158,30 @@ async function getAmount(client: any, uid: string, streak: number): Promise<Rewa
 
 type ClaimResult =
   | {
-    status: 'cooldown';
-    title: string;
-    gifUrl: string;
-    hoursRemaining: number;
-    cooldown: number;
-  }
+      status: 'cooldown';
+      title: string;
+      gifUrl: string;
+      hoursRemaining: number;
+      cooldown: number;
+    }
   | {
-    status: 'broken_streak';
-    amount: number;
-    previousDinonuggies: number;
-    previousStreak: number;
-  }
+      status: 'broken_streak';
+      amount: number;
+      previousDinonuggies: number;
+      previousStreak: number;
+    }
   | {
-    status: 'success';
-    amount: number;
-    title: string;
-    imageUrl: string;
-    webImageUrl?: string;
-    colour: string;
-    footer: string;
-    thumbnail: string;
-    previousDinonuggies: number;
-    previousStreak: number;
-  };
+      status: 'success';
+      amount: number;
+      title: string;
+      imageUrl: string;
+      webImageUrl?: string;
+      colour: string;
+      footer: string;
+      thumbnail: string;
+      previousDinonuggies: number;
+      previousStreak: number;
+    };
 
 async function processClaimInner(client: any, uid: string): Promise<ClaimResult> {
   const now = Date.now();
@@ -239,21 +241,31 @@ function processClaim(client: any, uid: string): Promise<ClaimResult> {
 }
 
 // eslint-disable-next-line max-len
-async function handleSuccessfulClaim(client: any, interaction: ChatInputCommandInteraction, newMessage = false): Promise<void> {
+async function handleSuccessfulClaim(
+  client: any,
+  interaction: ChatInputCommandInteraction,
+  newMessage = false,
+): Promise<void> {
   const streak = await client.db.user.getUserAttr(interaction.user.id, 'dinonuggiesClaimStreak');
   const dinonuggies = await client.db.user.getUserAttr(interaction.user.id, 'dinonuggies');
   const now = Date.now();
-  const {
-    amount, title, imageUrl, colour, footer, thumbnail,
-  } = await getAmount(client, interaction.user.id, streak);
+  const { amount, title, imageUrl, colour, footer, thumbnail } = await getAmount(client, interaction.user.id, streak);
   const embed = new EmbedBuilder()
     .setThumbnail(thumbnail)
     .setColor(colour as ColorResolvable)
-    .setAuthor({ name: 'dinonuggie', iconURL: 'https://drive.google.com/thumbnail?id=1oVDRweQoYLU6YfB01LWZpTFQiBS1fRRa' })
+    .setAuthor({
+      name: 'dinonuggie',
+      iconURL: 'https://drive.google.com/thumbnail?id=1oVDRweQoYLU6YfB01LWZpTFQiBS1fRRa',
+    })
     .setTitle(title)
-    .setDescription(`You now have ${format(dinonuggies + amount)} dinonuggies. You are on a streak of ${streak + 1} days.`)
+    .setDescription(
+      `You now have ${format(dinonuggies + amount)} dinonuggies. You are on a streak of ${streak + 1} days.`,
+    )
     .setImage(imageUrl)
-    .setFooter({ text: `dinonuggie | ${footer}`, iconURL: 'https://drive.google.com/thumbnail?id=1oVDRweQoYLU6YfB01LWZpTFQiBS1fRRa' });
+    .setFooter({
+      text: `dinonuggie | ${footer}`,
+      iconURL: 'https://drive.google.com/thumbnail?id=1oVDRweQoYLU6YfB01LWZpTFQiBS1fRRa',
+    });
 
   await client.db.user.addUserAttr(interaction.user.id, 'dinonuggies', amount);
   await client.db.user.setUserAttr(interaction.user.id, 'dinonuggiesLastClaimed', now);

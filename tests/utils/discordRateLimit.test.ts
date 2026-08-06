@@ -1,6 +1,4 @@
-import {
-  describe, test, expect, beforeAll, afterAll, beforeEach,
-} from 'bun:test';
+import { describe, test, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
 import Database from '../../database/Database';
 import { getRateLimitErrorMessage } from '../../utils/discordRateLimit';
 import { AiRateLimitError, WEEKLY_LIMIT } from '../../utils/ai';
@@ -67,10 +65,10 @@ describe('discordRateLimit & AiRateLimitError', () => {
     await db.aiUsage.addUsage('u1', 'test-model', 162874, 0);
 
     // Explicitly set weekly window to 428,469
-    await db.executeQuery(
-      'UPDATE AiRateLimitWindow SET tokens = 428469 WHERE user_id = ? AND window_type = ?',
-      ['u1', 'weekly'],
-    );
+    await db.executeQuery('UPDATE AiRateLimitWindow SET tokens = 428469 WHERE user_id = ? AND window_type = ?', [
+      'u1',
+      'weekly',
+    ]);
 
     // Omit explicit reason: fallback should pick 'daily' because 65% > 43%
     const msg = await getRateLimitErrorMessage('u1', db);

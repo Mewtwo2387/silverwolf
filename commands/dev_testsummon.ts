@@ -5,7 +5,11 @@ const MINUTE_LENGTH = 60 * 1000;
 
 class DevTestSummon extends DevCommand {
   constructor(client: any) {
-    super(client, 'testsummon', 'summon a pokemon at random intervals', [], { ephemeral: true, isSubcommandOf: 'dev', blame: 'ei' });
+    super(client, 'testsummon', 'summon a pokemon at random intervals', [], {
+      ephemeral: true,
+      isSubcommandOf: 'dev',
+      blame: 'ei',
+    });
   }
 
   async run(interaction: any): Promise<void> {

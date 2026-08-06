@@ -8,18 +8,14 @@ export const SERVER_CONFIG_KEYS = {
   MESSAGE_REACTS_ENABLED: 'message_reacts_enabled',
 } as const;
 
-export const SERVER_CHANNEL_LIST_KEYS = [
-  SERVER_CONFIG_KEYS.SERIOUS_CHANNELS,
-] as const;
+export const SERVER_CHANNEL_LIST_KEYS = [SERVER_CONFIG_KEYS.SERIOUS_CHANNELS] as const;
 
-export type ServerChannelListKey = typeof SERVER_CHANNEL_LIST_KEYS[number];
+export type ServerChannelListKey = (typeof SERVER_CHANNEL_LIST_KEYS)[number];
 
 /** Role names referenced by bot commands (`role:<name>` keys). */
-export const SETTABLE_ROLE_NAMES = [
-  'girl',
-] as const;
+export const SETTABLE_ROLE_NAMES = ['girl'] as const;
 
-export type SettableRoleName = typeof SETTABLE_ROLE_NAMES[number];
+export type SettableRoleName = (typeof SETTABLE_ROLE_NAMES)[number];
 
 export const SERVER_ROLE_KEY_PREFIX = 'role:';
 
@@ -49,7 +45,7 @@ export function validateSettableChannelKey(key: string): string | null {
   return null;
 }
 
-export type DocumentedServerConfigKey = typeof SERVER_CONFIG_KEYS[keyof typeof SERVER_CONFIG_KEYS];
+export type DocumentedServerConfigKey = (typeof SERVER_CONFIG_KEYS)[keyof typeof SERVER_CONFIG_KEYS];
 
 export const DOCUMENTED_SERVER_CONFIG_KEYS: {
   key: DocumentedServerConfigKey;
@@ -95,9 +91,7 @@ function parseEnabledFlag(raw: string | null | undefined, defaultEnabled: boolea
   return defaultEnabled;
 }
 
-const BOOLEAN_VALUE_KEYS = new Set<string>([
-  SERVER_CONFIG_KEYS.MESSAGE_REACTS_ENABLED,
-]);
+const BOOLEAN_VALUE_KEYS = new Set<string>([SERVER_CONFIG_KEYS.MESSAGE_REACTS_ENABLED]);
 
 const DOCUMENTED_KEY_SET = new Set<string>(DOCUMENTED_SERVER_CONFIG_KEYS.map((entry) => entry.key));
 

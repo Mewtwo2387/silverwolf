@@ -1,10 +1,11 @@
 // Bun runtime — globalThis is always available; the airbnb/node rule targets Node 8.
 /* eslint-disable node/no-unsupported-features/es-builtins */
+import { describe, it, expect, afterEach } from 'bun:test';
 import {
-  describe, it, expect, afterEach,
-} from 'bun:test';
-import {
-  loadCharacterJson, validateDetails, validateStartingMessage, validateCharacterFields,
+  loadCharacterJson,
+  validateDetails,
+  validateStartingMessage,
+  validateCharacterFields,
 } from '../../utils/rpCharInput';
 
 const realFetch = globalThis.fetch;
@@ -14,7 +15,9 @@ function stubFetch(body: string, ok = true): void {
     arrayBuffer: async () => new TextEncoder().encode(body).buffer,
   })) as any;
 }
-afterEach(() => { globalThis.fetch = realFetch; });
+afterEach(() => {
+  globalThis.fetch = realFetch;
+});
 
 describe('rpCharInput validators', () => {
   it('enforces the details token budget', () => {

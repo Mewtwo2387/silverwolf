@@ -4,17 +4,23 @@ import { logError } from '../utils/log';
 
 class AiChatdelete extends Command {
   constructor(client: any) {
-    super(client, 'chatdelete', 'Permanently delete one of your AI chat sessions', [
+    super(
+      client,
+      'chatdelete',
+      'Permanently delete one of your AI chat sessions',
+      [
+        {
+          name: 'session_id',
+          description: 'The session ID to delete (visible in /ai view)',
+          type: 4,
+          required: true,
+        },
+      ],
       {
-        name: 'session_id',
-        description: 'The session ID to delete (visible in /ai view)',
-        type: 4,
-        required: true,
+        isSubcommandOf: 'ai',
+        blame: 'xei',
       },
-    ], {
-      isSubcommandOf: 'ai',
-      blame: 'xei',
-    });
+    );
   }
 
   async run(interaction: any): Promise<void> {

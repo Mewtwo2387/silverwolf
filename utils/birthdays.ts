@@ -28,18 +28,10 @@ export function getNextBirthdayInfo(birthdayISO: string, now: Date = new Date())
   const minute = birthday.getUTCMinutes();
 
   // Day-only boundary used for "is the next one this year or next year?".
-  const today = new Date(Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate(),
-  ));
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
   let nextDate = new Date(Date.UTC(now.getUTCFullYear(), month, day, hour, minute));
-  const nextDay = new Date(Date.UTC(
-    nextDate.getUTCFullYear(),
-    nextDate.getUTCMonth(),
-    nextDate.getUTCDate(),
-  ));
+  const nextDay = new Date(Date.UTC(nextDate.getUTCFullYear(), nextDate.getUTCMonth(), nextDate.getUTCDate()));
   if (nextDay.getTime() < today.getTime()) {
     nextDate = new Date(Date.UTC(now.getUTCFullYear() + 1, month, day, hour, minute));
   }

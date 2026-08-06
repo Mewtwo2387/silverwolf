@@ -4,17 +4,23 @@ import { logError } from '../utils/log';
 
 class AiChatswitch extends Command {
   constructor(client: any) {
-    super(client, 'chatswitch', 'Switch to a previous AI chat session by its ID', [
+    super(
+      client,
+      'chatswitch',
+      'Switch to a previous AI chat session by its ID',
+      [
+        {
+          name: 'session_id',
+          description: 'The session ID to switch to (visible in /ai view)',
+          type: 4,
+          required: true,
+        },
+      ],
       {
-        name: 'session_id',
-        description: 'The session ID to switch to (visible in /ai view)',
-        type: 4,
-        required: true,
+        isSubcommandOf: 'ai',
+        blame: 'xei',
       },
-    ], {
-      isSubcommandOf: 'ai',
-      blame: 'xei',
-    });
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -56,8 +62,8 @@ class AiChatswitch extends Command {
             .setColor('#57F287')
             .setTitle('✅ Session Switched')
             .setDescription(
-              `Switched to session **#${sessionId}** (${session.personaName}).\n`
-              + `Mentioning \`@${session.personaName.toLowerCase()}\` will now continue from this conversation.`,
+              `Switched to session **#${sessionId}** (${session.personaName}).\n` +
+                `Mentioning \`@${session.personaName.toLowerCase()}\` will now continue from this conversation.`,
             ),
         ],
       });

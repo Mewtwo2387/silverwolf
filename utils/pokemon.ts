@@ -10,9 +10,7 @@ interface PokemonEntry {
 export function formatPokemonList(pokemons: PokemonEntry[]): string {
   if (pokemons.length === 0) return '';
   const maxNameLength = Math.max(...pokemons.map((p) => p.pokemonName.length));
-  return pokemons.map(
-    (p) => `${p.pokemonName.padEnd(maxNameLength + 2)} ${p.pokemonCount}`,
-  ).join('\n');
+  return pokemons.map((p) => `${p.pokemonName.padEnd(maxNameLength + 2)} ${p.pokemonCount}`).join('\n');
 }
 
 // Sort by name (mutates input array to match the previous in-place behaviour

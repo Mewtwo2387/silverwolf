@@ -3,20 +3,26 @@ import { logError } from '../utils/log';
 
 class DM extends AdminCommand {
   constructor(client: any) {
-    super(client, 'say-dm', 'Send a direct message to a user', [
-      {
-        name: 'user',
-        type: 6,
-        description: 'The user you want to send a message to',
-        required: true,
-      },
-      {
-        name: 'message',
-        type: 3,
-        description: 'The message you want to send',
-        required: true,
-      },
-    ], { ephemeral: true, blame: 'xei' });
+    super(
+      client,
+      'say-dm',
+      'Send a direct message to a user',
+      [
+        {
+          name: 'user',
+          type: 6,
+          description: 'The user you want to send a message to',
+          required: true,
+        },
+        {
+          name: 'message',
+          type: 3,
+          description: 'The message you want to send',
+          required: true,
+        },
+      ],
+      { ephemeral: true, blame: 'xei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {

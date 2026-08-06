@@ -8,31 +8,41 @@ import { logError } from '../utils/log';
 /** Spawns a character into the current channel (or reconfigures an existing spawn). */
 class AiRpSpawn extends Command {
   constructor(client: any) {
-    super(client, 'rp-spawn', 'Spawn a roleplay character into this channel', [
-      {
-        name: 'char', description: 'Character to spawn (search by name or id)', type: 3, required: true, autocomplete: true,
-      },
-      {
-        name: 'interactability',
-        description: 'Who it responds to',
-        type: 3,
-        required: true,
-        choices: [
-          { name: 'self — only you can interact', value: 'self' },
-          { name: 'all — anyone; it also chimes in on its own', value: 'all' },
-        ],
-      },
-      {
-        name: 'compaction',
-        description: 'Auto-summarize old messages to extend memory (default: enabled)',
-        type: 3,
-        required: false,
-        choices: [
-          { name: 'enabled', value: 'enabled' },
-          { name: 'disabled', value: 'disabled' },
-        ],
-      },
-    ], { isSubcommandOf: 'ai', blame: 'xei' });
+    super(
+      client,
+      'rp-spawn',
+      'Spawn a roleplay character into this channel',
+      [
+        {
+          name: 'char',
+          description: 'Character to spawn (search by name or id)',
+          type: 3,
+          required: true,
+          autocomplete: true,
+        },
+        {
+          name: 'interactability',
+          description: 'Who it responds to',
+          type: 3,
+          required: true,
+          choices: [
+            { name: 'self — only you can interact', value: 'self' },
+            { name: 'all — anyone; it also chimes in on its own', value: 'all' },
+          ],
+        },
+        {
+          name: 'compaction',
+          description: 'Auto-summarize old messages to extend memory (default: enabled)',
+          type: 3,
+          required: false,
+          choices: [
+            { name: 'enabled', value: 'enabled' },
+            { name: 'disabled', value: 'disabled' },
+          ],
+        },
+      ],
+      { isSubcommandOf: 'ai', blame: 'xei' },
+    );
   }
 
   async autocomplete(interaction: any): Promise<void> {
@@ -73,8 +83,8 @@ class AiRpSpawn extends Command {
 
       if (!result.ok) {
         await interaction.editReply(
-          `This channel already has the maximum of ${MAX_SPAWNS_PER_CHANNEL} characters. `
-          + 'Remove one with `/ai rp-remove` first.',
+          `This channel already has the maximum of ${MAX_SPAWNS_PER_CHANNEL} characters. ` +
+            'Remove one with `/ai rp-remove` first.',
         );
         return;
       }
@@ -96,9 +106,8 @@ class AiRpSpawn extends Command {
       if (historyCount === 0 && character.startingMessage) {
         // Self-mode resolves {user} to the spawner; all-mode leaves it literal.
         const spawnerName = interaction.member?.displayName || interaction.user.username;
-        const startingText = interactability === 'self'
-          ? applyUserVar(character.startingMessage, spawnerName)
-          : character.startingMessage;
+        const startingText =
+          interactability === 'self' ? applyUserVar(character.startingMessage, spawnerName) : character.startingMessage;
         const delivered = await sendAsCharacter({
           client: this.client,
           db: this.client.db,
@@ -113,14 +122,16 @@ class AiRpSpawn extends Command {
           text: startingText,
         });
         if (!delivered) {
-          openerWarning = '\n\n⚠️ The spawn is active, but I couldn\'t post its opening message here — '
-            + 'check that I have the **Manage Webhooks** permission in this channel.';
+          openerWarning =
+            "\n\n⚠️ The spawn is active, but I couldn't post its opening message here — " +
+            'check that I have the **Manage Webhooks** permission in this channel.';
         }
       }
 
       await interaction.editReply(
         `Spawned **${character.name}** here — interactability **${interactability}**, compaction **${compactionLabel}**.${
-          historyCount > 0 ? ' Resumed its existing conversation.' : ''}${openerWarning}`,
+          historyCount > 0 ? ' Resumed its existing conversation.' : ''
+        }${openerWarning}`,
       );
     } catch (err) {
       logError('AiRpSpawn error:', err);

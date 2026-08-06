@@ -3,20 +3,26 @@ import { computeLoveCompatibility, lovePhraseFor } from '../utils/loveCalculator
 
 class LoveCalculator extends Command {
   constructor(client: any) {
-    super(client, 'love-calculator', 'Calculate love compatibility between two members', [
-      {
-        name: 'input1',
-        description: 'The first input (user mention or string)',
-        type: 3,
-        required: true,
-      },
-      {
-        name: 'input2',
-        description: 'The second input (user mention or string)',
-        type: 3,
-        required: true,
-      },
-    ], { blame: 'xei' });
+    super(
+      client,
+      'love-calculator',
+      'Calculate love compatibility between two members',
+      [
+        {
+          name: 'input1',
+          description: 'The first input (user mention or string)',
+          type: 3,
+          required: true,
+        },
+        {
+          name: 'input2',
+          description: 'The second input (user mention or string)',
+          type: 3,
+          required: true,
+        },
+      ],
+      { blame: 'xei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {

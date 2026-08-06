@@ -5,14 +5,20 @@ import { spinSlots } from '../utils/slots';
 
 class Slots extends Command {
   constructor(client: any) {
-    super(client, 'slots', 'lose all your mystic credits', [
-      {
-        name: 'amount',
-        description: 'the amount of mystic credits to bet',
-        type: 3,
-        required: true,
-      },
-    ], { blame: 'ei' });
+    super(
+      client,
+      'slots',
+      'lose all your mystic credits',
+      [
+        {
+          name: 'amount',
+          description: 'the amount of mystic credits to bet',
+          type: 3,
+          required: true,
+        },
+      ],
+      { blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -24,10 +30,7 @@ class Slots extends Command {
 
     if (amount < 0) {
       await interaction.editReply({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#AA0000')
-          .setTitle('Betting debt is disabled'),
-        ],
+        embeds: [new Discord.EmbedBuilder().setColor('#AA0000').setTitle('Betting debt is disabled')],
       });
       return;
     }
@@ -38,18 +41,14 @@ class Slots extends Command {
 
     if (result.isWin) {
       await interaction.editReply({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#00AA00')
-          .setTitle(result.winMessage)
-          .setDescription(description),
+        embeds: [
+          new Discord.EmbedBuilder().setColor('#00AA00').setTitle(result.winMessage).setDescription(description),
         ],
       });
     } else {
       await interaction.editReply({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#AA0000')
-          .setTitle(result.loseMessage)
-          .setDescription(description),
+        embeds: [
+          new Discord.EmbedBuilder().setColor('#AA0000').setTitle(result.loseMessage).setDescription(description),
         ],
       });
     }

@@ -64,21 +64,12 @@ function getModelMultipliers(model: string): ModelMultipliers {
 }
 
 /** Credits charged for a call. Fractional — callers round as needed. */
-export function creditsForTokens(
-  model: string,
-  promptTokens: number,
-  completionTokens: number,
-): number {
+export function creditsForTokens(model: string, promptTokens: number, completionTokens: number): number {
   const mult = getModelMultipliers(model);
   return promptTokens * mult.input + completionTokens * mult.output;
 }
 
 /** USD cost derived from the same multipliers (credits × $0.28 per 1M). */
-export function usdCostForTokens(
-  model: string,
-  promptTokens: number,
-  completionTokens: number,
-): number {
-  return (creditsForTokens(model, promptTokens, completionTokens)
-    * CREDIT_BASE_USD_PER_MILLION) / 1_000_000;
+export function usdCostForTokens(model: string, promptTokens: number, completionTokens: number): number {
+  return (creditsForTokens(model, promptTokens, completionTokens) * CREDIT_BASE_USD_PER_MILLION) / 1_000_000;
 }

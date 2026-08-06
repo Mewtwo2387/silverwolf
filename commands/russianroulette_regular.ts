@@ -1,48 +1,52 @@
-import {
-  ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder,
-} from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { Command } from './classes/Command';
 
 class RussianRouletteRegular extends Command {
   constructor(client: any) {
-    super(client, 'regular', 'Play a game of Russian Roulette', [
-      {
-        name: 'user1',
-        type: 6,
-        description: 'The first participant',
-        required: true,
-      },
-      {
-        name: 'user2',
-        type: 6,
-        description: 'The second participant',
-        required: true,
-      },
-      {
-        name: 'user3',
-        type: 6,
-        description: 'The third participant',
-        required: false,
-      },
-      {
-        name: 'user4',
-        type: 6,
-        description: 'The fourth participant',
-        required: false,
-      },
-      {
-        name: 'user5',
-        type: 6,
-        description: 'The fifth participant',
-        required: false,
-      },
-      {
-        name: 'user6',
-        type: 6,
-        description: 'The sixth participant',
-        required: false,
-      },
-    ], { isSubcommandOf: 'russianroulette', blame: 'xei' });
+    super(
+      client,
+      'regular',
+      'Play a game of Russian Roulette',
+      [
+        {
+          name: 'user1',
+          type: 6,
+          description: 'The first participant',
+          required: true,
+        },
+        {
+          name: 'user2',
+          type: 6,
+          description: 'The second participant',
+          required: true,
+        },
+        {
+          name: 'user3',
+          type: 6,
+          description: 'The third participant',
+          required: false,
+        },
+        {
+          name: 'user4',
+          type: 6,
+          description: 'The fourth participant',
+          required: false,
+        },
+        {
+          name: 'user5',
+          type: 6,
+          description: 'The fifth participant',
+          required: false,
+        },
+        {
+          name: 'user6',
+          type: 6,
+          description: 'The sixth participant',
+          required: false,
+        },
+      ],
+      { isSubcommandOf: 'russianroulette', blame: 'xei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -69,13 +73,9 @@ class RussianRouletteRegular extends Command {
       .setDescription(`${participants[turn].toString()}'s turn!`)
       .setFooter({ text: 'Click the button below to pull the trigger.' });
 
-    const row = new ActionRowBuilder()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId('trigger')
-          .setLabel('Pull the Trigger')
-          .setStyle(ButtonStyle.Danger),
-      );
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('trigger').setLabel('Pull the Trigger').setStyle(ButtonStyle.Danger),
+    );
 
     const message = await interaction.editReply({ embeds: [embed], components: [row], fetchReply: true });
 
@@ -88,7 +88,9 @@ class RussianRouletteRegular extends Command {
         await i.update({ embeds: [embed], components: [] });
         collector.stop();
       } else if (turn === participants.length - 1) {
-        embed.setDescription(`Everyone survived! 🎉\n\nNo one was shot, but ${participants[unluckyPerson].toString()} was the unlucky one.`);
+        embed.setDescription(
+          `Everyone survived! 🎉\n\nNo one was shot, but ${participants[unluckyPerson].toString()} was the unlucky one.`,
+        );
         await i.update({ embeds: [embed], components: [] });
         collector.stop();
       } else {

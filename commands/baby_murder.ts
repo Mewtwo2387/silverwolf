@@ -38,22 +38,14 @@ class BabyMurder extends Command {
 
     if (baby.status === 'unborn') {
       await interaction.editReply({
-        embeds: [
-          new Discord.EmbedBuilder()
-            .setColor('#FF0000')
-            .setTitle('You can\'t murder an unborn baby!'),
-        ],
+        embeds: [new Discord.EmbedBuilder().setColor('#FF0000').setTitle("You can't murder an unborn baby!")],
       });
       return;
     }
 
     if (baby.status === 'dead') {
       await interaction.editReply({
-        embeds: [
-          new Discord.EmbedBuilder()
-            .setColor('#FF0000')
-            .setTitle('You can\'t murder a dead baby!'),
-        ],
+        embeds: [new Discord.EmbedBuilder().setColor('#FF0000').setTitle("You can't murder a dead baby!")],
       });
       return;
     }

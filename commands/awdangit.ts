@@ -29,23 +29,13 @@ class Awdangit extends Command {
 
       await interaction.member.roles.add(role);
       await interaction.editReply({
-        embeds: [
-          new EmbedBuilder()
-            .setTitle('Congrats!')
-            .setDescription('You became a girl!')
-            .setColor('#00FF00'),
-        ],
+        embeds: [new EmbedBuilder().setTitle('Congrats!').setDescription('You became a girl!').setColor('#00FF00')],
       });
     } else {
       log(`${interaction.user.username} earned $1M`);
 
       await interaction.editReply({
-        embeds: [
-          new EmbedBuilder()
-            .setTitle('Aw, dang it!')
-            .setDescription('You earned $1M!')
-            .setColor('#FF0000'),
-        ],
+        embeds: [new EmbedBuilder().setTitle('Aw, dang it!').setDescription('You earned $1M!').setColor('#FF0000')],
       });
     }
   }

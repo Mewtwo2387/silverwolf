@@ -166,10 +166,12 @@ describe('UserModel', () => {
         { id: '3', dinonuggies: 200 },
       ];
 
-      await Promise.all(users.map(async (user) => {
-        await userModel.createUser(user.id);
-        await userModel.setUserAttr(user.id, 'dinonuggies', user.dinonuggies);
-      }));
+      await Promise.all(
+        users.map(async (user) => {
+          await userModel.createUser(user.id);
+          await userModel.setUserAttr(user.id, 'dinonuggies', user.dinonuggies);
+        }),
+      );
 
       const result = await userModel.getEveryoneAttr('dinonuggies');
       const count = await userModel.getEveryoneAttrCount('dinonuggies');
@@ -187,10 +189,12 @@ describe('UserModel', () => {
         { id: '3', dinonuggies: 200 },
       ];
 
-      await Promise.all(users.map(async (user) => {
-        await userModel.createUser(user.id);
-        await userModel.setUserAttr(user.id, 'dinonuggies', user.dinonuggies);
-      }));
+      await Promise.all(
+        users.map(async (user) => {
+          await userModel.createUser(user.id);
+          await userModel.setUserAttr(user.id, 'dinonuggies', user.dinonuggies);
+        }),
+      );
 
       const result = await userModel.getEveryoneAttr('dinonuggies');
       const count = await userModel.getEveryoneAttrCount('dinonuggies');
@@ -201,10 +205,12 @@ describe('UserModel', () => {
     });
 
     it('should not have a limit if not specified', async () => {
-      await Promise.all(Array.from({ length: 100 }, async (_, i) => {
-        await userModel.createUser(i.toString());
-        await userModel.setUserAttr(i.toString(), 'dinonuggies', i);
-      }));
+      await Promise.all(
+        Array.from({ length: 100 }, async (_, i) => {
+          await userModel.createUser(i.toString());
+          await userModel.setUserAttr(i.toString(), 'dinonuggies', i);
+        }),
+      );
 
       const result = await userModel.getEveryoneAttr('dinonuggies');
       const count = await userModel.getEveryoneAttrCount('dinonuggies');
@@ -219,10 +225,12 @@ describe('UserModel', () => {
         { id: '3', dinonuggies: 200 },
       ];
 
-      await Promise.all(users.map(async (user) => {
-        await userModel.createUser(user.id);
-        await userModel.setUserAttr(user.id, 'dinonuggies', user.dinonuggies);
-      }));
+      await Promise.all(
+        users.map(async (user) => {
+          await userModel.createUser(user.id);
+          await userModel.setUserAttr(user.id, 'dinonuggies', user.dinonuggies);
+        }),
+      );
 
       const result = await userModel.getEveryoneAttr('dinonuggies', 2, 1);
       const count = await userModel.getEveryoneAttrCount('dinonuggies');

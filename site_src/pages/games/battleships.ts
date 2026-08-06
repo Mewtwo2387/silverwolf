@@ -1,7 +1,11 @@
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 
-export function BattleshipsPage(opts: { nonce: string; lv999?: boolean; user?: import('../../components/navbar').NavUser | null }) {
+export function BattleshipsPage(opts: {
+  nonce: string;
+  lv999?: boolean;
+  user?: import('../../components/navbar').NavUser | null;
+}) {
   const { nonce, lv999, user } = opts;
 
   const extras = raw(`
@@ -1068,7 +1072,11 @@ export function BattleshipsPage(opts: { nonce: string; lv999?: boolean; user?: i
     <h1 class="text-center">Battleships</h1>
     <p class="text-center text-fog-300">Deploy your fleet and sink the AI before it sinks you.</p>
     <p class="text-center" style="margin-top:-0.5rem;">
-      <a href="/games/battleships/multiplayer" style="color: var(--accent-light); text-decoration: none; border-bottom: 1px dashed currentColor;">play a friend →</a>
+      <a
+        href="/games/battleships/multiplayer"
+        style="color: var(--accent-light); text-decoration: none; border-bottom: 1px dashed currentColor;"
+        >play a friend →</a
+      >
     </p>
 
     <div class="bs-wrap">
@@ -1078,10 +1086,20 @@ export function BattleshipsPage(opts: { nonce: string; lv999?: boolean; user?: i
         <div class="bs-field">
           <label for="bs-diff">AI Difficulty</label>
           <div class="bs-range-row">
-            <input type="range" id="bs-diff" class="bs-range" min="0" max="3" step="1" value="1" aria-label="AI difficulty" />
+            <input
+              type="range"
+              id="bs-diff"
+              class="bs-range"
+              min="0"
+              max="3"
+              step="1"
+              value="1"
+              aria-label="AI difficulty"
+            />
           </div>
           <div id="bs-diff-ticks" class="bs-diff-ticks">
-            <span data-d="0">Easy</span><span data-d="1">Medium</span><span data-d="2">Hard</span><span data-d="3">Impossible</span>
+            <span data-d="0">Easy</span><span data-d="1">Medium</span><span data-d="2">Hard</span
+            ><span data-d="3">Impossible</span>
           </div>
           <div id="bs-diff-val" class="bs-diff-val">Medium</div>
           <p id="bs-diff-desc" class="bs-diff-desc"></p>
@@ -1105,7 +1123,9 @@ export function BattleshipsPage(opts: { nonce: string; lv999?: boolean; user?: i
         <!-- Middle: the two boards -->
         <div class="bs-boards">
           <div class="bs-board-block">
-            <div class="bs-board-label"><span>Radar — Enemy Waters</span><span class="bs-radar-tag">fire here ⌖</span></div>
+            <div class="bs-board-label">
+              <span>Radar — Enemy Waters</span><span class="bs-radar-tag">fire here ⌖</span>
+            </div>
             <div class="bs-board-shell">
               <div id="bs-radar" class="bs-grid radar locked"></div>
             </div>
@@ -1121,7 +1141,10 @@ export function BattleshipsPage(opts: { nonce: string; lv999?: boolean; user?: i
         <!-- Right: fleet tray -->
         <div class="bs-tray-panel" aria-label="Your fleet">
           <p class="bs-tray-title">Your Fleet</p>
-          <p class="bs-tray-hint">Drag each ship onto your waters (green = ok, red = no room). Drag a placed ship to move it, tap it to rotate, or click its card here to recall it.</p>
+          <p class="bs-tray-hint">
+            Drag each ship onto your waters (green = ok, red = no room). Drag a placed ship to move it, tap it to
+            rotate, or click its card here to recall it.
+          </p>
           <div id="bs-tray" class="bs-tray"></div>
         </div>
       </div>

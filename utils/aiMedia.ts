@@ -135,10 +135,11 @@ export function hasQualifyingMedia(
   contextMsg: Message | null = null,
   allowed: MediaKind[] = ALL_MEDIA_KINDS,
 ): boolean {
-  const check = (msg: Message) => [...msg.attachments.values()].some((att) => {
-    const cls = classify(att);
-    return cls !== null && allowed.includes(cls.kind);
-  });
+  const check = (msg: Message) =>
+    [...msg.attachments.values()].some((att) => {
+      const cls = classify(att);
+      return cls !== null && allowed.includes(cls.kind);
+    });
   return check(message) || (contextMsg ? check(contextMsg) : false);
 }
 
@@ -183,7 +184,9 @@ export async function collectMediaFromMessage(
   const counts: Record<MediaKind, number> = { image: 0, video: 0, audio: 0 };
   const maxCounts: Record<MediaKind, number> = { image: MAX_IMAGES, video: MAX_VIDEOS, audio: MAX_AUDIO };
   const byteCaps: Record<MediaKind, number> = {
-    image: MAX_IMAGE_BYTES, video: MAX_VIDEO_BYTES, audio: MAX_AUDIO_BYTES,
+    image: MAX_IMAGE_BYTES,
+    video: MAX_VIDEO_BYTES,
+    audio: MAX_AUDIO_BYTES,
   };
   let totalBytes = 0;
   const skippedOverCount: Record<MediaKind, number> = { image: 0, video: 0, audio: 0 };
@@ -202,7 +205,10 @@ export async function collectMediaFromMessage(
       // Out-of-scope modalities simply aren't relevant here, not "unsupported".
       if (!allowed.includes(cls.kind)) continue;
       candidates.push({
-        att, kind: cls.kind, mime: cls.mime, fromReply,
+        att,
+        kind: cls.kind,
+        mime: cls.mime,
+        fromReply,
       });
     }
   };
@@ -211,7 +217,10 @@ export async function collectMediaFromMessage(
 
   if (candidates.length === 0 && skippedUnsupported === 0) {
     return {
-      parts, kinds, placeholders, notices,
+      parts,
+      kinds,
+      placeholders,
+      notices,
     };
   }
 
@@ -226,7 +235,9 @@ export async function collectMediaFromMessage(
       continue;
     }
     if (totalBytes + att.size > TOTAL_MEDIA_BYTES) {
-      notices.push(`⚠ Skipped **${att.name}** — total media budget of ${fmtMB(TOTAL_MEDIA_BYTES)} per request reached.`);
+      notices.push(
+        `⚠ Skipped **${att.name}** — total media budget of ${fmtMB(TOTAL_MEDIA_BYTES)} per request reached.`,
+      );
       continue;
     }
 
@@ -239,7 +250,9 @@ export async function collectMediaFromMessage(
     // Re-check the total budget against real bytes — the pre-download check
     // used Discord metadata, which the per-file cap already refuses to trust.
     if (totalBytes + buf.byteLength > TOTAL_MEDIA_BYTES) {
-      notices.push(`⚠ Skipped **${att.name}** — total media budget of ${fmtMB(TOTAL_MEDIA_BYTES)} per request reached.`);
+      notices.push(
+        `⚠ Skipped **${att.name}** — total media budget of ${fmtMB(TOTAL_MEDIA_BYTES)} per request reached.`,
+      );
       continue;
     }
     totalBytes += buf.byteLength;
@@ -259,7 +272,9 @@ export async function collectMediaFromMessage(
 
   for (const kind of Object.keys(skippedOverCount) as MediaKind[]) {
     if (skippedOverCount[kind] > 0) {
-      notices.push(`⚠ Only the first ${maxCounts[kind]} ${kind}${maxCounts[kind] === 1 ? '' : 's'} per request ${maxCounts[kind] === 1 ? 'is' : 'are'} processed — skipped ${skippedOverCount[kind]} extra.`);
+      notices.push(
+        `⚠ Only the first ${maxCounts[kind]} ${kind}${maxCounts[kind] === 1 ? '' : 's'} per request ${maxCounts[kind] === 1 ? 'is' : 'are'} processed — skipped ${skippedOverCount[kind]} extra.`,
+      );
     }
   }
   // Attachments that failed classify() entirely (a .zip, a .txt) — nothing here
@@ -272,6 +287,9 @@ export async function collectMediaFromMessage(
   }
 
   return {
-    parts, kinds, placeholders, notices,
+    parts,
+    kinds,
+    placeholders,
+    notices,
   };
 }

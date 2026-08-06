@@ -3,14 +3,20 @@ import { Command } from './classes/Command';
 
 class Catcg extends Command {
   constructor(client: any) {
-    super(client, 'catcg', 'gotta catcg em all', [
-      {
-        name: 'pokenom',
-        description: 'the pokenom to catcg',
-        type: 3,
-        required: true,
-      },
-    ], { blame: 'ei' });
+    super(
+      client,
+      'catcg',
+      'gotta catcg em all',
+      [
+        {
+          name: 'pokenom',
+          description: 'the pokenom to catcg',
+          type: 3,
+          required: true,
+        },
+      ],
+      { blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -19,19 +25,17 @@ class Catcg extends Command {
       const pokemon = pokemons[Math.floor(Math.random() * pokemons.length)];
       await this.client.db.pokemon.sacrificePokemon(interaction.user.id, pokemon.pokemonName);
       await interaction.editReply({
-        embeds: [new EmbedBuilder()
-          .setTitle('You used the wrong catch command!')
-          .setDescription(`A random pokemon you own, ${pokemon.pokemonName}, was released.`)
-          .setColor('#FF0000'),
+        embeds: [
+          new EmbedBuilder()
+            .setTitle('You used the wrong catch command!')
+            .setDescription(`A random pokemon you own, ${pokemon.pokemonName}, was released.`)
+            .setColor('#FF0000'),
         ],
       });
       return;
     }
     await interaction.editReply({
-      embeds: [new EmbedBuilder()
-        .setTitle('You used the wrong catch command!')
-        .setColor('#FF0000'),
-      ],
+      embeds: [new EmbedBuilder().setTitle('You used the wrong catch command!').setColor('#FF0000')],
     });
   }
 }

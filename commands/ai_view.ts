@@ -9,17 +9,23 @@ const MAX_SEARCH_CHARS = 100;
 
 class AiView extends Command {
   constructor(client: any) {
-    super(client, 'view', 'View all your AI chat sessions', [
+    super(
+      client,
+      'view',
+      'View all your AI chat sessions',
+      [
+        {
+          name: 'search',
+          description: 'Filter sessions by title, AI name/trigger, or model (e.g. "mimo", "deepseek")',
+          type: 3,
+          required: false,
+        },
+      ],
       {
-        name: 'search',
-        description: 'Filter sessions by title, AI name/trigger, or model (e.g. "mimo", "deepseek")',
-        type: 3,
-        required: false,
+        isSubcommandOf: 'ai',
+        blame: 'xei',
       },
-    ], {
-      isSubcommandOf: 'ai',
-      blame: 'xei',
-    });
+    );
   }
 
   // eslint-disable-next-line class-methods-use-this
@@ -30,7 +36,9 @@ class AiView extends Command {
       const messageCount = Number.isFinite(Number(s.messageCount)) ? Number(s.messageCount) : 0;
       const messageLabel = messageCount === 1 ? 'message' : 'messages';
       const date = new Date(s.createdAt).toLocaleDateString('en-GB', {
-        year: 'numeric', month: 'short', day: 'numeric',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
       });
       const ai = getPersonaInvokeLabel(s.personaName);
       return `**[${s.sessionId}]** ${s.title || s.personaName} · ${status} · ${messageCount} ${messageLabel} · Created ${date} · ${ai}`;
@@ -42,32 +50,34 @@ class AiView extends Command {
       .setTitle('🤖 Your AI Chat Sessions')
       .setDescription(rows.join('\n'))
       .setFooter({
-        text: `Page ${page + 1}/${maxPage + 1} · ${sessions.length} session${sessions.length === 1 ? '' : 's'}${filterNote}`
-          + ' · Use /ai chatnew, /ai chatswitch, /ai chatdelete, or /ai retitle.',
+        text:
+          `Page ${page + 1}/${maxPage + 1} · ${sessions.length} session${sessions.length === 1 ? '' : 's'}${filterNote}` +
+          ' · Use /ai chatnew, /ai chatswitch, /ai chatdelete, or /ai retitle.',
       });
   }
 
   // eslint-disable-next-line class-methods-use-this
   buildButtons(page: number, maxPage: number, disableAll = false): Discord.ActionRowBuilder<Discord.ButtonBuilder> {
-    return new Discord.ActionRowBuilder<Discord.ButtonBuilder>()
-      .addComponents(
-        new Discord.ButtonBuilder()
-          .setCustomId('prev_page')
-          .setLabel('⬅️ Back')
-          .setStyle(Discord.ButtonStyle.Primary)
-          .setDisabled(disableAll || page === 0),
-        new Discord.ButtonBuilder()
-          .setCustomId('next_page')
-          .setLabel('Next ➡️')
-          .setStyle(Discord.ButtonStyle.Primary)
-          .setDisabled(disableAll || page === maxPage),
-      );
+    return new Discord.ActionRowBuilder<Discord.ButtonBuilder>().addComponents(
+      new Discord.ButtonBuilder()
+        .setCustomId('prev_page')
+        .setLabel('⬅️ Back')
+        .setStyle(Discord.ButtonStyle.Primary)
+        .setDisabled(disableAll || page === 0),
+      new Discord.ButtonBuilder()
+        .setCustomId('next_page')
+        .setLabel('Next ➡️')
+        .setStyle(Discord.ButtonStyle.Primary)
+        .setDisabled(disableAll || page === maxPage),
+    );
   }
 
   async run(interaction: any): Promise<void> {
     const userId = interaction.user.id;
     const search = String(interaction.options.getString('search') || '')
-      .trim().toLowerCase().slice(0, MAX_SEARCH_CHARS);
+      .trim()
+      .toLowerCase()
+      .slice(0, MAX_SEARCH_CHARS);
 
     try {
       // Only Discord-source sessions — web-created (source='web') chats from
@@ -79,19 +89,25 @@ class AiView extends Command {
       // (e.g. "DS"), configured model id (e.g. "deepseek/deepseek-v4-flash-0731"),
       // or the numeric session id.
       const sessions = search
-        ? allSessions.filter((s: any) => [
-          s.title || '',
-          s.personaName || '',
-          getPersonaInvokeLabel(s.personaName),
-          getPersonaModelName(s.personaName),
-          String(s.sessionId),
-        ].join(' ').toLowerCase().includes(search))
+        ? allSessions.filter((s: any) =>
+            [
+              s.title || '',
+              s.personaName || '',
+              getPersonaInvokeLabel(s.personaName),
+              getPersonaModelName(s.personaName),
+              String(s.sessionId),
+            ]
+              .join(' ')
+              .toLowerCase()
+              .includes(search),
+          )
         : allSessions;
 
       if (sessions.length === 0) {
-        const description = allSessions.length === 0
-          ? "You don't have any sessions yet. Mention an AI (e.g. `@grok`) to start one!"
-          : `No sessions match \`${search}\`. Try a persona name (e.g. "mimo"), a model (e.g. "deepseek"), or part of a title.`;
+        const description =
+          allSessions.length === 0
+            ? "You don't have any sessions yet. Mention an AI (e.g. `@grok`) to start one!"
+            : `No sessions match \`${search}\`. Try a persona name (e.g. "mimo"), a model (e.g. "deepseek"), or part of a title.`;
         await interaction.editReply({
           embeds: [
             new Discord.EmbedBuilder()
@@ -135,9 +151,13 @@ class AiView extends Command {
       });
 
       collector.on('end', async () => {
-        await message.edit({
-          components: [this.buildButtons(currentPage, maxPage, true)],
-        }).catch(() => { /* message may have been deleted */ });
+        await message
+          .edit({
+            components: [this.buildButtons(currentPage, maxPage, true)],
+          })
+          .catch(() => {
+            /* message may have been deleted */
+          });
       });
     } catch (err) {
       logError('AiView error:', err);

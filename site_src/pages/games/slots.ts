@@ -15,9 +15,7 @@ export function SlotsPage(opts: {
   user?: NavUser | null;
   gambleStats?: GamblingPageStats | null;
 }) {
-  const {
-    nonce, lv999, user, gambleStats,
-  } = opts;
+  const { nonce, lv999, user, gambleStats } = opts;
   const csrfJSON = inlineJSON(user?.csrf ?? '');
   const loggedOut = !user;
 
@@ -169,11 +167,14 @@ export function SlotsPage(opts: {
   // Render 5 empty reels with placeholder strips. The script will populate
   // them with filler symbols and animate to the server-supplied 3-symbol stop
   // position.
-  const reelsHTML = Array.from({ length: 5 }, (_, j) => `
+  const reelsHTML = Array.from(
+    { length: 5 },
+    (_, j) => `
     <div class="reel" data-reel="${j}">
       <div class="strip"></div>
     </div>
-  `).join('');
+  `,
+  ).join('');
 
   const script = raw(`
 <script nonce="${nonce}">
@@ -422,23 +423,28 @@ export function SlotsPage(opts: {
     ${gambleStats ? renderGambleStatsBar(gambleStats) : ''}
     <div class="slots-container">
       <div class="slots-machine">
-        <div class="reels">
-          ${raw(reelsHTML)}
-        </div>
+        <div class="reels">${raw(reelsHTML)}</div>
       </div>
-      ${loggedOut
-    ? html`<div class="login-cta">Log in with <a href="/auth/discord/login">Discord</a> to play.</div>`
-    : html`
-            <form class="slots-form" onsubmit="return false">
-              <label for="amount-input">Bet amount</label>
-              <input id="amount-input" type="text" placeholder="amount (e.g. 1000 or 1k)" autocomplete="off" aria-label="Bet amount" />
-              <button id="roll-btn" type="button" class="btn-accent roll-btn">Roll</button>
-            </form>
-          `}
+      ${
+        loggedOut
+          ? html`<div class="login-cta">Log in with <a href="/auth/discord/login">Discord</a> to play.</div>`
+          : html`
+              <form class="slots-form" onsubmit="return false">
+                <label for="amount-input">Bet amount</label>
+                <input
+                  id="amount-input"
+                  type="text"
+                  placeholder="amount (e.g. 1000 or 1k)"
+                  autocomplete="off"
+                  aria-label="Bet amount"
+                />
+                <button id="roll-btn" type="button" class="btn-accent roll-btn">Roll</button>
+              </form>
+            `
+      }
       <div id="result-banner" class="result-banner"></div>
     </div>
-    ${extras}
-    ${loggedOut ? '' : script}
+    ${extras} ${loggedOut ? '' : script}
   `;
 
   return Layout({

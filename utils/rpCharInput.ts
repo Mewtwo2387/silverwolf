@@ -1,7 +1,5 @@
 import { countTokensOpenRouter } from './tokenizer';
-import {
-  validateCharName, DETAILS_MAX_TOKENS, STARTING_MESSAGE_MAX_LENGTH, MAX_CHAR_JSON_BYTES,
-} from './rpIdentity';
+import { validateCharName, DETAILS_MAX_TOKENS, STARTING_MESSAGE_MAX_LENGTH, MAX_CHAR_JSON_BYTES } from './rpIdentity';
 import { logError } from './log';
 
 /**
@@ -50,9 +48,9 @@ export function validateStartingMessage(sm: string): string | null {
 
 /** Validates a complete field set (used by the JSON path). Returns the first error or null. */
 export function validateCharacterFields(fields: CharacterFields): string | null {
-  return validateName(fields.name)
-    || validateDetails(fields.details)
-    || validateStartingMessage(fields.startingMessage);
+  return (
+    validateName(fields.name) || validateDetails(fields.details) || validateStartingMessage(fields.startingMessage)
+  );
 }
 
 type LoadResult = { ok: true; fields: CharacterFields } | { ok: false; error: string };
@@ -62,9 +60,7 @@ type LoadResult = { ok: true; fields: CharacterFields } | { ok: false; error: st
  * front, tolerates missing fields with actionable feedback, and never trusts the
  * parsed object beyond three explicitly-read string properties.
  */
-export async function loadCharacterJson(attachment: {
-  url: string; size?: number;
-}): Promise<LoadResult> {
+export async function loadCharacterJson(attachment: { url: string; size?: number }): Promise<LoadResult> {
   if (typeof attachment.size === 'number' && attachment.size > MAX_CHAR_JSON_BYTES) {
     return { ok: false, error: `That .json is too large (max ${MAX_CHAR_JSON_BYTES / 1024} KB).` };
   }

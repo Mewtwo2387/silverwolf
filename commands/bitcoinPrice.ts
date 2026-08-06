@@ -23,7 +23,11 @@ class BitcoinPrice extends Command {
       const embed = new Discord.EmbedBuilder()
         .setTitle('Current Bitcoin Price')
         .setDescription(`As of ${date.toLocaleString()}`)
-        .setFooter({ text: data.disclaimer, iconURL: 'https://th.bing.com/th/id/R.4077e337bac40b4e403a6ac336ac44b5?rik=uJ8OajioCe%2b%2b5g&riu=http%3a%2f%2ftech.eu%2fwp-content%2fuploads%2f2014%2f04%2fbitcoin.jpg&ehk=ON6Qtu9zJQwNIkoWtVz%2fy2pkZ8bITim2azHWPWkyoY4%3d&risl=&pid=ImgRaw&r=0' });
+        .setFooter({
+          text: data.disclaimer,
+          iconURL:
+            'https://th.bing.com/th/id/R.4077e337bac40b4e403a6ac336ac44b5?rik=uJ8OajioCe%2b%2b5g&riu=http%3a%2f%2ftech.eu%2fwp-content%2fuploads%2f2014%2f04%2fbitcoin.jpg&ehk=ON6Qtu9zJQwNIkoWtVz%2fy2pkZ8bITim2azHWPWkyoY4%3d&risl=&pid=ImgRaw&r=0',
+        });
 
       const fields: { name: string; value: string; inline: boolean }[] = [];
       Object.keys(data.bpi).forEach((currency) => {

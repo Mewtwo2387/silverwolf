@@ -6,15 +6,21 @@ const BIRTHDAY_CHANNELS_CONFIG_KEY = 'birthday_channels';
 
 class BirthdayUnregister extends DevCommand {
   constructor(client: any) {
-    super(client, 'unregister', 'Unregister a channel from birthday announcements', [
-      {
-        name: 'channel',
-        description: 'The channel to stop sending birthday messages to',
-        type: 7,
-        required: true,
-        channel_types: [0],
-      },
-    ], { isSubcommandOf: 'birthday', blame: 'ei' });
+    super(
+      client,
+      'unregister',
+      'Unregister a channel from birthday announcements',
+      [
+        {
+          name: 'channel',
+          description: 'The channel to stop sending birthday messages to',
+          type: 7,
+          required: true,
+          channel_types: [0],
+        },
+      ],
+      { isSubcommandOf: 'birthday', blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {

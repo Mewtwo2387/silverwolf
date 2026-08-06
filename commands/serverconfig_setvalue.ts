@@ -1,29 +1,32 @@
 import { DevCommand } from './classes/DevCommand';
-import {
-  SETTABLE_VALUE_KEYS,
-  validateServerConfigValue,
-} from '../utils/serverConfig';
+import { SETTABLE_VALUE_KEYS, validateServerConfigValue } from '../utils/serverConfig';
 
 class ServerConfigSetValue extends DevCommand {
   constructor(client: any) {
-    super(client, 'setvalue', 'Set a numeric server config value', [
-      {
-        name: 'key',
-        description: 'Config key',
-        type: 3,
-        required: true,
-        choices: SETTABLE_VALUE_KEYS.map((entry) => ({
-          name: entry.key,
-          value: entry.key,
-        })),
-      },
-      {
-        name: 'value',
-        description: 'Config value',
-        type: 3,
-        required: true,
-      },
-    ], { isSubcommandOf: 'serverconfig', blame: 'ei' });
+    super(
+      client,
+      'setvalue',
+      'Set a numeric server config value',
+      [
+        {
+          name: 'key',
+          description: 'Config key',
+          type: 3,
+          required: true,
+          choices: SETTABLE_VALUE_KEYS.map((entry) => ({
+            name: entry.key,
+            value: entry.key,
+          })),
+        },
+        {
+          name: 'value',
+          description: 'Config value',
+          type: 3,
+          required: true,
+        },
+      ],
+      { isSubcommandOf: 'serverconfig', blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {

@@ -30,8 +30,12 @@ async function downloadWithRetry(url: string, attempts: number): Promise<ArrayBu
       lastErr = err;
       if (attempt < attempts) {
         const delayMs = attempt * 2000;
-        console.log(`Attempt ${attempt} failed (${err instanceof Error ? err.message : err}) — retrying in ${delayMs / 1000}s...`);
-        await new Promise((resolve) => { setTimeout(resolve, delayMs); });
+        console.log(
+          `Attempt ${attempt} failed (${err instanceof Error ? err.message : err}) — retrying in ${delayMs / 1000}s...`,
+        );
+        await new Promise((resolve) => {
+          setTimeout(resolve, delayMs);
+        });
       }
     }
   }

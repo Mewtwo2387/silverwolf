@@ -9,19 +9,39 @@ type IndexEntry = { title: string; href: string; group: string; desc?: string; k
 // a circular import (routes → layout → search).
 const PAGES: IndexEntry[] = [
   {
-    title: 'About', href: '/about', group: 'Pages', desc: 'About Silverwolf', keywords: 'home info silverwolf',
+    title: 'About',
+    href: '/about',
+    group: 'Pages',
+    desc: 'About Silverwolf',
+    keywords: 'home info silverwolf',
   },
   {
-    title: 'Leaderboards', href: '/leaderboards', group: 'Pages', desc: 'Top players by category', keywords: 'rank top scores',
+    title: 'Leaderboards',
+    href: '/leaderboards',
+    group: 'Pages',
+    desc: 'Top players by category',
+    keywords: 'rank top scores',
   },
   {
-    title: 'Birthdays', href: '/birthdays', group: 'Pages', desc: 'Server birthdays by month', keywords: 'bday calendar',
+    title: 'Birthdays',
+    href: '/birthdays',
+    group: 'Pages',
+    desc: 'Server birthdays by month',
+    keywords: 'bday calendar',
   },
   {
-    title: 'Games', href: '/games', group: 'Pages', desc: 'All games', keywords: 'play arcade',
+    title: 'Games',
+    href: '/games',
+    group: 'Pages',
+    desc: 'All games',
+    keywords: 'play arcade',
   },
   {
-    title: 'Dashboard', href: '/me', group: 'Pages', desc: 'Your profile and stats', keywords: 'profile me account',
+    title: 'Dashboard',
+    href: '/me',
+    group: 'Pages',
+    desc: 'Your profile and stats',
+    keywords: 'profile me account',
   },
 ];
 
@@ -74,10 +94,10 @@ function buildIndex(): IndexEntry[] {
 }
 
 const ICON_SEARCH = raw(
-  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-    + '<circle cx="11" cy="11" r="7"/>'
-    + '<path d="m20 20-3.5-3.5"/>'
-    + '</svg>',
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<circle cx="11" cy="11" r="7"/>' +
+    '<path d="m20 20-3.5-3.5"/>' +
+    '</svg>',
 );
 
 export function Search() {
@@ -89,7 +109,14 @@ export function Search() {
       <div class="search-box" role="combobox" aria-expanded="true">
         <div class="search-input-row">
           ${ICON_SEARCH}
-          <input class="search-input" type="text" placeholder="Search pages, games, leaderboards…" autocomplete="off" spellcheck="false" aria-label="Search" />
+          <input
+            class="search-input"
+            type="text"
+            placeholder="Search pages, games, leaderboards…"
+            autocomplete="off"
+            spellcheck="false"
+            aria-label="Search"
+          />
           <span class="search-hint">esc</span>
         </div>
         <div class="search-results" role="listbox"></div>
@@ -101,6 +128,8 @@ export function Search() {
         </div>
       </div>
     </div>
-    <script type="application/json" id="search-index">${raw(inlineJSON(buildIndex()))}</script>
+    <script type="application/json" id="search-index">
+      ${raw(inlineJSON(buildIndex()))}
+    </script>
   `;
 }

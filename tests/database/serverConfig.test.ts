@@ -136,10 +136,11 @@ describe('ServerConfigModel', () => {
           UNIQUE (server_id, role_name)
         )
       `);
-      legacyDb.run(
-        'INSERT INTO ServerRoles (server_id, role_name, role_id) VALUES (?, ?, ?)',
-        ['111111111', 'girl', '999999999'],
-      );
+      legacyDb.run('INSERT INTO ServerRoles (server_id, role_name, role_id) VALUES (?, ?, ?)', [
+        '111111111',
+        'girl',
+        '999999999',
+      ]);
       legacyDb.close();
 
       const migratedDb = new Database(dbPath);

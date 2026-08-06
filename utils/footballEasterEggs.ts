@@ -1,6 +1,7 @@
 import type { GoalEvent } from './footballAnnouncements';
 
-export const MINUTE_67_GIF_URL = 'https://tenor.com/view/abster-abstract-abstractchain-green-pudgy-gif-6595049812886649814';
+export const MINUTE_67_GIF_URL =
+  'https://tenor.com/view/abster-abstract-abstractchain-green-pudgy-gif-6595049812886649814';
 const BRAZIL_FLAG = '🇧🇷';
 
 export function displayScorerName(goal: GoalEvent): string {

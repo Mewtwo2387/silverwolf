@@ -8,10 +8,7 @@ const MAX_CHARS_PER_PDF = 50_000;
 const MIN_USEFUL_TEXT_CHARS = 50;
 const PDF_MAGIC = '%PDF-';
 
-const ALLOWED_CDN_HOSTNAMES = new Set([
-  'cdn.discordapp.com',
-  'media.discordapp.net',
-]);
+const ALLOWED_CDN_HOSTNAMES = new Set(['cdn.discordapp.com', 'media.discordapp.net']);
 
 function isValidDiscordCdnUrl(url: string): boolean {
   let parsed: URL;
@@ -79,29 +76,33 @@ async function extractOne(att: AttachmentInfo): Promise<{ block?: string; notice
     doc = await getDocumentProxy(pdfBytes);
     const result = await extractText(doc, { mergePages: true });
     originalLength = result.text.length;
-    rawText = originalLength > MAX_CHARS_PER_PDF
-      ? result.text.slice(0, MAX_CHARS_PER_PDF)
-      : result.text;
+    rawText = originalLength > MAX_CHARS_PER_PDF ? result.text.slice(0, MAX_CHARS_PER_PDF) : result.text;
   } catch {
     return { notice: `Couldn't read **${name}** (encrypted or corrupt) — skipping it.` };
   } finally {
     if (doc) {
-      try { await doc.destroy(); } catch { /* best-effort */ }
+      try {
+        await doc.destroy();
+      } catch {
+        /* best-effort */
+      }
     }
     doc = null;
     pdfBytes = null;
   }
 
-  const cleaned = rawText.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  const cleaned = rawText
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
   rawText = '';
 
   if (cleaned.length < MIN_USEFUL_TEXT_CHARS) {
     return { notice: `**${name}** had no extractable text (likely scanned images) — skipping it.` };
   }
 
-  const body = originalLength > MAX_CHARS_PER_PDF
-    ? `${cleaned}\n\n[...truncated, original was ${originalLength} chars]`
-    : cleaned;
+  const body =
+    originalLength > MAX_CHARS_PER_PDF ? `${cleaned}\n\n[...truncated, original was ${originalLength} chars]` : cleaned;
 
   const safeName = name
     .replace(/\\/g, '\\\\')

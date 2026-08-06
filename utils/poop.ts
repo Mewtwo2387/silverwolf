@@ -2,7 +2,10 @@
 // log` command (as slash-command choices), the web POST /games/poop/log
 // validator, and the web /games/poop page (as <select> options).
 
-export interface PoopOption { value: string; label: string }
+export interface PoopOption {
+  value: string;
+  label: string;
+}
 
 export const POOP_COLOURS: PoopOption[] = [
   { value: 'brown', label: 'Brown' },
@@ -40,6 +43,5 @@ export const POOP_SIZE_VALUES = valuesOf(POOP_SIZES);
 export const POOP_TYPE_VALUES = valuesOf(POOP_TYPES);
 
 // Build Discord slash-command `choices` arrays in the shape discord.js expects.
-export const poopChoices = (
-  opts: PoopOption[],
-): { name: string; value: string }[] => opts.map(({ label, value }) => ({ name: label, value }));
+export const poopChoices = (opts: PoopOption[]): { name: string; value: string }[] =>
+  opts.map(({ label, value }) => ({ name: label, value }));

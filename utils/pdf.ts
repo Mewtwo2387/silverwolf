@@ -60,7 +60,11 @@ export async function extractPdfsFromMessage(message: Message): Promise<PdfExtra
   }
 
   const killTimer = setTimeout(() => {
-    try { proc.kill(); } catch { /* already gone */ }
+    try {
+      proc.kill();
+    } catch {
+      /* already gone */
+    }
   }, SUBPROCESS_TIMEOUT_MS);
 
   let stdoutText = '';

@@ -10,14 +10,28 @@ import { logError } from '../utils/log';
  */
 class AiRpLorebookRemove extends Command {
   constructor(client: any) {
-    super(client, 'rp-lorebook-remove', 'Remove a lorebook from a character you created', [
-      {
-        name: 'char', description: 'One of your characters (search by name or id)', type: 3, required: true, autocomplete: true,
-      },
-      {
-        name: 'lorebook_name', description: 'The lorebook to remove (omit to list them)', type: 3, required: false, autocomplete: true,
-      },
-    ], { isSubcommandOf: 'ai', blame: 'xei' });
+    super(
+      client,
+      'rp-lorebook-remove',
+      'Remove a lorebook from a character you created',
+      [
+        {
+          name: 'char',
+          description: 'One of your characters (search by name or id)',
+          type: 3,
+          required: true,
+          autocomplete: true,
+        },
+        {
+          name: 'lorebook_name',
+          description: 'The lorebook to remove (omit to list them)',
+          type: 3,
+          required: false,
+          autocomplete: true,
+        },
+      ],
+      { isSubcommandOf: 'ai', blame: 'xei' },
+    );
   }
 
   async autocomplete(interaction: any): Promise<void> {
@@ -47,7 +61,7 @@ class AiRpLorebookRemove extends Command {
       return;
     }
     if (character.creatorId !== interaction.user.id && !isDev(interaction)) {
-      await interaction.editReply('Only the character\'s creator can manage its lorebooks.');
+      await interaction.editReply("Only the character's creator can manage its lorebooks.");
       return;
     }
 
@@ -62,7 +76,12 @@ class AiRpLorebookRemove extends Command {
         const embed = new EmbedBuilder()
           .setColor('#9B59B6')
           .setTitle(`${character.name} — lorebooks`)
-          .setDescription(books.map((b: any) => `• **${b.name}** — ${b.type}${b.description ? ` · ${b.description}` : ''}`).join('\n').slice(0, 4000))
+          .setDescription(
+            books
+              .map((b: any) => `• **${b.name}** — ${b.type}${b.description ? ` · ${b.description}` : ''}`)
+              .join('\n')
+              .slice(0, 4000),
+          )
           .setFooter({ text: 'Re-run with lorebook_name to remove one.' });
         await interaction.editReply({ embeds: [embed] });
         return;

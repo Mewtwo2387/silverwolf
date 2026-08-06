@@ -1,37 +1,66 @@
 import { Command } from './classes/Command';
 import {
-  DETAILS_OPTION_MAX_LENGTH, STARTING_MESSAGE_MAX_LENGTH, NAME_MAX_LENGTH, formatCharHandle,
+  DETAILS_OPTION_MAX_LENGTH,
+  STARTING_MESSAGE_MAX_LENGTH,
+  NAME_MAX_LENGTH,
+  formatCharHandle,
 } from '../utils/rpIdentity';
 import { processAvatar, hostAvatar } from '../utils/rpAvatar';
 import { resolveCharOption, buildCharacterView } from '../utils/rpCommand';
-import {
-  loadCharacterJson, validateName, validateDetails, validateStartingMessage,
-} from '../utils/rpCharInput';
+import { loadCharacterJson, validateName, validateDetails, validateStartingMessage } from '../utils/rpCharInput';
 import { logError } from '../utils/log';
 
 /** Edits a character you own (individual fields, or a full .json replacement). */
 class AiRpEdit extends Command {
   constructor(client: any) {
-    super(client, 'rp-edit', 'Edit a roleplay character you created', [
-      {
-        name: 'char', description: 'One of your characters (search by name or id)', type: 3, required: true, autocomplete: true,
-      },
-      {
-        name: 'name', description: 'New name', type: 3, required: false, max_length: NAME_MAX_LENGTH,
-      },
-      {
-        name: 'details', description: 'New personality / system prompt', type: 3, required: false, max_length: DETAILS_OPTION_MAX_LENGTH,
-      },
-      {
-        name: 'starting_message', description: 'New opening message', type: 3, required: false, max_length: STARTING_MESSAGE_MAX_LENGTH,
-      },
-      {
-        name: 'pfp', description: 'New avatar image (auto-cropped to 128×128)', type: 11, required: false,
-      },
-      {
-        name: 'json', description: 'Replace name+details+starting_message from a .json (larger details allowed)', type: 11, required: false,
-      },
-    ], { isSubcommandOf: 'ai', blame: 'xei' });
+    super(
+      client,
+      'rp-edit',
+      'Edit a roleplay character you created',
+      [
+        {
+          name: 'char',
+          description: 'One of your characters (search by name or id)',
+          type: 3,
+          required: true,
+          autocomplete: true,
+        },
+        {
+          name: 'name',
+          description: 'New name',
+          type: 3,
+          required: false,
+          max_length: NAME_MAX_LENGTH,
+        },
+        {
+          name: 'details',
+          description: 'New personality / system prompt',
+          type: 3,
+          required: false,
+          max_length: DETAILS_OPTION_MAX_LENGTH,
+        },
+        {
+          name: 'starting_message',
+          description: 'New opening message',
+          type: 3,
+          required: false,
+          max_length: STARTING_MESSAGE_MAX_LENGTH,
+        },
+        {
+          name: 'pfp',
+          description: 'New avatar image (auto-cropped to 128×128)',
+          type: 11,
+          required: false,
+        },
+        {
+          name: 'json',
+          description: 'Replace name+details+starting_message from a .json (larger details allowed)',
+          type: 11,
+          required: false,
+        },
+      ],
+      { isSubcommandOf: 'ai', blame: 'xei' },
+    );
   }
 
   async autocomplete(interaction: any): Promise<void> {
@@ -75,7 +104,9 @@ class AiRpEdit extends Command {
       return;
     }
     if (!jsonAttachment && !hasTextOptions && !pfpAttachment) {
-      await interaction.editReply('Nothing to change — provide a new name / details / starting_message, a `.json`, or a `pfp`.');
+      await interaction.editReply(
+        'Nothing to change — provide a new name / details / starting_message, a `.json`, or a `pfp`.',
+      );
       return;
     }
 
@@ -84,7 +115,10 @@ class AiRpEdit extends Command {
     let newStarting = character.startingMessage;
     if (jsonAttachment) {
       const loaded = await loadCharacterJson(jsonAttachment);
-      if (!loaded.ok) { await interaction.editReply(loaded.error); return; }
+      if (!loaded.ok) {
+        await interaction.editReply(loaded.error);
+        return;
+      }
       ({ name: newName, details: newDetails, startingMessage: newStarting } = loaded.fields);
     } else {
       if (nameOpt) newName = nameOpt;
@@ -94,19 +128,27 @@ class AiRpEdit extends Command {
       if (nameOpt) err = validateName(newName);
       if (!err && detailsOpt) err = validateDetails(newDetails);
       if (!err && startingOpt) err = validateStartingMessage(newStarting);
-      if (err) { await interaction.editReply(err); return; }
+      if (err) {
+        await interaction.editReply(err);
+        return;
+      }
     }
 
     let processedBuffer: Buffer | null = null;
     if (pfpAttachment) {
       const processed = await processAvatar(pfpAttachment);
-      if (!processed.ok) { await interaction.editReply(processed.error); return; }
+      if (!processed.ok) {
+        await interaction.editReply(processed.error);
+        return;
+      }
       processedBuffer = processed.buffer;
     }
 
     try {
       await this.client.db.rp.updateCharacter(character.charId, userId, {
-        name: newName, details: newDetails, startingMessage: newStarting,
+        name: newName,
+        details: newDetails,
+        startingMessage: newStarting,
       });
 
       let pfpWarning = '';
@@ -120,7 +162,9 @@ class AiRpEdit extends Command {
         );
         if (hosted.ok) {
           await this.client.db.rp.updateCharacterPfp(character.charId, {
-            url: hosted.url, messageId: hosted.messageId, channelId: hosted.channelId,
+            url: hosted.url,
+            messageId: hosted.messageId,
+            channelId: hosted.channelId,
           });
         } else {
           pfpWarning = `\n\n⚠️ Details saved, but the avatar wasn't updated: ${hosted.error}`;

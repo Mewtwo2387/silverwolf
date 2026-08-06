@@ -25,10 +25,7 @@ export interface RoomPageOpts {
 }
 
 export function BattleshipsMultiplayerRoomPage(opts: RoomPageOpts) {
-  const {
-    nonce, lv999, user, matchId, selfDiscordId, csrf,
-    snapshot, roomMissing, loginReturnPath,
-  } = opts;
+  const { nonce, lv999, user, matchId, selfDiscordId, csrf, snapshot, roomMissing, loginReturnPath } = opts;
 
   const styles = roomStyles();
 
@@ -45,8 +42,9 @@ export function BattleshipsMultiplayerRoomPage(opts: RoomPageOpts) {
             <p style="color: var(--fog-300); margin: 0 0 1rem;">
               You need to be logged in with Discord to join this match.
             </p>
-            <a href="/auth/discord/login?return=${encodeURIComponent(loginReturnPath)}"
-               class="bsmp-btn bsmp-loginbtn">[ Log in with Discord ]</a>
+            <a href="/auth/discord/login?return=${encodeURIComponent(loginReturnPath)}" class="bsmp-btn bsmp-loginbtn"
+              >[ Log in with Discord ]</a
+            >
           </div>
         </div>
       ` as any,
@@ -78,12 +76,14 @@ export function BattleshipsMultiplayerRoomPage(opts: RoomPageOpts) {
     });
   }
 
-  const script = raw(roomScript(nonce, {
-    matchId,
-    csrf: csrf ?? '',
-    selfDiscordId: selfDiscordId ?? '',
-    snapshot,
-  }));
+  const script = raw(
+    roomScript(nonce, {
+      matchId,
+      csrf: csrf ?? '',
+      selfDiscordId: selfDiscordId ?? '',
+      snapshot,
+    }),
+  );
 
   const body = html`
     ${styles}
@@ -273,12 +273,15 @@ function roomStyles() {
 `);
 }
 
-function roomScript(nonce: string, ctx: {
-  matchId: string;
-  csrf: string;
-  selfDiscordId: string;
-  snapshot: ViewerSnapshot | null;
-}) {
+function roomScript(
+  nonce: string,
+  ctx: {
+    matchId: string;
+    csrf: string;
+    selfDiscordId: string;
+    snapshot: ViewerSnapshot | null;
+  },
+) {
   return `
 <script nonce="${nonce}">
 (() => {

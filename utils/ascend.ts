@@ -16,20 +16,21 @@ export interface AscensionState {
 export type AscendResult =
   | { status: 'too_few'; dinonuggies: number }
   | {
-    status: 'success';
-    gained: number;
-    previousAscensionLevel: number;
-    ascensionLevel: number;
-    allMaxed: boolean;
-    newMaxLevel: number;
-  };
+      status: 'success';
+      gained: number;
+      previousAscensionLevel: number;
+      ascensionLevel: number;
+      allMaxed: boolean;
+      newMaxLevel: number;
+    };
 
 export async function getAscensionState(client: any, userId: string): Promise<AscensionState> {
   const user = await client.db.user.getUser(userId);
   const currentMaxLevel = getMaxLevel(user.ascensionLevel);
-  const allMaxed = user.multiplierAmountLevel >= currentMaxLevel
-    && user.multiplierRarityLevel >= currentMaxLevel
-    && user.bekiLevel >= currentMaxLevel;
+  const allMaxed =
+    user.multiplierAmountLevel >= currentMaxLevel &&
+    user.multiplierRarityLevel >= currentMaxLevel &&
+    user.bekiLevel >= currentMaxLevel;
   return {
     dinonuggies: user.dinonuggies,
     ascensionLevel: user.ascensionLevel,

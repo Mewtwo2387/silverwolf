@@ -51,7 +51,10 @@ describe('worldcup utils', () => {
       ...sampleMatch,
       score: undefined,
       goals1: [{ name: 'A', minute: '10' }],
-      goals2: [{ name: 'B', minute: '20' }, { name: 'C', minute: '55' }],
+      goals2: [
+        { name: 'B', minute: '20' },
+        { name: 'C', minute: '55' },
+      ],
     };
     expect(getDisplayedScore(liveMatch)).toEqual({ home: 1, away: 2 });
   });

@@ -2,7 +2,11 @@ import type { TextChannel } from 'discord.js';
 import { matchMentions, formatCharHandle } from './rpIdentity';
 import { generateRpReply } from './rpChat';
 import {
-  sendAsCharacter, postCharacterPlaceholder, editCharacterReply, deleteCharacterPlaceholder, isRpWebhookId,
+  sendAsCharacter,
+  postCharacterPlaceholder,
+  editCharacterReply,
+  deleteCharacterPlaceholder,
+  isRpWebhookId,
 } from './rpDelivery';
 import { logError } from './log';
 
@@ -133,7 +137,10 @@ async function respondAsCharacter(
     // Post "typing.  .  ." as the character right away, then edit it into the reply —
     // the wait reads as the character thinking rather than "Silverwolf is typing".
     const typing = await postCharacterPlaceholder({
-      client, db, channel, character,
+      client,
+      db,
+      channel,
+      character,
     });
 
     // Personas apply to self-mode only (1-1 roleplay): the spawner is the one person
@@ -148,35 +155,43 @@ async function respondAsCharacter(
       }
     }
 
-    const result = await generateRpReply(db, {
-      spawnId,
-      compactionEnabled: row.compactionEnabled === 1,
-      compactedMemory: row.compactedMemory ?? null,
-      compactedUptoId: row.compactedUptoId ?? null,
-      compactionFailed: row.compactionFailed === 1,
-    }, {
-      charId: row.charId,
-      name: row.charName,
-      details: row.charDetails,
-      startingMessage: row.charStartingMessage,
-    }, opts.userVar ?? null, persona);
+    const result = await generateRpReply(
+      db,
+      {
+        spawnId,
+        compactionEnabled: row.compactionEnabled === 1,
+        compactedMemory: row.compactedMemory ?? null,
+        compactedUptoId: row.compactedUptoId ?? null,
+        compactionFailed: row.compactionFailed === 1,
+      },
+      {
+        charId: row.charId,
+        name: row.charName,
+        details: row.charDetails,
+        startingMessage: row.charStartingMessage,
+      },
+      opts.userVar ?? null,
+      persona,
+    );
 
     if (result.ok) {
       // Deliver first; only persist the model turn once it actually reached the
       // channel, so a webhook failure can't seed history with a line nobody saw.
       const delivered = typing
         ? await editCharacterReply(typing, {
-          text: result.text, replyToUrl: opts.replyToUrl, replyToLabel: opts.replyToLabel,
-        })
+            text: result.text,
+            replyToUrl: opts.replyToUrl,
+            replyToLabel: opts.replyToLabel,
+          })
         : await sendAsCharacter({
-          client,
-          db,
-          channel,
-          character,
-          text: result.text,
-          replyToUrl: opts.replyToUrl,
-          replyToLabel: opts.replyToLabel,
-        });
+            client,
+            db,
+            channel,
+            character,
+            text: result.text,
+            replyToUrl: opts.replyToUrl,
+            replyToLabel: opts.replyToLabel,
+          });
       if (delivered) {
         await db.rp.addHistory(spawnId, 'model', result.text);
         await db.rp.touchSpawnActivity(spawnId);
@@ -203,8 +218,9 @@ async function respondAsCharacter(
     }
 
     if (result.reason === 'compaction_failed') {
-      const notice = `⚠️ **${row.charName}** has run out of context and automatic compaction failed. `
-        + 'Mention them again to retry — if it keeps failing the oldest messages will be dropped instead.';
+      const notice =
+        `⚠️ **${row.charName}** has run out of context and automatic compaction failed. ` +
+        'Mention them again to retry — if it keeps failing the oldest messages will be dropped instead.';
       if (opts.notify) await opts.notify(notice);
       else await channel.send({ content: notice, allowedMentions: { parse: [] } }).catch(() => {});
       return;
@@ -236,7 +252,10 @@ export async function handleRpMessage(client: any, message: any): Promise<void> 
     logError('Rp: failed to load spawns for channel:', err);
     return;
   }
-  if (spawns.length === 0) { activeRpChannels.delete(channelId); return; }
+  if (spawns.length === 0) {
+    activeRpChannels.delete(channelId);
+    return;
+  }
 
   const content = message.content ?? '';
   const authorId = message.author.id;
@@ -248,18 +267,19 @@ export async function handleRpMessage(client: any, message: any): Promise<void> 
   // their context. Identify it by *our* RP webhook id (only we can post through it)
   // plus a username matching a spawned character, so another app that reuses a
   // character's name (a different webhook) is still heard normally.
-  const isOwnRpOutput = isRpWebhookId(message.webhookId)
-    && spawns.some((s) => s.charName === message.author?.username);
+  const isOwnRpOutput = isRpWebhookId(message.webhookId) && spawns.some((s) => s.charName === message.author?.username);
 
   // All-mode characters hear the whole channel — humans AND other bots/apps — as
   // context (bot turns tagged so they can't trigger a reply). Self-mode characters
   // only register their spawner's directed mentions (below).
   if (!isOwnRpOutput) {
     const heard = spawns.filter((s) => s.interactability === 'all');
-    await Promise.all(heard.map(async (s) => {
-      await db.rp.addHistory(s.spawnId, 'user', content, { id: authorId, name: speakerName }, isBot);
-      await db.rp.touchSpawnActivity(s.spawnId);
-    }));
+    await Promise.all(
+      heard.map(async (s) => {
+        await db.rp.addHistory(s.spawnId, 'user', content, { id: authorId, name: speakerName }, isBot);
+        await db.rp.touchSpawnActivity(s.spawnId);
+      }),
+    );
   }
 
   // Bots/webhooks/apps are heard but can never trigger a reply — the loop guard.
@@ -279,10 +299,12 @@ export async function handleRpMessage(client: any, message: any): Promise<void> 
       .filter(Boolean)
       .join('\n');
     // eslint-disable-next-line no-await-in-loop
-    await message.reply({
-      content: `\`@${amb.token}\` matches multiple characters here — be more specific:\n${lines}`,
-      allowedMentions: { repliedUser: false },
-    }).catch(() => {});
+    await message
+      .reply({
+        content: `\`@${amb.token}\` matches multiple characters here — be more specific:\n${lines}`,
+        allowedMentions: { repliedUser: false },
+      })
+      .catch(() => {});
   }
 
   for (const sl of matched) {
@@ -305,8 +327,11 @@ export async function handleRpMessage(client: any, message: any): Promise<void> 
       replyToUrl: jump,
       replyToLabel: speakerName,
       userVar,
-      notify: (t: string) => message.reply({ content: t, allowedMentions: { repliedUser: false } })
-        .then(() => {}).catch(() => {}),
+      notify: (t: string) =>
+        message
+          .reply({ content: t, allowedMentions: { repliedUser: false } })
+          .then(() => {})
+          .catch(() => {}),
     });
   }
 }

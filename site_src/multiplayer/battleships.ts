@@ -26,7 +26,10 @@ export const FLEET: ShipDef[] = [
 
 export const FLEET_IDS: readonly string[] = FLEET.map((s) => s.id);
 export const FLEET_BY_ID: Readonly<Record<string, ShipDef>> = FLEET.reduce(
-  (acc, s) => { acc[s.id] = s; return acc; },
+  (acc, s) => {
+    acc[s.id] = s;
+    return acc;
+  },
   {} as Record<string, ShipDef>,
 );
 // 17 occupied cells across the whole fleet — the win condition is "all hit".
@@ -37,9 +40,7 @@ export interface ShipPlacement {
   cells: number[];
 }
 
-export type ValidateFleetResult =
-  | { ok: true; fleet: ShipPlacement[] }
-  | { ok: false; reason: string };
+export type ValidateFleetResult = { ok: true; fleet: ShipPlacement[] } | { ok: false; reason: string };
 
 function isCellIndex(n: unknown): n is number {
   return Number.isInteger(n) && (n as number) >= 0 && (n as number) < BOARD_CELLS;
@@ -140,7 +141,10 @@ export function randomFleet(rng: () => number = Math.random): ShipPlacement[] {
         fleet.push({ id: def.id, cells });
         placed = true;
       }
-      if (!placed) { failed = true; break; }
+      if (!placed) {
+        failed = true;
+        break;
+      }
     }
 
     if (!failed) return fleet;

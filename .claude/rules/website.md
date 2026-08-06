@@ -1,6 +1,6 @@
 ---
 paths:
-  - "site_src/**"
+  - 'site_src/**'
 ---
 
 # Website architecture (`site_src/`)
@@ -46,7 +46,7 @@ HTML responses are `Cache-Control: private, no-store` (prevents the per-request 
 through a CDN). `PUBLIC_ORIGIN` pins absolute embed URLs so untrusted `x-forwarded-*` headers can't
 redirect link previews.
 
-## Auth — Discord OAuth *user* login (no admin UI)
+## Auth — Discord OAuth _user_ login (no admin UI)
 
 Sessions in `database/models/WebSessionModel.ts`; cookie `sw_session` (`__Host-`-prefixed when
 secure — see `auth/session.ts`); token is HMAC-SHA256 verified with `timingSafeEqual`; TTL 30-day

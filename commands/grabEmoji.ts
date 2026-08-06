@@ -5,25 +5,31 @@ import { logError } from '../utils/log';
 
 class GrabEmoji extends Command {
   constructor(client: any) {
-    super(client, 'grab-emoji', 'Converts an emoji to a selected file format', [
-      {
-        name: 'emoji',
-        description: 'The emoji to be converted, for example "<:1silverwolf_thumb:1217078357129302048>"',
-        type: 3,
-        required: true,
-      },
-      {
-        name: 'format',
-        description: 'The file format to download',
-        type: 3,
-        required: false,
-        choices: [
-          { name: 'PNG', value: 'png' },
-          { name: 'JPEG', value: 'jpeg' },
-          { name: 'WEBP', value: 'webp' },
-        ],
-      },
-    ], { blame: 'xei' });
+    super(
+      client,
+      'grab-emoji',
+      'Converts an emoji to a selected file format',
+      [
+        {
+          name: 'emoji',
+          description: 'The emoji to be converted, for example "<:1silverwolf_thumb:1217078357129302048>"',
+          type: 3,
+          required: true,
+        },
+        {
+          name: 'format',
+          description: 'The file format to download',
+          type: 3,
+          required: false,
+          choices: [
+            { name: 'PNG', value: 'png' },
+            { name: 'JPEG', value: 'jpeg' },
+            { name: 'WEBP', value: 'webp' },
+          ],
+        },
+      ],
+      { blame: 'xei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -84,7 +90,7 @@ class GrabEmoji extends Command {
       const embed = new EmbedBuilder()
         .setTitle('Emoji Conversion')
         .setDescription(`Here is your emoji in the requested format: **${format.toUpperCase()}**`)
-        .setColor(0x00FF00)
+        .setColor(0x00ff00)
         .setImage(`attachment://${fileName}`);
 
       await interaction.editReply({ embeds: [embed], files: [attachment] });

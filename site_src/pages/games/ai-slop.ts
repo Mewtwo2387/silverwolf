@@ -54,17 +54,13 @@ export function AiSlopPage(opts: {
   sessions: AiSlopSession[];
   guildAccess?: boolean;
 }) {
-  const {
-    nonce, lv999, user, sessions, guildAccess = false,
-  } = opts;
+  const { nonce, lv999, user, sessions, guildAccess = false } = opts;
   const loggedOut = !user;
   const guildBlocked = !loggedOut && !guildAccess;
 
   const csrfJSON = inlineJSON(user?.csrf ?? '');
   const personasJSON = inlineJSON(PERSONAS.map((p) => p.name));
-  const groups = loggedOut || guildBlocked
-    ? new Map<string, SidebarSession[]>()
-    : groupSessions(sessions);
+  const groups = loggedOut || guildBlocked ? new Map<string, SidebarSession[]>() : groupSessions(sessions);
 
   const styles = raw(`
 <style>
@@ -610,18 +606,20 @@ export function AiSlopPage(opts: {
             <span class="group-count">${bucket.length}</span>
           </summary>
           <ul class="aislop-list" data-persona="${persona.name}">
-            ${bucket.map((s) => html`
-              <li data-session="${String(s.sessionId)}">
-                <button class="chat-title" type="button">${s.title}</button>
-                <div class="overflow">
-                  <button class="overflow-trigger" type="button" aria-label="More options">⋮</button>
-                  <div class="overflow-menu" hidden>
-                    <button type="button" data-act="rename">Rename</button>
-                    <button type="button" data-act="delete" class="danger">Delete</button>
+            ${bucket.map(
+              (s) => html`
+                <li data-session="${String(s.sessionId)}">
+                  <button class="chat-title" type="button">${s.title}</button>
+                  <div class="overflow">
+                    <button class="overflow-trigger" type="button" aria-label="More options">⋮</button>
+                    <div class="overflow-menu" hidden>
+                      <button type="button" data-act="rename">Rename</button>
+                      <button type="button" data-act="delete" class="danger">Delete</button>
+                    </div>
                   </div>
-                </div>
-              </li>
-            `)}
+                </li>
+              `,
+            )}
           </ul>
         </details>
       `);
@@ -637,17 +635,19 @@ export function AiSlopPage(opts: {
             <span class="group-count">${bucket.length}</span>
           </summary>
           <ul class="aislop-list" data-persona="${name}">
-            ${bucket.map((s) => html`
-              <li data-session="${String(s.sessionId)}">
-                <button class="chat-title" type="button">${s.title}</button>
-                <div class="overflow">
-                  <button class="overflow-trigger" type="button" aria-label="More options">⋮</button>
-                  <div class="overflow-menu" hidden>
-                    <button type="button" data-act="delete" class="danger">Delete</button>
+            ${bucket.map(
+              (s) => html`
+                <li data-session="${String(s.sessionId)}">
+                  <button class="chat-title" type="button">${s.title}</button>
+                  <div class="overflow">
+                    <button class="overflow-trigger" type="button" aria-label="More options">⋮</button>
+                    <div class="overflow-menu" hidden>
+                      <button type="button" data-act="delete" class="danger">Delete</button>
+                    </div>
                   </div>
-                </div>
-              </li>
-            `)}
+                </li>
+              `,
+            )}
           </ul>
         </details>
       `);
@@ -655,9 +655,7 @@ export function AiSlopPage(opts: {
     return html`${items}`;
   }
 
-  const modelOptions = html`${PERSONAS.map(
-    (p) => html`<option value="${p.name}">${p.name} — ${p.blurb}</option>`,
-  )}`;
+  const modelOptions = html`${PERSONAS.map((p) => html`<option value="${p.name}">${p.name} — ${p.blurb}</option>`)}`;
 
   const script = raw(`
 <script nonce="${nonce}">
@@ -1266,41 +1264,66 @@ export function AiSlopPage(opts: {
   if (loggedOut) {
     chatArea = html`<div class="login-cta">Log in with <a href="/auth/discord/login">Discord</a> to chat.</div>`;
   } else if (guildBlocked) {
-    chatArea = html`<div class="login-cta">You need to be in a Discord server where Silverwolf is installed to use AI chat. Join that server, then refresh this page.</div>`;
+    chatArea = html`<div class="login-cta">
+      You need to be in a Discord server where Silverwolf is installed to use AI chat. Join that server, then refresh
+      this page.
+    </div>`;
   } else {
     chatArea = html`
-          <div class="aislop-shell">
-            <div class="aislop-backdrop" id="aislop-backdrop"></div>
-            <aside class="aislop-side" id="aislop-side">
-              <button type="button" id="aislop-new" class="aislop-new">+ New chat</button>
-              ${sidebarBody()}
-            </aside>
-            <section class="aislop-main">
-              <div class="aislop-head">
-                <button type="button" id="aislop-burger" class="aislop-burger" aria-label="Show chats" aria-expanded="false">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                    <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-                  </svg>
-                </button>
-                <h2 id="aislop-title">New chat</h2>
-                <span id="aislop-persona-pill" class="pill">${PERSONAS[0].name}</span>
-              </div>
-              <div id="aislop-error" class="aislop-error" style="display:none"></div>
-              <div id="aislop-msgs" class="aislop-msgs"></div>
-              <form id="aislop-form" class="aislop-input">
-                <div class="input-row">
-                  <textarea id="aislop-text" rows="1" placeholder="Talk to AI Slop..." aria-label="Message" autocomplete="off"></textarea>
-                  <button type="submit" class="send" id="aislop-send">Send</button>
-                </div>
-                <div class="model-row">
-                  <select id="aislop-model" aria-label="Model">
-                    ${modelOptions}
-                  </select>
-                </div>
-              </form>
-            </section>
+      <div class="aislop-shell">
+        <div class="aislop-backdrop" id="aislop-backdrop"></div>
+        <aside class="aislop-side" id="aislop-side">
+          <button type="button" id="aislop-new" class="aislop-new">+ New chat</button>
+          ${sidebarBody()}
+        </aside>
+        <section class="aislop-main">
+          <div class="aislop-head">
+            <button
+              type="button"
+              id="aislop-burger"
+              class="aislop-burger"
+              aria-label="Show chats"
+              aria-expanded="false"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              >
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+            <h2 id="aislop-title">New chat</h2>
+            <span id="aislop-persona-pill" class="pill">${PERSONAS[0].name}</span>
           </div>
-        `;
+          <div id="aislop-error" class="aislop-error" style="display:none"></div>
+          <div id="aislop-msgs" class="aislop-msgs"></div>
+          <form id="aislop-form" class="aislop-input">
+            <div class="input-row">
+              <textarea
+                id="aislop-text"
+                rows="1"
+                placeholder="Talk to AI Slop..."
+                aria-label="Message"
+                autocomplete="off"
+              ></textarea>
+              <button type="submit" class="send" id="aislop-send">Send</button>
+            </div>
+            <div class="model-row">
+              <select id="aislop-model" aria-label="Model">
+                ${modelOptions}
+              </select>
+            </div>
+          </form>
+        </section>
+      </div>
+    `;
   }
 
   const body = html`
@@ -1309,8 +1332,7 @@ export function AiSlopPage(opts: {
       <p class="text-center text-fog-300 mb-4">chat with ai slop or something idk</p>
       ${chatArea}
     </div>
-    ${styles}
-    ${loggedOut || guildBlocked ? '' : script}
+    ${styles} ${loggedOut || guildBlocked ? '' : script}
   `;
 
   return Layout({

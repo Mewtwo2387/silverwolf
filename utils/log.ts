@@ -44,10 +44,4 @@ function handleUncaughtException(error: Error): void {
 process.on('uncaughtException', handleUncaughtException);
 log('Catching uncaught exceptions...');
 
-export {
-  log,
-  logError,
-  logWarning,
-  logErrorFilePath,
-  logFilePath,
-};
+export { log, logError, logWarning, logErrorFilePath, logFilePath };

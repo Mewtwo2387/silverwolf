@@ -109,18 +109,24 @@ const DUMP_DEFINITIONS: DumpDefinition[] = [
 
 class DBDump extends DevCommand {
   constructor(client: any) {
-    super(client, 'dbdump', 'Output a specific database table or all tables.', [
-      {
-        name: 'table',
-        description: 'Select the table to dump',
-        type: 3,
-        required: true,
-        choices: [
-          ...DUMP_DEFINITIONS.map((definition) => ({ name: definition.choiceName, value: definition.value })),
-          { name: 'All Data', value: 'all' },
-        ],
-      },
-    ], { blame: 'both', ephemeral: true });
+    super(
+      client,
+      'dbdump',
+      'Output a specific database table or all tables.',
+      [
+        {
+          name: 'table',
+          description: 'Select the table to dump',
+          type: 3,
+          required: true,
+          choices: [
+            ...DUMP_DEFINITIONS.map((definition) => ({ name: definition.choiceName, value: definition.value })),
+            { name: 'All Data', value: 'all' },
+          ],
+        },
+      ],
+      { blame: 'both', ephemeral: true },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -129,9 +135,8 @@ class DBDump extends DevCommand {
     const filesToDump: { attachment: string; name: string }[] = [];
     const dumpTime = new Date();
     try {
-      const selectedDefinitions = table === 'all'
-        ? DUMP_DEFINITIONS
-        : DUMP_DEFINITIONS.filter((definition) => definition.value === table);
+      const selectedDefinitions =
+        table === 'all' ? DUMP_DEFINITIONS : DUMP_DEFINITIONS.filter((definition) => definition.value === table);
 
       for (const definition of selectedDefinitions) {
         const tableData = await this.client.db.dumpTable(definition.tableName, definition.formatUserIds);
@@ -168,7 +173,10 @@ class DBDump extends DevCommand {
       }
     } catch (error) {
       logError('Error dumping database:', error);
-      await interaction.followUp({ content: 'An error occurred while executing the command.', flags: MessageFlags.Ephemeral });
+      await interaction.followUp({
+        content: 'An error occurred while executing the command.',
+        flags: MessageFlags.Ephemeral,
+      });
     } finally {
       filesToDump.forEach((file) => {
         this.cleanupFile(file.attachment);

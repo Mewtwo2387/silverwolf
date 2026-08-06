@@ -5,26 +5,32 @@ const DEATH_RATE = 0.05;
 
 class Trade extends Command {
   constructor(client: any) {
-    super(client, 'trade', 'trade pokemon', [
-      {
-        name: 'user',
-        description: 'the user to trade with',
-        type: 6,
-        required: true,
-      },
-      {
-        name: 'sending',
-        description: 'the pokemon you are sending',
-        type: 3,
-        required: true,
-      },
-      {
-        name: 'requesting',
-        description: 'the pokemon you are requesting',
-        type: 3,
-        required: true,
-      },
-    ], { blame: 'ei' });
+    super(
+      client,
+      'trade',
+      'trade pokemon',
+      [
+        {
+          name: 'user',
+          description: 'the user to trade with',
+          type: 6,
+          required: true,
+        },
+        {
+          name: 'sending',
+          description: 'the pokemon you are sending',
+          type: 3,
+          required: true,
+        },
+        {
+          name: 'requesting',
+          description: 'the pokemon you are requesting',
+          type: 3,
+          required: true,
+        },
+      ],
+      { blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -38,11 +44,7 @@ class Trade extends Command {
 
     if (self === target) {
       await interaction.editReply({
-        embeds: [
-          new Discord.EmbedBuilder()
-            .setDescription('You can\'t trade with yourself smh')
-            .setColor('Red'),
-        ],
+        embeds: [new Discord.EmbedBuilder().setDescription("You can't trade with yourself smh").setColor('Red')],
       });
       return;
     }
@@ -50,9 +52,7 @@ class Trade extends Command {
     if (selfPokemonCount < 1) {
       await interaction.editReply({
         embeds: [
-          new Discord.EmbedBuilder()
-            .setDescription(`You don't have any ${pokemonSending}s to trade!`)
-            .setColor('Red'),
+          new Discord.EmbedBuilder().setDescription(`You don't have any ${pokemonSending}s to trade!`).setColor('Red'),
         ],
       });
       return;
@@ -68,17 +68,10 @@ class Trade extends Command {
       return;
     }
 
-    const row = new Discord.ActionRowBuilder<Discord.ButtonBuilder>()
-      .addComponents(
-        new Discord.ButtonBuilder()
-          .setCustomId('acceptTrade')
-          .setLabel('Accept')
-          .setStyle(Discord.ButtonStyle.Success),
-        new Discord.ButtonBuilder()
-          .setCustomId('rejectTrade')
-          .setLabel('Reject')
-          .setStyle(Discord.ButtonStyle.Danger),
-      );
+    const row = new Discord.ActionRowBuilder<Discord.ButtonBuilder>().addComponents(
+      new Discord.ButtonBuilder().setCustomId('acceptTrade').setLabel('Accept').setStyle(Discord.ButtonStyle.Success),
+      new Discord.ButtonBuilder().setCustomId('rejectTrade').setLabel('Reject').setStyle(Discord.ButtonStyle.Danger),
+    );
 
     await interaction.editReply({
       content: `<@${target}>, ${interaction.user.username} has sent you a trade request!`,
@@ -86,22 +79,20 @@ class Trade extends Command {
         new Discord.EmbedBuilder()
           .setColor('#00AA00')
           .setTitle('Trade Request')
-          .setDescription(`${interaction.user.username} wants to trade their ${pokemonSending} for your ${pokemonRequesting}!`),
+          .setDescription(
+            `${interaction.user.username} wants to trade their ${pokemonSending} for your ${pokemonRequesting}!`,
+          ),
       ],
       components: [row],
     });
 
-    const filter = (i: any) => (i.customId === 'acceptTrade' || i.customId === 'rejectTrade');
+    const filter = (i: any) => i.customId === 'acceptTrade' || i.customId === 'rejectTrade';
     const collector = interaction.channel.createMessageComponentCollector({ filter, time: 60000 });
 
     collector.on('collect', async (i: any) => {
       if (i.user.id !== target) {
         i.reply({
-          embeds: [
-            new Discord.EmbedBuilder()
-              .setColor('Red')
-              .setDescription('don\'t steal pokemon smh'),
-          ],
+          embeds: [new Discord.EmbedBuilder().setColor('Red').setDescription("don't steal pokemon smh")],
         });
         return;
       }
@@ -112,11 +103,7 @@ class Trade extends Command {
 
         if (selfPokemonCount < 1 || targetPokemonCount < 1) {
           await i.reply({
-            embeds: [
-              new Discord.EmbedBuilder()
-                .setColor('Red')
-                .setDescription('This pokemon no longer exist'),
-            ],
+            embeds: [new Discord.EmbedBuilder().setColor('Red').setDescription('This pokemon no longer exist')],
           });
 
           collector.stop();
@@ -151,12 +138,7 @@ class Trade extends Command {
         }
 
         await i.reply({
-          embeds: [
-            new Discord.EmbedBuilder()
-              .setColor('Green')
-              .setDescription(message)
-              .setFooter({ text: footer }),
-          ],
+          embeds: [new Discord.EmbedBuilder().setColor('Green').setDescription(message).setFooter({ text: footer })],
         });
 
         collector.stop();
@@ -165,11 +147,7 @@ class Trade extends Command {
 
       if (i.customId === 'rejectTrade') {
         await i.reply({
-          embeds: [
-            new Discord.EmbedBuilder()
-              .setColor('Red')
-              .setDescription(`<@${self}> rejected the trade request!`),
-          ],
+          embeds: [new Discord.EmbedBuilder().setColor('Red').setDescription(`<@${self}> rejected the trade request!`)],
         });
 
         collector.stop();

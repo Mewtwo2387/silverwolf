@@ -15,7 +15,8 @@ class BirthdayScheduler {
 
   // Start the scheduler to run every hour
   start(): void {
-    this.hourlyJob = (Bun.cron as any)('0 * * * *', async () => { // * * * * * every minute for testing, change to '0 * * * *' for every hour
+    this.hourlyJob = (Bun.cron as any)('0 * * * *', async () => {
+      // * * * * * every minute for testing, change to '0 * * * *' for every hour
       const now = new Date();
       const utcMonth = (now.getUTCMonth() + 1).toString().padStart(2, '0');
       const utcDay = now.getUTCDate().toString().padStart(2, '0');
@@ -46,7 +47,7 @@ class BirthdayScheduler {
               const birthdayEmbed = new EmbedBuilder()
                 .setTitle('🎉 Birthday Alert! 🎉')
                 .setDescription(`Today is ${username}'s birthday! Let's all wish them a great day! 🥳`)
-                .setColor(0x00FF00);
+                .setColor(0x00ff00);
               if (avatarUrl) birthdayEmbed.setImage(avatarUrl);
 
               log(`Sending birthday message for ${user.id} to channel ${channelId}`);
@@ -99,10 +100,10 @@ class BirthdayScheduler {
           const reminderEmbed = new EmbedBuilder()
             .setTitle('🎂 Birthday Reminder!')
             .setDescription(
-              `**${trackedName}**'s birthday is in **${entry.daysBefore} day${entry.daysBefore === 1 ? '' : 's'}**!\n`
-              + 'Be sure to ready a gift or a wish! 🎁',
+              `**${trackedName}**'s birthday is in **${entry.daysBefore} day${entry.daysBefore === 1 ? '' : 's'}**!\n` +
+                'Be sure to ready a gift or a wish! 🎁',
             )
-            .setColor(0xFFAA00);
+            .setColor(0xffaa00);
 
           try {
             await notifier.send({ embeds: [reminderEmbed] });

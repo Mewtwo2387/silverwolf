@@ -1,10 +1,10 @@
 ---
 paths:
-  - "utils/ai.ts"
-  - "utils/aiPricing.ts"
-  - "utils/llmRetry.ts"
-  - "commands/ai*.ts"
-  - "database/models/AiUsageModel.ts"
+  - 'utils/ai.ts'
+  - 'utils/aiPricing.ts'
+  - 'utils/llmRetry.ts'
+  - 'commands/ai*.ts'
+  - 'database/models/AiUsageModel.ts'
 ---
 
 # AI usage limits & retry

@@ -47,12 +47,8 @@ const rpSpawnTable: TableDefinition = {
     { name: 'updated_at', type: 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP' },
   ],
   primaryKey: ['spawn_id'],
-  specialConstraints: [
-    'UNIQUE (channel_id, char_id)',
-  ],
-  constraints: [
-    'FOREIGN KEY (char_id) REFERENCES RpCharacter(char_id)',
-  ],
+  specialConstraints: ['UNIQUE (channel_id, char_id)'],
+  constraints: ['FOREIGN KEY (char_id) REFERENCES RpCharacter(char_id)'],
 };
 
 export default rpSpawnTable;

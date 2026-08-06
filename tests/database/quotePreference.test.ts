@@ -1,6 +1,4 @@
-import {
-  describe, it, expect, beforeAll, afterAll, beforeEach,
-} from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
 import Database from '../../database/Database';
 import type QuotePreferenceModel from '../../database/models/QuotePreferenceModel';
 import { parseQuoteFlags, resolveQuoteFlags, QUOTE_FLAG_DEFAULTS } from '../../utils/quote';
@@ -70,7 +68,9 @@ describe('QuotePreferenceModel', () => {
 
     // saved settings apply on a bare mention
     expect(resolveQuoteFlags(parseQuoteFlags(''), saved)).toEqual({
-      ...QUOTE_FLAG_DEFAULTS, background: 'white', textColor: '#ff0124',
+      ...QUOTE_FLAG_DEFAULTS,
+      background: 'white',
+      textColor: '#ff0124',
     });
     // a flag beats the saved value for that field only
     expect(resolveQuoteFlags(parseQuoteFlags('b'), saved).background).toBe('black');

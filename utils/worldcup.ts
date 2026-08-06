@@ -107,10 +107,7 @@ export function formatMatchTeams(match: WorldCupMatch): string {
   return `${formatFootballTeam(match.team1)} vs ${formatFootballTeam(match.team2, 'after')}`;
 }
 
-export function formatMatchScoreTitle(
-  match: WorldCupMatch,
-  score: { home: number; away: number },
-): string {
+export function formatMatchScoreTitle(match: WorldCupMatch, score: { home: number; away: number }): string {
   return `${formatFootballTeam(match.team1)}  ${score.home} – ${score.away}  ${formatFootballTeam(match.team2, 'after')}`;
 }
 
@@ -147,8 +144,7 @@ export function getFinishedMatches(
     .filter((match) => isFinished(match))
     .filter((match) => {
       if (!teamQuery) return true;
-      return match.team1.toLowerCase().includes(teamQuery)
-        || match.team2.toLowerCase().includes(teamQuery);
+      return match.team1.toLowerCase().includes(teamQuery) || match.team2.toLowerCase().includes(teamQuery);
     })
     .sort((a, b) => {
       const aKickoff = parseKickoffUtc(a)?.getTime() ?? 0;

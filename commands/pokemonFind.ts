@@ -1,19 +1,23 @@
-import {
-  EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
-} from 'discord.js';
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { Command } from './classes/Command';
 import { logError } from '../utils/log';
 
 class PokemonFind extends Command {
   constructor(client: any) {
-    super(client, 'pokemonfind', 'Find users with Pokemon of a specific type', [
-      {
-        name: 'type',
-        description: 'The type of Pokemon to search for',
-        type: 3,
-        required: true,
-      },
-    ], { blame: 'xei' });
+    super(
+      client,
+      'pokemonfind',
+      'Find users with Pokemon of a specific type',
+      [
+        {
+          name: 'type',
+          description: 'The type of Pokemon to search for',
+          type: 3,
+          required: true,
+        },
+      ],
+      { blame: 'xei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -23,10 +27,7 @@ class PokemonFind extends Command {
       const rows = await this.client.db.pokemon.getUsersWithPokemon(type);
       if (rows.length === 0) {
         interaction.editReply({
-          embeds: [new EmbedBuilder()
-            .setColor('#00AA00')
-            .setTitle(`No users found with ${type}`),
-          ],
+          embeds: [new EmbedBuilder().setColor('#00AA00').setTitle(`No users found with ${type}`)],
         });
         return;
       }
@@ -48,19 +49,14 @@ class PokemonFind extends Command {
         .setDescription(`\`\`\`${getNextPage(currentPage)}\`\`\``)
         .setFooter({ text: `Page ${currentPage + 1} of ${totalPages}` });
 
-      const row = new ActionRowBuilder()
-        .addComponents(
-          new ButtonBuilder()
-            .setCustomId('prevPage')
-            .setLabel('⬅️ Back')
-            .setStyle(ButtonStyle.Primary)
-            .setDisabled(true),
-          new ButtonBuilder()
-            .setCustomId('nextPage')
-            .setLabel('Next ➡️')
-            .setStyle(ButtonStyle.Primary)
-            .setDisabled(currentPage === totalPages),
-        );
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('prevPage').setLabel('⬅️ Back').setStyle(ButtonStyle.Primary).setDisabled(true),
+        new ButtonBuilder()
+          .setCustomId('nextPage')
+          .setLabel('Next ➡️')
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(currentPage === totalPages),
+      );
 
       const message = await interaction.editReply({
         embeds: [embed],
@@ -77,8 +73,7 @@ class PokemonFind extends Command {
         }
 
         const nextPage = getNextPage(currentPage);
-        embed.setDescription(`\`\`\`${nextPage}\`\`\``)
-          .setFooter({ text: `Page ${currentPage + 1} of ${totalPages}` });
+        embed.setDescription(`\`\`\`${nextPage}\`\`\``).setFooter({ text: `Page ${currentPage + 1} of ${totalPages}` });
 
         (row.components[0] as ButtonBuilder).setDisabled(currentPage === 0);
         (row.components[1] as ButtonBuilder).setDisabled(currentPage === totalPages - 1);

@@ -15,7 +15,10 @@ async function loadAllowedServers(db: any): Promise<string[]> {
   try {
     const dbValue = await db.globalConfig.getGlobalConfig('allowed_servers');
     if (dbValue) {
-      const servers = dbValue.split(',').map((s: string) => s.trim()).filter(Boolean);
+      const servers = dbValue
+        .split(',')
+        .map((s: string) => s.trim())
+        .filter(Boolean);
       cachedAllowedServers = servers;
       return servers;
     }
@@ -44,7 +47,10 @@ function isDev(interaction: ChatInputCommandInteraction): boolean {
 
 function isAdmin(interaction: ChatInputCommandInteraction): boolean {
   // eslint-disable-next-line max-len
-  return (interaction.member?.permissions as PermissionsBitField)?.has(PermissionsBitField.Flags.Administrator) || isDev(interaction);
+  return (
+    (interaction.member?.permissions as PermissionsBitField)?.has(PermissionsBitField.Flags.Administrator) ||
+    isDev(interaction)
+  );
 }
 
 function isBasement(interaction: ChatInputCommandInteraction): boolean {
@@ -56,12 +62,4 @@ function isAllowedServer(interaction: ChatInputCommandInteraction): boolean {
   return servers.includes(interaction.guild?.id ?? '');
 }
 
-export {
-  isUserDev,
-  isDev,
-  isAdmin,
-  isBasement,
-  isAllowedServer,
-  loadAllowedServers,
-  clearCachedAllowedServers,
-};
+export { isUserDev, isDev, isAdmin, isBasement, isAllowedServer, loadAllowedServers, clearCachedAllowedServers };

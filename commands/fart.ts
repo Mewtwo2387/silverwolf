@@ -21,7 +21,9 @@ class Fart extends Command {
 
       if (now < expirationTime) {
         await interaction.editReply('you shat yourself.');
-        await interaction.channel.send('https://tenor.com/view/laughing-cat-catlaughing-laughingcat-point-gif-7577620470218150413');
+        await interaction.channel.send(
+          'https://tenor.com/view/laughing-cat-catlaughing-laughingcat-point-gif-7577620470218150413',
+        );
         return;
       }
     }

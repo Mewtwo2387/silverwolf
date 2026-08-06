@@ -314,26 +314,26 @@ export function AwdangitPage(opts: { nonce: string; lv999?: boolean; user?: NavU
 </script>
   `);
 
-  const reelsHTML = Array.from({ length: 3 }, (_, j) => `
+  const reelsHTML = Array.from(
+    { length: 3 },
+    (_, j) => `
     <div class="reel" data-reel="${j}">
       <div class="strip"></div>
     </div>
-  `).join('');
+  `,
+  ).join('');
 
   const body = html`
     <h1 class="text-center">Aw, dang it!</h1>
     <p class="text-center text-fog-300 mb-4">99% chance to earn $1M, 1% chance to become a girl.</p>
     <div class="awdangit-container">
       <div id="awdangit-machine" class="awdangit-machine">
-        <div class="reels">
-          ${raw(reelsHTML)}
-        </div>
+        <div class="reels">${raw(reelsHTML)}</div>
       </div>
       <button id="gamble-btn" type="button" class="gamble-btn">Let's go gambling!</button>
       <div id="result-banner" class="result-banner"></div>
     </div>
-    ${extras}
-    ${script}
+    ${extras} ${script}
   `;
 
   return Layout({

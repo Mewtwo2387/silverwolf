@@ -16,11 +16,16 @@ export type BetErrorCode = 'invalid' | 'negative' | 'poor' | 'infinity';
 // web bet routes which want JSON instead of Discord embeds.
 export function mapBetCode(code: number): { error: BetErrorCode } | null {
   switch (code) {
-    case INVALID_AMOUNT: return { error: 'invalid' };
-    case NEGATIVE_AMOUNT: return { error: 'negative' };
-    case POOR_AMOUNT: return { error: 'poor' };
-    case INFINITY_AMOUNT: return { error: 'infinity' };
-    default: return null;
+    case INVALID_AMOUNT:
+      return { error: 'invalid' };
+    case NEGATIVE_AMOUNT:
+      return { error: 'negative' };
+    case POOR_AMOUNT:
+      return { error: 'poor' };
+    case INFINITY_AMOUNT:
+      return { error: 'infinity' };
+    default:
+      return null;
   }
 }
 
@@ -37,9 +42,17 @@ export function assertPositiveFiniteBet(amount: number): void {
 }
 
 const INFINITY_KEYWORDS = [
-  'infinity', 'inf', '∞', 'unlimited', 'forever',
-  'endless', 'neverending', 'boundless', 'limitless',
-  'eternal', 'never-ending',
+  'infinity',
+  'inf',
+  '∞',
+  'unlimited',
+  'forever',
+  'endless',
+  'neverending',
+  'boundless',
+  'limitless',
+  'eternal',
+  'never-ending',
 ];
 
 export async function checkValidBetRaw(client: any, user: { id: string }, amountString: string): Promise<number> {
@@ -66,34 +79,28 @@ async function checkValidBet(interaction: ChatInputCommandInteraction, amountStr
   switch (result) {
     case INVALID_AMOUNT:
       await interaction.editReply({
-        embeds: [new EmbedBuilder()
-          .setColor('#AA0000')
-          .setTitle('Invalid amount')
-          .setDescription('idk if this parsing actually works'),
+        embeds: [
+          new EmbedBuilder()
+            .setColor('#AA0000')
+            .setTitle('Invalid amount')
+            .setDescription('idk if this parsing actually works'),
         ],
       });
       return null;
     case NEGATIVE_AMOUNT:
       await interaction.editReply({
-        embeds: [new EmbedBuilder()
-          .setColor('#AA0000')
-          .setTitle('You can\'t bet debt here'),
-        ],
+        embeds: [new EmbedBuilder().setColor('#AA0000').setTitle("You can't bet debt here")],
       });
       return null;
     case POOR_AMOUNT:
       await interaction.editReply({
-        embeds: [new EmbedBuilder()
-          .setColor('#AA0000')
-          .setTitle('You don\'t have enough credits smh'),
-        ],
+        embeds: [new EmbedBuilder().setColor('#AA0000').setTitle("You don't have enough credits smh")],
       });
       return null;
     case INFINITY_AMOUNT:
       await interaction.editReply({
-        embeds: [new EmbedBuilder()
-          .setColor('#AA0000')
-          .setTitle('You have been spotted cheating! Mystic credits set to 0.'),
+        embeds: [
+          new EmbedBuilder().setColor('#AA0000').setTitle('You have been spotted cheating! Mystic credits set to 0.'),
         ],
       });
       setTimeout(async () => {

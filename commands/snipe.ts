@@ -3,24 +3,30 @@ import { Command } from './classes/Command';
 
 class Snipe extends Command {
   constructor(client: any) {
-    super(client, 'snipe', 'Snipe a message (edited or deleted)', [
-      {
-        name: 'type',
-        description: 'The type of snipe: edited or deleted',
-        type: 3,
-        required: true,
-        choices: [
-          { name: 'Edited', value: 'edited' },
-          { name: 'Deleted', value: 'deleted' },
-        ],
-      },
-      {
-        name: 'id',
-        description: 'The nth message to snipe',
-        type: 4,
-        required: false,
-      },
-    ], { blame: 'both' });
+    super(
+      client,
+      'snipe',
+      'Snipe a message (edited or deleted)',
+      [
+        {
+          name: 'type',
+          description: 'The type of snipe: edited or deleted',
+          type: 3,
+          required: true,
+          choices: [
+            { name: 'Edited', value: 'edited' },
+            { name: 'Deleted', value: 'deleted' },
+          ],
+        },
+        {
+          name: 'id',
+          description: 'The nth message to snipe',
+          type: 4,
+          required: false,
+        },
+      ],
+      { blame: 'both' },
+    );
   }
 
   async run(interaction: any): Promise<void> {

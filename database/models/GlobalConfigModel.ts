@@ -36,7 +36,12 @@ class GlobalConfigModel {
   async appendUniqueToList(key: string, value: string): Promise<boolean> {
     return this.db.executeTransaction(async () => {
       const existing = await this.getGlobalConfig(key);
-      const items = existing ? existing.split(',').map((s) => s.trim()).filter(Boolean) : [];
+      const items = existing
+        ? existing
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
 
       if (items.includes(value)) return false;
 
@@ -53,7 +58,12 @@ class GlobalConfigModel {
   async removeFromList(key: string, value: string): Promise<boolean> {
     return this.db.executeTransaction(async () => {
       const existing = await this.getGlobalConfig(key);
-      const items = existing ? existing.split(',').map((s) => s.trim()).filter(Boolean) : [];
+      const items = existing
+        ? existing
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
 
       if (!items.includes(value)) return false;
 

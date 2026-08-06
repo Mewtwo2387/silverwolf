@@ -3,20 +3,26 @@ import { Command } from './classes/Command';
 
 class BabyName extends Command {
   constructor(client: any) {
-    super(client, 'name', 'name your baby', [
-      {
-        name: 'id',
-        description: 'The id of the baby',
-        type: 4,
-        required: true,
-      },
-      {
-        name: 'name',
-        description: 'The name of the baby',
-        type: 3,
-        required: true,
-      },
-    ], { isSubcommandOf: 'baby', blame: 'ei' });
+    super(
+      client,
+      'name',
+      'name your baby',
+      [
+        {
+          name: 'id',
+          description: 'The id of the baby',
+          type: 4,
+          required: true,
+        },
+        {
+          name: 'name',
+          description: 'The name of the baby',
+          type: 3,
+          required: true,
+        },
+      ],
+      { isSubcommandOf: 'baby', blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {

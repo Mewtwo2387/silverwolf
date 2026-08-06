@@ -51,7 +51,9 @@ async function fetchMessagesByTime(
 
   while (messages.length < maxMessages) {
     // eslint-disable-next-line max-len
-    const options: { limit: number; before?: string } = { limit: Math.min(maxMessages - messages.length, MAX_FETCH_COUNT) };
+    const options: { limit: number; before?: string } = {
+      limit: Math.min(maxMessages - messages.length, MAX_FETCH_COUNT),
+    };
     if (lastId) {
       options.before = lastId;
     }
@@ -77,7 +79,4 @@ async function fetchMessagesByTime(
   return messages.reverse().slice(excludeNewest ? 1 : 0);
 }
 
-export {
-  fetchMessagesByCount,
-  fetchMessagesByTime,
-};
+export { fetchMessagesByCount, fetchMessagesByTime };

@@ -11,9 +11,8 @@ import {
   type PoopOption,
 } from '../../../utils/poop';
 
-const renderOptions = (opts: PoopOption[]) => html`${opts.map(
-  (o) => html`<option value="${o.value}">${o.label}</option>`,
-)}`;
+const renderOptions = (opts: PoopOption[]) =>
+  html`${opts.map((o) => html`<option value="${o.value}">${o.label}</option>`)}`;
 
 export function PoopPage(opts: { nonce: string; lv999?: boolean; user?: NavUser | null }) {
   const { nonce, lv999, user } = opts;
@@ -230,44 +229,49 @@ export function PoopPage(opts: { nonce: string; lv999?: boolean; user?: NavUser 
         <img id="poop-svg" class="poop" src="/static/svg/pile-of-poo-svgrepo-com.svg" alt="poop" />
         <img id="toilet-svg" class="toilet" src="/static/svg/toilet-svgrepo-com.svg" alt="toilet" />
       </div>
-      ${loggedOut
-    ? html`<div class="login-cta">
-            Log in with <a href="/auth/discord/login">Discord</a> to log a poop.
-          </div>`
-    : html`
-            <form id="poop-form" class="poop-form" onsubmit="return false">
-              <label>
-                Colour
-                <select name="colour">
-                  <option value="">—</option>
-                  ${renderOptions(POOP_COLOURS)}
-                </select>
-              </label>
-              <label>
-                Size
-                <select name="size">
-                  <option value="">—</option>
-                  ${renderOptions(POOP_SIZES)}
-                </select>
-              </label>
-              <label>
-                Type
-                <select name="type">
-                  <option value="">—</option>
-                  ${renderOptions(POOP_TYPES)}
-                </select>
-              </label>
-              <label>
-                Duration (minutes)
-                <input type="number" name="duration" min="${POOP_DURATION_MIN}" max="${POOP_DURATION_MAX}" placeholder="optional" />
-              </label>
-            </form>
-            <button id="log-btn" class="btn-accent log-btn">Log 💩</button>
-          `}
+      ${
+        loggedOut
+          ? html`<div class="login-cta">Log in with <a href="/auth/discord/login">Discord</a> to log a poop.</div>`
+          : html`
+              <form id="poop-form" class="poop-form" onsubmit="return false">
+                <label>
+                  Colour
+                  <select name="colour">
+                    <option value="">—</option>
+                    ${renderOptions(POOP_COLOURS)}
+                  </select>
+                </label>
+                <label>
+                  Size
+                  <select name="size">
+                    <option value="">—</option>
+                    ${renderOptions(POOP_SIZES)}
+                  </select>
+                </label>
+                <label>
+                  Type
+                  <select name="type">
+                    <option value="">—</option>
+                    ${renderOptions(POOP_TYPES)}
+                  </select>
+                </label>
+                <label>
+                  Duration (minutes)
+                  <input
+                    type="number"
+                    name="duration"
+                    min="${POOP_DURATION_MIN}"
+                    max="${POOP_DURATION_MAX}"
+                    placeholder="optional"
+                  />
+                </label>
+              </form>
+              <button id="log-btn" class="btn-accent log-btn">Log 💩</button>
+            `
+      }
       <div id="poop-message" class="poop-message"></div>
     </div>
-    ${extras}
-    ${loggedOut ? '' : formScript}
+    ${extras} ${loggedOut ? '' : formScript}
   `;
 
   return Layout({

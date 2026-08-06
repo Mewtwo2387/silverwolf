@@ -1,26 +1,26 @@
-import {
-  ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder,
-} from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { Command } from './classes/Command';
 import { logError } from '../utils/log';
-import {
-  fetchWorldCupMatches,
-  formatMatchResultLine,
-  getFinishedMatches,
-} from '../utils/worldcup';
+import { fetchWorldCupMatches, formatMatchResultLine, getFinishedMatches } from '../utils/worldcup';
 
 const RESULTS_PER_PAGE = 10;
 
 class FootballScores extends Command {
   constructor(client: any) {
-    super(client, 'scores', 'View previous World Cup match results', [
-      {
-        name: 'team',
-        description: 'Filter results by team name',
-        type: 3,
-        required: false,
-      },
-    ], { isSubcommandOf: 'football', blame: 'xei' });
+    super(
+      client,
+      'scores',
+      'View previous World Cup match results',
+      [
+        {
+          name: 'team',
+          description: 'Filter results by team name',
+          type: 3,
+          required: false,
+        },
+      ],
+      { isSubcommandOf: 'football', blame: 'xei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -42,19 +42,19 @@ class FootballScores extends Command {
       const buildEmbed = (page: number) => {
         const slice = finished.slice(page * RESULTS_PER_PAGE, (page + 1) * RESULTS_PER_PAGE);
         const lines = slice.map((match) => formatMatchResultLine(match)).filter(Boolean);
-        const title = team
-          ? `World Cup Results — ${team}`
-          : 'World Cup Results';
+        const title = team ? `World Cup Results — ${team}` : 'World Cup Results';
 
         return new EmbedBuilder()
           .setTitle(title)
-          .setColor(0x1E90FF)
+          .setColor(0x1e90ff)
           .setDescription(lines.join('\n'))
-          .setFooter({ text: `Page ${page + 1} of ${totalPages} · ${finished.length} match${finished.length === 1 ? '' : 'es'}` });
+          .setFooter({
+            text: `Page ${page + 1} of ${totalPages} · ${finished.length} match${finished.length === 1 ? '' : 'es'}`,
+          });
       };
 
-      const buildRow = (page: number) => new ActionRowBuilder<ButtonBuilder>()
-        .addComponents(
+      const buildRow = (page: number) =>
+        new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
             .setCustomId('footballScoresPrev')
             .setLabel('⬅️ Back')

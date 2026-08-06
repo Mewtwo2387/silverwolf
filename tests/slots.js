@@ -36,21 +36,28 @@ for (let t = 0; t < SIMULATION_TIMES; t += 1) {
     [0, 1, 2, 2, 2],
     [2, 1, 0, 0, 0],
     [0, 0, 0, 1, 2],
-    [2, 2, 2, 1, 0]];
+    [2, 2, 2, 1, 0],
+  ];
 
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
-    if (results[line[0]][0].emote === results[line[1]][1].emote
-      && results[line[1]][1].emote === results[line[2]][2].emote
-      && results[line[2]][2].emote === results[line[3]][3].emote
-      && results[line[3]][3].emote === results[line[4]][4].emote) {
+    if (
+      results[line[0]][0].emote === results[line[1]][1].emote &&
+      results[line[1]][1].emote === results[line[2]][2].emote &&
+      results[line[2]][2].emote === results[line[3]][3].emote &&
+      results[line[3]][3].emote === results[line[4]][4].emote
+    ) {
       winnings += results[line[0]][0].value * 20;
-    } else if (results[line[0]][0].emote === results[line[1]][1].emote
-      && results[line[1]][1].emote === results[line[2]][2].emote
-      && results[line[2]][2].emote === results[line[3]][3].emote) {
+    } else if (
+      results[line[0]][0].emote === results[line[1]][1].emote &&
+      results[line[1]][1].emote === results[line[2]][2].emote &&
+      results[line[2]][2].emote === results[line[3]][3].emote
+    ) {
       winnings += results[line[0]][0].value * 4;
-    } else if (results[line[0]][0].emote === results[line[1]][1].emote
-      && results[line[1]][1].emote === results[line[2]][2].emote) {
+    } else if (
+      results[line[0]][0].emote === results[line[1]][1].emote &&
+      results[line[1]][1].emote === results[line[2]][2].emote
+    ) {
       winnings += results[line[1]][1].value;
     }
   }

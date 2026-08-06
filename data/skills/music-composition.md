@@ -20,7 +20,7 @@ You are about to compose real audio. Write a composition JSON, then pass it to `
     },
     {
       "instrument": "drums",
-      "notes": [ { "time": 0, "pitch": "kick", "dur": 0.1, "vel": 110 } ]
+      "notes": [{ "time": 0, "pitch": "kick", "dur": 0.1, "vel": 110 }]
     }
   ]
 }

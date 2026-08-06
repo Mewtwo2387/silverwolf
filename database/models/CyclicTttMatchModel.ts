@@ -20,26 +20,20 @@ class CyclicTttMatchModel {
   }
 
   async recordMatch(input: RecordMatchInput): Promise<void> {
-    await this.db.executeQuery(
-      cyclicTttMatchQueries.INSERT_MATCH,
-      [
-        input.id,
-        input.xDiscordId,
-        input.oDiscordId,
-        input.winnerDiscordId,
-        input.endReason,
-        input.boardSize,
-        input.createdAt,
-        input.endedAt,
-      ],
-    );
+    await this.db.executeQuery(cyclicTttMatchQueries.INSERT_MATCH, [
+      input.id,
+      input.xDiscordId,
+      input.oDiscordId,
+      input.winnerDiscordId,
+      input.endReason,
+      input.boardSize,
+      input.createdAt,
+      input.endedAt,
+    ]);
   }
 
   async getRecentForUser(discordId: string, limit = 20): Promise<Record<string, any>[]> {
-    return this.db.executeSelectAllQuery(
-      cyclicTttMatchQueries.GET_RECENT_FOR_USER,
-      [discordId, discordId, limit],
-    );
+    return this.db.executeSelectAllQuery(cyclicTttMatchQueries.GET_RECENT_FOR_USER, [discordId, discordId, limit]);
   }
 }
 

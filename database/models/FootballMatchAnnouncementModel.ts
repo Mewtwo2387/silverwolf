@@ -52,23 +52,17 @@ class FootballMatchAnnouncementModel {
     await this.db.executeQuery(footballMatchAnnouncementQueries.UPSERT_SCORE, [matchId, home, away]);
   }
 
-  async markGoalAnnounced(
-    matchId: string,
-    home: number,
-    away: number,
-    goalCount: number,
-  ): Promise<void> {
-    await this.db.executeQuery(
-      footballMatchAnnouncementQueries.UPSERT_GOAL_ANNOUNCED,
-      [matchId, home, away, goalCount],
-    );
+  async markGoalAnnounced(matchId: string, home: number, away: number, goalCount: number): Promise<void> {
+    await this.db.executeQuery(footballMatchAnnouncementQueries.UPSERT_GOAL_ANNOUNCED, [
+      matchId,
+      home,
+      away,
+      goalCount,
+    ]);
   }
 
   async markFullTimeSent(matchId: string, home: number, away: number, goalCount: number): Promise<void> {
-    await this.db.executeQuery(
-      footballMatchAnnouncementQueries.UPSERT_FULL_TIME,
-      [matchId, home, away, goalCount],
-    );
+    await this.db.executeQuery(footballMatchAnnouncementQueries.UPSERT_FULL_TIME, [matchId, home, away, goalCount]);
   }
 
   async markShootoutSynced(
@@ -78,10 +72,13 @@ class FootballMatchAnnouncementModel {
     penHome: number,
     penAway: number,
   ): Promise<void> {
-    await this.db.executeQuery(
-      footballMatchAnnouncementQueries.UPSERT_SHOOTOUT_SYNC,
-      [matchId, kickCount, JSON.stringify(messageIds), penHome, penAway],
-    );
+    await this.db.executeQuery(footballMatchAnnouncementQueries.UPSERT_SHOOTOUT_SYNC, [
+      matchId,
+      kickCount,
+      JSON.stringify(messageIds),
+      penHome,
+      penAway,
+    ]);
   }
 
   async markShootoutFinished(
@@ -91,10 +88,13 @@ class FootballMatchAnnouncementModel {
     penHome: number,
     penAway: number,
   ): Promise<void> {
-    await this.db.executeQuery(
-      footballMatchAnnouncementQueries.UPSERT_SHOOTOUT_FINISHED,
-      [matchId, kickCount, JSON.stringify(messageIds), penHome, penAway],
-    );
+    await this.db.executeQuery(footballMatchAnnouncementQueries.UPSERT_SHOOTOUT_FINISHED, [
+      matchId,
+      kickCount,
+      JSON.stringify(messageIds),
+      penHome,
+      penAway,
+    ]);
   }
 
   async seedBaseline(
@@ -109,10 +109,12 @@ class FootballMatchAnnouncementModel {
       return;
     }
     if (home != null && away != null) {
-      await this.db.executeQuery(
-        footballMatchAnnouncementQueries.UPSERT_BASELINE_WITH_SCORE,
-        [matchId, home, away, goalCount],
-      );
+      await this.db.executeQuery(footballMatchAnnouncementQueries.UPSERT_BASELINE_WITH_SCORE, [
+        matchId,
+        home,
+        away,
+        goalCount,
+      ]);
       return;
     }
     await this.markPreMatchSent(matchId);

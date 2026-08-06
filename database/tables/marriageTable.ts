@@ -14,13 +14,8 @@ const marriageTable: TableDefinition = {
     { name: 'married_on', type: 'DATETIME DEFAULT CURRENT_TIMESTAMP' },
   ],
   primaryKey: ['user1_id', 'user2_id'],
-  specialConstraints: [
-    'PRIMARY KEY (user1_id, user2_id)',
-  ],
-  constraints: [
-    'FOREIGN KEY (user1_id) REFERENCES User(id)',
-    'FOREIGN KEY (user2_id) REFERENCES User(id)',
-  ],
+  specialConstraints: ['PRIMARY KEY (user1_id, user2_id)'],
+  constraints: ['FOREIGN KEY (user1_id) REFERENCES User(id)', 'FOREIGN KEY (user2_id) REFERENCES User(id)'],
 };
 
 export default marriageTable;

@@ -2,18 +2,13 @@ import type { Hono } from 'hono';
 import type { UpgradeWebSocket } from 'hono/ws';
 import { logError } from '../../utils/log';
 import type { Silverwolf } from '../../classes/silverwolf';
-import {
-  type AppEnv, authedGameRequest, navUser, readGameBody,
-} from '../shared';
+import { type AppEnv, authedGameRequest, navUser, readGameBody } from '../shared';
 import {
   BattleshipsMultiplayerLandingPage,
   type ActiveRoomBrief,
 } from '../pages/games/battleships_multiplayer_landing';
 import { BattleshipsMultiplayerRoomPage } from '../pages/games/battleships_multiplayer_room';
-import {
-  battleshipsRoomManager,
-  ROOMS_PER_USER_CAP,
-} from '../multiplayer/battleships_rooms';
+import { battleshipsRoomManager, ROOMS_PER_USER_CAP } from '../multiplayer/battleships_rooms';
 import { createBattleshipsWsEvents } from '../multiplayer/battleships_ws';
 
 const LANDING_PATH = '/games/battleships/multiplayer';
@@ -34,7 +29,11 @@ export function registerBattleshipsMpRoutes(
     if (!user) {
       return c.html(
         BattleshipsMultiplayerLandingPage({
-          nonce, lv999, user: nav, csrf: null, activeRooms: [],
+          nonce,
+          lv999,
+          user: nav,
+          csrf: null,
+          activeRooms: [],
         }).toString(),
       );
     }
@@ -42,9 +41,7 @@ export function registerBattleshipsMpRoutes(
     const briefs: ActiveRoomBrief[] = rooms.map((r) => {
       const youAreCreator = r.creatorDiscordId === user.discordId;
       const otherSlot = youAreCreator ? r.players.O : r.players.X;
-      const opp = (otherSlot && otherSlot.discordId !== user.discordId)
-        ? otherSlot.username
-        : null;
+      const opp = otherSlot && otherSlot.discordId !== user.discordId ? otherSlot.username : null;
       return {
         id: r.id,
         status: r.status,
@@ -54,7 +51,11 @@ export function registerBattleshipsMpRoutes(
     });
     return c.html(
       BattleshipsMultiplayerLandingPage({
-        nonce, lv999, user: nav, csrf: user.csrfToken, activeRooms: briefs,
+        nonce,
+        lv999,
+        user: nav,
+        csrf: user.csrfToken,
+        activeRooms: briefs,
       }).toString(),
     );
   });
@@ -70,10 +71,13 @@ export function registerBattleshipsMpRoutes(
     });
     if (!result.ok) {
       if (result.reason === 'too_many_rooms') {
-        return c.json({
-          ok: false,
-          error: `You're at the limit of ${ROOMS_PER_USER_CAP} rooms. Recently finished rooms still count for a few minutes — wait for them to clear, or leave one.`,
-        }, 429);
+        return c.json(
+          {
+            ok: false,
+            error: `You're at the limit of ${ROOMS_PER_USER_CAP} rooms. Recently finished rooms still count for a few minutes — wait for them to clear, or leave one.`,
+          },
+          429,
+        );
       }
       return c.json({ ok: false, error: 'Server is at capacity. Try again later.' }, 503);
     }

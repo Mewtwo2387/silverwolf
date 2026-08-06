@@ -2,18 +2,24 @@ import { DevCommand } from './classes/DevCommand';
 
 class ForceAutomation extends DevCommand {
   constructor(client: any) {
-    super(client, 'forceautomation', 'force a baby task', [
-      {
-        name: 'frequency',
-        description: 'the frequency of the automation',
-        type: 3,
-        required: true,
-        choices: [
-          { name: 'daily', value: 'daily' },
-          { name: 'ten_minutes', value: 'ten_minutes' },
-        ],
-      },
-    ], { ephemeral: true, isSubcommandOf: 'dev', blame: 'ei' });
+    super(
+      client,
+      'forceautomation',
+      'force a baby task',
+      [
+        {
+          name: 'frequency',
+          description: 'the frequency of the automation',
+          type: 3,
+          required: true,
+          choices: [
+            { name: 'daily', value: 'daily' },
+            { name: 'ten_minutes', value: 'ten_minutes' },
+          ],
+        },
+      ],
+      { ephemeral: true, isSubcommandOf: 'dev', blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {

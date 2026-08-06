@@ -4,49 +4,55 @@ import { logError } from '../utils/log';
 
 class Say extends AdminCommand {
   constructor(client: any) {
-    super(client, 'say', 'Send a message to one or more channels', [
-      {
-        name: 'message',
-        description: 'The message to send, use \\n for newlines',
-        type: 3,
-        required: true,
-      },
-      {
-        name: 'channels',
-        description: 'Comma-separated list of channel mentions (e.g., <#12345>,<#67890>)',
-        type: 3,
-        required: false,
-      },
-      {
-        name: 'attachment',
-        description: 'Optional attachment to send with the message',
-        type: 11,
-        required: false,
-      },
-    ], { ephemeral: true, blame: 'xei' });
+    super(
+      client,
+      'say',
+      'Send a message to one or more channels',
+      [
+        {
+          name: 'message',
+          description: 'The message to send, use \\n for newlines',
+          type: 3,
+          required: true,
+        },
+        {
+          name: 'channels',
+          description: 'Comma-separated list of channel mentions (e.g., <#12345>,<#67890>)',
+          type: 3,
+          required: false,
+        },
+        {
+          name: 'attachment',
+          description: 'Optional attachment to send with the message',
+          type: 11,
+          required: false,
+        },
+      ],
+      { ephemeral: true, blame: 'xei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
-    const input = interaction.options.getString('message')
-      .replace(/@/g, '')
-      .replace(/\\n/g, '\n');
+    const input = interaction.options.getString('message').replace(/@/g, '').replace(/\\n/g, '\n');
     const attachment = interaction.options.getAttachment('attachment');
     const channelsInput = interaction.options.getString('channels');
 
     const targetChannels: TextChannel[] = [];
     if (channelsInput) {
       const channelMentions = channelsInput.split(',').map((id: string) => id.trim());
-      const fetched = await Promise.all(channelMentions.map(async (mention: string) => {
-        const channelId = mention.match(/^<#(\d+)>$/)?.[1];
-        if (!channelId) return null;
-        try {
-          const channel = await interaction.client.channels.fetch(channelId);
-          return channel instanceof TextChannel ? channel : null;
-        } catch (error) {
-          logError(`Failed to fetch channel ${channelId}:`, error);
-          return null;
-        }
-      }));
+      const fetched = await Promise.all(
+        channelMentions.map(async (mention: string) => {
+          const channelId = mention.match(/^<#(\d+)>$/)?.[1];
+          if (!channelId) return null;
+          try {
+            const channel = await interaction.client.channels.fetch(channelId);
+            return channel instanceof TextChannel ? channel : null;
+          } catch (error) {
+            logError(`Failed to fetch channel ${channelId}:`, error);
+            return null;
+          }
+        }),
+      );
       for (const channel of fetched) {
         if (channel) targetChannels.push(channel);
       }
@@ -84,7 +90,7 @@ class Say extends AdminCommand {
 
     const embed = new EmbedBuilder()
       .setTitle('Message Sending Results')
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setDescription(`Message sent to ${successCount} channels.`);
 
     const successfulChannelMentions = targetChannels

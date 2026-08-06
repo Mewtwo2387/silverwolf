@@ -19,9 +19,7 @@ export function CyclicTicTacToeMultiplayerLandingPage(opts: {
   csrf?: string | null;
   activeRooms?: ActiveRoomBrief[];
 }) {
-  const {
-    nonce, lv999, user, csrf = null, activeRooms = [],
-  } = opts;
+  const { nonce, lv999, user, csrf = null, activeRooms = [] } = opts;
 
   const loggedOut = !user;
 
@@ -227,7 +225,9 @@ export function CyclicTicTacToeMultiplayerLandingPage(opts: {
       <p style="text-align:center; color: var(--fog-300); margin: 0 0 1rem;">
         Multiplayer requires a Discord account so we can match you with the other player.
       </p>
-      <a href="/auth/discord/login?return=%2Fgames%2Fcyclic-tictactoe%2Fmultiplayer" class="cyc-mp-btn cyc-mp-loginbtn">[ Log in with Discord ]</a>
+      <a href="/auth/discord/login?return=%2Fgames%2Fcyclic-tictactoe%2Fmultiplayer" class="cyc-mp-btn cyc-mp-loginbtn"
+        >[ Log in with Discord ]</a
+      >
     </div>
   `;
 
@@ -246,7 +246,9 @@ export function CyclicTicTacToeMultiplayerLandingPage(opts: {
           <input type="checkbox" id="cyc-mp-skills" disabled />
           <span>Enable Skills</span>
         </label>
-        <span id="cyc-mp-skills-hint" class="cyc-mp-skill-hint">Skills unlock at ${String(SKILL_MIN_SIZE)}×${String(SKILL_MIN_SIZE)}+</span>
+        <span id="cyc-mp-skills-hint" class="cyc-mp-skill-hint"
+          >Skills unlock at ${String(SKILL_MIN_SIZE)}×${String(SKILL_MIN_SIZE)}+</span
+        >
       </div>
       <div class="cyc-mp-create-row">
         <button id="cyc-mp-create" type="button" class="cyc-mp-btn">[ Create Room ]</button>
@@ -256,31 +258,39 @@ export function CyclicTicTacToeMultiplayerLandingPage(opts: {
 
     <div class="cyc-mp-panel">
       <p class="cyc-mp-subtitle">Your Active Rooms</p>
-      ${activeRooms.length === 0
-    ? html`<p class="cyc-mp-empty">No active rooms. Create one above and share the link.</p>`
-    : html`
-      <ul class="cyc-mp-rooms">
-        ${activeRooms.map((r) => html`
-          <li class="cyc-mp-room" data-room-id="${r.id}">
-            <div class="cyc-mp-room-meta">
-              <span class="room-status">${r.status}</span>
-              n=${String(r.boardSize)}${r.skillsEnabled ? html`<span class="room-skills">skills</span>` : ''} ·
-              ${r.opponentUsername
-    ? html`vs @${r.opponentUsername}`
-    : html`<span style="color: var(--fog-400)">waiting for opponent</span>`}
-            </div>
-            <a class="cyc-mp-btn" href="/games/cyclic-tictactoe/multiplayer/${r.id}">[ open ]</a>
-            <button type="button" class="cyc-mp-btn cyc-mp-copy" data-room-id="${r.id}">[ copy link ]</button>
-          </li>
-        `)}
-      </ul>
-    `}
+      ${
+        activeRooms.length === 0
+          ? html`<p class="cyc-mp-empty">No active rooms. Create one above and share the link.</p>`
+          : html`
+              <ul class="cyc-mp-rooms">
+                ${activeRooms.map(
+          (r) => html`
+            <li class="cyc-mp-room" data-room-id="${r.id}">
+              <div class="cyc-mp-room-meta">
+                <span class="room-status">${r.status}</span>
+                n=${String(r.boardSize)}${r.skillsEnabled ? html`<span class="room-skills">skills</span>` : ''} ·
+                ${
+                r.opponentUsername
+                  ? html`vs @${r.opponentUsername}`
+                  : html`<span style="color: var(--fog-400)">waiting for opponent</span>`
+              }
+              </div>
+              <a class="cyc-mp-btn" href="/games/cyclic-tictactoe/multiplayer/${r.id}">[ open ]</a>
+              <button type="button" class="cyc-mp-btn cyc-mp-copy" data-room-id="${r.id}">[ copy link ]</button>
+            </li>
+          `,
+        )}
+              </ul>
+            `
+      }
     </div>
 
     <div class="cyc-mp-rules">
-      Standard cyclic rules — you keep up to <span class="accent">⌈1.5n⌉</span> marks; placing past the limit expires your oldest.
-      Turns are limited to <span class="accent">25 seconds</span>. If your opponent disconnects, they have 30 seconds to reconnect before forfeiting.
-      On <span class="accent">${String(SKILL_MIN_SIZE)}×${String(SKILL_MIN_SIZE)}+</span> boards you can enable <span class="accent">Skills</span> — an energy-fuelled deck of board-warping abilities to break stalemates.
+      Standard cyclic rules — you keep up to <span class="accent">⌈1.5n⌉</span> marks; placing past the limit expires
+      your oldest. Turns are limited to <span class="accent">25 seconds</span>. If your opponent disconnects, they have
+      30 seconds to reconnect before forfeiting. On
+      <span class="accent">${String(SKILL_MIN_SIZE)}×${String(SKILL_MIN_SIZE)}+</span> boards you can enable
+      <span class="accent">Skills</span> — an energy-fuelled deck of board-warping abilities to break stalemates.
     </div>
   `;
 
@@ -359,9 +369,7 @@ export function CyclicTicTacToeMultiplayerLandingPage(opts: {
     ${styles}
     <h1 class="text-center">Cyclic Tic-Tac-Toe — Multiplayer</h1>
     <p class="text-center text-fog-300">Create a room, share the link, play someone else.</p>
-    <div class="cyc-mp-wrap">
-      ${loggedOut ? loginPanel : loggedInPanel}
-    </div>
+    <div class="cyc-mp-wrap">${loggedOut ? loginPanel : loggedInPanel}</div>
     ${loggedOut ? '' : script}
   `;
 

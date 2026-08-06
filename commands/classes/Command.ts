@@ -25,7 +25,10 @@ class Command {
     description: string,
     options: any[],
     args: CommandArgs = {
-      ephemeral: false, skipDefer: false, isSubcommandOf: null, blame: '',
+      ephemeral: false,
+      skipDefer: false,
+      isSubcommandOf: null,
+      blame: '',
     },
   ) {
     this.client = client;
@@ -47,10 +50,10 @@ class Command {
           .setColor('Red')
           .setTitle(`Sorry, ${this.name} isn't available right now.`)
           .setDescription(
-            `A law banning ${this.name} has been enacted in ${interaction.guild.name}. `
-            + 'Unfortunately, that means you can\'t use this command here.\n\n'
-            + 'We are fortunate that Iruma has indication he will work with us on a solution to '
-            + `reinstate ${this.name} once he is unbanned. Please stay tuned!`,
+            `A law banning ${this.name} has been enacted in ${interaction.guild.name}. ` +
+              "Unfortunately, that means you can't use this command here.\n\n" +
+              'We are fortunate that Iruma has indication he will work with us on a solution to ' +
+              `reinstate ${this.name} once he is unbanned. Please stay tuned!`,
           );
         await interaction.reply({
           embeds: [embed],
@@ -80,9 +83,10 @@ class Command {
 
       // Inform the user about the error, if needed
       await interaction.editReply({
-        content: 'An error occurred while executing the command.\n'
-        + 'Please try again later or modify the inputs.\n'
-        + 'If the issue persists, run /blame command_name and spam ping whoever made the command.',
+        content:
+          'An error occurred while executing the command.\n' +
+          'Please try again later or modify the inputs.\n' +
+          'If the issue persists, run /blame command_name and spam ping whoever made the command.',
       });
     }
   }

@@ -124,7 +124,10 @@ export function parseKeywordLorebook(text: string): ParseKeywordsResult {
       }
       const trimmed = t.trim();
       if (trimmed.length > TRIGGER_MAX_LENGTH) {
-        return { ok: false, error: `${label}: trigger "${trimmed.slice(0, 30)}…" is too long (max ${TRIGGER_MAX_LENGTH} chars).` };
+        return {
+          ok: false,
+          error: `${label}: trigger "${trimmed.slice(0, 30)}…" is too long (max ${TRIGGER_MAX_LENGTH} chars).`,
+        };
       }
       triggers.push(trimmed);
     }
@@ -258,5 +261,8 @@ export function findRecallMarkers(text: string): string[] {
 
 /** Strips any `<recall:...>` markers the model left in a final reply. */
 export function stripRecallMarkers(text: string): string {
-  return text.replace(RECALL_MARKER_RE, '').replace(/^[ \t]*\n/, '').trim();
+  return text
+    .replace(RECALL_MARKER_RE, '')
+    .replace(/^[ \t]*\n/, '')
+    .trim();
 }

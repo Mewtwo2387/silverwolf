@@ -9,9 +9,7 @@ class TwentyTwentyTwo extends Command {
 
   async run(interaction: any): Promise<void> {
     const quote = (quotes as any[])[Math.floor(Math.random() * quotes.length)];
-    const embed = new Discord.EmbedBuilder()
-      .setColor('#00AA00')
-      .setDescription(`*"${quote.quote}"* - ${quote.author}`);
+    const embed = new Discord.EmbedBuilder().setColor('#00AA00').setDescription(`*"${quote.quote}"* - ${quote.author}`);
     if (quote.reply !== undefined) {
       embed.setDescription(`*"${quote.quote}"* - ${quote.author}\n*"${quote.reply}"* - ${quote.replyauthor}`);
     }

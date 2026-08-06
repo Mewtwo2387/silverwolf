@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'bun:test';
 import {
-  generateCharId, validateCharName, matchMentions, applyUserVar, formatCharHandle, type SpawnLike,
+  generateCharId,
+  validateCharName,
+  matchMentions,
+  applyUserVar,
+  formatCharHandle,
+  type SpawnLike,
 } from '../../utils/rpIdentity';
 
 describe('rpIdentity.applyUserVar', () => {

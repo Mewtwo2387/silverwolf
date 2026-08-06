@@ -42,7 +42,8 @@ class AiUsageSubcommand extends Command {
         .setColor('#0099ff')
         .setTitle('🤖 Your AI Credit Usage')
         .setThumbnail(interaction.user.displayAvatarURL({ size: 256 }))
-        .setDescription(`
+        .setDescription(
+          `
 **Daily Usage (24h):**
 ${dailyUsage.toLocaleString()} / ${DAILY_LIMIT.toLocaleString()} credits
 ${dailyBar}
@@ -54,7 +55,8 @@ ${weeklyBar}
 Resets: ${weeklyReset}
 
 **Status:** ${statusText}
-        `)
+        `,
+        )
         .setFooter({ text: 'Note: AI roleplay cost is shared among active users in the chat.' })
         .setTimestamp();
 

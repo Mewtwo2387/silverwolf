@@ -35,12 +35,7 @@ class AiUsageModel {
     this.db = db;
   }
 
-  async addUsage(
-    userId: string,
-    model: string,
-    promptTokens: number,
-    completionTokens: number,
-  ): Promise<void> {
+  async addUsage(userId: string, model: string, promptTokens: number, completionTokens: number): Promise<void> {
     // Ensure user exists in User table
     await this.db.user.getUser(userId);
 
@@ -49,7 +44,8 @@ class AiUsageModel {
 
     // Log the call (audit) and fold its credits into both fixed windows atomically.
     await this.db.executeTransaction((rawDb) => {
-      const logResult = rawDb.query(aiUsageQueries.ADD_USAGE)
+      const logResult = rawDb
+        .query(aiUsageQueries.ADD_USAGE)
         .run(userId, model, promptTokens, completionTokens, usdCost);
       if (!logResult || logResult.changes === 0) {
         throw new Error('Failed to record AI usage in the database');
@@ -109,14 +105,20 @@ class AiUsageModel {
     const dailyUsage = await this.getDailyUsage(userId);
     if (dailyUsage >= DAILY_LIMIT) {
       return {
-        limited: true, reason: 'daily', usage: dailyUsage, limit: DAILY_LIMIT,
+        limited: true,
+        reason: 'daily',
+        usage: dailyUsage,
+        limit: DAILY_LIMIT,
       };
     }
 
     const weeklyUsage = await this.getWeeklyUsage(userId);
     if (weeklyUsage >= WEEKLY_LIMIT) {
       return {
-        limited: true, reason: 'weekly', usage: weeklyUsage, limit: WEEKLY_LIMIT,
+        limited: true,
+        reason: 'weekly',
+        usage: weeklyUsage,
+        limit: WEEKLY_LIMIT,
       };
     }
 
@@ -137,7 +139,10 @@ class AiUsageModel {
    * with the same amount (in a finally), and record real usage via addUsage().
    * Everyone is metered — devs included (there is no bypass).
    */
-  tryReserve(userId: string, estimatedCredits: number): {
+  tryReserve(
+    userId: string,
+    estimatedCredits: number,
+  ): {
     ok: boolean;
     reason?: WindowType;
     remaining?: number;

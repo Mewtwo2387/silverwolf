@@ -13,29 +13,30 @@ import {
 } from '../utils/footballAnnouncements';
 import { broadcastGoalAnnouncement } from '../utils/footballBroadcast';
 import { getGoalFollowUpContent } from '../utils/footballEasterEggs';
-import {
-  fetchWorldCupMatches,
-  getDisplayedScore,
-  isFinished,
-  parseKickoffUtc,
-} from '../utils/worldcup';
+import { fetchWorldCupMatches, getDisplayedScore, isFinished, parseKickoffUtc } from '../utils/worldcup';
 
 class FootballTest extends DevCommand {
   constructor(client: any) {
-    super(client, 'test', 'Replay football announcements for recent matches', [
+    super(
+      client,
+      'test',
+      'Replay football announcements for recent matches',
+      [
+        {
+          name: 'hours',
+          description: 'How many hours back to replay (default: 24, max: 720)',
+          type: 4,
+          required: false,
+          min_value: 1,
+          max_value: 720,
+        },
+      ],
       {
-        name: 'hours',
-        description: 'How many hours back to replay (default: 24, max: 720)',
-        type: 4,
-        required: false,
-        min_value: 1,
-        max_value: 720,
+        isSubcommandOf: 'football',
+        blame: 'xei',
+        ephemeral: true,
       },
-    ], {
-      isSubcommandOf: 'football',
-      blame: 'xei',
-      ephemeral: true,
-    });
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -106,8 +107,9 @@ class FootballTest extends DevCommand {
         }
       }
 
-      let resultMessage = `Replayed **${messageCount}** message${messageCount === 1 ? '' : 's'} `
-        + `across **${recentMatches.length}** match${recentMatches.length === 1 ? '' : 'es'} from ${windowLabel}.`;
+      let resultMessage =
+        `Replayed **${messageCount}** message${messageCount === 1 ? '' : 's'} ` +
+        `across **${recentMatches.length}** match${recentMatches.length === 1 ? '' : 'es'} from ${windowLabel}.`;
 
       if (recentMatches.length === 0) {
         resultMessage = `No matches found for ${windowLabel} — nothing to replay.`;
@@ -132,8 +134,7 @@ class FootballTest extends DevCommand {
     let sent = 0;
     for (const channelId of channelIds) {
       try {
-        const channel = this.client.channels.cache.get(channelId)
-          ?? await this.client.channels.fetch(channelId);
+        const channel = this.client.channels.cache.get(channelId) ?? (await this.client.channels.fetch(channelId));
         if (!channel?.isTextBased()) {
           failedChannels.add(channelId);
           continue;

@@ -1,11 +1,12 @@
-import {
-  ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags,
-} from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } from 'discord.js';
 import { Command } from './classes/Command';
 
 class RussianRouletteSingleplayer extends Command {
   constructor(client: any) {
-    super(client, 'singleplayer', 'Play a single-player game of Russian Roulette', [], { isSubcommandOf: 'russianroulette', blame: 'xei' });
+    super(client, 'singleplayer', 'Play a single-player game of Russian Roulette', [], {
+      isSubcommandOf: 'russianroulette',
+      blame: 'xei',
+    });
   }
 
   async run(interaction: any): Promise<void> {
@@ -41,7 +42,8 @@ class RussianRouletteSingleplayer extends Command {
           currentChamber += 1;
           thisChamberCooldown = false;
 
-          embed.setDescription(`Click! You survived round ${shotsFired}. What will you do next?`)
+          embed
+            .setDescription(`Click! You survived round ${shotsFired}. What will you do next?`)
             .setFooter({ text: `Chambers checked: ${shotsFired}/${totalChambers}` });
 
           if (shotsFired === totalChambers) {
@@ -63,9 +65,7 @@ class RussianRouletteSingleplayer extends Command {
         }
 
         if (currentChamber === loadedChamber) {
-          embed.setDescription(
-            '🎉 You discharged the loaded chamber without harming yourself. You win!',
-          );
+          embed.setDescription('🎉 You discharged the loaded chamber without harming yourself. You win!');
           embed.setImage('https://media1.tenor.com/m/caIrExQfdiEAAAAd/clap-smile.gif');
 
           embed.setColor('#00FF00');
@@ -76,9 +76,9 @@ class RussianRouletteSingleplayer extends Command {
           shotsFired += 1;
           currentChamber += 1;
 
-          embed.setDescription(
-            `The chamber was empty. You have survived round ${shotsFired}. What will you do next?`,
-          ).setFooter({ text: `Chambers checked: ${shotsFired}/${totalChambers}` });
+          embed
+            .setDescription(`The chamber was empty. You have survived round ${shotsFired}. What will you do next?`)
+            .setFooter({ text: `Chambers checked: ${shotsFired}/${totalChambers}` });
 
           if (shotsFired === totalChambers) {
             embed.setDescription(
@@ -105,18 +105,14 @@ class RussianRouletteSingleplayer extends Command {
   }
 
   createButtons(thisChamberCooldown: boolean) {
-    return new ActionRowBuilder()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId('shootSelf')
-          .setLabel('Shoot Self')
-          .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-          .setCustomId('thisChamber')
-          .setLabel('This Chamber')
-          .setStyle(ButtonStyle.Primary)
-          .setDisabled(thisChamberCooldown),
-      );
+    return new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('shootSelf').setLabel('Shoot Self').setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId('thisChamber')
+        .setLabel('This Chamber')
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(thisChamberCooldown),
+    );
   }
 }
 

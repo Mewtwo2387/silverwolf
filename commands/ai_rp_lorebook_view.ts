@@ -11,14 +11,28 @@ import { logError } from '../utils/log';
  */
 class AiRpLorebookView extends Command {
   constructor(client: any) {
-    super(client, 'rp-lorebook-view', 'View a character\'s lorebooks (content is creator-only)', [
-      {
-        name: 'char', description: 'Character (search by name or id)', type: 3, required: true, autocomplete: true,
-      },
-      {
-        name: 'lorebook_name', description: 'A specific lorebook (omit for all)', type: 3, required: false, autocomplete: true,
-      },
-    ], { isSubcommandOf: 'ai', blame: 'xei', ephemeral: true });
+    super(
+      client,
+      'rp-lorebook-view',
+      "View a character's lorebooks (content is creator-only)",
+      [
+        {
+          name: 'char',
+          description: 'Character (search by name or id)',
+          type: 3,
+          required: true,
+          autocomplete: true,
+        },
+        {
+          name: 'lorebook_name',
+          description: 'A specific lorebook (omit for all)',
+          type: 3,
+          required: false,
+          autocomplete: true,
+        },
+      ],
+      { isSubcommandOf: 'ai', blame: 'xei', ephemeral: true },
+    );
   }
 
   async autocomplete(interaction: any): Promise<void> {
@@ -74,7 +88,7 @@ class AiRpLorebookView extends Command {
         );
 
       if (!canDump) {
-        embed.setFooter({ text: 'Only the character\'s creator can view the full content.' });
+        embed.setFooter({ text: "Only the character's creator can view the full content." });
         await interaction.editReply({ embeds: [embed] });
         return;
       }
@@ -84,7 +98,11 @@ class AiRpLorebookView extends Command {
         const ext = b.type === 'keywords' ? 'json' : 'md';
         let body = b.content;
         if (b.type === 'keywords') {
-          try { body = JSON.stringify(JSON.parse(b.content), null, 2); } catch { /* dump as stored */ }
+          try {
+            body = JSON.stringify(JSON.parse(b.content), null, 2);
+          } catch {
+            /* dump as stored */
+          }
         }
         return new AttachmentBuilder(Buffer.from(body, 'utf8'), { name: `${b.nameLower.replace(/ /g, '_')}.${ext}` });
       });

@@ -1,6 +1,4 @@
-import {
-  EmbedBuilder, escapeMarkdown, AttachmentBuilder,
-} from 'discord.js';
+import { EmbedBuilder, escapeMarkdown, AttachmentBuilder } from 'discord.js';
 import Canvas from 'canvas';
 import { log } from '../../utils/log';
 import Handler from './handler';
@@ -28,11 +26,12 @@ class NormalHandler extends Handler {
     const buffer = canvas.toBuffer();
     const attachment = new AttachmentBuilder(buffer, { name: 'shiny.png' });
     message.channel.send({
-      embeds: [new EmbedBuilder()
-        .setTitle(`A shiny ${escapeMarkdown(member.user.username)} appeared!`)
-        .setImage('attachment://shiny.png')
-        .setColor('#00FF00')
-        .setFooter({ text: 'catch them with /catch [username] shiny!' }),
+      embeds: [
+        new EmbedBuilder()
+          .setTitle(`A shiny ${escapeMarkdown(member.user.username)} appeared!`)
+          .setImage('attachment://shiny.png')
+          .setColor('#00FF00')
+          .setFooter({ text: 'catch them with /catch [username] shiny!' }),
       ],
       files: [attachment],
     });
@@ -42,11 +41,12 @@ class NormalHandler extends Handler {
   async summonMysteryPokemon(client: any, message: any, member: any, pfp: string): Promise<void> {
     log('Mystery Pokemon');
     message.channel.send({
-      embeds: [new EmbedBuilder()
-        .setTitle('A wild ??? appeared!')
-        .setImage(pfp)
-        .setColor('#00FF00')
-        .setFooter({ text: 'guess the username and catch with /catch [username]!' }),
+      embeds: [
+        new EmbedBuilder()
+          .setTitle('A wild ??? appeared!')
+          .setImage(pfp)
+          .setColor('#00FF00')
+          .setFooter({ text: 'guess the username and catch with /catch [username]!' }),
       ],
     });
     client.setCurrentPokemon(member.user.username);
@@ -55,11 +55,12 @@ class NormalHandler extends Handler {
   async summonNormalPokemon(client: any, message: any, member: any, pfp: string): Promise<void> {
     log('Normal Pokemon');
     message.channel.send({
-      embeds: [new EmbedBuilder()
-        .setTitle(`A wild ${escapeMarkdown(member.user.username)} appeared!`)
-        .setImage(pfp)
-        .setColor('#00FF00')
-        .setFooter({ text: 'catch them with /catch [username]!' }),
+      embeds: [
+        new EmbedBuilder()
+          .setTitle(`A wild ${escapeMarkdown(member.user.username)} appeared!`)
+          .setImage(pfp)
+          .setColor('#00FF00')
+          .setFooter({ text: 'catch them with /catch [username]!' }),
       ],
     });
     client.setCurrentPokemon(member.user.username);

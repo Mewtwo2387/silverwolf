@@ -39,7 +39,10 @@ export function checkWin(b: Cell[], s: number): WinInfo | null {
       const line: number[] = [];
       for (let i = 0; i < s; i += 1) {
         line.push(start + i);
-        if (b[start + i] !== first) { win = false; break; }
+        if (b[start + i] !== first) {
+          win = false;
+          break;
+        }
       }
       if (win) return { winner: first, line };
     }
@@ -51,7 +54,10 @@ export function checkWin(b: Cell[], s: number): WinInfo | null {
       const line: number[] = [];
       for (let i = 0; i < s; i += 1) {
         line.push(i * s + c);
-        if (b[i * s + c] !== first) { win = false; break; }
+        if (b[i * s + c] !== first) {
+          win = false;
+          break;
+        }
       }
       if (win) return { winner: first, line };
     }

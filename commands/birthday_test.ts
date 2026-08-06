@@ -5,7 +5,10 @@ import { parseChannelIds } from '../utils/parseChannelIds';
 
 class BirthdayTest extends DevCommand {
   constructor(client: any) {
-    super(client, 'test', 'Tests the birthday scheduler to ensure channels are accessible', [], { isSubcommandOf: 'birthday', blame: 'xei' });
+    super(client, 'test', 'Tests the birthday scheduler to ensure channels are accessible', [], {
+      isSubcommandOf: 'birthday',
+      blame: 'xei',
+    });
   }
 
   async execute(interaction: any): Promise<void> {
@@ -16,12 +19,12 @@ class BirthdayTest extends DevCommand {
 
     for (const channelId of channelIds) {
       try {
-        const channel = this.client.channels.cache.get(channelId) ?? await this.client.channels.fetch(channelId);
+        const channel = this.client.channels.cache.get(channelId) ?? (await this.client.channels.fetch(channelId));
         if (channel && channel.isTextBased()) {
           const testEmbed = new EmbedBuilder()
             .setTitle('Test: Birthday Scheduler')
             .setDescription('This is a test to verify the birthday scheduler can send messages.')
-            .setColor(0x00FF00);
+            .setColor(0x00ff00);
 
           await channel.send({ embeds: [testEmbed] });
           successChannels.push(channelId);

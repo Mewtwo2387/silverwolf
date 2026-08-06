@@ -10,10 +10,12 @@ class SexThrust extends Command {
   async run(interaction: any): Promise<void> {
     if (!this.client.sexSessions.some((s: any) => s.hasUser(interaction.user.id))) {
       await interaction.editReply({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#AA0000')
-          .setTitle('You\'re not fucking anyone!')
-          .setFooter({ text: 'start a sex session with /sex start' })],
+        embeds: [
+          new Discord.EmbedBuilder()
+            .setColor('#AA0000')
+            .setTitle("You're not fucking anyone!")
+            .setFooter({ text: 'start a sex session with /sex start' }),
+        ],
       });
       return;
     }
@@ -24,7 +26,7 @@ class SexThrust extends Command {
       log('Ejaculated!');
       let footer = '';
       if (session.thrusts < 30) {
-        footer = (Math.random() < 0.5) ? 'so quick smh' : 'that was fast';
+        footer = Math.random() < 0.5 ? 'so quick smh' : 'that was fast';
       } else if (session.thrusts < 60) {
         footer = 'mmmwwahhh';
       } else if (session.thrusts < 100) {
@@ -34,11 +36,12 @@ class SexThrust extends Command {
       }
       this.client.sexSessions = this.client.sexSessions.filter((s: any) => s !== session);
       await interaction.editReply({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#00FF00')
-          .setTitle('You ejaculated!')
-          .setDescription(`Total thrusts: ${session.thrusts}`)
-          .setFooter({ text: footer }),
+        embeds: [
+          new Discord.EmbedBuilder()
+            .setColor('#00FF00')
+            .setTitle('You ejaculated!')
+            .setDescription(`Total thrusts: ${session.thrusts}`)
+            .setFooter({ text: footer }),
         ],
       });
 
@@ -47,10 +50,11 @@ class SexThrust extends Command {
 
       if (Math.random() < 0.5) {
         await interaction.followUp({
-          embeds: [new Discord.EmbedBuilder()
-            .setColor('#00FF00')
-            .setTitle('Oh...')
-            .setDescription(`<@${motherId}> is pregnant! Check /baby get to see your babies!`),
+          embeds: [
+            new Discord.EmbedBuilder()
+              .setColor('#00FF00')
+              .setTitle('Oh...')
+              .setDescription(`<@${motherId}> is pregnant! Check /baby get to see your babies!`),
           ],
         });
         await this.client.db.baby.createBaby(motherId, fatherId);
@@ -69,9 +73,11 @@ class SexThrust extends Command {
       'Please~ More~',
     ];
     await interaction.editReply({
-      embeds: [new Discord.EmbedBuilder()
-        .setColor('#00FF00')
-        .setTitle(responses[Math.floor(Math.random() * responses.length)])],
+      embeds: [
+        new Discord.EmbedBuilder()
+          .setColor('#00FF00')
+          .setTitle(responses[Math.floor(Math.random() * responses.length)]),
+      ],
     });
   }
 }

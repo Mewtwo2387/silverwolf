@@ -1,6 +1,4 @@
-import {
-  ActionRowBuilder, ButtonBuilder, ButtonStyle, type TextChannel,
-} from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, type TextChannel } from 'discord.js';
 import { resolveAvatarUrl } from './rpAvatar';
 import { logError } from './log';
 
@@ -34,17 +32,16 @@ export function getRpWebhookIdCount(): number {
 }
 
 /** The "↩ Replying to" link button, or [] when there's nothing to link. */
-function replyButtonRow(
-  replyToUrl?: string | null,
-  replyToLabel?: string | null,
-): ActionRowBuilder<ButtonBuilder>[] {
+function replyButtonRow(replyToUrl?: string | null, replyToLabel?: string | null): ActionRowBuilder<ButtonBuilder>[] {
   if (!replyToUrl) return [];
-  return [new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setLabel(`↩ Replying to: ${replyToLabel || 'message'}`.slice(0, 80))
-      .setStyle(ButtonStyle.Link)
-      .setURL(replyToUrl),
-  )];
+  return [
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setLabel(`↩ Replying to: ${replyToLabel || 'message'}`.slice(0, 80))
+        .setStyle(ButtonStyle.Link)
+        .setURL(replyToUrl),
+    ),
+  ];
 }
 
 /** Splits text into <=2000-char chunks, breaking on whitespace where possible. */
@@ -52,7 +49,10 @@ export function splitMessage(text: string): string[] {
   const chunks: string[] = [];
   let remaining = text;
   while (remaining.length > 0) {
-    if (remaining.length <= MAX_LENGTH) { chunks.push(remaining); break; }
+    if (remaining.length <= MAX_LENGTH) {
+      chunks.push(remaining);
+      break;
+    }
     let chunk = remaining.slice(0, MAX_LENGTH);
     const breakIndex = Math.max(chunk.lastIndexOf('\n'), chunk.lastIndexOf(' '));
     // Keep the break character with the current chunk and don't trim the remainder,
@@ -102,14 +102,11 @@ export async function sendAsCharacter(opts: {
   replyToUrl?: string | null;
   replyToLabel?: string | null;
 }): Promise<boolean> {
-  const {
-    client, db, channel, character, text,
-  } = opts;
+  const { client, db, channel, character, text } = opts;
   const webhook = await getRpWebhook(channel, client);
   if (!webhook) return false;
 
-  const avatarURL = (await resolveAvatarUrl(client, db, character))
-    ?? client.user?.displayAvatarURL();
+  const avatarURL = (await resolveAvatarUrl(client, db, character)) ?? client.user?.displayAvatarURL();
   const chunks = splitMessage(text || '…');
 
   try {
@@ -149,13 +146,10 @@ export async function postCharacterPlaceholder(opts: {
   channel: TextChannel;
   character: CharacterDelivery;
 }): Promise<CharacterTyping | null> {
-  const {
-    client, db, channel, character,
-  } = opts;
+  const { client, db, channel, character } = opts;
   const webhook = await getRpWebhook(channel, client);
   if (!webhook) return null;
-  const avatarURL = (await resolveAvatarUrl(client, db, character))
-    ?? client.user?.displayAvatarURL();
+  const avatarURL = (await resolveAvatarUrl(client, db, character)) ?? client.user?.displayAvatarURL();
   try {
     const msg = await webhook.send({
       content: TYPING_PLACEHOLDER,
@@ -164,7 +158,10 @@ export async function postCharacterPlaceholder(opts: {
       allowedMentions: { parse: [] },
     });
     return {
-      webhook, messageId: msg.id, name: character.name, avatarURL,
+      webhook,
+      messageId: msg.id,
+      name: character.name,
+      avatarURL,
     };
   } catch (err) {
     logError(`Rp: failed to post typing placeholder for ${character.charId}:`, err);
@@ -173,11 +170,14 @@ export async function postCharacterPlaceholder(opts: {
 }
 
 /** Edits the placeholder into the reply's first chunk; overflow follows as new messages. */
-export async function editCharacterReply(typing: CharacterTyping, opts: {
-  text: string;
-  replyToUrl?: string | null;
-  replyToLabel?: string | null;
-}): Promise<boolean> {
+export async function editCharacterReply(
+  typing: CharacterTyping,
+  opts: {
+    text: string;
+    replyToUrl?: string | null;
+    replyToLabel?: string | null;
+  },
+): Promise<boolean> {
   const chunks = splitMessage(opts.text || '…');
   try {
     await typing.webhook.editMessage(typing.messageId, {

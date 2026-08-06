@@ -51,21 +51,15 @@ class Balls extends Command {
       }
 
       const photographer = photo?.user?.name || 'Unknown';
-      const photographerLink = photo?.user?.links?.html
-        ? `${photo.user.links.html}?${UTM}`
-        : null;
+      const photographerLink = photo?.user?.links?.html ? `${photo.user.links.html}?${UTM}` : null;
       const photoLink = photo?.links?.html ? `${photo.links.html}?${UTM}` : null;
-      const credit = photographerLink
-        ? `[${photographer}](${photographerLink})`
-        : photographer;
+      const credit = photographerLink ? `[${photographer}](${photographerLink})` : photographer;
 
       const embed = new EmbedBuilder()
         .setColor(0x3498db)
         .setTitle('Balls ⚽')
         .setImage(imageUrl)
-        .setDescription(
-          `Photo by ${credit} on [Unsplash](https://unsplash.com/?${UTM})`,
-        );
+        .setDescription(`Photo by ${credit} on [Unsplash](https://unsplash.com/?${UTM})`);
 
       if (photo?.description || photo?.alt_description) {
         embed.setFooter({ text: photo.description || photo.alt_description });
@@ -75,7 +69,7 @@ class Balls extends Command {
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       logError('Error fetching balls from Unsplash:', error);
-      await interaction.editReply({ content: 'Sorry, I couldn\'t fetch any balls. Please try again later.' });
+      await interaction.editReply({ content: "Sorry, I couldn't fetch any balls. Please try again later." });
     }
   }
 }

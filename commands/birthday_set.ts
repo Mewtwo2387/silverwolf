@@ -24,32 +24,38 @@ function daysInMonth(month: number, year: number): number {
 
 class BirthdaySet extends Command {
   constructor(client: any) {
-    super(client, 'set', 'Sets your birthday. Enter 0 for all values to delete your birthday entry.', [
-      {
-        name: 'day',
-        description: 'Day of the month (1-31), or 0 to delete your birthday',
-        type: 4,
-        required: true,
-      },
-      {
-        name: 'month',
-        description: 'Month (1-12), or 0 to delete your birthday',
-        type: 4,
-        required: true,
-      },
-      {
-        name: 'year',
-        description: 'Year (e.g. 1990), or 0 to delete your birthday',
-        type: 4,
-        required: true,
-      },
-      {
-        name: 'timezone',
-        description: 'Timezone offset (e.g. +8, -5, +5.30, 10.00). Defaults to UTC.',
-        type: 3,
-        required: false,
-      },
-    ], { isSubcommandOf: 'birthday', blame: 'xei' });
+    super(
+      client,
+      'set',
+      'Sets your birthday. Enter 0 for all values to delete your birthday entry.',
+      [
+        {
+          name: 'day',
+          description: 'Day of the month (1-31), or 0 to delete your birthday',
+          type: 4,
+          required: true,
+        },
+        {
+          name: 'month',
+          description: 'Month (1-12), or 0 to delete your birthday',
+          type: 4,
+          required: true,
+        },
+        {
+          name: 'year',
+          description: 'Year (e.g. 1990), or 0 to delete your birthday',
+          type: 4,
+          required: true,
+        },
+        {
+          name: 'timezone',
+          description: 'Timezone offset (e.g. +8, -5, +5.30, 10.00). Defaults to UTC.',
+          type: 3,
+          required: false,
+        },
+      ],
+      { isSubcommandOf: 'birthday', blame: 'xei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -67,7 +73,7 @@ class BirthdaySet extends Command {
         const embed = new EmbedBuilder()
           .setTitle('Birthday Deleted')
           .setDescription('Your birthday entry has been removed.')
-          .setColor(0xFF4444);
+          .setColor(0xff4444);
         await interaction.editReply({ embeds: [embed] });
         return;
       }
@@ -83,8 +89,20 @@ class BirthdaySet extends Command {
       }
       const maxDay = daysInMonth(month, year);
       if (day < 1 || day > maxDay) {
-        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-          'July', 'August', 'September', 'October', 'November', 'December'];
+        const monthNames = [
+          'January',
+          'February',
+          'March',
+          'April',
+          'May',
+          'June',
+          'July',
+          'August',
+          'September',
+          'October',
+          'November',
+          'December',
+        ];
         if (day > 28 && month === 2) {
           await interaction.editReply(`${monthNames[month - 1]} ${year} only has ${maxDay} days.`);
         } else {
@@ -103,7 +121,9 @@ class BirthdaySet extends Command {
 
       log(`Received birthday inputs for user ${userId}.`);
 
-      const birthday = new Date(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00${timezone}`);
+      const birthday = new Date(
+        `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00${timezone}`,
+      );
       if (Number.isNaN(birthday.getTime())) {
         await interaction.editReply('Could not parse that date — double-check your inputs.');
         return;
@@ -112,14 +132,26 @@ class BirthdaySet extends Command {
       await this.client.db.user.setUserAttr(userId, 'birthdays', birthday.toISOString());
       log(`Successfully updated birthday for user ${userId}.`);
 
-      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'];
+      const monthNames = [
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
+      ];
       const formattedDate = `${String(day).padStart(2, '0')} ${monthNames[month - 1]} ${year}`;
 
       const embed = new EmbedBuilder()
         .setTitle('Birthday Set!')
         .setDescription(`Your birthday has been set to ${formattedDate} (timezone: ${timezone}).`)
-        .setColor(0x00FF00);
+        .setColor(0x00ff00);
 
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {

@@ -14,15 +14,21 @@ const PERSONA_OPTION_MAX_LENGTH = 4000;
  */
 class AiRpPersonaAdd extends Command {
   constructor(client: any) {
-    super(client, 'rp-persona-add', 'Set your roleplay persona (overwrites any existing one)', [
-      {
-        name: 'details',
-        description: 'Who you are, in your own words — characters you talk to 1-1 will know this',
-        type: 3,
-        required: true,
-        max_length: PERSONA_OPTION_MAX_LENGTH,
-      },
-    ], { isSubcommandOf: 'ai', blame: 'xei', ephemeral: true });
+    super(
+      client,
+      'rp-persona-add',
+      'Set your roleplay persona (overwrites any existing one)',
+      [
+        {
+          name: 'details',
+          description: 'Who you are, in your own words — characters you talk to 1-1 will know this',
+          type: 3,
+          required: true,
+          max_length: PERSONA_OPTION_MAX_LENGTH,
+        },
+      ],
+      { isSubcommandOf: 'ai', blame: 'xei', ephemeral: true },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -33,7 +39,9 @@ class AiRpPersonaAdd extends Command {
     }
     const tokens = countTokensOpenRouter(details);
     if (tokens > PERSONA_MAX_TOKENS) {
-      await interaction.editReply(`Your persona is too long (~${tokens} tokens; the max is ${PERSONA_MAX_TOKENS}). Trim it down.`);
+      await interaction.editReply(
+        `Your persona is too long (~${tokens} tokens; the max is ${PERSONA_MAX_TOKENS}). Trim it down.`,
+      );
       return;
     }
 
@@ -41,8 +49,8 @@ class AiRpPersonaAdd extends Command {
       const existing = await this.client.db.rp.getPersona(interaction.user.id);
       await this.client.db.rp.setPersona(interaction.user.id, details);
       await interaction.editReply(
-        `${existing ? 'Updated' : 'Set'} your persona. Characters you roleplay with 1-1 (self-mode spawns) `
-        + 'will know this about you from their next reply. Remove it with `/ai rp-persona-remove`.',
+        `${existing ? 'Updated' : 'Set'} your persona. Characters you roleplay with 1-1 (self-mode spawns) ` +
+          'will know this about you from their next reply. Remove it with `/ai rp-persona-remove`.',
       );
     } catch (err) {
       logError('AiRpPersonaAdd error:', err);

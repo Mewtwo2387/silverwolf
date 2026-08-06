@@ -7,14 +7,20 @@ const PREGNANCY_DURATION = 7 * 24 * 60 * 60 * 1000; // 1 week
 
 class BabyGet extends Command {
   constructor(client: any) {
-    super(client, 'get', 'get a list of babies from parents', [
-      {
-        name: 'parent',
-        description: 'The parent of the baby (default: you)',
-        type: 6,
-        required: false,
-      },
-    ], { isSubcommandOf: 'baby', blame: 'ei' });
+    super(
+      client,
+      'get',
+      'get a list of babies from parents',
+      [
+        {
+          name: 'parent',
+          description: 'The parent of the baby (default: you)',
+          type: 6,
+          required: false,
+        },
+      ],
+      { isSubcommandOf: 'baby', blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -25,11 +31,7 @@ class BabyGet extends Command {
 
     if (babies.length === 0) {
       await interaction.editReply({
-        embeds: [
-          new Discord.EmbedBuilder()
-            .setColor('#FF0000')
-            .setTitle('404 Baby Not Found'),
-        ],
+        embeds: [new Discord.EmbedBuilder().setColor('#FF0000').setTitle('404 Baby Not Found')],
       });
       return;
     }
@@ -74,10 +76,7 @@ class BabyGet extends Command {
 
     await interaction.editReply({
       embeds: [
-        new Discord.EmbedBuilder()
-          .setColor('#00AA00')
-          .setTitle(`Babies of ${parent.username}`)
-          .setDescription(result),
+        new Discord.EmbedBuilder().setColor('#00AA00').setTitle(`Babies of ${parent.username}`).setDescription(result),
       ],
     });
   }

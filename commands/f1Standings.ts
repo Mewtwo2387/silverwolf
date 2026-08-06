@@ -12,58 +12,57 @@ function extractStandings(html: string, type: string): any[] {
   const $ = cheerio.load(html);
   const rows = $('#results-table tbody tr').toArray();
 
-  return rows.map((rowEl) => {
-    const row = $(rowEl);
-    const columns = row.find('td');
+  return rows
+    .map((rowEl) => {
+      const row = $(rowEl);
+      const columns = row.find('td');
 
-    if (type === 'drivers' && columns.length === 5) {
-      const driverLinkEl = $(columns[1]).find('a');
-      let driverName = '';
+      if (type === 'drivers' && columns.length === 5) {
+        const driverLinkEl = $(columns[1]).find('a');
+        let driverName = '';
 
-      if (driverLinkEl.length) {
-        const nameContainerSpanCandidates = [
-          driverLinkEl.find('span').eq(1),
-          driverLinkEl.find('span').eq(0),
-        ];
+        if (driverLinkEl.length) {
+          const nameContainerSpanCandidates = [driverLinkEl.find('span').eq(1), driverLinkEl.find('span').eq(0)];
 
-        let nameContainerSpan: any = null;
-        for (const candidate of nameContainerSpanCandidates) {
-          if (candidate.length && candidate.find('.max-lg\\:hidden').length) {
-            nameContainerSpan = candidate;
-            break;
+          let nameContainerSpan: any = null;
+          for (const candidate of nameContainerSpanCandidates) {
+            if (candidate.length && candidate.find('.max-lg\\:hidden').length) {
+              nameContainerSpan = candidate;
+              break;
+            }
           }
+
+          if (nameContainerSpan) {
+            const firstName = nameContainerSpan.find('.max-lg\\:hidden').text().trim();
+            const lastName = nameContainerSpan.find('.max-md\\:hidden').text().trim();
+            driverName = `${firstName} ${lastName}`.trim();
+          } else {
+            driverName = driverLinkEl.text().trim().replace(/\s+/g, ' ');
+          }
+        } else {
+          driverName = $(columns[1]).text().trim().replace(/\s+/g, ' ');
         }
 
-        if (nameContainerSpan) {
-          const firstName = nameContainerSpan.find('.max-lg\\:hidden').text().trim();
-          const lastName = nameContainerSpan.find('.max-md\\:hidden').text().trim();
-          driverName = `${firstName} ${lastName}`.trim();
-        } else {
-          driverName = driverLinkEl.text().trim().replace(/\s+/g, ' ');
-        }
-      } else {
-        driverName = $(columns[1]).text().trim().replace(/\s+/g, ' ');
+        return {
+          position: safeParseInt($(columns[0]).text().trim()),
+          driver: driverName,
+          nationality: $(columns[2]).text().trim(),
+          car: $(columns[3]).text().trim(),
+          points: safeParseInt($(columns[4]).text().trim()),
+        };
       }
 
-      return {
-        position: safeParseInt($(columns[0]).text().trim()),
-        driver: driverName,
-        nationality: $(columns[2]).text().trim(),
-        car: $(columns[3]).text().trim(),
-        points: safeParseInt($(columns[4]).text().trim()),
-      };
-    }
+      if (type === 'teams' && columns.length === 3) {
+        return {
+          position: safeParseInt($(columns[0]).text().trim()),
+          team: $(columns[1]).text().trim(),
+          points: safeParseInt($(columns[2]).text().trim()),
+        };
+      }
 
-    if (type === 'teams' && columns.length === 3) {
-      return {
-        position: safeParseInt($(columns[0]).text().trim()),
-        team: $(columns[1]).text().trim(),
-        points: safeParseInt($(columns[2]).text().trim()),
-      };
-    }
-
-    return null;
-  }).filter(Boolean);
+      return null;
+    })
+    .filter(Boolean);
 }
 
 function buildEmbed(data: any[], type: string, year: number): Discord.EmbedBuilder {
@@ -71,9 +70,14 @@ function buildEmbed(data: any[], type: string, year: number): Discord.EmbedBuild
   const color = type === 'drivers' ? '#FF0000' : '#008000';
   const rows = type === 'drivers' ? 25 : 10;
 
-  const description = data.slice(0, rows).map((entry) => (type === 'drivers'
-    ? `${entry.position}. **${entry.driver}** (${entry.nationality}) - Car: ${entry.car}, Points: ${entry.points}`
-    : `${entry.position}. **${entry.team}** - Points: ${entry.points}`)).join('\n');
+  const description = data
+    .slice(0, rows)
+    .map((entry) =>
+      type === 'drivers'
+        ? `${entry.position}. **${entry.driver}** (${entry.nationality}) - Car: ${entry.car}, Points: ${entry.points}`
+        : `${entry.position}. **${entry.team}** - Points: ${entry.points}`,
+    )
+    .join('\n');
 
   return new Discord.EmbedBuilder()
     .setTitle(title)
@@ -86,24 +90,30 @@ function buildEmbed(data: any[], type: string, year: number): Discord.EmbedBuild
 
 class F1Standings extends Command {
   constructor(client: any) {
-    super(client, 'f1-standings', 'Fetch F1 standings (drivers or constructors)', [
-      {
-        name: 'type',
-        description: 'Choose between driver or constructor standings',
-        type: 3,
-        required: true,
-        choices: [
-          { name: 'Drivers', value: 'drivers' },
-          { name: 'Teams', value: 'teams' },
-        ],
-      },
-      {
-        name: 'year',
-        description: 'Select a year (default: current year)',
-        type: 4,
-        required: false,
-      },
-    ], { blame: 'xei' });
+    super(
+      client,
+      'f1-standings',
+      'Fetch F1 standings (drivers or constructors)',
+      [
+        {
+          name: 'type',
+          description: 'Choose between driver or constructor standings',
+          type: 3,
+          required: true,
+          choices: [
+            { name: 'Drivers', value: 'drivers' },
+            { name: 'Teams', value: 'teams' },
+          ],
+        },
+        {
+          name: 'year',
+          description: 'Select a year (default: current year)',
+          type: 4,
+          required: false,
+        },
+      ],
+      { blame: 'xei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {

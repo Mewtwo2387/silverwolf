@@ -1,6 +1,4 @@
-import {
-  EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
-} from 'discord.js';
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { Command } from './classes/Command';
 import { logError } from '../utils/log';
 import { formatPokemonList } from '../utils/pokemon';
@@ -34,19 +32,14 @@ class Pokemon extends Command {
       };
 
       const embed = generateEmbed(currentPage);
-      const row = new ActionRowBuilder()
-        .addComponents(
-          new ButtonBuilder()
-            .setCustomId('prevPage')
-            .setLabel('⬅️ Back')
-            .setStyle(ButtonStyle.Primary)
-            .setDisabled(true),
-          new ButtonBuilder()
-            .setCustomId('nextPage')
-            .setLabel('Next ➡️')
-            .setStyle(ButtonStyle.Primary)
-            .setDisabled(currentPage === maxPage),
-        );
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('prevPage').setLabel('⬅️ Back').setStyle(ButtonStyle.Primary).setDisabled(true),
+        new ButtonBuilder()
+          .setCustomId('nextPage')
+          .setLabel('Next ➡️')
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(currentPage === maxPage),
+      );
 
       const message = await interaction.editReply({
         embeds: [embed],
@@ -63,37 +56,35 @@ class Pokemon extends Command {
         }
 
         const newEmbed = generateEmbed(currentPage);
-        const newRow = new ActionRowBuilder()
-          .addComponents(
-            new ButtonBuilder()
-              .setCustomId('prevPage')
-              .setLabel('⬅️ Back')
-              .setStyle(ButtonStyle.Primary)
-              .setDisabled(currentPage === 0),
-            new ButtonBuilder()
-              .setCustomId('nextPage')
-              .setLabel('Next ➡️')
-              .setStyle(ButtonStyle.Primary)
-              .setDisabled(currentPage === maxPage),
-          );
+        const newRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('prevPage')
+            .setLabel('⬅️ Back')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(currentPage === 0),
+          new ButtonBuilder()
+            .setCustomId('nextPage')
+            .setLabel('Next ➡️')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(currentPage === maxPage),
+        );
 
         await i.update({ embeds: [newEmbed], components: [newRow] });
       });
 
       collector.on('end', async () => {
-        const disabledRow = new ActionRowBuilder()
-          .addComponents(
-            new ButtonBuilder()
-              .setCustomId('prevPage')
-              .setLabel('⬅️ Back')
-              .setStyle(ButtonStyle.Primary)
-              .setDisabled(true),
-            new ButtonBuilder()
-              .setCustomId('nextPage')
-              .setLabel('Next ➡️')
-              .setStyle(ButtonStyle.Primary)
-              .setDisabled(true),
-          );
+        const disabledRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('prevPage')
+            .setLabel('⬅️ Back')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(true),
+          new ButtonBuilder()
+            .setCustomId('nextPage')
+            .setLabel('Next ➡️')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(true),
+        );
         await message.edit({ components: [disabledRow] });
       });
     } catch (error) {

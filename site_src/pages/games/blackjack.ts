@@ -15,9 +15,7 @@ export function BlackjackPage(opts: {
   user?: NavUser | null;
   gambleStats?: GamblingPageStats | null;
 }) {
-  const {
-    nonce, lv999, user, gambleStats,
-  } = opts;
+  const { nonce, lv999, user, gambleStats } = opts;
   const csrfJSON = inlineJSON(user?.csrf ?? '');
   const loggedOut = !user;
 
@@ -513,35 +511,48 @@ export function BlackjackPage(opts: {
     <p class="text-center text-fog-300 mb-4">Try to beat Silverwolf without going over 21.</p>
     ${gambleStats ? renderGambleStatsBar(gambleStats) : ''}
     <div class="bj-container">
-      ${loggedOut
-    ? html`<div class="login-cta">Log in with <a href="/auth/discord/login">Discord</a> to play.</div>`
-    : html`
-            <div id="bj-error" class="result-banner loss" style="display:none"></div>
-            <div id="bj-setup" class="bet-row">
-              <label for="amount-input">Bet amount</label>
-              <input id="amount-input" type="text" placeholder="amount (e.g. 1000 or 1k)" autocomplete="off" aria-label="Bet amount" />
-              <button id="deal-btn" class="btn-accent bj-btn">Deal</button>
-            </div>
-            <div id="bj-table" class="bj-table" style="display:none">
-              <div class="bj-side">
-                <div class="bj-meta"><span class="label">Silverwolf</span><span>Total: <span id="dealer-total" class="total">?</span></span></div>
-                <div id="dealer-hand" class="bj-hand"></div>
+      ${
+        loggedOut
+          ? html`<div class="login-cta">Log in with <a href="/auth/discord/login">Discord</a> to play.</div>`
+          : html`
+              <div id="bj-error" class="result-banner loss" style="display:none"></div>
+              <div id="bj-setup" class="bet-row">
+                <label for="amount-input">Bet amount</label>
+                <input
+                  id="amount-input"
+                  type="text"
+                  placeholder="amount (e.g. 1000 or 1k)"
+                  autocomplete="off"
+                  aria-label="Bet amount"
+                />
+                <button id="deal-btn" class="btn-accent bj-btn">Deal</button>
               </div>
-              <div class="timer-bar"><div id="timer-fill" class="timer-fill"></div></div>
-              <div class="bj-side">
-                <div class="bj-meta"><span class="label">You — bet <span id="bet-display" class="total"></span></span><span>Total: <span id="player-total" class="total">?</span></span></div>
-                <div id="player-hand" class="bj-hand"></div>
+              <div id="bj-table" class="bj-table" style="display:none">
+                <div class="bj-side">
+                  <div class="bj-meta">
+                    <span class="label">Silverwolf</span
+                    ><span>Total: <span id="dealer-total" class="total">?</span></span>
+                  </div>
+                  <div id="dealer-hand" class="bj-hand"></div>
+                </div>
+                <div class="timer-bar"><div id="timer-fill" class="timer-fill"></div></div>
+                <div class="bj-side">
+                  <div class="bj-meta">
+                    <span class="label">You — bet <span id="bet-display" class="total"></span></span
+                    ><span>Total: <span id="player-total" class="total">?</span></span>
+                  </div>
+                  <div id="player-hand" class="bj-hand"></div>
+                </div>
+                <div class="bj-controls">
+                  <button id="hit-btn" class="btn-accent bj-btn">Hit</button>
+                  <button id="stand-btn" class="btn-accent bj-btn secondary">Stand</button>
+                </div>
               </div>
-              <div class="bj-controls">
-                <button id="hit-btn" class="btn-accent bj-btn">Hit</button>
-                <button id="stand-btn" class="btn-accent bj-btn secondary">Stand</button>
-              </div>
-            </div>
-            <div id="bj-banner" class="result-banner" style="display:none"></div>
-          `}
+              <div id="bj-banner" class="result-banner" style="display:none"></div>
+            `
+      }
     </div>
-    ${extras}
-    ${loggedOut ? '' : script}
+    ${extras} ${loggedOut ? '' : script}
   `;
 
   return Layout({

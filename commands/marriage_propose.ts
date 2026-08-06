@@ -4,14 +4,20 @@ import { Command } from './classes/Command';
 
 class MarriagePropose extends Command {
   constructor(client: any) {
-    super(client, 'propose', 'Propose to a user', [
-      {
-        name: 'user',
-        description: 'The user you want to propose to',
-        type: 6,
-        required: true,
-      },
-    ], { isSubcommandOf: 'marriage', blame: 'xei' });
+    super(
+      client,
+      'propose',
+      'Propose to a user',
+      [
+        {
+          name: 'user',
+          description: 'The user you want to propose to',
+          type: 6,
+          required: true,
+        },
+      ],
+      { isSubcommandOf: 'marriage', blame: 'xei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -23,21 +29,25 @@ class MarriagePropose extends Command {
 
     if (targetUser.id === userId) {
       await interaction.editReply({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#AA0000')
-          .setTitle('And then... THEY PUT THEMSELF AS THE ONE TO MARRY... KEKW')
-          .setImage('https://media1.tenor.com/m/tFvnLWU0zWMAAAAC/resitas-laugh.gif')],
+        embeds: [
+          new Discord.EmbedBuilder()
+            .setColor('#AA0000')
+            .setTitle('And then... THEY PUT THEMSELF AS THE ONE TO MARRY... KEKW')
+            .setImage('https://media1.tenor.com/m/tFvnLWU0zWMAAAAC/resitas-laugh.gif'),
+        ],
       });
       return;
     }
 
     if (targetUser.bot && !modAbooz) {
       await interaction.editReply({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#AA0000')
-          .setTitle('Seriously?')
-          .setDescription('How about you go outside instead of trying to marry a bot-')
-          .setImage('https://media1.tenor.com/m/aefLV3eg758AAAAd/silver-wolf-honkai-star-rail.gif')],
+        embeds: [
+          new Discord.EmbedBuilder()
+            .setColor('#AA0000')
+            .setTitle('Seriously?')
+            .setDescription('How about you go outside instead of trying to marry a bot-')
+            .setImage('https://media1.tenor.com/m/aefLV3eg758AAAAd/silver-wolf-honkai-star-rail.gif'),
+        ],
       });
       return;
     }
@@ -45,10 +55,12 @@ class MarriagePropose extends Command {
     const userMarriageStatus = await this.client.db.marriage.checkMarriageStatus(userId);
     if (userMarriageStatus.isMarried) {
       await interaction.editReply({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#AA0000')
-          .setTitle('You\'re already married!')
-          .setImage('https://media1.tenor.com/m/VCBut_Csl-cAAAAC/yo-stop-trying-to-cheat-conceited.gif')],
+        embeds: [
+          new Discord.EmbedBuilder()
+            .setColor('#AA0000')
+            .setTitle("You're already married!")
+            .setImage('https://media1.tenor.com/m/VCBut_Csl-cAAAAC/yo-stop-trying-to-cheat-conceited.gif'),
+        ],
       });
       return;
     }
@@ -56,35 +68,34 @@ class MarriagePropose extends Command {
     const targetMarriageStatus = await this.client.db.marriage.checkMarriageStatus(targetUser.id);
     if (targetMarriageStatus.isMarried) {
       await interaction.editReply({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#AA0000')
-          .setTitle(`${targetUser.username} is already married!`)],
+        embeds: [new Discord.EmbedBuilder().setColor('#AA0000').setTitle(`${targetUser.username} is already married!`)],
       });
       return;
     }
 
-    const row = new Discord.ActionRowBuilder()
-      .addComponents(
-        new Discord.ButtonBuilder()
-          .setCustomId('acceptProposal')
-          .setLabel('Accept💍')
-          .setStyle(Discord.ButtonStyle.Success),
-        new Discord.ButtonBuilder()
-          .setCustomId('rejectProposal')
-          .setLabel('Reject💔')
-          .setStyle(Discord.ButtonStyle.Danger),
-      );
+    const row = new Discord.ActionRowBuilder().addComponents(
+      new Discord.ButtonBuilder()
+        .setCustomId('acceptProposal')
+        .setLabel('Accept💍')
+        .setStyle(Discord.ButtonStyle.Success),
+      new Discord.ButtonBuilder()
+        .setCustomId('rejectProposal')
+        .setLabel('Reject💔')
+        .setStyle(Discord.ButtonStyle.Danger),
+    );
 
     await interaction.editReply({
       content: `<@${targetUser.id}>, you have a marriage proposal from <@${userId}>!`,
-      embeds: [new Discord.EmbedBuilder()
-        .setColor('#00AA00')
-        .setTitle('Marriage Proposal')
-        .setDescription(`✨${interaction.user.username} has proposed to you.✨`)],
+      embeds: [
+        new Discord.EmbedBuilder()
+          .setColor('#00AA00')
+          .setTitle('Marriage Proposal')
+          .setDescription(`✨${interaction.user.username} has proposed to you.✨`),
+      ],
       components: [row],
     });
 
-    const filter = (i: any) => (i.customId === 'acceptProposal' || i.customId === 'rejectProposal');
+    const filter = (i: any) => i.customId === 'acceptProposal' || i.customId === 'rejectProposal';
     const collector = interaction.channel.createMessageComponentCollector({ filter, time: 60000 });
 
     collector.on('collect', async (i: any) => {
@@ -109,11 +120,13 @@ class MarriagePropose extends Command {
         const randomGif = gifs[Math.floor(Math.random() * gifs.length)];
 
         await i.reply({
-          embeds: [new Discord.EmbedBuilder()
-            .setColor('#FFAA00')
-            .setTitle('Hold On!')
-            .setDescription(randomResponse)
-            .setImage(randomGif)],
+          embeds: [
+            new Discord.EmbedBuilder()
+              .setColor('#FFAA00')
+              .setTitle('Hold On!')
+              .setDescription(randomResponse)
+              .setImage(randomGif),
+          ],
           flags: Discord.MessageFlags.Ephemeral,
         });
         return;
@@ -138,11 +151,13 @@ class MarriagePropose extends Command {
 
         await i.update({
           content: `<@${targetUser.id}> has accepted the proposal! Congratulations!`,
-          embeds: [new Discord.EmbedBuilder()
-            .setColor('#00AA00')
-            .setTitle('Proposal Accepted')
-            .setDescription(`${targetUser.username} and ${interaction.user.username} are now married! 🎉💍`)
-            .setImage(randomAcceptanceGif)],
+          embeds: [
+            new Discord.EmbedBuilder()
+              .setColor('#00AA00')
+              .setTitle('Proposal Accepted')
+              .setDescription(`${targetUser.username} and ${interaction.user.username} are now married! 🎉💍`)
+              .setImage(randomAcceptanceGif),
+          ],
           components: [],
         });
 
@@ -150,10 +165,12 @@ class MarriagePropose extends Command {
       } else if (i.customId === 'rejectProposal') {
         await i.update({
           content: `<@${targetUser.id}> has rejected the proposal.`,
-          embeds: [new Discord.EmbedBuilder()
-            .setColor('#AA0000')
-            .setTitle('Proposal Rejected')
-            .setDescription(`${targetUser.username} has rejected the proposal from ${interaction.user.username}.`)],
+          embeds: [
+            new Discord.EmbedBuilder()
+              .setColor('#AA0000')
+              .setTitle('Proposal Rejected')
+              .setDescription(`${targetUser.username} has rejected the proposal from ${interaction.user.username}.`),
+          ],
           components: [],
         });
 

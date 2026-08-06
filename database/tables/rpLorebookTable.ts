@@ -36,12 +36,8 @@ const rpLorebookTable: TableDefinition = {
     { name: 'updated_at', type: 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP' },
   ],
   primaryKey: ['lorebook_id'],
-  specialConstraints: [
-    'UNIQUE (char_id, name_lower)',
-  ],
-  constraints: [
-    'FOREIGN KEY (char_id) REFERENCES RpCharacter(char_id)',
-  ],
+  specialConstraints: ['UNIQUE (char_id, name_lower)'],
+  constraints: ['FOREIGN KEY (char_id) REFERENCES RpCharacter(char_id)'],
 };
 
 export default rpLorebookTable;

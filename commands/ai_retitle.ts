@@ -5,17 +5,23 @@ import { generateTitleForHistory } from '../utils/ai';
 
 class AiRetitle extends Command {
   constructor(client: any) {
-    super(client, 'retitle', 'Regenerate the title for one or all of your AI chat sessions', [
+    super(
+      client,
+      'retitle',
+      'Regenerate the title for one or all of your AI chat sessions',
+      [
+        {
+          name: 'session_id',
+          description: 'Session ID to retitle (from /ai view). Omit to retitle all Discord sessions.',
+          type: 4,
+          required: false,
+        },
+      ],
       {
-        name: 'session_id',
-        description: 'Session ID to retitle (from /ai view). Omit to retitle all Discord sessions.',
-        type: 4,
-        required: false,
+        isSubcommandOf: 'ai',
+        blame: 'both',
       },
-    ], {
-      isSubcommandOf: 'ai',
-      blame: 'both',
-    });
+    );
   }
 
   async retitleSession(userId: string, sessionId: number): Promise<{ ok: boolean; title?: string; reason?: string }> {
@@ -120,7 +126,9 @@ class AiRetitle extends Command {
 
       const lines = [
         `Retitled **${updated}** session${updated === 1 ? '' : 's'}.`,
-        skipped > 0 ? `Skipped **${skipped}** session${skipped === 1 ? '' : 's'} with no titleable conversation.` : null,
+        skipped > 0
+          ? `Skipped **${skipped}** session${skipped === 1 ? '' : 's'} with no titleable conversation.`
+          : null,
         updatedLines.length > 0 ? `\n${updatedLines.join('\n')}` : null,
         updated > updatedLines.length ? `\n*…and ${updated - updatedLines.length} more.*` : null,
       ].filter(Boolean);

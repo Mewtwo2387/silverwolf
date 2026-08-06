@@ -5,14 +5,20 @@ import { format } from '../utils/math';
 
 class BuyBitcoin extends Command {
   constructor(client: any) {
-    super(client, 'buybitcoin', 'buy bitcoin with mystic credits', [
-      {
-        name: 'amount',
-        description: 'the amount of bitcoin to buy (negative to sell)',
-        type: 10,
-        required: true,
-      },
-    ], { blame: 'ei' });
+    super(
+      client,
+      'buybitcoin',
+      'buy bitcoin with mystic credits',
+      [
+        {
+          name: 'amount',
+          description: 'the amount of bitcoin to buy (negative to sell)',
+          type: 10,
+          required: true,
+        },
+      ],
+      { blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -21,10 +27,7 @@ class BuyBitcoin extends Command {
     const price = await bitcoin.getPrice();
     if (price === null) {
       await interaction.editReply({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#AA0000')
-          .setTitle('Failed to get bitcoin price'),
-        ],
+        embeds: [new Discord.EmbedBuilder().setColor('#AA0000').setTitle('Failed to get bitcoin price')],
       });
       return;
     }
@@ -34,17 +37,13 @@ class BuyBitcoin extends Command {
 
     if (amount === 0) {
       await interaction.editReply({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#AA0000')
-          .setTitle('You bought gamebang\'s pp!'),
-        ],
+        embeds: [new Discord.EmbedBuilder().setColor('#AA0000').setTitle("You bought gamebang's pp!")],
       });
     } else if (amount < 0) {
       if (bitcoinAmount < -amount) {
         await interaction.editReply({
-          embeds: [new Discord.EmbedBuilder()
-            .setColor('#AA0000')
-            .setTitle('You don\'t have that much bitcoin to sell smh'),
+          embeds: [
+            new Discord.EmbedBuilder().setColor('#AA0000').setTitle("You don't have that much bitcoin to sell smh"),
           ],
         });
       } else {
@@ -57,10 +56,11 @@ class BuyBitcoin extends Command {
         const lastBoughtAmount = await this.client.db.user.getUserAttr(interaction.user.id, 'lastBoughtAmount');
         const lastBoughtPrice = await this.client.db.user.getUserAttr(interaction.user.id, 'lastBoughtPrice');
         await interaction.editReply({
-          embeds: [new Discord.EmbedBuilder()
-            .setColor('#00AA00')
-            .setTitle(`Sold ${-amount} bitcoin for ${format(-amount * price)} mystic credits!`)
-            .setDescription(`Current bitcoin price: ${format(price)}
+          embeds: [
+            new Discord.EmbedBuilder()
+              .setColor('#00AA00')
+              .setTitle(`Sold ${-amount} bitcoin for ${format(-amount * price)} mystic credits!`)
+              .setDescription(`Current bitcoin price: ${format(price)}
 Last bought price: ${format(lastBoughtPrice)} (${lastBoughtAmount} bitcoin)
 Current bitcoin amount: ${bitcoinAmount}
 Current mystic credits: ${format(credits)}`),
@@ -69,9 +69,8 @@ Current mystic credits: ${format(credits)}`),
       }
     } else if (credits < amount * price) {
       await interaction.editReply({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#AA0000')
-          .setTitle('You\'re too poor to buy that much bitcoin smh'),
+        embeds: [
+          new Discord.EmbedBuilder().setColor('#AA0000').setTitle("You're too poor to buy that much bitcoin smh"),
         ],
       });
     } else {
@@ -84,10 +83,11 @@ Current mystic credits: ${format(credits)}`),
       bitcoinAmount = await this.client.db.user.getUserAttr(interaction.user.id, 'bitcoin');
       credits = await this.client.db.user.getUserAttr(interaction.user.id, 'credits');
       await interaction.editReply({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#00AA00')
-          .setTitle(`Bought ${amount} bitcoin for ${format(amount * price)} mystic credits!`)
-          .setDescription(`Current bitcoin price: ${format(price)}
+        embeds: [
+          new Discord.EmbedBuilder()
+            .setColor('#00AA00')
+            .setTitle(`Bought ${amount} bitcoin for ${format(amount * price)} mystic credits!`)
+            .setDescription(`Current bitcoin price: ${format(price)}
 Current bitcoin amount: ${bitcoinAmount}
 Current mystic credits: ${format(credits)}`),
         ],

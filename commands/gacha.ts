@@ -1,7 +1,5 @@
 import path from 'path';
-import {
-  EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
-} from 'discord.js';
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { Command } from './classes/Command';
 
 type Pools = { namesData: any; characterPool: any[]; lightconePool: any[] };
@@ -34,18 +32,24 @@ class Gacha extends Command {
   lightconePool: any[];
 
   constructor(client: any) {
-    super(client, 'gacha', 'TECHNICAL TEST, WORK IN PROGRESS', [
-      {
-        name: 'amount',
-        description: 'Number of rolls (1 or 10)',
-        type: 4,
-        required: true,
-        choices: [
-          { name: '1', value: 1 },
-          { name: '10', value: 10 },
-        ],
-      },
-    ], { blame: 'xei' });
+    super(
+      client,
+      'gacha',
+      'TECHNICAL TEST, WORK IN PROGRESS',
+      [
+        {
+          name: 'amount',
+          description: 'Number of rolls (1 or 10)',
+          type: 4,
+          required: true,
+          choices: [
+            { name: '1', value: 1 },
+            { name: '10', value: 10 },
+          ],
+        },
+      ],
+      { blame: 'xei' },
+    );
 
     this.namesData = null;
     this.characterPool = [];
@@ -91,10 +95,12 @@ class Gacha extends Command {
 
     if (dinonuggies < totalCost) {
       await interaction.editReply({
-        embeds: [new EmbedBuilder()
-          .setTitle('Not enough dinonuggies!')
-          .setDescription(`You need ${totalCost}, but you only have ${dinonuggies}.`)
-          .setColor(0xFF0000)],
+        embeds: [
+          new EmbedBuilder()
+            .setTitle('Not enough dinonuggies!')
+            .setDescription(`You need ${totalCost}, but you only have ${dinonuggies}.`)
+            .setColor(0xff0000),
+        ],
       });
       return;
     }
@@ -110,15 +116,17 @@ class Gacha extends Command {
       const roll = Math.random();
 
       if (roll < pityRate) {
-        rollResult = Math.random() < 0.5
-          ? this.getRandomItem(this.characterPool.filter((c) => c.Rarity === 5))
-          : this.getRandomItem(this.lightconePool.filter((lc) => lc.Rarity === 5));
+        rollResult =
+          Math.random() < 0.5
+            ? this.getRandomItem(this.characterPool.filter((c) => c.Rarity === 5))
+            : this.getRandomItem(this.lightconePool.filter((lc) => lc.Rarity === 5));
         gotFiveStar = true;
         pityCount = 0;
       } else if (roll < 0.056) {
-        rollResult = Math.random() < 0.5
-          ? this.getRandomItem(this.characterPool.filter((c) => c.Rarity === 4))
-          : this.getRandomItem(this.lightconePool.filter((lc) => lc.Rarity === 4));
+        rollResult =
+          Math.random() < 0.5
+            ? this.getRandomItem(this.characterPool.filter((c) => c.Rarity === 4))
+            : this.getRandomItem(this.lightconePool.filter((lc) => lc.Rarity === 4));
         pityCount += 1;
       } else {
         rollResult = this.getRandomItem(this.lightconePool.filter((lc) => lc.Rarity === 3));
@@ -142,21 +150,17 @@ class Gacha extends Command {
         .setTitle(`Gacha Roll #${currentIndex + 1}`)
         .setDescription(`**${item.name}**`)
         .setImage(item.imageUrl)
-        .setColor(gotFiveStar ? 0xFFD700 : 0x00FF00)
+        .setColor(gotFiveStar ? 0xffd700 : 0x00ff00)
         .setFooter({ text: `Pity: ${pityCount}` });
 
-      const row = new ActionRowBuilder()
-        .addComponents(
-          new ButtonBuilder()
-            .setCustomId('nextRoll')
-            .setLabel('➡️ Next')
-            .setStyle(ButtonStyle.Primary)
-            .setDisabled(currentIndex === results.length - 1),
-          new ButtonBuilder()
-            .setCustomId('skipResults')
-            .setLabel('Skip to Results')
-            .setStyle(ButtonStyle.Danger),
-        );
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('nextRoll')
+          .setLabel('➡️ Next')
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(currentIndex === results.length - 1),
+        new ButtonBuilder().setCustomId('skipResults').setLabel('Skip to Results').setStyle(ButtonStyle.Danger),
+      );
 
       await i.update({ embeds: [embed], components: [row] });
     };
@@ -165,20 +169,13 @@ class Gacha extends Command {
       .setTitle('Gacha Roll #1')
       .setDescription(`**${results[0].name}**`)
       .setImage(results[0].imageUrl)
-      .setColor(gotFiveStar ? 0xFFD700 : 0x00FF00)
+      .setColor(gotFiveStar ? 0xffd700 : 0x00ff00)
       .setFooter({ text: `Pity: ${pityCount}` });
 
-    const initialRow = new ActionRowBuilder()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId('nextRoll')
-          .setLabel('➡️ Next')
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('skipResults')
-          .setLabel('Skip to Results')
-          .setStyle(ButtonStyle.Danger),
-      );
+    const initialRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('nextRoll').setLabel('➡️ Next').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('skipResults').setLabel('Skip to Results').setStyle(ButtonStyle.Danger),
+    );
 
     const message = await interaction.editReply({ embeds: [initialEmbed], components: [initialRow] });
 
@@ -200,7 +197,7 @@ class Gacha extends Command {
       const finalEmbed = new EmbedBuilder()
         .setTitle(`Gacha Roll Results for ${interaction.user.username} (${amount})`)
         .setDescription(results.map((item) => `**${item.name}** - ${item.rarity}★`).join('\n'))
-        .setColor(gotFiveStar ? 0xFFD700 : 0x00FF00);
+        .setColor(gotFiveStar ? 0xffd700 : 0x00ff00);
       await interaction.followUp({ embeds: [finalEmbed] });
     });
   }

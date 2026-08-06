@@ -35,9 +35,7 @@ const rpHistoryTable: TableDefinition = {
   ],
   primaryKey: ['id'],
   specialConstraints: [],
-  constraints: [
-    'FOREIGN KEY (spawn_id) REFERENCES RpSpawn(spawn_id)',
-  ],
+  constraints: ['FOREIGN KEY (spawn_id) REFERENCES RpSpawn(spawn_id)'],
 };
 
 export default rpHistoryTable;

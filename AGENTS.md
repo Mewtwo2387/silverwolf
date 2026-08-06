@@ -9,7 +9,7 @@ trust client data, keep the CSP tight.**
 
 **Last updated: 2026-08-04**
 
-> **Maintenance rule.** Edit agent docs only on *substantive architectural* change — new
+> **Maintenance rule.** Edit agent docs only on _substantive architectural_ change — new
 > architecture, new auth, new data flows/services, schema or security-model changes, or when
 > something here becomes factually wrong. Do **not** touch them for routine work (adding a single
 > command, page, asset, or a content tweak). Put each fact in the **narrowest-scoped file that
@@ -22,13 +22,13 @@ trust client data, keep the CSP tight.**
 Detail lives in path-scoped rules that load automatically when you open the matching files. Don't
 duplicate their content here.
 
-| Working on | Loads |
-| ------ | ------ |
-| `site_src/**` | `.claude/rules/website.md` — server, middleware order, auth/CSRF, assets, perf |
-| `database/**` | `.claude/rules/database.md` — DAO layering, transactions, settings tables |
-| `utils/rp*`, `commands/ai_rp_*` | `.claude/rules/roleplay.md` — characters, lorebooks, personas |
-| `utils/ai*`, `utils/llmRetry` | `.claude/rules/ai-limits.md` — credit metering, retry policy |
-| `Dockerfile`, `.github/**` | `.claude/rules/deploy.md` — CI/CD, image, volumes |
+| Working on                      | Loads                                                                          |
+| ------------------------------- | ------------------------------------------------------------------------------ |
+| `site_src/**`                   | `.claude/rules/website.md` — server, middleware order, auth/CSRF, assets, perf |
+| `database/**`                   | `.claude/rules/database.md` — DAO layering, transactions, settings tables      |
+| `utils/rp*`, `commands/ai_rp_*` | `.claude/rules/roleplay.md` — characters, lorebooks, personas                  |
+| `utils/ai*`, `utils/llmRetry`   | `.claude/rules/ai-limits.md` — credit metering, retry policy                   |
+| `Dockerfile`, `.github/**`      | `.claude/rules/deploy.md` — CI/CD, image, volumes                              |
 
 ## Commands
 

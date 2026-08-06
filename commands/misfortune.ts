@@ -3,7 +3,9 @@ import misfortuneData from '../data/misfortune.json';
 
 class Misfortune extends Command {
   constructor(client: any) {
-    super(client, 'misfortune', 'how bad is your day that you are munching virtual misfortune cookies ?', [], { blame: 'xei' });
+    super(client, 'misfortune', 'how bad is your day that you are munching virtual misfortune cookies ?', [], {
+      blame: 'xei',
+    });
   }
 
   async run(interaction: any): Promise<void> {

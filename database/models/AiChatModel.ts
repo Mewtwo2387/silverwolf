@@ -18,26 +18,17 @@ class AiChatModel {
     // Ensure the user exists in the User table
     await this.db.user.getUser(userId);
 
-    let session = await this.db.executeSelectQuery(
-      aiChatQueries.GET_ACTIVE_SESSION,
-      [userId, personaName],
-    );
+    let session = await this.db.executeSelectQuery(aiChatQueries.GET_ACTIVE_SESSION, [userId, personaName]);
 
     if (!session) {
-      const result = await this.db.executeQuery(
-        aiChatQueries.START_SESSION,
-        [userId, personaName],
-      );
+      const result = await this.db.executeQuery(aiChatQueries.START_SESSION, [userId, personaName]);
       if (result.lastID) {
         session = await this.getSessionById(result.lastID);
       }
 
       // If an insert raced and hit uniqueness constraints, recover by re-reading active session.
       if (!session) {
-        session = await this.db.executeSelectQuery(
-          aiChatQueries.GET_ACTIVE_SESSION,
-          [userId, personaName],
-        );
+        session = await this.db.executeSelectQuery(aiChatQueries.GET_ACTIVE_SESSION, [userId, personaName]);
       }
 
       if (session) {
@@ -108,10 +99,7 @@ class AiChatModel {
    */
   async createWebSession(userId: string, personaName: string): Promise<Record<string, any> | null> {
     await this.db.user.getUser(userId);
-    const result = await this.db.executeQuery(
-      aiChatQueries.START_WEB_SESSION,
-      [userId, personaName],
-    );
+    const result = await this.db.executeQuery(aiChatQueries.START_WEB_SESSION, [userId, personaName]);
     if (!result.lastID) return null;
     const session = await this.getSessionById(result.lastID);
     if (session) {
@@ -155,10 +143,7 @@ class AiChatModel {
   async switchSession(userId: string, sessionId: number): Promise<Record<string, any> | null> {
     const session = await this.getSessionById(sessionId);
     if (!session) return null;
-    await this.db.executeQuery(
-      aiChatQueries.END_ALL_USER_PERSONA_SESSIONS,
-      [userId, session.personaName],
-    );
+    await this.db.executeQuery(aiChatQueries.END_ALL_USER_PERSONA_SESSIONS, [userId, session.personaName]);
     await this.db.executeQuery(aiChatQueries.ACTIVATE_SESSION, [sessionId]);
     log(`AiChat: Switched user ${userId} to session ${sessionId} (${session.personaName})`);
     return this.getSessionById(sessionId);
@@ -183,9 +168,7 @@ class AiChatModel {
    * Appends a message to the session's history.
    */
   async addHistory(sessionId: number, role: 'user' | 'model' | 'assistant' | 'tool', message: string): Promise<void> {
-    const stored = role === 'model' || role === 'assistant'
-      ? stripModelTimestampPrefix(message)
-      : message;
+    const stored = role === 'model' || role === 'assistant' ? stripModelTimestampPrefix(message) : message;
     await this.db.executeQuery(aiChatQueries.ADD_HISTORY, [sessionId, role, stored]);
   }
 
@@ -201,23 +184,21 @@ class AiChatModel {
     | { ok: true; sessionId: number; deletedCount: number; userMessage: string }
     | { ok: false; reason: 'no_session' | 'empty' }
   > {
-    const session = await this.db.executeSelectQuery(
-      aiChatQueries.GET_ACTIVE_SESSION,
-      [userId, personaName],
-    );
+    const session = await this.db.executeSelectQuery(aiChatQueries.GET_ACTIVE_SESSION, [userId, personaName]);
     if (!session || session.userId !== userId) {
       return { ok: false, reason: 'no_session' };
     }
 
     const outcome = await this.db.executeTransaction((rawDb: any) => {
-      const lastUser = rawDb.query(aiChatQueries.GET_LAST_USER_HISTORY)
-        .get(session.sessionId) as { id: number; message: string } | null;
+      const lastUser = rawDb.query(aiChatQueries.GET_LAST_USER_HISTORY).get(session.sessionId) as {
+        id: number;
+        message: string;
+      } | null;
       if (!lastUser) {
         return { ok: false as const, reason: 'empty' as const };
       }
 
-      const result = rawDb.query(aiChatQueries.DELETE_HISTORY_FROM_ID)
-        .run(session.sessionId, lastUser.id);
+      const result = rawDb.query(aiChatQueries.DELETE_HISTORY_FROM_ID).run(session.sessionId, lastUser.id);
       const deletedCount = Number(result.changes ?? 0);
       if (deletedCount <= 0) {
         return { ok: false as const, reason: 'empty' as const };
@@ -249,10 +230,7 @@ class AiChatModel {
    */
   async getHistory(sessionId: number, limit: number = 30): Promise<Record<string, any>[]> {
     // DB query returns newest-first; reverse for chronological order
-    const rows = await this.db.executeSelectAllQuery(
-      aiChatQueries.GET_HISTORY,
-      [sessionId, limit],
-    );
+    const rows = await this.db.executeSelectAllQuery(aiChatQueries.GET_HISTORY, [sessionId, limit]);
     return rows.reverse();
   }
 }

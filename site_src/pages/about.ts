@@ -3,7 +3,8 @@ import type { HtmlEscapedString } from 'hono/utils/html';
 import { Layout } from '../components/layout';
 import type { NavUser } from '../components/navbar';
 
-const aboutExtras = (nonce: string) => raw(`
+const aboutExtras = (nonce: string) =>
+  raw(`
 <style>
   /* Desktop: hero image bleeds to the right edge; text gets the left gutter. */
   @media (min-width: 801px) {
@@ -554,7 +555,8 @@ const artistModal = raw(`
 </div>
 `);
 
-const artistModalScript = (nonce: string) => raw(`
+const artistModalScript = (nonce: string) =>
+  raw(`
 <script nonce="${nonce}">
 (() => {
   const backdrop = document.getElementById('artist-modal-backdrop');
@@ -639,39 +641,97 @@ export function AboutPage(opts: { nonce: string; lv999?: boolean; goof?: boolean
   const heroAvifSrcset = `${heroBase}-512w.avif 512w, ${heroBase}-1024w.avif 1024w, ${heroBase}-1600w.avif 1600w, ${heroBase}.avif ${heroWidth}w`;
   const heroWebpSrcset = `${heroBase}-512w.webp 512w, ${heroBase}-1024w.webp 1024w, ${heroBase}-1600w.webp 1600w, ${heroBase}.webp ${heroWidth}w`;
   const titleBlock = goof
-    ? html`
-        <h1 class="about-title about-title--goof font-mono italic font-bold tracking-[0.01em] leading-[0.95] mb-4" style="font-size: clamp(3.5rem, 9vw, 5.5rem);">
-          <span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">Silverwolf</span>
-          <svg class="about-svg" viewBox="0 0 780 200" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <linearGradient id="about-svg-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" class="about-grad-top" />
-                <stop offset="100%" class="about-grad-bot" />
-              </linearGradient>
-            </defs>
-            <path class="about-stroke" pathLength="100" style="--i:0"   d="M 80,55 C 65,30 25,30 20,55 C 18,80 50,85 70,100 C 95,115 95,148 65,150 C 40,150 20,142 18,138" />
-            <path class="about-stroke" pathLength="100" style="--i:1"   d="M 130,85 C 138,110 148,138 155,148" />
-            <path class="about-stroke" pathLength="100" style="--i:1.5" d="M 150,65 L 156,65" />
-            <path class="about-stroke" pathLength="100" style="--i:2"   d="M 175,148 C 180,120 195,80 195,55 C 195,35 215,35 212,55 C 210,75 208,110 220,148" />
-            <path class="about-stroke" pathLength="100" style="--i:3"   d="M 240,80 C 245,108 258,140 268,148 C 280,138 292,108 300,82 C 302,78 306,80 310,84" />
-            <path class="about-stroke" pathLength="100" style="--i:4"   d="M 325,118 C 335,98 365,98 367,118 C 367,138 340,148 330,138 C 325,132 323,123 328,118" />
-            <path class="about-stroke" pathLength="100" style="--i:5"   d="M 380,148 C 387,125 393,100 400,90 C 405,85 408,92 410,100 C 412,108 420,105 425,100" />
-            <path class="about-stroke" pathLength="100" style="--i:6"   d="M 445,82 C 450,108 460,140 470,148 C 478,138 485,115 490,98 C 498,115 505,140 515,148 C 525,138 532,115 540,90 C 542,85 546,88 550,92" />
-            <path class="about-stroke" pathLength="100" style="--i:7"   d="M 580,105 C 568,115 565,140 585,145 C 605,148 620,128 615,110 C 610,92 588,88 580,98 C 590,100 600,105 600,112" />
-            <path class="about-stroke" pathLength="100" style="--i:8"   d="M 620,148 C 633,118 640,85 633,60 C 627,38 650,38 655,62 C 658,90 658,120 668,148" />
-            <path class="about-stroke" pathLength="100" style="--i:9"   d="M 695,80 C 700,55 708,30 715,28 C 725,26 728,42 720,70 C 712,100 695,158 685,182 C 678,195 660,193 660,180 C 662,170 675,170 685,175" />
-          </svg>
-        </h1>`
-    : html`<h1 class="about-title font-mono italic font-bold tracking-tight mb-4" style="font-size: clamp(2.25rem, 6vw, 4.25rem);">Silverwolf</h1>`;
+    ? html` <h1
+        class="about-title about-title--goof font-mono italic font-bold tracking-[0.01em] leading-[0.95] mb-4"
+        style="font-size: clamp(3.5rem, 9vw, 5.5rem);"
+      >
+        <span
+          style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;"
+          >Silverwolf</span
+        >
+        <svg class="about-svg" viewBox="0 0 780 200" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="about-svg-grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" class="about-grad-top" />
+              <stop offset="100%" class="about-grad-bot" />
+            </linearGradient>
+          </defs>
+          <path
+            class="about-stroke"
+            pathLength="100"
+            style="--i:0"
+            d="M 80,55 C 65,30 25,30 20,55 C 18,80 50,85 70,100 C 95,115 95,148 65,150 C 40,150 20,142 18,138"
+          />
+          <path class="about-stroke" pathLength="100" style="--i:1" d="M 130,85 C 138,110 148,138 155,148" />
+          <path class="about-stroke" pathLength="100" style="--i:1.5" d="M 150,65 L 156,65" />
+          <path
+            class="about-stroke"
+            pathLength="100"
+            style="--i:2"
+            d="M 175,148 C 180,120 195,80 195,55 C 195,35 215,35 212,55 C 210,75 208,110 220,148"
+          />
+          <path
+            class="about-stroke"
+            pathLength="100"
+            style="--i:3"
+            d="M 240,80 C 245,108 258,140 268,148 C 280,138 292,108 300,82 C 302,78 306,80 310,84"
+          />
+          <path
+            class="about-stroke"
+            pathLength="100"
+            style="--i:4"
+            d="M 325,118 C 335,98 365,98 367,118 C 367,138 340,148 330,138 C 325,132 323,123 328,118"
+          />
+          <path
+            class="about-stroke"
+            pathLength="100"
+            style="--i:5"
+            d="M 380,148 C 387,125 393,100 400,90 C 405,85 408,92 410,100 C 412,108 420,105 425,100"
+          />
+          <path
+            class="about-stroke"
+            pathLength="100"
+            style="--i:6"
+            d="M 445,82 C 450,108 460,140 470,148 C 478,138 485,115 490,98 C 498,115 505,140 515,148 C 525,138 532,115 540,90 C 542,85 546,88 550,92"
+          />
+          <path
+            class="about-stroke"
+            pathLength="100"
+            style="--i:7"
+            d="M 580,105 C 568,115 565,140 585,145 C 605,148 620,128 615,110 C 610,92 588,88 580,98 C 590,100 600,105 600,112"
+          />
+          <path
+            class="about-stroke"
+            pathLength="100"
+            style="--i:8"
+            d="M 620,148 C 633,118 640,85 633,60 C 627,38 650,38 655,62 C 658,90 658,120 668,148"
+          />
+          <path
+            class="about-stroke"
+            pathLength="100"
+            style="--i:9"
+            d="M 695,80 C 700,55 708,30 715,28 C 725,26 728,42 720,70 C 712,100 695,158 685,182 C 678,195 660,193 660,180 C 662,170 675,170 685,175"
+          />
+        </svg>
+      </h1>`
+    : html`<h1
+        class="about-title font-mono italic font-bold tracking-tight mb-4"
+        style="font-size: clamp(2.25rem, 6vw, 4.25rem);"
+      >
+        Silverwolf
+      </h1>`;
   const ctaBlock = user
-    ? html`
-      <div class="about-cta-row">
+    ? html` <div class="about-cta-row">
         <a href="/me" class="about-login-cta">Go to your dashboard →</a>
       </div>`
-    : html`
-      <div class="about-cta-row">
+    : html` <div class="about-cta-row">
         <a href="/auth/discord/login" class="about-login-cta">
-          <svg width="20" height="20" viewBox="0 0 71 55" aria-hidden="true"><path fill="currentColor" d="M60.1 4.9A58.6 58.6 0 0 0 45.6.6a40.7 40.7 0 0 0-1.9 3.9 54.1 54.1 0 0 0-16.2 0A40.4 40.4 0 0 0 25.5.6 58.4 58.4 0 0 0 11 4.9C2 18.4-.4 31.5.7 44.4a58.9 58.9 0 0 0 17.9 9.1 43.2 43.2 0 0 0 3.8-6.2 38 38 0 0 1-6-2.9c.5-.4 1-.8 1.5-1.2a42 42 0 0 0 35.3 0c.5.4 1 .8 1.5 1.2a37.6 37.6 0 0 1-6 2.9 43 43 0 0 0 3.8 6.2 58.7 58.7 0 0 0 17.9-9.1c1.2-14.9-2.7-27.9-9.4-39.5ZM23.7 36.6c-3.5 0-6.5-3.3-6.5-7.3 0-4.1 2.9-7.4 6.5-7.4 3.6 0 6.5 3.3 6.5 7.4 0 4-2.9 7.3-6.5 7.3Zm23.6 0c-3.6 0-6.5-3.3-6.5-7.3 0-4.1 2.9-7.4 6.5-7.4 3.5 0 6.5 3.3 6.5 7.4 0 4-2.9 7.3-6.5 7.3Z"/></svg>
+          <svg width="20" height="20" viewBox="0 0 71 55" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M60.1 4.9A58.6 58.6 0 0 0 45.6.6a40.7 40.7 0 0 0-1.9 3.9 54.1 54.1 0 0 0-16.2 0A40.4 40.4 0 0 0 25.5.6 58.4 58.4 0 0 0 11 4.9C2 18.4-.4 31.5.7 44.4a58.9 58.9 0 0 0 17.9 9.1 43.2 43.2 0 0 0 3.8-6.2 38 38 0 0 1-6-2.9c.5-.4 1-.8 1.5-1.2a42 42 0 0 0 35.3 0c.5.4 1 .8 1.5 1.2a37.6 37.6 0 0 1-6 2.9 43 43 0 0 0 3.8 6.2 58.7 58.7 0 0 0 17.9-9.1c1.2-14.9-2.7-27.9-9.4-39.5ZM23.7 36.6c-3.5 0-6.5-3.3-6.5-7.3 0-4.1 2.9-7.4 6.5-7.4 3.6 0 6.5 3.3 6.5 7.4 0 4-2.9 7.3-6.5 7.3Zm23.6 0c-3.6 0-6.5-3.3-6.5-7.3 0-4.1 2.9-7.4 6.5-7.4 3.5 0 6.5 3.3 6.5 7.4 0 4-2.9 7.3-6.5 7.3Z"
+            />
+          </svg>
           Login with Discord
         </a>
       </div>`;
@@ -720,61 +780,104 @@ export function AboutPage(opts: { nonce: string; lv999?: boolean; goof?: boolean
     },
   ];
 
-  const eidolonSections = eidolonData.map(({
-    n, title, text, href, external,
-  }) => {
+  const eidolonSections = eidolonData.map(({ n, title, text, href, external }) => {
     const imgLeft = n % 2 === 1;
     const eidolonStem = lv999 ? `Character_Silver_Wolf_LV.999_Eidolon_${n}` : `Character_Silver_Wolf_Eidolon_${n}`;
     const eidSizes = '(max-width: 800px) 100vw, 28rem';
     const eidAvifSrcset = `/static/eidolons/${eidolonStem}-768w.avif 768w, /static/eidolons/${eidolonStem}.avif 1000w`;
     const eidWebpSrcset = `/static/eidolons/${eidolonStem}-768w.webp 768w, /static/eidolons/${eidolonStem}.webp 1000w`;
-    const imgEl = html`
-      <div class="eid-img ${imgLeft ? 'eid-from-left' : 'eid-from-right'} flex justify-center items-center max-[800px]:order-[-1]">
-        <picture class="block w-full max-w-[28rem]">
-          <source type="image/avif" srcset="${eidAvifSrcset}" sizes="${eidSizes}" />
-          <source type="image/webp" srcset="${eidWebpSrcset}" sizes="${eidSizes}" />
-          <img src="/static/eidolons/${eidolonStem}.webp" alt="Silver Wolf Eidolon ${n}" width="1000" height="1000" loading="lazy" decoding="async" class="w-full h-auto" />
-        </picture>
-      </div>`;
-    const txtEl = html`
-      <div class="eid-txt font-mono ${imgLeft ? 'eid-from-right' : 'eid-from-left'} max-w-[38rem] ${imgLeft ? 'justify-self-end' : 'justify-self-start'}">
-        <a class="eid-link" href="${href}" data-index="${n}" ${external ? raw('target="_blank" rel="noopener noreferrer"') : ''}>
-          <h2 class="font-mono italic font-bold tracking-tight mb-4" style="font-size: clamp(2rem, 5.5vw, 3.75rem);">${title}</h2>
-          <p class="typing-text text-[1.1rem] leading-[1.6] text-fog-200">${text}</p>
-        </a>
-      </div>`;
-    return html`
-      <section class="eidolon-section grid grid-cols-2 gap-12 items-center max-[800px]:grid-cols-1 max-[800px]:text-left">
-        ${imgLeft ? html`${imgEl}${txtEl}` : html`${txtEl}${imgEl}`}
-      </section>`;
+    const imgEl = html` <div
+      class="eid-img ${imgLeft ? 'eid-from-left' : 'eid-from-right'} flex justify-center items-center max-[800px]:order-[-1]"
+    >
+      <picture class="block w-full max-w-[28rem]">
+        <source type="image/avif" srcset="${eidAvifSrcset}" sizes="${eidSizes}" />
+        <source type="image/webp" srcset="${eidWebpSrcset}" sizes="${eidSizes}" />
+        <img
+          src="/static/eidolons/${eidolonStem}.webp"
+          alt="Silver Wolf Eidolon ${n}"
+          width="1000"
+          height="1000"
+          loading="lazy"
+          decoding="async"
+          class="w-full h-auto"
+        />
+      </picture>
+    </div>`;
+    const txtEl = html` <div
+      class="eid-txt font-mono ${imgLeft ? 'eid-from-right' : 'eid-from-left'} max-w-[38rem] ${imgLeft ? 'justify-self-end' : 'justify-self-start'}"
+    >
+      <a
+        class="eid-link"
+        href="${href}"
+        data-index="${n}"
+        ${external ? raw('target="_blank" rel="noopener noreferrer"') : ''}
+      >
+        <h2 class="font-mono italic font-bold tracking-tight mb-4" style="font-size: clamp(2rem, 5.5vw, 3.75rem);">
+          ${title}
+        </h2>
+        <p class="typing-text text-[1.1rem] leading-[1.6] text-fog-200">${text}</p>
+      </a>
+    </div>`;
+    return html` <section
+      class="eidolon-section grid grid-cols-2 gap-12 items-center max-[800px]:grid-cols-1 max-[800px]:text-left"
+    >
+      ${imgLeft ? html`${imgEl}${txtEl}` : html`${txtEl}${imgEl}`}
+    </section>`;
   });
 
   const body = html`
-    <section class="about-wrap grid grid-cols-2 gap-12 items-center min-h-[calc(100vh-180px)] max-[800px]:grid-cols-1 max-[800px]:text-left">
+    <section
+      class="about-wrap grid grid-cols-2 gap-12 items-center min-h-[calc(100vh-180px)] max-[800px]:grid-cols-1 max-[800px]:text-left"
+    >
       <div class="about-text font-mono max-w-[38rem] justify-self-start">
         ${titleBlock}
         <p class="typing-text text-[1.1rem] leading-[1.6] text-fog-200">
-          Silverwolf-bot is a multipurpose bot made by Ei, and XeIris.
-          Mostly inside jokes, parodies and tech stack exploration,
-          it runs on Bun using Typescript.
+          Silverwolf-bot is a multipurpose bot made by Ei, and XeIris. Mostly inside jokes, parodies and tech stack
+          exploration, it runs on Bun using Typescript.
         </p>
         ${ctaBlock}
       </div>
-      <div class="about-image artist-trigger relative flex justify-center items-center max-[800px]:order-[-1]" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="artist-modal" aria-expanded="false" aria-label="View artist credit">
+      <div
+        class="about-image artist-trigger relative flex justify-center items-center max-[800px]:order-[-1]"
+        role="button"
+        tabindex="0"
+        aria-haspopup="dialog"
+        aria-controls="artist-modal"
+        aria-expanded="false"
+        aria-label="View artist credit"
+      >
         <picture class="block w-full max-w-[48rem]">
           <source type="image/avif" srcset="${heroAvifSrcset}" sizes="${heroSizes}" />
           <source type="image/webp" srcset="${heroWebpSrcset}" sizes="${heroSizes}" />
-          <img src="${heroBase}.webp" alt="Silverwolf" width="${lv999 ? '1800' : '2000'}" height="${lv999 ? '1800' : '2000'}" decoding="async" fetchpriority="high" class="w-full h-auto" />
+          <img
+            src="${heroBase}.webp"
+            alt="Silverwolf"
+            width="${lv999 ? '1800' : '2000'}"
+            height="${lv999 ? '1800' : '2000'}"
+            decoding="async"
+            fetchpriority="high"
+            class="w-full h-auto"
+          />
         </picture>
         <span class="artist-hint">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 16v-4" />
+            <path d="M12 8h.01" />
+          </svg>
           artist credit
         </span>
       </div>
     </section>
-    ${artistModal}
-    ${artistModalScript(opts.nonce)}
-    ${eidolonSections}
+    ${artistModal} ${artistModalScript(opts.nonce)} ${eidolonSections}
   `;
 
   // LCP preload — the hero <img> is the LCP candidate but Lighthouse flags it

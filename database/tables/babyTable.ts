@@ -47,10 +47,7 @@ const babyTable: TableDefinition = {
   ],
   primaryKey: ['id'],
   specialConstraints: [],
-  constraints: [
-    'FOREIGN KEY (mother_id) REFERENCES User(id)',
-    'FOREIGN KEY (father_id) REFERENCES User(id)',
-  ],
+  constraints: ['FOREIGN KEY (mother_id) REFERENCES User(id)', 'FOREIGN KEY (father_id) REFERENCES User(id)'],
 };
 
 export default babyTable;

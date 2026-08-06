@@ -4,20 +4,26 @@ import { format, antiFormat } from '../utils/math';
 
 class Transfer extends Command {
   constructor(client: any) {
-    super(client, 'transfer', 'transfer mystic credits to another user (taxed)', [
-      {
-        name: 'user',
-        description: 'the user to transfer to',
-        type: 6,
-        required: true,
-      },
-      {
-        name: 'amount',
-        description: 'the amount of credits to transfer',
-        type: 3,
-        required: true,
-      },
-    ], { blame: 'ei' });
+    super(
+      client,
+      'transfer',
+      'transfer mystic credits to another user (taxed)',
+      [
+        {
+          name: 'user',
+          description: 'the user to transfer to',
+          type: 6,
+          required: true,
+        },
+        {
+          name: 'amount',
+          description: 'the amount of credits to transfer',
+          type: 3,
+          required: true,
+        },
+      ],
+      { blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -26,10 +32,11 @@ class Transfer extends Command {
     const amount = antiFormat(amountString);
     if (Number.isNaN(amount)) {
       await interaction.editReply({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#AA0000')
-          .setTitle('Invalid amount')
-          .setDescription('idk if this parsing actually works'),
+        embeds: [
+          new Discord.EmbedBuilder()
+            .setColor('#AA0000')
+            .setTitle('Invalid amount')
+            .setDescription('idk if this parsing actually works'),
         ],
       });
       return;
@@ -39,10 +46,7 @@ class Transfer extends Command {
 
     if (amount < 0) {
       await interaction.editReply({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#AA0000')
-          .setTitle('You can\'t transfer debt!'),
-        ],
+        embeds: [new Discord.EmbedBuilder().setColor('#AA0000').setTitle("You can't transfer debt!")],
       });
       return;
     }
@@ -50,29 +54,30 @@ class Transfer extends Command {
     const { give, receive, description } = this.calculateTransferDetails(amount, target);
 
     await interaction.editReply({
-      embeds: [new Discord.EmbedBuilder()
-        .setColor('#AA0000')
-        .setTitle(`Transferring ${format(amount)} credits to ${target.username}...`)
-        .setDescription(description),
+      embeds: [
+        new Discord.EmbedBuilder()
+          .setColor('#AA0000')
+          .setTitle(`Transferring ${format(amount)} credits to ${target.username}...`)
+          .setDescription(description),
       ],
     });
 
     if (give > credits) {
       await interaction.followUp({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#AA0000')
-          .setTitle('You don\'t have enough credits!'),
-        ],
+        embeds: [new Discord.EmbedBuilder().setColor('#AA0000').setTitle("You don't have enough credits!")],
       });
     } else {
       await this.client.db.user.addUserAttr(interaction.user.id, 'credits', -give);
       await this.client.db.user.addUserAttr(target.id, 'credits', receive);
       await interaction.followUp({
-        embeds: [new Discord.EmbedBuilder()
-          .setColor('#00AA00')
-          .setTitle(`Successfully transferred ${format(amount)} credits to ${target.username}!`)
-          .setDescription(`You paid ${format(give)} credits and ${target.username} received ${format(receive)} credits.`)
-          .setFooter({ text: 'No you don\'t have a choice to cancel. We took your money already.' }),
+        embeds: [
+          new Discord.EmbedBuilder()
+            .setColor('#00AA00')
+            .setTitle(`Successfully transferred ${format(amount)} credits to ${target.username}!`)
+            .setDescription(
+              `You paid ${format(give)} credits and ${target.username} received ${format(receive)} credits.`,
+            )
+            .setFooter({ text: "No you don't have a choice to cancel. We took your money already." }),
         ],
       });
     }
@@ -81,16 +86,32 @@ class Transfer extends Command {
   calculateTransferDetails(amount: number, target: any) {
     const tiers = [
       {
-        threshold: 10000000, giveFactor: 2.75, receiveFactor: 0.001, taxLevel: 3, smallFee: 0,
+        threshold: 10000000,
+        giveFactor: 2.75,
+        receiveFactor: 0.001,
+        taxLevel: 3,
+        smallFee: 0,
       },
       {
-        threshold: 1000000, giveFactor: 2.15, receiveFactor: 0.01, taxLevel: 2, smallFee: 0,
+        threshold: 1000000,
+        giveFactor: 2.15,
+        receiveFactor: 0.01,
+        taxLevel: 2,
+        smallFee: 0,
       },
       {
-        threshold: 100000, giveFactor: 1.75, receiveFactor: 0.05, taxLevel: 1, smallFee: 0,
+        threshold: 100000,
+        giveFactor: 1.75,
+        receiveFactor: 0.05,
+        taxLevel: 1,
+        smallFee: 0,
       },
       {
-        threshold: -1, giveFactor: 1.5, receiveFactor: 0.25, taxLevel: 0, smallFee: 10000,
+        threshold: -1,
+        giveFactor: 1.5,
+        receiveFactor: 0.25,
+        taxLevel: 0,
+        smallFee: 10000,
       },
     ];
 

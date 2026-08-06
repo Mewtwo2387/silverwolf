@@ -1,6 +1,4 @@
-import {
-  format, antiFormat, getPrefix, getNumberFromPrefix,
-} from '../utils/math';
+import { format, antiFormat, getPrefix, getNumberFromPrefix } from '../utils/math';
 
 describe('prefixes', () => {
   test('tier 1', () => {

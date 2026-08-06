@@ -25,7 +25,8 @@ const faviconLink = (lv999: boolean) => {
   return raw(`<link rel="icon" type="image/webp" href="${pick}" />`);
 };
 
-const pageHead = (nonce: string) => raw(`
+const pageHead = (nonce: string) =>
+  raw(`
 <link rel="preload" href="/static/fonts/Outfit.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/static/styles.css?v=${assetVersion(STYLES_PATH)}" />
 <style>
@@ -77,15 +78,12 @@ export function Layout(opts: {
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>${opts.title}</title>
-        ${faviconLink(opts.lv999 ?? false)}
-        ${pageHead(opts.nonce)}
-        ${opts.extraHead ?? ''}
+        ${faviconLink(opts.lv999 ?? false)} ${pageHead(opts.nonce)} ${opts.extraHead ?? ''}
       </head>
       <body class="font-sans bg-ink-900 text-fog-100 min-h-screen flex flex-col scanlines cyber-grid">
         ${Navbar(opts.active, opts.lv999, opts.user)}
         <main class="flex-1 w-full max-w-[1100px] mx-auto py-8 px-[clamp(1rem,4vw,3rem)]">${opts.body}</main>
-        ${Footer(opts.nonce)}
-        ${Search()}
+        ${Footer(opts.nonce)} ${Search()}
       </body>
     </html>`;
 }

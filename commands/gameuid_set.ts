@@ -4,41 +4,47 @@ import { logError } from '../utils/log';
 
 class GameUIDSet extends Command {
   constructor(client: any) {
-    super(client, 'set', 'Set a game UID for a user', [
-      {
-        name: 'game',
-        description: 'The name of the game',
-        type: 3,
-        required: true,
-        choices: [
-          { name: 'Minecraft', value: 'Minecraft' },
-          { name: 'Genshin Impact', value: 'Genshin Impact' },
-          { name: 'Honkai: Star Rail', value: 'Honkai: Star Rail' },
-          { name: 'Honkai Impact 3rd', value: 'Honkai Impact 3rd' },
-          { name: 'Zenless Zone Zero', value: 'Zenless Zone Zero' },
-          { name: 'Wuthering Waves', value: 'Wuthering Waves' },
-          { name: 'Valorant', value: 'Valorant' },
-          { name: 'Fate/Grand Order', value: 'Fate/Grand Order' },
-          { name: 'Reverse: 1999', value: 'Reverse: 1999' },
-          { name: 'Arknights', value: 'Arknights' },
-          { name: 'Azur Lane', value: 'Azur Lane' },
-          { name: 'Punishing: Gray Raven', value: 'Punishing: Gray Raven' },
-          { name: 'Blue Archive', value: 'Blue Archive' },
-        ],
-      },
-      {
-        name: 'uid',
-        description: 'The game UID to set',
-        type: 3,
-        required: true,
-      },
-      {
-        name: 'region',
-        description: 'The region for the game UID',
-        type: 3,
-        required: true,
-      },
-    ], { isSubcommandOf: 'gameuid', blame: 'xei' });
+    super(
+      client,
+      'set',
+      'Set a game UID for a user',
+      [
+        {
+          name: 'game',
+          description: 'The name of the game',
+          type: 3,
+          required: true,
+          choices: [
+            { name: 'Minecraft', value: 'Minecraft' },
+            { name: 'Genshin Impact', value: 'Genshin Impact' },
+            { name: 'Honkai: Star Rail', value: 'Honkai: Star Rail' },
+            { name: 'Honkai Impact 3rd', value: 'Honkai Impact 3rd' },
+            { name: 'Zenless Zone Zero', value: 'Zenless Zone Zero' },
+            { name: 'Wuthering Waves', value: 'Wuthering Waves' },
+            { name: 'Valorant', value: 'Valorant' },
+            { name: 'Fate/Grand Order', value: 'Fate/Grand Order' },
+            { name: 'Reverse: 1999', value: 'Reverse: 1999' },
+            { name: 'Arknights', value: 'Arknights' },
+            { name: 'Azur Lane', value: 'Azur Lane' },
+            { name: 'Punishing: Gray Raven', value: 'Punishing: Gray Raven' },
+            { name: 'Blue Archive', value: 'Blue Archive' },
+          ],
+        },
+        {
+          name: 'uid',
+          description: 'The game UID to set',
+          type: 3,
+          required: true,
+        },
+        {
+          name: 'region',
+          description: 'The region for the game UID',
+          type: 3,
+          required: true,
+        },
+      ],
+      { isSubcommandOf: 'gameuid', blame: 'xei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {

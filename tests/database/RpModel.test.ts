@@ -1,6 +1,4 @@
-import {
-  describe, it, expect, beforeAll, afterAll, beforeEach,
-} from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
 import Database from '../../database/Database';
 import type RpModel from '../../database/models/RpModel';
 
@@ -32,7 +30,10 @@ describe('RpModel', () => {
 
   async function makeChar(creatorId: string, name: string): Promise<string> {
     const res = await rp.createCharacter({
-      creatorId, name, details: `${name} details`, startingMessage: `hi from ${name}`,
+      creatorId,
+      name,
+      details: `${name} details`,
+      startingMessage: `hi from ${name}`,
     });
     if (!res.ok) throw new Error('unexpected quota rejection while seeding a test character');
     return res.character.charId;
@@ -52,14 +53,26 @@ describe('RpModel', () => {
   it('enforces the per-creator cap atomically and reports a limit result', async () => {
     for (let i = 0; i < 3; i += 1) {
       // eslint-disable-next-line no-await-in-loop
-      const res = await rp.createCharacter({
-        creatorId: 'capped', name: `cap${i}`, details: 'd', startingMessage: 's',
-      }, 3);
+      const res = await rp.createCharacter(
+        {
+          creatorId: 'capped',
+          name: `cap${i}`,
+          details: 'd',
+          startingMessage: 's',
+        },
+        3,
+      );
       expect(res.ok).toBe(true);
     }
-    const over = await rp.createCharacter({
-      creatorId: 'capped', name: 'capX', details: 'd', startingMessage: 's',
-    }, 3);
+    const over = await rp.createCharacter(
+      {
+        creatorId: 'capped',
+        name: 'capX',
+        details: 'd',
+        startingMessage: 's',
+      },
+      3,
+    );
     expect(over.ok).toBe(false);
     if (!over.ok) expect(over.reason).toBe('limit');
     expect(await rp.countCharactersByCreator('capped')).toBe(3);
@@ -68,7 +81,12 @@ describe('RpModel', () => {
   it('removeSpawn deactivates and (optionally) clears history + compaction in one op', async () => {
     const id = await makeChar('user-1', 'atomic');
     const spawn = await rp.trySpawn({
-      channelId: CHANNEL, guildId: GUILD, charId: id, spawnerId: 'user-1', interactability: 'all', compactionEnabled: true,
+      channelId: CHANNEL,
+      guildId: GUILD,
+      charId: id,
+      spawnerId: 'user-1',
+      interactability: 'all',
+      compactionEnabled: true,
     });
     const spawnId = spawn.spawnId!;
     await rp.addHistory(spawnId, 'user', 'hi', { id: 'user-2', name: 'Finch' });
@@ -85,11 +103,15 @@ describe('RpModel', () => {
   it('only the owner can update a character', async () => {
     const id = await makeChar('owner', 'sunny');
     const denied = await rp.updateCharacter(id, 'not-owner', {
-      name: 'evil', details: 'x', startingMessage: 'y',
+      name: 'evil',
+      details: 'x',
+      startingMessage: 'y',
     });
     expect(denied).toBe(false);
     const ok = await rp.updateCharacter(id, 'owner', {
-      name: 'sunny2', details: 'd', startingMessage: 's',
+      name: 'sunny2',
+      details: 'd',
+      startingMessage: 's',
     });
     expect(ok).toBe(true);
     expect((await rp.getCharacter(id))!.name).toBe('sunny2');
@@ -106,7 +128,12 @@ describe('RpModel', () => {
     for (let i = 0; i < 5; i += 1) {
       // eslint-disable-next-line no-await-in-loop
       const res = await rp.trySpawn({
-        channelId: CHANNEL, guildId: GUILD, charId: ids[i], spawnerId: 'user-1', interactability: 'self', compactionEnabled: true,
+        channelId: CHANNEL,
+        guildId: GUILD,
+        charId: ids[i],
+        spawnerId: 'user-1',
+        interactability: 'self',
+        compactionEnabled: true,
       });
       expect(res.ok).toBe(true);
       expect(res.reconfigured).toBe(false);
@@ -115,14 +142,24 @@ describe('RpModel', () => {
 
     // Sixth distinct character is rejected.
     const sixth = await rp.trySpawn({
-      channelId: CHANNEL, guildId: GUILD, charId: ids[5], spawnerId: 'user-1', interactability: 'self', compactionEnabled: true,
+      channelId: CHANNEL,
+      guildId: GUILD,
+      charId: ids[5],
+      spawnerId: 'user-1',
+      interactability: 'self',
+      compactionEnabled: true,
     });
     expect(sixth.ok).toBe(false);
     expect(sixth.reason).toBe('limit');
 
     // Re-spawning an already-active character is a reconfigure (doesn't count against the cap).
     const reconf = await rp.trySpawn({
-      channelId: CHANNEL, guildId: GUILD, charId: ids[0], spawnerId: 'user-1', interactability: 'all', compactionEnabled: false,
+      channelId: CHANNEL,
+      guildId: GUILD,
+      charId: ids[0],
+      spawnerId: 'user-1',
+      interactability: 'all',
+      compactionEnabled: false,
     });
     expect(reconf.ok).toBe(true);
     expect(reconf.reconfigured).toBe(true);
@@ -135,7 +172,12 @@ describe('RpModel', () => {
   it('keeps history across remove + re-spawn (same spawn id), and clears it on demand', async () => {
     const id = await makeChar('user-1', 'memory');
     const first = await rp.trySpawn({
-      channelId: CHANNEL, guildId: GUILD, charId: id, spawnerId: 'user-1', interactability: 'all', compactionEnabled: true,
+      channelId: CHANNEL,
+      guildId: GUILD,
+      charId: id,
+      spawnerId: 'user-1',
+      interactability: 'all',
+      compactionEnabled: true,
     });
     const spawnId = first.spawnId!;
 
@@ -147,7 +189,12 @@ describe('RpModel', () => {
     await rp.deactivateSpawn(spawnId);
     expect(await rp.countActiveSpawnsInChannel(CHANNEL)).toBe(0);
     const again = await rp.trySpawn({
-      channelId: CHANNEL, guildId: GUILD, charId: id, spawnerId: 'user-1', interactability: 'all', compactionEnabled: true,
+      channelId: CHANNEL,
+      guildId: GUILD,
+      charId: id,
+      spawnerId: 'user-1',
+      interactability: 'all',
+      compactionEnabled: true,
     });
     expect(again.spawnId).toBe(spawnId);
     expect(again.reconfigured).toBe(false); // was inactive → treated as a fresh spawn
@@ -164,7 +211,12 @@ describe('RpModel', () => {
   it('only counts unanswered HUMAN turns (bot turns never trigger — the loop guard)', async () => {
     const id = await makeChar('user-1', 'listener');
     const spawn = await rp.trySpawn({
-      channelId: CHANNEL, guildId: GUILD, charId: id, spawnerId: 'user-1', interactability: 'all', compactionEnabled: true,
+      channelId: CHANNEL,
+      guildId: GUILD,
+      charId: id,
+      spawnerId: 'user-1',
+      interactability: 'all',
+      compactionEnabled: true,
     });
     const spawnId = spawn.spawnId!;
     expect(await rp.hasUnansweredHumanTurn(spawnId)).toBe(false);
@@ -185,7 +237,12 @@ describe('RpModel', () => {
   it('tracks distinct active channels for the router fast-path', async () => {
     const id = await makeChar('user-1', 'router');
     const res = await rp.trySpawn({
-      channelId: CHANNEL, guildId: GUILD, charId: id, spawnerId: 'user-1', interactability: 'self', compactionEnabled: true,
+      channelId: CHANNEL,
+      guildId: GUILD,
+      charId: id,
+      spawnerId: 'user-1',
+      interactability: 'self',
+      compactionEnabled: true,
     });
     expect(await rp.getDistinctActiveChannels()).toContain(CHANNEL);
     await rp.deactivateSpawn(res.spawnId!);
@@ -203,15 +260,30 @@ describe('RpModel', () => {
 
   it('creates, lists and deletes lorebooks with cap + duplicate enforcement', async () => {
     const id = await makeChar('user-1', 'lorekeeper');
-    const add = (name: string): Promise<any> => rp.createLorebook({
-      charId: id, name, type: 'keywords', description: '', content: '[]',
-    }, 2);
+    const add = (name: string): Promise<any> =>
+      rp.createLorebook(
+        {
+          charId: id,
+          name,
+          type: 'keywords',
+          description: '',
+          content: '[]',
+        },
+        2,
+      );
 
     expect((await add('world lore')).ok).toBe(true);
     // Duplicate name (case-insensitive) is rejected.
-    const dup = await rp.createLorebook({
-      charId: id, name: 'World Lore', type: 'skill', description: 'd', content: 'x',
-    }, 2);
+    const dup = await rp.createLorebook(
+      {
+        charId: id,
+        name: 'World Lore',
+        type: 'skill',
+        description: 'd',
+        content: 'x',
+      },
+      2,
+    );
     expect(dup).toEqual({ ok: false, reason: 'duplicate' });
 
     expect((await add('second')).ok).toBe(true);

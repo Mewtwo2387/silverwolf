@@ -4,24 +4,30 @@ import { SETTABLE_ROLE_NAMES, validateSettableRoleName } from '../utils/serverCo
 
 class ServerConfigSetRole extends DevCommand {
   constructor(client: any) {
-    super(client, 'setrole', 'Set a named role for this server', [
-      {
-        name: 'role_name',
-        description: 'Logical name for the role',
-        type: 3,
-        required: true,
-        choices: SETTABLE_ROLE_NAMES.map((name) => ({
-          name,
-          value: name,
-        })),
-      },
-      {
-        name: 'role',
-        description: 'The Discord role to assign',
-        type: 8,
-        required: true,
-      },
-    ], { isSubcommandOf: 'serverconfig', blame: 'ei' });
+    super(
+      client,
+      'setrole',
+      'Set a named role for this server',
+      [
+        {
+          name: 'role_name',
+          description: 'Logical name for the role',
+          type: 3,
+          required: true,
+          choices: SETTABLE_ROLE_NAMES.map((name) => ({
+            name,
+            value: name,
+          })),
+        },
+        {
+          name: 'role',
+          description: 'The Discord role to assign',
+          type: 8,
+          required: true,
+        },
+      ],
+      { isSubcommandOf: 'serverconfig', blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {

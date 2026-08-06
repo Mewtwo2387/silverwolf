@@ -16,9 +16,7 @@ import {
   getDinoUpgradesStateWeb,
   generateFakeQuoteWeb,
 } from '../bot-bridge';
-import {
-  type AppEnv, type GameBody, authedGameRequest, coerceInt, readGameBody,
-} from '../shared';
+import { type AppEnv, type GameBody, authedGameRequest, coerceInt, readGameBody } from '../shared';
 import { computeLoveCompatibility, lovePhraseFor } from '../../utils/loveCalculator';
 import {
   POOP_COLOUR_VALUES,
@@ -96,7 +94,8 @@ export function registerGameApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf)
   });
 
   gameRoute('/games/dinonuggie-upgrades/state', 'dinonuggie state', async ({ discordId }) => ({
-    ok: true, data: await getDinoUpgradesStateWeb(silverwolf, discordId),
+    ok: true,
+    data: await getDinoUpgradesStateWeb(silverwolf, discordId),
   }));
 
   gameRoute('/games/dinonuggie-upgrades/eat', 'eat', async ({ c, body, discordId }) => {
@@ -120,7 +119,8 @@ export function registerGameApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf)
   });
 
   gameRoute('/games/dinonuggie-upgrades/ascend', 'ascend', async ({ discordId }) => ({
-    ok: true, data: await ascendWeb(silverwolf, discordId),
+    ok: true,
+    data: await ascendWeb(silverwolf, discordId),
   }));
 
   app.post('/games/fakequote/generate', async (c) => {
@@ -175,6 +175,7 @@ export function registerGameApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf)
   });
 
   gameRoute('/games/claim/claim', 'claim', async ({ discordId }) => ({
-    ok: true, data: await claimWeb(silverwolf, discordId),
+    ok: true,
+    data: await claimWeb(silverwolf, discordId),
   }));
 }

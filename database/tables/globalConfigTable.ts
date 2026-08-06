@@ -15,9 +15,7 @@ const globalConfigTable: TableDefinition = {
   ],
   primaryKey: ['id'],
   specialConstraints: [],
-  constraints: [
-    'UNIQUE (key)',
-  ],
+  constraints: ['UNIQUE (key)'],
 };
 
 export default globalConfigTable;

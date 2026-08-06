@@ -1,9 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import {
-  formatGlobalConfigOverview,
-  GLOBAL_CONFIG_KEYS,
-  validateGlobalConfigValue,
-} from '../../utils/globalConfig';
+import { formatGlobalConfigOverview, GLOBAL_CONFIG_KEYS, validateGlobalConfigValue } from '../../utils/globalConfig';
 
 describe('globalConfig utils', () => {
   describe('validateGlobalConfigValue', () => {

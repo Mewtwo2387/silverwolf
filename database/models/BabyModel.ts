@@ -75,12 +75,19 @@ class BabyModel {
     await this.updateBabyAttr(id, 'status', 'born');
     await this.updateBabyBirthday(id);
     const baby = await this.getBabyById(id);
-    log(`Baby ${id} was born. Mother: ${baby?.mother_id}, Father: ${baby?.father_id}, Status: ${baby?.status}, Birthday: ${baby?.born}`);
+    log(
+      `Baby ${id} was born. Mother: ${baby?.mother_id}, Father: ${baby?.father_id}, Status: ${baby?.status}, Birthday: ${baby?.born}`,
+    );
     return true;
   }
 
   // eslint-disable-next-line max-len
-  async updateBabyJob(id: number, job: string, pingerTarget: string | null = null, pingerChannel: string | null = null): Promise<boolean> {
+  async updateBabyJob(
+    id: number,
+    job: string,
+    pingerTarget: string | null = null,
+    pingerChannel: string | null = null,
+  ): Promise<boolean> {
     await this.updateBabyAttr(id, 'job', job);
     if (pingerTarget) {
       await this.updateBabyAttr(id, 'pingerTarget', pingerTarget);
@@ -104,7 +111,14 @@ class BabyModel {
   }
 
   // eslint-disable-next-line max-len
-  async incrementGamblerStats(id: number, games: number, wins: number, losses: number, creditsGambled: number, creditsWon: number): Promise<void> {
+  async incrementGamblerStats(
+    id: number,
+    games: number,
+    wins: number,
+    losses: number,
+    creditsGambled: number,
+    creditsWon: number,
+  ): Promise<void> {
     await this.addBabyAttr(id, 'gamblerGames', games);
     await this.addBabyAttr(id, 'gamblerWins', wins);
     await this.addBabyAttr(id, 'gamblerLosses', losses);

@@ -107,9 +107,12 @@ class Convert extends Command {
       const toConversion = conversionFactors[category]?.[to];
       if (!fromConversion || !toConversion) return 'Invalid conversion';
       // eslint-disable-next-line no-mixed-operators
-      return (val + fromConversion.offset) * fromConversion.multiplier
-        // eslint-disable-next-line no-mixed-operators
-        / toConversion.multiplier - toConversion.offset;
+      return (
+        ((val + fromConversion.offset) * fromConversion.multiplier) /
+          // eslint-disable-next-line no-mixed-operators
+          toConversion.multiplier -
+        toConversion.offset
+      );
     }
 
     let category: string;

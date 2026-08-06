@@ -125,10 +125,7 @@ export function clearReturnCookie(c: Context) {
   deleteCookie(c, OAUTH_RETURN_COOKIE, { path: '/', secure: isProd() });
 }
 
-export async function loadSession(
-  silverwolf: Silverwolf,
-  sessionId: string,
-): Promise<WebSession | null> {
+export async function loadSession(silverwolf: Silverwolf, sessionId: string): Promise<WebSession | null> {
   const session = await silverwolf.db.webSession.getSession(sessionId);
   if (!session) return null;
   const now = Date.now();

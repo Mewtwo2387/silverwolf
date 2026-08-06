@@ -130,13 +130,9 @@ async function trimHistoryToFit(
   // Count tokens for each history message and trim from oldest
   let messageCosts: number[];
   if (provider === 'gemini') {
-    messageCosts = await Promise.all(
-      history.map((msg) => countTokensGemini(model, formatHistoryEntryForModel(msg))),
-    );
+    messageCosts = await Promise.all(history.map((msg) => countTokensGemini(model, formatHistoryEntryForModel(msg))));
   } else {
-    messageCosts = history.map(
-      (msg) => countTokensOpenRouter(formatHistoryEntryForModel(msg)) + 4,
-    );
+    messageCosts = history.map((msg) => countTokensOpenRouter(formatHistoryEntryForModel(msg)) + 4);
   }
 
   // Trim from the start (oldest) until we fit

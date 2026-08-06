@@ -1,11 +1,7 @@
 import type { WSContext, WSEvents } from 'hono/ws';
 import { constantTimeEqual } from '../auth/session';
 import { logError } from '../../utils/log';
-import {
-  battleshipsRoomManager,
-  type MatchRoom,
-  type UserInfo,
-} from './battleships_rooms';
+import { battleshipsRoomManager, type MatchRoom, type UserInfo } from './battleships_rooms';
 
 interface AuthedUser extends UserInfo {
   csrfToken: string;
@@ -20,7 +16,11 @@ const WS_BURST_MAX = 30;
 const MAX_RAW_MESSAGE_BYTES = 8 * 1024;
 
 function send(ws: WSContext, payload: unknown) {
-  try { ws.send(JSON.stringify(payload)); } catch { /* socket closing */ }
+  try {
+    ws.send(JSON.stringify(payload));
+  } catch {
+    /* socket closing */
+  }
 }
 
 export function createBattleshipsWsEvents(matchId: string, user: AuthedUser): WSEvents {
@@ -39,25 +39,41 @@ export function createBattleshipsWsEvents(matchId: string, user: AuthedUser): WS
       bucketCount += 1;
       if (bucketCount > WS_BURST_MAX) {
         send(ws, { type: 'error', code: 'rate_limited' });
-        try { ws.close(1008, 'rate_limited'); } catch { /* already closed */ }
+        try {
+          ws.close(1008, 'rate_limited');
+        } catch {
+          /* already closed */
+        }
         return;
       }
 
       const raw = typeof event.data === 'string' ? event.data : null;
       if (!raw) {
-        try { ws.close(1003, 'binary_not_supported'); } catch { /* */ }
+        try {
+          ws.close(1003, 'binary_not_supported');
+        } catch {
+          /* */
+        }
         return;
       }
       if (raw.length > MAX_RAW_MESSAGE_BYTES) {
         send(ws, { type: 'error', code: 'message_too_large' });
-        try { ws.close(1009, 'message_too_large'); } catch { /* */ }
+        try {
+          ws.close(1009, 'message_too_large');
+        } catch {
+          /* */
+        }
         return;
       }
       let parsed: { type?: unknown; [k: string]: unknown };
       try {
         parsed = JSON.parse(raw) as { type?: unknown };
       } catch {
-        try { ws.close(1003, 'malformed_json'); } catch { /* */ }
+        try {
+          ws.close(1003, 'malformed_json');
+        } catch {
+          /* */
+        }
         return;
       }
       const type = typeof parsed.type === 'string' ? parsed.type : '';
@@ -65,29 +81,49 @@ export function createBattleshipsWsEvents(matchId: string, user: AuthedUser): WS
       if (!authed) {
         if (type !== 'join') {
           send(ws, { type: 'error', code: 'auth_required' });
-          try { ws.close(1008, 'auth_required'); } catch { /* */ }
+          try {
+            ws.close(1008, 'auth_required');
+          } catch {
+            /* */
+          }
           return;
         }
         const csrf = typeof parsed.csrf === 'string' ? parsed.csrf : '';
         if (!csrf || !constantTimeEqual(csrf, user.csrfToken)) {
           send(ws, { type: 'error', code: 'bad_csrf' });
-          try { ws.close(1008, 'bad_csrf'); } catch { /* */ }
+          try {
+            ws.close(1008, 'bad_csrf');
+          } catch {
+            /* */
+          }
           return;
         }
         const found = battleshipsRoomManager.getRoom(matchId);
         if (!found) {
           send(ws, { type: 'error', code: 'room_not_found' });
-          try { ws.close(1008, 'room_not_found'); } catch { /* */ }
+          try {
+            ws.close(1008, 'room_not_found');
+          } catch {
+            /* */
+          }
           return;
         }
-        const attach = battleshipsRoomManager.attachSocket(found, {
-          discordId: user.discordId,
-          username: user.username,
-          avatarURL: user.avatarURL,
-        }, ws);
+        const attach = battleshipsRoomManager.attachSocket(
+          found,
+          {
+            discordId: user.discordId,
+            username: user.username,
+            avatarURL: user.avatarURL,
+          },
+          ws,
+        );
         if (!attach.ok) {
           send(ws, { type: 'error', code: attach.reason });
-          try { ws.close(1008, attach.reason); } catch { /* */ }
+          try {
+            ws.close(1008, attach.reason);
+          } catch {
+            /* */
+          }
           return;
         }
         authed = true;
@@ -130,7 +166,11 @@ export function createBattleshipsWsEvents(matchId: string, user: AuthedUser): WS
         } else if (type === 'leave') {
           battleshipsRoomManager.leaveRoom(r, user);
           battleshipsRoomManager.broadcast(r);
-          try { ws.close(1000, 'left'); } catch { /* */ }
+          try {
+            ws.close(1000, 'left');
+          } catch {
+            /* */
+          }
         } else if (type === 'ping') {
           send(ws, { type: 'pong' });
         } else {

@@ -73,12 +73,16 @@ export function Footer(nonce: string) {
     ${footerStyles}
     <footer class="footer-surface font-mono">
       <!-- Window title bar: only visible on desktop -->
-      <div class="footer-window-header items-center justify-between px-[1.5rem] py-2 border-b border-[rgba(34,211,255,0.12)] select-none">
+      <div
+        class="footer-window-header items-center justify-between px-[1.5rem] py-2 border-b border-[rgba(34,211,255,0.12)] select-none"
+      >
         <div class="flex items-center gap-1.5">
           <span class="w-2.5 h-2.5 rounded-full bg-[#ff6b8a] opacity-60"></span>
           <span class="w-2.5 h-2.5 rounded-full bg-[#f59e0b] opacity-60"></span>
           <span class="w-2.5 h-2.5 rounded-full bg-[#10b981] opacity-60"></span>
-          <span class="ml-2 text-[0.7rem] font-semibold text-accent opacity-75 tracking-widest font-mono">SYS.FOOTER.EXE</span>
+          <span class="ml-2 text-[0.7rem] font-semibold text-accent opacity-75 tracking-widest font-mono"
+            >SYS.FOOTER.EXE</span
+          >
         </div>
         <div class="flex items-center gap-2">
           <span class="status-led status-led-green w-1.5 h-1.5"></span>
@@ -91,9 +95,15 @@ export function Footer(nonce: string) {
         <div class="font-semibold text-fog-200">Built with Bun, Hono, and questionable decisions.</div>
 
         <div class="flex gap-2.5 flex-wrap items-center">
-          <span class="footer-chip"><span class="status-led status-led-green" style="width:6px;height:6px;"></span>[status: ok]</span>
-          <span class="footer-chip"><span class="status-led status-led-green" style="width:6px;height:6px;"></span>[uptime: yes]</span>
-          <span class="footer-chip"><span class="status-led status-led-cyan" style="width:6px;height:6px;"></span>[vibes: immaculate]</span>
+          <span class="footer-chip"
+            ><span class="status-led status-led-green" style="width:6px;height:6px;"></span>[status: ok]</span
+          >
+          <span class="footer-chip"
+            ><span class="status-led status-led-green" style="width:6px;height:6px;"></span>[uptime: yes]</span
+          >
+          <span class="footer-chip"
+            ><span class="status-led status-led-cyan" style="width:6px;height:6px;"></span>[vibes: immaculate]</span
+          >
         </div>
 
         <div class="flex flex-wrap items-center gap-2 text-fog-300">

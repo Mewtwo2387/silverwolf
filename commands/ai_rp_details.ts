@@ -1,17 +1,25 @@
 import { Command } from './classes/Command';
-import {
-  resolveCharOption, buildCharSearchChoices, resolveCreatorLabel, buildCharacterView,
-} from '../utils/rpCommand';
+import { resolveCharOption, buildCharSearchChoices, resolveCreatorLabel, buildCharacterView } from '../utils/rpCommand';
 import { logError } from '../utils/log';
 
 /** Shows a character's full details (preview + attached .txt for long fields). */
 class AiRpDetails extends Command {
   constructor(client: any) {
-    super(client, 'rp-details', 'View a roleplay character\'s details', [
-      {
-        name: 'char', description: 'Character (search by name or id)', type: 3, required: true, autocomplete: true,
-      },
-    ], { isSubcommandOf: 'ai', blame: 'xei' });
+    super(
+      client,
+      'rp-details',
+      "View a roleplay character's details",
+      [
+        {
+          name: 'char',
+          description: 'Character (search by name or id)',
+          type: 3,
+          required: true,
+          autocomplete: true,
+        },
+      ],
+      { isSubcommandOf: 'ai', blame: 'xei' },
+    );
   }
 
   async autocomplete(interaction: any): Promise<void> {

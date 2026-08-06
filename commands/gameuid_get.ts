@@ -4,14 +4,20 @@ import { logError } from '../utils/log';
 
 class GameUIDGet extends Command {
   constructor(client: any) {
-    super(client, 'get', 'Get all game UIDs for a user', [
-      {
-        name: 'user',
-        description: 'The user to get the game UIDs for',
-        type: 6,
-        required: true,
-      },
-    ], { isSubcommandOf: 'gameuid', blame: 'xei' });
+    super(
+      client,
+      'get',
+      'Get all game UIDs for a user',
+      [
+        {
+          name: 'user',
+          description: 'The user to get the game UIDs for',
+          type: 6,
+          required: true,
+        },
+      ],
+      { isSubcommandOf: 'gameuid', blame: 'xei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -32,7 +38,9 @@ class GameUIDGet extends Command {
         return;
       }
 
-      const description = gameUIDs.map((g: any) => `**Game:** ${g.game}\n**UID:** ${g.gameUid}\n**Region:** ${g.region || 'N/A'}\n`).join('\n');
+      const description = gameUIDs
+        .map((g: any) => `**Game:** ${g.game}\n**UID:** ${g.gameUid}\n**Region:** ${g.region || 'N/A'}\n`)
+        .join('\n');
 
       await interaction.editReply({
         embeds: [

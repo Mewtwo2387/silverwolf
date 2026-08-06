@@ -7,17 +7,27 @@ import { logError } from '../utils/log';
 /** Removes a character from this channel. Optionally wipes its memory of the channel. */
 class AiRpRemove extends Command {
   constructor(client: any) {
-    super(client, 'rp-remove', 'Remove a roleplay character from this channel', [
-      {
-        name: 'char', description: 'Character spawned here (search by name or id)', type: 3, required: true, autocomplete: true,
-      },
-      {
-        name: 'clear_history',
-        description: 'Also wipe its memory of this channel (default: keep)',
-        type: 5,
-        required: false,
-      },
-    ], { isSubcommandOf: 'ai', blame: 'xei' });
+    super(
+      client,
+      'rp-remove',
+      'Remove a roleplay character from this channel',
+      [
+        {
+          name: 'char',
+          description: 'Character spawned here (search by name or id)',
+          type: 3,
+          required: true,
+          autocomplete: true,
+        },
+        {
+          name: 'clear_history',
+          description: 'Also wipe its memory of this channel (default: keep)',
+          type: 5,
+          required: false,
+        },
+      ],
+      { isSubcommandOf: 'ai', blame: 'xei' },
+    );
   }
 
   async autocomplete(interaction: any): Promise<void> {
@@ -65,7 +75,8 @@ class AiRpRemove extends Command {
         `Removed **${character.name}** (spawned by ${spawnerLabel}) from this channel.${
           clearHistory
             ? ' Its memory of this channel was wiped — a fresh spawn will start over.'
-            : ' Its conversation is kept and will resume if you spawn it here again.'}`,
+            : ' Its conversation is kept and will resume if you spawn it here again.'
+        }`,
       );
     } catch (err) {
       logError('AiRpRemove error:', err);

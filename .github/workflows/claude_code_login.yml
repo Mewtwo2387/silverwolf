@@ -8,8 +8,8 @@ on:
         required: false
 
 permissions:
-  actions: write  # Required for cache management
-  contents: read  # Required for basic repository access
+  actions: write # Required for cache management
+  contents: read # Required for basic repository access
 
 jobs:
   auth:

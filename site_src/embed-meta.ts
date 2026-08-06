@@ -5,7 +5,8 @@ const SITE_NAME = 'Silverwolf';
 
 // Shown as the embed body text on /about and on any page we don't special-case
 // below. Mirrors the opening paragraph in pages/about.ts.
-const ABOUT_INTRO = 'Silverwolf-bot is a multipurpose bot made by Ei and XeIris. Mostly inside jokes, parodies and tech stack exploration, it runs on Bun using Typescript.';
+const ABOUT_INTRO =
+  'Silverwolf-bot is a multipurpose bot made by Ei and XeIris. Mostly inside jokes, parodies and tech stack exploration, it runs on Bun using Typescript.';
 
 // Discord paints the embed's left accent bar from <meta name="theme-color">.
 // Neon cyan to match the site's accent.
@@ -38,7 +39,10 @@ export function embedDescriptionForPath(path: string): string {
 }
 
 const ATTR_ESCAPES: Record<string, string> = {
-  '&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;',
+  '&': '&amp;',
+  '"': '&quot;',
+  '<': '&lt;',
+  '>': '&gt;',
 };
 function attr(value: string): string {
   return value.replace(/[&"<>]/g, (ch) => ATTR_ESCAPES[ch]);
@@ -63,7 +67,8 @@ function pickThumbnail(lv999: boolean): Thumbnail {
   return { png: webp.replace(/\.webp$/, '.png'), size: STICKER_SIZE[stem] ?? DEFAULT_STICKER_SIZE };
 }
 
-const meta = (kind: 'property' | 'name', key: string, content: string) => `<meta ${kind}="${key}" content="${attr(content)}" />`;
+const meta = (kind: 'property' | 'name', key: string, content: string) =>
+  `<meta ${kind}="${key}" content="${attr(content)}" />`;
 
 /**
  * Open Graph + Twitter-card <meta> tags so chat apps (Discord, WhatsApp, Slack,
@@ -72,12 +77,7 @@ const meta = (kind: 'property' | 'name', key: string, content: string) => `<meta
  * are absolute because most scrapers require it, and the explicit dimensions
  * let scrapers lay out the card before the image loads.
  */
-export function embedMetaTags(opts: {
-  origin: string;
-  path: string;
-  title: string;
-  lv999?: boolean;
-}): string {
+export function embedMetaTags(opts: { origin: string; path: string; title: string; lv999?: boolean }): string {
   const description = embedDescriptionForPath(opts.path);
   const thumb = pickThumbnail(opts.lv999 ?? false);
   const image = `${opts.origin}${thumb.png}`;

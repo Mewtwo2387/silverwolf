@@ -14,9 +14,4 @@ function camelToSnakeJSON(obj: Record<string, unknown>): Record<string, unknown>
   return Object.assign({}, ...Object.entries(obj).map(([key, value]) => ({ [camelToSnake(key)]: value })));
 }
 
-export {
-  camelToSnake,
-  snakeToCamel,
-  snakeToCamelJSON,
-  camelToSnakeJSON,
-};
+export { camelToSnake, snakeToCamel, snakeToCamelJSON, camelToSnakeJSON };

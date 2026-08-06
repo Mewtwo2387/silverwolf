@@ -4,19 +4,25 @@ import { logError } from '../utils/log';
 
 class Cat extends Command {
   constructor(client: any) {
-    super(client, 'cat', 'Fetch a random cat fact, picture, or both', [
-      {
-        name: 'option',
-        description: 'Choose what you want: fact, img, or both',
-        type: 3,
-        required: true,
-        choices: [
-          { name: 'fact', value: 'fact' },
-          { name: 'img', value: 'img' },
-          { name: 'both', value: 'both' },
-        ],
-      },
-    ], { blame: 'xei' });
+    super(
+      client,
+      'cat',
+      'Fetch a random cat fact, picture, or both',
+      [
+        {
+          name: 'option',
+          description: 'Choose what you want: fact, img, or both',
+          type: 3,
+          required: true,
+          choices: [
+            { name: 'fact', value: 'fact' },
+            { name: 'img', value: 'img' },
+            { name: 'both', value: 'both' },
+          ],
+        },
+      ],
+      { blame: 'xei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -54,7 +60,10 @@ class Cat extends Command {
       if (option === 'fact') {
         embed.setTitle('Cat Fact').setDescription(catFact);
       } else if (option === 'img') {
-        embed.setTitle('Found a cat! 🐈').setImage(catImageUrl).setFooter({ text: `Cat ID: ${catId}` });
+        embed
+          .setTitle('Found a cat! 🐈')
+          .setImage(catImageUrl)
+          .setFooter({ text: `Cat ID: ${catId}` });
       } else if (option === 'both') {
         embed
           .setTitle('Cat fact and unrelated pic')
@@ -66,7 +75,7 @@ class Cat extends Command {
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       logError('Error fetching cat data:', error);
-      await interaction.editReply({ content: 'Sorry, I couldn\'t fetch the cat data. Please try again later.' });
+      await interaction.editReply({ content: "Sorry, I couldn't fetch the cat data. Please try again later." });
     }
   }
 }

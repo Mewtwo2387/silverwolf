@@ -31,7 +31,9 @@ class Guide extends Command {
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       logError('Error fetching Dinonuggies guide:', error);
-      await interaction.editReply({ content: 'Sorry, I couldn\'t fetch the Dinonuggies guide. Please try again later.' });
+      await interaction.editReply({
+        content: "Sorry, I couldn't fetch the Dinonuggies guide. Please try again later.",
+      });
     }
   }
 }

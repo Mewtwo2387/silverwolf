@@ -1,13 +1,6 @@
 import { Command } from './classes/Command';
 import { logError } from '../utils/log';
-import {
-  POOP_COLOURS,
-  POOP_SIZES,
-  POOP_TYPES,
-  POOP_DURATION_MIN,
-  POOP_DURATION_MAX,
-  poopChoices,
-} from '../utils/poop';
+import { POOP_COLOURS, POOP_SIZES, POOP_TYPES, POOP_DURATION_MIN, POOP_DURATION_MAX, poopChoices } from '../utils/poop';
 
 class PoopLog extends Command {
   constructor(client: any) {

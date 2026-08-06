@@ -3,8 +3,11 @@ import { Command } from './classes/Command';
 import { format } from '../utils/math';
 import { getMaxLevel, getBekiCooldown } from '../utils/upgrades';
 import {
-  getNuggieFlatMultiplier, getNuggieStreakMultiplier, getNuggieCreditsMultiplier,
-  getNuggiePokeMultiplier, getNuggieNuggieMultiplier,
+  getNuggieFlatMultiplier,
+  getNuggieStreakMultiplier,
+  getNuggieCreditsMultiplier,
+  getNuggiePokeMultiplier,
+  getNuggieNuggieMultiplier,
 } from '../utils/ascensionupgrades';
 import { DAILY_LIMIT, WEEKLY_LIMIT } from '../utils/ai';
 import { getResetLine } from '../utils/discordRateLimit';
@@ -28,14 +31,20 @@ const COOLDOWN_DURATION = 60000;
 
 class Profile extends Command {
   constructor(client: any) {
-    super(client, 'profile', 'check profile', [
-      {
-        name: 'user',
-        description: 'the user to check',
-        type: 6,
-        required: false,
-      },
-    ], { blame: 'ei' });
+    super(
+      client,
+      'profile',
+      'check profile',
+      [
+        {
+          name: 'user',
+          description: 'the user to check',
+          type: 6,
+          required: false,
+        },
+      ],
+      { blame: 'ei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -84,7 +93,9 @@ class Profile extends Command {
     const nuggieNuggieMultiplier = getNuggieNuggieMultiplier(user.nuggieNuggieMultiplierLevel);
     const { credits } = user;
     const log2Credits = credits > 1 ? Math.log2(credits) : 0;
-    const pokemonCount = await this.client.db.pokemon.getUniquePokemonCount(interaction.options.getMember('user') ? interaction.options.getMember('user').id : interaction.user.id);
+    const pokemonCount = await this.client.db.pokemon.getUniquePokemonCount(
+      interaction.options.getMember('user') ? interaction.options.getMember('user').id : interaction.user.id,
+    );
     const log2Nuggies = user.dinonuggies > 1 ? Math.log2(user.dinonuggies) : 0;
     const nextClaim = bekiCooldown - (Date.now() - user.dinonuggiesLastClaimed) / 1000;
     sortPokemons(pokemons);
@@ -178,28 +189,25 @@ class Profile extends Command {
       .setColor('#00AA00')
       .setTitle(`${username}'s Profile`)
       .setThumbnail(avatarURL)
-      .setDescription(`
+      .setDescription(
+        `
 ## Currency
 **Mystic Credits:** ${format(credits, true)}
 **Bitcoin:** ${user.bitcoin}
 **Dinonuggies:** ${format(user.dinonuggies)}
 **Heavenly Nuggies:** ${format(user.heavenlyNuggies)}
-            `)
+            `,
+      )
       .setTimestamp();
   }
 
-  createLevelsEmbed(
-    user: any,
-    ascensionLevel: any,
-    maxLevel: any,
-    username: string,
-    avatarURL: string,
-  ) {
+  createLevelsEmbed(user: any, ascensionLevel: any, maxLevel: any, username: string, avatarURL: string) {
     return new Discord.EmbedBuilder()
       .setColor('#00AA00')
       .setTitle(`${username}'s Profile`)
       .setThumbnail(avatarURL)
-      .setDescription(`
+      .setDescription(
+        `
 ## Levels
 **Ascension Level:** Level ${ascensionLevel}
 **Max Upgrade Level:** ${maxLevel}
@@ -219,7 +227,8 @@ ${getNuggieCreditsMultiplierInfo(user.nuggieCreditsMultiplierLevel, INFO_LEVEL.T
 ${getNuggiePokeMultiplierInfo(user.nuggiePokemonMultiplierLevel, INFO_LEVEL.THIS_LEVEL)}
 
 ${getNuggieNuggieMultiplierInfo(user.nuggieNuggieMultiplierLevel, INFO_LEVEL.THIS_LEVEL)}
-            `)
+            `,
+      )
       .setTimestamp();
   }
 
@@ -241,7 +250,8 @@ ${getNuggieNuggieMultiplierInfo(user.nuggieNuggieMultiplierLevel, INFO_LEVEL.THI
       .setColor('#00AA00')
       .setTitle(`${username}'s Profile`)
       .setThumbnail(avatarURL)
-      .setDescription(`
+      .setDescription(
+        `
     ## Claims
     **Current Streak:** ${user.dinonuggiesClaimStreak} days
     **Base Claim Amount:** 5 + ${format(user.dinonuggiesClaimStreak)} = ${format(5 + user.dinonuggiesClaimStreak)}
@@ -252,7 +262,8 @@ ${getNuggieNuggieMultiplierInfo(user.nuggieNuggieMultiplierLevel, INFO_LEVEL.THI
     **Pokemon Multiplier:** 1 + ${format(nuggiePokemonMultiplier, true)} * ${format(pokemonCount, true)} = ${format(1 + nuggiePokemonMultiplier * pokemonCount, true)}x
     **Nuggie Multiplier:** 1 + ${format(nuggieNuggieMultiplier, true)} * ${format(log2Nuggies, true)} = ${format(1 + nuggieNuggieMultiplier * log2Nuggies, true)}x
     **Next Claim:** ${nextClaim > 0 ? `${(nextClaim / 60 / 60).toFixed(0)}h ${((nextClaim / 60) % 60).toFixed(0)}m ${(nextClaim % 60).toFixed(0)}s` : 'Ready'}
-            `)
+            `,
+      )
       .setTimestamp();
   }
 
@@ -261,12 +272,13 @@ ${getNuggieNuggieMultiplierInfo(user.nuggieNuggieMultiplierLevel, INFO_LEVEL.THI
       .setColor('#00AA00')
       .setTitle(`${username}'s Profile`)
       .setThumbnail(avatarURL)
-      .setDescription(`
+      .setDescription(
+        `
 ## Gambling
 ### Slots
 **Times Played:** ${user.slotsTimesPlayed}
 **Times Won:** ${user.slotsTimesWon}
-**Percentage Won:** ${format(user.slotsTimesPlayed > 0 ? ((user.slotsTimesWon / user.slotsTimesPlayed) * 100) : 0, true)}%
+**Percentage Won:** ${format(user.slotsTimesPlayed > 0 ? (user.slotsTimesWon / user.slotsTimesPlayed) * 100 : 0, true)}%
 **Amount Gambled:** ${format(user.slotsAmountGambled)}
 **Amount Won:** ${format(user.slotsAmountWon)}
 **Net Winnings:** ${format(user.slotsAmountWon - user.slotsAmountGambled)}
@@ -278,7 +290,7 @@ ${getNuggieNuggieMultiplierInfo(user.nuggieNuggieMultiplierLevel, INFO_LEVEL.THI
 **Times Won:** ${user.blackjackTimesWon}
 **Times Drew:** ${user.blackjackTimesDrawn}
 **Times Lost:** ${user.blackjackTimesLost}
-**Percentage Won (Excluding Draws):** ${format((user.blackjackTimesWon + user.blackjackTimesLost) > 0 ? ((user.blackjackTimesWon / (user.blackjackTimesWon + user.blackjackTimesLost)) * 100) : 0, true)}%
+**Percentage Won (Excluding Draws):** ${format(user.blackjackTimesWon + user.blackjackTimesLost > 0 ? (user.blackjackTimesWon / (user.blackjackTimesWon + user.blackjackTimesLost)) * 100 : 0, true)}%
 **Amount Gambled:** ${format(user.blackjackAmountGambled)}
 **Amount Won:** ${format(user.blackjackAmountWon)}
 **Net Winnings:** ${format(user.blackjackAmountWon - user.blackjackAmountGambled)}
@@ -290,7 +302,7 @@ ${getNuggieNuggieMultiplierInfo(user.nuggieNuggieMultiplierLevel, INFO_LEVEL.THI
 ### Roulette
 **Times Played:** ${user.rouletteTimesPlayed}
 **Times Won:** ${user.rouletteTimesWon}
-**Percentage Won:** ${format(user.rouletteTimesPlayed > 0 ? ((user.rouletteTimesWon / user.rouletteTimesPlayed) * 100) : 0, true)}%
+**Percentage Won:** ${format(user.rouletteTimesPlayed > 0 ? (user.rouletteTimesWon / user.rouletteTimesPlayed) * 100 : 0, true)}%
 **Amount Gambled:** ${format(user.rouletteAmountGambled)}
 **Amount Won:** ${format(user.rouletteAmountWon)}
 **Net Winnings:** ${format(user.rouletteAmountWon - user.rouletteAmountGambled)}
@@ -298,7 +310,8 @@ ${getNuggieNuggieMultiplierInfo(user.nuggieNuggieMultiplierLevel, INFO_LEVEL.THI
 **Relative Net Winnings:** ${format(user.rouletteRelativeWon - user.rouletteTimesPlayed, true)} bets
 **Current Streak:** ${user.rouletteStreak}
 **Max Streak:** ${user.rouletteMaxStreak}
-            `)
+            `,
+      )
       .setTimestamp();
   }
 
@@ -307,13 +320,15 @@ ${getNuggieNuggieMultiplierInfo(user.nuggieNuggieMultiplierLevel, INFO_LEVEL.THI
       .setColor('#00AA00')
       .setTitle(`${username}'s Profile`)
       .setThumbnail(avatarURL)
-      .setDescription(`
+      .setDescription(
+        `
 ## Others
 **Pity:** ${user.pity}
 **Birthday:** ${user.birthdays ? user.birthdays : 'No birthday set'}
 **Murders:** ${user.murderSuccess} Successes, ${user.murderFail} Fails
 **Last Murder:** ${user.lastMurder ? new Date(user.lastMurder).toLocaleString() : 'Never'}
-            `)
+            `,
+      )
       .setTimestamp();
   }
 
@@ -342,12 +357,14 @@ ${getNuggieNuggieMultiplierInfo(user.nuggieNuggieMultiplierLevel, INFO_LEVEL.THI
       .setColor('#0099ff')
       .setTitle(`${username}'s Profile`)
       .setThumbnail(avatarURL)
-      .setDescription(`
+      .setDescription(
+        `
 ## AI Usage
 **Daily Usage (24h):** ${dailyUsage.toLocaleString()} / ${DAILY_LIMIT.toLocaleString()} credits
 **Weekly Usage (7d):** ${weeklyUsage.toLocaleString()} / ${WEEKLY_LIMIT.toLocaleString()} credits
 **Status:** ${statusText}${resetLine}
-      `)
+      `,
+      )
       .setTimestamp();
   }
 }

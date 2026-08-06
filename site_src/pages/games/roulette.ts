@@ -16,9 +16,7 @@ export function RoulettePage(opts: {
   user?: NavUser | null;
   gambleStats?: GamblingPageStats | null;
 }) {
-  const {
-    nonce, lv999, user, gambleStats,
-  } = opts;
+  const { nonce, lv999, user, gambleStats } = opts;
   const csrfJSON = inlineJSON(user?.csrf ?? '');
   const loggedOut = !user;
 
@@ -46,11 +44,15 @@ export function RoulettePage(opts: {
   // Radial layer sits on top of the conic (first listed = top in CSS background
   // shorthand) so the brown disk masks the inner part of the wedges.
   const wheelBg = `radial-gradient(circle at center, #2a1a0c 0%, #5a3517 38%, transparent 46%), ${conicGradient}`;
-  const labelsHTML = labels.map((l) => `
+  const labelsHTML = labels
+    .map(
+      (l) => `
     <div class="seg" style="transform: rotate(${l.angle}deg) translateY(-128px);">
       <span style="transform: rotate(${-l.angle}deg);">${l.n}</span>
     </div>
-  `).join('');
+  `,
+    )
+    .join('');
 
   const extras = raw(`
 <style>
@@ -296,41 +298,40 @@ export function RoulettePage(opts: {
     <div class="roul-container">
       <div class="wheel-stage">
         <div class="wheel-pointer"></div>
-        <div id="wheel" class="wheel" style="background: ${wheelBg};">
-          ${raw(labelsHTML)}
-        </div>
+        <div id="wheel" class="wheel" style="background: ${wheelBg};">${raw(labelsHTML)}</div>
         <div class="wheel-hub"></div>
       </div>
-      ${loggedOut
-    ? html`<div class="login-cta">Log in with <a href="/auth/discord/login">Discord</a> to play.</div>`
-    : html`
-            <form class="roul-form" onsubmit="return false">
-              <label>
-                Amount
-                <input id="amount-input" type="text" placeholder="e.g. 1000 or 1k" autocomplete="off" />
-              </label>
-              <label>
-                Bet type
-                <select id="bet-type">
-                  <option value="number">Number</option>
-                  <option value="red">Red</option>
-                  <option value="black">Black</option>
-                  <option value="green">Green</option>
-                  <option value="even">Even</option>
-                  <option value="odd">Odd</option>
-                </select>
-              </label>
-              <label>
-                Number (0–36)
-                <input id="bet-value" type="number" min="0" max="36" placeholder="0" />
-              </label>
-            </form>
-            <button id="spin-btn" class="btn-accent">Spin</button>
-          `}
+      ${
+        loggedOut
+          ? html`<div class="login-cta">Log in with <a href="/auth/discord/login">Discord</a> to play.</div>`
+          : html`
+              <form class="roul-form" onsubmit="return false">
+                <label>
+                  Amount
+                  <input id="amount-input" type="text" placeholder="e.g. 1000 or 1k" autocomplete="off" />
+                </label>
+                <label>
+                  Bet type
+                  <select id="bet-type">
+                    <option value="number">Number</option>
+                    <option value="red">Red</option>
+                    <option value="black">Black</option>
+                    <option value="green">Green</option>
+                    <option value="even">Even</option>
+                    <option value="odd">Odd</option>
+                  </select>
+                </label>
+                <label>
+                  Number (0–36)
+                  <input id="bet-value" type="number" min="0" max="36" placeholder="0" />
+                </label>
+              </form>
+              <button id="spin-btn" class="btn-accent">Spin</button>
+            `
+      }
       <div id="result-banner" class="result-banner"></div>
     </div>
-    ${extras}
-    ${loggedOut ? '' : script}
+    ${extras} ${loggedOut ? '' : script}
   `;
 
   return Layout({

@@ -4,14 +4,20 @@ import { logError } from '../utils/log';
 
 class BlacklistView extends DevCommand {
   constructor(client: any) {
-    super(client, 'view', 'Retrieve blacklisted commands for a specific server', [
-      {
-        name: 'server',
-        description: 'The ID of the server to retrieve blacklisted commands for',
-        type: 3,
-        required: true,
-      },
-    ], { isSubcommandOf: 'blacklist', blame: 'xei' });
+    super(
+      client,
+      'view',
+      'Retrieve blacklisted commands for a specific server',
+      [
+        {
+          name: 'server',
+          description: 'The ID of the server to retrieve blacklisted commands for',
+          type: 3,
+          required: true,
+        },
+      ],
+      { isSubcommandOf: 'blacklist', blame: 'xei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -32,7 +38,12 @@ class BlacklistView extends DevCommand {
         return;
       }
 
-      const formattedCommands = blacklistedCommands.map((cmd: any, index: number) => `**${index + 1}. Command**: ${cmd.commandName}\n**Reason**: ${cmd.reason || 'No reason provided'}\n**Date Disabled**: ${cmd.disabled_date}`).join('\n\n');
+      const formattedCommands = blacklistedCommands
+        .map(
+          (cmd: any, index: number) =>
+            `**${index + 1}. Command**: ${cmd.commandName}\n**Reason**: ${cmd.reason || 'No reason provided'}\n**Date Disabled**: ${cmd.disabled_date}`,
+        )
+        .join('\n\n');
 
       await interaction.editReply({
         embeds: [
@@ -50,7 +61,9 @@ class BlacklistView extends DevCommand {
           new Discord.EmbedBuilder()
             .setColor('#AA0000')
             .setTitle('Failed to retrieve blacklisted commands')
-            .setDescription(`An error occurred while retrieving blacklisted commands for server: **${serverId}**. Please try again.`),
+            .setDescription(
+              `An error occurred while retrieving blacklisted commands for server: **${serverId}**. Please try again.`,
+            ),
         ],
       });
     }

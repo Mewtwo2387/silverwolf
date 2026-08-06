@@ -4,14 +4,17 @@ import type { AppEnv } from '../shared';
 const RATE_LIMIT_MAX_ENTRIES = 50_000;
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, record] of rateLimitMap.entries()) {
-    if (record.resetAt < now) {
-      rateLimitMap.delete(ip);
+setInterval(
+  () => {
+    const now = Date.now();
+    for (const [ip, record] of rateLimitMap.entries()) {
+      if (record.resetAt < now) {
+        rateLimitMap.delete(ip);
+      }
     }
-  }
-}, 5 * 60 * 1000).unref();
+  },
+  5 * 60 * 1000,
+).unref();
 
 // Cloudflare overwrites cf-connecting-ip on every request, so it can't be spoofed
 // by clients. The deploy MUST keep origin port unreachable except via Cloudflare

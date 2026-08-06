@@ -23,14 +23,20 @@ async function loadGenshinData() {
 
 class GenshinProfile extends Command {
   constructor(client: any) {
-    super(client, 'genshinprofile', 'Get Genshin Impact player data. stolen from collei-bot', [
-      {
-        name: 'uid',
-        description: 'The UID of the Genshin Impact player',
-        type: 3,
-        required: true,
-      },
-    ], { blame: 'xei' });
+    super(
+      client,
+      'genshinprofile',
+      'Get Genshin Impact player data. stolen from collei-bot',
+      [
+        {
+          name: 'uid',
+          description: 'The UID of the Genshin Impact player',
+          type: 3,
+          required: true,
+        },
+      ],
+      { blame: 'xei' },
+    );
   }
 
   async run(interaction: any): Promise<void> {
@@ -45,13 +51,17 @@ class GenshinProfile extends Command {
       const response = await fetch(url, { headers });
       if (!response.ok) {
         logError(`HTTP Error Response: Status ${response.status} ${response.statusText}`);
-        await interaction.editReply({ content: `Failed to fetch data: HTTP status ${response.status}. Please contact mystichunterz for assistance.` });
+        await interaction.editReply({
+          content: `Failed to fetch data: HTTP status ${response.status}. Please contact mystichunterz for assistance.`,
+        });
         return;
       }
       const data = await response.json();
 
       if (!data.playerInfo) {
-        await interaction.editReply({ content: 'No data found for the given UID. Please check the UID and try again.' });
+        await interaction.editReply({
+          content: 'No data found for the given UID. Please check the UID and try again.',
+        });
         return;
       }
 
@@ -72,14 +82,15 @@ class GenshinProfile extends Command {
       }
 
       const embed = {
-        color: 0x00AA00,
+        color: 0x00aa00,
         title: `${playerInfo.nickname ?? 'Unknown'}'s Genshin Profile`,
-        description: `**Level:** ${playerInfo.level ?? 'Unknown'}\n`
-          + `**World Level:** ${playerInfo.worldLevel ?? 'Unknown'}\n`
-          + `**Signature:** ${playerInfo.signature ?? 'No signature provided'}\n`
-          + `**Achievements:** ${playerInfo.finishAchievementNum ?? '0'}\n`
-          + `**Spiral Abyss:** Floor ${playerInfo.towerFloorIndex ?? 'N/A'}, Level ${playerInfo.towerLevelIndex ?? 'N/A'}\n`
-          + `**Namecard ID:** ${playerInfo.nameCardId ?? 'N/A'}\n`,
+        description:
+          `**Level:** ${playerInfo.level ?? 'Unknown'}\n` +
+          `**World Level:** ${playerInfo.worldLevel ?? 'Unknown'}\n` +
+          `**Signature:** ${playerInfo.signature ?? 'No signature provided'}\n` +
+          `**Achievements:** ${playerInfo.finishAchievementNum ?? '0'}\n` +
+          `**Spiral Abyss:** Floor ${playerInfo.towerFloorIndex ?? 'N/A'}, Level ${playerInfo.towerLevelIndex ?? 'N/A'}\n` +
+          `**Namecard ID:** ${playerInfo.nameCardId ?? 'N/A'}\n`,
         thumbnail: profilePictureUrl ? { url: profilePictureUrl } : undefined,
         image: namecardUrl ? { url: namecardUrl } : undefined,
         timestamp: new Date(),
@@ -91,7 +102,9 @@ class GenshinProfile extends Command {
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       logError('Error fetching data from Genshin Impact API:', error);
-      await interaction.editReply({ content: 'Failed to fetch data from Genshin Impact API. Please contact mystichunterz for assistance.' });
+      await interaction.editReply({
+        content: 'Failed to fetch data from Genshin Impact API. Please contact mystichunterz for assistance.',
+      });
     }
   }
 }
