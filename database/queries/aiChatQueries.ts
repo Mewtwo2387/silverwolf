@@ -45,6 +45,14 @@ const aiChatQueries = {
   // History management
   ADD_HISTORY: 'INSERT INTO AiChatHistory (session_id, role, message) VALUES (?, ?, ?)',
   GET_HISTORY: 'SELECT * FROM AiChatHistory WHERE session_id = ? ORDER BY id DESC LIMIT ?',
+  GET_LAST_USER_HISTORY: `
+    SELECT id, message FROM AiChatHistory
+    WHERE session_id = ? AND role = 'user'
+    ORDER BY id DESC LIMIT 1
+  `,
+  // Auto-increment ids are chronological — wiping from the last user row onward
+  // removes that turn's tool audit rows and assistant/model reply with it.
+  DELETE_HISTORY_FROM_ID: 'DELETE FROM AiChatHistory WHERE session_id = ? AND id >= ?',
   DELETE_HISTORY_BY_SESSION: 'DELETE FROM AiChatHistory WHERE session_id = ?',
   DELETE_SESSION: 'DELETE FROM AiChatSession WHERE session_id = ?',
 };

@@ -222,4 +222,62 @@ describe('AiChatModel', () => {
       expect(deactivated.active).toBe(0);
     });
   });
+
+  // ─── undoLastTurn ─────────────────────────────────────────────────────────
+
+  describe('undoLastTurn', () => {
+    it('should delete the last user/tool/assistant turn and keep earlier history', async () => {
+      const userId = '111111111111111111';
+      const session = (await aiChat.getOrCreateSession(userId, 'Grok'))!;
+
+      await aiChat.addHistory(session.sessionId, 'user', 'first');
+      await aiChat.addHistory(session.sessionId, 'assistant', 'first reply');
+      await aiChat.addHistory(session.sessionId, 'user', 'second');
+      await aiChat.addHistory(session.sessionId, 'tool', '{"name":"web_search"}');
+      await aiChat.addHistory(session.sessionId, 'assistant', 'second reply');
+
+      const result = await aiChat.undoLastTurn(userId, 'Grok');
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      expect(result.sessionId).toBe(session.sessionId);
+      expect(result.deletedCount).toBe(3);
+      expect(result.userMessage).toBe('second');
+
+      const history = await aiChat.getHistory(session.sessionId);
+      expect(history).toHaveLength(2);
+      expect(history[0].message).toBe('first');
+      expect(history[1].message).toBe('first reply');
+    });
+
+    it('should return empty when the active session has no messages', async () => {
+      const userId = '111111111111111111';
+      await aiChat.getOrCreateSession(userId, 'Grok');
+
+      const result = await aiChat.undoLastTurn(userId, 'Grok');
+      expect(result).toEqual({ ok: false, reason: 'empty' });
+    });
+
+    it('should return no_session when the user has no active session for that persona', async () => {
+      const result = await aiChat.undoLastTurn('111111111111111111', 'Grok');
+      expect(result).toEqual({ ok: false, reason: 'no_session' });
+    });
+
+    it('should only undo the active persona session', async () => {
+      const userId = '111111111111111111';
+      const grok = (await aiChat.getOrCreateSession(userId, 'Grok'))!;
+      const gpt = (await aiChat.getOrCreateSession(userId, 'GPT'))!;
+
+      await aiChat.addHistory(grok.sessionId, 'user', 'grok q');
+      await aiChat.addHistory(grok.sessionId, 'assistant', 'grok a');
+      await aiChat.addHistory(gpt.sessionId, 'user', 'gpt q');
+      await aiChat.addHistory(gpt.sessionId, 'assistant', 'gpt a');
+
+      const result = await aiChat.undoLastTurn(userId, 'Grok');
+      expect(result.ok).toBe(true);
+
+      expect(await aiChat.getHistory(grok.sessionId)).toHaveLength(0);
+      expect(await aiChat.getHistory(gpt.sessionId)).toHaveLength(2);
+    });
+  });
 });
