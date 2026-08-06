@@ -1,5 +1,5 @@
-import Database from '../../database/Database';
 import { Database as BunDatabase } from 'bun:sqlite';
+import Database from '../../database/Database';
 import type ServerConfigModel from '../../database/models/ServerConfigModel';
 
 describe('ServerConfigModel', () => {

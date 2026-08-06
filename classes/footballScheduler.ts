@@ -91,13 +91,9 @@ class FootballScheduler {
         const pen = getPenaltyShootoutTally(match);
         const kickCount = match.shootoutKicks?.length ?? 0;
         if (finished) {
-          await this.client.db.footballMatchAnnouncement.markShootoutFinished(
-            id, kickCount, {}, pen.home, pen.away,
-          );
+          await this.client.db.footballMatchAnnouncement.markShootoutFinished(id, kickCount, {}, pen.home, pen.away);
         } else {
-          await this.client.db.footballMatchAnnouncement.markShootoutSynced(
-            id, kickCount, {}, pen.home, pen.away,
-          );
+          await this.client.db.footballMatchAnnouncement.markShootoutSynced(id, kickCount, {}, pen.home, pen.away);
         }
       } else {
         const goalCount = (match.goals1?.length ?? 0) + (match.goals2?.length ?? 0);
@@ -134,9 +130,7 @@ class FootballScheduler {
     if (finished && !state?.fullTimeSent && score) {
       const goalCount = getGoalEvents(match).length;
       await this.announceFullTime(match, score, channelIds);
-      await this.client.db.footballMatchAnnouncement.markFullTimeSent(
-        id, score.home, score.away, goalCount,
-      );
+      await this.client.db.footballMatchAnnouncement.markFullTimeSent(id, score.home, score.away, goalCount);
     } else if (
       !finished
       && !isLiveMatch(match)
@@ -209,7 +203,11 @@ class FootballScheduler {
 
     if (finished) {
       await this.client.db.footballMatchAnnouncement.markShootoutFinished(
-        id, kickCount, messageIds, pen.home, pen.away,
+        id,
+        kickCount,
+        messageIds,
+        pen.home,
+        pen.away,
       );
       log(
         `Football penalties finished: ${match.team1} ${match.score?.ft?.[0] ?? 0}-`
@@ -218,9 +216,7 @@ class FootballScheduler {
       return;
     }
 
-    await this.client.db.footballMatchAnnouncement.markShootoutSynced(
-      id, kickCount, messageIds, pen.home, pen.away,
-    );
+    await this.client.db.footballMatchAnnouncement.markShootoutSynced(id, kickCount, messageIds, pen.home, pen.away);
     log(`Football penalty shootout update: ${match.team1} ${pen.home}-${pen.away} ${match.team2}`);
   }
 

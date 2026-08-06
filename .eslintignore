@@ -3,4 +3,5 @@ coverage/
 dist/
 .git/
 .env
-*.log 
+*.log
+temp/

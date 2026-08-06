@@ -26,9 +26,10 @@ class Handler {
 
   async summonPokemon(
     message: any,
-    mode = 'normal',
+    mode?: string,
     config?: Pick<ResolvedServerConfig, 'pokemonShinyChance' | 'pokemonMysteryChance'>,
   ): Promise<void> {
+    const resolvedMode = mode ?? 'normal';
     const allMembers = await this.getGuildMembers(message);
     const members = allMembers.filter((member: any) => !member.user.bot);
     const member = members.random();
@@ -38,9 +39,9 @@ class Handler {
     const mysteryChance = config?.pokemonMysteryChance ?? 0.3;
 
     const pfp = await member.user.displayAvatarURL({ extension: 'png', size: 512 });
-    if (mode === 'shiny' || (mode === 'normal' && Math.random() < shinyChance)) {
+    if (resolvedMode === 'shiny' || (resolvedMode === 'normal' && Math.random() < shinyChance)) {
       await this.summonShinyPokemon(client, message, member, pfp);
-    } else if (mode === 'mystery' || (mode === 'normal' && Math.random() < mysteryChance)) {
+    } else if (resolvedMode === 'mystery' || (resolvedMode === 'normal' && Math.random() < mysteryChance)) {
       await this.summonMysteryPokemon(client, message, member, pfp);
     } else {
       await this.summonNormalPokemon(client, message, member, pfp);
