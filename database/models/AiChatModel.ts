@@ -190,6 +190,60 @@ class AiChatModel {
   }
 
   /**
+   * Deletes the most recent user→(tools)→assistant/model turn from the user's
+   * active session for this persona. Tool audit rows between the pair are
+   * removed with it.
+   */
+  async undoLastTurn(
+    userId: string,
+    personaName: string,
+  ): Promise<
+    | { ok: true; sessionId: number; deletedCount: number; userMessage: string }
+    | { ok: false; reason: 'no_session' | 'empty' }
+  > {
+    const session = await this.db.executeSelectQuery(
+      aiChatQueries.GET_ACTIVE_SESSION,
+      [userId, personaName],
+    );
+    if (!session || session.userId !== userId) {
+      return { ok: false, reason: 'no_session' };
+    }
+
+    const outcome = await this.db.executeTransaction((rawDb: any) => {
+      const lastUser = rawDb.query(aiChatQueries.GET_LAST_USER_HISTORY)
+        .get(session.sessionId) as { id: number; message: string } | null;
+      if (!lastUser) {
+        return { ok: false as const, reason: 'empty' as const };
+      }
+
+      const result = rawDb.query(aiChatQueries.DELETE_HISTORY_FROM_ID)
+        .run(session.sessionId, lastUser.id);
+      const deletedCount = Number(result.changes ?? 0);
+      if (deletedCount <= 0) {
+        return { ok: false as const, reason: 'empty' as const };
+      }
+
+      return {
+        ok: true as const,
+        deletedCount,
+        userMessage: typeof lastUser.message === 'string' ? lastUser.message : '',
+      };
+    });
+
+    if (!outcome.ok) {
+      return { ok: false, reason: 'empty' };
+    }
+
+    log(`AiChat: Undid last turn (${outcome.deletedCount} rows) in session ${session.sessionId} for user ${userId}`);
+    return {
+      ok: true,
+      sessionId: session.sessionId,
+      deletedCount: outcome.deletedCount,
+      userMessage: outcome.userMessage,
+    };
+  }
+
+  /**
    * Fetches the last N messages for a session, returned in chronological order (oldest first).
    * Capped at 30 by default per cost constraints.
    */

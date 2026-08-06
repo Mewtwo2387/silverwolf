@@ -21,6 +21,33 @@ import {
 
 const WEBHOOK_NAME = process.env.WEBHOOK_NAME || 'grok-webhook';
 
+/** Collapse whitespace and lowercase for exact trigger+command matching. */
+function normalizeSessionCommandText(text: string): string {
+  return text.replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+/**
+ * True when `query` is exactly one `<trigger> <command>` phrase (case-insensitive),
+ * e.g. "@grok kys" / "jarvis amnesia" — not "@grok what is amnesia", bare
+ * "amnesia", or reordered "amnesia @grok".
+ */
+function isExactSessionCommand(
+  query: string,
+  persona: { triggers?: string[] },
+  command: string,
+): boolean {
+  const normalizedQuery = normalizeSessionCommandText(query);
+  if (!normalizedQuery) return false;
+  const normalizedCommand = normalizeSessionCommandText(command);
+  if (!normalizedCommand) return false;
+
+  return (persona.triggers ?? []).some((trigger) => {
+    if (typeof trigger !== 'string' || !trigger.trim()) return false;
+    const phrase = normalizeSessionCommandText(`${trigger} ${normalizedCommand}`);
+    return phrase.length > 0 && normalizedQuery === phrase;
+  });
+}
+
 const scriptHandlers = {
   girlCockx: async (message: Message): Promise<void> => {
     const xLinkRegex = /https:\/\/(?:x\.com|twitter\.com)\/([^/]+)\/status\/(\d+)(?:\?[^\s]*)?/g;
@@ -87,7 +114,6 @@ const scriptHandlers = {
       ? message.author.username.toLowerCase()
       : 'user';
     const query = message.content || '';
-    const shouldStartNewSession = /\bkys\b/i.test(query);
 
     const contextMsg = message.reference
       ? await message.channel.messages
@@ -97,6 +123,8 @@ const scriptHandlers = {
 
     const persona = await resolvePersona(query);
     const displayName = persona.name;
+    const shouldStartNewSession = isExactSessionCommand(query, persona, 'kys');
+    const shouldAmnesia = isExactSessionCommand(query, persona, 'amnesia');
 
     const NO_MEMORY_PERSONAS = ['Summarizer'];
     const hasMemory = !NO_MEMORY_PERSONAS.includes(displayName);
@@ -120,6 +148,45 @@ const scriptHandlers = {
       } catch (sessionErr) {
         logError('AiChat: Failed to start new session from mention handler:', sessionErr);
         await message.reply('Failed to start a new conversation. Please try again.');
+      }
+      return;
+    }
+
+    if (shouldAmnesia && hasMemory) {
+      try {
+        const result = await (message.client as any).db.aiChat.undoLastTurn(
+          message.author.id,
+          displayName,
+        );
+
+        if (!result.ok) {
+          const emptyEmbed = new EmbedBuilder()
+            .setColor('#FEE75C')
+            .setTitle('Nothing to Forget')
+            .setDescription(
+              result.reason === 'no_session'
+                ? `No active **${displayName}** session to wipe.`
+                : `**${displayName}** session has no messages to forget.`,
+            );
+          await message.reply({ embeds: [emptyEmbed] });
+          return;
+        }
+
+        const preview = result.userMessage.replace(/\s+/g, ' ').trim();
+        const previewSnippet = preview.length > 120 ? `${preview.slice(0, 117)}…` : preview;
+        const amnesiaEmbed = new EmbedBuilder()
+          .setColor('#57F287')
+          .setTitle('Amnesia')
+          .setDescription(
+            `Forgot the last turn from **${displayName}** session **#${result.sessionId}**`
+            + ` (${result.deletedCount} row${result.deletedCount === 1 ? '' : 's'}).${
+              previewSnippet ? `\n\n> ${previewSnippet}` : ''}`,
+          )
+          .setFooter({ text: 'Use "kys" for a fresh session · "amnesia" to forget the last turn' });
+        await message.reply({ embeds: [amnesiaEmbed] });
+      } catch (amnesiaErr) {
+        logError('AiChat: Failed to apply amnesia from mention handler:', amnesiaErr);
+        await message.reply('Failed to forget the last turn. Please try again.');
       }
       return;
     }
@@ -323,7 +390,7 @@ const scriptHandlers = {
           .setColor('#FEE75C')
           .setTitle('⚠ Context limit reached')
           .setDescription(`Trimmed **${trimWarning.trimmedCount}** old message${trimWarning.trimmedCount === 1 ? '' : 's'} to fit this model's context window. The oldest parts of the conversation are no longer visible to me.`)
-          .setFooter({ text: 'Use "kys" to start a fresh session' });
+          .setFooter({ text: 'Use "kys" for a fresh session · "amnesia" to forget the last turn' });
         try {
           await message.reply({ embeds: [trimEmbed], allowedMentions: { repliedUser: false } });
         } catch (warnErr) {
@@ -425,7 +492,7 @@ const scriptHandlers = {
         const warningEmbed = new EmbedBuilder()
           .setColor(warningColor as `#${string}`)
           .setDescription(pctWarning.message)
-          .setFooter({ text: 'Use "kys" to start a fresh session' });
+          .setFooter({ text: 'Use "kys" for a fresh session · "amnesia" to forget the last turn' });
         try {
           await message.reply({ embeds: [warningEmbed], allowedMentions: { repliedUser: false } });
         } catch (warnErr) {
