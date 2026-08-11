@@ -184,7 +184,10 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
       };
 
       if (moderationOn) {
-        if (session.moderationFlagged) return pausedResponse(session.sessionId);
+        // Fresh read, not the pre-lock snapshot: a send queued behind one that
+        // paused the session would otherwise pass this check and run a paid
+        // generation before the delivery guard caught it.
+        if (await isPausedNow()) return pausedResponse(session.sessionId);
         const inboundVerdict = await moderateExchange(messageRaw);
         if (!inboundVerdict.safe) {
           await pauseSession(inboundVerdict);

@@ -84,7 +84,10 @@ class AskSilverwolfAI extends Command {
         };
 
         if (moderationOn) {
-          if (aiSession.moderationFlagged) {
+          // Fresh read, not the pre-lock snapshot: a turn queued behind one that
+          // paused the session would otherwise pass this check and run a paid
+          // generation before the delivery guard caught it.
+          if (await isPausedNow()) {
             await interaction.editReply({ content: MODERATION_PAUSED_MESSAGE, embeds: [] });
             return;
           }

@@ -115,6 +115,12 @@ The pause is a read-check-write spanning a multi-second generation, so it is enf
    and the write are one statement. This holds even where no lock is taken, and `addHistory` returns
    whether the row landed.
 
+**Never test `moderationFlagged` on the session row resolved *before* the lock** — a turn queued
+behind one that paused the session would not see the flag on that stale snapshot. Every surface has
+an `isPausedNow()` that re-reads inside the lock; use it both before generating (saves a paid call)
+and again before delivery (the conditional INSERT stops persistence, but nothing else stops a
+webhook send).
+
 `flagSessionModeration` returns whether the write landed. `Database.executeQuery` swallows errors
 and reports `changes: 0` rather than throwing, so callers **must** check: a caller that assumed
 success would tell the user the chat was paused while leaving the row unflagged, and the next

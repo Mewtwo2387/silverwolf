@@ -429,9 +429,20 @@ const scriptHandlers = {
         await sendModerationPause(message, displayName, avatarURL, !!aiSession);
       };
 
+      /**
+       * Current pause state, read inside the lock. `aiSession` was captured
+       * before the lock was acquired, so a turn queued behind one that paused
+       * the session would not see the flag on that snapshot.
+       */
+      const isPausedNow = async (): Promise<boolean> => {
+        if (!moderationOn || !aiSession) return false;
+        const fresh = await (message.client as any).db.aiChat.getSessionById(aiSession.sessionId);
+        return !!fresh?.moderationFlagged;
+      };
+
       if (moderationOn) {
         // Already paused: refuse before spending anything at all.
-        if (aiSession?.moderationFlagged) {
+        if (await isPausedNow()) {
           await flagAndNotify();
           return;
         }
@@ -517,6 +528,14 @@ const scriptHandlers = {
           const outboundVerdict = await moderateExchange(ownTurnText, screenedOutput);
           if (!outboundVerdict.safe) {
             await flagAndNotify(outboundVerdict);
+            return;
+          }
+          // A concurrent turn may have paused this session while we were
+          // generating. The conditional ADD_HISTORY already blocks persistence,
+          // but delivery rides a webhook that nothing else guards — without this
+          // the reply still reaches the channel of a paused chat.
+          if (await isPausedNow()) {
+            await flagAndNotify();
             return;
           }
         }

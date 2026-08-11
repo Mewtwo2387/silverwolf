@@ -187,8 +187,10 @@ export async function moderateExchange(
     const verdict = parseModerationOutput(rawOutput);
     // A non-empty reply with no label means a truncated or malformed
     // classification (e.g. a reasoning trace that ate the whole token budget).
-    // That fails open by design — but silently, so say so.
-    if (rawOutput.trim() && !/User Safety\s*:/i.test(rawOutput)) {
+    // That fails open by design — but silently, so say so. Test the *cleaned*
+    // output: a label quoted inside a `<think>` preamble is not a verdict, and
+    // testing the raw text would let it suppress this warning.
+    if (rawOutput.trim() && !/User Safety\s*:/i.test(stripThinking(rawOutput))) {
       logWarning('[moderation] classifier returned no recognisable label; failing open');
     }
     if (!verdict.safe) {
