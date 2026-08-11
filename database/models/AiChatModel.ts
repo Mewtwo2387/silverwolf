@@ -217,12 +217,21 @@ class AiChatModel {
 
   /**
    * Appends a message to the session's history.
+   *
+   * No-ops when the session has been paused by the content-safety screen — the
+   * guard lives in the INSERT itself, so a turn that was already generating when
+   * another turn paused the session cannot write into it. Returns whether the
+   * row was written.
    */
-  async addHistory(sessionId: number, role: 'user' | 'model' | 'assistant' | 'tool', message: string): Promise<void> {
+  async addHistory(sessionId: number, role: 'user' | 'model' | 'assistant' | 'tool', message: string): Promise<boolean> {
     const stored = role === 'model' || role === 'assistant'
       ? stripModelTimestampPrefix(message)
       : message;
-    await this.db.executeQuery(aiChatQueries.ADD_HISTORY, [sessionId, role, stored]);
+    const result = await this.db.executeQuery(
+      aiChatQueries.ADD_HISTORY,
+      [sessionId, role, stored, sessionId],
+    );
+    return Number(result.changes ?? 0) > 0;
   }
 
   /**

@@ -103,6 +103,18 @@ once, so every pause check is gated on it — including `undoLastTurn`'s, via it
 `honorModerationPause` argument. Without that, a flagged session would chat normally while still
 refusing amnesia.
 
+### Concurrency
+
+The pause is a read-check-write spanning a multi-second generation, so it is enforced twice over:
+
+1. **`withAiSessionLock(sessionId, …)`** (`utils/aiSessionLock.ts`) wraps the whole
+   check → generate → persist → deliver sequence on all three session surfaces. Two turns in one
+   conversation queue instead of racing. It uses a **separate registry** from `userLocks` — sharing
+   it would stall a user's `/claim` behind their own multi-minute AI reply.
+2. **`ADD_HISTORY` is conditional** on `moderation_flagged = 0` in the INSERT itself, so the check
+   and the write are one statement. This holds even where no lock is taken, and `addHistory` returns
+   whether the row landed.
+
 `flagSessionModeration` returns whether the write landed. `Database.executeQuery` swallows errors
 and reports `changes: 0` rather than throwing, so callers **must** check: a caller that assumed
 success would tell the user the chat was paused while leaving the row unflagged, and the next
