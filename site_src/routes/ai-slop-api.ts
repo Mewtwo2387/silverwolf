@@ -156,10 +156,25 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
     });
     const pauseSession = async (verdict: ModerationVerdict) => {
       try {
-        await silverwolf.db.aiChat.flagSessionModeration(session.sessionId, verdict.categories);
+        const flagged = await silverwolf.db.aiChat.flagSessionModeration(
+          session.sessionId,
+          verdict.categories,
+        );
+        // This turn is refused regardless, but an unflagged session would let
+        // the next one through — that must not be silent.
+        if (!flagged) {
+          logError(`[ai-slop] content-safety pause did not persist for session ${session.sessionId}; session may resume`);
+        }
       } catch (flagErr) {
         logError('[ai-slop] failed to flag session for moderation:', flagErr);
       }
+    };
+
+    /** Re-read the pause state; a concurrent send may have flagged it since. */
+    const isPausedNow = async (): Promise<boolean> => {
+      if (!moderationOn) return false;
+      const fresh = await silverwolf.db.aiChat.getSessionById(session.sessionId);
+      return !!fresh?.moderationFlagged;
     };
 
     if (moderationOn) {
@@ -216,6 +231,9 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
           await pauseSession(outboundVerdict);
           return pausedResponse(session.sessionId);
         }
+        // A concurrent send may have paused this session while we were
+        // generating; don't deliver or persist into a chat that is now paused.
+        if (await isPausedNow()) return pausedResponse(session.sessionId);
       }
 
       // Persist: user → tool audit rows (if any) → assistant. Match the bot's order.

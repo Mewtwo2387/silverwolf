@@ -54,11 +54,26 @@ class AskSilverwolfAI extends Command {
       const moderationOn = await isModerationEnabled(this.client.db);
       const pauseSession = async (categories?: string) => {
         try {
-          await this.client.db.aiChat.flagSessionModeration(aiSession.sessionId, categories);
+          const flagged = await this.client.db.aiChat.flagSessionModeration(
+            aiSession.sessionId,
+            categories,
+          );
+          // This turn is refused regardless, but an unflagged session would let
+          // the next one through — that must not be silent.
+          if (!flagged) {
+            logError(`AiChat: content-safety pause did not persist for session ${aiSession.sessionId}; session may resume`);
+          }
         } catch (flagErr) {
           logError('AiChat: Failed to flag session for moderation:', flagErr);
         }
         await interaction.editReply({ content: MODERATION_PAUSED_MESSAGE, embeds: [] });
+      };
+
+      /** Re-read the pause state; a concurrent turn may have flagged it since. */
+      const isPausedNow = async (): Promise<boolean> => {
+        if (!moderationOn) return false;
+        const fresh = await this.client.db.aiChat.getSessionById(aiSession.sessionId);
+        return !!fresh?.moderationFlagged;
       };
 
       if (moderationOn) {
@@ -100,6 +115,12 @@ class AskSilverwolfAI extends Command {
         const outbound = await moderateExchange(prompt, text);
         if (!outbound.safe) {
           await pauseSession(outbound.categories);
+          return;
+        }
+        // A concurrent turn may have paused this session while we were
+        // generating; don't deliver or persist into a chat that is now paused.
+        if (await isPausedNow()) {
+          await interaction.editReply({ content: MODERATION_PAUSED_MESSAGE, embeds: [] });
           return;
         }
       }

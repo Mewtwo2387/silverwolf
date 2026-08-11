@@ -53,7 +53,26 @@ not in `FREE_MODELS` because it never reaches the code that consults it. **Don't
 `generateContent`** — that would start billing users for being moderated.
 
 **The screen fails open** — an outage, timeout, or unparseable label logs and allows the turn. A
-free classifier must never be able to take down every conversation on the bot.
+free classifier must never be able to take down every conversation on the bot. Budgets are tight for
+the same reason (15s per attempt, 20s overall): the screen runs twice per turn and sits on the
+critical path, so a degraded classifier must fail open fast rather than stall the reply.
+
+### Known limits
+
+- **Generated media is not screened.** The classifier is invoked text-only, so images from
+  `generate_image` and audio from `generate_music` are never inspected. The mention handler screens
+  the *prompts* the model passed to those tools instead (a tool-driven turn can return files with
+  empty `text`, which would otherwise sail through the output screen). The bytes themselves are not
+  covered.
+- **A post-screen trip still costs credits** on every surface — generation has already happened by
+  then. The pre-screen exists to make that the uncommon case.
+- **Only the user's own text is screened for the pause decision** on the mention handler
+  (`ownTurnText`), not the quoted reply context or attached PDF bodies. Screening those would let
+  someone permanently pause a third party's session just by being quoted at. Content induced *by*
+  quoted context is still caught by the output screen.
+- **`/summary` is output-screened only.** Its input is a transcript of other people's channel
+  messages, so pre-screening would block summarising any channel where someone said something spicy
+  — a false-positive surface with no session to protect.
 
 ### Per-surface behaviour
 
@@ -78,6 +97,16 @@ records usage: the tokens were spent before the screen ran.
 (`undoLastTurn` → `reason: 'paused'`) — the tripping turn was never persisted, so it would only eat
 an earlier legitimate turn while implying the pause had lifted. `/ai chatswitch` to a different,
 unflagged session is allowed; that is equivalent to starting a new chat.
+
+`ai_moderation` is a **master switch**: turning it off must restore normal behaviour everywhere at
+once, so every pause check is gated on it — including `undoLastTurn`'s, via its
+`honorModerationPause` argument. Without that, a flagged session would chat normally while still
+refusing amnesia.
+
+`flagSessionModeration` returns whether the write landed. `Database.executeQuery` swallows errors
+and reports `changes: 0` rather than throwing, so callers **must** check: a caller that assumed
+success would tell the user the chat was paused while leaving the row unflagged, and the next
+message would generate normally. Callers refuse the current turn either way and log loudly.
 
 ## Retry
 

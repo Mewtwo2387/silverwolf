@@ -682,6 +682,8 @@ export function AiSlopPage(opts: {
   let currentPersona = PERSONAS[0];
   let hasMessages = false;
   let sending = false;
+  // Set when the server reports this session was paused by safety filters.
+  let sessionPaused = false;
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, (ch) => {
@@ -703,9 +705,16 @@ export function AiSlopPage(opts: {
 
   function setSending(s) {
     sending = s;
-    sendBtn.disabled = s;
-    textarea.disabled = s;
+    // A session paused by safety filters stays locked regardless of send state:
+    // further submissions would only render optimistic turns the server refuses.
+    sendBtn.disabled = s || sessionPaused;
+    textarea.disabled = s || sessionPaused;
     modelSel.disabled = s || hasMessages || currentSessionId != null;
+  }
+
+  function setSessionPaused(p) {
+    sessionPaused = p;
+    setSending(sending);
   }
 
   function updateSelectorLock() {
@@ -884,6 +893,7 @@ export function AiSlopPage(opts: {
   function newChat() {
     currentSessionId = null;
     hasMessages = false;
+    setSessionPaused(false);
     setHead('New chat', currentPersona);
     renderEmptyState();
     setError('');
@@ -894,6 +904,9 @@ export function AiSlopPage(opts: {
 
   async function loadSession(sessionId, fallbackPersona) {
     setError('');
+    // The lock is per-session; switching away from a paused chat unlocks the
+    // composer (the server re-checks the target session on send regardless).
+    setSessionPaused(false);
     let data;
     try {
       const r = await fetch('/games/ai-slop/session/' + encodeURIComponent(sessionId) + '/messages');
@@ -992,6 +1005,7 @@ export function AiSlopPage(opts: {
     // Safety filters paused this chat: the reply above is the pause notice, and
     // the turn was not saved. Further sends on this session are refused.
     if (d.moderationPaused) {
+      setSessionPaused(true);
       setError('This chat has been paused by safety filters. Start a new chat to continue.');
     }
 

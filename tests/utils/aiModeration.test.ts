@@ -47,6 +47,28 @@ describe('parseModerationOutput', () => {
     )).toEqual({ safe: false, flaggedSide: 'user', categories: undefined });
   });
 
+  test('handles a dangling </think> with no opening tag', () => {
+    // Some models emit only the closer because the opener is in the chat
+    // template. Everything before it is reasoning that may quote a label.
+    expect(parseModerationOutput(
+      'The user asks about knives. User Safety: safe would be wrong.\n</think>\nUser Safety: unsafe\nSafety Categories: Violence',
+    )).toEqual({ safe: false, flaggedSide: 'user', categories: 'Violence' });
+  });
+
+  test('reads the last label occurrence, not the first', () => {
+    expect(parseModerationOutput('User Safety: safe\nUser Safety: unsafe')).toEqual({
+      safe: false,
+      flaggedSide: 'user',
+      categories: undefined,
+    });
+  });
+
+  test('a safe verdict after a dangling think block stays safe', () => {
+    expect(parseModerationOutput(
+      'Considering whether User Safety: unsafe applies.\n</think>\nUser Safety: safe\nResponse Safety: safe',
+    )).toEqual({ safe: true });
+  });
+
   test('fails open on empty or unparseable output', () => {
     expect(parseModerationOutput('')).toEqual({ safe: true });
     expect(parseModerationOutput('   ')).toEqual({ safe: true });

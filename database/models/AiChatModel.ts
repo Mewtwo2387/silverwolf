@@ -1,7 +1,10 @@
 import { stripModelTimestampPrefix } from '../../utils/ai';
-import { log } from '../../utils/log';
+import { log, logError } from '../../utils/log';
 import aiChatQueries from '../queries/aiChatQueries';
 import type Database from '../Database';
+
+/** Audit field, not a control value — long enough for the full category list. */
+const MAX_MODERATION_CATEGORY_CHARS = 500;
 
 /** Model for managing per-user, per-persona AI chat sessions and history. */
 class AiChatModel {
@@ -152,13 +155,33 @@ class AiChatModel {
    * Marks a session as paused by the content-safety screen. Idempotent; the
    * session keeps its `active` flag so the user can still read the history and
    * so `getOrCreateSession` keeps returning it (and keeps refusing).
+   *
+   * Returns whether the pause actually persisted. `executeQuery` swallows DB
+   * errors and reports `changes: 0` rather than throwing, so a caller that
+   * assumed success would tell the user the chat was paused while leaving the
+   * row unflagged — and the very next message would generate normally.
    */
-  async flagSessionModeration(sessionId: number, categories?: string | null): Promise<void> {
-    await this.db.executeQuery(
+  async flagSessionModeration(sessionId: number, categories?: string | null): Promise<boolean> {
+    const id = Math.trunc(Number(sessionId));
+    if (!Number.isFinite(id) || !Number.isInteger(id) || id <= 0) {
+      logError(`AiChat: refusing to flag invalid session id ${String(sessionId)}`);
+      return false;
+    }
+    // Categories are free-form classifier output stored for audit only; trim and
+    // cap rather than whitelisting, since the model's taxonomy is its own and a
+    // new category label should be recorded, not silently dropped.
+    const trimmed = categories?.trim().slice(0, MAX_MODERATION_CATEGORY_CHARS) || null;
+
+    const result = await this.db.executeQuery(
       aiChatQueries.FLAG_SESSION_MODERATION,
-      [categories?.trim() || null, sessionId],
+      [trimmed, id],
     );
-    log(`AiChat: Session ${sessionId} paused by content-safety screen${categories ? ` (${categories})` : ''}`);
+    if (Number(result.changes ?? 0) !== 1) {
+      logError(`AiChat: failed to persist content-safety pause for session ${id} (no row changed)`);
+      return false;
+    }
+    log(`AiChat: Session ${id} paused by content-safety screen${trimmed ? ` (${trimmed})` : ''}`);
+    return true;
   }
 
   /**
@@ -210,6 +233,7 @@ class AiChatModel {
   async undoLastTurn(
     userId: string,
     personaName: string,
+    honorModerationPause: boolean = true,
   ): Promise<
     | { ok: true; sessionId: number; deletedCount: number; userMessage: string }
     | { ok: false; reason: 'no_session' | 'empty' | 'paused' }
@@ -224,7 +248,11 @@ class AiChatModel {
     // A paused session never persisted the turn that tripped the filter, so
     // amnesia here would silently eat an *earlier*, legitimate turn — and must
     // never be mistaken for a way out of the pause. `kys` is the only exit.
-    if (session.moderationFlagged) {
+    //
+    // Gated on the caller's view of the `ai_moderation` switch: it is a master
+    // switch, so turning it off must restore normal behaviour everywhere at
+    // once. Otherwise a flagged session would chat normally but refuse amnesia.
+    if (honorModerationPause && session.moderationFlagged) {
       return { ok: false, reason: 'paused' };
     }
 

@@ -48,7 +48,16 @@ const MAX_SCREENED_CHARS = 8000;
 const MODERATION_MAX_TOKENS = 512;
 
 /** Classification is on the critical path of every message; don't wait long. */
-const MODERATION_TIMEOUT_MS = 30_000;
+const MODERATION_TIMEOUT_MS = 15_000;
+
+/**
+ * Total budget across retries, deliberately close to the per-attempt timeout.
+ * `createChatCompletionWithRetry` retries on 429/5xx/network, and the screen runs
+ * twice per turn — a generous overall budget would let a degraded free classifier
+ * add minutes of latency before the turn fails open. This leaves room for one
+ * fast retry on a transient blip and no more.
+ */
+const MODERATION_OVERALL_TIMEOUT_MS = 20_000;
 
 export interface ModerationVerdict {
   /** False when the exchange must not continue — the only field callers must act on. */
@@ -78,15 +87,31 @@ function truncate(text: string): string {
   return trimmed.length > MAX_SCREENED_CHARS ? trimmed.slice(0, MAX_SCREENED_CHARS) : trimmed;
 }
 
-/** Strips a reasoning-mode `<think>…</think>` preamble from the classifier output. */
+/**
+ * Strips a reasoning-mode `<think>…</think>` preamble from the classifier output.
+ *
+ * Handles the dangling-closer case too: some models emit only `</think>` because
+ * the opening tag lives in the chat template. Everything before that closer is
+ * reasoning — and a trace routinely *quotes* a label ("...so User Safety: unsafe
+ * would be wrong here"), so failing to cut it lets `readLabel` pick a sentence
+ * out of the model's deliberation instead of its verdict.
+ */
 function stripThinking(raw: string): string {
-  return raw.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '').trim();
+  const stripped = raw.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '').trim();
+  const closeIdx = stripped.toLowerCase().lastIndexOf('</think>');
+  return closeIdx === -1 ? stripped : stripped.slice(closeIdx + '</think>'.length).trim();
 }
 
+/**
+ * Reads a label line. Takes the **last** match: the verdict is emitted at the
+ * end, so if any reasoning survived stripping, the final occurrence is the one
+ * that counts.
+ */
 function readLabel(raw: string, label: string): string | null {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = raw.match(new RegExp(`^\\s*${escaped}\\s*:\\s*(.+)$`, 'im'));
-  return match ? match[1].trim() : null;
+  const matches = [...raw.matchAll(new RegExp(`^\\s*${escaped}\\s*:\\s*(.+)$`, 'img'))];
+  if (matches.length === 0) return null;
+  return matches[matches.length - 1][1].trim();
 }
 
 /**
@@ -153,9 +178,19 @@ export async function moderateExchange(
       model: persona.model,
       messages,
       max_tokens: MODERATION_MAX_TOKENS,
-    }, { timeoutMs: MODERATION_TIMEOUT_MS, overallTimeoutMs: MODERATION_TIMEOUT_MS * 2 });
+    }, {
+      timeoutMs: MODERATION_TIMEOUT_MS,
+      overallTimeoutMs: MODERATION_OVERALL_TIMEOUT_MS,
+    });
 
-    const verdict = parseModerationOutput(completion.choices?.[0]?.message?.content ?? '');
+    const rawOutput = completion.choices?.[0]?.message?.content ?? '';
+    const verdict = parseModerationOutput(rawOutput);
+    // A non-empty reply with no label means a truncated or malformed
+    // classification (e.g. a reasoning trace that ate the whole token budget).
+    // That fails open by design — but silently, so say so.
+    if (rawOutput.trim() && !/User Safety\s*:/i.test(rawOutput)) {
+      logWarning('[moderation] classifier returned no recognisable label; failing open');
+    }
     if (!verdict.safe) {
       log(`[moderation] flagged ${verdict.flaggedSide} turn${verdict.categories ? ` (${verdict.categories})` : ''}`);
     }

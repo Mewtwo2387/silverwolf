@@ -19,7 +19,8 @@ import {
   type MediaKind,
 } from '../../utils/aiMedia';
 import {
-  isModerationEnabled, moderateExchange, MODERATION_PAUSED_MESSAGE, type ModerationVerdict,
+  isModerationEnabled, moderateExchange, MODERATION_PAUSED_MESSAGE, MODERATION_BLOCKED_MESSAGE,
+  type ModerationVerdict,
 } from '../../utils/aiModeration';
 
 const WEBHOOK_NAME = process.env.WEBHOOK_NAME || 'grok-webhook';
@@ -36,25 +37,31 @@ async function getAiWebhook(message: Message, avatarURL: string): Promise<any> {
 }
 
 /**
- * Delivers the content-safety pause notice in the voice of the persona the user
- * was talking to. Falls back to a plain reply if the webhook is unavailable.
+ * Delivers the content-safety notice in the voice of the persona the user was
+ * talking to. Falls back to a plain reply if the webhook is unavailable.
+ *
+ * `paused` picks the wording: a memoryless persona has no session to pause, so
+ * telling that user to "start a new chat" would be nonsense — the next message
+ * is already screened from scratch.
  */
 async function sendModerationPause(
   message: Message,
   displayName: string,
   avatarURL: string,
+  paused: boolean = true,
 ): Promise<void> {
+  const content = paused ? MODERATION_PAUSED_MESSAGE : MODERATION_BLOCKED_MESSAGE;
   try {
     const webhook = await getAiWebhook(message, avatarURL);
     await webhook.send({
-      content: MODERATION_PAUSED_MESSAGE,
+      content,
       username: displayName,
       avatarURL,
       allowedMentions: { parse: [] },
     });
   } catch (err) {
     logError('AiChat: failed to deliver moderation pause via webhook:', err);
-    await message.reply({ content: MODERATION_PAUSED_MESSAGE, allowedMentions: { repliedUser: false } })
+    await message.reply({ content, allowedMentions: { repliedUser: false } })
       .catch((e) => { logError('AiChat: moderation pause reply failed:', e); });
   }
 }
@@ -167,6 +174,11 @@ const scriptHandlers = {
     const NO_MEMORY_PERSONAS = ['Summarizer'];
     const hasMemory = !NO_MEMORY_PERSONAS.includes(displayName);
 
+    // Read once, up front: `ai_moderation` is a master switch, so every
+    // moderation-aware branch below (including amnesia) must agree on its value
+    // within a single message.
+    const moderationOn = await isModerationEnabled((message.client as any).db);
+
     if (shouldStartNewSession && hasMemory) {
       try {
         const newSession = await (message.client as any).db.aiChat.startNewSession(
@@ -195,6 +207,7 @@ const scriptHandlers = {
         const result = await (message.client as any).db.aiChat.undoLastTurn(
           message.author.id,
           displayName,
+          moderationOn,
         );
 
         if (!result.ok && result.reason === 'paused') {
@@ -323,6 +336,14 @@ const scriptHandlers = {
       prompt = `${pdfPrefix}User ${username} said: ${query}${mediaSuffix}`;
     }
 
+    // What the *user themselves* wrote, with no quoted reply context and no PDF
+    // body. This — not `prompt` — is what the content-safety screen judges for
+    // the purpose of pausing: `prompt` embeds another user's message when this
+    // is a reply, so screening it would let someone permanently pause a third
+    // party's session just by being quoted at. The model's reply is still
+    // post-screened, which is where content induced by quoted context surfaces.
+    const ownTurnText = `User ${username} said: ${query}`;
+
     log(`Prompt: ${prompt}`);
 
     const avatarURL = persona.avatarURL || message.client.user!.displayAvatarURL();
@@ -367,45 +388,52 @@ const scriptHandlers = {
     }
 
     // Content-safety gate (global `ai_moderation` switch). Applies to every
-    // persona and every user alike. Releases the media slot on every early exit
-    // — the normal path frees it in the generation `finally` below.
-    const moderationOn = await isModerationEnabled((message.client as any).db);
-    const pauseChat = async (verdict?: ModerationVerdict) => {
+    // persona and every user alike. Releases the media slot on every exit — the
+    // normal path frees it in the generation `finally` below.
+    //
+    // `flagAndNotify` is the single exit for every trip, so the cleanup, the
+    // flag write and the notice can never drift apart. `verdict` is omitted when
+    // the session was already flagged by an earlier turn (nothing to re-record).
+    const flagAndNotify = async (verdict?: ModerationVerdict) => {
       if (mediaSlotHeld) {
         releaseMediaSlot();
         mediaSlotHeld = false;
       }
       mediaParts = [];
       imageEditParts = [];
-      if (aiSession) {
+      if (aiSession && verdict) {
         try {
-          await (message.client as any).db.aiChat.flagSessionModeration(
+          const flagged = await (message.client as any).db.aiChat.flagSessionModeration(
             aiSession.sessionId,
-            verdict?.categories,
+            verdict.categories,
           );
+          // The turn is refused either way — but an unflagged session would let
+          // the *next* message through, so this must be loud.
+          if (!flagged) {
+            logError(`AiChat: content-safety pause did not persist for session ${aiSession.sessionId}; session may resume`);
+          }
         } catch (flagErr) {
           logError('AiChat: Failed to flag session for moderation:', flagErr);
         }
       }
-      await sendModerationPause(message, displayName, avatarURL);
+      // A memoryless persona has no session to pause — say "blocked", not
+      // "start a new chat".
+      await sendModerationPause(message, displayName, avatarURL, !!aiSession);
     };
 
     if (moderationOn) {
       // Already paused: refuse before spending anything at all.
       if (aiSession?.moderationFlagged) {
-        if (mediaSlotHeld) {
-          releaseMediaSlot();
-          mediaSlotHeld = false;
-        }
-        await sendModerationPause(message, displayName, avatarURL);
+        await flagAndNotify();
         return;
       }
 
-      // Pre-screen the incoming message so an unsafe prompt never reaches (or
-      // bills) the chat model.
-      const inboundVerdict = await moderateExchange(prompt);
+      // Pre-screen the user's own text so an unsafe prompt never reaches (or
+      // bills) the chat model. Quoted context and PDF bodies are excluded — see
+      // `ownTurnText`.
+      const inboundVerdict = await moderateExchange(ownTurnText);
       if (!inboundVerdict.safe) {
-        await pauseChat(inboundVerdict);
+        await flagAndNotify(inboundVerdict);
         return;
       }
     }
@@ -462,13 +490,25 @@ const scriptHandlers = {
       }
       const { text, images, toolCalls } = genResult;
 
-      // Post-screen the full exchange — the classifier judges the reply with the
-      // prompt that produced it in context. Nothing from this turn is delivered
-      // or persisted when it trips.
+      // Post-screen the exchange — the classifier judges the reply with the turn
+      // that produced it in context. Nothing from this turn is delivered or
+      // persisted when it trips (the credits are still spent; generation has
+      // already happened).
+      //
+      // A tool-driven turn can return generated files with empty `text`, which
+      // would otherwise re-screen the prompt that already passed inbound and
+      // wave the files through. The classifier is text-only here, so screen the
+      // prompts the model asked the tools for instead. The generated bytes
+      // themselves are never screened — documented in .claude/rules/ai-limits.md.
       if (moderationOn) {
-        const outboundVerdict = await moderateExchange(prompt, text);
+        const generationPrompts = (toolCalls ?? [])
+          .filter((tc: any) => tc.name === IMAGE_GEN_TOOL_NAME || tc.name === MUSIC_GEN_TOOL_NAME)
+          .map((tc: any) => String(tc.args?.prompt ?? tc.args?.title ?? ''))
+          .filter(Boolean);
+        const screenedOutput = [text, ...generationPrompts].filter(Boolean).join('\n');
+        const outboundVerdict = await moderateExchange(ownTurnText, screenedOutput);
         if (!outboundVerdict.safe) {
-          await pauseChat(outboundVerdict);
+          await flagAndNotify(outboundVerdict);
           return;
         }
       }
