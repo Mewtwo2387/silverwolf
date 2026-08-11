@@ -58,6 +58,12 @@
       "systemPromptFile": "data/SummarizerSystemPrompt.txt"
     },
     {
+      "name": "Moderation",
+      "triggers": [],
+      "provider": "openrouter",
+      "model": "nvidia/nemotron-3.5-content-safety:free"
+    },
+    {
       "name": "Imgen",
       "triggers": [],
       "provider": "openrouter",

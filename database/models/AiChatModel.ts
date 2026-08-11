@@ -149,6 +149,19 @@ class AiChatModel {
   }
 
   /**
+   * Marks a session as paused by the content-safety screen. Idempotent; the
+   * session keeps its `active` flag so the user can still read the history and
+   * so `getOrCreateSession` keeps returning it (and keeps refusing).
+   */
+  async flagSessionModeration(sessionId: number, categories?: string | null): Promise<void> {
+    await this.db.executeQuery(
+      aiChatQueries.FLAG_SESSION_MODERATION,
+      [categories?.trim() || null, sessionId],
+    );
+    log(`AiChat: Session ${sessionId} paused by content-safety screen${categories ? ` (${categories})` : ''}`);
+  }
+
+  /**
    * Switches the active session for a user/persona to a specific session.
    * Deactivates all current sessions for that user/persona first, then activates the target.
    */
@@ -199,7 +212,7 @@ class AiChatModel {
     personaName: string,
   ): Promise<
     | { ok: true; sessionId: number; deletedCount: number; userMessage: string }
-    | { ok: false; reason: 'no_session' | 'empty' }
+    | { ok: false; reason: 'no_session' | 'empty' | 'paused' }
   > {
     const session = await this.db.executeSelectQuery(
       aiChatQueries.GET_ACTIVE_SESSION,
@@ -207,6 +220,12 @@ class AiChatModel {
     );
     if (!session || session.userId !== userId) {
       return { ok: false, reason: 'no_session' };
+    }
+    // A paused session never persisted the turn that tripped the filter, so
+    // amnesia here would silently eat an *earlier*, legitimate turn — and must
+    // never be mistaken for a way out of the pause. `kys` is the only exit.
+    if (session.moderationFlagged) {
+      return { ok: false, reason: 'paused' };
     }
 
     const outcome = await this.db.executeTransaction((rawDb: any) => {

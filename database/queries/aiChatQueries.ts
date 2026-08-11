@@ -41,6 +41,10 @@ const aiChatQueries = {
   RENAME_SESSION: 'UPDATE AiChatSession SET title = ? WHERE session_id = ?',
   ACTIVATE_SESSION: 'UPDATE AiChatSession SET active = 1 WHERE session_id = ?',
   END_ALL_USER_PERSONA_SESSIONS: 'UPDATE AiChatSession SET active = 0 WHERE user_id = ? AND persona_name = ?',
+  // Content-safety pause. `active` is deliberately left alone: deactivating
+  // would make getOrCreateSession silently hand out a fresh session on the very
+  // next message, which is the opposite of pausing.
+  FLAG_SESSION_MODERATION: 'UPDATE AiChatSession SET moderation_flagged = 1, moderation_categories = ? WHERE session_id = ?',
 
   // History management
   ADD_HISTORY: 'INSERT INTO AiChatHistory (session_id, role, message) VALUES (?, ?, ?)',

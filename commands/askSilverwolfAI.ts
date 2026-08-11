@@ -4,6 +4,7 @@ import { log, logError } from '../utils/log';
 import { getPersonaByName, generateContent, generateTitleForHistory } from '../utils/ai';
 import { trimHistoryToFit } from '../utils/tokenizer';
 import { handleRateLimitError } from '../utils/discordRateLimit';
+import { isModerationEnabled, moderateExchange, MODERATION_PAUSED_MESSAGE } from '../utils/aiModeration';
 
 const PERSONA_NAME = 'Silverwolf';
 
@@ -47,6 +48,31 @@ class AskSilverwolfAI extends Command {
         return;
       }
 
+      // /ask shares the "Silverwolf" session with the `@sw` mention persona, so
+      // it gets the full pause treatment — reply-and-drop here would be a way to
+      // keep talking to a chat that mentions had already paused.
+      const moderationOn = await isModerationEnabled(this.client.db);
+      const pauseSession = async (categories?: string) => {
+        try {
+          await this.client.db.aiChat.flagSessionModeration(aiSession.sessionId, categories);
+        } catch (flagErr) {
+          logError('AiChat: Failed to flag session for moderation:', flagErr);
+        }
+        await interaction.editReply({ content: MODERATION_PAUSED_MESSAGE, embeds: [] });
+      };
+
+      if (moderationOn) {
+        if (aiSession.moderationFlagged) {
+          await interaction.editReply({ content: MODERATION_PAUSED_MESSAGE, embeds: [] });
+          return;
+        }
+        const inbound = await moderateExchange(prompt);
+        if (!inbound.safe) {
+          await pauseSession(inbound.categories);
+          return;
+        }
+      }
+
       const rawHistory = await this.client.db.aiChat.getHistory(aiSession.sessionId, 100);
       const hadRawHistory = rawHistory.length > 0;
       const filteredHistory = rawHistory.filter((h: { role: string }) => h.role !== 'tool');
@@ -69,6 +95,14 @@ class AskSilverwolfAI extends Command {
         history,
         webSearchEnabled: persona.webSearchEnabled,
       });
+
+      if (moderationOn) {
+        const outbound = await moderateExchange(prompt, text);
+        if (!outbound.safe) {
+          await pauseSession(outbound.categories);
+          return;
+        }
+      }
 
       const processedText = (text || '').replace('(Trailblazer)', username);
       const searchPrefix = toolCalls && toolCalls.length > 0

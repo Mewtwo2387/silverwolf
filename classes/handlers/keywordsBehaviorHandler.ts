@@ -18,8 +18,46 @@ import {
   collectMediaFromMessage, hasQualifyingMedia, tryAcquireMediaSlot, releaseMediaSlot,
   type MediaKind,
 } from '../../utils/aiMedia';
+import {
+  isModerationEnabled, moderateExchange, MODERATION_PAUSED_MESSAGE, type ModerationVerdict,
+} from '../../utils/aiModeration';
 
 const WEBHOOK_NAME = process.env.WEBHOOK_NAME || 'grok-webhook';
+
+/** Fetches (or creates) the shared AI webhook for a channel. */
+async function getAiWebhook(message: Message, avatarURL: string): Promise<any> {
+  const webhooks = await (message.channel as TextChannel).fetchWebhooks();
+  const existing = webhooks.find((wh: any) => wh.name === WEBHOOK_NAME && wh.token);
+  if (existing) return existing;
+  return (message.channel as TextChannel).createWebhook({
+    name: WEBHOOK_NAME,
+    avatar: avatarURL,
+  });
+}
+
+/**
+ * Delivers the content-safety pause notice in the voice of the persona the user
+ * was talking to. Falls back to a plain reply if the webhook is unavailable.
+ */
+async function sendModerationPause(
+  message: Message,
+  displayName: string,
+  avatarURL: string,
+): Promise<void> {
+  try {
+    const webhook = await getAiWebhook(message, avatarURL);
+    await webhook.send({
+      content: MODERATION_PAUSED_MESSAGE,
+      username: displayName,
+      avatarURL,
+      allowedMentions: { parse: [] },
+    });
+  } catch (err) {
+    logError('AiChat: failed to deliver moderation pause via webhook:', err);
+    await message.reply({ content: MODERATION_PAUSED_MESSAGE, allowedMentions: { repliedUser: false } })
+      .catch((e) => { logError('AiChat: moderation pause reply failed:', e); });
+  }
+}
 
 /** Collapse whitespace and lowercase for exact trigger+command matching. */
 function normalizeSessionCommandText(text: string): string {
@@ -158,6 +196,11 @@ const scriptHandlers = {
           message.author.id,
           displayName,
         );
+
+        if (!result.ok && result.reason === 'paused') {
+          await sendModerationPause(message, displayName, persona.avatarURL || message.client.user!.displayAvatarURL());
+          return;
+        }
 
         if (!result.ok) {
           const emptyEmbed = new EmbedBuilder()
@@ -323,6 +366,50 @@ const scriptHandlers = {
       }
     }
 
+    // Content-safety gate (global `ai_moderation` switch). Applies to every
+    // persona and every user alike. Releases the media slot on every early exit
+    // — the normal path frees it in the generation `finally` below.
+    const moderationOn = await isModerationEnabled((message.client as any).db);
+    const pauseChat = async (verdict?: ModerationVerdict) => {
+      if (mediaSlotHeld) {
+        releaseMediaSlot();
+        mediaSlotHeld = false;
+      }
+      mediaParts = [];
+      imageEditParts = [];
+      if (aiSession) {
+        try {
+          await (message.client as any).db.aiChat.flagSessionModeration(
+            aiSession.sessionId,
+            verdict?.categories,
+          );
+        } catch (flagErr) {
+          logError('AiChat: Failed to flag session for moderation:', flagErr);
+        }
+      }
+      await sendModerationPause(message, displayName, avatarURL);
+    };
+
+    if (moderationOn) {
+      // Already paused: refuse before spending anything at all.
+      if (aiSession?.moderationFlagged) {
+        if (mediaSlotHeld) {
+          releaseMediaSlot();
+          mediaSlotHeld = false;
+        }
+        await sendModerationPause(message, displayName, avatarURL);
+        return;
+      }
+
+      // Pre-screen the incoming message so an unsafe prompt never reaches (or
+      // bills) the chat model.
+      const inboundVerdict = await moderateExchange(prompt);
+      if (!inboundVerdict.safe) {
+        await pauseChat(inboundVerdict);
+        return;
+      }
+    }
+
     try {
       const webhooks = await (message.channel as TextChannel).fetchWebhooks();
       let webhook = webhooks.find((wh: any) => wh.name === WEBHOOK_NAME && wh.token);
@@ -374,6 +461,17 @@ const scriptHandlers = {
         }
       }
       const { text, images, toolCalls } = genResult;
+
+      // Post-screen the full exchange — the classifier judges the reply with the
+      // prompt that produced it in context. Nothing from this turn is delivered
+      // or persisted when it trips.
+      if (moderationOn) {
+        const outboundVerdict = await moderateExchange(prompt, text);
+        if (!outboundVerdict.safe) {
+          await pauseChat(outboundVerdict);
+          return;
+        }
+      }
 
       if (!webhook) {
         webhook = await (message.channel as TextChannel).createWebhook({

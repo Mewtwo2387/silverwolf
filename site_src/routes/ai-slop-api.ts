@@ -11,6 +11,9 @@ import {
   WEEKLY_LIMIT,
 } from '../../utils/ai';
 import { trimHistoryToFit } from '../../utils/tokenizer';
+import {
+  isModerationEnabled, moderateExchange, MODERATION_PAUSED_MESSAGE, type ModerationVerdict,
+} from '../../utils/aiModeration';
 import { type AppEnv, authedGameRequest, readGameBody } from '../shared';
 import { isAllowedPersona } from './ai-slop-personas';
 
@@ -137,6 +140,37 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
       if (!persona) return c.json({ ok: false, error: 'persona_not_found' }, 400);
     }
 
+    // Content-safety gate (global `ai_moderation` switch). The pause notice is
+    // returned as the assistant's own reply so it renders in the persona's
+    // bubble, matching the Discord surface; the turn itself is never persisted.
+    const moderationOn = await isModerationEnabled(silverwolf.db);
+    const pausedResponse = (sessionId: number) => c.json({
+      ok: true,
+      data: {
+        sessionId,
+        personaName: session.personaName,
+        assistant: MODERATION_PAUSED_MESSAGE,
+        toolCallCount: 0,
+        moderationPaused: true,
+      },
+    });
+    const pauseSession = async (verdict: ModerationVerdict) => {
+      try {
+        await silverwolf.db.aiChat.flagSessionModeration(session.sessionId, verdict.categories);
+      } catch (flagErr) {
+        logError('[ai-slop] failed to flag session for moderation:', flagErr);
+      }
+    };
+
+    if (moderationOn) {
+      if (session.moderationFlagged) return pausedResponse(session.sessionId);
+      const inboundVerdict = await moderateExchange(messageRaw);
+      if (!inboundVerdict.safe) {
+        await pauseSession(inboundVerdict);
+        return pausedResponse(session.sessionId);
+      }
+    }
+
     let assistantText = '';
     let title: string | undefined;
     try {
@@ -174,6 +208,15 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
         webSearchEnabled: persona.webSearchEnabled,
       });
       assistantText = (result.text || '').toString();
+
+      // Post-screen the full exchange before anything is delivered or persisted.
+      if (moderationOn) {
+        const outboundVerdict = await moderateExchange(messageRaw, assistantText);
+        if (!outboundVerdict.safe) {
+          await pauseSession(outboundVerdict);
+          return pausedResponse(session.sessionId);
+        }
+      }
 
       // Persist: user → tool audit rows (if any) → assistant. Match the bot's order.
       await silverwolf.db.aiChat.addHistory(session.sessionId, 'user', messageRaw);

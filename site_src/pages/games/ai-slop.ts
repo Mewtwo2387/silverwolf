@@ -989,6 +989,12 @@ export function AiSlopPage(opts: {
       toolCallCount: d.toolCallCount,
     });
 
+    // Safety filters paused this chat: the reply above is the pause notice, and
+    // the turn was not saved. Further sends on this session are refused.
+    if (d.moderationPaused) {
+      setError('This chat has been paused by safety filters. Start a new chat to continue.');
+    }
+
     if (wasNew) {
       addSessionToSidebar(d.personaName, d.sessionId, d.title || 'Chat ' + d.sessionId);
       setHead(d.title || ('Chat ' + d.sessionId), d.personaName);

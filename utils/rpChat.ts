@@ -3,6 +3,7 @@ import { countTokensOpenRouterMessages, countTokensOpenRouter } from './tokenize
 import { applyUserVar } from './rpIdentity';
 import { creditsForTokens, ESTIMATED_COMPLETION_TOKENS } from './aiPricing';
 import { createChatCompletionWithRetry } from './llmRetry';
+import { isModerationEnabled, moderateExchange } from './aiModeration';
 import {
   collectTriggeredContexts, findRecallMarkers, stripRecallMarkers, formatRecallMarker,
   INJECTION_MAX_TOKENS,
@@ -281,7 +282,7 @@ Output ONLY the updated memory wrapped exactly as ${MEMORY_OPEN}...${MEMORY_CLOS
 
 export type RpReplyResult =
   | { ok: true; text: string }
-  | { ok: false; reason: 'compaction_failed' | 'rate_limited' }
+  | { ok: false; reason: 'compaction_failed' | 'rate_limited' | 'moderation' }
   | { ok: false; reason: 'error' };
 
 async function loadTail(db: any, spawnId: number, afterId: number): Promise<RpHistoryTurn[]> {
@@ -368,6 +369,17 @@ export async function generateRpReply(
       if (isLimited) {
         return { ok: false, reason: 'rate_limited' };
       }
+    }
+
+    // Content-safety pre-screen on the turn that triggered this reply. Roleplay
+    // has no session to pause (spawns are long-lived and shared), so this is
+    // reply-and-drop: refuse this reply, leave the spawn alive. The offending
+    // turn stays in history, so a re-trigger is screened and refused again
+    // rather than silently slipping through.
+    const moderationOn = await isModerationEnabled(db);
+    if (moderationOn && lastUserTurn?.message) {
+      const inbound = await moderateExchange(lastUserTurn.message);
+      if (!inbound.safe) return { ok: false, reason: 'moderation' };
     }
 
     let totalPromptTokens = 0;
@@ -493,6 +505,15 @@ export async function generateRpReply(
 
     if (!text) return { ok: false, reason: 'error' };
 
+    // Post-screen the exchange before the line reaches the channel. Dropped
+    // replies are never delivered or persisted — but the tokens were already
+    // spent, so usage is still recorded below.
+    let moderationDropped = false;
+    if (moderationOn) {
+      const outbound = await moderateExchange(lastUserTurn?.message ?? '', text);
+      moderationDropped = !outbound.safe;
+    }
+
     // Log AI usage for all active human users involved in the tail
     const activeUsers = [...new Set(
       tail
@@ -505,6 +526,8 @@ export async function generateRpReply(
     for (const userId of activeUsers) {
       await db.aiUsage.addUsage(userId, RP_MODEL, totalPromptTokens, totalCompletionTokens);
     }
+
+    if (moderationDropped) return { ok: false, reason: 'moderation' };
 
     return { ok: true, text };
   } catch (err) {
