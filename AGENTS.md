@@ -7,7 +7,7 @@ bot administration is Discord-side only.
 **The website is public — security and performance are first-class. Validate every input, never
 trust client data, keep the CSP tight.**
 
-**Last updated: 2026-08-04**
+**Last updated: 2026-08-11**
 
 > **Maintenance rule.** Edit agent docs only on *substantive architectural* change — new
 > architecture, new auth, new data flows/services, schema or security-model changes, or when
@@ -27,7 +27,7 @@ duplicate their content here.
 | `site_src/**` | `.claude/rules/website.md` — server, middleware order, auth/CSRF, assets, perf |
 | `database/**` | `.claude/rules/database.md` — DAO layering, transactions, settings tables |
 | `utils/rp*`, `commands/ai_rp_*` | `.claude/rules/roleplay.md` — characters, lorebooks, personas |
-| `utils/ai*`, `utils/llmRetry` | `.claude/rules/ai-limits.md` — credit metering, retry policy |
+| `utils/ai*`, `utils/llmRetry` | `.claude/rules/ai-limits.md` — credit metering, moderation, retry policy |
 | `Dockerfile`, `.github/**` | `.claude/rules/deploy.md` — CI/CD, image, volumes |
 
 ## Commands

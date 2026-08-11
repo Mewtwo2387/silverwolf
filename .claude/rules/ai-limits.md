@@ -2,12 +2,13 @@
 paths:
   - "utils/ai.ts"
   - "utils/aiPricing.ts"
+  - "utils/aiModeration.ts"
   - "utils/llmRetry.ts"
   - "commands/ai*.ts"
   - "database/models/AiUsageModel.ts"
 ---
 
-# AI usage limits & retry
+# AI usage limits, moderation & retry
 
 `utils/ai.ts`, `utils/aiPricing.ts`, `AiUsageModel`.
 
@@ -31,6 +32,99 @@ stores **credits** (name kept, no rebuild).
 Enforcement is `db.aiUsage.tryReserve(userId, estCredits)` → `release()` in `finally` — an
 in-memory in-flight reservation held for the whole generation so concurrent spam can't all pass the
 check before usage lands. **No dev bypass — everyone is metered.**
+
+## Content-safety moderation
+
+Off by default; `GlobalConfig.ai_moderation = 1` turns it on globally (`utils/aiModeration.ts`).
+When on, **every** session-backed AI turn — every persona, every user, no exemptions — is screened
+twice by the `Moderation` persona (`data/aiPersonas.json`, an NVIDIA Nemotron content-safety
+classifier that takes **no system prompt**): once on the user message before generating, once on the
+user+assistant pair before delivery. Its reply is plain-text labels (`User Safety:` /
+`Response Safety:` / `Safety Categories:`), parsed by `parseModerationOutput`.
+
+A trip sets `AiChatSession.moderation_flagged` (`flagSessionModeration`) — the session is paused
+permanently, `active` deliberately untouched so `getOrCreateSession` keeps returning and refusing it.
+The turn is neither delivered nor persisted; the user gets `MODERATION_PAUSED_MESSAGE` **in the voice
+of the persona they were talking to** and must start a new chat.
+
+**The screen never costs credits.** It calls `createChatCompletionWithRetry` directly, bypassing
+`generateContent` — so no `tryReserve`, no `addUsage`, no entry in the credit ledger at all. It is
+not in `FREE_MODELS` because it never reaches the code that consults it. **Don't route it through
+`generateContent`** — that would start billing users for being moderated.
+
+**The screen fails open** — an outage, timeout, or unparseable label logs and allows the turn. A
+free classifier must never be able to take down every conversation on the bot. Budgets are tight for
+the same reason (15s per attempt, 20s overall): the screen runs twice per turn and sits on the
+critical path, so a degraded classifier must fail open fast rather than stall the reply.
+
+### Known limits
+
+- **Generated media is not screened.** The classifier is invoked text-only, so images from
+  `generate_image` and audio from `generate_music` are never inspected. The mention handler screens
+  the *prompts* the model passed to those tools instead (a tool-driven turn can return files with
+  empty `text`, which would otherwise sail through the output screen). The bytes themselves are not
+  covered.
+- **A post-screen trip still costs credits** on every surface — generation has already happened by
+  then. The pre-screen exists to make that the uncommon case.
+- **Only the user's own text is screened for the pause decision** on the mention handler
+  (`ownTurnText`), not the quoted reply context or attached PDF bodies. Screening those would let
+  someone permanently pause a third party's session just by being quoted at. Content induced *by*
+  quoted context is still caught by the output screen.
+- **`/summary` is output-screened only.** Its input is a transcript of other people's channel
+  messages, so pre-screening would block summarising any channel where someone said something spicy
+  — a false-positive surface with no session to protect.
+
+### Per-surface behaviour
+
+| Surface | Session? | On a trip |
+| --- | --- | --- |
+| mention handler (`keywordsBehaviorHandler.ts`) | yes | **pause** |
+| `/ask` (`askSilverwolfAI.ts`) | yes — *shares* the `Silverwolf` session with `@sw` | **pause** |
+| web chat (`site_src/routes/ai-slop-api.ts`) | yes | **pause** |
+| `/summary count`/`time` | no | **reply-and-drop** (`MODERATION_BLOCKED_MESSAGE`) |
+| roleplay (`utils/rpChat.ts` → `rpRuntime.ts`) | spawns, not sessions | **reply-and-drop** (`reason: 'moderation'`) |
+
+`/ask` must stay on pause semantics: it resolves the same `AiChatSession` row as the `@sw` mention
+persona, so reply-and-drop there would be a way to keep talking to a chat mentions had paused.
+
+Roleplay drops the reply but leaves the spawn alive — the offending user turn stays in `RpHistory`,
+so a re-trigger is screened and refused again rather than slipping through. A dropped RP reply still
+records usage: the tokens were spent before the screen ran.
+
+### Escaping a pause
+
+`kys` (new session) is the **only** exit, by design. `amnesia` is refused on a paused session
+(`undoLastTurn` → `reason: 'paused'`) — the tripping turn was never persisted, so it would only eat
+an earlier legitimate turn while implying the pause had lifted. `/ai chatswitch` to a different,
+unflagged session is allowed; that is equivalent to starting a new chat.
+
+`ai_moderation` is a **master switch**: turning it off must restore normal behaviour everywhere at
+once, so every pause check is gated on it — including `undoLastTurn`'s, via its
+`honorModerationPause` argument. Without that, a flagged session would chat normally while still
+refusing amnesia.
+
+### Concurrency
+
+The pause is a read-check-write spanning a multi-second generation, so it is enforced twice over:
+
+1. **`withAiSessionLock(sessionId, …)`** (`utils/aiSessionLock.ts`) wraps the whole
+   check → generate → persist → deliver sequence on all three session surfaces. Two turns in one
+   conversation queue instead of racing. It uses a **separate registry** from `userLocks` — sharing
+   it would stall a user's `/claim` behind their own multi-minute AI reply.
+2. **`ADD_HISTORY` is conditional** on `moderation_flagged = 0` in the INSERT itself, so the check
+   and the write are one statement. This holds even where no lock is taken, and `addHistory` returns
+   whether the row landed.
+
+**Never test `moderationFlagged` on the session row resolved *before* the lock** — a turn queued
+behind one that paused the session would not see the flag on that stale snapshot. Every surface has
+an `isPausedNow()` that re-reads inside the lock; use it both before generating (saves a paid call)
+and again before delivery (the conditional INSERT stops persistence, but nothing else stops a
+webhook send).
+
+`flagSessionModeration` returns whether the write landed. `Database.executeQuery` swallows errors
+and reports `changes: 0` rather than throwing, so callers **must** check: a caller that assumed
+success would tell the user the chat was paused while leaving the row unflagged, and the next
+message would generate normally. Callers refuse the current turn either way and log loudly.
 
 ## Retry
 

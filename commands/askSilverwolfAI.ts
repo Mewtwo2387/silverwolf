@@ -4,6 +4,8 @@ import { log, logError } from '../utils/log';
 import { getPersonaByName, generateContent, generateTitleForHistory } from '../utils/ai';
 import { trimHistoryToFit } from '../utils/tokenizer';
 import { handleRateLimitError } from '../utils/discordRateLimit';
+import { isModerationEnabled, moderateExchange, MODERATION_PAUSED_MESSAGE } from '../utils/aiModeration';
+import { withAiSessionLock } from '../utils/aiSessionLock';
 
 const PERSONA_NAME = 'Silverwolf';
 
@@ -47,81 +49,145 @@ class AskSilverwolfAI extends Command {
         return;
       }
 
-      const rawHistory = await this.client.db.aiChat.getHistory(aiSession.sessionId, 100);
-      const hadRawHistory = rawHistory.length > 0;
-      const filteredHistory = rawHistory.filter((h: { role: string }) => h.role !== 'tool');
-      const { trimmedHistory: history, warnings: contextWarnings } = await trimHistoryToFit(
-        persona.provider,
-        persona.model,
-        persona.systemPrompt ?? '',
-        filteredHistory,
-        prompt,
-        persona.webSearchEnabled,
-      );
-
-      const { text, toolCalls } = await generateContent({
-        db: this.client.db,
-        userId: interaction.user.id,
-        provider: persona.provider,
-        model: persona.model,
-        systemPrompt: persona.systemPrompt ?? '',
-        prompt,
-        history,
-        webSearchEnabled: persona.webSearchEnabled,
-      });
-
-      const processedText = (text || '').replace('(Trailblazer)', username);
-      const searchPrefix = toolCalls && toolCalls.length > 0
-        ? `-# 🔎 searched the web (${toolCalls.length})\n`
-        : '';
-      const description = `${searchPrefix}${processedText}`;
-
-      log(`Original: ${text}`);
-      log(`Processed: ${processedText}`);
-
-      const embed = new EmbedBuilder()
-        .setTitle('Silverwolf Ai says:')
-        .setDescription(description.slice(0, 4096))
-        .setColor(0x0099ff)
-        .setFooter({ text: 'Powered by ChatTGP', iconURL: 'https://media.discordapp.net/attachments/969953667597893675/1272422507533828106/Qzrb7Us.png?ex=66baeb4e&is=66b999ce&hm=cf4e7ed0da32e823e5ceb90cd94b1abf3e54cc19f447e38a0aef572af68cd04b&=&format=webp&quality=lossless&width=899&height=899' });
-
-      await interaction.editReply({ content: null, embeds: [embed] });
-
-      const trimWarning = contextWarnings.find((w) => w.wasTrimmed);
-      if (trimWarning) {
-        const trimEmbed = new EmbedBuilder()
-          .setColor('#FEE75C')
-          .setTitle('Context limit reached')
-          .setDescription(`Trimmed **${trimWarning.trimmedCount}** old message${trimWarning.trimmedCount === 1 ? '' : 's'} to fit this model's context window. Use \`reset: True\` or \`/ai chatnew\` to start fresh.`);
-        await interaction.followUp({ embeds: [trimEmbed] }).catch((err: unknown) => {
-          logError('Failed to send trim warning:', err);
-        });
-      }
-
-      const aiRole = persona.provider === 'openrouter' ? 'assistant' : 'model';
-      await this.client.db.aiChat.addHistory(aiSession.sessionId, 'user', prompt);
-      if (toolCalls?.length) {
-        for (const tc of toolCalls) {
-          await this.client.db.aiChat.addHistory(aiSession.sessionId, 'tool', JSON.stringify(tc));
-        }
-      }
-      if (text) {
-        await this.client.db.aiChat.addHistory(aiSession.sessionId, aiRole, text);
-      }
-
-      if (!hadRawHistory && text) {
-        this.client.db.aiChat.getHistory(aiSession.sessionId, 100)
-          .then((savedHistory: { role: string; message: string }[]) => generateTitleForHistory(savedHistory))
-          .then((title: string | null) => {
-            if (title) {
-              return this.client.db.aiChat.updateTitle(aiSession.sessionId, title);
+      // /ask shares the "Silverwolf" session with the `@sw` mention persona, so
+      // it gets the full pause treatment — reply-and-drop here would be a way to
+      // keep talking to a chat that mentions had already paused.
+      // Everything from the pause check through generation, delivery and the
+      // history writes runs under a per-session lock. The check and the writes
+      // are separate operations, so without serialization a concurrent /ask or
+      // @sw mention could flag the session in between and this turn would still
+      // land in a paused chat.
+      await withAiSessionLock(aiSession.sessionId, async () => {
+        const moderationOn = await isModerationEnabled(this.client.db);
+        const pauseSession = async (categories?: string) => {
+          try {
+            const flagged = await this.client.db.aiChat.flagSessionModeration(
+              aiSession.sessionId,
+              categories,
+            );
+            // This turn is refused regardless, but an unflagged session would let
+            // the next one through — that must not be silent.
+            if (!flagged) {
+              logError(`AiChat: content-safety pause did not persist for session ${aiSession.sessionId}; session may resume`);
             }
-            return undefined;
-          })
-          .catch((titleErr: unknown) => {
-            logError('AiChat: Failed to generate session title:', titleErr);
+          } catch (flagErr) {
+            logError('AiChat: Failed to flag session for moderation:', flagErr);
+          }
+          await interaction.editReply({ content: MODERATION_PAUSED_MESSAGE, embeds: [] });
+        };
+
+        /** Re-read the pause state; a concurrent turn may have flagged it since. */
+        const isPausedNow = async (): Promise<boolean> => {
+          if (!moderationOn) return false;
+          const fresh = await this.client.db.aiChat.getSessionById(aiSession.sessionId);
+          return !!fresh?.moderationFlagged;
+        };
+
+        if (moderationOn) {
+          // Fresh read, not the pre-lock snapshot: a turn queued behind one that
+          // paused the session would otherwise pass this check and run a paid
+          // generation before the delivery guard caught it.
+          if (await isPausedNow()) {
+            await interaction.editReply({ content: MODERATION_PAUSED_MESSAGE, embeds: [] });
+            return;
+          }
+          const inbound = await moderateExchange(prompt);
+          if (!inbound.safe) {
+            await pauseSession(inbound.categories);
+            return;
+          }
+        }
+
+        const rawHistory = await this.client.db.aiChat.getHistory(aiSession.sessionId, 100);
+        const hadRawHistory = rawHistory.length > 0;
+        const filteredHistory = rawHistory.filter((h: { role: string }) => h.role !== 'tool');
+        const { trimmedHistory: history, warnings: contextWarnings } = await trimHistoryToFit(
+          persona.provider,
+          persona.model,
+          persona.systemPrompt ?? '',
+          filteredHistory,
+          prompt,
+          persona.webSearchEnabled,
+        );
+
+        const { text, toolCalls } = await generateContent({
+          db: this.client.db,
+          userId: interaction.user.id,
+          provider: persona.provider,
+          model: persona.model,
+          systemPrompt: persona.systemPrompt ?? '',
+          prompt,
+          history,
+          webSearchEnabled: persona.webSearchEnabled,
+        });
+
+        if (moderationOn) {
+          const outbound = await moderateExchange(prompt, text);
+          if (!outbound.safe) {
+            await pauseSession(outbound.categories);
+            return;
+          }
+          // A concurrent turn may have paused this session while we were
+          // generating; don't deliver or persist into a chat that is now paused.
+          if (await isPausedNow()) {
+            await interaction.editReply({ content: MODERATION_PAUSED_MESSAGE, embeds: [] });
+            return;
+          }
+        }
+
+        const processedText = (text || '').replace('(Trailblazer)', username);
+        const searchPrefix = toolCalls && toolCalls.length > 0
+          ? `-# 🔎 searched the web (${toolCalls.length})\n`
+          : '';
+        const description = `${searchPrefix}${processedText}`;
+
+        log(`Original: ${text}`);
+        log(`Processed: ${processedText}`);
+
+        const embed = new EmbedBuilder()
+          .setTitle('Silverwolf Ai says:')
+          .setDescription(description.slice(0, 4096))
+          .setColor(0x0099ff)
+          .setFooter({ text: 'Powered by ChatTGP', iconURL: 'https://media.discordapp.net/attachments/969953667597893675/1272422507533828106/Qzrb7Us.png?ex=66baeb4e&is=66b999ce&hm=cf4e7ed0da32e823e5ceb90cd94b1abf3e54cc19f447e38a0aef572af68cd04b&=&format=webp&quality=lossless&width=899&height=899' });
+
+        await interaction.editReply({ content: null, embeds: [embed] });
+
+        const trimWarning = contextWarnings.find((w) => w.wasTrimmed);
+        if (trimWarning) {
+          const trimEmbed = new EmbedBuilder()
+            .setColor('#FEE75C')
+            .setTitle('Context limit reached')
+            .setDescription(`Trimmed **${trimWarning.trimmedCount}** old message${trimWarning.trimmedCount === 1 ? '' : 's'} to fit this model's context window. Use \`reset: True\` or \`/ai chatnew\` to start fresh.`);
+          await interaction.followUp({ embeds: [trimEmbed] }).catch((err: unknown) => {
+            logError('Failed to send trim warning:', err);
           });
-      }
+        }
+
+        const aiRole = persona.provider === 'openrouter' ? 'assistant' : 'model';
+        await this.client.db.aiChat.addHistory(aiSession.sessionId, 'user', prompt);
+        if (toolCalls?.length) {
+          for (const tc of toolCalls) {
+            await this.client.db.aiChat.addHistory(aiSession.sessionId, 'tool', JSON.stringify(tc));
+          }
+        }
+        if (text) {
+          await this.client.db.aiChat.addHistory(aiSession.sessionId, aiRole, text);
+        }
+
+        if (!hadRawHistory && text) {
+          this.client.db.aiChat.getHistory(aiSession.sessionId, 100)
+            .then((savedHistory: { role: string; message: string }[]) => generateTitleForHistory(savedHistory))
+            .then((title: string | null) => {
+              if (title) {
+                return this.client.db.aiChat.updateTitle(aiSession.sessionId, title);
+              }
+              return undefined;
+            })
+            .catch((titleErr: unknown) => {
+              logError('AiChat: Failed to generate session title:', titleErr);
+            });
+        }
+      });
     } catch (error: any) {
       if (error?.message === 'RATE_LIMIT_EXCEEDED') {
         await handleRateLimitError(interaction, this.client.db, {
