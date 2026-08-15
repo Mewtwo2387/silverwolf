@@ -259,6 +259,9 @@ const scriptHandlers = {
     // and are never persisted; only text placeholders enter the prompt/history.
     let mediaParts: any[] = [];
     let imageEditParts: any[] = [];
+    // Images the *sender* attached, for the content-safety pre-screen. Same
+    // buffers as above — screening never re-downloads.
+    let moderationImageParts: any[] = [];
     let mediaPlaceholders: string[] = [];
     let editOnlyPlaceholders: string[] = [];
     const mediaNotices: string[] = [];
@@ -284,8 +287,17 @@ const scriptHandlers = {
           const items = collected.parts.map((part: any, i: number) => ({
             part,
             kind: collected.kinds[i],
+            fromReply: collected.fromReply[i],
             placeholder: collected.placeholders[i],
           }));
+          // Only the sender's own images, for the same reason `ownTurnText`
+          // drops quoted text: an image pulled in from the replied-to message
+          // isn't theirs, and pausing their session over it would hand anyone a
+          // way to get a conversation killed. The output screen still catches
+          // whatever the model says about it.
+          moderationImageParts = items
+            .filter((m) => m.kind === 'image' && !m.fromReply)
+            .map((m) => m.part);
           if (imageGenEnabled) {
             imageEditParts = items.filter((m) => m.kind === 'image').map((m) => m.part);
           }
@@ -311,6 +323,7 @@ const scriptHandlers = {
           mediaNotices.push('⚠ Couldn\'t process your attachments — answering without them.');
           mediaParts = [];
           imageEditParts = [];
+          moderationImageParts = [];
           mediaPlaceholders = [];
           editOnlyPlaceholders = [];
         }
@@ -447,10 +460,11 @@ const scriptHandlers = {
           return;
         }
 
-        // Pre-screen the user's own text so an unsafe prompt never reaches (or
-        // bills) the chat model. Quoted context and PDF bodies are excluded — see
-        // `ownTurnText`.
-        const inboundVerdict = await moderateExchange(ownTurnText);
+        // Pre-screen the user's own text and attached images so an unsafe
+        // prompt never reaches (or bills) the chat model. Quoted context, PDF
+        // bodies and images from the replied-to message are excluded — see
+        // `ownTurnText` and `moderationImageParts`.
+        const inboundVerdict = await moderateExchange(ownTurnText, undefined, moderationImageParts);
         if (!inboundVerdict.safe) {
           await flagAndNotify(inboundVerdict);
           return;
@@ -502,6 +516,7 @@ const scriptHandlers = {
           // as the provider round-trip is over.
           mediaParts = [];
           imageEditParts = [];
+          moderationImageParts = [];
           if (mediaSlotHeld) {
             releaseMediaSlot();
             mediaSlotHeld = false;

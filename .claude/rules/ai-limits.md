@@ -57,16 +57,38 @@ free classifier must never be able to take down every conversation on the bot. B
 the same reason (15s per attempt, 20s overall): the screen runs twice per turn and sits on the
 critical path, so a degraded classifier must fail open fast rather than stall the reply.
 
+### Attached images
+
+The classifier is `text+image`, so the mention handler's **pre-screen** sends the user's attached
+images alongside their caption (`moderateExchange(text, undefined, imageParts)`), reusing the
+buffers `aiMedia` already downloaded — no second fetch, no extra Discord traffic. Everything the
+chat model could see is screened: both the vision parts and the images collected only as
+`generate_image` edit sources. `selectModerationImages` drops video/audio (the classifier takes
+neither) and caps the count at `aiMedia`'s `MAX_IMAGES` — **never cap it lower**, or an extra
+attachment becomes an unscreened gap.
+
+Images ride the **inbound pass only**: they are a multi-MB base64 upload on the critical path under
+a 15s timeout, and `Response Safety` turns on the assistant's text, not on a picture the inbound
+pass already ruled on. Images from the *replied-to* message are excluded for the same reason
+`ownTurnText` excludes quoted text. If the model rejects the images (400/413/415/422 or an
+image/vision error), the screen retries once text-only before failing open — a vision regression
+degrades to the old caption-only screen, not to no screen.
+
+Only the mention handler collects media today; `/ask`, web chat, RP and `/summary` are text-only, so
+their screens are unchanged.
+
 ### Known limits
 
-- **Generated media is not screened.** The classifier is invoked text-only, so images from
+- **Video and audio are not screened.** The classifier takes text and images only; an attached video
+  or voice message reaches a media-capable persona unscreened.
+- **Generated media is not screened.** For output, the classifier is invoked text-only, so images from
   `generate_image` and audio from `generate_music` are never inspected. The mention handler screens
   the *prompts* the model passed to those tools instead (a tool-driven turn can return files with
   empty `text`, which would otherwise sail through the output screen). The bytes themselves are not
   covered.
 - **A post-screen trip still costs credits** on every surface — generation has already happened by
   then. The pre-screen exists to make that the uncommon case.
-- **Only the user's own text is screened for the pause decision** on the mention handler
+- **Only the user's own text and images are screened for the pause decision** on the mention handler
   (`ownTurnText`), not the quoted reply context or attached PDF bodies. Screening those would let
   someone permanently pause a third party's session just by being quoted at. Content induced *by*
   quoted context is still caught by the output screen.
