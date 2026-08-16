@@ -61,16 +61,22 @@ critical path, so a degraded classifier must fail open fast rather than stall th
 
 The classifier is `text+image`, so the mention handler's **pre-screen** sends the user's attached
 images alongside their caption (`moderateExchange(text, undefined, imageParts)`), reusing the
-buffers `aiMedia` already downloaded — no second fetch, no extra Discord traffic. Everything the
-chat model could see is screened: both the vision parts and the images collected only as
-`generate_image` edit sources. `selectModerationImages` drops video/audio (the classifier takes
-neither) and caps the count at `aiMedia`'s `MAX_IMAGES` — **never cap it lower**, or an extra
-attachment becomes an unscreened gap.
+buffers `aiMedia` already downloaded — no second fetch, no extra Discord traffic. It screens the
+**sender's own** images, whether the persona's model reads them as vision parts or they were
+collected only as `generate_image` edit sources. `selectModerationImages` drops video/audio (the
+classifier takes neither) and caps the count at `aiMedia`'s `MAX_IMAGES` — **never cap it lower**,
+or an extra attachment becomes an unscreened gap.
+
+Images from the *replied-to* message are **not** pre-screened, for the same reason `ownTurnText`
+excludes quoted text — they are excluded from `moderationImageParts` while still flowing into
+`mediaParts`/`imageEditParts`, so a reply-source image reaches the chat model, and can be edited by
+`generate_image`, without ever being judged on the inbound pass. What the model *says* about it is
+still caught by the output text screen, and anything `generate_image` produces from it by
+`moderateGeneratedImages` — the unscreened path is the source image itself.
 
 Images ride the **inbound pass only**: they are a multi-MB base64 upload on the critical path under
 a 15s timeout, and `Response Safety` turns on the assistant's text, not on a picture the inbound
-pass already ruled on. Images from the *replied-to* message are excluded for the same reason
-`ownTurnText` excludes quoted text. If the model rejects the images (400/413/415/422 or an
+pass already ruled on. If the model rejects the images (400/413/415/422 or an
 image/vision error), the screen retries once text-only before failing open — a vision regression
 degrades to the old caption-only screen, not to no screen.
 
@@ -103,7 +109,8 @@ message. The reply therefore says `User Safety`, and `moderateGeneratedImages` r
 - **A post-screen trip still costs credits** on every surface — generation has already happened by
   then. The pre-screen exists to make that the uncommon case.
 - **Only the user's own text and images are screened for the pause decision** on the mention handler
-  (`ownTurnText`), not the quoted reply context or attached PDF bodies. Screening those would let
+  (`ownTurnText`), not the quoted reply context, its attached images, or attached PDF bodies.
+  Screening those would let
   someone permanently pause a third party's session just by being quoted at. Content induced *by*
   quoted context is still caught by the output screen.
 - **`/summary` is output-screened only.** Its input is a transcript of other people's channel
