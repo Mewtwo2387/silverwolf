@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import {
   buildModerationUserContent,
+  generatedImagePart,
   parseModerationOutput,
   selectModerationImages,
 } from '../../utils/aiModeration';
@@ -121,6 +122,28 @@ describe('buildModerationUserContent', () => {
 
   test('omits an empty text part — some providers reject it', () => {
     expect(buildModerationUserContent('', [img('a')])).toEqual([img('a')]);
+  });
+});
+
+describe('generatedImagePart', () => {
+  const bytes = Buffer.from('not-really-a-png');
+
+  test('builds a data-URL part from the generated file, mime from its extension', () => {
+    expect(generatedImagePart({ attachment: bytes, name: 'imgen-1712.png' })).toEqual({
+      type: 'image_url',
+      image_url: { url: `data:image/png;base64,${bytes.toString('base64')}` },
+    });
+    expect(generatedImagePart({ attachment: bytes, name: 'imgen-1712.jpg' })?.image_url.url)
+      .toStartWith('data:image/jpeg;base64,');
+  });
+
+  test('skips generated audio — generate_music shares the attachment list', () => {
+    expect(generatedImagePart({ attachment: bytes, name: 'song.wav' })).toBeNull();
+  });
+
+  test('skips empty buffers and nameless files', () => {
+    expect(generatedImagePart({ attachment: Buffer.alloc(0), name: 'imgen-1.png' })).toBeNull();
+    expect(generatedImagePart({ attachment: bytes, name: '' })).toBeNull();
   });
 });
 

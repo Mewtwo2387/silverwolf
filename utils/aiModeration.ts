@@ -27,8 +27,9 @@ import { log, logError, logWarning } from './log';
  *
  * The classifier takes `text+image` input, so the pre-screen also carries the
  * images the user attached: the caption and the picture are judged together,
- * which is the only way an image with an innocuous caption gets caught. Images
- * ride the pre-screen only — see `moderateExchange`.
+ * which is the only way an image with an innocuous caption gets caught. User
+ * images ride the pre-screen only — see `moderateExchange`. Images the bot
+ * *generated* are screened separately by `moderateGeneratedImages`.
  */
 
 /**
@@ -274,4 +275,64 @@ export async function moderateExchange(
     logError('[moderation] screen failed; allowing the turn through:', err);
     return SAFE_VERDICT;
   }
+}
+
+/**
+ * Extensions the classifier accepts, mirroring `aiMedia`'s image whitelist.
+ * Anything else — notably the WAV `generate_music` returns on the same
+ * attachment list — is not an image and must not be handed to the classifier.
+ */
+const GENERATED_IMAGE_MIMES: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp',
+  gif: 'image/gif',
+  bmp: 'image/bmp',
+};
+
+/**
+ * Turns a generated attachment into an `image_url` part, or null when it isn't
+ * an image. `runImageGeneration` names its output from the data URL's own MIME
+ * type (`imgen-<ts>.png`), so the extension is the provider's answer, not a guess.
+ */
+export function generatedImagePart(file: { attachment: Buffer; name: string }): any | null {
+  const ext = (file?.name || '').split('.').pop()?.toLowerCase() ?? '';
+  const mime = GENERATED_IMAGE_MIMES[ext];
+  if (!mime || !file?.attachment?.length) return null;
+  return {
+    type: 'image_url',
+    image_url: { url: `data:${mime};base64,${file.attachment.toString('base64')}` },
+  };
+}
+
+/**
+ * Screens the images the bot itself produced (`generate_image`), which the
+ * text output screen cannot see — a benign prompt over an attached source can
+ * still return something unsafe, and a tool-driven turn may carry no text at all.
+ *
+ * The bytes go in as the **user** turn, not the assistant turn: that is the only
+ * position the classifier is documented to accept images in, and providers
+ * routinely reject `image_url` parts inside an assistant message. The verdict is
+ * therefore reported back as `User Safety`, so it is re-attributed to
+ * `flaggedSide: 'response'` — these are our output, whatever the label says.
+ *
+ * `promptText` is the prompt the model asked the tool for: it is the image's
+ * true caption and gives the classifier context. It is already screened by the
+ * text pass, so a duplicate flag here changes no outcome.
+ *
+ * Runs only on turns that actually generated an image (capped at
+ * IMAGE_GEN_DAILY_LIMIT per user per day), so the extra call and the base64
+ * upload stay off the critical path of ordinary chat.
+ */
+export async function moderateGeneratedImages(
+  promptText: string,
+  files: { attachment: Buffer; name: string }[] = [],
+): Promise<ModerationVerdict> {
+  const parts = files.map(generatedImagePart).filter(Boolean);
+  if (parts.length === 0) return SAFE_VERDICT;
+
+  const verdict = await moderateExchange(promptText, undefined, parts);
+  if (verdict.safe) return verdict;
+  return { ...verdict, flaggedSide: 'response' };
 }

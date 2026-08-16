@@ -77,15 +77,29 @@ degrades to the old caption-only screen, not to no screen.
 Only the mention handler collects media today; `/ask`, web chat, RP and `/summary` are text-only, so
 their screens are unchanged.
 
+### Generated images
+
+The output pass screens the *prompts* the model passed to `generate_image`/`generate_music` as part
+of the reply text — a tool-driven turn can return files with empty `text`, which would otherwise
+sail through. That is not the same as screening the picture: an edit over an attached source can
+turn a benign instruction into an unsafe image. So `moderateGeneratedImages` screens the returned
+bytes too, after the text pass and only on turns that actually generated an image (≤
+`IMAGE_GEN_DAILY_LIMIT` per user per day, so the extra call stays off the critical path of ordinary
+chat). `generatedImagePart` derives the MIME from the filename `runImageGeneration` built out of the
+provider's own data URL, and returns null for anything that isn't an image — `generate_music`'s WAV
+rides the same attachment list.
+
+The bytes go in as the **user** turn, not the assistant turn: that is the only position the
+classifier accepts images in, and providers routinely reject `image_url` parts inside an assistant
+message. The reply therefore says `User Safety`, and `moderateGeneratedImages` re-attributes it to
+`flaggedSide: 'response'` — it is our output whatever the label says. **Don't "fix" that to
+`'user'`**; it would report the wrong side to the user and to the log.
+
 ### Known limits
 
-- **Video and audio are not screened.** The classifier takes text and images only; an attached video
-  or voice message reaches a media-capable persona unscreened.
-- **Generated media is not screened.** For output, the classifier is invoked text-only, so images from
-  `generate_image` and audio from `generate_music` are never inspected. The mention handler screens
-  the *prompts* the model passed to those tools instead (a tool-driven turn can return files with
-  empty `text`, which would otherwise sail through the output screen). The bytes themselves are not
-  covered.
+- **Video and audio are not screened.** The classifier takes text and images only, so an attached
+  video or voice message reaches a media-capable persona unscreened, and the WAV from
+  `generate_music` goes out unscreened (only its prompt and title are).
 - **A post-screen trip still costs credits** on every surface — generation has already happened by
   then. The pre-screen exists to make that the uncommon case.
 - **Only the user's own text and images are screened for the pause decision** on the mention handler
