@@ -2,6 +2,7 @@ import type Database from '../database/Database';
 import { getOpenRouterClient, getPersonaByName } from './ai';
 import { createChatCompletionWithRetry } from './llmRetry';
 import { GLOBAL_CONFIG_KEYS } from './globalConfig';
+import { MAX_IMAGES as MAX_MEDIA_IMAGES } from './aiMedia';
 import { log, logError, logWarning } from './log';
 
 /**
@@ -23,6 +24,12 @@ import { log, logError, logWarning } from './log';
  * Screening runs twice per turn: on the user message alone before generating
  * (so an unsafe prompt never reaches — or bills — the chat model), then on the
  * user+assistant pair before the reply is delivered.
+ *
+ * The classifier takes `text+image` input, so the pre-screen also carries the
+ * images the user attached: the caption and the picture are judged together,
+ * which is the only way an image with an innocuous caption gets caught. User
+ * images ride the pre-screen only — see `moderateExchange`. Images the bot
+ * *generated* are screened separately by `moderateGeneratedImages`.
  */
 
 /**
@@ -43,6 +50,14 @@ const MODERATION_PERSONA = 'Moderation';
 
 /** The classifier only needs enough text to judge; long PDFs/transcripts are cut. */
 const MAX_SCREENED_CHARS = 8000;
+
+/**
+ * How many attached images go to the classifier. Deliberately equal to
+ * `aiMedia`'s own per-request image cap: anything the chat model can be shown
+ * must be screenable, so **never set this lower** — a smaller number here is an
+ * unscreened gap an attacker can walk through by attaching one extra image.
+ */
+const MAX_MODERATION_IMAGES = MAX_MEDIA_IMAGES;
 
 /** Labels are a handful of lines — plus an optional reasoning trace. */
 const MODERATION_MAX_TOKENS = 512;
@@ -137,19 +152,67 @@ export function parseModerationOutput(rawOutput: string): ModerationVerdict {
 }
 
 /**
- * Screens one exchange. `assistantText` is omitted for the pre-generation pass.
+ * Keeps the `image_url` parts the classifier can read, capped. Callers hand it
+ * whatever `aiMedia` collected, so video/audio parts (which this model does not
+ * accept, and which would fail the whole screen) are dropped here rather than
+ * at each call site.
+ */
+export function selectModerationImages(imageParts: any[] = []): any[] {
+  return imageParts
+    .filter((p) => p?.type === 'image_url' && typeof p?.image_url?.url === 'string')
+    .slice(0, MAX_MODERATION_IMAGES);
+}
+
+/**
+ * Builds the classifier's user turn. Plain string when there are no images —
+ * the classifier's chat template is happiest with the shape it was trained on
+ * — and a text+image part array otherwise. An empty caption contributes no text
+ * part: some providers reject `{ type: 'text', text: '' }`.
+ */
+export function buildModerationUserContent(text: string, images: any[] = []): any {
+  if (images.length === 0) return text;
+  return text ? [{ type: 'text', text }, ...images] : [...images];
+}
+
+/**
+ * True for the errors that mean "this model/provider won't take the images",
+ * as opposed to a transient failure. `createChatCompletionWithRetry` has
+ * already exhausted its own retries by the time we see either.
+ */
+function isImageRejection(err: any): boolean {
+  const status = err?.status;
+  if (status === 400 || status === 404 || status === 413 || status === 415 || status === 422) return true;
+  const msg = (err?.message || '').toLowerCase();
+  return msg.includes('image') || msg.includes('modal') || msg.includes('vision');
+}
+
+/**
+ * Screens one exchange. `assistantText` is omitted for the pre-generation pass;
+ * `imageParts` carries the images attached to the user's turn (OpenRouter
+ * `image_url` parts, already downloaded by `aiMedia` — screening reuses those
+ * buffers and never re-fetches from Discord).
+ *
+ * Images are for the pre-screen: they cost a base64 upload of up to the media
+ * budget, and the screen sits on the critical path of the reply with a tight
+ * timeout. Sending them again on the output pass would double that latency to
+ * re-judge a picture the inbound pass already ruled on — `Response Safety`
+ * turns on the assistant's text.
  *
  * Fails open: a classifier outage, timeout, or garbled reply logs a warning and
  * returns safe. Blocking every AI conversation on the availability of a free
- * model would be a far worse failure than missing a screen.
+ * model would be a far worse failure than missing a screen. A model that
+ * refuses the images specifically is retried once text-only, so a vision
+ * regression degrades to the old caption-only screen instead of no screen.
  */
 export async function moderateExchange(
   userText: string,
   assistantText?: string,
+  imageParts: any[] = [],
 ): Promise<ModerationVerdict> {
   const userContent = truncate(userText);
   const assistantContent = truncate(assistantText ?? '');
-  if (!userContent && !assistantContent) return SAFE_VERDICT;
+  const images = selectModerationImages(imageParts);
+  if (!userContent && !assistantContent && images.length === 0) return SAFE_VERDICT;
 
   const persona = await getPersonaByName(MODERATION_PERSONA);
   if (!persona) {
@@ -166,14 +229,13 @@ export async function moderateExchange(
   }
 
   // No system prompt — the classifier's chat template supplies its own.
-  const messages: { role: 'user' | 'assistant'; content: string }[] = [
-    { role: 'user', content: userContent },
-  ];
-  if (assistantContent) {
-    messages.push({ role: 'assistant', content: assistantContent });
-  }
-
-  try {
+  const runScreen = async (withImages: any[]): Promise<string> => {
+    const messages: { role: 'user' | 'assistant'; content: any }[] = [
+      { role: 'user', content: buildModerationUserContent(userContent, withImages) },
+    ];
+    if (assistantContent) {
+      messages.push({ role: 'assistant', content: assistantContent });
+    }
     const completion = await createChatCompletionWithRetry(getOpenRouterClient(), {
       model: persona.model,
       messages,
@@ -182,8 +244,20 @@ export async function moderateExchange(
       timeoutMs: MODERATION_TIMEOUT_MS,
       overallTimeoutMs: MODERATION_OVERALL_TIMEOUT_MS,
     });
+    return completion.choices?.[0]?.message?.content ?? '';
+  };
 
-    const rawOutput = completion.choices?.[0]?.message?.content ?? '';
+  try {
+    let rawOutput: string;
+    try {
+      rawOutput = await runScreen(images);
+    } catch (err: any) {
+      // Text-only fallback only helps if there is text to judge; with none, the
+      // outer catch fails the screen open as usual.
+      if (images.length === 0 || !(userContent || assistantContent) || !isImageRejection(err)) throw err;
+      logWarning(`[moderation] classifier rejected ${images.length} attached image(s); re-screening text only: ${err?.message ?? err}`);
+      rawOutput = await runScreen([]);
+    }
     const verdict = parseModerationOutput(rawOutput);
     // A non-empty reply with no label means a truncated or malformed
     // classification (e.g. a reasoning trace that ate the whole token budget).
@@ -201,4 +275,64 @@ export async function moderateExchange(
     logError('[moderation] screen failed; allowing the turn through:', err);
     return SAFE_VERDICT;
   }
+}
+
+/**
+ * Extensions the classifier accepts, mirroring `aiMedia`'s image whitelist.
+ * Anything else — notably the WAV `generate_music` returns on the same
+ * attachment list — is not an image and must not be handed to the classifier.
+ */
+const GENERATED_IMAGE_MIMES: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp',
+  gif: 'image/gif',
+  bmp: 'image/bmp',
+};
+
+/**
+ * Turns a generated attachment into an `image_url` part, or null when it isn't
+ * an image. `runImageGeneration` names its output from the data URL's own MIME
+ * type (`imgen-<ts>.png`), so the extension is the provider's answer, not a guess.
+ */
+export function generatedImagePart(file: { attachment: Buffer; name: string }): any | null {
+  const ext = (file?.name || '').split('.').pop()?.toLowerCase() ?? '';
+  const mime = GENERATED_IMAGE_MIMES[ext];
+  if (!mime || !file?.attachment?.length) return null;
+  return {
+    type: 'image_url',
+    image_url: { url: `data:${mime};base64,${file.attachment.toString('base64')}` },
+  };
+}
+
+/**
+ * Screens the images the bot itself produced (`generate_image`), which the
+ * text output screen cannot see — a benign prompt over an attached source can
+ * still return something unsafe, and a tool-driven turn may carry no text at all.
+ *
+ * The bytes go in as the **user** turn, not the assistant turn: that is the only
+ * position the classifier is documented to accept images in, and providers
+ * routinely reject `image_url` parts inside an assistant message. The verdict is
+ * therefore reported back as `User Safety`, so it is re-attributed to
+ * `flaggedSide: 'response'` — these are our output, whatever the label says.
+ *
+ * `promptText` is the prompt the model asked the tool for: it is the image's
+ * true caption and gives the classifier context. It is already screened by the
+ * text pass, so a duplicate flag here changes no outcome.
+ *
+ * Runs only on turns that actually generated an image (capped at
+ * IMAGE_GEN_DAILY_LIMIT per user per day), so the extra call and the base64
+ * upload stay off the critical path of ordinary chat.
+ */
+export async function moderateGeneratedImages(
+  promptText: string,
+  files: { attachment: Buffer; name: string }[] = [],
+): Promise<ModerationVerdict> {
+  const parts = files.map(generatedImagePart).filter(Boolean);
+  if (parts.length === 0) return SAFE_VERDICT;
+
+  const verdict = await moderateExchange(promptText, undefined, parts);
+  if (verdict.safe) return verdict;
+  return { ...verdict, flaggedSide: 'response' };
 }
