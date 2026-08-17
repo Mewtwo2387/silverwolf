@@ -56,9 +56,11 @@ gitignored. Put shared geometry/logic in a plain module imported by both the gam
 **Verify in a browser — a green `build:js` is not enough.** The bundler does not catch undefined
 identifiers: a forgotten import bundles fine and only throws `ReferenceError` at runtime. Run
 `bun run test:harness` (standalone dev server, port 7788, `HARNESS_PORT` to override) — it renders
-the Three.js game pages logged-out and serves `Assets/` as `/static/`, no bot, DB or OAuth needed —
-and load the page after touching any of these modules. `tests/` is `.dockerignore`d and never
-reaches the image.
+the Three.js game pages plus `/games` logged-out and serves `Assets/` as `/static/`, no bot, DB or
+OAuth needed — and load the page after touching any of these modules. It serves Backrooms with its
+in-game test harness armed (top-down map, teleports, noclip, and a `window.__backrooms` scripting
+API), which the real app also exposes at `/games/backrooms?debug=1`. `tests/` is `.dockerignore`d
+and never reaches the image.
 
 HTML responses are `Cache-Control: private, no-store` (prevents the per-request nonce leaking
 through a CDN). `PUBLIC_ORIGIN` pins absolute embed URLs so untrusted `x-forwarded-*` headers can't
