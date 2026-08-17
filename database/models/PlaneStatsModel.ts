@@ -74,8 +74,11 @@ const isMap = (v: unknown): v is 'coastal' | 'ocean' => v === 'coastal' || v ===
 const isMode = (v: unknown) => v === 'sortie' || v === 'tutorial' || v === 'stunt';
 const isDiff = (v: unknown) => v === 'easy' || v === 'normal' || v === 'hard';
 const isCourse = (v: unknown) => v === 'valley' || v === 'canyon' || v === 'wavetop' || v === 'skyline';
+// Reject, never clamp: clamping turns a forged out-of-range value into valid
+// achievement evidence (hullPct 101 -> 100 would grant Iron Hull, bandits 99 ->
+// 5 would grant Ace in a Flight). Only an in-range integer counts.
 const intIn = (v: unknown, lo: number, hi: number): number | null => (
-  typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.floor(v))) : null
+  typeof v === 'number' && Number.isInteger(v) && v >= lo && v <= hi ? v : null
 );
 
 // Apply a single validated event in place. Unknown/malformed events are ignored.
@@ -133,6 +136,18 @@ function applyEvent(s: PlaneStats, ev: any): void {
 }
 /* eslint-enable no-param-reassign */
 
+// A PlaneStats row (or nothing) -> the full sanitized shape. Shared by the
+// async read and the in-transaction one.
+function rowToStats(row: any): PlaneStats {
+  if (!row || typeof row.stats !== 'string') return freshStats();
+  try {
+    return sanitize(JSON.parse(row.stats));
+  } catch (err) {
+    logError('PlaneStats: corrupt stats blob, resetting:', err);
+    return freshStats();
+  }
+}
+
 class PlaneStatsModel {
   private db: Database;
 
@@ -143,25 +158,26 @@ class PlaneStatsModel {
   // Read the stored stats (always a full, sanitized shape; fresh if none).
   async getStats(userId: string): Promise<PlaneStats> {
     const row = await this.db.executeSelectQuery(planeStatsQueries.GET, [userId]);
-    if (!row || typeof row.stats !== 'string') return freshStats();
-    try {
-      return sanitize(JSON.parse(row.stats));
-    } catch (err) {
-      logError('PlaneStats: corrupt stats blob, resetting:', err);
-      return freshStats();
-    }
+    return rowToStats(row);
   }
 
   // Apply a batch of gameplay events and persist. Returns the new full stats.
+  // The read-modify-write runs inside one transaction: two sorties landing at
+  // once would otherwise both read the old blob and the later UPSERT would
+  // silently drop the earlier one's medals. A failed write throws rather than
+  // returning stats that were never persisted.
   async applyEvents(userId: string, events: unknown): Promise<PlaneStats> {
     const list = Array.isArray(events) ? events.slice(0, MAX_EVENTS) : [];
-    const stats = await this.getStats(userId);
-    if (list.length === 0) return stats;
-    for (const ev of list) applyEvent(stats, ev);
+    if (list.length === 0) return this.getStats(userId);
     // Ensure the User row exists before the FK insert (mirrors GameUIDModel).
+    // Outside the transaction — getUser is its own read/insert pair.
     await this.db.user.getUser(userId);
-    await this.db.executeQuery(planeStatsQueries.UPSERT, [userId, JSON.stringify(stats)]);
-    return stats;
+    return this.db.executeTransaction((rawDb) => {
+      const stats = rowToStats(rawDb.query(planeStatsQueries.GET).get(userId));
+      for (const ev of list) applyEvent(stats, ev);
+      rawDb.query(planeStatsQueries.UPSERT).run(userId, JSON.stringify(stats));
+      return stats;
+    });
   }
 }
 

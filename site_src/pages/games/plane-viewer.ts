@@ -87,6 +87,7 @@ export function PlaneViewerPage(opts: {
   .pv-dims { margin-top: 0.5rem; font-size: 0.7rem; color: var(--accent-light, #7fdfff); }
   .pv-livery-container {
     display: flex; gap: 0.8rem; align-items: center;
+    width: 100%; text-align: left; font: inherit; color: inherit;
     background: color-mix(in oklab, var(--ink-700, #1a2230) 40%, transparent);
     padding: 0.55rem 0.6rem; border-radius: 0.5rem;
     border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 15%, transparent);
@@ -161,13 +162,13 @@ export function PlaneViewerPage(opts: {
 
         <div class="pv-group" id="pv-livery-group" style="display: none;">
           <div class="pv-h">Livery</div>
-          <div id="pv-livery-toggle" class="pv-livery-container">
-            <div id="pv-livery-preview" class="pv-livery-preview" style="background-image: url('/static/planes/spitfire-original-preview.jpg?v=${assetVersion(path.join(PLANES_DIR, 'spitfire-original-preview.jpg'))}');"></div>
-            <div style="flex: 1;">
-              <div id="pv-livery-name" style="font-weight: bold; color: var(--accent-light, #7fdfff); font-size: 0.8rem;">Original</div>
-              <div style="font-size: 0.65rem; color: var(--fog-400, #8aa0ad); margin-top: 0.15rem;">Click to cycle</div>
-            </div>
-          </div>
+          <button type="button" id="pv-livery-toggle" class="pv-livery-container">
+            <span id="pv-livery-preview" class="pv-livery-preview" style="background-image: url('/static/planes/spitfire-original-preview.jpg?v=${assetVersion(path.join(PLANES_DIR, 'spitfire-original-preview.jpg'))}');"></span>
+            <span style="flex: 1;">
+              <span id="pv-livery-name" style="display: block; font-weight: bold; color: var(--accent-light, #7fdfff); font-size: 0.8rem;">Original</span>
+              <span style="display: block; font-size: 0.65rem; color: var(--fog-400, #8aa0ad); margin-top: 0.15rem;">Click to cycle</span>
+            </span>
+          </button>
         </div>
 
         <div class="pv-group" id="pv-stats"></div>

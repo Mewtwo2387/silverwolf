@@ -65,6 +65,14 @@ bun run scripts/generate-skins-procedural.ts
 bun run scripts/generate-previews-procedural.ts
 ```
 
+The preview script **skips previews that already exist** — several shipped ones (the P-51
+original/desert/winter set, all the Spitfire and Zero ones) are AI-generated art that a procedural
+crop would be a downgrade from. Delete the file you want redone, or pass `--force` to regenerate
+everything:
+```bash
+bun run scripts/generate-previews-procedural.ts --force
+```
+
 ---
 
 ## 4. Cache-Busting & Image Generator Log
@@ -74,7 +82,7 @@ Texture maps and previews are served under immutable caching headers (`cache-con
 - The server hashes every file in `site_src/Assets/planes/` (`assetVersionMap()` in `site_src/asset-version.ts`, mtime-cached, same MD5 scheme as `styles.css`/`app.js`) and renders a `{ basename: hash }` manifest into a JSON island `#ps-asset-ver` on both `/games/plane-sim` and `/games/plane-sim/inspect`.
 - The client helper `planeUrl(name)` (`site_src/Assets/plane-sim-assets.js`) reads that manifest and appends `?v=<hash>`. It's used by `refTexture()` (all aircraft skin sheets) in `plane-sim-models.js` and by the livery-preview thumbnails in `plane-viewer.src.js`. Edit a skin → its hash changes → the URL changes → the browser re-fetches. No code change needed.
 - The viewer's default (server-rendered) preview thumbnail uses `assetVersion()` directly in `site_src/pages/games/plane-viewer.ts`.
-- Server static route middleware (`site_src/routes/static.ts`) additionally serves `cache-control: no-cache, must-revalidate` during local development (`NODE_ENV !== 'production'`) so texture edits show up instantly without any query change.
+- Server static route middleware (`site_src/routes/static.ts`) additionally serves `cache-control: no-cache, must-revalidate` during local development (`NODE_ENV === 'development'`, as in `.env.example`) so texture edits show up instantly without any query change. Anything else — including an unset `NODE_ENV` — gets the immutable cache.
 
 ### Thumbnail AI Generation Status & Rate Limit Log
 - **Spitfire Previews:** AI Generated (`spitfire-original-preview.jpg`, `spitfire-desert-preview.jpg`, `spitfire-winter-preview.jpg`, `spitfire-special-preview.jpg`)

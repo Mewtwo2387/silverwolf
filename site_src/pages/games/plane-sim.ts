@@ -371,6 +371,8 @@ export function PlaneSimPage(opts: {
     transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
   }
   .ps-map-tile.ps-active { border-color: var(--ps-edge-strong); box-shadow: 0 0 22px rgba(217, 164, 65, 0.18), inset 0 0 0 1px var(--ps-edge-soft); }
+  /* Keyboard focus has to be as loud as hover — the tiles are the only way into a flight. */
+  .ps-map-tile:focus-visible { outline: 2px solid var(--ps-gold, #d9a441); outline-offset: 2px; border-color: var(--ps-edge-strong); }
   .ps-map-svg { width: 148px; height: 96px; border-radius: 0.4rem; flex: none; }
   .ps-map-name { font-size: 1rem; font-weight: 800; letter-spacing: 0.04em; color: var(--ps-parch); margin: 0 0 0.25rem; }
   .ps-map-desc { font-size: 0.76rem; line-height: 1.45; color: var(--ps-parch-dim); margin: 0; }
@@ -754,28 +756,28 @@ export function PlaneSimPage(opts: {
         <div class="ps-card">
           <h1>Game mode</h1>
           <p class="ps-sub">Pick how you want to fly, then a chapter within it.</p>
-          <div class="ps-map-tile" data-gamemode="tutorial">
+          <div class="ps-map-tile" role="button" tabindex="0" data-gamemode="tutorial">
             <div class="ps-tile-ico">🎓</div>
             <div>
               <p class="ps-map-name">Flight School</p>
               <p class="ps-map-desc">Bite-size lessons with one goal each: take off, manoeuvre, shoot, bomb. The game tells you what to do and watches you do it.</p>
             </div>
           </div>
-          <div class="ps-map-tile" data-gamemode="sortie">
+          <div class="ps-map-tile" role="button" tabindex="0" data-gamemode="sortie">
             <div class="ps-tile-ico">🎯</div>
             <div>
               <p class="ps-map-name">Sortie</p>
               <p class="ps-map-desc">The combat missions: clear the bandits over the coastal valley, or defend the fleet and sink the enemy carrier.</p>
             </div>
           </div>
-          <div class="ps-map-tile" data-gamemode="stunt">
+          <div class="ps-map-tile" role="button" tabindex="0" data-gamemode="stunt">
             <div class="ps-tile-ico">💫</div>
             <div>
               <p class="ps-map-name">Stunt Circuit</p>
               <p class="ps-map-desc">Chase rings for points — through valleys, under bridges, wave-high past the fleet. Bullseyes score extra.</p>
             </div>
           </div>
-          <div class="ps-map-tile" data-gamemode="free">
+          <div class="ps-map-tile" role="button" tabindex="0" data-gamemode="free">
             <div class="ps-tile-ico">⛓️‍💥</div>
             <div>
               <p class="ps-map-name">Free Flight</p>
@@ -793,19 +795,19 @@ export function PlaneSimPage(opts: {
         <div class="ps-card">
           <h1>Flight School</h1>
           <p class="ps-sub">One goal at a time. Follow the prompt at the top of the screen — it ticks off as you nail each step.</p>
-          <div class="ps-map-tile" data-tut="takeoff">
+          <div class="ps-map-tile" role="button" tabindex="0" data-tut="takeoff">
             <div class="ps-tile-ico">🛫</div>
             <div><p class="ps-map-name">1 · First Flight</p><p class="ps-map-desc">Throttle up, lift off, gear up, climb away.</p></div>
           </div>
-          <div class="ps-map-tile" data-tut="controls">
+          <div class="ps-map-tile" role="button" tabindex="0" data-tut="controls">
             <div class="ps-tile-ico">🕹️</div>
             <div><p class="ps-map-name">2 · Stick &amp; Rudder</p><p class="ps-map-desc">Bank, climb, dive and rudder — the plane goes where you point the mouse.</p></div>
           </div>
-          <div class="ps-map-tile" data-tut="guns">
+          <div class="ps-map-tile" role="button" tabindex="0" data-tut="guns">
             <div class="ps-tile-ico">🔫</div>
             <div><p class="ps-map-name">3 · Gunnery</p><p class="ps-map-desc">Track a bandit and splash him. He won't shoot back — this time.</p></div>
           </div>
-          <div class="ps-map-tile" data-tut="bombs">
+          <div class="ps-map-tile" role="button" tabindex="0" data-tut="bombs">
             <div class="ps-tile-ico">💣</div>
             <div><p class="ps-map-name">4 · Bombing</p><p class="ps-map-desc">Two wing bombs, one enemy flat-top. Put one on the deck (B to drop).</p></div>
           </div>
@@ -820,19 +822,19 @@ export function PlaneSimPage(opts: {
         <div class="ps-card">
           <h1>Stunt Circuit</h1>
           <p class="ps-sub">Fly the glowing rings in order — 100 points a ring, 150 for a bullseye, nothing for a miss. The beam of light marks the next one.</p>
-          <div class="ps-map-tile" data-stunt="valley">
+          <div class="ps-map-tile" role="button" tabindex="0" data-stunt="valley">
             <div class="ps-tile-ico">🌉</div>
             <div><p class="ps-map-name">Valley Run</p><p class="ps-map-desc">Low through the central valley and UNDER two road bridges. 31 rings.</p></div>
           </div>
-          <div class="ps-map-tile" data-stunt="canyon">
+          <div class="ps-map-tile" role="button" tabindex="0" data-stunt="canyon">
             <div class="ps-tile-ico">🏔️</div>
             <div><p class="ps-map-name">The Canyon</p><p class="ps-map-desc">Its own alpine map: weave the gorge switchbacks slow and tight, sprint the straight, pull hard over the exit ridge. 30 rings.</p></div>
           </div>
-          <div class="ps-map-tile" data-stunt="wavetop">
+          <div class="ps-map-tile" role="button" tabindex="0" data-stunt="wavetop">
             <div class="ps-tile-ico">🌊</div>
             <div><p class="ps-map-name">Wavetop Circuit</p><p class="ps-map-desc">A slalom off the carrier's bow, wave-high out to the enemy fleet and home. 18 rings.</p></div>
           </div>
-          <div class="ps-map-tile" data-stunt="skyline">
+          <div class="ps-map-tile" role="button" tabindex="0" data-stunt="skyline">
             <div class="ps-tile-ico">🏙️</div>
             <div><p class="ps-map-name">Skyline Dash</p><p class="ps-map-desc">Thread the city itself — weave the streets and tower gaps below the rooftops, crossing Midtown twice. 29 rings.</p></div>
           </div>
@@ -847,15 +849,15 @@ export function PlaneSimPage(opts: {
         <div class="ps-card">
           <h1>Free Flight</h1>
           <p class="ps-sub">Pick a playground and take off. No enemies, no objectives, no timer — just you and the aeroplane. A crash still ends the flight.</p>
-          <div class="ps-map-tile" data-freemap="coastal">
+          <div class="ps-map-tile" role="button" tabindex="0" data-freemap="coastal">
             <div class="ps-tile-ico">🏞️</div>
             <div><p class="ps-map-name">Coastal Airfield</p><p class="ps-map-desc">The home valley: mountains, lakes, forests and the full-length runway. Two bridges to sneak under, if you're feeling it.</p></div>
           </div>
-          <div class="ps-map-tile" data-freemap="ocean">
+          <div class="ps-map-tile" role="button" tabindex="0" data-freemap="ocean">
             <div class="ps-tile-ico">🌊</div>
             <div><p class="ps-map-name">Open Ocean</p><p class="ps-map-desc">Launch off the carrier deck into empty blue. Both fleets ride at anchor — nobody shoots back.</p></div>
           </div>
-          <div class="ps-map-tile" data-freemap="city">
+          <div class="ps-map-tile" role="button" tabindex="0" data-freemap="city">
             <div class="ps-tile-ico">🏙️</div>
             <div><p class="ps-map-name">The City</p><p class="ps-map-desc">The island airfield and the 1940s skyline, all to yourself. Mind the towers — they're solid.</p></div>
           </div>
@@ -886,7 +888,7 @@ export function PlaneSimPage(opts: {
         <div class="ps-card">
           <h1>Sortie</h1>
           <p class="ps-sub">Select a map, set the opposition, and go hunt the bandits. Watch your hull — they shoot back.</p>
-          <div class="ps-map-tile ps-active" id="ps-map-coastal" data-map="coastal">
+          <div class="ps-map-tile ps-active" role="button" tabindex="0" id="ps-map-coastal" data-map="coastal">
             <svg class="ps-map-svg" viewBox="0 0 148 96" role="img" aria-label="Coastal Airfield map preview">
               <rect width="148" height="96" rx="6" fill="#22381f"/>
               <path d="M0 66 Q 22 52 44 62 T 96 60 T 148 70 L 148 96 L 0 96 Z" fill="#173f4e"/>
@@ -902,7 +904,7 @@ export function PlaneSimPage(opts: {
               <p class="ps-map-desc">A 12&nbsp;km box of mountains, lakes and one very homely airstrip. Bandits prowl the valley.</p>
             </div>
           </div>
-          <div class="ps-map-tile" id="ps-map-ocean" data-map="ocean">
+          <div class="ps-map-tile" role="button" tabindex="0" id="ps-map-ocean" data-map="ocean">
             <svg class="ps-map-svg" viewBox="0 0 148 96" role="img" aria-label="Ocean map preview">
               <rect width="148" height="96" rx="6" fill="#123a4c"/>
               <path d="M0 20 q 18 -6 37 0 t 37 0 t 37 0 t 37 0 V 26 q -18 6 -37 0 t -37 0 t -37 0 t -37 0 Z" fill="#1c4a5c" opacity="0.7"/>
@@ -919,7 +921,7 @@ export function PlaneSimPage(opts: {
               <p class="ps-map-desc">Launch off your carrier's deck, sweep the bandits away from the fleet, then take two bombs to the enemy flat-top. Press <strong>B</strong> to drop a bomb — one hit sinks her, but waste both and the strike fails. Stray too far too early and it's your carrier on the seabed.</p>
             </div>
           </div>
-          <div class="ps-map-tile" id="ps-map-city" data-map="city">
+          <div class="ps-map-tile" role="button" tabindex="0" id="ps-map-city" data-map="city">
             <svg class="ps-map-svg" viewBox="0 0 148 96" role="img" aria-label="City map preview">
               <rect width="148" height="96" rx="6" fill="#123243"/>
               <!-- harbour water -->

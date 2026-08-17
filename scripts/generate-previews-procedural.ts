@@ -11,12 +11,23 @@ function saveCanvas(canvas: any, destPath: string) {
   console.log(`Saved preview: ${destPath}`);
 }
 
+// `--force` overwrites previews that already exist. Without it we skip them:
+// several shipped previews (the P-51 original/desert/winter set) are
+// higher-fidelity AI-generated art, and a plain re-run would silently replace
+// them with procedural crops. See README_SKINS.md §4.
+const FORCE = process.argv.includes('--force');
+
 async function createCropPreview(srcName: string, destName: string, cropX: number, cropY: number, size: number) {
   const srcPath = path.join(ASSETS_DIR, `${srcName}.jpg`);
   const destPath = path.join(ASSETS_DIR, `${destName}.jpg`);
 
   if (!fs.existsSync(srcPath)) {
     console.error(`Source texture not found for preview: ${srcPath}`);
+    return;
+  }
+
+  if (!FORCE && fs.existsSync(destPath)) {
+    console.log(`Skipping existing preview (pass --force to overwrite): ${destPath}`);
     return;
   }
 

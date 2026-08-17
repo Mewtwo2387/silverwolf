@@ -260,30 +260,41 @@ async function main() {
   await blendCamo('p51-fus', 'desert', 'rgb(215, 190, 140)', 'rgb(125, 85, 45)', 'rgb(95, 100, 75)');
   await blendCamo('p51-tai', 'desert', 'rgb(215, 190, 140)', 'rgb(125, 85, 45)', 'rgb(95, 100, 75)');
   await blendCamo('p51-wng', 'desert', 'rgb(215, 190, 140)', 'rgb(125, 85, 45)', 'rgb(95, 100, 75)');
+  await blendCamo('p51-rud', 'desert', 'rgb(215, 190, 140)', 'rgb(125, 85, 45)', 'rgb(95, 100, 75)');
+  await blendCamo('p51-elv', 'desert', 'rgb(215, 190, 140)', 'rgb(125, 85, 45)', 'rgb(95, 100, 75)');
 
   // P-51 Winter
   await blendCamo('p51-fus', 'winter', 'rgb(235, 235, 235)', 'rgb(175, 180, 185)', 'rgb(135, 140, 145)');
   await blendCamo('p51-tai', 'winter', 'rgb(235, 235, 235)', 'rgb(175, 180, 185)', 'rgb(135, 140, 145)');
   await blendCamo('p51-wng', 'winter', 'rgb(235, 235, 235)', 'rgb(175, 180, 185)', 'rgb(135, 140, 145)');
+  await blendCamo('p51-rud', 'winter', 'rgb(235, 235, 235)', 'rgb(175, 180, 185)', 'rgb(135, 140, 145)');
+  await blendCamo('p51-elv', 'winter', 'rgb(235, 235, 235)', 'rgb(175, 180, 185)', 'rgb(135, 140, 145)');
 
   // P-51 Special (Red Tails)
   await blendP51Special();
   await blendP51TailSpecial();
   await blendP51RudderSpecial();
   await blendSilver('p51-wng', 'special');
+  // p51-elv-special.jpg is deliberately not regenerated here: the elevator is part
+  // of the Red Tails tail group, not the bare-metal group, and the shipped asset
+  // isn't a plain silver blend. Replace it by hand (see README_SKINS.md) if it
+  // ever needs redoing.
 
   // --- Carpet Bomber ---
   // Bomber Desert
   await blendCamo('bomber-hull', 'desert', 'rgb(215, 190, 140)', 'rgb(125, 85, 45)', 'rgb(95, 100, 75)');
   await blendCamo('bomber-wing', 'desert', 'rgb(215, 190, 140)', 'rgb(125, 85, 45)', 'rgb(95, 100, 75)');
+  await blendCamo('bomber-det', 'desert', 'rgb(215, 190, 140)', 'rgb(125, 85, 45)', 'rgb(95, 100, 75)');
 
   // Bomber Winter
   await blendCamo('bomber-hull', 'winter', 'rgb(235, 235, 235)', 'rgb(175, 180, 185)', 'rgb(135, 140, 145)');
   await blendCamo('bomber-wing', 'winter', 'rgb(235, 235, 235)', 'rgb(175, 180, 185)', 'rgb(135, 140, 145)');
+  await blendCamo('bomber-det', 'winter', 'rgb(235, 235, 235)', 'rgb(175, 180, 185)', 'rgb(135, 140, 145)');
 
   // Bomber Special (Silver Metal)
   await blendSilver('bomber-hull', 'special');
   await blendSilver('bomber-wing', 'special');
+  await blendSilver('bomber-det', 'special');
 
   console.log('Procedural skin generation completed!');
 }

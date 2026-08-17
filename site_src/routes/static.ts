@@ -113,7 +113,10 @@ for (const rarity of ['gold', 'silver', 'bronze']) {
 async function serveStatic(entry: StaticEntry) {
   const file = Bun.file(entry.path);
   if (!(await file.exists())) return new Response('not found', { status: 404 });
-  const isDev = process.env.NODE_ENV !== 'production';
+  // Only an explicit development env disables the immutable cache. Nothing sets
+  // NODE_ENV in the deployed container, so `!== 'production'` meant every static
+  // asset — including the ~1.8 MB Three.js bundles — was served no-cache in prod.
+  const isDev = process.env.NODE_ENV === 'development';
   const headers: Record<string, string> = {
     'content-type': entry.contentType,
     'cache-control': isDev ? 'no-cache, must-revalidate' : IMMUTABLE_CACHE,

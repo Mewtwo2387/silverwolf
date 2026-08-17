@@ -31,6 +31,13 @@ import { planeUrl } from './plane-sim-assets.js';
     },
   };
   const LIVERY_KEYS = ['original', 'desert', 'winter', 'special'];
+  // localStorage is user-editable and shared with the game — anything that isn't
+  // a known livery falls back to 'original' rather than indexing LIVERIES with
+  // undefined.
+  const savedSkin = (planeType) => {
+    const skin = localStorage.getItem(`ps-skin-${planeType}`);
+    return LIVERY_KEYS.includes(skin) ? skin : 'original';
+  };
 
   const canvas = document.getElementById('pv-canvas');
   if (!canvas) return;
@@ -251,7 +258,7 @@ import { planeUrl } from './plane-sim-assets.js';
     let planeType = null;
     if (kind === 'aircraft' || kind === 'p51' || kind === 'zero' || kind === 'bomber') {
       planeType = kind === 'aircraft' ? 'spitfire' : kind;
-      const skin = localStorage.getItem(`ps-skin-${planeType}`) || 'original';
+      const skin = savedSkin(planeType);
       const a = buildAircraft({ type: planeType, gearDown: true, skin });
       current = a.group; currentSurf = a.surf;
     } else if (kind === 'carrier') {
@@ -285,7 +292,7 @@ import { planeUrl } from './plane-sim-assets.js';
     if (liveryGroup) {
       if (planeType) {
         liveryGroup.style.display = 'block';
-        const skin = localStorage.getItem(`ps-skin-${planeType}`) || 'original';
+        const skin = savedSkin(planeType);
         const nameEl = document.getElementById('pv-livery-name');
         const previewEl = document.getElementById('pv-livery-preview');
         const label = skin === 'special' ? LIVERIES.special[planeType].label : LIVERIES[skin].label;
@@ -309,7 +316,7 @@ import { planeUrl } from './plane-sim-assets.js';
 
   $('pv-livery-toggle')?.addEventListener('click', () => {
     if (!currentPlaneType) return;
-    const currentSkin = localStorage.getItem(`ps-skin-${currentPlaneType}`) || 'original';
+    const currentSkin = savedSkin(currentPlaneType);
     const nextIdx = (LIVERY_KEYS.indexOf(currentSkin) + 1) % LIVERY_KEYS.length;
     const nextSkin = LIVERY_KEYS[nextIdx];
     localStorage.setItem(`ps-skin-${currentPlaneType}`, nextSkin);

@@ -128,6 +128,18 @@ import {
     for (const el of document.querySelectorAll(`[data-${attr}]`)) {
       el.addEventListener('mousedown', (ev) => ev.stopPropagation());
       el.addEventListener('click', (ev) => { ev.stopPropagation(); handler(el.dataset[attr]); });
+      // The menu tiles are role="button" divs (they hold headings + paragraphs,
+      // which can't live inside a real <button>), so Enter/Space have to be
+      // wired by hand or the whole game is mouse-only. Native <button> pickers
+      // fire click themselves — don't double-handle those.
+      if (el.tagName !== 'BUTTON') {
+        el.addEventListener('keydown', (ev) => {
+          if (ev.key !== 'Enter' && ev.key !== ' ' && ev.key !== 'Spacebar') return;
+          ev.preventDefault(); // Space would scroll the menu / re-trigger on keyup
+          ev.stopPropagation();
+          handler(el.dataset[attr]);
+        });
+      }
     }
   };
 
