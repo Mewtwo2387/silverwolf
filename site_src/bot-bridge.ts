@@ -1,4 +1,5 @@
 import type { Silverwolf } from '../classes/silverwolf';
+import type { PlaneStats } from '../database/models/PlaneStatsModel';
 import { logError } from '../utils/log';
 import {
   fetchGamblingPageStats,
@@ -1306,4 +1307,20 @@ export async function generateFakeQuoteWeb(
     logError('fakequote render failed:', err);
     return { ok: false, error: 'render_failed', message: 'Render failed.' };
   }
+}
+
+// ---- Plane Sim achievements -------------------------------------------------
+// The website reads/writes the per-user Plane Sim stat blob through these two
+// helpers. The model (PlaneStatsModel) is the trusted writer — it decides what
+// each gameplay event does; the browser never sends absolute totals.
+export async function fetchPlaneStats(silverwolf: Silverwolf, userId: string): Promise<PlaneStats> {
+  return silverwolf.db.planeStats.getStats(userId);
+}
+
+export async function applyPlaneStatsEvents(
+  silverwolf: Silverwolf,
+  userId: string,
+  events: unknown,
+): Promise<PlaneStats> {
+  return silverwolf.db.planeStats.applyEvents(userId, events);
 }

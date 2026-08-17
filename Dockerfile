@@ -30,6 +30,9 @@ RUN --mount=type=cache,target=/root/.bun/install/cache \
 COPY site_src ./site_src
 COPY tailwind.config.js ./
 RUN bun build ./site_src/Assets/app.src.js --minify --outfile ./site_src/Assets/app.js \
+    && bun build ./site_src/Assets/plane-sim.src.js --minify --outfile ./site_src/Assets/plane-sim.js \
+    && bun build ./site_src/Assets/plane-viewer.src.js --minify --outfile ./site_src/Assets/plane-viewer.js \
+    && bun build ./site_src/Assets/wave-sim.src.js --minify --outfile ./site_src/Assets/wave-sim.js \
     && bunx --bun tailwindcss@3 -i ./site_src/Assets/input.css -o ./site_src/Assets/styles.css --minify
 
 # 5. Fetch the GM soundfont for the JAYDON music generator (checksum-verified,
@@ -67,6 +70,9 @@ COPY --chown=bun:bun . .
 # runtime are the ones the builder just produced.
 COPY --from=builder --chown=bun:bun /app/site_src/Assets/styles.css ./site_src/Assets/styles.css
 COPY --from=builder --chown=bun:bun /app/site_src/Assets/app.js ./site_src/Assets/app.js
+COPY --from=builder --chown=bun:bun /app/site_src/Assets/plane-sim.js ./site_src/Assets/plane-sim.js
+COPY --from=builder --chown=bun:bun /app/site_src/Assets/plane-viewer.js ./site_src/Assets/plane-viewer.js
+COPY --from=builder --chown=bun:bun /app/site_src/Assets/wave-sim.js ./site_src/Assets/wave-sim.js
 # Soundfont downloaded + checksum-verified in the builder stage.
 COPY --from=builder --chown=bun:bun /app/data/soundfonts ./data/soundfonts
 

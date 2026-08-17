@@ -26,7 +26,39 @@ const STATIC_ASSETS: Record<string, StaticEntry> = {
   '/static/silverwolfLv.999.avif': { path: path.join(IMAGES_DIR, 'silverwolfLv.999.avif'), contentType: 'image/avif' },
   '/static/styles.css': { path: path.join(ASSETS_DIR, 'styles.css'), contentType: 'text/css; charset=utf-8' },
   '/static/app.js': { path: path.join(ASSETS_DIR, 'app.js'), contentType: 'text/javascript; charset=utf-8' },
+  // Plane Sim's bundled Three.js game + model inspector (built from
+  // plane-sim.src.js / plane-viewer.src.js, see Dockerfile).
+  '/static/plane-sim.js': { path: path.join(ASSETS_DIR, 'plane-sim.js'), contentType: 'text/javascript; charset=utf-8' },
+  '/static/plane-viewer.js': { path: path.join(ASSETS_DIR, 'plane-viewer.js'), contentType: 'text/javascript; charset=utf-8' },
+  // Standalone Gerstner wave sandbox (wave-sim.src.js + wave-field.js).
+  '/static/wave-sim.js': { path: path.join(ASSETS_DIR, 'wave-sim.js'), contentType: 'text/javascript; charset=utf-8' },
 };
+// Plane Sim aircraft textures (the P-51 / Zero reference-model skins, loaded
+// by THREE.TextureLoader from the game bundle — see plane-sim-models.js).
+const baseSkins = [
+  'p51-fus', 'p51-tai', 'p51-elv', 'p51-rud', 'p51-wng', 'zero-sheet', 'spit-skin',
+  'bomber-hull', 'bomber-wing', 'bomber-det',
+];
+const suffixSkins = ['desert', 'winter', 'special'];
+const allPlanesSkins = [...baseSkins];
+for (const s of baseSkins) {
+  for (const suf of suffixSkins) {
+    allPlanesSkins.push(`${s}-${suf}`);
+  }
+}
+for (const p of ['spitfire', 'p51', 'zero', 'bomber']) {
+  for (const s of ['original', 'desert', 'winter', 'special']) {
+    allPlanesSkins.push(`${p}-${s}-preview`);
+  }
+}
+for (const skin of [
+  ...allPlanesSkins,
+  'tree-bark', 'tree-leaves', 'metal-normal', 'metal-roughness',
+  'asphalt', 'corrugated-metal', 'concrete',
+  'water-normal', 'grass-normal',
+]) {
+  STATIC_ASSETS[`/static/planes/${skin}.jpg`] = { path: path.join(ASSETS_DIR, 'planes', `${skin}.jpg`), contentType: 'image/jpeg' };
+}
 // Hero responsive variants — emitted by scripts/build-images.ts. The about-page
 // <picture> picks the smallest width that covers its slot (sizes attribute).
 for (const w of [512, 1024, 1600]) {
@@ -81,9 +113,13 @@ for (const rarity of ['gold', 'silver', 'bronze']) {
 async function serveStatic(entry: StaticEntry) {
   const file = Bun.file(entry.path);
   if (!(await file.exists())) return new Response('not found', { status: 404 });
+  // Only an explicit development env disables the immutable cache. Nothing sets
+  // NODE_ENV in the deployed container, so `!== 'production'` meant every static
+  // asset — including the ~1.8 MB Three.js bundles — was served no-cache in prod.
+  const isDev = process.env.NODE_ENV === 'development';
   const headers: Record<string, string> = {
     'content-type': entry.contentType,
-    'cache-control': IMMUTABLE_CACHE,
+    'cache-control': isDev ? 'no-cache, must-revalidate' : IMMUTABLE_CACHE,
   };
   // SVGs can carry <script> if served as a top-level document. Lock them down
   // so even a future malicious-SVG drop in Assets/svg/ can't run JS.

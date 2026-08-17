@@ -11,6 +11,7 @@ import GlobalConfigModel from './GlobalConfigModel';
 import ImageGenModel from './ImageGenModel';
 import MarriageModel from './MarriageModel';
 import MusicGenModel from './MusicGenModel';
+import PlaneStatsModel from './PlaneStatsModel';
 import PokemonModel from './PokemonModel';
 import PoopModel from './PoopModel';
 import QuotePreferenceModel from './QuotePreferenceModel';
@@ -33,6 +34,7 @@ export {
   ImageGenModel,
   MarriageModel,
   MusicGenModel,
+  PlaneStatsModel,
   PokemonModel,
   PoopModel,
   QuotePreferenceModel,

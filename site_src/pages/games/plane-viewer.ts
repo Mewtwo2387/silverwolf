@@ -1,0 +1,248 @@
+import path from 'path';
+import { html, raw } from 'hono/html';
+import { Layout } from '../../components/layout';
+import { assetVersion, assetVersionMap } from '../../asset-version';
+import { inlineJSON } from '../../inline';
+import { MODEL_CREDITS } from './plane-credits';
+
+// Plane Sim — Model Inspector. A standalone turntable viewer for the Plane Sim
+// 3D assets (the aircraft + scenery), so the models can be examined and iterated
+// on outside the game. Viewing only — there is no model export/download, since
+// the airframes follow third-party references credited in the panel (see
+// plane-credits.ts). The 3D lives in the bundled site_src/Assets/plane-viewer.js, which imports the
+// same shared builders the game uses (plane-sim-models.js).
+const PLANE_VIEWER_JS = path.resolve(import.meta.dir, '..', '..', 'Assets', 'plane-viewer.js');
+const PLANES_DIR = path.resolve(import.meta.dir, '..', '..', 'Assets', 'planes');
+
+export function PlaneViewerPage(opts: {
+  nonce: string;
+  lv999?: boolean;
+  user?: import('../../components/navbar').NavUser | null;
+}) {
+  const { nonce, lv999, user } = opts;
+
+  const styles = raw(`
+<style>
+  #pv-stage { position: fixed; inset: 0; overflow: hidden; background: #10141c; font-family: 'JetBrains Mono', monospace; }
+  #pv-canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+  #pv-canvas:active { cursor: grabbing; }
+
+  .pv-topleft { position: absolute; top: 1rem; left: 1rem; z-index: 5; display: flex; gap: 0.5rem; }
+  .pv-link {
+    display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer;
+    padding: 0.4rem 0.7rem; font-size: 0.8rem; text-decoration: none;
+    color: var(--fog-200, #dfe9ef);
+    background: color-mix(in oklab, var(--ink-900, #06080f) 60%, transparent);
+    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 30%, transparent); border-radius: 0.5rem;
+    backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
+  }
+  .pv-link:hover { border-color: var(--accent, #22d3ff); color: var(--accent-light, #7fdfff); }
+
+  .pv-panel {
+    position: absolute; top: 1rem; right: 1rem; z-index: 5; width: 244px; max-height: calc(100vh - 2rem);
+    overflow-y: auto; padding: 0.9rem 1rem 1.1rem;
+    color: var(--fog-200, #dfe9ef); font-size: 0.82rem;
+    background: color-mix(in oklab, var(--ink-900, #06080f) 70%, transparent);
+    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 28%, transparent); border-radius: 0.75rem;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  }
+  .pv-panel h1 { margin: 0 0 0.15rem; font-size: 1rem; color: var(--accent-light, #7fdfff); }
+  .pv-panel .pv-sub { margin: 0 0 0.85rem; font-size: 0.68rem; color: var(--fog-400, #8aa0ad); }
+  .pv-group { margin-bottom: 0.9rem; }
+  .pv-group > .pv-h { font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fog-400, #8aa0ad); margin-bottom: 0.4rem; }
+
+  .pv-models { display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem; }
+  .pv-models button {
+    padding: 0.4rem 0.3rem; font: inherit; font-size: 0.78rem; cursor: pointer;
+    color: var(--fog-200, #dfe9ef); background: color-mix(in oklab, var(--ink-700, #1a2230) 70%, transparent);
+    border: 1px solid var(--ink-600, #2a3550); border-radius: 0.4rem; transition: all 0.15s;
+  }
+  .pv-models button:hover { border-color: var(--accent, #22d3ff); color: var(--accent-light, #7fdfff); }
+  .pv-models button.active { background: color-mix(in oklab, var(--accent, #22d3ff) 18%, transparent); border-color: var(--accent, #22d3ff); color: var(--accent, #22d3ff); }
+
+  .pv-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin: 0.3rem 0; }
+  .pv-row label { cursor: pointer; }
+  .pv-row input[type=checkbox] { accent-color: var(--accent, #22d3ff); width: 15px; height: 15px; cursor: pointer; }
+  .pv-slider { display: flex; flex-direction: column; gap: 0.15rem; margin: 0.45rem 0; }
+  .pv-slider .pv-sl-top { display: flex; justify-content: space-between; font-size: 0.72rem; }
+  .pv-slider input[type=range] { width: 100%; accent-color: var(--accent, #22d3ff); }
+
+  .pv-wide {
+    padding: 0.42rem 0.4rem; font: inherit; font-size: 0.76rem; cursor: pointer;
+    color: var(--fog-100, #eef4f7); background: color-mix(in oklab, var(--accent, #22d3ff) 14%, transparent);
+    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 35%, transparent); border-radius: 0.4rem; transition: all 0.15s;
+  }
+  .pv-wide:hover { background: color-mix(in oklab, var(--accent, #22d3ff) 26%, transparent); border-color: var(--accent, #22d3ff); }
+  .pv-wide { width: 100%; margin-top: 0.35rem; }
+
+  /* Credits: attribution for the third-party model references (plane-credits.ts). */
+  .pv-credits { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+  .pv-credits li { display: flex; flex-direction: column; line-height: 1.3; }
+  .pv-credits a { color: var(--accent-light, #7fdfff); font-size: 0.74rem; text-decoration: none; }
+  .pv-credits a:hover { text-decoration: underline; }
+  .pv-credits span { font-size: 0.64rem; color: var(--fog-400, #8aa0ad); }
+  .pv-credit-note { margin: 0.55rem 0 0; font-size: 0.62rem; line-height: 1.4; color: var(--fog-400, #8aa0ad); }
+
+  .pv-dims { margin-top: 0.5rem; font-size: 0.7rem; color: var(--accent-light, #7fdfff); }
+  .pv-livery-container {
+    display: flex; gap: 0.8rem; align-items: center;
+    width: 100%; text-align: left; font: inherit; color: inherit;
+    background: color-mix(in oklab, var(--ink-700, #1a2230) 40%, transparent);
+    padding: 0.55rem 0.6rem; border-radius: 0.5rem;
+    border: 1px solid color-mix(in oklab, var(--accent, #22d3ff) 15%, transparent);
+    cursor: pointer; user-select: none; transition: all 0.15s ease-in-out;
+  }
+  .pv-livery-container:hover {
+    border-color: var(--accent, #22d3ff);
+    background: color-mix(in oklab, var(--accent, #22d3ff) 8%, transparent);
+  }
+  .pv-livery-preview {
+    width: 52px; height: 52px; border-radius: 0.35rem;
+    background-size: cover; background-position: center;
+    border: 1px solid rgba(255,255,255,0.15); flex-shrink: 0;
+    transition: transform 0.15s ease;
+  }
+  .pv-livery-container:active .pv-livery-preview {
+    transform: scale(0.95);
+  }
+
+  /* Aircraft spec sheet (shown only for the flyable models). */
+  #pv-stats { display: none; }
+  .pv-stat-desc { margin: 0 0 0.55rem; font-size: 0.72rem; line-height: 1.4; color: var(--fog-300, #b8c6cf); }
+  .pv-stat-nums { display: flex; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.55rem; font-size: 0.74rem; color: var(--fog-200, #dfe9ef); }
+  .pv-stat-nums b { color: var(--accent-light, #7fdfff); font-size: 0.95rem; }
+  .pv-stat-row { display: flex; align-items: center; gap: 0.5rem; margin: 0.28rem 0; }
+  .pv-stat-k { flex: 0 0 5.2rem; font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fog-400, #8aa0ad); }
+  .pv-stat-bar { flex: 1; height: 7px; border-radius: 4px; overflow: hidden; background: color-mix(in oklab, var(--ink-700, #1a2230) 80%, transparent); }
+  .pv-stat-bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, color-mix(in oklab, var(--accent, #22d3ff) 55%, transparent), var(--accent, #22d3ff)); }
+  .pv-hint { position: absolute; bottom: 0.8rem; left: 50%; transform: translateX(-50%); z-index: 5;
+    color: var(--fog-400, #8aa0ad); font-size: 0.74rem; font-family: 'JetBrains Mono', monospace; pointer-events: none; }
+
+  #pv-error { position: absolute; inset: 0; z-index: 6; display: none; align-items: center; justify-content: center;
+    color: var(--fog-200, #dfe9ef); background: rgba(6,8,15,0.9); text-align: center; padding: 2rem; }
+
+  @media (max-width: 600px) {
+    .pv-panel { width: calc(100vw - 2rem); max-height: 46vh; }
+  }
+</style>
+  `);
+
+  const body = html`
+    <div id="pv-stage">
+      <canvas id="pv-canvas" aria-label="3D model inspector"></canvas>
+
+      <div class="pv-topleft">
+        <a class="pv-link" href="/games/plane-sim">← Plane Sim</a>
+        <a class="pv-link" href="/games">Games</a>
+      </div>
+
+      <div class="pv-panel">
+        <h1>Model Inspector</h1>
+        <p class="pv-sub">Same models the game flies — inspect them up close.</p>
+
+        <div class="pv-group">
+          <div class="pv-h">Model</div>
+          <div class="pv-models">
+            <button type="button" data-model="aircraft" class="active">Spitfire</button>
+            <button type="button" data-model="p51">P-51</button>
+            <button type="button" data-model="zero">Zero</button>
+            <button type="button" data-model="bomber">Bomber</button>
+            <button type="button" data-model="carrier">Carrier</button>
+            <button type="button" data-model="hangar">Hangar</button>
+            <button type="button" data-model="tower">Tower</button>
+            <button type="button" data-model="nissen">Nissen hut</button>
+            <button type="button" data-model="fueltank">Fuel tank</button>
+            <button type="button" data-model="bowser">Bowser</button>
+            <button type="button" data-model="windsock">Windsock</button>
+            <button type="button" data-model="tree">Tree</button>
+          </div>
+          <div class="pv-dims" id="pv-dims">—</div>
+        </div>
+
+        <div class="pv-group" id="pv-livery-group" style="display: none;">
+          <div class="pv-h">Livery</div>
+          <button type="button" id="pv-livery-toggle" class="pv-livery-container">
+            <span id="pv-livery-preview" class="pv-livery-preview" style="background-image: url('/static/planes/spitfire-original-preview.jpg?v=${assetVersion(path.join(PLANES_DIR, 'spitfire-original-preview.jpg'))}');"></span>
+            <span style="flex: 1;">
+              <span id="pv-livery-name" style="display: block; font-weight: bold; color: var(--accent-light, #7fdfff); font-size: 0.8rem;">Original</span>
+              <span style="display: block; font-size: 0.65rem; color: var(--fog-400, #8aa0ad); margin-top: 0.15rem;">Click to cycle</span>
+            </span>
+          </button>
+        </div>
+
+        <div class="pv-group" id="pv-stats"></div>
+
+        <div class="pv-group">
+          <div class="pv-h">View</div>
+          <div class="pv-row"><label for="pv-autorotate">Auto-rotate</label><input type="checkbox" id="pv-autorotate" checked /></div>
+          <div class="pv-row"><label for="pv-wire">Wireframe</label><input type="checkbox" id="pv-wire" /></div>
+          <div class="pv-row"><label for="pv-spin">Spin propeller</label><input type="checkbox" id="pv-spin" checked /></div>
+          <div class="pv-row"><label for="pv-bombs">Wing bombs</label><input type="checkbox" id="pv-bombs" /></div>
+          <div class="pv-row"><label for="pv-grid">Grid</label><input type="checkbox" id="pv-grid" checked /></div>
+          <button type="button" class="pv-wide" id="pv-bg">BG: Dark</button>
+        </div>
+
+        <div class="pv-group" id="pv-surfaces">
+          <div class="pv-h">Control surfaces</div>
+          <div class="pv-slider">
+            <div class="pv-sl-top"><span>Aileron</span></div>
+            <input type="range" id="pv-ail" min="-40" max="40" value="0" />
+          </div>
+          <div class="pv-slider">
+            <div class="pv-sl-top"><span>Elevator</span></div>
+            <input type="range" id="pv-elev" min="-40" max="40" value="0" />
+          </div>
+          <div class="pv-slider">
+            <div class="pv-sl-top"><span>Rudder</span></div>
+            <input type="range" id="pv-rud" min="-40" max="40" value="0" />
+          </div>
+          <div class="pv-slider">
+            <div class="pv-sl-top"><span>Undercarriage (0 = up)</span></div>
+            <input type="range" id="pv-gear" min="0" max="100" value="100" />
+          </div>
+        </div>
+
+        <div class="pv-group">
+          <button type="button" class="pv-wide" id="pv-reset">Reset</button>
+        </div>
+
+        <div class="pv-group">
+          <div class="pv-h">Credits</div>
+          <ul class="pv-credits">
+            ${MODEL_CREDITS.map((c) => html`
+              <li>
+                <a href="${c.url}" target="_blank" rel="noopener noreferrer nofollow">${c.title}</a>
+                <span>by ${c.author} · ${c.license}</span>
+              </li>
+            `)}
+          </ul>
+          <p class="pv-credit-note">Aircraft modelled after these Sketchfab references.</p>
+        </div>
+      </div>
+
+      <div class="pv-hint">drag to orbit · scroll to zoom · right-drag to pan</div>
+
+      <div id="pv-error">
+        <div>
+          <h2>WebGL unavailable</h2>
+          <p>Your browser or GPU can’t run 3D graphics, so the inspector can’t start.</p>
+        </div>
+      </div>
+    </div>
+    ${styles}
+    <!-- Content-hash map for /static/planes/ textures + preview thumbnails: the
+         viewer module appends ?v=<hash> so edits bust the cache (plane-sim-assets.js). -->
+    <script type="application/json" id="ps-asset-ver">${raw(inlineJSON(assetVersionMap(PLANES_DIR)))}</script>
+    <script type="module" nonce="${nonce}" src="/static/plane-viewer.js?v=${assetVersion(PLANE_VIEWER_JS)}"></script>
+  `;
+
+  return Layout({
+    title: 'Silverwolf — Plane Sim Model Inspector',
+    body: body as any,
+    nonce,
+    lv999,
+    user,
+    fullscreen: true,
+  });
+}

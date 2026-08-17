@@ -21,6 +21,9 @@ import { AiSlopPage } from '../pages/games/ai-slop';
 import { CyclicTicTacToePage } from '../pages/games/cyclic_tictactoe';
 import { BattleshipsPage } from '../pages/games/battleships';
 import { BottleFlipPage } from '../pages/games/bottleflip';
+import { PlaneSimPage } from '../pages/games/plane-sim';
+import { PlaneViewerPage } from '../pages/games/plane-viewer';
+import { WaveSimPage } from '../pages/games/wave-sim';
 import { canUseAiSlop } from '../guild-access';
 import { HomePage, type DashboardProfile } from '../pages/home';
 import {
@@ -28,6 +31,7 @@ import {
   getAllBirthdaysByMonth,
   getEightBallResponses,
   getFortunes,
+  fetchPlaneStats,
   type LeaderboardKind,
 } from '../bot-bridge';
 import { type AppEnv, navUser } from '../shared';
@@ -192,6 +196,28 @@ export function registerPageRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
   }).toString()));
 
   app.get('/games/bottle-flip', (c) => c.html(BottleFlipPage({
+    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+  }).toString()));
+
+  app.get('/games/plane-sim', async (c) => {
+    const user = c.get('user');
+    // Logged-in players get their stats + CSRF token embedded so the
+    // Achievements tab renders immediately and can post gameplay events.
+    const stats = user ? await fetchPlaneStats(silverwolf, user.discordId) : null;
+    return c.html(PlaneSimPage({
+      nonce: c.get('nonce'),
+      lv999: c.req.query('lv') === '999',
+      user: navUser(c),
+      stats,
+      csrf: user?.csrfToken ?? null,
+    }).toString());
+  });
+
+  app.get('/games/plane-sim/inspect', (c) => c.html(PlaneViewerPage({
+    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+  }).toString()));
+
+  app.get('/games/wave-sim', (c) => c.html(WaveSimPage({
     nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
   }).toString()));
 

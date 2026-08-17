@@ -42,6 +42,24 @@ max-age=31536000` and cache-busted by content hash (`asset-version.ts`, `?v=<has
 Fonts are self-hosted woff2 (`font-src 'self'`, `font-display: swap`). Search index ships as a JSON
 `<script>` data-island; renders coalesce per animation frame; below-fold images lazy-load.
 
+## Client-bundled games (`three`)
+
+A client-only game needing a JS library (Plane Sim / its model inspector / Wave Sim use `three`) is
+**self-hosted and bundled — never a CDN** (CSP is `script-src 'self'`). Each is a `*.src.js` in
+`Assets/` wired into `build:js` (`plane-sim.src.js`→`plane-sim.js`, `plane-viewer.src.js`→
+`plane-viewer.js`, `wave-sim.src.js`→`wave-sim.js`), the `Dockerfile` build+overlay steps and
+`routes/static.ts`, then loaded as a hash-busted `<script type=module>`. Bundle outputs are
+gitignored. Put shared geometry/logic in a plain module imported by both the game and any tooling
+(e.g. `plane-sim-models.js`, used by the game and the inspector). Immersive pages pass
+`Layout({ fullscreen: true })`, which drops the navbar/footer/centred `<main>`.
+
+**Verify in a browser — a green `build:js` is not enough.** The bundler does not catch undefined
+identifiers: a forgotten import bundles fine and only throws `ReferenceError` at runtime. Run
+`bun run test:harness` (standalone dev server, port 7788, `HARNESS_PORT` to override) — it renders
+the Three.js game pages logged-out and serves `Assets/` as `/static/`, no bot, DB or OAuth needed —
+and load the page after touching any of these modules. `tests/` is `.dockerignore`d and never
+reaches the image.
+
 HTML responses are `Cache-Control: private, no-store` (prevents the per-request nonce leaking
 through a CDN). `PUBLIC_ORIGIN` pins absolute embed URLs so untrusted `x-forwarded-*` headers can't
 redirect link previews.

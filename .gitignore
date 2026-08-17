@@ -29,3 +29,6 @@ data/soundfonts/*.sf3
 # For local dev: `bun run build:css build:js` once (or the :watch scripts).
 site_src/Assets/styles.css
 site_src/Assets/app.js
+site_src/Assets/plane-sim.js
+site_src/Assets/plane-viewer.js
+site_src/Assets/wave-sim.js
