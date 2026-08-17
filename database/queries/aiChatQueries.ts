@@ -39,6 +39,7 @@ const aiChatQueries = {
   END_SESSION: 'UPDATE AiChatSession SET active = 0 WHERE session_id = ?',
   UPDATE_SESSION_TITLE: 'UPDATE AiChatSession SET title = ? WHERE session_id = ? AND title IS NULL',
   RENAME_SESSION: 'UPDATE AiChatSession SET title = ? WHERE session_id = ?',
+  UPDATE_SESSION_PERSONA: 'UPDATE AiChatSession SET persona_name = ? WHERE session_id = ? AND user_id = ?',
   ACTIVATE_SESSION: 'UPDATE AiChatSession SET active = 1 WHERE session_id = ?',
   END_ALL_USER_PERSONA_SESSIONS: 'UPDATE AiChatSession SET active = 0 WHERE user_id = ? AND persona_name = ?',
   // Content-safety pause. `active` is deliberately left alone: deactivating

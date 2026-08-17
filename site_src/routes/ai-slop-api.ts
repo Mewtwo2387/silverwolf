@@ -6,7 +6,6 @@ import {
   generateContent,
   generateTitleForHistory,
   getPersonaByName,
-  type Persona,
   DAILY_LIMIT,
   WEEKLY_LIMIT,
 } from '../../utils/ai';
@@ -113,7 +112,6 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
     const personaNameRaw = body!.personaName;
 
     let session: any;
-    let persona: Persona | undefined;
     let isFirstTurn = false;
 
     if (sessionIdRaw == null) {
@@ -121,9 +119,9 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
       if (!isAllowedPersona(personaNameRaw)) {
         return c.json({ ok: false, error: 'invalid_persona' }, 400);
       }
-      persona = await getPersonaByName(personaNameRaw);
-      if (!persona) return c.json({ ok: false, error: 'persona_not_found' }, 400);
-      session = await silverwolf.db.aiChat.createWebSession(auth.discordId, persona.name);
+      const newPersona = await getPersonaByName(personaNameRaw);
+      if (!newPersona) return c.json({ ok: false, error: 'persona_not_found' }, 400);
+      session = await silverwolf.db.aiChat.createWebSession(auth.discordId, newPersona.name);
       if (!session) return c.json({ ok: false, error: 'server' }, 500);
       isFirstTurn = true;
     } else {
@@ -136,9 +134,6 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
         return c.json({ ok: false, error: r.error }, status);
       }
       session = r.session;
-      // Persona is fixed once the session exists — ignore any personaName from the body.
-      persona = await getPersonaByName(session.personaName);
-      if (!persona) return c.json({ ok: false, error: 'persona_not_found' }, 400);
     }
 
     // Everything from the pause check through persistence and the reply runs
@@ -146,6 +141,15 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
     // operations, so without serialization a concurrent send could flag the
     // session in between and this turn would still land in a paused chat.
     return withAiSessionLock(session.sessionId, async () => {
+      // Re-read inside the lock: a concurrent reassign may have moved this
+      // chat to a different bot since we resolved the session above.
+      const lockedSession = await silverwolf.db.aiChat.getSessionById(session.sessionId);
+      if (!lockedSession || lockedSession.userId !== auth.discordId || lockedSession.source !== 'web') {
+        return c.json({ ok: false, error: 'not_found' }, 404);
+      }
+      session = lockedSession;
+      const activePersona = await getPersonaByName(session.personaName);
+      if (!activePersona) return c.json({ ok: false, error: 'persona_not_found' }, 400);
       // Content-safety gate (global `ai_moderation` switch). The pause notice is
       // returned as the assistant's own reply so it renders in the persona's
       // bubble, matching the Discord surface; the turn itself is never persisted.
@@ -207,12 +211,12 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
         let historyForAi: { role: string; message: string }[] = filtered as any;
         try {
           const { trimmedHistory } = await trimHistoryToFit(
-            persona.provider,
-            persona.model,
-            persona.systemPrompt ?? '',
+            activePersona.provider,
+            activePersona.model,
+            activePersona.systemPrompt ?? '',
             filtered as any,
             messageRaw,
-            persona.webSearchEnabled,
+            activePersona.webSearchEnabled,
           );
           historyForAi = trimmedHistory;
         } catch (trimErr) {
@@ -224,12 +228,12 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
         const result = await generateContent({
           db: silverwolf.db,
           userId: auth.discordId,
-          provider: persona.provider,
-          model: persona.model,
-          systemPrompt: persona.systemPrompt ?? '',
+          provider: activePersona.provider,
+          model: activePersona.model,
+          systemPrompt: activePersona.systemPrompt ?? '',
           prompt: messageRaw,
           history: historyForAi,
-          webSearchEnabled: persona.webSearchEnabled,
+          webSearchEnabled: activePersona.webSearchEnabled,
         });
         assistantText = (result.text || '').toString();
 
@@ -257,7 +261,7 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
             );
           }
         }
-        const aiRole = persona.provider === 'openrouter' ? 'assistant' : 'model';
+        const aiRole = activePersona.provider === 'openrouter' ? 'assistant' : 'model';
         if (assistantText) {
           await silverwolf.db.aiChat.addHistory(session.sessionId, aiRole, assistantText);
         }
@@ -376,6 +380,57 @@ export function registerAiSlopApiRoutes(app: Hono<AppEnv>, silverwolf: Silverwol
       return c.json({ ok: true, data: { sessionId: sessionIdRaw } });
     } catch (err) {
       logError('[ai-slop] delete failed:', err);
+      return c.json({ ok: false, error: 'server' }, 500);
+    }
+  });
+
+  // Moves a chat (history included) to a different allowlisted persona.
+  app.post('/games/ai-slop/session/reassign', async (c) => {
+    const body = await readGameBody(c);
+    const auth = authedGameRequest(c, body);
+    if (auth instanceof Response) return auth;
+
+    const guildGate = await requireAiSlopGuildAccess(c, silverwolf, auth.discordId);
+    if (guildGate) return guildGate;
+
+    const sessionIdRaw = body!.sessionId;
+    if (!isValidSessionId(sessionIdRaw)) {
+      return c.json({ ok: false, error: 'invalid_session' }, 400);
+    }
+    if (!isAllowedPersona(body!.personaName)) {
+      return c.json({ ok: false, error: 'invalid_persona' }, 400);
+    }
+    const persona = await getPersonaByName(body!.personaName);
+    if (!persona) return c.json({ ok: false, error: 'persona_not_found' }, 400);
+
+    try {
+      const resolved = await resolveSessionForUser(silverwolf, sessionIdRaw, auth.discordId);
+      if ('error' in resolved) {
+        const status = resolved.error === 'forbidden' || resolved.error === 'not_web' ? 403 : 404;
+        return c.json({ ok: false, error: resolved.error }, status);
+      }
+      return withAiSessionLock(sessionIdRaw, async () => {
+        const result = await silverwolf.db.aiChat.reassignSessionPersona(
+          auth.discordId,
+          sessionIdRaw,
+          persona.name,
+        );
+        if (!result.ok) {
+          const status = result.reason === 'forbidden' ? 403 : 404;
+          return c.json({ ok: false, error: result.reason }, status);
+        }
+        return c.json({
+          ok: true,
+          data: {
+            sessionId: result.session.sessionId,
+            personaName: result.session.personaName,
+            previousPersona: result.previousPersona,
+            title: result.session.title,
+          },
+        });
+      });
+    } catch (err) {
+      logError('[ai-slop] reassign failed:', err);
       return c.json({ ok: false, error: 'server' }, 500);
     }
   });

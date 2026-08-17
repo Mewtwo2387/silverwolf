@@ -136,6 +136,49 @@ class AiChatModel {
   }
 
   /**
+   * Moves a session (and its entire history) to a different persona by updating
+   * `persona_name` in place. History rows stay attached via session_id.
+   *
+   * Discord has at most one active session per user+persona. If this session is
+   * the live Discord one, any currently-active session for the *destination*
+   * persona is deactivated first so the unique index isn't violated; this
+   * session stays active under the new name. Inactive Discord sessions and all
+   * web sessions (active=0) are a plain UPDATE.
+   */
+  async reassignSessionPersona(
+    userId: string,
+    sessionId: number,
+    newPersonaName: string,
+  ): Promise<
+    | { ok: true; session: Record<string, any>; previousPersona: string }
+    | { ok: false; reason: 'not_found' | 'forbidden' }
+  > {
+    const session = await this.getSessionById(sessionId);
+    if (!session) return { ok: false, reason: 'not_found' };
+    if (session.userId !== userId) return { ok: false, reason: 'forbidden' };
+
+    const previousPersona = session.personaName;
+    if (previousPersona === newPersonaName) {
+      return { ok: true, session, previousPersona };
+    }
+
+    await this.db.executeTransaction((rawDb: any) => {
+      // Deactivate the destination's current live Discord session *before*
+      // renaming ours — at that point we still have the old persona, so we
+      // won't deactivate ourselves. Web rows are active=0 and skip this.
+      if (session.active === 1 && session.source === 'discord') {
+        rawDb.query(aiChatQueries.END_ALL_USER_PERSONA_SESSIONS).run(userId, newPersonaName);
+      }
+      rawDb.query(aiChatQueries.UPDATE_SESSION_PERSONA).run(newPersonaName, sessionId, userId);
+    });
+
+    const updated = await this.getSessionById(sessionId);
+    if (!updated) return { ok: false, reason: 'not_found' };
+    log(`AiChat: Reassigned session ${sessionId} for user ${userId} from ${previousPersona} to ${newPersonaName}`);
+    return { ok: true, session: updated, previousPersona };
+  }
+
+  /**
    * Marks a session as inactive.
    */
   async endSession(sessionId: number): Promise<void> {
