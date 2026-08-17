@@ -1,6 +1,10 @@
 # Silverwolf — agent guide
 
-See @AGENTS.md for the full technical reference (stack, architecture, database model, website,
-security & performance guardrails, CI/CD, and conventions).
+@AGENTS.md
 
-`AGENTS.md` is the single source of truth — read and update it there, not here.
+Agent docs are two layers. `AGENTS.md` above is the always-loaded core: identity, commands, bot
+architecture, security guardrails, gotchas. Subsystem detail lives in `.claude/rules/*.md`, each
+scoped with `paths:` frontmatter so it loads only when you open the files it describes.
+
+Write each fact in the narrowest file that covers it — don't promote subsystem detail into
+`AGENTS.md`, and don't duplicate it across both.

@@ -202,6 +202,13 @@ async function respondAsCharacter(
       return;
     }
 
+    if (result.reason === 'moderation') {
+      const notice = `⚠️ **${row.charName}** can't respond to that — safety filters blocked the exchange.`;
+      if (opts.notify) await opts.notify(notice);
+      else await channel.send({ content: notice, allowedMentions: { parse: [] } }).catch(() => {});
+      return;
+    }
+
     if (result.reason === 'compaction_failed') {
       const notice = `⚠️ **${row.charName}** has run out of context and automatic compaction failed. `
         + 'Mention them again to retry — if it keeps failing the oldest messages will be dropped instead.';

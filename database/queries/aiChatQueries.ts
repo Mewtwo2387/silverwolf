@@ -39,12 +39,35 @@ const aiChatQueries = {
   END_SESSION: 'UPDATE AiChatSession SET active = 0 WHERE session_id = ?',
   UPDATE_SESSION_TITLE: 'UPDATE AiChatSession SET title = ? WHERE session_id = ? AND title IS NULL',
   RENAME_SESSION: 'UPDATE AiChatSession SET title = ? WHERE session_id = ?',
+  UPDATE_SESSION_PERSONA: 'UPDATE AiChatSession SET persona_name = ? WHERE session_id = ? AND user_id = ?',
   ACTIVATE_SESSION: 'UPDATE AiChatSession SET active = 1 WHERE session_id = ?',
   END_ALL_USER_PERSONA_SESSIONS: 'UPDATE AiChatSession SET active = 0 WHERE user_id = ? AND persona_name = ?',
+  // Content-safety pause. `active` is deliberately left alone: deactivating
+  // would make getOrCreateSession silently hand out a fresh session on the very
+  // next message, which is the opposite of pausing.
+  FLAG_SESSION_MODERATION: 'UPDATE AiChatSession SET moderation_flagged = 1, moderation_categories = ? WHERE session_id = ?',
 
   // History management
-  ADD_HISTORY: 'INSERT INTO AiChatHistory (session_id, role, message) VALUES (?, ?, ?)',
+  // Conditional on the session not being paused by the content-safety screen.
+  // The check and the insert are one statement, so a turn that was in flight
+  // when another turn paused the session cannot persist into it — this holds on
+  // every surface, including ones that don't take the per-session lock.
+  ADD_HISTORY: `
+    INSERT INTO AiChatHistory (session_id, role, message)
+    SELECT ?, ?, ?
+    WHERE EXISTS (
+      SELECT 1 FROM AiChatSession WHERE session_id = ? AND moderation_flagged = 0
+    )
+  `,
   GET_HISTORY: 'SELECT * FROM AiChatHistory WHERE session_id = ? ORDER BY id DESC LIMIT ?',
+  GET_LAST_USER_HISTORY: `
+    SELECT id, message FROM AiChatHistory
+    WHERE session_id = ? AND role = 'user'
+    ORDER BY id DESC LIMIT 1
+  `,
+  // Auto-increment ids are chronological — wiping from the last user row onward
+  // removes that turn's tool audit rows and assistant/model reply with it.
+  DELETE_HISTORY_FROM_ID: 'DELETE FROM AiChatHistory WHERE session_id = ? AND id >= ?',
   DELETE_HISTORY_BY_SESSION: 'DELETE FROM AiChatHistory WHERE session_id = ?',
   DELETE_SESSION: 'DELETE FROM AiChatSession WHERE session_id = ?',
 };

@@ -43,7 +43,7 @@ class AiView extends Command {
       .setDescription(rows.join('\n'))
       .setFooter({
         text: `Page ${page + 1}/${maxPage + 1} · ${sessions.length} session${sessions.length === 1 ? '' : 's'}${filterNote}`
-          + ' · Use /ai chatnew, /ai chatswitch, /ai chatdelete, or /ai retitle.',
+          + ' · Use /ai chatnew, /ai chatswitch, /ai chatmove, /ai chatdelete, or /ai retitle.',
       });
   }
 

@@ -324,12 +324,20 @@ export function AiSlopPage(opts: {
     border-radius: 0.4rem;
     padding: 0.2rem;
     z-index: 1300;
-    min-width: 110px;
+    min-width: 140px;
     box-shadow: 0 6px 16px rgba(0,0,0,0.5);
   }
   .overflow-menu:not([hidden]) {
     display: flex;
     flex-direction: column;
+  }
+  .overflow-menu .overflow-label {
+    font-size: 0.7rem;
+    color: var(--fog-300);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.4rem 0.6rem 0.15rem;
+    user-select: none;
   }
   .overflow-menu button {
     background: transparent;
@@ -599,6 +607,20 @@ export function AiSlopPage(opts: {
 </style>
 `);
 
+  function overflowMenuButtons(currentPersona: string, includeRename: boolean) {
+    const targets = PERSONAS.filter((p) => p.name !== currentPersona);
+    return html`
+      ${includeRename ? html`<button type="button" data-act="rename">Rename</button>` : ''}
+      ${targets.length > 0 ? html`
+        <div class="overflow-label">Move to</div>
+        ${targets.map((p) => html`
+          <button type="button" data-act="move-to" data-persona="${p.name}">${p.name}</button>
+        `)}
+      ` : ''}
+      <button type="button" data-act="delete" class="danger">Delete</button>
+    `;
+  }
+
   function sidebarBody() {
     const items: any[] = [];
     for (const persona of PERSONAS) {
@@ -616,8 +638,7 @@ export function AiSlopPage(opts: {
                 <div class="overflow">
                   <button class="overflow-trigger" type="button" aria-label="More options">⋮</button>
                   <div class="overflow-menu" hidden>
-                    <button type="button" data-act="rename">Rename</button>
-                    <button type="button" data-act="delete" class="danger">Delete</button>
+                    ${overflowMenuButtons(persona.name, true)}
                   </div>
                 </div>
               </li>
@@ -643,7 +664,7 @@ export function AiSlopPage(opts: {
                 <div class="overflow">
                   <button class="overflow-trigger" type="button" aria-label="More options">⋮</button>
                   <div class="overflow-menu" hidden>
-                    <button type="button" data-act="delete" class="danger">Delete</button>
+                    ${overflowMenuButtons(name, false)}
                   </div>
                 </div>
               </li>
@@ -682,6 +703,9 @@ export function AiSlopPage(opts: {
   let currentPersona = PERSONAS[0];
   let hasMessages = false;
   let sending = false;
+  // Set when the server reports this session was paused by safety filters.
+  let sessionPaused = false;
+  const reassigning = new Set();
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, (ch) => {
@@ -703,13 +727,20 @@ export function AiSlopPage(opts: {
 
   function setSending(s) {
     sending = s;
-    sendBtn.disabled = s;
-    textarea.disabled = s;
-    modelSel.disabled = s || hasMessages || currentSessionId != null;
+    // A session paused by safety filters stays locked regardless of send state:
+    // further submissions would only render optimistic turns the server refuses.
+    sendBtn.disabled = s || sessionPaused;
+    textarea.disabled = s || sessionPaused;
+    modelSel.disabled = s;
+  }
+
+  function setSessionPaused(p) {
+    sessionPaused = p;
+    setSending(sending);
   }
 
   function updateSelectorLock() {
-    modelSel.disabled = sending || hasMessages || currentSessionId != null;
+    modelSel.disabled = sending;
   }
 
   function clearMessages() {
@@ -814,7 +845,7 @@ export function AiSlopPage(opts: {
     clearMessages();
     const div = document.createElement('div');
     div.className = 'aislop-empty';
-    div.innerHTML = 'Pick a model and say <strong>hi</strong>. Existing chats live in the sidebar. The model selector locks once a chat has a first message — start a new chat to switch.';
+    div.innerHTML = 'Pick a model and say <strong>hi</strong>. Existing chats live in the sidebar. Switch bots any time — the model selector (or a chat\\'s ⋮ menu) moves the whole conversation over.';
     msgsEl.appendChild(div);
   }
 
@@ -884,6 +915,7 @@ export function AiSlopPage(opts: {
   function newChat() {
     currentSessionId = null;
     hasMessages = false;
+    setSessionPaused(false);
     setHead('New chat', currentPersona);
     renderEmptyState();
     setError('');
@@ -894,6 +926,9 @@ export function AiSlopPage(opts: {
 
   async function loadSession(sessionId, fallbackPersona) {
     setError('');
+    // The lock is per-session; switching away from a paused chat unlocks the
+    // composer (the server re-checks the target session on send regardless).
+    setSessionPaused(false);
     let data;
     try {
       const r = await fetch('/games/ai-slop/session/' + encodeURIComponent(sessionId) + '/messages');
@@ -989,6 +1024,13 @@ export function AiSlopPage(opts: {
       toolCallCount: d.toolCallCount,
     });
 
+    // Safety filters paused this chat: the reply above is the pause notice, and
+    // the turn was not saved. Further sends on this session are refused.
+    if (d.moderationPaused) {
+      setSessionPaused(true);
+      setError('This chat has been paused by safety filters. Start a new chat to continue.');
+    }
+
     if (wasNew) {
       addSessionToSidebar(d.personaName, d.sessionId, d.title || 'Chat ' + d.sessionId);
       setHead(d.title || ('Chat ' + d.sessionId), d.personaName);
@@ -999,6 +1041,21 @@ export function AiSlopPage(opts: {
     setSending(false);
     updateSelectorLock();
     textarea.focus();
+  }
+
+  function overflowMenuHtml(personaName) {
+    const targets = PERSONAS.filter((p) => p !== personaName);
+    let html = '<div class="overflow-menu" hidden>'
+      + '<button type="button" data-act="rename">Rename</button>';
+    if (targets.length) {
+      html += '<div class="overflow-label">Move to</div>';
+      for (const p of targets) {
+        html += '<button type="button" data-act="move-to" data-persona="' + escapeHtml(p) + '">'
+          + escapeHtml(p) + '</button>';
+      }
+    }
+    html += '<button type="button" data-act="delete" class="danger">Delete</button></div>';
+    return html;
   }
 
   function addSessionToSidebar(personaName, sessionId, title) {
@@ -1012,10 +1069,7 @@ export function AiSlopPage(opts: {
       + '<button class="chat-title" type="button"></button>'
       + '<div class="overflow">'
       +   '<button class="overflow-trigger" type="button" aria-label="More options">⋮</button>'
-      +   '<div class="overflow-menu" hidden>'
-      +     '<button type="button" data-act="rename">Rename</button>'
-      +     '<button type="button" data-act="delete" class="danger">Delete</button>'
-      +   '</div>'
+      +   overflowMenuHtml(personaName)
       + '</div>';
     li.querySelector('.chat-title').textContent = title;
     group.insertBefore(li, group.firstChild);
@@ -1127,6 +1181,66 @@ export function AiSlopPage(opts: {
     }
   }
 
+  function relabelOpenChat(personaName) {
+    personaPill.textContent = personaName;
+    msgsEl.querySelectorAll('.msg.ai .who').forEach((el) => {
+      el.textContent = personaName;
+    });
+  }
+
+  function moveSessionInSidebar(li, toPersona) {
+    const dest = sideEl.querySelector('.aislop-list[data-persona="' + CSS.escape(toPersona) + '"]');
+    if (!dest) return;
+    const list = li.closest('.aislop-list');
+    const fromPersona = list?.dataset.persona;
+    if (fromPersona) bumpGroupCount(fromPersona, -1);
+    const details = dest.closest('details');
+    if (details) details.open = true;
+    dest.insertBefore(li, dest.firstChild);
+    bumpGroupCount(toPersona, 1);
+    const overflow = li.querySelector('.overflow');
+    if (overflow) {
+      overflow.innerHTML = '<button class="overflow-trigger" type="button" aria-label="More options">⋮</button>'
+        + overflowMenuHtml(toPersona);
+    }
+  }
+
+  async function reassignSession(li, toPersona) {
+    const sessionId = parseInt(li.dataset.session, 10);
+    if (!Number.isInteger(sessionId) || !toPersona) return;
+    const list = li.closest('.aislop-list');
+    const fromPersona = list?.dataset.persona;
+    if (fromPersona === toPersona) return;
+    if (reassigning.has(sessionId)) return false;
+    reassigning.add(sessionId);
+    try {
+      const r = await fetch('/games/ai-slop/session/reassign', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ csrf, sessionId, personaName: toPersona }),
+      });
+      const data = await r.json();
+      if (!data.ok) {
+        setError('Could not move chat: ' + (data.error || 'error'));
+        return false;
+      }
+      const persona = data.data.personaName || toPersona;
+      moveSessionInSidebar(li, persona);
+      if (currentSessionId === sessionId) {
+        currentPersona = persona;
+        setSelectorValue(persona);
+        setHead(titleEl.textContent, persona);
+        relabelOpenChat(persona);
+      }
+      return true;
+    } catch (e) {
+      setError('Network error while moving chat.');
+      return false;
+    } finally {
+      reassigning.delete(sessionId);
+    }
+  }
+
   // Menu is position:fixed so it escapes the sidebar's overflow:auto clipping
   // (the original position:absolute version was being cut off). We compute its
   // location from the trigger button's bounding rect each time it opens, and
@@ -1176,6 +1290,7 @@ export function AiSlopPage(opts: {
       menuBtn.closest('.overflow-menu').hidden = true;
       if (act === 'rename') startInlineRename(li);
       else if (act === 'delete') deleteSession(li);
+      else if (act === 'move-to') reassignSession(li, menuBtn.dataset.persona);
       return;
     }
 
@@ -1226,9 +1341,22 @@ export function AiSlopPage(opts: {
     textarea.style.height = Math.min(180, textarea.scrollHeight) + 'px';
   });
 
-  modelSel.addEventListener('change', () => {
-    currentPersona = modelSel.value;
-    if (currentSessionId == null) setHead('New chat', currentPersona);
+  modelSel.addEventListener('change', async () => {
+    const next = modelSel.value;
+    if (currentSessionId == null) {
+      currentPersona = next;
+      setHead('New chat', currentPersona);
+      return;
+    }
+    if (next === currentPersona) return;
+    const li = sideEl.querySelector('.aislop-list li[data-session="' + currentSessionId + '"]');
+    if (!li) {
+      currentPersona = next;
+      setHead(titleEl.textContent, currentPersona);
+      return;
+    }
+    const ok = await reassignSession(li, next);
+    if (!ok) setSelectorValue(currentPersona);
   });
 
   // Mobile drawer for the chat list.

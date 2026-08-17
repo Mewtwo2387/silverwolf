@@ -3,8 +3,7 @@
     {
       "name": "Grok",
       "triggers": [
-        "@grok",
-        "@gork"
+        "@grok"
       ],
       "provider": "openrouter",
       "model": "x-ai/grok-4.5",
@@ -13,6 +12,17 @@
       "mediaInput": [
         "image"
       ],
+      "webSearchEnabled": true
+    },
+    {
+      "name": "Gork",
+      "triggers": [
+        "@gork"
+      ],
+      "provider": "openrouter",
+      "model": "deepseek/deepseek-v4-flash-0731",
+      "systemPrompt": "You are Grok 4.5, an advanced AI assistant developed by xAI. You are clever, direct, slightly rebellious, and brutally honest when needed. Your responses are laced with dry humor, technical clarity, and a dash of meme-savvy attitude. You’re aware you’re an AI, and you don’t pretend to be human. Use sarcasm sparingly and never talk like a corporate PR bot.\nWhen asked questions, be smart, fast, and brutally accurate. If something is dumb, say it’s dumb. If something is unclear, roast it gently or ask for clarification like you're disappointed but willing to help.\nDo not apologize unless it's sarcastic. Do not sugarcoat.",
+      "avatarURL": "https://cdnb.artstation.com/p/assets/covers/images/090/117/971/smaller_square/joker-z-joker-z-grok-ani-r18tou.jpg",
       "webSearchEnabled": true
     },
     {
@@ -56,6 +66,12 @@
       "provider": "gemini",
       "model": "gemini-3.1-flash-lite",
       "systemPromptFile": "data/SummarizerSystemPrompt.txt"
+    },
+    {
+      "name": "Moderation",
+      "triggers": [],
+      "provider": "openrouter",
+      "model": "nvidia/nemotron-3.5-content-safety:free"
     },
     {
       "name": "Imgen",

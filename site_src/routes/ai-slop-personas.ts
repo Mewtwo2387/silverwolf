@@ -3,6 +3,7 @@
 // validation) import from here so they can't drift.
 export const AI_SLOP_PERSONAS = [
   { name: 'Grok', blurb: 'Snark with web search' },
+  { name: 'Gork', blurb: 'Grok but cheaper' },
   { name: 'Jarvis', blurb: 'Tony Stark butler vibes' },
   { name: 'GPT', blurb: 'Concise + neutral' },
   { name: 'Silverwolf', blurb: 'The mascot herself' },

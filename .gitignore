@@ -8,7 +8,9 @@ node_modules/*
 *.log
 _*.js
 persistence/
-.claude
+# Personal Claude Code config stays local; shared agent rules are committed.
+.claude/*
+!.claude/rules/
 
 *.db-wal
 *.db-shm
