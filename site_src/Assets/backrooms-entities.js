@@ -26,6 +26,7 @@
 // Sources for the entity concepts are listed on the game's References tab.
 
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CELL, hash2 } from './backrooms-maze.js';
 
 const TAU = Math.PI * 2;
@@ -40,6 +41,91 @@ const TAU = Math.PI * 2;
 export const PLAYER_SPEEDS = { WALK: 2.95, SPRINT: 5.6, CROUCH: 1.35 };
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const dist2 = (ax, az, bx, bz) => ((ax - bx) ** 2) + ((az - bz) ** 2);
+
+// ------------------------------------------------- wire & vessel bodies ----
+// The Lifeform and Entity 96 are built from thin curved limbs rather than from
+// boxes and spheres, so they share three builders. Each returns ONE merged
+// geometry: a leg assembled from forty loose meshes is forty draw calls, and
+// nothing in either body needs to move independently below the limb level.
+
+/**
+ * A limb: short tapered cylinders chained along `curve`, with a sphere at each
+ * joint. The spheres are not decoration — consecutive cylinders crack open on
+ * a tight bend and the sphere fills the gap. `joint` scales them: at 1.02 they
+ * vanish into the taper and the limb reads as one smooth vessel, and much above
+ * that it starts to read as a beaded insect leg instead.
+ */
+function segmentedLimb(curve, r0, r1, segs, joint = 1.03) {
+  const pts = curve.getSpacedPoints(segs);
+  const up = new THREE.Vector3(0, 1, 0);
+  const geos = [];
+  for (let i = 0; i < segs; i += 1) {
+    const a = pts[i];
+    const b = pts[i + 1];
+    const ra = r0 + (r1 - r0) * (i / segs);
+    const rb = r0 + (r1 - r0) * ((i + 1) / segs);
+    const h = a.distanceTo(b);
+    if (h < 1e-5) continue;
+    // Cylinders are built along +Y, so the top cap is the `b` end.
+    const g = new THREE.CylinderGeometry(rb, ra, h, 6);
+    const dir = new THREE.Vector3().subVectors(b, a).normalize();
+    g.applyMatrix4(new THREE.Matrix4().compose(
+      a.clone().lerp(b, 0.5),
+      new THREE.Quaternion().setFromUnitVectors(up, dir),
+      new THREE.Vector3(1, 1, 1),
+    ));
+    geos.push(g);
+    if (i > 0) {
+      const s = new THREE.SphereGeometry(ra * joint, 8, 6);
+      s.translate(a.x, a.y, a.z);
+      geos.push(s);
+    }
+  }
+  return mergeGeometries(geos, false);
+}
+
+/**
+ * A spring: `turns` of wire wound around `curve`. Sampled against the curve's
+ * own Frenet frames so the winding follows a bend instead of shearing through
+ * it, and fattened toward the middle of the run so it reads as sprung rather
+ * than printed on.
+ */
+function coilAround(curve, turns, coilR, wireR, samples) {
+  const frames = curve.computeFrenetFrames(samples, false);
+  const pts = [];
+  for (let i = 0; i <= samples; i += 1) {
+    const t = i / samples;
+    const j = Math.min(i, samples - 1);
+    const r = coilR * (0.4 + 0.6 * Math.sin(Math.PI * t));
+    const a = t * turns * TAU;
+    pts.push(curve.getPointAt(t)
+      .addScaledVector(frames.normals[j], Math.cos(a) * r)
+      .addScaledVector(frames.binormals[j], Math.sin(a) * r));
+  }
+  return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), samples, wireR, 5, false);
+}
+
+/**
+ * A loose tangle of wire loops, for a head that reads as scribbled rather than
+ * modelled. Takes the entity's seeded rnd, so a given level always grows the
+ * same tangle.
+ */
+function tangleBall(radius, loops, wireR, rnd) {
+  const geos = [];
+  for (let i = 0; i < loops; i += 1) {
+    const g = new THREE.TorusGeometry(radius * (0.58 + rnd() * 0.45), wireR, 5, 20);
+    g.rotateX(rnd() * TAU);
+    g.rotateY(rnd() * TAU);
+    g.rotateZ(rnd() * TAU);
+    g.translate(
+      (rnd() - 0.5) * radius * 0.55,
+      (rnd() - 0.5) * radius * 0.55,
+      (rnd() - 0.5) * radius * 0.55,
+    );
+    geos.push(g);
+  }
+  return mergeGeometries(geos, false);
+}
 
 // ---------------------------------------------------------- base agent ----
 
@@ -532,9 +618,10 @@ export class PngChaser extends Agent {
 // --------------------------------------------------------- Lifeform ----
 
 /**
- * The Lifeform ("bacteria"): a tall black stick-figure of tangled tendrils,
- * built from tapered cylinders and TubeGeometry so it moves as one articulated
- * thing rather than a sprite.
+ * The Lifeform ("bacteria"): a tall black stick-figure of tangled wire. There
+ * is no solid body on it anywhere — every limb is a thin core with coil sprung
+ * along it, and the head is a scribble of loops rather than a face. Articulated
+ * rather than a sprite, so it moves as one bent thing.
  *
  * Behaviour follows the source: an aimless hive-hunter, nearly blind, that
  * hunts by sound and mimics a human cry for help through a repurposed throat —
@@ -554,7 +641,9 @@ export const LIFEFORM = {
 
 export class Lifeform extends Agent {
   constructor(level, collider, rnd) {
-    super(level, collider, { radius: 0.55, speed: LIFEFORM.HUNT_SPEED });
+    // Radius covers the ARM span (~1.7 m tip to tip), not the body. Collide on
+    // the spine alone and it stands with both hands inside the wallpaper.
+    super(level, collider, { radius: 0.8, speed: LIFEFORM.HUNT_SPEED });
     this.rnd = rnd;
     this.kind = 'lifeform';
     this.name = 'Lifeform';
@@ -579,28 +668,52 @@ export class Lifeform extends Agent {
    * is a good deal worse to meet than a neat 2 m biped.
    */
   buildModel() {
+    // Not a solid body anywhere. Everything is thin black wire, and most of the
+    // bulk you read is coil sprung around that wire — a thing assembled out of
+    // springs and armature rather than sculpted.
     const skin = new THREE.MeshStandardMaterial({
-      color: 0x07070a, roughness: 0.55, metalness: 0.05,
+      color: 0x08080b, roughness: 0.5, metalness: 0.08,
     });
     const g = this.group;
     const HIP = 1.92;
     // See the class comment: this angle is what keeps its head under the tiles.
     const RAKE = 0.76;
+    const rnd = this.rnd;
+    const v = (x, y, z) => new THREE.Vector3(x, y, z);
+    const wire = (geo) => new THREE.Mesh(geo, skin);
 
-    // Legs: hip down to the floor, long and spindly, with a backward knee.
+    // Legs: hip to floor, spindly, with a knee that bends backward and a coil
+    // sprung down each section.
     this.legs = [];
     for (let i = 0; i < 2; i += 1) {
+      const side = i ? 1 : -1;
       const leg = new THREE.Group();
-      const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.055, 1.02, 6), skin);
-      upper.position.y = -0.51;
-      leg.add(upper);
+
+      const thigh = new THREE.CatmullRomCurve3([
+        v(0, 0, 0), v(side * 0.02, -0.36, 0.05), v(0, -0.72, 0.03), v(0, -1.02, 0),
+      ]);
+      leg.add(wire(segmentedLimb(thigh, 0.032, 0.024, 12)));
+      leg.add(wire(coilAround(thigh, 6.5, 0.058, 0.016, 96)));
+
       const lower = new THREE.Group();
       lower.position.y = -1.02;
-      const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.032, 0.9, 6), skin);
-      shin.position.y = -0.45;
-      lower.add(shin);
+      const shin = new THREE.CatmullRomCurve3([
+        v(0, 0, 0), v(0, -0.3, -0.05), v(0, -0.58, -0.03), v(0, -0.82, 0.02),
+      ]);
+      lower.add(wire(segmentedLimb(shin, 0.024, 0.014, 12)));
+      lower.add(wire(coilAround(shin, 5.5, 0.045, 0.014, 84)));
+      // Feet are three splayed spikes and no sole. It does not stand on the
+      // carpet so much as rest against it.
+      for (let t = 0; t < 3; t += 1) {
+        const a = (t - 1) * 0.5;
+        lower.add(wire(segmentedLimb(new THREE.CatmullRomCurve3([
+          v(0, -0.82, 0.02),
+          v(Math.sin(a) * 0.11, -0.85, 0.02 + Math.cos(a) * 0.13),
+          v(Math.sin(a) * 0.19, -0.88, 0.02 + Math.cos(a) * 0.25),
+        ]), 0.016, 0.005, 5)));
+      }
       leg.add(lower);
-      leg.position.set(i ? 0.19 : -0.19, HIP, 0);
+      leg.position.set(side * 0.17, HIP, 0);
       leg.userData.lower = lower;
       g.add(leg);
       this.legs.push(leg);
@@ -613,44 +726,48 @@ export class Lifeform extends Agent {
     this.spine.rotation.x = RAKE; // folded into the corridor, not leaning
     g.add(this.spine);
 
-    const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.26, 1.05, 7), skin);
-    torso.position.y = 0.5;
-    this.spine.add(torso);
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.1, 0.42, 6), skin);
-    neck.position.set(0, 1.12, 0.12);
-    neck.rotation.x = 0.55;
-    this.spine.add(neck);
+    // There is no torso volume — the ribcage IS the winding around the spine.
+    const torso = new THREE.CatmullRomCurve3([
+      v(0, 0, 0), v(0, 0.34, 0.02), v(0, 0.7, 0), v(0, 1.02, -0.02), v(0, 1.24, 0.08),
+    ]);
+    this.spine.add(wire(segmentedLimb(torso, 0.055, 0.03, 14)));
+    this.spine.add(wire(coilAround(torso, 6, 0.155, 0.019, 130)));
 
-    // A featureless bulb of a head — nothing to read, which is the point.
-    this.head = new THREE.Mesh(new THREE.SphereGeometry(0.19, 12, 10), skin);
-    this.head.scale.set(0.85, 1.25, 0.8);
-    this.head.position.set(0, 1.3, 0.26);
+    // A head of scribbled loops. Nothing to read on it, which is the point —
+    // there is not even a surface to look for a face on.
+    this.head = new THREE.Group();
+    this.head.add(wire(tangleBall(0.155, 8, 0.015, rnd)));
+    this.head.position.set(0, 1.3, 0.2);
     this.spine.add(this.head);
 
-    // Arms as curved tubes: a hand-built spline per arm, so they hang and drag
-    // like wire rather than articulating like a doll. Hung from the shoulders,
-    // they reach past the knees — the fingers nearly scrape the carpet.
+    // Arms: a hand-built spline per arm, coiled, hung from the shoulders and
+    // counter-rotated out of the stoop so they hang toward the floor instead of
+    // trailing down the rake. They reach past the knees, fingers near the
+    // carpet. animate() swings them around armHang, not around zero.
+    this.armHang = -RAKE * 0.62;
     this.arms = [];
     for (let i = 0; i < 2; i += 1) {
       const side = i ? 1 : -1;
       const arm = new THREE.Group();
       const curve = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(0, 0, 0),
-        new THREE.Vector3(side * 0.3, -0.55, 0.06),
-        new THREE.Vector3(side * 0.38, -1.15, -0.06),
-        new THREE.Vector3(side * 0.27, -1.7, 0.1),
-        new THREE.Vector3(side * 0.2, -2.05, 0.04),
+        v(0, 0, 0),
+        v(side * 0.42, -0.52, 0.08),
+        v(side * 0.6, -1.12, -0.06),
+        v(side * 0.55, -1.66, 0.12),
+        v(side * 0.46, -2.06, 0.06),
       ]);
-      arm.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 20, 0.055, 5, false), skin));
-      // Fingers: three thin tapers off the end of each arm.
+      arm.add(wire(segmentedLimb(curve, 0.028, 0.012, 18)));
+      arm.add(wire(coilAround(curve, 10, 0.052, 0.014, 150)));
       for (let f = 0; f < 3; f += 1) {
-        const finger = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.005, 0.42, 4), skin);
-        finger.position.set(side * 0.2 + (f - 1) * 0.05, -2.26, 0.04 + (f - 1) * 0.04);
-        finger.rotation.z = (f - 1) * 0.22;
-        arm.add(finger);
+        const a = (f - 1) * 0.45;
+        arm.add(wire(segmentedLimb(new THREE.CatmullRomCurve3([
+          v(side * 0.46, -2.06, 0.06),
+          v(side * 0.46 + Math.sin(a) * 0.08, -2.2, 0.06 + Math.cos(a) * 0.09),
+          v(side * 0.46 + Math.sin(a) * 0.13, -2.34, 0.06 + Math.cos(a) * 0.17),
+        ]), 0.013, 0.004, 5)));
       }
-      // Shoulders sit on the raked spine, so the arms swing from the stoop.
-      arm.position.set(side * 0.21, 1.02, 0);
+      arm.position.set(side * 0.19, 1.0, 0);
+      arm.rotation.x = this.armHang;
       this.spine.add(arm);
       this.arms.push(arm);
     }
@@ -712,8 +829,8 @@ export class Lifeform extends Agent {
     // Knees only ever bend one way.
     this.legs[0].userData.lower.rotation.x = Math.max(0, -swing * 1.6);
     this.legs[1].userData.lower.rotation.x = Math.max(0, swing * 1.6);
-    this.arms[0].rotation.x = -swing * 0.55;
-    this.arms[1].rotation.x = swing * 0.55;
+    this.arms[0].rotation.x = this.armHang - swing * 0.55;
+    this.arms[1].rotation.x = this.armHang + swing * 0.55;
     this.arms[0].rotation.z = Math.sin(this.phase * 0.6) * 0.09;
     this.arms[1].rotation.z = -Math.sin(this.phase * 0.6 + 1) * 0.09;
     // A slow, wrong sway through the whole body. The spine rocks around its
@@ -728,10 +845,14 @@ export class Lifeform extends Agent {
 // -------------------------------------------------------- Entity 96 ----
 
 /**
- * Entity 96, "The Neighborhood Watch": a drifting eye that sees well, hears
+ * Entity 96, "The Neighborhood Watch": an eye that walks. It sees well, hears
  * nothing, and does not chase. Catch its gaze and it charges a beam of light;
  * hold still in that light and you are dust. Break line of sight and it loses
  * the lock entirely — the counter-play is a corner, not a sprint.
+ *
+ * The body is the eyeball; it gets about on six legs of raw vasculature that
+ * arch above it and reach down to the carpet, and it moves them in alternating
+ * tripods like something that has done this before.
  *
  * It also corrupts electronics nearby, which the HUD wears as static.
  */
@@ -748,7 +869,9 @@ export const WATCHER = {
 
 export class Entity96 extends Agent {
   constructor(level, collider, rnd, texture) {
-    super(level, collider, { radius: 0.5, speed: WATCHER.DRIFT_SPEED });
+    // The radius is the leg span, not the eyeball: it stands on a ~2 m footprint
+    // and anything smaller parks its feet inside the wallpaper.
+    super(level, collider, { radius: 0.8, speed: WATCHER.DRIFT_SPEED });
     this.rnd = rnd;
     this.kind = 'watcher';
     this.name = 'Entity 96';
@@ -839,7 +962,79 @@ export class Entity96 extends Agent {
     this.light = new THREE.PointLight(0xffe9c0, 0, 14, 2);
     this.light.position.y = 1.85;
     g.add(this.light);
-    this.height = 2.4;
+
+    this.buildLegs(EYE_Y);
+    this.height = 2.45;
+  }
+
+  /**
+   * Six legs of vein. Dark and thick where they leave the body, pale and fine
+   * at the tip, lumpy at every joint — segmentedLimb's joint spheres are doing
+   * that, and it is why the legs read as vasculature rather than as pipes.
+   *
+   * Each leg hangs off its own pivot group placed at the attachment point, with
+   * the geometry built relative to that point, so a single rotation about the
+   * pivot swings the whole leg and lifts the foot. The first leg is offset half
+   * a step around so that none of the six sits directly in front of the pupil.
+   */
+  buildLegs(EYE_Y) {
+    const vein = new THREE.MeshStandardMaterial({
+      color: 0x7d2a26, roughness: 0.62, metalness: 0.02,
+      emissive: 0x1c0605, emissiveIntensity: 0.35,
+    });
+    this.legs = [];
+    for (let i = 0; i < 6; i += 1) {
+      const ang = (Math.PI / 6) + ((i * TAU) / 6);
+      const dx = Math.sin(ang);
+      const dz = Math.cos(ang);
+      const at = (r, y) => new THREE.Vector3(dx * r, y, dz * r);
+      // Out of the eye's upper flank, over the top of it, then down and out to
+      // the carpet — a spider's stance, wider than the body it carries.
+      // A little seeded slop per leg, so six of them do not read as one leg
+      // instanced six times.
+      const j = (k) => 1 + (this.rnd() - 0.5) * k;
+      const root = at(0.4, EYE_Y + 0.3);
+      const path = [
+        root,
+        at(0.66 * j(0.12), (EYE_Y + 0.48) * j(0.05)),
+        at(0.92 * j(0.14), (EYE_Y - 0.18) * j(0.16)),
+        at(1.0 * j(0.1), 0.32 * j(0.2)),
+        at(1.02 * j(0.08), 0.02),
+      ].map((q) => q.clone().sub(root));
+      const leg = new THREE.Group();
+      leg.position.copy(root);
+      leg.add(new THREE.Mesh(
+        segmentedLimb(new THREE.CatmullRomCurve3(path), 0.062, 0.01, 22),
+        vein,
+      ));
+      // Lifting a foot means turning the leg about the horizontal axis at right
+      // angles to its own outward direction.
+      leg.userData.axis = new THREE.Vector3(dz, 0, -dx).normalize();
+      leg.userData.phase = (i % 2) * Math.PI; // alternating tripod
+      this.group.add(leg);
+      this.legs.push(leg);
+    }
+    this.gaitPhase = this.rnd() * TAU;
+  }
+
+  /**
+   * Skitter. The two tripods take turns off the floor, faster as it drifts.
+   *
+   * The swing is lift-ONLY — clamped at zero rather than sinusoidal about it.
+   * The neutral pose already has every foot resting on the carpet, so a
+   * symmetric swing spends half of each cycle driving three legs through the
+   * floor.
+   */
+  animate(dt) {
+    const speed = Math.hypot(this.vel.x, this.vel.z);
+    this.gaitPhase += dt * (1.2 + speed * 3.4);
+    const amp = 0.05 + Math.min(0.11, speed * 0.09);
+    for (const leg of this.legs) {
+      leg.setRotationFromAxisAngle(
+        leg.userData.axis,
+        -amp * Math.max(0, Math.sin(this.gaitPhase + leg.userData.phase)),
+      );
+    }
   }
 
   update(dt, player, api) {
@@ -896,9 +1091,12 @@ export class Entity96 extends Agent {
     // Interference bleeds into the HUD (and the audio bus) with proximity.
     api.interference(clamp(1 - s.dist / WATCHER.INTERFERENCE_RANGE, 0, 1) * (locked ? 1 : 0.55));
 
+    this.animate(dt);
     this.hoverPhase += dt * 0.9;
     this.group.position.copy(this.pos);
-    this.group.position.y += Math.sin(this.hoverPhase) * 0.12;
+    // A shallow bob now that it has legs under it — the old float was the whole
+    // suspension, and at that amplitude the feet sink through the carpet.
+    this.group.position.y += Math.sin(this.hoverPhase) * 0.05;
     this.group.rotation.y = this.heading;
   }
 
@@ -1043,9 +1241,10 @@ export const ENTITY_INFO = {
     tagline: 'Eleven feet of tangled wire, folded to fit under the ceiling.',
     origin: 'Kane Pixels — The Lifeform',
     href: 'https://kane-pixels-backrooms.fandom.com/wiki/The_Lifeform',
-    blurb: 'A black stick-figure of tapered limbs and tube-geometry arms that reach past its '
-      + 'knees. Level 0 has a 3.15 m ceiling and this thing does not fit, so it stoops: hips '
-      + 'high, spine raked forward, head hung below the shoulders and thrust ahead of the body.',
+    blurb: 'Thin black wire with coil sprung along every limb — no solid body anywhere, and a '
+      + 'head that is a tangle of loops rather than a face. Level 0 has a 3.15 m ceiling and '
+      + 'eleven feet of this does not fit, so it folds: hips high, spine raked hard forward, '
+      + 'head hung below the shoulders and thrust out ahead of the body.',
     senses: 'Nearly blind. Superb hearing. It does not forget.',
     counterplay: 'It hunts sound, so crouch. It calls for help in a human voice from wherever it '
       + 'is standing — walking toward the voice walks you into it. At '
@@ -1065,9 +1264,11 @@ export const ENTITY_INFO = {
     tagline: 'The Neighborhood Watch. It does not chase. It looks.',
     origin: 'Backrooms Wiki — Entity 96',
     href: 'https://backrooms-wiki.wikidot.com/entity-96',
-    blurb: 'A drifting eye: a sclera sphere with the iris painted on a bulged disc facing '
-      + 'forward, under a wet membrane. Catch its gaze and the pupil charges a beam of light. '
-      + 'It corrupts electronics near it, which is the static creeping across your screen.',
+    blurb: 'An eye that walks: a sclera sphere with the iris on a bulged cornea under a wet '
+      + 'membrane, carried on six legs of raw vasculature that arch above it and reach down to '
+      + 'the carpet, worked in alternating tripods. Catch its gaze and the pupil charges a beam '
+      + 'of light. It corrupts electronics near it — that is the static creeping across your '
+      + 'screen.',
     senses: 'Keen sight, and no hearing whatsoever.',
     counterplay: `You get ${WATCHER.CHARGE_TIME} s in the beam before it disintegrates you, and `
       + 'breaking line of sight drops the lock entirely — the answer is a corner, not a sprint. '

@@ -152,6 +152,8 @@ export function BackroomsEntitiesPage(opts: {
         <div class="bv-group" id="bv-grp-watcher" style="display:none">
           <div class="bv-h">Entity 96</div>
           <div class="bv-slider"><span>Beam charge</span><input type="range" id="bv-charge" min="0" max="100" value="0" /></div>
+          <div class="bv-slider"><span>Gait speed</span><input type="range" id="bv-gait2" min="0" max="100" value="50" /></div>
+          <p class="bv-note">Six legs of vein, worked in alternating tripods. It is an eye that walks.</p>
           <p class="bv-note">Full charge is what kills you in-game. Here it just points at nothing.</p>
         </div>
 

@@ -24,7 +24,7 @@ import { generate, Collider, mulberry32 } from './backrooms-maze.js';
 import { buildMaterials, defaultChaserTexture, irisTexture } from './backrooms-materials.js';
 import { buildWorld, updateFixtures } from './backrooms-world.js';
 import {
-  PngChaser, Lifeform, Entity96, ENTITY_INFO, PLAYER_SPEEDS,
+  PngChaser, Lifeform, Entity96, ENTITY_INFO, PLAYER_SPEEDS, WATCHER,
 } from './backrooms-entities.js';
 
 (() => {
@@ -259,9 +259,23 @@ import {
   }
 
   const dimsEl = $('bv-dims');
+  /**
+   * Bounds over the meshes you can actually see. Box3.setFromObject does not
+   * skip invisible ones, and Entity 96 carries a metre-long beam cylinder that
+   * is hidden almost always — measure that and the eye reads as standing half a
+   * metre into the floor.
+   */
+  function visibleBounds(root) {
+    const box = new THREE.Box3();
+    root.traverse((o) => {
+      if (o.isMesh && o.visible) box.union(new THREE.Box3().setFromObject(o));
+    });
+    return box;
+  }
+
   function frameModel() {
     turntable.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(current.group);
+    const box = visibleBounds(current.group);
     const size = box.getSize(new THREE.Vector3());
     controls.target.set(HOME.x, Math.max(0.9, size.y * 0.5), HOME.z);
     // Kept deliberately tight: the room is about twelve metres across, and a
@@ -364,9 +378,15 @@ import {
       current.animate(dt);
       return;
     }
-    // Entity 96: hover, then charge the beam to wherever the slider says.
-    if (opts.animate) current.hoverPhase += dt * 0.9;
-    current.group.position.y = Math.sin(current.hoverPhase) * 0.12;
+    // Entity 96: work the legs and bob, then charge the beam to wherever the
+    // slider says. The gait slider doubles as its walking speed here, same as
+    // for the Lifeform.
+    if (opts.animate) {
+      current.vel.set(0, 0, pose.gait * WATCHER.DRIFT_SPEED);
+      current.animate(dt);
+      current.hoverPhase += dt * 0.9;
+    }
+    current.group.position.y = Math.sin(current.hoverPhase) * 0.05;
     if (pose.charge > 0.001) {
       current.charge = pose.charge * current.chargeTime;
       // In game it turns to face what it is burning, in update(), which we do
@@ -431,6 +451,7 @@ import {
     el.addEventListener('input', () => set(Number(el.value) / 100));
   };
   bindSlider('bv-gait', (v) => { pose.gait = v; });
+  bindSlider('bv-gait2', (v) => { pose.gait = v; }); // Entity 96's own gait dial
   bindSlider('bv-charge', (v) => { pose.charge = v; });
 
   $('bv-backdrop')?.addEventListener('click', () => {
@@ -440,7 +461,7 @@ import {
   $('bv-reset')?.addEventListener('click', () => {
     pose.gait = 0.5;
     pose.charge = 0;
-    const g = $('bv-gait'); if (g) g.value = 50;
+    ['bv-gait', 'bv-gait2'].forEach((id) => { const g = $(id); if (g) g.value = 50; });
     const c = $('bv-charge'); if (c) c.value = 0;
     load(currentKind);
   });
