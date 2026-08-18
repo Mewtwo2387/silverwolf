@@ -60,7 +60,7 @@ export function BackroomsEntitiesPage(opts: {
   .bv-row label { cursor: pointer; }
   .bv-row input[type=checkbox] { accent-color: #e6c65c; width: 15px; height: 15px; cursor: pointer; }
   .bv-slider { display: flex; flex-direction: column; gap: 0.15rem; margin: 0.45rem 0; }
-  .bv-slider span { font-size: 0.72rem; }
+  .bv-slider label { font-size: 0.72rem; cursor: pointer; }
   .bv-slider input[type=range] { width: 100%; accent-color: #e6c65c; }
 
   .bv-wide { width: 100%; margin-top: 0.35rem; padding: 0.42rem 0.4rem; font: inherit;
@@ -145,14 +145,14 @@ export function BackroomsEntitiesPage(opts: {
 
         <div class="bv-group" id="bv-grp-lifeform" style="display:none">
           <div class="bv-h">Lifeform</div>
-          <div class="bv-slider"><span>Gait speed</span><input type="range" id="bv-gait" min="0" max="100" value="50" /></div>
+          <div class="bv-slider"><label for="bv-gait">Gait speed</label><input type="range" id="bv-gait" min="0" max="100" value="50" /></div>
           <p class="bv-note">It stoops because it does not fit: eleven feet of it under a 3.15 m ceiling.</p>
         </div>
 
         <div class="bv-group" id="bv-grp-watcher" style="display:none">
           <div class="bv-h">Entity 96</div>
-          <div class="bv-slider"><span>Beam charge</span><input type="range" id="bv-charge" min="0" max="100" value="0" /></div>
-          <div class="bv-slider"><span>Gait speed</span><input type="range" id="bv-gait2" min="0" max="100" value="50" /></div>
+          <div class="bv-slider"><label for="bv-charge">Beam charge</label><input type="range" id="bv-charge" min="0" max="100" value="0" /></div>
+          <div class="bv-slider"><label for="bv-gait2">Gait speed</label><input type="range" id="bv-gait2" min="0" max="100" value="50" /></div>
           <p class="bv-note">Six legs of vein, worked in alternating tripods. It is an eye that walks.</p>
           <p class="bv-note">Full charge is what kills you in-game. Here it just points at nothing.</p>
         </div>

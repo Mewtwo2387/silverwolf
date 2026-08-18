@@ -444,7 +444,7 @@ export function BackroomsPage(opts: {
               <div class="br-ent-head">
                 <strong>PNG chaser</strong>
                 <label class="br-field" style="margin:0">
-                  <input type="checkbox" id="br-e-chaser" checked />
+                  <input type="checkbox" id="br-e-chaser" aria-label="Spawn the PNG chaser" checked />
                 </label>
               </div>
               <p>
@@ -480,7 +480,7 @@ export function BackroomsPage(opts: {
               <div class="br-ent-head">
                 <strong>Lifeform</strong>
                 <label class="br-field" style="margin:0">
-                  <input type="checkbox" id="br-e-lifeform" checked />
+                  <input type="checkbox" id="br-e-lifeform" aria-label="Spawn the Lifeform" checked />
                 </label>
               </div>
               <p>
@@ -494,7 +494,7 @@ export function BackroomsPage(opts: {
               <div class="br-ent-head">
                 <strong>Entity 96 — "The Neighborhood Watch"</strong>
                 <label class="br-field" style="margin:0">
-                  <input type="checkbox" id="br-e-watcher" checked />
+                  <input type="checkbox" id="br-e-watcher" aria-label="Spawn the Entity 96" checked />
                 </label>
               </div>
               <p>

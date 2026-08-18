@@ -147,6 +147,8 @@ class Agent {
     this.timeSinceSeen = 999;
     this.field = null; // cached BFS flow field toward `belief`
     this.fieldKey = '';
+    this.reach = null; // cached BFS field FROM this entity, for reachability
+    this.reachKey = '';
 
     this.stuckTimer = 0;
     this.smoothOff = 0; // seconds left with corner-cutting disabled
@@ -154,6 +156,30 @@ class Agent {
     this.group = new THREE.Group();
     this.alive = true;
     this.frozen = false; // debug harness / entity-specific holds
+    // Whether this entity's materials own their textures. True for everything
+    // that generates its own (Entity 96's iris is drawn for that one eye);
+    // false for the chaser, whose skin belongs to the game shell and is shared
+    // with the menu preview.
+    this.ownsTextures = true;
+  }
+
+  /**
+   * Release this entity's GPU resources. Geometry and materials are built per
+   * instance and always go; textures go only when this entity owns them.
+   * Entities are rebuilt on every new level, seed, size and quality change, so
+   * without this each rebuild abandons the whole roster's geometry.
+   */
+  dispose() {
+    this.group.traverse((o) => {
+      if (!o.isMesh) return;
+      o.geometry?.dispose?.();
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      for (const m of mats) {
+        if (!m) continue;
+        if (this.ownsTextures) m.map?.dispose();
+        m.dispose();
+      }
+    });
   }
 
   placeAtCell(x, y) {
@@ -322,8 +348,17 @@ class Agent {
       const bx = clamp(pc.x + jitter(), 0, this.level.w - 1);
       const by = clamp(pc.y + jitter(), 0, this.level.h - 1);
       // Only commit if that guess is somewhere it could actually walk to.
-      const f = this.level.distanceField([this.cell()]);
-      if (f[this.level.cellIndex(bx, by)] >= 0) this.belief = { x: bx, y: by };
+      // Cached on the cell it was computed from: this is a whole-grid BFS (up
+      // to 2304 cells at the largest level size) and sense() runs every frame
+      // for every entity, so recomputing it per frame made hearing the most
+      // expensive thing in the loop.
+      const here = this.cell();
+      const key = `${here.x},${here.y}`;
+      if (this.reachKey !== key) {
+        this.reach = this.level.distanceField([here]);
+        this.reachKey = key;
+      }
+      if (this.reach[this.level.cellIndex(bx, by)] >= 0) this.belief = { x: bx, y: by };
       this.confidence = Math.max(this.confidence, 0.55);
     }
 
@@ -412,6 +447,7 @@ export class PngChaser extends Agent {
     this.name = 'PNG chaser';
     this.mode = opts.mode || 'auto';
     this.height = 1.95;
+    this.ownsTextures = false; // the skin belongs to whoever passed it in
 
     this.material = new THREE.MeshBasicMaterial({
       map: texture,
@@ -1168,6 +1204,7 @@ export class Director {
     this.entities = this.entities.filter((e) => {
       if (e.kind !== kind) return true;
       this.scene.remove(e.group);
+      e.dispose();
       return false;
     });
   }
@@ -1199,7 +1236,10 @@ export class Director {
   }
 
   dispose() {
-    for (const e of this.entities) this.scene.remove(e.group);
+    for (const e of this.entities) {
+      this.scene.remove(e.group);
+      e.dispose();
+    }
     this.entities = [];
   }
 }

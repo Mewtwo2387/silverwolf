@@ -216,8 +216,18 @@ export function buildWorld(level, materials, collider) {
     fixtures,
     exit: exitParts,
     dispose() {
-      for (const m of meshes) m.geometry.dispose();
-      fixtures.mesh.geometry.dispose();
+      // Geometry is all ours — every mesh under the group was built here, the
+      // exit passage and sign included, and none of it survives the level.
+      group.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
+      // Materials mostly are NOT. The wall/carpet/ceiling/skirting set is
+      // shared and outlives the level (see buildMaterials), so only the two
+      // this module makes for itself are released, with the sign's canvas
+      // texture, which is generated per level.
+      exitParts.sign.material.map?.dispose();
+      exitParts.sign.material.dispose();
+      fixtures.mesh.material.dispose();
+      exitParts.glow.dispose?.();
+      exitParts.deep.dispose?.();
     },
   };
 }
@@ -301,6 +311,7 @@ function buildExit(level, materials, group, collider) {
   return {
     sign,
     glow,
+    deep,
     dir,
     mouth,
     // Win when you reach the far end of the passage.

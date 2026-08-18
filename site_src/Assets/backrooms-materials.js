@@ -442,6 +442,19 @@ export function buildMaterials(quality = 'high') {
 
   return {
     wall, carpet, ceiling, skirting, detailed,
+    /**
+     * Release every texture in the set. Only safe once no world is drawing
+     * with it — this set is deliberately shared across level rebuilds (the
+     * wallpaper does not change when the floor plan does), so it outlives any
+     * one world and only the quality tier changing should ever tear it down.
+     */
+    dispose() {
+      for (const m of [...wall, ...carpet, ...ceiling, skirting]) {
+        m.map?.dispose();
+        m.normalMap?.dispose();
+        m.dispose();
+      }
+    },
   };
 }
 

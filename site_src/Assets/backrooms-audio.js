@@ -156,6 +156,17 @@ export class Audio {
     }
   }
 
+  /**
+   * Drop `node` out of the graph once `source` finishes. A PannerNode stays
+   * alive for as long as it is connected to the master, so without this every
+   * screech, mimic call and beam charge leaves one behind and the graph grows
+   * for the whole session.
+   */
+  releaseWith(source, node) {
+    if (!node || node === this.master) return;
+    source.addEventListener('ended', () => node.disconnect(), { once: true });
+  }
+
   panner(pos, refDist = 3, rolloff = 1.3) {
     const p = this.ctx.createPanner();
     p.panningModel = 'HRTF';
@@ -252,6 +263,7 @@ export class Audio {
     carrier.stop(t + 1.35);
     mod.stop(t + 1.35);
     burst.stop(t + 1.35);
+    this.releaseWith(carrier, dest);
   }
 
   /**
@@ -299,6 +311,7 @@ export class Audio {
     vib.start(t);
     osc.stop(t + 1.2);
     vib.stop(t + 1.2);
+    this.releaseWith(osc, dest);
   }
 
   /** Entity 96 charging its beam: a rising resonant whine that means MOVE. */
@@ -316,6 +329,11 @@ export class Audio {
     g.gain.exponentialRampToValueAtTime(0.24, t + seconds * 0.7);
     osc.connect(g).connect(dest);
     osc.start(t);
+    // A backstop stop, because the caller does not always get to call stop():
+    // if the charge completes it kills you and the game tears down instead. A
+    // later stop() overrides this one, so the explicit path still wins.
+    osc.stop(t + seconds + 0.75);
+    this.releaseWith(osc, dest);
     const stop = () => {
       const now = ctx.currentTime;
       g.gain.cancelScheduledValues(now);

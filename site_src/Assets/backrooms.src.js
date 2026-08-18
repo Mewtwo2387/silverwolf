@@ -219,19 +219,35 @@ import { Audio } from './backrooms-audio.js';
   // The chaser skin lives in its own storage key: a 4 MB data URL alongside the
   // settings blob would make a settings write fail on quota and silently drop
   // every other preference.
+  // A skin is interpolated into a CSS `url("...")` for the jumpscare flash, so
+  // it has to be a plain base64 data URL before we will touch it: anything with
+  // a quote or a bracket in it could close the url() and inject declarations.
+  // FileReader always produces this shape, so a rejected value means the entry
+  // was hand-edited or written by something else.
+  const SKIN_RE = /^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/;
+
   function loadSkin() {
     try {
       const v = localStorage.getItem(SKIN_KEY);
-      if (v && v.startsWith('data:image/')) skinDataUrl = v;
+      if (v && SKIN_RE.test(v)) skinDataUrl = v;
     } catch (e) { /* ignore */ }
   }
   loadSkin();
 
+  // The chaser's skin is owned here, not by the entity (PngChaser sets
+  // ownsTextures = false), because the menu preview shares it and it survives
+  // level rebuilds. So this is the only place allowed to release one.
+  function replaceChaserTexture(tex) {
+    const old = chaserTexture;
+    chaserTexture = tex;
+    if (director?.get('chaser')) director.get('chaser').setTexture(tex);
+    if (old && old !== tex) old.dispose();
+  }
+
   function applySkin(dataUrl, onDone) {
     if (!dataUrl) {
-      chaserTexture = defaultChaserTexture();
+      replaceChaserTexture(defaultChaserTexture());
       $('br-skin-preview').src = chaserTexture.image.toDataURL();
-      if (director?.get('chaser')) director.get('chaser').setTexture(chaserTexture);
       if (onDone) onDone();
       return;
     }
@@ -240,9 +256,8 @@ import { Audio } from './backrooms-audio.js';
       const tex = new THREE.Texture(img);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.needsUpdate = true;
-      chaserTexture = tex;
+      replaceChaserTexture(tex);
       $('br-skin-preview').src = dataUrl;
-      if (director?.get('chaser')) director.get('chaser').setTexture(tex);
       if (onDone) onDone();
     };
     img.onerror = () => applySkin(null, onDone);
@@ -290,9 +305,12 @@ import { Audio } from './backrooms-audio.js';
 
     setLoading(true, 'printing wallpaper…');
     await nextTick();
-    if (!materials || materials.detailed !== (settings.quality !== 'low')) {
-      materials = buildMaterials(settings.quality);
+    if (materials && materials.detailed !== (settings.quality !== 'low')) {
+      // The old world was disposed above, so nothing is still drawing with it.
+      materials.dispose();
+      materials = null;
     }
+    if (!materials) materials = buildMaterials(settings.quality);
 
     setLoading(true, 'laying carpet…');
     await nextTick();
@@ -577,7 +595,8 @@ import { Audio } from './backrooms-audio.js';
       player.stepAccum = 0;
     }
 
-    game.visited.add(`${level.cellAt(player.pos.x, player.pos.z).x},${level.cellAt(player.pos.x, player.pos.z).y}`);
+    const here = level.cellAt(player.pos.x, player.pos.z);
+    game.visited.add(`${here.x},${here.y}`);
 
     // Win check — the trigger sits at the far end of the exit passage.
     const t = world.exit.trigger;
@@ -1025,7 +1044,8 @@ import { Audio } from './backrooms-audio.js';
     $('br-quality').addEventListener('change', async () => {
       settings.quality = $('br-quality').value === 'low' ? 'low' : 'high';
       saveSettings();
-      materials = null; // force a rebuild at the new tier
+      // buildLevel notices the tier changed and swaps the material set itself,
+      // disposing the old one once the world using it has gone.
       resize();
       await buildLevel(settings.seed);
       toMenu();
@@ -1098,7 +1118,10 @@ import { Audio } from './backrooms-audio.js';
       const reader = new FileReader();
       reader.onload = () => {
         const url = String(reader.result || '');
-        if (!url.startsWith('data:image/')) return;
+        if (!SKIN_RE.test(url)) {
+          say('That image could not be read.', 3);
+          return;
+        }
         skinDataUrl = url;
         try {
           localStorage.setItem(SKIN_KEY, url);

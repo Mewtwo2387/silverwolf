@@ -215,13 +215,14 @@ import {
   // Entity-specific dials, driven by the panel instead of by an AI.
   const pose = { gait: 0.5, charge: 0 };
 
-  function disposeTree(obj) {
-    obj.traverse((o) => {
-      if (!o.isMesh) return;
-      o.geometry?.dispose?.();
-      const m = o.material;
-      if (Array.isArray(m)) m.forEach((mm) => mm.dispose?.()); else m?.dispose?.();
-    });
+  // Chaser skins are the one thing on this page the entity will not release:
+  // PngChaser treats its texture as borrowed (ownsTextures = false) because in
+  // the game it belongs to the shell. Here the page made it, so the page frees
+  // it — including the built-in face handed back while a saved skin decodes.
+  let ownedTextures = [];
+  function releaseOwnedTextures() {
+    for (const t of ownedTextures) t.dispose();
+    ownedTextures = [];
   }
 
   function applyWire() {
@@ -246,6 +247,9 @@ import {
       if (note) note.textContent = 'Showing the built-in face. Upload a PNG in the game and it appears here.';
       return fallback;
     }
+    // The default face is handed back synchronously and swapped for the real
+    // skin once it decodes — load() needs a texture to build the chaser with
+    // right now, and decoding is asynchronous.
     const img = new Image();
     img.onload = () => {
       const tex = new THREE.Texture(img);
@@ -255,6 +259,11 @@ import {
       if (note) note.textContent = 'Showing your uploaded chaser skin.';
       if (onReady) onReady(tex);
     };
+    img.onerror = () => {
+      const note = $('bv-skin-note');
+      if (note) note.textContent = 'Saved skin could not be read. Showing the built-in face.';
+    };
+    img.src = saved;
     return fallback;
   }
 
@@ -327,7 +336,10 @@ import {
   function load(kind) {
     if (current) {
       turntable.remove(current.group);
-      disposeTree(current.group);
+      // The entity disposes its own geometry, materials and the textures it
+      // owns; anything it treats as borrowed is ours to clean up after.
+      current.dispose();
+      releaseOwnedTextures();
       current = null;
     }
     currentKind = kind;
@@ -336,7 +348,11 @@ import {
     } else if (kind === 'watcher') {
       current = new Entity96(bkLevel, bkCollider, rnd, irisTexture());
     } else {
-      const tex = chaserTexture((live) => current?.setTexture?.(live));
+      const tex = chaserTexture((live) => {
+        ownedTextures.push(live);
+        current?.setTexture?.(live);
+      });
+      ownedTextures.push(tex);
       current = new PngChaser(bkLevel, bkCollider, tex, rnd, { mode: 'patrol' });
     }
     // The constructors park the entity on a cell; here it stands at the origin
@@ -504,6 +520,7 @@ import {
     camera,
     controls,
     scene,
+    renderer, // renderer.info.memory is how you check the teardown actually works
     load,
     get entity() { return current; },
     get info() { return ENTITY_INFO; },
