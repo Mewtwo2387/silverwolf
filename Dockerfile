@@ -34,6 +34,7 @@ RUN bun build ./site_src/Assets/app.src.js --minify --outfile ./site_src/Assets/
     && bun build ./site_src/Assets/plane-viewer.src.js --minify --outfile ./site_src/Assets/plane-viewer.js \
     && bun build ./site_src/Assets/wave-sim.src.js --minify --outfile ./site_src/Assets/wave-sim.js \
     && bun build ./site_src/Assets/backrooms.src.js --minify --outfile ./site_src/Assets/backrooms.js \
+    && bun build ./site_src/Assets/backrooms-viewer.src.js --minify --outfile ./site_src/Assets/backrooms-viewer.js \
     && bunx --bun tailwindcss@3 -i ./site_src/Assets/input.css -o ./site_src/Assets/styles.css --minify
 
 # 5. Fetch the GM soundfont for the JAYDON music generator (checksum-verified,
@@ -75,6 +76,7 @@ COPY --from=builder --chown=bun:bun /app/site_src/Assets/plane-sim.js ./site_src
 COPY --from=builder --chown=bun:bun /app/site_src/Assets/plane-viewer.js ./site_src/Assets/plane-viewer.js
 COPY --from=builder --chown=bun:bun /app/site_src/Assets/wave-sim.js ./site_src/Assets/wave-sim.js
 COPY --from=builder --chown=bun:bun /app/site_src/Assets/backrooms.js ./site_src/Assets/backrooms.js
+COPY --from=builder --chown=bun:bun /app/site_src/Assets/backrooms-viewer.js ./site_src/Assets/backrooms-viewer.js
 # Soundfont downloaded + checksum-verified in the builder stage.
 COPY --from=builder --chown=bun:bun /app/data/soundfonts ./data/soundfonts
 

@@ -437,6 +437,7 @@ export function BackroomsPage(opts: {
               Nothing here knows where you are. Each entity tracks a <em>belief</em> about your
               position, updated only by what it can actually sense — so breaking line of sight,
               crouching, and staying quiet genuinely work.
+              <a href="/games/backrooms/entities">Look at them properly →</a>
             </p>
 
             <div class="br-ent">

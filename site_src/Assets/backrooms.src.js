@@ -26,7 +26,7 @@ import {
 import { buildMaterials, defaultChaserTexture, irisTexture } from './backrooms-materials.js';
 import { buildWorld, updateFixtures } from './backrooms-world.js';
 import {
-  PngChaser, Lifeform, Entity96, Director, CHASER_MODES,
+  PngChaser, Lifeform, Entity96, Director, CHASER_MODES, PLAYER_SPEEDS,
 } from './backrooms-entities.js';
 import { Audio } from './backrooms-audio.js';
 
@@ -55,9 +55,11 @@ import { Audio } from './backrooms-audio.js';
     EYE_STAND: 1.66,
     EYE_CROUCH: 0.95,
     RADIUS: 0.32,
-    WALK: 2.95,
-    SPRINT: 5.6,
-    CROUCH: 1.35,
+    // Defined in backrooms-entities.js: every entity speed is tuned against
+    // these, so they live next to the numbers they are compared with.
+    WALK: PLAYER_SPEEDS.WALK,
+    SPRINT: PLAYER_SPEEDS.SPRINT,
+    CROUCH: PLAYER_SPEEDS.CROUCH,
     ACCEL: 13, // ground acceleration (m/s²) — brisk, but not frictionless
     FRICTION: 11,
     STAMINA_MAX: 100,

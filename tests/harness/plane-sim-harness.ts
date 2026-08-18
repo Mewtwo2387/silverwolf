@@ -21,6 +21,7 @@ import { PlaneSimPage } from '../../site_src/pages/games/plane-sim';
 import { PlaneViewerPage } from '../../site_src/pages/games/plane-viewer';
 import { WaveSimPage } from '../../site_src/pages/games/wave-sim';
 import { BackroomsPage } from '../../site_src/pages/games/backrooms';
+import { BackroomsEntitiesPage } from '../../site_src/pages/games/backrooms-entities';
 import { GamesPage } from '../../site_src/pages/games';
 
 const ASSETS = path.join(import.meta.dir, '..', '..', 'site_src', 'Assets');
@@ -57,6 +58,7 @@ const PAGES: Record<string, () => unknown> = {
   // Backrooms boots with its test harness pre-armed (top-down map, teleports,
   // noclip, and window.__backrooms), which is the whole point of loading it here.
   '/games/backrooms': () => BackroomsPage({ ...viewProps, debug: true }),
+  '/games/backrooms/entities': () => BackroomsEntitiesPage(viewProps),
   // The games index needs no DB or auth either, and it is where each game's
   // card art lives — worth being able to eyeball next to the game itself.
   '/games': () => GamesPage(viewProps),
@@ -93,4 +95,5 @@ console.log(`plane-sim harness on http://127.0.0.1:${PORT}/games/plane-sim`);
 console.log(`  inspector  http://127.0.0.1:${PORT}/games/plane-sim/inspect`);
 console.log(`  wave sim   http://127.0.0.1:${PORT}/games/wave-sim`);
 console.log(`  backrooms  http://127.0.0.1:${PORT}/games/backrooms  (test harness on)`);
+console.log(`  entities   http://127.0.0.1:${PORT}/games/backrooms/entities`);
 console.log(`  games index http://127.0.0.1:${PORT}/games`);

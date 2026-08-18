@@ -29,6 +29,15 @@ import * as THREE from 'three';
 import { CELL, hash2 } from './backrooms-maze.js';
 
 const TAU = Math.PI * 2;
+
+/**
+ * The player's ground speeds, in m/s. They live in this module rather than in
+ * the game shell because every speed below is chosen relative to them, and a
+ * balance number you have to read two files to check is a balance number that
+ * drifts. backrooms.src.js imports these into its CFG; nothing else defines
+ * them.
+ */
+export const PLAYER_SPEEDS = { WALK: 2.95, SPRINT: 5.6, CROUCH: 1.35 };
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const dist2 = (ax, az, bx, bz) => ((ax - bx) ** 2) + ((az - bz) ** 2);
 
@@ -54,6 +63,7 @@ class Agent {
     this.fieldKey = '';
 
     this.stuckTimer = 0;
+    this.smoothOff = 0; // seconds left with corner-cutting disabled
     this.lastPos = new THREE.Vector3();
     this.group = new THREE.Group();
     this.alive = true;
@@ -87,6 +97,14 @@ class Agent {
    * One nav step toward `target` cell, with lookahead smoothing: if the cell
    * after next is directly visible, steer at that instead, so entities cut
    * corners like something with eyes rather than tracing cell centres.
+   *
+   * The smoothing is suppressed for a couple of seconds after a jam. Line of
+   * sight is traced as a ray and the body is 0.42-0.55 m wide, so a diagonal
+   * across a doorway can be perfectly *visible* and still not something this
+   * thing fits through — and a lookahead that keeps choosing it will grind the
+   * entity into the corner forever, re-planning the identical diagonal every
+   * time the stuck-detector fires. Falling back to plain cell-centre stepping
+   * always fits, because that is the graph the level was carved from.
    */
   waypointTo(tx, ty) {
     const here = this.cell();
@@ -94,7 +112,8 @@ class Agent {
     const field = this.fieldTo(tx, ty);
     const first = this.level.stepDownhill(here.x, here.y, field);
     if (!first) return null;
-    const second = this.level.stepDownhill(first.x, first.y, field);
+    const second = this.smoothOff <= 0
+      ? this.level.stepDownhill(first.x, first.y, field) : null;
     if (second) {
       const c2 = this.level.centre(second.x, second.y);
       if (this.level.lineOfSight(this.pos.x, this.pos.z, c2.x, c2.z)) return c2;
@@ -135,6 +154,7 @@ class Agent {
    * the cached field away and re-target rather than leaving it stuck forever.
    */
   checkStuck(dt, wantsToMove, onStuck) {
+    this.smoothOff = Math.max(0, this.smoothOff - dt);
     if (!wantsToMove) {
       this.stuckTimer = 0;
       this.lastPos.copy(this.pos);
@@ -146,6 +166,9 @@ class Agent {
         this.stuckTimer = 0;
         this.field = null;
         this.fieldKey = '';
+        // Re-planning alone is not enough — the new plan is the old plan. Take
+        // the corner-cutting away too, or this repeats forever.
+        this.smoothOff = 2.5;
         if (onStuck) onStuck();
       }
     } else {
@@ -243,6 +266,45 @@ class Agent {
 export const CHASER_MODES = ['auto', 'stalk', 'chase', 'patrol', 'jumpscare'];
 
 /**
+ * Every number that decides whether the chaser is tense or simply unfair, in
+ * one place. The rule they encode: a player who reacts gets away, a player who
+ * dithers does not. Concretely, it must never be able to close a gap faster
+ * than you can open one — the player sprints at 5.6 m/s (CFG.SPRINT) with
+ * about six seconds of stamina, so nothing here exceeds that, and the chase
+ * *winds up* rather than starting at full pelt. What costs you is the corner
+ * you fumble, not the straight you run.
+ */
+export const CHASER = {
+  SIGHT: 26,
+  FOV: Math.PI, // 180 degrees — directly behind it is genuinely behind it
+  HEARING: 20,
+  FORGET: 0.16,
+  PATROL_SPEED: 2.4,
+  STALK_NEAR: 2.6,
+  STALK_FAR: 3.6,
+  // Chase: opens below a walk-into-sprint and winds up to just under one, so
+  // the first seconds of a run always buy ground.
+  CHASE_SPEED_MIN: 3.9,
+  CHASE_SPEED_MAX: 5.15,
+  CHASE_WINDUP: 3.5, // seconds from MIN to MAX
+  CHASE_TRIGGER: 11, // must SEE you within this many metres to commit
+  CHASE_GIVEUP: 14, // seconds chasing without a fresh sighting before it drops
+  // Jumpscare: a run down a corridor, not a teleport into your face. Placed
+  // 4-7 cells out (17-29 m of path) and covering it at 8 m/s takes 2-4 s —
+  // long enough to hear it coming, turn round, and watch it arrive.
+  JUMP_SPEED: 8,
+  JUMP_MIN_CELLS: 4,
+  JUMP_MAX_CELLS: 7,
+  JUMP_TIMEOUT: 8.5, // abort the beat if the route was longer than expected
+  JUMP_FIRST: [55, 45], // first one no sooner than 55 s, plus up to 45 s
+  JUMP_AGAIN: [70, 60],
+  // A settling-in period after a start or restart. Spawning into a level and
+  // immediately being run down teaches you nothing about the level.
+  GRACE: 25,
+  CONTACT: 0.85,
+};
+
+/**
  * The nextbot. A camera-facing billboard that slides along the floor — the
  * Garry's Mod lineage the Backrooms videos borrowed, where the horror is a flat
  * image moving with intent.
@@ -250,8 +312,10 @@ export const CHASER_MODES = ['auto', 'stalk', 'chase', 'patrol', 'jumpscare'];
  * Four behaviours, selectable in the menu or mixed by `auto`:
  *   patrol    — lost you: sweeps the area around where you were last known
  *   stalk     — keeps its distance and freezes whenever you look at it
- *   chase     — commits and runs you down once it is close and certain
- *   jumpscare — repositions out of sight, sprints the corridor into your face,
+ *   chase     — commits once it can SEE you inside CHASE_TRIGGER, then winds
+ *                 up from a jog to just under a sprint; gives up if it spends
+ *                 CHASE_GIVEUP seconds without laying eyes on you again
+ *   jumpscare — repositions out of sight, runs the corridor into your face,
  *               screeches, and is gone. Costs you nerve, not health.
  */
 export class PngChaser extends Agent {
@@ -277,11 +341,21 @@ export class PngChaser extends Agent {
     this.pos.y = 0;
 
     this.wander = null;
-    this.jumpCooldown = 18 + rnd() * 20;
+    this.jumpCooldown = CHASER.JUMP_FIRST[0] + rnd() * CHASER.JUMP_FIRST[1];
     this.jumpTarget = null;
     this.observed = false;
     this.onScare = null; // set by the director
-    this.contact = 0.85;
+    this.contact = CHASER.CONTACT;
+    // Counts down from the moment it is spawned; while it runs the chaser is
+    // allowed to look for you and loom, but not to commit.
+    this.grace = CHASER.GRACE;
+    this.chaseSeen = 0; // stateTime of the last sighting during a chase
+  }
+
+  /** Entering a chase restarts both the wind-up and the give-up clock. */
+  setState(state) {
+    if (this.state !== state && state === 'chase') this.chaseSeen = 0;
+    super.setState(state);
   }
 
   setTexture(tex) {
@@ -302,8 +376,9 @@ export class PngChaser extends Agent {
 
   update(dt, player, api) {
     this.stateTime += dt;
+    this.grace = Math.max(0, this.grace - dt);
     const cfg = {
-      sight: 30, fov: Math.PI * 1.15, hearing: 22, forget: 0.14,
+      sight: CHASER.SIGHT, fov: CHASER.FOV, hearing: CHASER.HEARING, forget: CHASER.FORGET,
     };
     const s = this.sense(player, dt, cfg, this.rnd);
     this.observed = this.isObserved(player);
@@ -314,9 +389,11 @@ export class PngChaser extends Agent {
     if (this.mode === 'auto') {
       this.jumpCooldown -= dt;
       if (this.state !== 'jumpscare') {
-        if (this.jumpCooldown <= 0 && this.confidence > 0.3) {
+        // Everything below the grace line is atmosphere; everything above it
+        // can end the run, so the grace timer gates exactly those two.
+        if (this.grace <= 0 && this.jumpCooldown <= 0 && this.confidence > 0.3) {
           this.beginJumpscare(player);
-        } else if (s.seen && s.dist < 15) {
+        } else if (this.grace <= 0 && s.seen && s.dist < CHASER.CHASE_TRIGGER) {
           this.setState('chase');
         } else if (this.confidence > 0.45) {
           this.setState('stalk');
@@ -360,7 +437,7 @@ export class PngChaser extends Agent {
       this.stateTime = 0;
     }
     const wp = this.waypointTo(this.wander.x, this.wander.y);
-    this.steer(wp, dt, 2.4);
+    this.steer(wp, dt, CHASER.PATROL_SPEED);
     this.checkStuck(dt, true, () => { this.wander = null; });
   }
 
@@ -381,18 +458,27 @@ export class PngChaser extends Agent {
       target = away;
     }
     const wp = this.waypointTo(target.x, target.y);
-    this.steer(wp, dt, d > 18 ? 4.6 : 2.6);
+    this.steer(wp, dt, d > 18 ? CHASER.STALK_FAR : CHASER.STALK_NEAR);
     this.checkStuck(dt, true, null);
-    if (s.seen && s.dist < 9) this.setState('chase');
+    if (this.grace <= 0 && s.seen && s.dist < 9) this.setState('chase');
   }
 
   doChase(dt, s) {
     const wp = this.waypointTo(this.belief.x, this.belief.y);
-    // A shade under a sprinting player, so a straight run buys you distance but
-    // every corner you fumble gives it back. It never gets tired; you do.
-    this.steer(wp, dt, 5.35);
+    // Wind-up: it starts the run slower than you sprint and only reaches its
+    // top speed after CHASE_WINDUP seconds, which is the whole margin the
+    // player gets. Break line of sight inside that window and the give-up
+    // clock is already running. It never gets tired — but it does lose you.
+    const t = clamp(this.stateTime / CHASER.CHASE_WINDUP, 0, 1);
+    const speed = CHASER.CHASE_SPEED_MIN + (CHASER.CHASE_SPEED_MAX - CHASER.CHASE_SPEED_MIN) * t;
+    this.steer(wp, dt, speed);
     this.checkStuck(dt, true, null);
-    if (this.mode === 'auto' && this.confidence < 0.2 && !s.seen) this.setState('patrol');
+    if (s.seen) this.chaseSeen = this.stateTime;
+    if (this.mode !== 'auto') return;
+    if (this.confidence < 0.2 && !s.seen) this.setState('patrol');
+    // Hard ceiling on a single commitment: something that has been running at
+    // you for fourteen seconds on stale information is a bug, not a threat.
+    else if (this.stateTime - (this.chaseSeen ?? 0) > CHASER.CHASE_GIVEUP) this.setState('stalk');
   }
 
   /**
@@ -407,7 +493,7 @@ export class PngChaser extends Agent {
     for (let y = 0; y < this.level.h; y += 1) {
       for (let x = 0; x < this.level.w; x += 1) {
         const d = field[this.level.cellIndex(x, y)];
-        if (d < 3 || d > 6) continue;
+        if (d < CHASER.JUMP_MIN_CELLS || d > CHASER.JUMP_MAX_CELLS) continue;
         const c = this.level.centre(x, y);
         if (this.level.lineOfSight(player.pos.x, player.pos.z, c.x, c.z)) continue;
         options.push({ x, y });
@@ -427,16 +513,16 @@ export class PngChaser extends Agent {
     const pc = this.level.cellAt(player.pos.x, player.pos.z);
     this.belief = pc; // committed: this is a scripted beat, and it is brief
     const wp = this.waypointTo(pc.x, pc.y);
-    this.steer(wp, dt, 13.5);
+    this.steer(wp, dt, CHASER.JUMP_SPEED);
     this.checkStuck(dt, true, null);
 
     const d = Math.hypot(this.pos.x - player.pos.x, this.pos.z - player.pos.z);
-    if (d < 1.6 || this.stateTime > 6) {
+    if (d < 1.6 || this.stateTime > CHASER.JUMP_TIMEOUT) {
       if (d < 2.6) api.scare(this.pos.clone());
       // Gone. It reappears somewhere else, patrolling, on a long cooldown.
       const far = this.wanderTarget(pc.x, pc.y, 12, this.rnd);
       this.placeAtCell(far.x, far.y);
-      this.jumpCooldown = 30 + this.rnd() * 40;
+      this.jumpCooldown = CHASER.JUMP_AGAIN[0] + this.rnd() * CHASER.JUMP_AGAIN[1];
       this.confidence = 0.2;
       this.setState(this.mode === 'jumpscare' ? 'patrol' : 'patrol');
     }
@@ -455,25 +541,42 @@ export class PngChaser extends Agent {
  * so it is slow enough to walk away from, and the voice you hear is bait, not a
  * position you can trust.
  */
+export const LIFEFORM = {
+  SIGHT: 9, // near-blind
+  FOV: Math.PI * 2, // no facing to speak of — it "sees" all round, barely
+  HEARING: 34,
+  FORGET: 0.05, // a long memory: it does not lose interest, it loses the trail
+  HUNT_SPEED: 2.9,
+  DRIFT_SPEED: 1.5,
+  CONTACT: 1.15,
+  CALL_EVERY: [9, 16], // seconds between mimic calls: base, plus up to
+};
+
 export class Lifeform extends Agent {
   constructor(level, collider, rnd) {
-    super(level, collider, { radius: 0.55, speed: 2.5 });
+    super(level, collider, { radius: 0.55, speed: LIFEFORM.HUNT_SPEED });
     this.rnd = rnd;
     this.kind = 'lifeform';
     this.name = 'Lifeform';
     this.callTimer = 4 + rnd() * 8;
     this.wander = null;
     this.phase = rnd() * TAU;
-    this.contact = 1.15;
+    this.contact = LIFEFORM.CONTACT;
     this.buildModel();
   }
 
   /**
    * The source puts this thing at about eleven feet. Level 0's ceiling is
-   * 3.15 m, so it cannot stand up in here — and rather than shrink it or let it
-   * clip through the tiles, it STOOPS: hips at 1.9 m, spine raked forward, head
-   * hanging below shoulder height and thrust ahead of the body. It stands about
-   * 2.9 m folded, which is a good deal worse to meet than a neat 2 m biped.
+   * WALL_H = 3.15 m, so it cannot stand up in here — and rather than shrink it
+   * or let it clip through the tiles, it STOOPS: hips at 1.92 m, spine raked
+   * forward, head hanging below shoulder height and thrust ahead of the body.
+   *
+   * The rake is not a taste decision, it is the constraint: at RAKE the crown
+   * of the head sits at about 2.97 m, and the sway in animate() and the walk
+   * bob together can add ~0.11 m, so at its worst moment in the cycle it passes
+   * under the ceiling tiles with about 7 cm to spare and no more. Straighten it
+   * and the head goes through the ceiling. It stands about 2.97 m folded, which
+   * is a good deal worse to meet than a neat 2 m biped.
    */
   buildModel() {
     const skin = new THREE.MeshStandardMaterial({
@@ -481,6 +584,8 @@ export class Lifeform extends Agent {
     });
     const g = this.group;
     const HIP = 1.92;
+    // See the class comment: this angle is what keeps its head under the tiles.
+    const RAKE = 0.76;
 
     // Legs: hip down to the floor, long and spindly, with a backward knee.
     this.legs = [];
@@ -505,7 +610,7 @@ export class Lifeform extends Agent {
     // bent thing and the sway animation can rotate it from the hips.
     this.spine = new THREE.Group();
     this.spine.position.y = HIP;
-    this.spine.rotation.x = 0.42; // leaning into the corridor
+    this.spine.rotation.x = RAKE; // folded into the corridor, not leaning
     g.add(this.spine);
 
     const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.26, 1.05, 7), skin);
@@ -549,14 +654,15 @@ export class Lifeform extends Agent {
       this.spine.add(arm);
       this.arms.push(arm);
     }
-    this.height = 2.9;
+    this.height = 2.97;
+    this.rake = RAKE;
   }
 
   update(dt, player, api) {
     this.stateTime += dt;
     // Near-blind, superb hearing, and a long memory — it does not lose interest.
     const cfg = {
-      sight: 9, fov: Math.PI * 2, hearing: 34, forget: 0.05,
+      sight: LIFEFORM.SIGHT, fov: LIFEFORM.FOV, hearing: LIFEFORM.HEARING, forget: LIFEFORM.FORGET,
     };
     const s = this.sense(player, dt, cfg, this.rnd);
 
@@ -566,7 +672,7 @@ export class Lifeform extends Agent {
     let wantsMove = true;
     if (this.state === 'hunt') {
       const wp = this.waypointTo(this.belief.x, this.belief.y);
-      this.steer(wp, dt, 2.9);
+      this.steer(wp, dt, LIFEFORM.HUNT_SPEED);
     } else {
       if (!this.wander || this.stateTime > 12
         || dist2(this.pos.x, this.pos.z, this.wanderWorld.x, this.wanderWorld.z) < 1.5) {
@@ -575,7 +681,7 @@ export class Lifeform extends Agent {
         this.stateTime = 0;
       }
       const wp = this.waypointTo(this.wander.x, this.wander.y);
-      this.steer(wp, dt, 1.5);
+      this.steer(wp, dt, LIFEFORM.DRIFT_SPEED);
       wantsMove = true;
     }
     this.checkStuck(dt, wantsMove, () => { this.wander = null; });
@@ -584,7 +690,7 @@ export class Lifeform extends Agent {
     // voice is a mistake.
     this.callTimer -= dt;
     if (this.callTimer <= 0) {
-      this.callTimer = 9 + this.rnd() * 16;
+      this.callTimer = LIFEFORM.CALL_EVERY[0] + this.rnd() * LIFEFORM.CALL_EVERY[1];
       api.mimic(this.pos.clone());
     }
 
@@ -613,7 +719,7 @@ export class Lifeform extends Agent {
     // A slow, wrong sway through the whole body. The spine rocks around its
     // stoop rather than straightening — it never gets to stand up in here.
     this.group.position.y = Math.sin(this.phase * 2) * 0.045;
-    this.spine.rotation.x = 0.42 + Math.sin(this.phase * 0.47) * 0.08;
+    this.spine.rotation.x = this.rake + Math.sin(this.phase * 0.47) * 0.07;
     this.spine.rotation.z = Math.sin(this.phase * 0.29) * 0.06;
     this.head.rotation.y = Math.sin(this.phase * 0.31) * 0.5;
   }
@@ -629,14 +735,25 @@ export class Lifeform extends Agent {
  *
  * It also corrupts electronics nearby, which the HUD wears as static.
  */
+export const WATCHER = {
+  SIGHT: 24,
+  FOV: Math.PI * 0.95, // it has to be facing you
+  HEARING: 0, // exactly zero, per the source
+  FORGET: 0.3,
+  DRIFT_SPEED: 1.35,
+  CHARGE_TIME: 2.1, // seconds in the beam before it disintegrates you
+  LOCK_COOLDOWN: 2.6, // it will not re-acquire immediately after losing you
+  INTERFERENCE_RANGE: 15,
+};
+
 export class Entity96 extends Agent {
   constructor(level, collider, rnd, texture) {
-    super(level, collider, { radius: 0.5, speed: 1.35 });
+    super(level, collider, { radius: 0.5, speed: WATCHER.DRIFT_SPEED });
     this.rnd = rnd;
     this.kind = 'watcher';
     this.name = 'Entity 96';
     this.charge = 0;
-    this.chargeTime = 2.1;
+    this.chargeTime = WATCHER.CHARGE_TIME;
     this.lockCooldown = 0;
     this.wander = null;
     this.beamSound = null;
@@ -661,17 +778,42 @@ export class Entity96 extends Agent {
     this.eye.position.y = EYE_Y;
     g.add(this.eye);
 
-    // Cornea: the iris drawn onto a disc that faces the entity's forward (+Z),
-    // bulged out to the sphere's surface. CircleGeometry clips the square
-    // texture to a circle, so the iris stays round from every angle it matters.
+    // Cornea: a spherical CAP sitting just proud of the sclera and facing the
+    // entity's forward (+Z), carrying the iris texture.
+    //
+    // Two things it must not be. Not a flat disc set at the rim's depth — flat,
+    // the centre of the disc sits ~9 cm inside an opaque sclera and all you
+    // ever see of the eye is the blank outer ring of the texture poking
+    // through. And not a cap with its own UVs — a sphere's UVs are
+    // equirectangular, which pinches a square texture at the pole and turns a
+    // round pupil into a slit. So: sphere geometry for the shape, and the UVs
+    // rewritten as a planar projection of x/y, which is what keeps the pupil
+    // a round dot from every angle that matters.
     const CORNEA_R = 0.31;
+    const CORNEA_D = R + 0.004; // just proud of the sclera, never inside it
+    const corneaGeo = new THREE.SphereGeometry(
+      CORNEA_D, 40, 20, 0, TAU, 0, Math.asin(CORNEA_R / CORNEA_D),
+    );
+    corneaGeo.rotateX(Math.PI / 2); // the cap opens along +Y; point it at +Z
+    {
+      const pos = corneaGeo.attributes.position;
+      const uv = corneaGeo.attributes.uv;
+      for (let i = 0; i < pos.count; i += 1) {
+        uv.setXY(
+          i,
+          0.5 + pos.getX(i) / (CORNEA_R * 2),
+          0.5 + pos.getY(i) / (CORNEA_R * 2),
+        );
+      }
+      uv.needsUpdate = true;
+    }
     this.iris = new THREE.Mesh(
-      new THREE.CircleGeometry(CORNEA_R, 28),
+      corneaGeo,
       new THREE.MeshStandardMaterial({
         map: irisTex, roughness: 0.12, metalness: 0, emissive: 0x0a0600, emissiveIntensity: 0.4,
       }),
     );
-    this.iris.position.set(0, EYE_Y, Math.sqrt((R * R) - (CORNEA_R * CORNEA_R)) + 0.008);
+    this.iris.position.set(0, EYE_Y, 0);
     g.add(this.iris);
 
     // A wet membrane over the whole globe — reads as an eye, not a marble.
@@ -705,7 +847,7 @@ export class Entity96 extends Agent {
     this.lockCooldown = Math.max(0, this.lockCooldown - dt);
     // Keen sight and touch, no hearing and no smell — hearing is exactly zero.
     const cfg = {
-      sight: 24, fov: Math.PI * 0.95, hearing: 0, forget: 0.3,
+      sight: WATCHER.SIGHT, fov: WATCHER.FOV, hearing: WATCHER.HEARING, forget: WATCHER.FORGET,
     };
     const s = this.sense(player, dt, cfg, this.rnd);
 
@@ -732,7 +874,7 @@ export class Entity96 extends Agent {
       if (this.charge > 0) {
         // Lost you: the lock drops, and it will not re-acquire immediately.
         this.charge = 0;
-        this.lockCooldown = 2.6;
+        this.lockCooldown = WATCHER.LOCK_COOLDOWN;
         if (this.beamSound) {
           this.beamSound.stop();
           this.beamSound = null;
@@ -747,12 +889,12 @@ export class Entity96 extends Agent {
         this.stateTime = 0;
       }
       const wp = this.waypointTo(this.wander.x, this.wander.y);
-      this.steer(wp, dt, 1.35);
+      this.steer(wp, dt, WATCHER.DRIFT_SPEED);
       this.checkStuck(dt, true, () => { this.wander = null; });
     }
 
     // Interference bleeds into the HUD (and the audio bus) with proximity.
-    api.interference(clamp(1 - s.dist / 15, 0, 1) * (locked ? 1 : 0.55));
+    api.interference(clamp(1 - s.dist / WATCHER.INTERFERENCE_RANGE, 0, 1) * (locked ? 1 : 0.55));
 
     this.hoverPhase += dt * 0.9;
     this.group.position.copy(this.pos);
@@ -863,6 +1005,84 @@ export class Director {
     this.entities = [];
   }
 }
+
+/**
+ * The roster, described for humans: what each thing is, where it came from,
+ * and how you survive it. The numbers are read straight out of the tuning
+ * blocks above rather than retyped, so the entity viewer can never quote a
+ * speed the game does not actually use.
+ */
+export const ENTITY_INFO = {
+  chaser: {
+    label: 'PNG chaser',
+    kind: 'chaser',
+    tagline: 'A flat image that wants to be in the same place as you.',
+    origin: "Garry's Mod nextbots",
+    href: 'https://wiki.facepunch.com/gmod/NEXTBOT',
+    blurb: 'A camera-facing billboard sliding along the carpet — the lineage the Backrooms '
+      + 'videos borrowed, where the horror is a picture moving with intent. It is a real '
+      + 'pathfinder, not a scripted patrol: it routes through the same open-cell graph you '
+      + 'walk, and it cannot pass a wall you cannot.',
+    senses: 'Wide cone of sight, decent hearing, short memory.',
+    counterplay: 'Break line of sight and keep breaking it. Its chase starts slower than your '
+      + `sprint (${CHASER.CHASE_SPEED_MIN} m/s) and takes ${CHASER.CHASE_WINDUP} s to wind up to `
+      + `${CHASER.CHASE_SPEED_MAX} — a straight run always buys ground, a fumbled corner gives `
+      + 'it back. While you are looking straight at it, it will not move.',
+    stats: [
+      { k: 'Sight', v: `${CHASER.SIGHT} m`, bar: CHASER.SIGHT / 36 },
+      { k: 'Hearing', v: `${CHASER.HEARING} m`, bar: CHASER.HEARING / 36 },
+      { k: 'Field of view', v: `${Math.round((CHASER.FOV * 180) / Math.PI)}°`, bar: CHASER.FOV / TAU },
+      { k: 'Patrol', v: `${CHASER.PATROL_SPEED} m/s`, bar: CHASER.PATROL_SPEED / 9 },
+      { k: 'Chase', v: `${CHASER.CHASE_SPEED_MIN}–${CHASER.CHASE_SPEED_MAX} m/s`, bar: CHASER.CHASE_SPEED_MAX / 9 },
+      { k: 'Jumpscare', v: `${CHASER.JUMP_SPEED} m/s`, bar: CHASER.JUMP_SPEED / 9 },
+    ],
+  },
+  lifeform: {
+    label: 'Lifeform',
+    kind: 'lifeform',
+    tagline: 'Eleven feet of tangled wire, folded to fit under the ceiling.',
+    origin: 'Kane Pixels — The Lifeform',
+    href: 'https://kane-pixels-backrooms.fandom.com/wiki/The_Lifeform',
+    blurb: 'A black stick-figure of tapered limbs and tube-geometry arms that reach past its '
+      + 'knees. Level 0 has a 3.15 m ceiling and this thing does not fit, so it stoops: hips '
+      + 'high, spine raked forward, head hung below the shoulders and thrust ahead of the body.',
+    senses: 'Nearly blind. Superb hearing. It does not forget.',
+    counterplay: 'It hunts sound, so crouch. It calls for help in a human voice from wherever it '
+      + 'is standing — walking toward the voice walks you into it. At '
+      + `${LIFEFORM.HUNT_SPEED} m/s it is slower than your sprint, and it never sees you coming.`,
+    stats: [
+      { k: 'Sight', v: `${LIFEFORM.SIGHT} m`, bar: LIFEFORM.SIGHT / 36 },
+      { k: 'Hearing', v: `${LIFEFORM.HEARING} m`, bar: LIFEFORM.HEARING / 36 },
+      { k: 'Field of view', v: 'all round', bar: 1 },
+      { k: 'Drift', v: `${LIFEFORM.DRIFT_SPEED} m/s`, bar: LIFEFORM.DRIFT_SPEED / 9 },
+      { k: 'Hunt', v: `${LIFEFORM.HUNT_SPEED} m/s`, bar: LIFEFORM.HUNT_SPEED / 9 },
+      { k: 'Memory', v: 'very long', bar: 1 - LIFEFORM.FORGET * 3 },
+    ],
+  },
+  watcher: {
+    label: 'Entity 96',
+    kind: 'watcher',
+    tagline: 'The Neighborhood Watch. It does not chase. It looks.',
+    origin: 'Backrooms Wiki — Entity 96',
+    href: 'https://backrooms-wiki.wikidot.com/entity-96',
+    blurb: 'A drifting eye: a sclera sphere with the iris painted on a bulged disc facing '
+      + 'forward, under a wet membrane. Catch its gaze and the pupil charges a beam of light. '
+      + 'It corrupts electronics near it, which is the static creeping across your screen.',
+    senses: 'Keen sight, and no hearing whatsoever.',
+    counterplay: `You get ${WATCHER.CHARGE_TIME} s in the beam before it disintegrates you, and `
+      + 'breaking line of sight drops the lock entirely — the answer is a corner, not a sprint. '
+      + `It waits ${WATCHER.LOCK_COOLDOWN} s before it will re-acquire. Noise is free here: it `
+      + 'cannot hear you at all.',
+    stats: [
+      { k: 'Sight', v: `${WATCHER.SIGHT} m`, bar: WATCHER.SIGHT / 36 },
+      { k: 'Hearing', v: 'none', bar: 0 },
+      { k: 'Field of view', v: `${Math.round((WATCHER.FOV * 180) / Math.PI)}°`, bar: WATCHER.FOV / TAU },
+      { k: 'Drift', v: `${WATCHER.DRIFT_SPEED} m/s`, bar: WATCHER.DRIFT_SPEED / 9 },
+      { k: 'Beam charge', v: `${WATCHER.CHARGE_TIME} s`, bar: WATCHER.CHARGE_TIME / 9 },
+      { k: 'Interference', v: `${WATCHER.INTERFERENCE_RANGE} m`, bar: WATCHER.INTERFERENCE_RANGE / 36 },
+    ],
+  },
+};
 
 /** Deterministic per-entity spice so two levels never feel identically staffed. */
 export function entityJitter(seedNum, i) {

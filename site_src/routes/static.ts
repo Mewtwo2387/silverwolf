@@ -36,6 +36,8 @@ const STATIC_ASSETS: Record<string, StaticEntry> = {
   // texture, model and sound in it is generated at runtime, so this bundle is
   // the game's only asset.
   '/static/backrooms.js': { path: path.join(ASSETS_DIR, 'backrooms.js'), contentType: 'text/javascript; charset=utf-8' },
+  // Its entity viewer — same classes and materials, turntable instead of a maze.
+  '/static/backrooms-viewer.js': { path: path.join(ASSETS_DIR, 'backrooms-viewer.js'), contentType: 'text/javascript; charset=utf-8' },
 };
 // Plane Sim aircraft textures (the P-51 / Zero reference-model skins, loaded
 // by THREE.TextureLoader from the game bundle — see plane-sim-models.js).
