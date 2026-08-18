@@ -32,6 +32,12 @@ const STATIC_ASSETS: Record<string, StaticEntry> = {
   '/static/plane-viewer.js': { path: path.join(ASSETS_DIR, 'plane-viewer.js'), contentType: 'text/javascript; charset=utf-8' },
   // Standalone Gerstner wave sandbox (wave-sim.src.js + wave-field.js).
   '/static/wave-sim.js': { path: path.join(ASSETS_DIR, 'wave-sim.js'), contentType: 'text/javascript; charset=utf-8' },
+  // The Backrooms (backrooms.src.js + its backrooms-*.js modules). Every
+  // texture, model and sound in it is generated at runtime, so this bundle is
+  // the game's only asset.
+  '/static/backrooms.js': { path: path.join(ASSETS_DIR, 'backrooms.js'), contentType: 'text/javascript; charset=utf-8' },
+  // Its entity viewer — same classes and materials, turntable instead of a maze.
+  '/static/backrooms-viewer.js': { path: path.join(ASSETS_DIR, 'backrooms-viewer.js'), contentType: 'text/javascript; charset=utf-8' },
 };
 // Plane Sim aircraft textures (the P-51 / Zero reference-model skins, loaded
 // by THREE.TextureLoader from the game bundle — see plane-sim-models.js).

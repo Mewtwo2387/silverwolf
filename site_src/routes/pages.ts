@@ -24,6 +24,8 @@ import { BottleFlipPage } from '../pages/games/bottleflip';
 import { PlaneSimPage } from '../pages/games/plane-sim';
 import { PlaneViewerPage } from '../pages/games/plane-viewer';
 import { WaveSimPage } from '../pages/games/wave-sim';
+import { BackroomsPage } from '../pages/games/backrooms';
+import { BackroomsEntitiesPage } from '../pages/games/backrooms-entities';
 import { canUseAiSlop } from '../guild-access';
 import { HomePage, type DashboardProfile } from '../pages/home';
 import {
@@ -218,6 +220,18 @@ export function registerPageRoutes(app: Hono<AppEnv>, silverwolf: Silverwolf) {
   }).toString()));
 
   app.get('/games/wave-sim', (c) => c.html(WaveSimPage({
+    nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
+  }).toString()));
+
+  app.get('/games/backrooms', (c) => c.html(BackroomsPage({
+    nonce: c.get('nonce'),
+    lv999: c.req.query('lv') === '999',
+    user: navUser(c),
+    // ?debug=1 pre-arms the in-game test harness (map, teleports, noclip).
+    debug: c.req.query('debug') === '1',
+  }).toString()));
+
+  app.get('/games/backrooms/entities', (c) => c.html(BackroomsEntitiesPage({
     nonce: c.get('nonce'), lv999: c.req.query('lv') === '999', user: navUser(c),
   }).toString()));
 

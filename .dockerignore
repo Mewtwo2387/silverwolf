@@ -14,6 +14,7 @@ site_src/Assets/app.js
 site_src/Assets/plane-sim.js
 site_src/Assets/plane-viewer.js
 site_src/Assets/wave-sim.js
+site_src/Assets/backrooms.js
 # Tests and the client-game dev harness — dev-only, nothing at runtime imports
 # them, and the harness would otherwise ship a second HTTP server in the image.
 tests/

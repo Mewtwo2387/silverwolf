@@ -118,6 +118,12 @@ export const GAMES = [
     info: 'Fly a Spitfire-ish prop fighter in 3D — dogfight AI bandits over 12 km of mountains and lakes.',
     imageType: 'plane' as const,
   },
+  {
+    name: 'backrooms',
+    href: '/games/backrooms',
+    info: 'Outrun the entities that haunt the Backrooms and find an escape path.',
+    imageType: 'backrooms' as const,
+  },
 ];
 
 const styles = raw(`
@@ -633,6 +639,32 @@ const styles = raw(`
     justify-content: center;
   }
   .plane-thumb svg { width: 100%; height: 100%; overflow: visible; }
+
+  /* Backrooms: a one-point-perspective corner of Level 0. Unlike the other
+     thumbnails this one keeps its own sickly-yellow palette rather than the
+     site accent — the wallpaper colour IS the icon. */
+  .backrooms-thumb {
+    width: 88%;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .backrooms-thumb svg { width: 100%; height: 100%; border-radius: 0.3rem; }
+  .br-tube { animation: br-flicker 4.2s steps(1, end) infinite; }
+  .br-door-glow { animation: br-lurk 6s ease-in-out infinite; }
+  @keyframes br-flicker {
+    0%, 62%, 68%, 77%, 100% { opacity: 1; }
+    64%, 66%, 79% { opacity: 0.25; }
+  }
+  @keyframes br-lurk {
+    0%, 72%, 100% { opacity: 0; }
+    82%, 90% { opacity: 0.85; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .br-tube, .br-door-glow { animation: none; }
+    .br-door-glow { opacity: 0; }
+  }
   .plane-flyer { transform-origin: 50% 50%; animation: plane-bank 5.5s ease-in-out infinite; }
   .plane-body, .plane-wing, .plane-tail, .plane-fin {
     fill: color-mix(in oklab, var(--accent) 30%, transparent);
@@ -1117,6 +1149,59 @@ function PlaneImage() {
   `);
 }
 
+// A mock stretch of Level 0 in one-point perspective: yellow wallpaper with a
+// vertical stripe, mildewed carpet, a suspended ceiling, and a doorway that
+// something drifts across every few seconds.
+function BackroomsImage() {
+  return raw(`
+    <div class="backrooms-thumb" aria-hidden="true">
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="br-paper" width="7" height="7" patternUnits="userSpaceOnUse">
+            <rect width="7" height="7" fill="#c9b45f" />
+            <rect width="2.2" height="7" fill="#d8c470" />
+            <rect x="4.4" width="0.9" height="7" fill="#b8a352" opacity="0.7" />
+          </pattern>
+          <linearGradient id="br-floor" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#6d6142" />
+            <stop offset="1" stop-color="#8d7f58" />
+          </linearGradient>
+          <radialGradient id="br-lamp" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0" stop-color="#fff6d8" stop-opacity="0.95" />
+            <stop offset="1" stop-color="#fff6d8" stop-opacity="0" />
+          </radialGradient>
+        </defs>
+
+        <rect width="100" height="100" fill="#171307" />
+        <!-- back wall, then the two side walls raked into perspective -->
+        <rect x="33" y="33" width="34" height="34" fill="url(#br-paper)" />
+        <polygon points="0,0 33,33 33,67 0,100" fill="url(#br-paper)" opacity="0.72" />
+        <polygon points="100,0 67,33 67,67 100,100" fill="url(#br-paper)" opacity="0.55" />
+        <!-- suspended ceiling + carpet -->
+        <polygon points="0,0 100,0 67,33 33,33" fill="#8e8975" />
+        <polygon points="33,33 67,33 67,34 33,34" fill="#6b6757" />
+        <polygon points="0,100 33,67 67,67 100,100" fill="url(#br-floor)" />
+        <!-- ceiling runners -->
+        <g stroke="#75705d" stroke-width="0.7" opacity="0.8">
+          <line x1="20" y1="0" x2="41" y2="33" /><line x1="50" y1="0" x2="50" y2="33" />
+          <line x1="80" y1="0" x2="59" y2="33" /><line x1="12" y1="12" x2="88" y2="12" />
+        </g>
+        <!-- doorway into the next room, and whatever is standing in it -->
+        <rect x="43" y="41" width="14" height="26" fill="#0d0b05" />
+        <ellipse class="br-door-glow" cx="50" cy="52" rx="4" ry="9" fill="#e9e4d2" opacity="0" />
+        <!-- fluorescent troffers -->
+        <g class="br-tube">
+          <rect x="41" y="6" width="18" height="3.4" rx="0.6" fill="#fffbe6" />
+          <rect x="44" y="20" width="12" height="2.6" rx="0.5" fill="#fff6d0" />
+          <ellipse cx="50" cy="14" rx="30" ry="14" fill="url(#br-lamp)" opacity="0.5" />
+        </g>
+        <!-- skirting shadow where wall meets carpet -->
+        <polygon points="0,100 33,67 67,67 100,100 100,100 67,69 33,69 0,100" fill="#000" opacity="0.35" />
+      </svg>
+    </div>
+  `);
+}
+
 const SVG_DIR = path.join(import.meta.dir, '..', 'Assets', 'svg');
 
 // Game icons ship as flat, multi-colour svgrepo art that reads too "comical"
@@ -1357,6 +1442,7 @@ export function GamesPage(opts: { nonce: string; lv999?: boolean; user?: import(
     if (game.imageType === 'cards') return BlackjackImage();
     if (game.imageType === 'bottle') return BottleImage();
     if (game.imageType === 'plane') return PlaneImage();
+    if (game.imageType === 'backrooms') return BackroomsImage();
     if (game.imageType === 'composite') {
       const overlaySrc = (game as any).overlaySrc as string;
       const overlay = overlaySrc.endsWith('.svg')

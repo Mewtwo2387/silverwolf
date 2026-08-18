@@ -44,21 +44,27 @@ Fonts are self-hosted woff2 (`font-src 'self'`, `font-display: swap`). Search in
 
 ## Client-bundled games (`three`)
 
-A client-only game needing a JS library (Plane Sim / its model inspector / Wave Sim use `three`) is
-**self-hosted and bundled — never a CDN** (CSP is `script-src 'self'`). Each is a `*.src.js` in
-`Assets/` wired into `build:js` (`plane-sim.src.js`→`plane-sim.js`, `plane-viewer.src.js`→
-`plane-viewer.js`, `wave-sim.src.js`→`wave-sim.js`), the `Dockerfile` build+overlay steps and
+A client-only game needing a JS library (Plane Sim / its model inspector / Wave Sim / Backrooms and
+its entity viewer use `three`) is **self-hosted and bundled — never a CDN** (CSP is
+`script-src 'self'`). Each is a `*.src.js` in `Assets/` wired into `build:js`
+(`plane-sim.src.js`→`plane-sim.js`, `plane-viewer.src.js`→`plane-viewer.js`,
+`wave-sim.src.js`→`wave-sim.js`, `backrooms.src.js`→`backrooms.js`,
+`backrooms-viewer.src.js`→`backrooms-viewer.js`), the `Dockerfile` build+overlay steps and
 `routes/static.ts`, then loaded as a hash-busted `<script type=module>`. Bundle outputs are
 gitignored. Put shared geometry/logic in a plain module imported by both the game and any tooling
-(e.g. `plane-sim-models.js`, used by the game and the inspector). Immersive pages pass
-`Layout({ fullscreen: true })`, which drops the navbar/footer/centred `<main>`.
+(`plane-sim-models.js` for the aircraft; `backrooms-entities.js`, whose exported tuning blocks and
+`ENTITY_INFO` are read by both the game and the entity viewer, so a stat card cannot quote a number
+the game does not use). Immersive pages pass `Layout({ fullscreen: true })`, which drops the
+navbar/footer/centred `<main>`.
 
 **Verify in a browser — a green `build:js` is not enough.** The bundler does not catch undefined
 identifiers: a forgotten import bundles fine and only throws `ReferenceError` at runtime. Run
 `bun run test:harness` (standalone dev server, port 7788, `HARNESS_PORT` to override) — it renders
-the Three.js game pages logged-out and serves `Assets/` as `/static/`, no bot, DB or OAuth needed —
-and load the page after touching any of these modules. `tests/` is `.dockerignore`d and never
-reaches the image.
+the Three.js game pages plus `/games` logged-out and serves `Assets/` as `/static/`, no bot, DB or
+OAuth needed — and load the page after touching any of these modules. It serves Backrooms with its
+in-game test harness armed (top-down map, teleports, noclip, and a `window.__backrooms` scripting
+API), which the real app also exposes at `/games/backrooms?debug=1`. `tests/` is `.dockerignore`d
+and never reaches the image.
 
 HTML responses are `Cache-Control: private, no-store` (prevents the per-request nonce leaking
 through a CDN). `PUBLIC_ORIGIN` pins absolute embed URLs so untrusted `x-forwarded-*` headers can't
