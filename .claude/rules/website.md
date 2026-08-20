@@ -51,11 +51,14 @@ its entity viewer use `three`) is **self-hosted and bundled — never a CDN** (C
 `wave-sim.src.js`→`wave-sim.js`, `backrooms.src.js`→`backrooms.js`,
 `backrooms-viewer.src.js`→`backrooms-viewer.js`), the `Dockerfile` build+overlay steps and
 `routes/static.ts`, then loaded as a hash-busted `<script type=module>`. Bundle outputs are
-gitignored. Put shared geometry/logic in a plain module imported by both the game and any tooling
-(`plane-sim-models.js` for the aircraft; `backrooms-entities.js`, whose exported tuning blocks and
-`ENTITY_INFO` are read by both the game and the entity viewer, so a stat card cannot quote a number
-the game does not use). Immersive pages pass `Layout({ fullscreen: true })`, which drops the
-navbar/footer/centred `<main>`.
+gitignored. **Only the entry points are wired anywhere** — a new `backrooms-*.js` module is picked
+up automatically as an import of `backrooms.src.js`, and needs no build, Dockerfile or route
+change. Put shared geometry/logic in a plain module imported by both the game and any tooling
+(`plane-sim-models.js` for the aircraft; `backrooms-entities.js` / `backrooms-pool-entities.js`,
+whose exported tuning blocks and `ENTITY_INFO` / `POOL_ENTITY_INFO` are read by both the game and
+the entity viewer, so a stat card cannot quote a number the game does not use; `wave-field.js`,
+whose Gerstner sum drives both the Wave Sim and the Poolrooms' water). Immersive pages pass
+`Layout({ fullscreen: true })`, which drops the navbar/footer/centred `<main>`.
 
 **Verify in a browser — a green `build:js` is not enough.** The bundler does not catch undefined
 identifiers: a forgotten import bundles fine and only throws `ReferenceError` at runtime. Run

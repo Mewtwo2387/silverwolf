@@ -35,7 +35,15 @@ export class Audio {
 
     this.master = ctx.createGain();
     this.master.gain.value = this.enabled ? this.volume : 0;
-    this.master.connect(ctx.destination);
+    // EVERYTHING goes through one lowpass on its way out, sitting wide open at
+    // 20 kHz until your head goes under the water — at which point the whole
+    // mix, ambience and entities and your own footsteps alike, is muffled by
+    // the single filter rather than by each sound knowing about the water.
+    this.waterFilter = ctx.createBiquadFilter();
+    this.waterFilter.type = 'lowpass';
+    this.waterFilter.frequency.value = 20000;
+    this.waterFilter.Q.value = 0.7;
+    this.master.connect(this.waterFilter).connect(ctx.destination);
 
     // A shared 2 s noise buffer — regenerating noise per sound is pure waste.
     const len = ctx.sampleRate * 2;
@@ -430,6 +438,285 @@ export class Audio {
       o.start(at);
       o.stop(at + 1.7);
     });
+  }
+
+
+  // ============================================ Level 37 — the Poolrooms ====
+
+  /**
+   * Duck the whole mix when the listener's head goes under.
+   *
+   * Water carries high frequencies badly and your own eardrums are suddenly
+   * loaded, so submerging is a lowpass sweep plus a small level drop — and,
+   * because it is one filter on the master bus, an entity two rooms away is
+   * muffled by exactly as much as your own breathing is.
+   */
+  setUnderwater(on) {
+    if (!this.ctx || !this.waterFilter) return;
+    const t = this.ctx.currentTime;
+    this.waterFilter.frequency.setTargetAtTime(on ? 360 : 20000, t, 0.09);
+    this.waterFilter.Q.setTargetAtTime(on ? 1.6 : 0.7, t, 0.12);
+    if (this.nodes.humBus) {
+      this.nodes.humBus.gain.setTargetAtTime(on ? 0.05 : 0.22, t, 0.2);
+    }
+    this.underwater = !!on;
+  }
+
+  /**
+   * The Poolrooms bed. The Level 37 write-up spends a paragraph on how wrong
+   * sound is in there — noises stop abruptly, nothing reverberates, speech
+   * comes out "muted" — so the mains hum that carries Level 0 is pulled right
+   * down and replaced with water: a slow band-passed wash that swells and
+   * fades, over a much quieter room tone.
+   */
+  setTheme(theme) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const pools = theme === 'pools';
+    if (this.nodes.humBus) this.nodes.humBus.gain.setTargetAtTime(pools ? 0.22 : 1, t, 0.6);
+    if (this.nodes.hum60) this.nodes.hum60.g.gain.setTargetAtTime(pools ? 0.04 : 0.16, t, 0.6);
+    if (this.nodes.fizzGain) this.nodes.fizzGain.gain.setTargetAtTime(pools ? 0.012 : 0.05, t, 0.6);
+    if (this.nodes.rumbleGain) this.nodes.rumbleGain.gain.setTargetAtTime(pools ? 0.22 : 0.5, t, 0.6);
+
+    if (pools && !this.nodes.lapGain) {
+      // Water movement: noise through a slowly wandering bandpass. The LFO is
+      // deliberately not in time with anything — the water is not breathing.
+      const src = this.noiseSource();
+      const bp = this.ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 700;
+      bp.Q.value = 0.9;
+      const g = this.ctx.createGain();
+      g.gain.value = 0;
+      const lfo = this.ctx.createOscillator();
+      lfo.frequency.value = 0.077;
+      const lfoGain = this.ctx.createGain();
+      lfoGain.gain.value = 380;
+      lfo.connect(lfoGain).connect(bp.frequency);
+      lfo.start();
+      src.connect(bp).connect(g).connect(this.master);
+      src.start();
+      this.nodes.lapGain = g;
+    }
+    if (this.nodes.lapGain) {
+      this.nodes.lapGain.gain.setTargetAtTime(pools ? 0.055 : 0, t, 0.8);
+    }
+  }
+
+  /**
+   * A body meeting water. `size` is roughly the impact in metres per second of
+   * entry, so a wading step is ~0.3 and a fall off a deck is ~4.
+   *
+   * Two layers, because a real splash is two things: the CRACK of the surface
+   * breaking (a short high burst) and the WHOOMPH of the cavity collapsing
+   * behind it (a longer lowpassed one). A single noise envelope always sounds
+   * like a hi-hat.
+   */
+  splash(pos, size = 1) {
+    if (!this.ctx || !this.enabled) return;
+    const { ctx } = this;
+    const t = ctx.currentTime;
+    const dest = pos ? this.panner(pos, 4, 1.1) : this.master;
+    const amp = clamp(size, 0.1, 5);
+
+    const crack = this.noiseSource();
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.setValueAtTime(900, t);
+    hp.frequency.exponentialRampToValueAtTime(2600, t + 0.14);
+    const cg = ctx.createGain();
+    cg.gain.setValueAtTime(0.0001, t);
+    cg.gain.exponentialRampToValueAtTime(Math.min(0.5, 0.07 * amp), t + 0.006);
+    cg.gain.exponentialRampToValueAtTime(0.0001, t + 0.09 + amp * 0.04);
+    crack.connect(hp).connect(cg).connect(dest);
+    crack.start(t);
+    crack.stop(t + 0.6);
+    this.releaseWith(crack, dest === this.master ? null : dest);
+
+    const body = this.noiseSource();
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(1400, t);
+    lp.frequency.exponentialRampToValueAtTime(220, t + 0.4);
+    const bg = ctx.createGain();
+    bg.gain.setValueAtTime(0.0001, t);
+    bg.gain.exponentialRampToValueAtTime(Math.min(0.45, 0.05 * amp), t + 0.02);
+    bg.gain.exponentialRampToValueAtTime(0.0001, t + 0.3 + amp * 0.1);
+    body.connect(lp).connect(bg).connect(dest);
+    body.start(t);
+    body.stop(t + 0.9);
+  }
+
+  /** One swimming stroke — a splash with the crack taken off it. */
+  stroke(under) {
+    if (!this.ctx || !this.enabled) return;
+    const { ctx } = this;
+    const t = ctx.currentTime;
+    const src = this.noiseSource();
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.setValueAtTime(under ? 260 : 620, t);
+    bp.frequency.exponentialRampToValueAtTime(under ? 120 : 240, t + 0.25);
+    bp.Q.value = 0.8;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(under ? 0.05 : 0.09, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+    src.connect(bp).connect(g).connect(this.master);
+    src.start(t);
+    src.stop(t + 0.4);
+  }
+
+  /**
+   * Breath. `level` is 1 with full lungs and 0 with none, so the sound gets
+   * tighter and higher as it runs out — and the bubbles only escape while you
+   * are actually under.
+   */
+  breath(level, submerged) {
+    if (!this.ctx || !this.enabled) return;
+    const { ctx } = this;
+    const t = ctx.currentTime;
+    const strain = 1 - clamp(level, 0, 1);
+    const src = this.noiseSource();
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = (submerged ? 300 : 520) + strain * 900;
+    bp.Q.value = 1.6 + strain * 3;
+    const g = ctx.createGain();
+    const peak = 0.05 + strain * 0.14;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + 0.09);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+    src.connect(bp).connect(g).connect(this.master);
+    src.start(t);
+    src.stop(t + 0.7);
+
+    if (submerged) {
+      // Bubbles: a handful of short sine blips sweeping upward.
+      const n = 3 + Math.floor(strain * 5);
+      for (let i = 0; i < n; i += 1) {
+        const at = t + Math.random() * 0.45;
+        const o = ctx.createOscillator();
+        o.type = 'sine';
+        const f = 380 + Math.random() * 900;
+        o.frequency.setValueAtTime(f, at);
+        o.frequency.exponentialRampToValueAtTime(f * 2.1, at + 0.06);
+        const bg = ctx.createGain();
+        bg.gain.setValueAtTime(0.0001, at);
+        bg.gain.exponentialRampToValueAtTime(0.05, at + 0.01);
+        bg.gain.exponentialRampToValueAtTime(0.0001, at + 0.08);
+        o.connect(bg).connect(this.master);
+        o.start(at);
+        o.stop(at + 0.12);
+      }
+    }
+  }
+
+  /** The player humming, to call a shoal up. Deliberately unmusical. */
+  hum(on) {
+    if (!this.ctx) return;
+    if (!this.nodes.voice) {
+      const o = this.ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = 146.8; // a low D, roughly where a person hums
+      const o2 = this.ctx.createOscillator();
+      o2.type = 'triangle';
+      o2.frequency.value = 293.6;
+      const g2 = this.ctx.createGain();
+      g2.gain.value = 0.18;
+      const lp = this.ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 900;
+      // A slow wobble, so it sounds held by a frightened person rather than
+      // generated by an oscillator.
+      const vib = this.ctx.createOscillator();
+      vib.frequency.value = 4.6;
+      const vibGain = this.ctx.createGain();
+      vibGain.gain.value = 2.4;
+      vib.connect(vibGain).connect(o.frequency);
+      vib.start();
+      const g = this.ctx.createGain();
+      g.gain.value = 0;
+      o.connect(lp);
+      o2.connect(g2).connect(lp);
+      lp.connect(g).connect(this.master);
+      o.start();
+      o2.start();
+      this.nodes.voice = g;
+    }
+    this.nodes.voice.gain.setTargetAtTime(on ? 0.09 : 0, this.ctx.currentTime, 0.08);
+  }
+
+  /**
+   * A Smiler committing. Not a screech — the source gives it teeth and eyes and
+   * no voice at all, so this is the sound of something big moving fast and dry
+   * in a room with no light in it: a rising rattle under a hard noise sweep.
+   */
+  smilerRush(pos, age) {
+    if (!this.ctx || !this.enabled) return;
+    // Only fires on the first frame of the charge; after that the state keeps
+    // calling and we must not stack a new voice every frame.
+    if (age > 0.12 || this.smilerBusy > (this.ctx.currentTime || 0)) return;
+    const { ctx } = this;
+    const t = ctx.currentTime;
+    this.smilerBusy = t + 1.6;
+    const dest = pos ? this.panner(pos, 5, 0.7) : this.master;
+
+    const src = this.noiseSource();
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.setValueAtTime(240, t);
+    bp.frequency.exponentialRampToValueAtTime(3200, t + 1.1);
+    bp.Q.value = 3.4;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.2, t + 0.25);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
+    src.connect(bp).connect(g).connect(dest);
+    src.start(t);
+    src.stop(t + 1.6);
+    this.releaseWith(src, dest === this.master ? null : dest);
+
+    // The rattle: a square dropping an octave, which is the teeth.
+    const o = ctx.createOscillator();
+    o.type = 'square';
+    o.frequency.setValueAtTime(62, t);
+    o.frequency.exponentialRampToValueAtTime(31, t + 1.2);
+    const og = ctx.createGain();
+    og.gain.setValueAtTime(0.0001, t);
+    og.gain.exponentialRampToValueAtTime(0.08, t + 0.2);
+    og.gain.exponentialRampToValueAtTime(0.0001, t + 1.3);
+    o.connect(og).connect(dest);
+    o.start(t);
+    o.stop(t + 1.5);
+  }
+
+  /** A Drowner taking hold: a heavy surge of water and something under it. */
+  grabbed(pos) {
+    if (!this.ctx || !this.enabled) return;
+    this.splash(pos, 3.4);
+    const { ctx } = this;
+    const t = ctx.currentTime;
+    const o = ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(120, t);
+    o.frequency.exponentialRampToValueAtTime(44, t + 0.9);
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 300;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.26, t + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+    o.connect(lp).connect(g).connect(this.master);
+    o.start(t);
+    o.stop(t + 1.2);
+  }
+
+  /** One frame of thrashing while held — feedback that struggling is working. */
+  struggle() {
+    if (!this.ctx || !this.enabled) return;
+    this.splash(null, 1.1);
   }
 
   /** Death sting — everything drops out and one low note holds. */

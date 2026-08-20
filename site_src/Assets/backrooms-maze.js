@@ -62,7 +62,7 @@ export function hash2(x, y, salt) {
   return (h >>> 0) / 4294967296;
 }
 
-const DIRS = [
+export const DIRS = [
   { dx: 0, dy: -1, wall: 'h', wx: 0, wy: 0 }, // north: hWall[y][x]
   { dx: 1, dy: 0, wall: 'v', wx: 1, wy: 0 }, // east:  vWall[y][x+1]
   { dx: 0, dy: 1, wall: 'h', wx: 0, wy: 1 }, // south: hWall[y+1][x]
@@ -134,7 +134,7 @@ export class Level {
    * a flow field is cheaper than per-entity A* at this grid size (<1500 cells)
    * and lets several entities share one field when they chase the same cell.
    */
-  distanceField(sources) {
+  distanceField(sources, canPass) {
     const n = this.w * this.h;
     const dist = new Int32Array(n).fill(-1);
     const queue = new Int32Array(n);
@@ -160,6 +160,11 @@ export class Level {
         if (!this.inBounds(nx, ny)) continue;
         const ni = this.cellIndex(nx, ny);
         if (dist[ni] !== -1) continue;
+        // Optional edge filter. The Poolrooms use it twice over: to check that
+        // the exit is reachable when a 1.35 m pool wall can only be climbed
+        // where a ladder was placed, and to keep an entity inside the terrain
+        // it belongs to (a Drowner in the water, a Smiler in the dark).
+        if (canPass && !canPass(x, y, nx, ny)) continue;
         dist[ni] = dist[i] + 1;
         queue[tail] = ni;
         tail += 1;
@@ -168,8 +173,15 @@ export class Level {
     return dist;
   }
 
-  /** One downhill step on a distance field — the next cell toward its source. */
-  stepDownhill(x, y, dist) {
+  /**
+   * One downhill step on a distance field — the next cell toward its source.
+   *
+   * `canPass` must be the SAME filter the field was built with. Two cells can
+   * sit one step apart in a filtered field and still not have a legal edge
+   * between them (a deck cell beside a pool with no ladder on that side), and
+   * an agent that takes the shortcut walks through a pool wall.
+   */
+  stepDownhill(x, y, dist, canPass) {
     const here = dist[this.cellIndex(x, y)];
     if (here <= 0) return null;
     for (let d = 0; d < 4; d += 1) {
@@ -177,6 +189,7 @@ export class Level {
       const nx = x + DIRS[d].dx;
       const ny = y + DIRS[d].dy;
       if (!this.inBounds(nx, ny)) continue;
+      if (canPass && !canPass(x, y, nx, ny)) continue;
       if (dist[this.cellIndex(nx, ny)] === here - 1) return { x: nx, y: ny };
     }
     return null;

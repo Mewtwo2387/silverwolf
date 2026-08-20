@@ -38,7 +38,16 @@ const TAU = Math.PI * 2;
  * drifts. backrooms.src.js imports these into its CFG; nothing else defines
  * them.
  */
-export const PLAYER_SPEEDS = { WALK: 2.95, SPRINT: 5.6, CROUCH: 1.35 };
+export const PLAYER_SPEEDS = {
+  WALK: 2.95,
+  SPRINT: 5.6,
+  CROUCH: 1.35,
+  // Level 37. Water costs you your best asset: you cannot sprint in it, and
+  // every one of these is slower than a walk on dry tile.
+  WADE: 1.75, // waist deep, feet still on the floor
+  SWIM: 2.15, // treading water at the surface
+  DIVE: 1.85, // under it
+};
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const dist2 = (ax, az, bx, bz) => ((ax - bx) ** 2) + ((az - bz) ** 2);
 
@@ -55,7 +64,7 @@ const dist2 = (ax, az, bx, bz) => ((ax - bx) ** 2) + ((az - bz) ** 2);
  * vanish into the taper and the limb reads as one smooth vessel, and much above
  * that it starts to read as a beaded insect leg instead.
  */
-function segmentedLimb(curve, r0, r1, segs, joint = 1.03) {
+export function segmentedLimb(curve, r0, r1, segs, joint = 1.03) {
   const pts = curve.getSpacedPoints(segs);
   const up = new THREE.Vector3(0, 1, 0);
   const geos = [];
@@ -90,7 +99,7 @@ function segmentedLimb(curve, r0, r1, segs, joint = 1.03) {
  * it, and fattened toward the middle of the run so it reads as sprung rather
  * than printed on.
  */
-function coilAround(curve, turns, coilR, wireR, samples) {
+export function coilAround(curve, turns, coilR, wireR, samples) {
   const frames = curve.computeFrenetFrames(samples, false);
   const pts = [];
   for (let i = 0; i <= samples; i += 1) {
@@ -110,7 +119,7 @@ function coilAround(curve, turns, coilR, wireR, samples) {
  * modelled. Takes the entity's seeded rnd, so a given level always grows the
  * same tangle.
  */
-function tangleBall(radius, loops, wireR, rnd) {
+export function tangleBall(radius, loops, wireR, rnd) {
   const geos = [];
   for (let i = 0; i < loops; i += 1) {
     const g = new THREE.TorusGeometry(radius * (0.58 + rnd() * 0.45), wireR, 5, 20);
@@ -129,7 +138,7 @@ function tangleBall(radius, loops, wireR, rnd) {
 
 // ---------------------------------------------------------- base agent ----
 
-class Agent {
+export class Agent {
   constructor(level, collider, opts) {
     this.level = level;
     this.collider = collider;
@@ -149,6 +158,13 @@ class Agent {
     this.fieldKey = '';
     this.reach = null; // cached BFS field FROM this entity, for reachability
     this.reachKey = '';
+
+    // An optional distanceField edge filter. Level 0 leaves it undefined and
+    // every entity walks the whole open-cell graph; the Poolrooms set it so a
+    // Drowner routes through water and a Smiler never leaves the dark. It has
+    // to be applied to the field AND to the downhill step, or an entity will
+    // happily take a shortcut its own field never offered it.
+    this.navFilter = opts.navFilter || null;
 
     this.stuckTimer = 0;
     this.smoothOff = 0; // seconds left with corner-cutting disabled
@@ -199,7 +215,7 @@ class Agent {
   fieldTo(x, y) {
     const key = `${x},${y}`;
     if (this.fieldKey !== key || !this.field) {
-      this.field = this.level.distanceField([{ x, y }]);
+      this.field = this.level.distanceField([{ x, y }], this.navFilter);
       this.fieldKey = key;
     }
     return this.field;
@@ -222,10 +238,10 @@ class Agent {
     const here = this.cell();
     if (here.x === tx && here.y === ty) return this.level.centre(tx, ty);
     const field = this.fieldTo(tx, ty);
-    const first = this.level.stepDownhill(here.x, here.y, field);
+    const first = this.level.stepDownhill(here.x, here.y, field, this.navFilter);
     if (!first) return null;
     const second = this.smoothOff <= 0
-      ? this.level.stepDownhill(first.x, first.y, field) : null;
+      ? this.level.stepDownhill(first.x, first.y, field, this.navFilter) : null;
     if (second) {
       const c2 = this.level.centre(second.x, second.y);
       if (this.level.lineOfSight(this.pos.x, this.pos.z, c2.x, c2.z)) return c2;
@@ -291,7 +307,7 @@ class Agent {
 
   /** A random reachable cell within `radius` cells of (cx, cy). */
   wanderTarget(cx, cy, radius, rnd) {
-    const field = this.level.distanceField([{ x: cx, y: cy }]);
+    const field = this.level.distanceField([{ x: cx, y: cy }], this.navFilter);
     const options = [];
     for (let y = Math.max(0, cy - radius); y <= Math.min(this.level.h - 1, cy + radius); y += 1) {
       for (let x = Math.max(0, cx - radius); x <= Math.min(this.level.w - 1, cx + radius); x += 1) {
@@ -355,7 +371,7 @@ class Agent {
       const here = this.cell();
       const key = `${here.x},${here.y}`;
       if (this.reachKey !== key) {
-        this.reach = this.level.distanceField([here]);
+        this.reach = this.level.distanceField([here], this.navFilter);
         this.reachKey = key;
       }
       if (this.reach[this.level.cellIndex(bx, by)] >= 0) this.belief = { x: bx, y: by };
@@ -1179,21 +1195,35 @@ export class Director {
     this.paused = false;
   }
 
-  /** A cell at least `minSteps` away from the player's spawn, by path. */
-  spawnCell(minSteps) {
+  /**
+   * A cell at least `minSteps` away from the player's spawn, by path.
+   *
+   * `want` narrows that to the terrain an entity belongs in — a Drowner has to
+   * start in water, a Smiler has to start in the dark. If nothing matches it
+   * falls back to the unfiltered choice rather than refusing to spawn, because
+   * a small level may genuinely have no dark corner in it.
+   */
+  spawnCell(minSteps, want) {
     const field = this.level.distanceField([this.level.spawn]);
     const options = [];
+    const preferred = [];
     for (let y = 0; y < this.level.h; y += 1) {
       for (let x = 0; x < this.level.w; x += 1) {
-        if (field[this.level.cellIndex(x, y)] >= minSteps) options.push({ x, y });
+        if (field[this.level.cellIndex(x, y)] < minSteps) continue;
+        options.push({ x, y });
+        if (want && want(x, y)) preferred.push({ x, y });
       }
     }
-    if (!options.length) return { x: this.level.exit.x, y: this.level.exit.y };
-    return options[Math.floor(this.rnd() * options.length)];
+    const pool = preferred.length ? preferred : options;
+    if (!pool.length) return { x: this.level.exit.x, y: this.level.exit.y };
+    return pool[Math.floor(this.rnd() * pool.length)];
   }
 
-  add(entity, minSteps = 12) {
-    const c = this.spawnCell(minSteps);
+  add(entity, minSteps = 12, want) {
+    // Entities are allowed to notice each other through the director (a Smiler
+    // is drawn to the shoal's light) but never to reach into game state.
+    entity.director = this;
+    const c = this.spawnCell(minSteps, want || entity.spawnWants);
     entity.placeAtCell(c.x, c.y);
     this.entities.push(entity);
     this.scene.add(entity.group);
@@ -1221,11 +1251,17 @@ export class Director {
     }
   }
 
-  /** Nearest entity distance — drives the heartbeat and the dread bed. */
+  /**
+   * Nearest THREAT distance — drives the heartbeat, the dread bed and the red
+   * vignette. Entities that flag themselves harmless are skipped: a shoal of
+   * Will o' Waves swimming past your face must not read to the player's nerves
+   * as something about to kill them.
+   */
   nearest(pos) {
     let best = Infinity;
     let which = null;
     for (const e of this.entities) {
+      if (e.harmless) continue;
       const d = Math.hypot(e.pos.x - pos.x, e.pos.z - pos.z);
       if (d < best) {
         best = d;
