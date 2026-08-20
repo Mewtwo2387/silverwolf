@@ -22,7 +22,7 @@ const EXIT_DEPTH = 3; // cells of passage beyond the border
 
 // -------------------------------------------------------- mesh builder ----
 
-class MeshBuilder {
+export class MeshBuilder {
   constructor() {
     this.pos = [];
     this.norm = [];
@@ -392,6 +392,8 @@ function buildFixtures(level, group) {
  * an occasional full dropout. Returns the strongest flicker near the player so
  * the audio can buzz in sympathy.
  */
+const WARM_TUBE = [1, 0.96, 0.84];
+
 export function updateFixtures(fixtures, lights, playerPos, time, radius = 26) {
   const near = [];
   let flickerPeak = 0;
@@ -415,9 +417,12 @@ export function updateFixtures(fixtures, lights, playerPos, time, radius = 26) {
     }
     if (Math.abs(lvl - f.level) > 0.01) {
       f.level = lvl;
+      // Level 0's tubes are warm and dying; the Poolrooms' are cool and merely
+      // sparse, so a fixture may carry its own tint.
+      const tint = f.tint || WARM_TUBE;
       const c = fixtures.colours;
       for (let i = 0; i < 4; i += 1) {
-        c.setXYZ(f.vertexBase + i, lvl, lvl * 0.96, lvl * 0.84);
+        c.setXYZ(f.vertexBase + i, lvl * tint[0], lvl * tint[1], lvl * tint[2]);
       }
       c.needsUpdate = true;
     }

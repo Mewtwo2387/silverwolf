@@ -38,7 +38,16 @@ const TAU = Math.PI * 2;
  * drifts. backrooms.src.js imports these into its CFG; nothing else defines
  * them.
  */
-export const PLAYER_SPEEDS = { WALK: 2.95, SPRINT: 5.6, CROUCH: 1.35 };
+export const PLAYER_SPEEDS = {
+  WALK: 2.95,
+  SPRINT: 5.6,
+  CROUCH: 1.35,
+  // Level 37. Water costs you your best asset: you cannot sprint in it, and
+  // every one of these is slower than a walk on dry tile.
+  WADE: 1.75, // waist deep, feet still on the floor
+  SWIM: 2.15, // treading water at the surface
+  DIVE: 1.85, // under it
+};
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const dist2 = (ax, az, bx, bz) => ((ax - bx) ** 2) + ((az - bz) ** 2);
 
@@ -55,7 +64,7 @@ const dist2 = (ax, az, bx, bz) => ((ax - bx) ** 2) + ((az - bz) ** 2);
  * vanish into the taper and the limb reads as one smooth vessel, and much above
  * that it starts to read as a beaded insect leg instead.
  */
-function segmentedLimb(curve, r0, r1, segs, joint = 1.03) {
+export function segmentedLimb(curve, r0, r1, segs, joint = 1.03) {
   const pts = curve.getSpacedPoints(segs);
   const up = new THREE.Vector3(0, 1, 0);
   const geos = [];
@@ -90,7 +99,7 @@ function segmentedLimb(curve, r0, r1, segs, joint = 1.03) {
  * it, and fattened toward the middle of the run so it reads as sprung rather
  * than printed on.
  */
-function coilAround(curve, turns, coilR, wireR, samples) {
+export function coilAround(curve, turns, coilR, wireR, samples) {
   const frames = curve.computeFrenetFrames(samples, false);
   const pts = [];
   for (let i = 0; i <= samples; i += 1) {
@@ -110,7 +119,7 @@ function coilAround(curve, turns, coilR, wireR, samples) {
  * modelled. Takes the entity's seeded rnd, so a given level always grows the
  * same tangle.
  */
-function tangleBall(radius, loops, wireR, rnd) {
+export function tangleBall(radius, loops, wireR, rnd) {
   const geos = [];
   for (let i = 0; i < loops; i += 1) {
     const g = new THREE.TorusGeometry(radius * (0.58 + rnd() * 0.45), wireR, 5, 20);
@@ -129,7 +138,7 @@ function tangleBall(radius, loops, wireR, rnd) {
 
 // ---------------------------------------------------------- base agent ----
 
-class Agent {
+export class Agent {
   constructor(level, collider, opts) {
     this.level = level;
     this.collider = collider;
@@ -149,6 +158,13 @@ class Agent {
     this.fieldKey = '';
     this.reach = null; // cached BFS field FROM this entity, for reachability
     this.reachKey = '';
+
+    // An optional distanceField edge filter. Level 0 leaves it undefined and
+    // every entity walks the whole open-cell graph; the Poolrooms set it so a
+    // Drowner routes through water and a Smiler never leaves the dark. It has
+    // to be applied to the field AND to the downhill step, or an entity will
+    // happily take a shortcut its own field never offered it.
+    this.navFilter = opts.navFilter || null;
 
     this.stuckTimer = 0;
     this.smoothOff = 0; // seconds left with corner-cutting disabled
@@ -199,7 +215,7 @@ class Agent {
   fieldTo(x, y) {
     const key = `${x},${y}`;
     if (this.fieldKey !== key || !this.field) {
-      this.field = this.level.distanceField([{ x, y }]);
+      this.field = this.level.distanceField([{ x, y }], this.navFilter);
       this.fieldKey = key;
     }
     return this.field;
@@ -222,10 +238,10 @@ class Agent {
     const here = this.cell();
     if (here.x === tx && here.y === ty) return this.level.centre(tx, ty);
     const field = this.fieldTo(tx, ty);
-    const first = this.level.stepDownhill(here.x, here.y, field);
+    const first = this.level.stepDownhill(here.x, here.y, field, this.navFilter);
     if (!first) return null;
     const second = this.smoothOff <= 0
-      ? this.level.stepDownhill(first.x, first.y, field) : null;
+      ? this.level.stepDownhill(first.x, first.y, field, this.navFilter) : null;
     if (second) {
       const c2 = this.level.centre(second.x, second.y);
       if (this.level.lineOfSight(this.pos.x, this.pos.z, c2.x, c2.z)) return c2;
@@ -291,7 +307,7 @@ class Agent {
 
   /** A random reachable cell within `radius` cells of (cx, cy). */
   wanderTarget(cx, cy, radius, rnd) {
-    const field = this.level.distanceField([{ x: cx, y: cy }]);
+    const field = this.level.distanceField([{ x: cx, y: cy }], this.navFilter);
     const options = [];
     for (let y = Math.max(0, cy - radius); y <= Math.min(this.level.h - 1, cy + radius); y += 1) {
       for (let x = Math.max(0, cx - radius); x <= Math.min(this.level.w - 1, cx + radius); x += 1) {
@@ -355,7 +371,7 @@ class Agent {
       const here = this.cell();
       const key = `${here.x},${here.y}`;
       if (this.reachKey !== key) {
-        this.reach = this.level.distanceField([here]);
+        this.reach = this.level.distanceField([here], this.navFilter);
         this.reachKey = key;
       }
       if (this.reach[this.level.cellIndex(bx, by)] >= 0) this.belief = { x: bx, y: by };
@@ -755,6 +771,25 @@ export class Lifeform extends Agent {
       this.legs.push(leg);
     }
 
+    // A pelvis, because without one the two legs and the spine are three
+    // separate objects that happen to end at the same height: the spine rakes
+    // away forward from the hips, the thighs drop straight down from them, and
+    // nothing bridged the corner, so the legs read as detached. This is the
+    // wire that carries one hip to the other through the base of the spine.
+    const pelvis = new THREE.CatmullRomCurve3([
+      v(-0.17, HIP, 0), v(-0.09, HIP + 0.05, 0.01), v(0, HIP + 0.07, 0),
+      v(0.09, HIP + 0.05, 0.01), v(0.17, HIP, 0),
+    ]);
+    g.add(wire(segmentedLimb(pelvis, 0.03, 0.03, 12)));
+    g.add(wire(coilAround(pelvis, 4, 0.05, 0.014, 70)));
+    // A knot at each hip, so the thigh emerges from a joint rather than
+    // starting in mid-air a hand's width from anything.
+    for (const side of [-1, 1]) {
+      const knot = wire(tangleBall(0.075, 4, 0.013, rnd));
+      knot.position.set(side * 0.17, HIP, 0);
+      g.add(knot);
+    }
+
     // Spine: a single group raked forward, so the whole upper body reads as one
     // bent thing and the sway animation can rotate it from the hips.
     this.spine = new THREE.Group();
@@ -771,6 +806,12 @@ export class Lifeform extends Agent {
 
     // A head of scribbled loops. Nothing to read on it, which is the point —
     // there is not even a surface to look for a face on.
+    // A neck. The spine stops at (0, 1.24, 0.08) and the head hangs forward of
+    // it, so without this the tangle floats off the end of the torso.
+    this.spine.add(wire(segmentedLimb(new THREE.CatmullRomCurve3([
+      v(0, 1.2, 0.06), v(0, 1.26, 0.12), v(0, 1.3, 0.19),
+    ]), 0.03, 0.022, 6)));
+
     this.head = new THREE.Group();
     this.head.add(wire(tangleBall(0.155, 8, 0.015, rnd)));
     this.head.position.set(0, 1.3, 0.2);
@@ -781,6 +822,23 @@ export class Lifeform extends Agent {
     // trailing down the rake. They reach past the knees, fingers near the
     // carpet. animate() swings them around armHang, not around zero.
     this.armHang = -RAKE * 0.62;
+
+    // A clavicle across the shoulders, and a knot at each socket. The arms hang
+    // off (+/-0.19, 1.0) in spine space, which the rake throws 0.69 m forward of
+    // the hips — far enough that an arm with nothing joining it to the torso
+    // reads as an arm floating beside the torso, which is what it was doing.
+    const clavicle = new THREE.CatmullRomCurve3([
+      v(-0.19, 1.0, 0), v(-0.1, 1.05, 0.02), v(0, 1.06, 0.02),
+      v(0.1, 1.05, 0.02), v(0.19, 1.0, 0),
+    ]);
+    this.spine.add(wire(segmentedLimb(clavicle, 0.026, 0.026, 12)));
+    this.spine.add(wire(coilAround(clavicle, 4, 0.042, 0.012, 70)));
+    for (const side of [-1, 1]) {
+      const knot = wire(tangleBall(0.07, 4, 0.012, rnd));
+      knot.position.set(side * 0.19, 1.0, 0);
+      this.spine.add(knot);
+    }
+
     this.arms = [];
     for (let i = 0; i < 2; i += 1) {
       const side = i ? 1 : -1;
@@ -886,9 +944,11 @@ export class Lifeform extends Agent {
  * hold still in that light and you are dust. Break line of sight and it loses
  * the lock entirely — the counter-play is a corner, not a sprint.
  *
- * The body is the eyeball; it gets about on six legs of raw vasculature that
- * arch above it and reach down to the carpet, and it moves them in alternating
- * tripods like something that has done this before.
+ * The body is the eyeball, and the legs are not legs — they are vessels. The
+ * source is an eyeball carried on a splay of raw vasculature: long, thin, ropy
+ * strands that arch high over the globe and land far outside it, so the thing
+ * stands on a footprint several times its own width. It moves them in
+ * alternating tripods like something that has done this before.
  *
  * It also corrupts electronics nearby, which the HUD wears as static.
  */
@@ -905,9 +965,10 @@ export const WATCHER = {
 
 export class Entity96 extends Agent {
   constructor(level, collider, rnd, texture) {
-    // The radius is the leg span, not the eyeball: it stands on a ~2 m footprint
-    // and anything smaller parks its feet inside the wallpaper.
-    super(level, collider, { radius: 0.8, speed: WATCHER.DRIFT_SPEED });
+    // The radius is the leg span, not the eyeball: it stands on a ~3.2 m
+    // footprint and anything smaller parks its feet inside the wallpaper. A
+    // corridor is CELL (4.2) less a 0.24 wall, so 1.05 still fits down one.
+    super(level, collider, { radius: 1.05, speed: WATCHER.DRIFT_SPEED });
     this.rnd = rnd;
     this.kind = 'watcher';
     this.name = 'Entity 96';
@@ -1000,13 +1061,21 @@ export class Entity96 extends Agent {
     g.add(this.light);
 
     this.buildLegs(EYE_Y);
-    this.height = 2.45;
+    // The arch of the legs now carries higher than the globe does.
+    this.height = 2.55;
   }
 
   /**
-   * Six legs of vein. Dark and thick where they leave the body, pale and fine
-   * at the tip, lumpy at every joint — segmentedLimb's joint spheres are doing
-   * that, and it is why the legs read as vasculature rather than as pipes.
+   * Six legs that ARE veins. Not a leg with vasculature on it: each one is a
+   * bundle of a few fine vessels twisting around each other all the way to the
+   * carpet, thin from root to tip and smooth along its length.
+   *
+   * Two things this got wrong before. The joint spheres (segmentedLimb's
+   * `joint` default of 1.03) beaded every strand and made it read as an insect
+   * leg, so the main strand is built at joint = 1.0 and is far thinner. And the
+   * splay was barely wider than the eyeball, which made it a stool rather than
+   * a thing that scuttles: the feet now land at ~1.6 m out from a 0.52 m body,
+   * with the arch carried well above the globe on the way.
    *
    * Each leg hangs off its own pivot group placed at the attachment point, with
    * the geometry built relative to that point, so a single rotation about the
@@ -1015,7 +1084,7 @@ export class Entity96 extends Agent {
    */
   buildLegs(EYE_Y) {
     const vein = new THREE.MeshStandardMaterial({
-      color: 0x7d2a26, roughness: 0.62, metalness: 0.02,
+      color: 0x8f3a33, roughness: 0.62, metalness: 0.02,
       emissive: 0x1c0605, emissiveIntensity: 0.35,
     });
     this.legs = [];
@@ -1029,20 +1098,25 @@ export class Entity96 extends Agent {
       // A little seeded slop per leg, so six of them do not read as one leg
       // instanced six times.
       const j = (k) => 1 + (this.rnd() - 0.5) * k;
-      const root = at(0.4, EYE_Y + 0.3);
+      const root = at(0.34, EYE_Y + 0.34);
       const path = [
         root,
-        at(0.66 * j(0.12), (EYE_Y + 0.48) * j(0.05)),
-        at(0.92 * j(0.14), (EYE_Y - 0.18) * j(0.16)),
-        at(1.0 * j(0.1), 0.32 * j(0.2)),
-        at(1.02 * j(0.08), 0.02),
+        at(0.85 * j(0.12), (EYE_Y + 0.62) * j(0.05)),
+        at(1.45 * j(0.14), (EYE_Y - 0.3) * j(0.16)),
+        at(1.62 * j(0.1), 0.5 * j(0.2)),
+        at(1.6 * j(0.08), 0.02),
       ].map((q) => q.clone().sub(root));
+      const curve = new THREE.CatmullRomCurve3(path);
       const leg = new THREE.Group();
       leg.position.copy(root);
-      leg.add(new THREE.Mesh(
-        segmentedLimb(new THREE.CatmullRomCurve3(path), 0.062, 0.01, 22),
-        vein,
-      ));
+      // One main vessel plus two finer ones wound loosely along it. The coils
+      // are what make a limb this thin still read as vasculature — a single
+      // tapered tube at this gauge is a wire, three braided ones are a vein.
+      leg.add(new THREE.Mesh(mergeGeometries([
+        segmentedLimb(curve, 0.034, 0.007, 24, 1),
+        coilAround(curve, 2.5, 0.032, 0.007, 90),
+        coilAround(curve, 3.5, 0.021, 0.005, 90),
+      ], false), vein));
       // Lifting a foot means turning the leg about the horizontal axis at right
       // angles to its own outward direction.
       leg.userData.axis = new THREE.Vector3(dz, 0, -dx).normalize();
@@ -1179,21 +1253,54 @@ export class Director {
     this.paused = false;
   }
 
-  /** A cell at least `minSteps` away from the player's spawn, by path. */
-  spawnCell(minSteps) {
+  /**
+   * A cell at least `minSteps` away from the player's spawn, by path.
+   *
+   * `want` narrows that to the terrain an entity belongs in — a Drowner has to
+   * start in water, a Smiler has to start in the dark. If nothing matches it
+   * falls back to the unfiltered choice rather than refusing to spawn, because
+   * a small level may genuinely have no dark corner in it.
+   *
+   * `canLeave` is the harder constraint, and it exists because that fallback
+   * has teeth for a terrain-BOUND entity. A shoal's navFilter is water-to-water
+   * and a Smiler's is dark-to-dark, so dropping either on a cell its filter
+   * cannot step off leaves it with a flow field exactly one cell wide:
+   * waypointTo returns null forever and the entity never moves again for the
+   * whole run. Cells with no legal exit are therefore dropped from both pools,
+   * and only if that leaves nothing at all do we fall back to the old
+   * behaviour, which is no worse than what it replaces.
+   */
+  spawnCell(minSteps, want, canLeave) {
     const field = this.level.distanceField([this.level.spawn]);
     const options = [];
+    const preferred = [];
     for (let y = 0; y < this.level.h; y += 1) {
       for (let x = 0; x < this.level.w; x += 1) {
-        if (field[this.level.cellIndex(x, y)] >= minSteps) options.push({ x, y });
+        if (field[this.level.cellIndex(x, y)] < minSteps) continue;
+        if (canLeave && !canLeave(x, y)) continue;
+        options.push({ x, y });
+        if (want && want(x, y)) preferred.push({ x, y });
       }
     }
-    if (!options.length) return { x: this.level.exit.x, y: this.level.exit.y };
-    return options[Math.floor(this.rnd() * options.length)];
+    const pool = preferred.length ? preferred : options;
+    if (!pool.length) {
+      return canLeave
+        ? this.spawnCell(minSteps, want, null)
+        : { x: this.level.exit.x, y: this.level.exit.y };
+    }
+    return pool[Math.floor(this.rnd() * pool.length)];
   }
 
-  add(entity, minSteps = 12) {
-    const c = this.spawnCell(minSteps);
+  add(entity, minSteps = 12, want) {
+    // Entities are allowed to notice each other through the director (a Smiler
+    // is drawn to the shoal's light) but never to reach into game state.
+    entity.director = this;
+    // One legal neighbour is enough: it proves the entity's filtered flow field
+    // has somewhere to go, which is the whole property that matters here.
+    const canLeave = entity.navFilter
+      ? (x, y) => this.level.neighbours(x, y).some((n) => entity.navFilter(x, y, n.x, n.y))
+      : null;
+    const c = this.spawnCell(minSteps, want || entity.spawnWants, canLeave);
     entity.placeAtCell(c.x, c.y);
     this.entities.push(entity);
     this.scene.add(entity.group);
@@ -1221,11 +1328,17 @@ export class Director {
     }
   }
 
-  /** Nearest entity distance — drives the heartbeat and the dread bed. */
+  /**
+   * Nearest THREAT distance — drives the heartbeat, the dread bed and the red
+   * vignette. Entities that flag themselves harmless are skipped: a shoal of
+   * Will o' Waves swimming past your face must not read to the player's nerves
+   * as something about to kill them.
+   */
   nearest(pos) {
     let best = Infinity;
     let which = null;
     for (const e of this.entities) {
+      if (e.harmless) continue;
       const d = Math.hypot(e.pos.x - pos.x, e.pos.z - pos.z);
       if (d < best) {
         best = d;

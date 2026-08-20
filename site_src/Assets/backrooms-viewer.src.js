@@ -26,6 +26,9 @@ import { buildWorld, updateFixtures } from './backrooms-world.js';
 import {
   PngChaser, Lifeform, Entity96, ENTITY_INFO, PLAYER_SPEEDS, WATCHER,
 } from './backrooms-entities.js';
+import {
+  Drowner, Smiler, WillOWaves, POOL_ENTITY_INFO, DROWNER, WILLO,
+} from './backrooms-pool-entities.js';
 
 (() => {
   'use strict';
@@ -213,7 +216,9 @@ import {
     backdrop: 'level0',
   };
   // Entity-specific dials, driven by the panel instead of by an AI.
-  const pose = { gait: 0.5, charge: 0 };
+  const pose = {
+    gait: 0.5, charge: 0, depth: 0, glow: 0.7, hum: 0,
+  };
 
   // Chaser skins are the one thing on this page the entity will not release:
   // PngChaser treats its texture as borrowed (ownsTextures = false) because in
@@ -277,16 +282,37 @@ import {
   function visibleBounds(root) {
     const box = new THREE.Box3();
     root.traverse((o) => {
-      if (o.isMesh && o.visible) box.union(new THREE.Box3().setFromObject(o));
+      // Points count. The Smiler's body is a sprite cloud and the shoal is
+      // sprites too, so a mesh-only sweep measured the Smiler's face and called
+      // a 2 m entity 0.78 m tall on the card.
+      if ((o.isMesh || o.isPoints) && o.visible) box.union(new THREE.Box3().setFromObject(o));
     });
     return box;
   }
 
   function frameModel() {
     turntable.updateMatrixWorld(true);
+    // The shoal is not a model with a size: it is fifty-four sprites positioned
+    // individually in world space, so a bounding box round it measures either
+    // nothing (before the first tick) or the whole room (after it). Quote the
+    // numbers that actually mean something about one instead.
+    if (currentKind === 'willo') {
+      controls.target.set(HOME.x, 1.2, HOME.z);
+      camera.position.set(HOME.x + 3.4, 2.6, HOME.z + 4.2);
+      controls.update();
+      if (dimsEl) {
+        dimsEl.textContent = `${WILLO.COUNT} individuals · ~14 cm each · `
+          + `${(WILLO.COUNT * WILLO.SPACING).toFixed(0)} m of file`;
+      }
+      return;
+    }
     const box = visibleBounds(current.group);
     const size = box.getSize(new THREE.Vector3());
-    controls.target.set(HOME.x, Math.max(0.9, size.y * 0.5), HOME.z);
+    // Aim at the middle of what is actually there, not at half its height —
+    // those are the same number only for a model that starts on the floor, and
+    // a Smiler is a face hanging at head height with nothing under it.
+    const mid = box.getCenter(new THREE.Vector3());
+    controls.target.set(HOME.x, Math.max(0.6, mid.y), HOME.z);
     // Kept deliberately tight: the room is about twelve metres across, and a
     // "nicely framed" camera that backs out of it ends up inside the wallpaper.
     const dir = new THREE.Vector3(0.85, 0.32, 1.15).normalize();
@@ -298,9 +324,13 @@ import {
     }
   }
 
+  // Both rosters in one lookup. Each half is generated from its own tuning
+  // block, so a card here can never quote a number the game does not use.
+  const INFO = { ...ENTITY_INFO, ...POOL_ENTITY_INFO };
+
   /** Render the info card straight out of the live tuning blocks. */
   function renderInfo(kind) {
-    const info = ENTITY_INFO[kind];
+    const info = INFO[kind];
     const el = $('bv-info');
     if (!el || !info) return;
     const bars = info.stats.map((st) => {
@@ -347,6 +377,15 @@ import {
       current = new Lifeform(bkLevel, bkCollider, rnd);
     } else if (kind === 'watcher') {
       current = new Entity96(bkLevel, bkCollider, rnd, irisTexture());
+    } else if (kind === 'drowner') {
+      current = new Drowner(bkLevel, bkCollider, rnd);
+    } else if (kind === 'smiler') {
+      // The game only lights one when it has decided you can see it. Here that
+      // is a slider, so start it visible or the panel appears to be broken.
+      current = new Smiler(bkLevel, bkCollider, rnd);
+      current.glow = pose.glow;
+    } else if (kind === 'willo') {
+      current = new WillOWaves(bkLevel, bkCollider, rnd);
     } else {
       const tex = chaserTexture((live) => {
         ownedTextures.push(live);
@@ -364,6 +403,10 @@ import {
     current.group.rotation.set(0, 0, 0);
     turntable.rotation.y = 0;
     turntable.add(current.group);
+    // The shoal positions each individual in world space off a trail of
+    // breadcrumbs, so it needs one laying down before it will be anywhere at
+    // all — otherwise all fifty-four of them sit on the origin.
+    current.seedTrail?.();
 
     renderInfo(kind);
     applyWire();
@@ -373,6 +416,9 @@ import {
     show('bv-grp-chaser', kind === 'chaser');
     show('bv-grp-lifeform', kind === 'lifeform');
     show('bv-grp-watcher', kind === 'watcher');
+    show('bv-grp-drowner', kind === 'drowner');
+    show('bv-grp-smiler', kind === 'smiler');
+    show('bv-grp-willo', kind === 'willo');
     if (kind !== 'watcher') ghostMark.visible = false;
     document.querySelectorAll('[data-ent]').forEach((b) => b.classList.toggle('bv-active', b.dataset.ent === kind));
   }
@@ -385,6 +431,39 @@ import {
       // the single most honest thing this page can show you about a nextbot.
       if (opts.billboard) current.present({ pos: camera.position });
       else current.sprite.rotation.y = 0;
+      return;
+    }
+    if (currentKind === 'drowner') {
+      // The depth slider is the same number animate() gets from the terrain in
+      // game, so what you see here is literally the in-game wade.
+      current.vel.set(0, 0, opts.animate ? pose.gait * DROWNER.LAND_SPEED : 0);
+      current.animate(dt, pose.depth * 3.2);
+      return;
+    }
+    if (currentKind === 'smiler') {
+      // No gait: there is nothing to walk with. The only dial is how much of
+      // it has decided to be visible.
+      current.glow += (pose.glow - current.glow) * Math.min(1, dt * 6);
+      // The entity owns how its glow is expressed (eyes, teeth, gums, the mass,
+      // the lamp) — restating it here is how this panel ended up lighting a
+      // version of the Smiler that no longer existed.
+      current.applyGlow(opts.animate ? dt : 0);
+      current.face.position.y = 1.96 + Math.sin(performance.now() / 900) * 0.04;
+      return;
+    }
+    if (currentKind === 'willo') {
+      // Swim the leader in a slow circle so the file has a track to string
+      // itself along; the hum slider does what humming does in game.
+      current.hum = pose.hum;
+      if (opts.animate) {
+        const t = performance.now() / 1000;
+        const speed = WILLO.SPEED + pose.hum * (WILLO.HUM_SPEED - WILLO.SPEED);
+        const r = 1.5;
+        const a = t * (speed / r) * 0.35;
+        current.pos.set(Math.sin(a) * r, 0.6, Math.cos(a) * r);
+        current.heading = a + Math.PI / 2;
+      }
+      current.updateShoal(dt);
       return;
     }
     if (currentKind === 'lifeform') {
@@ -469,6 +548,10 @@ import {
   bindSlider('bv-gait', (v) => { pose.gait = v; });
   bindSlider('bv-gait2', (v) => { pose.gait = v; }); // Entity 96's own gait dial
   bindSlider('bv-charge', (v) => { pose.charge = v; });
+  bindSlider('bv-gait3', (v) => { pose.gait = v; }); // the Drowner's own gait dial
+  bindSlider('bv-wade', (v) => { pose.depth = v; });
+  bindSlider('bv-glow', (v) => { pose.glow = v; });
+  bindSlider('bv-hum', (v) => { pose.hum = v; });
 
   $('bv-backdrop')?.addEventListener('click', () => {
     opts.backdrop = opts.backdrop === 'level0' ? 'studio' : 'level0';
@@ -477,8 +560,14 @@ import {
   $('bv-reset')?.addEventListener('click', () => {
     pose.gait = 0.5;
     pose.charge = 0;
-    ['bv-gait', 'bv-gait2'].forEach((id) => { const g = $(id); if (g) g.value = 50; });
-    const c = $('bv-charge'); if (c) c.value = 0;
+    pose.depth = 0;
+    pose.glow = 0.7;
+    pose.hum = 0;
+    ['bv-gait', 'bv-gait2', 'bv-gait3'].forEach((id) => { const g = $(id); if (g) g.value = 50; });
+    for (const [id, v] of [['bv-charge', 0], ['bv-wade', 0], ['bv-glow', 70], ['bv-hum', 0]]) {
+      const el = $(id);
+      if (el) el.value = String(v);
+    }
     load(currentKind);
   });
 
@@ -523,7 +612,7 @@ import {
     renderer, // renderer.info.memory is how you check the teardown actually works
     load,
     get entity() { return current; },
-    get info() { return ENTITY_INFO; },
+    get info() { return INFO; },
     pose,
     view(px, py, pz, tx = HOME.x, ty = 1.4, tz = HOME.z) {
       camera.position.set(px, py, pz);

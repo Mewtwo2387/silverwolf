@@ -399,6 +399,27 @@ export function glowTexture() {
   return new THREE.CanvasTexture(c);
 }
 
+/**
+ * A soft puff, for smoke. NOT glowTexture: that one's alpha starts falling off
+ * immediately from the centre, which is right for a light and wrong for matter
+ * — a black puff drawn with it shows only its dense core and reads as a speck
+ * however large you make the sprite. This holds full alpha out to nearly half
+ * the radius before it feathers, so a sprite covers the area it claims to and a
+ * few dozen of them overlap into one opaque mass.
+ */
+export function smokeTexture() {
+  const c = makeCanvas(64);
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.44, 'rgba(255,255,255,1)');
+  g.addColorStop(0.72, 'rgba(255,255,255,0.52)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+}
+
 // ----------------------------------------------------------- library ----
 
 export const WALLPAPER_VARIANTS = 4;
@@ -468,4 +489,187 @@ export function grimeAt(x, z, tint = 1) {
   const mid = worldFbm(x + 91, z - 47, 6.3, 2, 29);
   const v = 0.72 + broad * 0.42 + (mid - 0.5) * 0.16;
   return Math.max(0.42, Math.min(1.12, v * tint));
+}
+
+// ================================================== Level 37 — Poolrooms ====
+//
+// Level 0's problem was hiding a repeat in noise. Level 37's is the opposite:
+// the source insists the tiling is *pristine* — every tile identical, not one
+// chip on any of them — so the grid has to be dead regular and the interest has
+// to come from somewhere that isn't damage. It comes from three places: the
+// grout catching a little dirt in its corners, a faint per-tile tone jitter of
+// a couple of percent (real ceramic is fired in batches), and, on anything
+// underwater, moving caustics.
+
+/** Tiles per texture. 8 across a 1.2 m repeat is a 15 cm tile. */
+const TILES_PER_TEX = 8;
+export const UV_TILE = 1.2; // metres per tile-texture repeat
+
+/**
+ * White ceramic tile. `tone` shifts the whole sheet (the pool interiors are a
+ * touch cooler and greener than the deck, the way a real pool's tiles look
+ * through their own water even when drained).
+ */
+function tileCanvas(tone = [236, 240, 238], groutDark = 0.72, salt = 8100) {
+  const px = TEX / TILES_PER_TEX;
+  return paint(makeCanvas(TEX), (x, y, size) => {
+    const tx = Math.floor(x / px);
+    const ty = Math.floor(y / px);
+    // Distance into the tile from its nearest edge, in pixels.
+    const ex = Math.min(x - tx * px, (tx + 1) * px - 1 - x);
+    const ey = Math.min(y - ty * px, (ty + 1) * px - 1 - y);
+    const edge = Math.min(ex, ey);
+    const grout = Math.max(1.5, px * 0.055);
+
+    // Per-tile firing variation: tiny, and constant across the whole tile, so
+    // the grid stays crisp instead of dissolving into noise.
+    const batch = 0.985 + hash2(tx, ty, salt) * 0.03;
+    // Glaze: a very soft sheen gradient across each tile, plus fine tooth.
+    const u = (x - tx * px) / px;
+    const v = (y - ty * px) / px;
+    const glaze = 1 + 0.02 * Math.cos((u - 0.5) * 2.2) * Math.cos((v - 0.5) * 2.2);
+    const tooth = 0.995 + fbm((x / size) * 220, (y / size) * 220, 220, 2, salt + 3) * 0.012;
+
+    let shade = batch * glaze * tooth;
+    if (edge < grout) {
+      // Grout. Kept deliberately gentle: the source insists this tiling is
+      // pristine, and a hard dark line at every joint turns 15 cm ceramic into
+      // a wireframe grid — which is exactly what it looked like before the
+      // numbers here were pulled back.
+      const k = 1 - edge / grout;
+      const dirt = 0.8 + fbm((x / size) * 40, (y / size) * 40, 40, 3, salt + 7) * 0.3;
+      shade *= 1 - (1 - groutDark * dirt) * (0.3 + k * 0.7);
+    }
+    return [tone[0] * shade, tone[1] * shade, tone[2] * shade];
+  });
+}
+
+/**
+ * A tileable caustic sheet: ridged noise (1 - |2n - 1|) raised to a high power,
+ * which turns smooth blobs into the thin bright filaments light actually makes
+ * when a wavy surface focuses it. Two of these scrolled across each other in
+ * opposite directions is the whole caustic effect — one layer alone pulses,
+ * two interfere and shimmer.
+ */
+export function causticTexture() {
+  const c = paint(makeCanvas(256), (x, y, size) => {
+    const n = fbm((x / size) * 5, (y / size) * 5, 5, 3, 6100);
+    const ridge = 1 - Math.abs(n * 2 - 1);
+    const v = Math.min(255, (ridge ** 7) * 900);
+    return [v, v * 0.98, v * 0.9];
+  });
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/**
+ * The water's fine surface normal. The big shape of the sea comes from the
+ * Gerstner sum in the vertex shader (see backrooms-water.js); this is only the
+ * capillary detail between those crests, which is far too fine to tessellate.
+ */
+export function waterNormalTexture() {
+  const height = paint(makeCanvas(256), (x, y, size) => {
+    const a = fbm((x / size) * 12, (y / size) * 12, 12, 4, 6200);
+    const b = fbm((x / size) * 34, (y / size) * 34, 34, 2, 6260);
+    const v = 255 * (a * 0.65 + b * 0.35);
+    return [v, v, v];
+  });
+  const tex = normalFromHeight(height, 1.5);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+/** Brushed stainless, for the ladders and handrails. */
+function steelCanvas() {
+  return paint(makeCanvas(128), (x, y, size) => {
+    // Brushing runs along one axis: a long, thin noise lobe.
+    const n = fbm((x / size) * 3, (y / size) * 130, 130, 2, 6300);
+    const c = 150 * (0.72 + n * 0.5);
+    return [c, c * 1.01, c * 1.03];
+  });
+}
+
+export const POOL_TILE_VARIANTS = 2;
+
+/**
+ * Build the Poolrooms surface set. Same lifecycle as buildMaterials(): shared
+ * across level rebuilds, disposed only when the quality tier changes.
+ *
+ * The caustic map is handed back rather than baked into a material because two
+ * different meshes need it (submerged floors and submerged walls) and it has to
+ * be one texture with one scroll offset, or the two disagree at the waterline.
+ */
+export function buildPoolMaterials(quality = 'high') {
+  const detailed = quality !== 'low';
+  const caustic = causticTexture();
+
+  const mk = (canvas, opts = {}) => {
+    const map = finishTexture(canvas, 1);
+    const common = {
+      map, vertexColors: true, ...opts.extra,
+    };
+    if (!detailed) return new THREE.MeshLambertMaterial(common);
+    const normalMap = normalFromHeight(canvas, opts.bump ?? 1.4);
+    normalMap.repeat.copy(map.repeat);
+    return new THREE.MeshStandardMaterial({
+      ...common,
+      normalMap,
+      normalScale: new THREE.Vector2(opts.normalScale ?? 0.4, opts.normalScale ?? 0.4),
+      // Glazed ceramic, not carpet: low roughness is most of what sells it.
+      roughness: opts.roughness ?? 0.22,
+      metalness: opts.metalness ?? 0.04,
+    });
+  };
+
+  // Deck tile is neutral white; the pool interior is cooler and slightly green,
+  // which is what gives the water its blue-green cast before any water shader
+  // is involved at all.
+  const deck = [];
+  for (let i = 0; i < POOL_TILE_VARIANTS; i += 1) {
+    deck.push(mk(tileCanvas([238, 240, 236], 0.9, 8100 + i * 91), { bump: 1.1, normalScale: 0.3 }));
+  }
+  const basin = [];
+  for (let i = 0; i < POOL_TILE_VARIANTS; i += 1) {
+    basin.push(mk(tileCanvas([222, 236, 233], 0.88, 8300 + i * 91), { bump: 1.1, normalScale: 0.3 }));
+  }
+  const wall = [];
+  for (let i = 0; i < POOL_TILE_VARIANTS; i += 1) {
+    wall.push(mk(tileCanvas([234, 238, 237], 0.91, 8500 + i * 91), { bump: 1, normalScale: 0.26 }));
+  }
+  // The ceiling is the same tile, just dimmer — the Poolrooms tile everything,
+  // which is exactly why the place has no up or down to speak of.
+  const ceiling = mk(tileCanvas([214, 220, 219], 0.88, 8700), { bump: 0.9, normalScale: 0.22 });
+  const steel = mk(steelCanvas(), {
+    bump: 0.7,
+    normalScale: 0.3,
+    roughness: 0.34,
+    metalness: 0.85,
+    extra: { vertexColors: false },
+  });
+
+  return {
+    deck, basin, wall, ceiling, steel, caustic, detailed,
+    dispose() {
+      for (const m of [...deck, ...basin, ...wall, ceiling, steel]) {
+        m.map?.dispose();
+        m.normalMap?.dispose();
+        m.dispose();
+      }
+      caustic.dispose();
+    },
+  };
+}
+
+/**
+ * Vertex tint for pool surfaces. Nothing like grimeAt's damp mottling — the
+ * tiles are pristine — just an extremely gentle world-space drift so a 40 m
+ * run of identical tile doesn't read as one flat colour under flat light.
+ */
+export function poolTintAt(x, z, tint = 1) {
+  const broad = worldFbm(x + 310, z - 120, 34, 2, 61);
+  return Math.max(0.82, Math.min(1.06, (0.94 + broad * 0.12) * tint));
 }

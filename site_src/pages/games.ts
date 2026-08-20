@@ -121,7 +121,7 @@ export const GAMES = [
   {
     name: 'backrooms',
     href: '/games/backrooms',
-    info: 'Outrun the entities that haunt the Backrooms and find an escape path.',
+    info: 'Wander Level 0, or swim the flooded Poolrooms. Six entities. One way out.',
     imageType: 'backrooms' as const,
   },
 ];

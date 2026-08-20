@@ -3,8 +3,9 @@ import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
 import { assetVersion } from '../../asset-version';
 
-// Backrooms — a first-person Three.js survival-horror wander through a seeded,
-// procedurally generated Level 0. All the 3D lives in the bundled
+// Backrooms — a first-person Three.js survival-horror wander through seeded,
+// procedurally generated levels (Level 0, and Level 37 "the Poolrooms"). All
+// the 3D lives in the bundled
 // site_src/Assets/backrooms.js (built from backrooms.src.js + its modules);
 // this file is the shell: canvas, HUD, menu and the references list.
 //
@@ -34,6 +35,26 @@ const REFERENCES: { group: string; items: { title: string; href?: string; note: 
         title: 'Kane Pixels Backrooms Wiki — The Lifeform',
         href: 'https://kane-pixels-backrooms.fandom.com/wiki/The_Lifeform',
         note: 'Very tall black humanoids of stick-figure, vine-like anatomy; aimless hive hunters that mimic human cries for help using victims\' throats. Shapes the model, the slow gait and the mimic-call lure.',
+      },
+      {
+        title: 'The Backrooms Wiki — Level 37, "Sublimity" (the Poolrooms)',
+        href: 'https://backrooms-wiki.wikidot.com/level-37',
+        note: 'Interconnected rooms and corridors submerged in lukewarm water; pristine white ceramic tiling everywhere, blue-green water the only other colour; waist-deep in most places with deeper pits scattered through it; excessive pillars, absent ledges, irregular lighting, staircases descending into the pits. That paragraph is the whole terrain generator. Its note that the water keeps a constant minimal rippling when undisturbed is why the surface carries a real (very small) wave sum, and its note that sound drops off abnormally and comes out muted is why that level ducks the mains hum for a water wash.',
+      },
+      {
+        title: 'The Backrooms Wiki — Entity 232, "Drowners"',
+        href: 'https://backrooms-wiki.wikidot.com/entity-232',
+        note: 'Lanky humanoids in weathered yellow raincoats and rubber boots, with no organs — only brackish water filling every cavity. They lurk submerged indefinitely, grab exposed limbs, and fill the lungs in seconds; anomalously unimpeded in water, easily outmanoeuvred on land, and persistent enough to follow you out. Every one of those clauses is a number in its tuning block.',
+      },
+      {
+        title: 'The Backrooms Wiki — Entity 3, "Smilers"',
+        href: 'https://backrooms-wiki.wikidot.com/entity-3',
+        note: 'Reflective eyes and a long grin of teeth in the dark, and nothing anyone has ever confirmed about the rest. Passive at close range unless a wanderer panics and retreats or makes a loud noise; survivors get away by holding eye contact and backing off slowly. That is the entity inverted from the chaser — looking at it is the safe state — and it is why the model is a grin and two eyes with no body behind them.',
+      },
+      {
+        title: 'The Backrooms Wiki — Entity 207, "Will o\' Waves"',
+        href: 'https://backrooms-wiki.wikidot.com/entity-207',
+        note: 'Docile 13–15 cm semi-crustaceans with bioluminescent dorsal spines, travelling in shoals of 50–300 in single file down watery channels; following one tends to lead to safe ground and to exits that are otherwise hard to find, and soft humming encourages them to shine brighter. The one friendly thing in either level, and a working compass.',
       },
       {
         title: 'Garry\'s Mod Wiki — NEXTBOT',
@@ -78,6 +99,16 @@ const REFERENCES: { group: string; items: { title: string; href?: string; note: 
         title: 'MDN — Web Audio API',
         href: 'https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API',
         note: 'Every sound is synthesised: mains-hum oscillators, filtered noise for footsteps and fizz, HRTF panners for entity position.',
+      },
+      {
+        title: 'Jerry Tessendorf / Mark Finch — Gerstner (trochoidal) waves, GPU Gems ch. 1',
+        href: 'https://developer.nvidia.com/gpugems/gpugems/part-i-natural-effects/chapter-1-effective-water-simulation-physical-models',
+        note: 'The Poolrooms\' water surface is a real Gerstner wave sum with deep-water dispersion, shared with this site\'s Wave Simulator (wave-field.js) rather than reimplemented — the same code evaluated on the GPU for the mesh and on the CPU for the height the camera bobs at, so the two can never disagree.',
+      },
+      {
+        title: 'Silverwolf — Wave Simulator',
+        href: '/games/wave-sim',
+        note: 'Where that wave field came from, with sliders on it. The Poolrooms run it at a few centimetres of amplitude and a 3.4 m wavelength, with expanding ring impulses added on top for everything that enters the water.',
       },
       {
         title: 'Silverwolf — Plane Sim',
@@ -137,6 +168,15 @@ export function BackroomsPage(opts: {
     position: absolute; inset: 0; z-index: 8; display: none; pointer-events: none;
     background: #000 center/contain no-repeat;
   }
+  /* Level 37: the tint that drops over everything when your head goes under.
+     Driven from the same 0..1 blend as the fog and the audio lowpass, so all
+     three cross the surface together. */
+  #br-water {
+    position: absolute; inset: 0; pointer-events: none; z-index: 3; opacity: 0;
+    background:
+      radial-gradient(ellipse at center, rgba(18,110,120,0.35) 0%, rgba(6,44,52,0.85) 100%);
+    mix-blend-mode: multiply;
+  }
 
   /* ---- chrome ---- */
   .br-corner { position: absolute; top: 1rem; left: 1rem; z-index: 6; display: flex; gap: 0.5rem; }
@@ -175,6 +215,26 @@ export function BackroomsPage(opts: {
   .br-stamina.br-spent { box-shadow: 0 0 8px rgba(255, 68, 54, 0.7); }
   #br-stam-fill { height: 100%; width: 100%; background: var(--br-amber); transition: background 0.3s; }
   .br-stamina.br-spent #br-stam-fill { background: var(--br-red); }
+  /* Breath sits directly above stamina and only appears once you have spent
+     some, so a full bar is never chrome. */
+  .br-breath {
+    position: absolute; left: 50%; bottom: 3rem; transform: translateX(-50%);
+    width: min(240px, 34vw); height: 3px; border-radius: 2px;
+    background: rgba(255,255,255,0.12); overflow: hidden;
+  }
+  .br-breath.br-off { display: none; }
+  .br-breath.br-spent { box-shadow: 0 0 10px rgba(255, 68, 54, 0.8); }
+  #br-breath-fill { height: 100%; width: 100%; background: #6fd8e6; transition: background 0.3s; }
+  .br-breath.br-spent #br-breath-fill { background: var(--br-red); }
+  #br-prompt {
+    position: absolute; left: 50%; bottom: 6.2rem; transform: translateX(-50%);
+    font-size: 0.74rem; letter-spacing: 0.08em; color: rgba(232,240,240,0.9);
+    text-shadow: 0 1px 5px #000; opacity: 0; transition: opacity 0.2s; white-space: nowrap;
+  }
+  #br-prompt kbd {
+    background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.35);
+    border-radius: 0.25rem; padding: 0.05rem 0.35rem; font-family: inherit; font-size: 0.7rem;
+  }
   #br-crosshair {
     position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px;
     border-radius: 50%; background: rgba(232, 223, 196, 0.5);
@@ -273,6 +333,11 @@ export function BackroomsPage(opts: {
   /* ---- loading ---- */
   #br-loading { position: absolute; inset: 0; z-index: 9; display: flex; align-items: center; justify-content: center; background: #0c0a06; }
   #br-loading.br-hidden { display: none; }
+  /* The roster panes are plain divs, so neither .br-overlay.br-hidden nor the
+     rule above reached them and both levels' rosters rendered at once. Scoped
+     by id rather than a bare .br-hidden, which would lose to .br-overlay's own
+     display on specificity order. */
+  #br-roster-lobby.br-hidden, #br-roster-pools.br-hidden { display: none; }
   #br-loading div { text-align: center; }
   #br-loading .br-l-title { font-size: 1.1rem; letter-spacing: 0.3em; color: var(--br-amber); }
   #br-loading .br-l-sub { font-size: 0.72rem; color: rgba(232,223,196,0.45); margin-top: 0.6rem; }
@@ -296,6 +361,8 @@ export function BackroomsPage(opts: {
   }
   .br-dbg-grid button:hover, #br-debug > button:hover { border-color: var(--br-amber); color: var(--br-amber); }
   .br-dbg-grid button.br-on-btn { background: rgba(230,198,92,0.3); color: var(--br-amber); border-color: var(--br-amber); }
+  /* Harness controls that only mean something in the Poolrooms. */
+  #br-debug.br-dry .br-pools-only { display: none; }
   #br-dbg-ents { font-size: 0.64rem; line-height: 1.45; color: rgba(232,223,196,0.7); }
   #br-dbg-ents b { color: var(--br-amber); font-weight: 500; }
 
@@ -341,6 +408,7 @@ export function BackroomsPage(opts: {
       <canvas id="br-static" width="160" height="90" aria-hidden="true"></canvas>
       <div class="br-vignette" aria-hidden="true"></div>
       <div id="br-hurt" aria-hidden="true"></div>
+      <div id="br-water" aria-hidden="true"></div>
       <div id="br-flash" aria-hidden="true"></div>
 
       <div class="br-corner">
@@ -355,6 +423,8 @@ export function BackroomsPage(opts: {
           <div id="br-hud-depth">EXPLORED <b>0%</b></div>
         </div>
         <div class="br-stamina" id="br-stamina"><div id="br-stam-fill"></div></div>
+        <div class="br-breath br-off" id="br-breath"><div id="br-breath-fill"></div></div>
+        <div id="br-prompt"><kbd>SPACE</kbd> climb &middot; <kbd>SHIFT</kbd> descend</div>
         <div id="br-crosshair"></div>
         <div id="br-subtitle"></div>
         <div id="br-fps">— fps</div>
@@ -376,13 +446,16 @@ export function BackroomsPage(opts: {
           <button type="button" data-dbg="reveal">Reveal map</button>
           <button type="button" data-dbg="lights">Lights up</button>
           <button type="button" data-dbg="win">Win now</button>
+          <button type="button" class="br-pools-only" data-dbg="water">→ Deep water</button>
+          <button type="button" class="br-pools-only" data-dbg="ladder">→ Ladder</button>
+          <button type="button" class="br-pools-only" data-dbg="breath">Empty lungs</button>
         </div>
         <div id="br-dbg-ents">—</div>
       </div>
 
       <div id="br-loading">
         <div>
-          <div class="br-l-title">LEVEL 0</div>
+          <div class="br-l-title" id="br-l-title">LEVEL 0</div>
           <div class="br-l-sub" id="br-load-sub">generating…</div>
         </div>
       </div>
@@ -390,7 +463,7 @@ export function BackroomsPage(opts: {
       <div class="br-overlay br-hidden" id="br-menu">
         <div class="br-card">
           <h1>THE BACKROOMS</h1>
-          <p class="br-tag">LEVEL 0 &middot; "THE LOBBY" &middot; SURVIVAL DIFFICULTY: LOW</p>
+          <p class="br-tag" id="br-tag">LEVEL 0 &middot; "THE LOBBY" &middot; SURVIVAL DIFFICULTY: LOW</p>
 
           <div class="br-tabs" role="tablist">
             <button type="button" class="br-tab br-active" data-tab="play">Play</button>
@@ -407,6 +480,19 @@ export function BackroomsPage(opts: {
               and something else, wandering it with you.
             </p>
             <p>Find the exit. It is marked. It is a long way off.</p>
+            <div class="br-field">
+              <label for="br-level">Level</label>
+              <select id="br-level">
+                <option value="lobby">Level 0 &mdash; "The Lobby"</option>
+                <option value="pools">Level 37 &mdash; "Sublimity", the Poolrooms</option>
+              </select>
+            </div>
+            <p class="br-hint">
+              The Poolrooms are the same generator with a height added to every cell and
+              most of them flooded. You wade, you swim, you drown &mdash; and the pool wall
+              is 1.35&nbsp;m, so the only ways back onto the tile are the ladders and the
+              occasional flight of steps. Different level, different residents.
+            </p>
             <div class="br-field">
               <label for="br-seed">Seed</label>
               <input type="text" id="br-seed" maxlength="32" spellcheck="false" autocomplete="off" />
@@ -440,6 +526,7 @@ export function BackroomsPage(opts: {
               <a href="/games/backrooms/entities">Look at them properly →</a>
             </p>
 
+            <div id="br-roster-lobby">
             <div class="br-ent">
               <div class="br-ent-head">
                 <strong>PNG chaser</strong>
@@ -502,6 +589,73 @@ export function BackroomsPage(opts: {
                 looks at you, charges, and turns you to dust. Break its line of sight and the
                 lock drops. Your HUD will corrupt as it gets close.
               </p>
+            </div>
+            </div>
+
+            <div id="br-roster-pools" class="br-hidden">
+              <p class="br-hint">
+                Canon Level 37 is famously empty &mdash; "no encounters with entities
+                recorded". These three are documented Backrooms entities brought here from
+                elsewhere in the mythos, each chosen because its behaviour only makes sense
+                in water or in the dark.
+              </p>
+
+              <div class="br-ent">
+                <div class="br-ent-head">
+                  <strong>Drowner &mdash; Entity 232</strong>
+                  <label class="br-field" style="margin:0">
+                    <input type="checkbox" id="br-e-drowner" aria-label="Spawn the Drowner" checked />
+                  </label>
+                </div>
+                <p>
+                  A lanky grey thing in a weathered yellow raincoat that lies on the bottom of
+                  a pit indefinitely and comes up when something swims over it. In water it is
+                  faster than you can swim; on tile it lumbers slower than you walk. It grabs,
+                  and then your lungs fill.
+                </p>
+                <p class="br-hint" style="margin-bottom:0">
+                  It gives itself away: while it lurks it disturbs the surface above itself.
+                  A patch of water rippling with nothing in it is the warning. If it takes
+                  hold, thrash &mdash; <kbd>A</kbd>/<kbd>D</kbd>, back and forth.
+                </p>
+              </div>
+
+              <div class="br-ent">
+                <div class="br-ent-head">
+                  <strong>Smiler &mdash; Entity 3</strong>
+                  <label class="br-field" style="margin:0">
+                    <input type="checkbox" id="br-e-smiler" aria-label="Spawn the Smiler" checked />
+                  </label>
+                </div>
+                <p>
+                  Eyes and teeth in the unlit stretches, and nothing else &mdash; nobody has
+                  ever established what the rest of one looks like. The exact inverse of the
+                  chaser: it will not move while you are looking at it. Turn your back, or
+                  sprint anywhere near it, and it comes.
+                </p>
+                <p class="br-hint" style="margin-bottom:0">
+                  It cannot route through a lit room at all. Back away slowly, facing it,
+                  into the light.
+                </p>
+              </div>
+
+              <div class="br-ent">
+                <div class="br-ent-head">
+                  <strong>Will o' Waves &mdash; Entity 207</strong>
+                  <label class="br-field" style="margin:0">
+                    <input type="checkbox" id="br-e-willo" aria-label="Spawn the Will o' Waves" checked />
+                  </label>
+                </div>
+                <p>
+                  A shoal of bioluminescent shrimp travelling in single file down the flooded
+                  channels. Entirely harmless, and a good omen: they swim toward the way out.
+                  Hold <kbd>H</kbd> to hum and they will brighten and come to you.
+                </p>
+                <p class="br-hint" style="margin-bottom:0">
+                  Two catches. Their route is a swimmer's route, not a safe one &mdash; and a
+                  Smiler is drawn to light.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -587,6 +741,10 @@ export function BackroomsPage(opts: {
               <kbd>Mouse</kbd><span>Look around</span>
               <kbd>Ctrl</kbd><span>Hold to sprint — fast, and very loud</span>
               <kbd>Shift</kbd><span>Hold to crouch — slow, low, and nearly silent</span>
+              <kbd>Space</kbd><span>Jump &middot; in the Poolrooms, climb a ladder or kick for the surface</span>
+              <kbd>Shift</kbd><span>In deep water, dive &middot; on a ladder, climb down</span>
+              <kbd>H</kbd><span>Hum &mdash; calls a shoal of Will o' Waves, and is heard by everything else</span>
+              <kbd>A</kbd> <kbd>D</kbd><span>Thrash left and right to tear out of a Drowner's grip</span>
               <kbd>Esc</kbd><span>Release the mouse / open this menu</span>
               <kbd>M</kbd><span>Toggle the test harness (when enabled)</span>
               <kbd>R</kbd><span>Restart this level</span>
@@ -595,6 +753,12 @@ export function BackroomsPage(opts: {
               Sound is the main thing you leak. Sprinting can be heard from most of a wing
               away; crouching almost nowhere. If something is hunting you, stopping moving is
               often better than running further.
+            </p>
+            <p class="br-hint">
+              In the Poolrooms the water takes your options away rather than adding any: you
+              cannot sprint in it, wading is loud, and treading water burns stamina you cannot
+              get back until you are out. When the stamina goes, you stop floating &mdash;
+              and then the breath meter starts.
             </p>
           </div>
 

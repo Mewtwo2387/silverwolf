@@ -111,7 +111,7 @@ export function BackroomsEntitiesPage(opts: {
 
       <div class="bv-panel">
         <h1>Entity Viewer</h1>
-        <p class="bv-sub">The same three things the game spawns — standing still, for once.</p>
+        <p class="bv-sub">The same six things the game spawns — standing still, for once.</p>
 
         <div class="bv-group">
           <div class="bv-h">Entity</div>
@@ -119,6 +119,12 @@ export function BackroomsEntitiesPage(opts: {
             <button type="button" data-ent="chaser" class="bv-active">PNG chaser</button>
             <button type="button" data-ent="lifeform">Lifeform</button>
             <button type="button" data-ent="watcher">Entity 96</button>
+          </div>
+          <div class="bv-h bv-h2">Level 37 — the Poolrooms</div>
+          <div class="bv-ents">
+            <button type="button" data-ent="drowner">Drowner</button>
+            <button type="button" data-ent="smiler">Smiler</button>
+            <button type="button" data-ent="willo">Will o' Waves</button>
           </div>
           <div class="bv-dims" id="bv-dims">—</div>
         </div>
@@ -155,6 +161,37 @@ export function BackroomsEntitiesPage(opts: {
           <div class="bv-slider"><label for="bv-gait2">Gait speed</label><input type="range" id="bv-gait2" min="0" max="100" value="50" /></div>
           <p class="bv-note">Six legs of vein, worked in alternating tripods. It is an eye that walks.</p>
           <p class="bv-note">Full charge is what kills you in-game. Here it just points at nothing.</p>
+        </div>
+
+        <div class="bv-group" id="bv-grp-drowner" style="display:none">
+          <div class="bv-h">Drowner</div>
+          <div class="bv-slider"><label for="bv-gait3">Gait speed</label><input type="range" id="bv-gait3" min="0" max="100" value="50" /></div>
+          <div class="bv-slider"><label for="bv-wade">Water depth</label><input type="range" id="bv-wade" min="0" max="100" value="0" /></div>
+          <p class="bv-note">Push the depth up and watch the stride shorten and the arms come
+            up: the drag is doing to it exactly what it does to you. Past waist height it
+            switches to hauling itself along on the surface.</p>
+          <p class="bv-note">The face is set well back in the hood. You are meant to have to
+            get closer than you would like.</p>
+        </div>
+
+        <div class="bv-group" id="bv-grp-smiler" style="display:none">
+          <div class="bv-h">Smiler</div>
+          <div class="bv-slider"><label for="bv-glow">Glow</label><input type="range" id="bv-glow" min="0" max="100" value="70" /></div>
+          <p class="bv-note">There is no body, and that is not a shortcut. Nobody in the source
+            has ever established what the rest of one looks like — only the eyes and the
+            teeth — so modelling anything behind them would be inventing it.</p>
+          <p class="bv-note">Turn the glow down to see what it looks like from across a dark
+            room, which is where you will actually meet one.</p>
+        </div>
+
+        <div class="bv-group" id="bv-grp-willo" style="display:none">
+          <div class="bv-h">Will o' Waves</div>
+          <div class="bv-slider"><label for="bv-hum">Humming</label><input type="range" id="bv-hum" min="0" max="100" value="0" /></div>
+          <p class="bv-note">Fifty-four individuals in single file, each hung a fixed distance
+            back along the leader's own track. The blue flash runs down the line rather than
+            pulsing in unison — a shoal flashing as one body reads as one object.</p>
+          <p class="bv-note">Hum at them and they brighten and close up, which is how you ask
+            them for directions.</p>
         </div>
 
         <div class="bv-group">
