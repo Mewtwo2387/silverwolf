@@ -60,17 +60,41 @@ function addTile(b, x0, z0, sx, sz, y, up, tint) {
   );
 }
 
-/** A vertical quad spanning y0..y1 along a horizontal edge, facing `n`. */
+/**
+ * A vertical quad spanning y0..y1 along a horizontal edge, facing `n`.
+ *
+ * The endpoints may be given in EITHER order: this works out which way round
+ * they have to go from the normal it was asked for, and swaps them if they
+ * disagree. That is not defensiveness, it is the fix for a real bug — the
+ * first version of this left winding to a hand-written table of which
+ * directions to flip at the call site, the table was inverted, and every skirt
+ * in the level came out back-facing. Every 1.35 m pool wall was invisible from
+ * the water, which is the one side you ever look at one from.
+ *
+ * A quad wound (a, y0) (b, y0) (b, y1) (a, y1) has geometric normal
+ * (b - a) x up, which for a horizontal edge (ux, 0, uz) and up (0, h, 0) comes
+ * out as (-uz, 0, ux). Compare that with what the caller wants and flip once.
+ */
 function addSkirt(b, ax, az, bx, bz, y0, y1, n, tint) {
+  let x0 = ax;
+  let z0 = az;
+  let x1 = bx;
+  let z1 = bz;
+  if ((-(z1 - z0)) * n[0] + (x1 - x0) * n[2] < 0) {
+    x0 = bx;
+    z0 = bz;
+    x1 = ax;
+    z1 = az;
+  }
   // U runs along the edge, V runs up it — so tile courses stay level and the
   // grout on a pool wall lines up with the grout on the floor beside it.
-  const u0 = (ax + az) / UV_TILE;
-  const u1 = (bx + bz) / UV_TILE;
+  const u0 = (x0 + z0) / UV_TILE;
+  const u1 = (x1 + z1) / UV_TILE;
   b.quad(
-    [ax, y0, az], [bx, y0, bz], [bx, y1, bz], [ax, y1, az], n,
+    [x0, y0, z0], [x1, y0, z1], [x1, y1, z1], [x0, y1, z0], n,
     [[u0, y0 / UV_TILE], [u1, y0 / UV_TILE], [u1, y1 / UV_TILE], [u0, y1 / UV_TILE]],
-    [tintAt(ax, y0, az, tint), tintAt(bx, y0, bz, tint),
-      tintAt(bx, y1, bz, tint), tintAt(ax, y1, az, tint)],
+    [tintAt(x0, y0, z0, tint), tintAt(x1, y0, z1, tint),
+      tintAt(x1, y1, z1, tint), tintAt(x0, y1, z0, tint)],
   );
 }
 
@@ -318,14 +342,11 @@ export function buildPoolWorld(level, materials, collider) {
           bx = (x + 1) * CELL;
           bz = az;
         }
-        // Face into the LOWER cell, which is the only side it can be seen from.
+        // Face into the LOWER cell, which is the only side it can be seen
+        // from. addSkirt sorts its own winding out from this.
         const n = [dir.dx, 0, dir.dy];
-        // Winding has to follow the normal, so swap the endpoints for two of
-        // the four directions.
-        const flip = dir.dx === -1 || dir.dy === 1;
         const target = fy < WATER_Y ? wetWallB : wallB[variantAt(x, y, 305)];
-        if (flip) addSkirt(target, bx, bz, ax, az, nfy, fy, n, 1);
-        else addSkirt(target, ax, az, bx, bz, nfy, fy, n, 1);
+        addSkirt(target, ax, az, bx, bz, nfy, fy, n, 1);
       }
     }
   }

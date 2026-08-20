@@ -1702,6 +1702,60 @@ import {
         player.vy = 0;
       },
       ripple(x, z, strength = 0.2) { water?.disturb(x, z, strength); },
+      /**
+       * Winding audit over every triangle in the scene.
+       *
+       * This exists because a hand-written table of which pool-wall skirts to
+       * flip was inverted in all four directions, which made every 1.35 m pool
+       * wall in the Poolrooms back-facing — and therefore invisible from the
+       * water, the one side you ever look at one from. Nothing catches that
+       * except looking, and looking is exactly what a build step cannot do.
+       *
+       * A triangle whose vertex order disagrees with its own stored normal is
+       * a surface that vanishes from the side it is meant to be seen from.
+       * Returns { triangles, backFacing, samples } — backFacing must be 0.
+       */
+      auditGeometry() {
+        let triangles = 0;
+        let backFacing = 0;
+        const samples = [];
+        scene.traverse((o) => {
+          const g = o.isMesh && o.geometry;
+          if (!g || !g.index || !g.attributes?.normal) return;
+          const pos = g.attributes.position;
+          const nrm = g.attributes.normal;
+          const idx = g.index;
+          for (let i = 0; i < idx.count; i += 3) {
+            const a = idx.getX(i);
+            const b = idx.getX(i + 1);
+            const c = idx.getX(i + 2);
+            const ux = pos.getX(b) - pos.getX(a);
+            const uy = pos.getY(b) - pos.getY(a);
+            const uz = pos.getZ(b) - pos.getZ(a);
+            const vx = pos.getX(c) - pos.getX(a);
+            const vy = pos.getY(c) - pos.getY(a);
+            const vz = pos.getZ(c) - pos.getZ(a);
+            const gx = uy * vz - uz * vy;
+            const gy = uz * vx - ux * vz;
+            const gz = ux * vy - uy * vx;
+            const len = Math.hypot(gx, gy, gz);
+            if (len < 1e-9) continue; // degenerate, nothing to face either way
+            triangles += 1;
+            const dot = (gx / len) * nrm.getX(a)
+              + (gy / len) * nrm.getY(a)
+              + (gz / len) * nrm.getZ(a);
+            if (dot >= 0) continue;
+            backFacing += 1;
+            if (samples.length < 5) {
+              samples.push({
+                at: [+pos.getX(a).toFixed(2), +pos.getY(a).toFixed(2), +pos.getZ(a).toFixed(2)],
+                normal: [+nrm.getX(a).toFixed(2), +nrm.getY(a).toFixed(2), +nrm.getZ(a).toFixed(2)],
+              });
+            }
+          }
+        });
+        return { triangles, backFacing, samples };
+      },
       setBreath(v) { player.breath = clamp(Number(v) || 0, 0, CFG.BREATH_MAX); },
       setStamina(v) { player.stamina = clamp(Number(v) || 0, 0, CFG.STAMINA_MAX); },
       setLevel(name) {

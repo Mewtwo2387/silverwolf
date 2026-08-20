@@ -66,7 +66,10 @@ identifiers: a forgotten import bundles fine and only throws `ReferenceError` at
 the Three.js game pages plus `/games` logged-out and serves `Assets/` as `/static/`, no bot, DB or
 OAuth needed — and load the page after touching any of these modules. It serves Backrooms with its
 in-game test harness armed (top-down map, teleports, noclip, and a `window.__backrooms` scripting
-API), which the real app also exposes at `/games/backrooms?debug=1`. `tests/` is `.dockerignore`d
+API), which the real app also exposes at `/games/backrooms?debug=1`. After touching any geometry
+builder, run `__backrooms.auditGeometry()` on both levels — it walks every triangle in the scene
+and reports any whose vertex winding disagrees with its own normal, which is a surface that is
+invisible from the side you are meant to see it from and which nothing else catches. `tests/` is `.dockerignore`d
 and never reaches the image.
 
 HTML responses are `Cache-Control: private, no-store` (prevents the per-request nonce leaking
