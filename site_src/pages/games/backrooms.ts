@@ -333,6 +333,11 @@ export function BackroomsPage(opts: {
   /* ---- loading ---- */
   #br-loading { position: absolute; inset: 0; z-index: 9; display: flex; align-items: center; justify-content: center; background: #0c0a06; }
   #br-loading.br-hidden { display: none; }
+  /* The roster panes are plain divs, so neither .br-overlay.br-hidden nor the
+     rule above reached them and both levels' rosters rendered at once. Scoped
+     by id rather than a bare .br-hidden, which would lose to .br-overlay's own
+     display on specificity order. */
+  #br-roster-lobby.br-hidden, #br-roster-pools.br-hidden { display: none; }
   #br-loading div { text-align: center; }
   #br-loading .br-l-title { font-size: 1.1rem; letter-spacing: 0.3em; color: var(--br-amber); }
   #br-loading .br-l-sub { font-size: 0.72rem; color: rgba(232,223,196,0.45); margin-top: 0.6rem; }

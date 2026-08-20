@@ -1260,20 +1260,34 @@ export class Director {
    * start in water, a Smiler has to start in the dark. If nothing matches it
    * falls back to the unfiltered choice rather than refusing to spawn, because
    * a small level may genuinely have no dark corner in it.
+   *
+   * `canLeave` is the harder constraint, and it exists because that fallback
+   * has teeth for a terrain-BOUND entity. A shoal's navFilter is water-to-water
+   * and a Smiler's is dark-to-dark, so dropping either on a cell its filter
+   * cannot step off leaves it with a flow field exactly one cell wide:
+   * waypointTo returns null forever and the entity never moves again for the
+   * whole run. Cells with no legal exit are therefore dropped from both pools,
+   * and only if that leaves nothing at all do we fall back to the old
+   * behaviour, which is no worse than what it replaces.
    */
-  spawnCell(minSteps, want) {
+  spawnCell(minSteps, want, canLeave) {
     const field = this.level.distanceField([this.level.spawn]);
     const options = [];
     const preferred = [];
     for (let y = 0; y < this.level.h; y += 1) {
       for (let x = 0; x < this.level.w; x += 1) {
         if (field[this.level.cellIndex(x, y)] < minSteps) continue;
+        if (canLeave && !canLeave(x, y)) continue;
         options.push({ x, y });
         if (want && want(x, y)) preferred.push({ x, y });
       }
     }
     const pool = preferred.length ? preferred : options;
-    if (!pool.length) return { x: this.level.exit.x, y: this.level.exit.y };
+    if (!pool.length) {
+      return canLeave
+        ? this.spawnCell(minSteps, want, null)
+        : { x: this.level.exit.x, y: this.level.exit.y };
+    }
     return pool[Math.floor(this.rnd() * pool.length)];
   }
 
@@ -1281,7 +1295,12 @@ export class Director {
     // Entities are allowed to notice each other through the director (a Smiler
     // is drawn to the shoal's light) but never to reach into game state.
     entity.director = this;
-    const c = this.spawnCell(minSteps, want || entity.spawnWants);
+    // One legal neighbour is enough: it proves the entity's filtered flow field
+    // has somewhere to go, which is the whole property that matters here.
+    const canLeave = entity.navFilter
+      ? (x, y) => this.level.neighbours(x, y).some((n) => entity.navFilter(x, y, n.x, n.y))
+      : null;
+    const c = this.spawnCell(minSteps, want || entity.spawnWants, canLeave);
     entity.placeAtCell(c.x, c.y);
     this.entities.push(entity);
     this.scene.add(entity.group);

@@ -352,7 +352,7 @@ export class Drowner extends Agent {
       this.vel.multiplyScalar(0.85);
       api.ripple(this.pos.x, this.pos.z, 0.16);
     } else if (this.state === 'lurk' && (s.dist > DROWNER.RISE_RANGE || this.confidence < 0.25)) {
-      this.doLurk(dt, api);
+      this.doLurk(dt, api, inWater);
     } else {
       if (this.state === 'lurk') this.setState('rise');
       this.doHunt(dt, api, inWater, playerInWater);
@@ -392,7 +392,7 @@ export class Drowner extends Agent {
    * regardless of state, at an amplitude that reads at ten metres and does not
    * scream at two.
    */
-  doLurk(dt, api) {
+  doLurk(dt, api, inWater = true) {
     this.setState('lurk');
     this.vel.multiplyScalar(0.9);
     // A slow crawl around the pit so it is not a fixed hazard you can memorise.
@@ -406,7 +406,11 @@ export class Drowner extends Agent {
     this.rippleTimer = (this.rippleTimer || 0) - dt;
     if (this.rippleTimer <= 0) {
       this.rippleTimer = 0.5 + this.rnd() * 0.5;
-      api.ripple(this.pos.x, this.pos.z, 0.05);
+      // Only in water. Its slow crawl has no navFilter on it, so a lurking
+      // Drowner can wander onto the deck — and a ripple on dry tile is both a
+      // wrong picture and a false warning, since the ripple with nothing in it
+      // is the one thing that tells you where this is.
+      if (inWater) api.ripple(this.pos.x, this.pos.z, 0.05);
     }
   }
 
@@ -438,9 +442,17 @@ export class Drowner extends Agent {
     }
   }
 
-  /** The closest cell of standing water, for going home to. */
+  /**
+   * The closest cell of standing water, for going home to.
+   *
+   * Memoised per cell: this is a whole-grid BFS plus a full grid scan, and the
+   * answer depends only on the cell it is asked from and the level's terrain,
+   * neither of which changes over an entity's life.
+   */
   nearestWaterCell() {
     const here = this.cell();
+    const key = this.level.cellIndex(here.x, here.y);
+    if (this.waterHomeKey === key) return this.waterHome;
     const field = this.level.distanceField([here]);
     let best = null;
     let bestD = Infinity;
@@ -454,6 +466,8 @@ export class Drowner extends Agent {
         }
       }
     }
+    this.waterHomeKey = key;
+    this.waterHome = best;
     return best;
   }
 

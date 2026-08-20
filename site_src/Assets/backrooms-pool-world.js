@@ -170,6 +170,12 @@ function causticVariant(base, causticTex, clock, strength = 0.9, wall = false) {
         gl_FragColor.rgb += vec3(0.42, 0.86, 0.82) * (c1 * c2 * ${strength.toFixed(2)}) * depth * above;
       `);
   };
+  // Three.js keys the compiled program on onBeforeCompile.toString(), and that
+  // string is IDENTICAL for every variant here — `wall` and `strength` are
+  // captured, not written into the source. Without an explicit key the renderer
+  // is free to hand a wall the floor's program, which is the XZ projection the
+  // comment above exists to avoid.
+  m.customProgramCacheKey = () => `caustic:${wall ? 'wall' : 'floor'}:${strength.toFixed(2)}`;
   m.needsUpdate = true;
   return m;
 }
@@ -436,7 +442,13 @@ export function buildPoolWorld(level, materials, collider) {
         // Face into the LOWER cell, which is the only side it can be seen
         // from. addSkirt sorts its own winding out from this.
         const n = [dir.dx, 0, dir.dy];
-        const target = fy < WATER_Y ? wetWallB : wallB[variantAt(x, y, 305)];
+        // The band spans nfy (bottom) up to fy (top), so whether any of it is
+        // underwater is decided by its LOWER extent. Testing fy classified a
+        // skirt that starts under the surface and finishes above it as dry, and
+        // lost the caustics on the submerged part — the wet material is built
+        // to span the waterline, gating the effect on world height in the
+        // shader, so handing it the whole band is exactly right.
+        const target = nfy < WATER_Y ? wetWallB : wallB[variantAt(x, y, 305)];
         addSkirt(target, ax, az, bx, bz, nfy, fy, n, 1);
       }
     }

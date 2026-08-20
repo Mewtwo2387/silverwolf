@@ -15,6 +15,9 @@
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
+// How far the hum ducks when your head goes under.
+const UNDERWATER_DUCK = 0.23;
+
 export class Audio {
   constructor() {
     this.ctx = null;
@@ -157,8 +160,17 @@ export class Audio {
     const near = clamp(1 - nearestLightDist / 16, 0, 1);
     const target = 0.05 + near * 0.32 + flicker * 0.3;
     const t = this.ctx.currentTime;
-    this.nodes.humBus.gain.setTargetAtTime(target, t, 0.12);
-    this.nodes.fizzGain.gain.setTargetAtTime(0.02 + near * 0.06 + flicker * 0.12, t, 0.08);
+    // THIS IS THE ONLY WRITER of humBus and fizzGain while a run is playing —
+    // it runs every frame, so anything else setting them absolutely is undone
+    // within one frame. The theme and the underwater duck are therefore held
+    // as multipliers and folded in here (see setTheme / setUnderwater).
+    const themeHum = this.themeHum ?? 1;
+    const themeFizz = this.themeFizz ?? 1;
+    const duck = this.underwater ? UNDERWATER_DUCK : 1;
+    this.nodes.humBus.gain.setTargetAtTime(target * themeHum * duck, t, 0.12);
+    this.nodes.fizzGain.gain.setTargetAtTime(
+      (0.02 + near * 0.06 + flicker * 0.12) * themeFizz, t, 0.08,
+    );
     if (this.nodes.hum120) {
       this.nodes.hum120.o.frequency.setTargetAtTime(120 + flicker * 6, t, 0.05);
     }
@@ -456,9 +468,8 @@ export class Audio {
     const t = this.ctx.currentTime;
     this.waterFilter.frequency.setTargetAtTime(on ? 360 : 20000, t, 0.09);
     this.waterFilter.Q.setTargetAtTime(on ? 1.6 : 0.7, t, 0.12);
-    if (this.nodes.humBus) {
-      this.nodes.humBus.gain.setTargetAtTime(on ? 0.05 : 0.22, t, 0.2);
-    }
+    // The duck itself is applied by updateAmbience, which owns humBus.gain —
+    // writing it here only held until the next frame.
     this.underwater = !!on;
   }
 
@@ -473,9 +484,14 @@ export class Audio {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
     const pools = theme === 'pools';
-    if (this.nodes.humBus) this.nodes.humBus.gain.setTargetAtTime(pools ? 0.22 : 1, t, 0.6);
+    // Hum and fizz are SCALES, not levels: updateAmbience drives both every
+    // frame off the nearest fixture, so setting them absolutely here meant the
+    // Poolrooms' whole point — that the mains hum is pulled right down in
+    // there — lasted exactly one frame and was never actually audible.
+    this.themeHum = pools ? 0.22 : 1;
+    this.themeFizz = pools ? 0.24 : 1;
+    // These two ARE absolute, because nothing else writes them.
     if (this.nodes.hum60) this.nodes.hum60.g.gain.setTargetAtTime(pools ? 0.04 : 0.16, t, 0.6);
-    if (this.nodes.fizzGain) this.nodes.fizzGain.gain.setTargetAtTime(pools ? 0.012 : 0.05, t, 0.6);
     if (this.nodes.rumbleGain) this.nodes.rumbleGain.gain.setTargetAtTime(pools ? 0.22 : 0.5, t, 0.6);
 
     if (pools && !this.nodes.lapGain) {
@@ -531,7 +547,6 @@ export class Audio {
     crack.connect(hp).connect(cg).connect(dest);
     crack.start(t);
     crack.stop(t + 0.6);
-    this.releaseWith(crack, dest === this.master ? null : dest);
 
     const body = this.noiseSource();
     const lp = ctx.createBiquadFilter();
@@ -545,6 +560,10 @@ export class Audio {
     body.connect(lp).connect(bg).connect(dest);
     body.start(t);
     body.stop(t + 0.9);
+    // Both layers share `dest`, so it has to be released on the one that ends
+    // LAST. Hanging it off `crack` (t+0.6) cut the low layer 0.3 s early, and
+    // that layer is the whole difference between a splash and a hi-hat.
+    this.releaseWith(body, dest === this.master ? null : dest);
   }
 
   /** One swimming stroke — a splash with the crack taken off it. */
