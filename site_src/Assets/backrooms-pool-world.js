@@ -32,7 +32,7 @@ import {
 } from './backrooms-materials.js';
 
 const EXIT_DEPTH = 3;
-const RAMP_SEGS = 6; // subdivisions along a flight of steps
+const RAMP_STEPS = 10; // treads in a flight, giving 25 cm risers
 const LADDER_DROP = 1.5; // how far a ladder reaches below the water surface
 
 // ---------------------------------------------------------- primitives ----
@@ -196,16 +196,29 @@ function buildLadderGeometry(ladder) {
   const rotX = (a) => new THREE.Matrix4().makeRotationX(a);
   const rotZ = (a) => new THREE.Matrix4().makeRotationZ(a);
 
+  // The bend over the deck lip. TorusGeometry lies in XY and sweeps its arc
+  // from +X to +Y, so ONE rotation about Y by a quarter turn maps that arc to
+  // run from -Z up to +Y — which, with the torus centred at (·, top, R), puts
+  // its start exactly on the stile top at (·, top, 0) and its end at
+  // (·, top + R, R) where the horizontal grab bar begins.
+  //
+  // This was previously an Euler(0, PI/2, PI/2), which lands the arc start at
+  // (·, top + R, R) instead: the hook and the bar floated a fifth of a metre
+  // above and in front of the stiles, joined to each other and to nothing
+  // else. Any transform here is worth checking against the joint it is
+  // supposed to meet rather than eyeballing.
+  const CURL_R = 0.2;
   for (const s of [-1, 1]) {
     place(new THREE.CylinderGeometry(stileR, stileR, len, 8), s * half, (top + bottom) / 2, 0);
-    // The curl over the deck lip: a quarter torus taking the stile from
-    // vertical to horizontal and running it back onto the tile.
-    const curl = new THREE.TorusGeometry(0.2, stileR, 6, 10, Math.PI / 2);
-    curl.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(
-      new THREE.Euler(0, Math.PI / 2, Math.PI / 2),
-    ));
-    place(curl, s * half, top, 0.2);
-    place(new THREE.CylinderGeometry(stileR, stileR, 0.42, 8), s * half, top + 0.2, 0.41, rotX(Math.PI / 2));
+    const curl = new THREE.TorusGeometry(CURL_R, stileR, 6, 12, Math.PI / 2);
+    curl.applyMatrix4(new THREE.Matrix4().makeRotationY(Math.PI / 2));
+    place(curl, s * half, top, CURL_R);
+    // The grab bar, running from the end of the bend back over the tile.
+    const BAR = 0.4;
+    place(
+      new THREE.CylinderGeometry(stileR, stileR, BAR, 8),
+      s * half, top + CURL_R, CURL_R + BAR / 2, rotX(Math.PI / 2),
+    );
   }
   // Rungs from a little above the deck down to the bottom of the stiles.
   for (let y = DECK_Y - 0.28; y > bottom + 0.1; y -= 0.32) {
@@ -230,6 +243,104 @@ function buildLadderGeometry(ladder) {
   // through a 3 cm stile is not something anyone will notice; being unable to
   // get out of a pool is.
   return merged;
+}
+
+/**
+ * A flight of steps between the deck and the water.
+ *
+ * TREADS AND RISERS OVER A RAMP COLLIDER. level.groundAt() interpolates
+ * linearly across a stair cell, so what you WALK on is a plain slope, while
+ * what you SEE is RAMP_STEPS discrete steps sitting on that slope. That is the
+ * ordinary way to build stairs in a first-person game and it is the right one
+ * here: there is no player body, so nobody ever sees their feet failing to
+ * touch a tread, and a smooth ramp feels far better under a camera than a
+ * staircase that jolts it 25 cm at a time. Each tread takes its height from
+ * the middle of its own span, so the collider is never more than half a riser
+ * from the tile you can see.
+ *
+ * A flight is watertight, which the first version of this was not: it drew the
+ * treads and nothing else — no risers between them and no walls down either
+ * flank — so a staircase was six floating slabs with daylight between them and
+ * an open black void underneath.
+ *
+ *   treads   RAMP_STEPS horizontal quads, descending
+ *   risers   RAMP_STEPS + 1 vertical quads facing DOWN the flight, including a
+ *            half-height lip against the deck at the top and another against
+ *            the pool floor at the bottom
+ *   flanks   a staircase-profile wall down each side, drawn only where the
+ *            neighbour is level with or below the cell — a higher neighbour
+ *            already draws a skirt across the whole height, and a second
+ *            surface coplanar with it would z-fight
+ */
+function buildSteps(level, cx, cy, floorY, variant, B) {
+  const sd = level.stairDir[cy][cx];
+  const d = DIRS[sd]; // this cell -> the deck cell
+  const alongX = d.dx !== 0;
+  const drop = floorY - DECK_Y; // negative: the flight descends
+
+  // The cell edge the deck is on, and the axis running away from it.
+  const deckEdge = alongX
+    ? (cx + (d.dx > 0 ? 1 : 0)) * CELL
+    : (cy + (d.dy > 0 ? 1 : 0)) * CELL;
+  const span = alongX ? -d.dx * CELL : -d.dy * CELL; // signed length per unit t
+  const at = (t) => deckEdge + span * t;
+  // The cross-axis extent, constant the whole way down.
+  const c0 = alongX ? cy * CELL : cx * CELL;
+  const c1 = c0 + CELL;
+  const treadY = (i) => DECK_Y + drop * ((i + 0.5) / RAMP_STEPS);
+
+  const flat = (yy) => (yy < WATER_Y ? B.wetB[variant] : B.deckB[variant]);
+  const upright = (yy) => (yy < WATER_Y ? B.wetWallB : B.wallB[B.variantAt(cx, cy, 305)]);
+
+  // Which neighbours the flanks have to be closed against.
+  const sides = alongX ? [0, 2] : [3, 1]; // north/south, or west/east
+  const flanks = sides.map((dirIndex, k) => {
+    const nx = cx + DIRS[dirIndex].dx;
+    const ny = cy + DIRS[dirIndex].dy;
+    if (!level.inBounds(nx, ny) || level.wallAt(cx, cy, dirIndex)) return null;
+    if (FLOOR_Y[level.terrain[ny][nx]] > floorY + 0.01) return null;
+    return {
+      cross: k === 0 ? c0 : c1,
+      n: [DIRS[dirIndex].dx, 0, DIRS[dirIndex].dy],
+    };
+  });
+
+  for (let i = 0; i < RAMP_STEPS; i += 1) {
+    const a = at(i / RAMP_STEPS);
+    const b = at((i + 1) / RAMP_STEPS);
+    const lo = Math.min(a, b);
+    const depth = Math.abs(b - a);
+    const yy = treadY(i);
+
+    // The tread.
+    if (alongX) addTile(flat(yy), lo, c0, depth, CELL, yy, true, 1);
+    else addTile(flat(yy), c0, lo, CELL, depth, yy, true, 1);
+
+    // The riser under its leading edge, facing down the flight.
+    const below = i + 1 < RAMP_STEPS ? treadY(i + 1) : floorY;
+    const nDown = [-d.dx, 0, -d.dy];
+    const riser = upright((yy + below) / 2);
+    if (alongX) addSkirt(riser, b, c0, b, c1, below, yy, nDown, 1);
+    else addSkirt(riser, c0, b, c1, b, below, yy, nDown, 1);
+
+    // The two flanks, as a rectangle per step: together they cut the exact
+    // staircase silhouette the treads make.
+    for (const f of flanks) {
+      if (!f) continue;
+      const wall = upright((floorY + yy) / 2);
+      if (alongX) addSkirt(wall, a, f.cross, b, f.cross, floorY, yy, f.n, 1);
+      else addSkirt(wall, f.cross, a, f.cross, b, floorY, yy, f.n, 1);
+    }
+  }
+
+  // The lip against the deck: half a riser, closing the top of the flight.
+  const lipTop = DECK_Y;
+  const lipBottom = treadY(0);
+  const edge = at(0);
+  const nDown = [-d.dx, 0, -d.dy];
+  const lip = upright((lipTop + lipBottom) / 2);
+  if (alongX) addSkirt(lip, edge, c0, edge, c1, lipBottom, lipTop, nDown, 1);
+  else addSkirt(lip, c0, edge, c1, edge, lipBottom, lipTop, nDown, 1);
 }
 
 // --------------------------------------------------------------- build ----
@@ -289,29 +400,9 @@ export function buildPoolWorld(level, materials, collider) {
       if (stairDir === 255) {
         addTile(wet ? wetB[v] : deckB[v], x * CELL, y * CELL, CELL, CELL, fy, true, 1);
       } else {
-        // A flight of steps: subdivided along the ramp axis and following the
-        // exact same curve as level.groundAt(), so what you see is what you
-        // walk on. (Tread-and-riser geometry would look better and feel worse
-        // — a 2.5 m descent in six risers is taller than anything here is
-        // allowed to step up.)
-        const d = DIRS[stairDir]; // points from this cell toward the deck cell
-        for (let i = 0; i < RAMP_SEGS; i += 1) {
-          const t0 = i / RAMP_SEGS;
-          const t1 = (i + 1) / RAMP_SEGS;
-          const along = (t) => (d.dx !== 0
-            ? { x: x * CELL + (d.dx > 0 ? (1 - t) : t) * CELL, z: y * CELL }
-            : { x: x * CELL, z: y * CELL + (d.dy > 0 ? (1 - t) : t) * CELL });
-          const p0 = along(t0);
-          const p1 = along(t1);
-          const sx = d.dx !== 0 ? Math.abs(p1.x - p0.x) : CELL;
-          const sz = d.dx !== 0 ? CELL : Math.abs(p1.z - p0.z);
-          const ox = Math.min(p0.x, p1.x);
-          const oz = Math.min(p0.z, p1.z);
-          const mid = (t0 + t1) / 2;
-          const e = mid * mid * (3 - 2 * mid);
-          const yy = DECK_Y + (fy - DECK_Y) * e;
-          addTile(yy < WATER_Y ? wetB[v] : deckB[v], ox, oz, sx, sz, yy, true, 1);
-        }
+        buildSteps(level, x, y, fy, v, {
+          deckB, wetB, wallB, wetWallB, variantAt,
+        });
       }
 
       addTile(ceilB, x * CELL, y * CELL, CELL, CELL, POOL_CEIL, false, 0.88);

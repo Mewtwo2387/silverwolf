@@ -127,10 +127,11 @@ function attachQueries(level) {
     else if (d.dy === 1) t = 1 - fz;
     else t = fz;
     t = Math.max(0, Math.min(1, t));
-    // Ease the two ends so the ramp meets the deck and the pool floor flush
-    // instead of with a crease you can feel through the camera.
-    const e = t * t * (3 - 2 * t);
-    return DECK_Y + (base - DECK_Y) * e;
+    // Linear, deliberately, and NOT eased. The flight of steps built on top of
+    // this takes its tread heights from this curve, and an eased ramp spaces
+    // them by its own derivative — 5 cm risers at the two ends and 50 cm ones
+    // through the middle, which reads as a fault rather than as a staircase.
+    return DECK_Y + (base - DECK_Y) * t;
   };
 
   /** Depth of water over a world point (0 on dry deck). */

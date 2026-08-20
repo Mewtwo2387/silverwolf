@@ -147,13 +147,26 @@ describe('poolrooms terrain generation', () => {
       const d = [[0, -1], [1, 0], [0, 1], [-1, 0]][st.dir]; // deck -> water
       const from = { x: c.x - d[0] * (CELL / 2 - 0.02), z: c.z - d[1] * (CELL / 2 - 0.02) };
       const to = { x: c.x + d[0] * (CELL / 2 - 0.02), z: c.z + d[1] * (CELL / 2 - 0.02) };
+      const heights: number[] = [];
       let prev = Infinity;
-      for (let t = 0; t <= 1; t += 0.05) {
+      for (let t = 0; t <= 1.0001; t += 0.05) {
         const g = level.groundAt(from.x + (to.x - from.x) * t, from.z + (to.z - from.z) * t);
         expect(g).toBeLessThanOrEqual(prev + 1e-6);
+        heights.push(g);
         prev = g;
       }
       expect(level.groundAt(from.x, from.z)).toBeGreaterThan(DECK_Y - 0.1);
+
+      // CONSTANT slope, not an eased one. The flight of steps drawn on top of
+      // this takes each tread's height from the middle of its own span, so an
+      // eased ramp would space the risers by its derivative — a few
+      // centimetres at the ends and half a metre through the middle. Even
+      // risers are a property of this curve being straight.
+      const drops: number[] = [];
+      for (let i = 1; i < heights.length; i += 1) drops.push(heights[i - 1] - heights[i]);
+      const first = drops[0];
+      for (const drop of drops) expect(Math.abs(drop - first)).toBeLessThan(1e-6);
+      expect(first).toBeGreaterThan(0);
     }
   });
 
