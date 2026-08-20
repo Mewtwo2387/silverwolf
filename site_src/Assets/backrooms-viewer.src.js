@@ -282,7 +282,10 @@ import {
   function visibleBounds(root) {
     const box = new THREE.Box3();
     root.traverse((o) => {
-      if (o.isMesh && o.visible) box.union(new THREE.Box3().setFromObject(o));
+      // Points count. The Smiler's body is a sprite cloud and the shoal is
+      // sprites too, so a mesh-only sweep measured the Smiler's face and called
+      // a 2 m entity 0.78 m tall on the card.
+      if ((o.isMesh || o.isPoints) && o.visible) box.union(new THREE.Box3().setFromObject(o));
     });
     return box;
   }
@@ -441,9 +444,10 @@ import {
       // No gait: there is nothing to walk with. The only dial is how much of
       // it has decided to be visible.
       current.glow += (pose.glow - current.glow) * Math.min(1, dt * 6);
-      current.eyeMat.opacity = current.glow;
-      current.toothMat.opacity = current.glow * 0.9;
-      current.lamp.intensity = current.glow * 5;
+      // The entity owns how its glow is expressed (eyes, teeth, gums, the mass,
+      // the lamp) — restating it here is how this panel ended up lighting a
+      // version of the Smiler that no longer existed.
+      current.applyGlow(opts.animate ? dt : 0);
       current.face.position.y = 1.96 + Math.sin(performance.now() / 900) * 0.04;
       return;
     }

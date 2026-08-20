@@ -23,7 +23,7 @@ import { Agent, segmentedLimb, PLAYER_SPEEDS } from './backrooms-entities.js';
 import {
   DECK, WATER_Y, DECK_Y, SHALLOW_Y, DEEP_Y,
 } from './backrooms-pools.js';
-import { glowTexture } from './backrooms-materials.js';
+import { glowTexture, smokeTexture } from './backrooms-materials.js';
 
 const TAU = Math.PI * 2;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -608,18 +608,23 @@ export class Smiler extends Agent {
   }
 
   /**
-   * There is no body. The source is clear that nobody has ever established
-   * what a Smiler actually looks like — only "reflective eyes and teeth
-   * gleaming in the dark" — so that is all there is here: two eyes and a grin,
-   * on unlit additive material, floating at head height.
+   * A black cloud with a face in it.
    *
-   * Modelling a body and hiding it in shadow would be worse, not better: the
-   * moment any light fell on it the mystery would be over.
+   * The source only ever commits to "reflective eyes and teeth gleaming in the
+   * dark", and an earlier pass took that literally: eyes and a grin and nothing
+   * else. But every depiction of the thing puts those features on a billowing
+   * dark mass, and the mass is doing real work — it is what makes the eyes read
+   * as being IN something rather than painted on the air, and it occludes the
+   * wall behind it, so a Smiler crossing a lit doorway is a hole in the room.
+   *
+   * Still no anatomy. The cloud is soft sprites, not a body: there is nothing to
+   * find on it if you get close, which is the point of the entity.
    */
   buildModel() {
     const g = this.group;
+    const rnd = this.rnd;
     this.eyeMat = new THREE.MeshBasicMaterial({
-      color: 0xdfeee8,
+      color: 0xf6fffb,
       transparent: true,
       opacity: 0,
       toneMapped: false,
@@ -627,17 +632,32 @@ export class Smiler extends Agent {
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
+    // Teeth are lit by the gums, not by the room, so they are bone warmed
+    // toward the fire behind them rather than clean white.
     this.toothMat = new THREE.MeshBasicMaterial({
-      color: 0xf2f0e2,
+      color: 0xffe9c8,
       transparent: true,
       opacity: 0,
       toneMapped: false,
       fog: true,
       depthWrite: false,
     });
+    // The gums: the ember-orange glow that outlines the grin in every drawing
+    // of one. Additive, because it is light coming out of the mouth.
+    this.gumMat = new THREE.MeshBasicMaterial({
+      color: 0xff4a10,
+      transparent: true,
+      opacity: 0,
+      toneMapped: false,
+      fog: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+
+    this.buildCloud();
 
     this.face = new THREE.Group();
-    this.face.position.y = 1.96;
+    this.face.position.set(0, 1.96, 0.16);
     g.add(this.face);
 
     // SCALE IS THE WHOLE READ. A Smiler is not a face on a person, it is a
@@ -646,55 +666,206 @@ export class Smiler extends Agent {
     // apart, which at any real distance merge into one white smudge over a
     // zigzag you cannot resolve. Everything here is about twice that.
 
-    // Eyes: wide, flattened, and canted inward, which is what turns two
-    // glowing ovals into an expression.
+    // Eyes: ROUND. They were flattened lozenges canted inward, which is a
+    // cartoon glare; the reference is two plain circles of light with no
+    // expression in them at all, and the blankness is worse. Flattened in Z
+    // only, so they sit on the face rather than bulging off it.
     this.eyes = [];
     for (const sx of [-1, 1]) {
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 10), this.eyeMat);
-      eye.scale.set(1.2, 0.56, 0.4);
-      // Set WIDE and well above the grin. Any closer and additive blending
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.115, 16, 12), this.eyeMat);
+      eye.scale.set(1, 1, 0.55);
+      // Set wide, and well above the grin. Any closer and additive blending
       // welds the pair into one lozenge, which is a headlight, not a stare.
-      eye.position.set(sx * 0.42, 0.44, 0.03);
-      eye.rotation.z = sx * -0.24;
+      eye.position.set(sx * 0.3, 0.3, 0.06);
+      eye.renderOrder = 2;
       this.face.add(eye);
       this.eyes.push(eye);
     }
 
-    // The grin: a row of tapered teeth around a wide arc, upper and lower,
-    // meshing. Built as one merged geometry — a mouth is not something any
-    // part of which needs to move on its own. The arc carries the teeth BACK
-    // as it goes wide, so the grin wraps around a head that is not there
-    // rather than sitting flat on a plane.
+    // The grin. An arc that lifts hard at the corners and carries the teeth
+    // BACK as it goes wide, so the mouth wraps around a head that is not there
+    // rather than sitting flat on a plane. Wider than the eyes are apart —
+    // that ratio is most of why the reference reads as a grin and not a face.
+    const RAD = 0.62;
+    const SPAN = 2.1; // radians of arc, corner to corner
+    const LIFT = 0.55; // how far the corners rise above the middle
+    const DEPTH = 0.34; // how far they wrap back
+    const MOUTH_Y = -0.2;
+    const arcAt = (a, dy) => new THREE.Vector3(
+      Math.sin(a) * RAD,
+      MOUTH_Y + (1 - Math.cos(a)) * LIFT + dy,
+      0.05 - (1 - Math.cos(a)) * DEPTH,
+    );
+
+    // Teeth: BLOCKS, and deliberately badly set. They were cones, which gives
+    // you a shark and a row of matched fangs reads as a costume; the reference
+    // is a tight band of squarish teeth with dark gaps in it. Every one gets its
+    // own width, height and lean, and roughly one in eight is a stub, so the
+    // grin has holes in it rather than a clean zigzag.
     const teeth = [];
-    const N = 19;
+    const N = 21;
     for (let i = 0; i < N; i += 1) {
       const t = i / (N - 1);
-      const a = (t - 0.5) * 1.9; // the arc of the smile, in radians
+      const a = (t - 0.5) * SPAN;
       const wide = Math.cos(a * 0.62); // 1 at the middle, less at the corners
       for (const up of [1, -1]) {
-        const h = (0.075 + wide * 0.075) * (up > 0 ? 1 : 0.8);
-        const geo = new THREE.ConeGeometry(0.026 + wide * 0.012, h, 5);
-        // Upper teeth point down, lower teeth point up.
-        geo.rotateX(up > 0 ? Math.PI : 0);
-        geo.translate(
-          Math.sin(a) * 0.47,
-          // The smile line: corners lifted, which is the difference between a
-          // grin and a set of jaws.
-          -0.02 + (1 - wide) * 0.16 + up * h * 0.5,
-          0.05 - (1 - Math.cos(a)) * 0.3,
+        const stub = rnd() < 0.12;
+        const h = (0.07 + wide * 0.06) * (up > 0 ? 1 : 0.85)
+          * (stub ? 0.35 : 0.7 + rnd() * 0.6);
+        const geo = new THREE.BoxGeometry(
+          (0.046 + wide * 0.022) * (0.82 + rnd() * 0.36), h, 0.03,
         );
+        geo.rotateZ((rnd() - 0.5) * 0.35);
+        // Follow the arc, or the teeth at the corners are edge-on and the grin
+        // thins out to nothing exactly where it should be widest.
+        geo.rotateY(a * 0.7);
+        const p = arcAt(a, up * h * 0.5);
+        geo.translate(p.x + (rnd() - 0.5) * 0.01, p.y, p.z + (rnd() - 0.5) * 0.015);
         teeth.push(geo);
       }
     }
     this.grin = new THREE.Mesh(mergeGeometries(teeth, false), this.toothMat);
     for (const geo of teeth) geo.dispose();
+    this.grin.renderOrder = 2;
     this.face.add(this.grin);
 
+    // Gums: two tubes running the arc, above the upper teeth and below the
+    // lower, so the row of teeth is framed by light instead of floating.
+    const gumCurve = (dy) => {
+      const pts = [];
+      for (let i = 0; i <= 24; i += 1) pts.push(arcAt((i / 24 - 0.5) * SPAN * 1.04, dy));
+      return new THREE.CatmullRomCurve3(pts);
+    };
+    const gums = [
+      new THREE.TubeGeometry(gumCurve(0.16), 30, 0.034, 6, false),
+      new THREE.TubeGeometry(gumCurve(-0.14), 30, 0.03, 6, false),
+    ];
+    this.gums = new THREE.Mesh(mergeGeometries(gums, false), this.gumMat);
+    for (const geo of gums) geo.dispose();
+    this.gums.renderOrder = 2;
+    this.face.add(this.gums);
+
     // Everything it emits is its own glow — there is no light source in the
-    // dark cells it lives in, so without this it is genuinely invisible.
-    this.lamp = new THREE.PointLight(0xbfe0d4, 0, 6, 2);
+    // dark cells it lives in, so without this it is genuinely invisible. Warm,
+    // now that the light is coming out of a mouth.
+    this.lamp = new THREE.PointLight(0xffc9a0, 0, 6, 2);
     this.lamp.position.y = 1.94;
     g.add(this.lamp);
+  }
+
+  /**
+   * The mass. Soft black sprites in three shells — a dense core, a mantle, and
+   * loose wisps at the edge — which is what gives it a fuzzy, irregular outline
+   * instead of the hard rim a sphere would have.
+   *
+   * Black with normal blending, so overlapping puffs accumulate to solid dark
+   * and the silhouette occludes the room; fog is left ON so the mass dissolves
+   * into the distance rather than staying a cutout at forty metres.
+   *
+   * Sprite SIZE is per-material, not per-point, which is the only reason this
+   * is three THREE.Points rather than one — three draw calls buys a cloud that
+   * does not look stamped out of one brush.
+   */
+  buildCloud() {
+    const rnd = this.rnd;
+    this.cloudTex = smokeTexture();
+    this.cloud = new THREE.Group();
+    this.cloud.position.set(0, 1.9, -0.12);
+    this.group.add(this.cloud);
+    this.cloudLayers = [];
+
+    // [count, sprite size, spread, base opacity, churn rate]. Sized so the mass
+    // comes out about 2.2 m across — the grin is 1.2 m and the reference hangs
+    // it in something roughly twice that, and much beyond this it starts
+    // clipping the ceiling tiles.
+    //
+    // The ratio of size to spread is the whole trick. Each shell's puffs have to
+    // overlap their neighbours or the outer ones read as a ring of separate
+    // dark circles — polka dots, not smoke — which is exactly what a wider,
+    // finer outer shell gave. Outer puffs are therefore BIG and faint, not small
+    // and dark.
+    // Counts are generous on purpose: too few and the outer puffs stand apart
+    // as lobes on the silhouette, which reads as a head with ears rather than
+    // as smoke.
+    const shells = [
+      [22, 1.25, 0.32, 0.95, 0.09],
+      [34, 1.0, 0.62, 0.8, -0.14],
+      [30, 0.7, 0.92, 0.42, 0.19],
+    ];
+    for (const [count, size, spread, opacity, rate] of shells) {
+      const pos = new Float32Array(count * 3);
+      for (let i = 0; i < count; i += 1) {
+        // Flattened front-to-back: it is a mass hanging in a corridor, not a
+        // ball, and a sphere of sprites reads as a ball however soft it is.
+        const u = rnd() * TAU;
+        const r = spread * (0.3 + rnd() * 0.7);
+        // Wider than it is tall: the grin is 1.2 m across and the mass has to
+        // contain it, corners included.
+        pos[i * 3] = Math.cos(u) * r * (1.1 + rnd() * 0.4);
+        pos[i * 3 + 1] = Math.sin(u) * r * (0.85 + rnd() * 0.35);
+        pos[i * 3 + 2] = (rnd() - 0.5) * spread * 0.7;
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      const mat = new THREE.PointsMaterial({
+        color: 0x000000,
+        map: this.cloudTex,
+        size,
+        transparent: true,
+        opacity,
+        depthWrite: false,
+        sizeAttenuation: true,
+        fog: true,
+      });
+      const layer = new THREE.Points(geo, mat);
+      // Painter order, not depth: every part of this entity writes no depth, so
+      // without an explicit order the black mass can sort in front of its own
+      // face and swallow it.
+      layer.renderOrder = -1;
+      layer.userData.rate = rate;
+      layer.userData.base = opacity;
+      this.cloud.add(layer);
+      this.cloudLayers.push(layer);
+    }
+  }
+
+  /**
+   * Push `this.glow` out to everything that expresses it.
+   *
+   * One method rather than a block in update(), because the entity viewer drives
+   * the same fade off a slider and the two had already drifted apart — the
+   * viewer was still lighting an entity that has had gums since.
+   */
+  applyGlow(dt) {
+    this.eyeMat.opacity = this.glow;
+    this.toothMat.opacity = this.glow * 0.9;
+    this.gumMat.opacity = this.glow * 0.85;
+    this.lamp.intensity = this.glow * 5;
+    // The mass never fades all the way out the way the face does: a black cloud
+    // in an unlit cell is invisible on its own, and the moment it crosses
+    // anything lit it should be a hole in the room whether or not it has
+    // decided to show you its face.
+    for (const layer of this.cloudLayers) {
+      layer.material.opacity = layer.userData.base * (0.6 + this.glow * 0.4);
+      // Each shell turns at its own rate, so the outline churns instead of
+      // spinning like one rigid object.
+      layer.rotation.z += dt * layer.userData.rate;
+      layer.rotation.y += dt * layer.userData.rate * 0.6;
+    }
+  }
+
+  /**
+   * The base sweep only releases meshes, and the cloud is three THREE.Points
+   * sharing one generated sprite — without this, every level rebuild leaks
+   * three geometries, three materials and a texture.
+   */
+  dispose() {
+    super.dispose();
+    for (const layer of this.cloudLayers) {
+      layer.geometry.dispose();
+      layer.material.dispose();
+    }
+    this.cloudTex.dispose();
   }
 
   /** Is the player looking more or less at it, with a clear line? */
@@ -750,9 +921,7 @@ export class Smiler extends Agent {
     const wantGlow = this.state === 'charge' ? 1
       : (near && this.confidence > 0.25 ? 0.45 : 0.06);
     this.glow += (wantGlow - this.glow) * Math.min(1, dt * 3.5);
-    this.eyeMat.opacity = this.glow;
-    this.toothMat.opacity = this.glow * 0.9;
-    this.lamp.intensity = this.glow * 5;
+    this.applyGlow(dt);
 
     // It always faces you — that is what the eye contact is with.
     const want = Math.atan2(player.pos.x - this.pos.x, player.pos.z - this.pos.z);
@@ -859,6 +1028,81 @@ export const WILLO = {
   HUM_RANGE: 14, // how far a hum carries to them
 };
 
+/**
+ * One Will o' Wave, ~14 cm nose to tail, built along +Z.
+ *
+ * It was a round sprite, which is what a bioluminescent thing reads as at ten
+ * metres and nothing at all at one. The source is specific — a semi-crustacean,
+ * "shrimp-like" — so this is built as one: carapace, rostrum, a jointed abdomen
+ * that curls down to a splayed tail fan, antennae longer than the body, and a
+ * suggestion of legs. Merged into a single geometry and drawn as one instanced
+ * mesh for the whole shoal.
+ */
+function shrimpGeometry() {
+  const v = (x, y, z) => new THREE.Vector3(x, y, z);
+  const parts = [];
+
+  // Carapace: the fat front half, longer than it is wide.
+  const body = new THREE.SphereGeometry(0.019, 10, 8);
+  body.scale(1, 1.15, 1.9);
+  body.translate(0, 0, 0.032);
+  parts.push(body);
+
+  // Rostrum: the spine off the front of the head every shrimp has.
+  const rostrum = new THREE.ConeGeometry(0.006, 0.032, 5);
+  rostrum.rotateX(Math.PI / 2);
+  rostrum.translate(0, 0.006, 0.083);
+  parts.push(rostrum);
+
+  // Abdomen: curling down and back. segmentedLimb's joint spheres are exactly
+  // the segment ridges of a tail, so they are turned UP here rather than hidden.
+  parts.push(segmentedLimb(new THREE.CatmullRomCurve3([
+    v(0, 0, 0.02), v(0, -0.004, -0.008), v(0, -0.013, -0.034), v(0, -0.026, -0.055),
+  ]), 0.018, 0.005, 7, 1.14));
+
+  // Tail fan: three flattened blades splayed off the end.
+  for (let i = -1; i <= 1; i += 1) {
+    const blade = new THREE.ConeGeometry(0.011, 0.034, 4);
+    blade.scale(1, 1, 0.35);
+    blade.rotateX(-Math.PI / 2 + 0.35);
+    blade.rotateY(i * 0.42);
+    blade.translate(0, -0.03, -0.068);
+    parts.push(blade);
+  }
+
+  // Antennae, longer than the animal. They are most of what makes a silhouette
+  // read as a shrimp rather than as a grub.
+  for (const sx of [-1, 1]) {
+    parts.push(segmentedLimb(new THREE.CatmullRomCurve3([
+      v(sx * 0.006, 0.004, 0.08),
+      v(sx * 0.018, 0.012, 0.115),
+      v(sx * 0.034, 0.014, 0.15),
+    ]), 0.0028, 0.0012, 4, 1));
+  }
+
+  // Legs: three pairs of bristles under the carapace.
+  for (const sx of [-1, 1]) {
+    for (let i = 0; i < 3; i += 1) {
+      const z = 0.05 - i * 0.022;
+      parts.push(segmentedLimb(new THREE.CatmullRomCurve3([
+        v(sx * 0.008, -0.008, z),
+        v(sx * 0.016, -0.019, z - 0.006),
+        v(sx * 0.02, -0.028, z - 0.014),
+      ]), 0.0026, 0.001, 3, 1));
+    }
+  }
+
+  return mergeGeometries(parts, false);
+}
+
+// Scratch objects for composing the per-individual instance matrices — one
+// shoal is 54 of these a frame, and allocating them in the loop is 54 * 3
+// throwaway objects every tick.
+const SHRIMP_OBJ = new THREE.Object3D();
+const SHRIMP_COL = new THREE.Color();
+const SHRIMP_FWD = new THREE.Vector3(0, 0, 1);
+const SHRIMP_DIR = new THREE.Vector3();
+
 export class WillOWaves extends Agent {
   constructor(level, collider, rnd) {
     super(level, collider, {
@@ -896,14 +1140,34 @@ export class WillOWaves extends Agent {
     geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
     geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e4);
 
+    // The bodies. Additive, so they glow rather than merely being lit — there
+    // is nothing down here to light them — with per-individual colour carrying
+    // the dorsal flash.
+    this.shrimpMat = new THREE.MeshBasicMaterial({
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      toneMapped: false,
+      fog: true,
+    });
+    this.shrimp = new THREE.InstancedMesh(shrimpGeometry(), this.shrimpMat, WILLO.COUNT);
+    this.shrimp.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.shrimp.frustumCulled = false;
+    // Per-individual matrices are WORLD space, so the mesh's own transform must
+    // stay identity — see placeAtCell.
+    this.shrimp.matrixAutoUpdate = false;
+    this.group.add(this.shrimp);
+
     this.pointsMat = new THREE.PointsMaterial({
-      // A Will o' Wave is 13-15 cm long. Anything much bigger and fifty of
-      // them additively blended stop being a shoal and become one white smear
-      // — which is what the first pass at this looked like.
-      size: 0.13,
+      // The halo around each body, not the body itself. A Will o' Wave is
+      // 13-15 cm long and this used to be the whole animal, at which size fifty
+      // of them additively blended are one white smear — now it only has to
+      // suggest the light coming off one, so it is small and half transparent.
+      size: 0.085,
       map: glowTexture(),
       vertexColors: true,
       transparent: true,
+      opacity: 0.55,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
       toneMapped: false,
@@ -1014,7 +1278,52 @@ export class WillOWaves extends Agent {
 
   placeAtCell(x, y) {
     super.placeAtCell(x, y);
+    // The base sweeps the group to the spawn cell, but every individual in the
+    // shoal is placed in world space beneath it, so leaving it there offsets the
+    // whole shoal (and its lamp) by one cell centre. Nothing about this entity
+    // is expressed relative to the group.
+    this.group.position.set(0, 0, 0);
     this.seedTrail();
+  }
+
+  /**
+   * The point `want` metres back along the trail from the head.
+   *
+   * Pulled out of updateShoal so it can be asked twice per individual: once for
+   * where the animal is, once for a point a little further back, and the
+   * difference between them is which way it is pointing. A shoal of shrimp all
+   * facing +Z regardless of where the file is turning is worse than the sprites
+   * were.
+   */
+  pointAt(want) {
+    let acc = 0;
+    let p = this.trail[0] || this.pos;
+    for (let j = 1; j < this.trail.length; j += 1) {
+      const seg = Math.hypot(
+        this.trail[j].x - this.trail[j - 1].x, this.trail[j].z - this.trail[j - 1].z,
+      );
+      if (acc + seg >= want) {
+        const t = seg > 1e-6 ? (want - acc) / seg : 0;
+        return {
+          x: this.trail[j - 1].x + (this.trail[j].x - this.trail[j - 1].x) * t,
+          y: this.trail[j - 1].y + (this.trail[j].y - this.trail[j - 1].y) * t,
+          z: this.trail[j - 1].z + (this.trail[j].z - this.trail[j - 1].z) * t,
+        };
+      }
+      acc += seg;
+      p = this.trail[j];
+    }
+    // Ran off the end of the breadcrumbs: carry on in the direction the tail
+    // was already going rather than parking everyone left over on the last
+    // crumb, which piles the back half of the shoal onto one point.
+    if (this.trail.length > 1) {
+      const a = this.trail[this.trail.length - 2];
+      const b = this.trail[this.trail.length - 1];
+      const len = Math.hypot(b.x - a.x, b.z - a.z) || 1;
+      const over = want - acc;
+      return { x: b.x + ((b.x - a.x) / len) * over, y: b.y, z: b.z + ((b.z - a.z) / len) * over };
+    }
+    return p;
   }
 
   /**
@@ -1044,44 +1353,29 @@ export class WillOWaves extends Agent {
     this.phase = (this.phase || 0) + dt * (2.2 + this.hum * 5);
     for (let i = 0; i < WILLO.COUNT; i += 1) {
       const want = i * WILLO.SPACING;
-      // Walk back along the trail to the point `want` metres behind the head.
-      let acc = 0;
-      let p = this.trail[0] || this.pos;
-      let found = false;
-      for (let j = 1; j < this.trail.length; j += 1) {
-        const seg = Math.hypot(
-          this.trail[j].x - this.trail[j - 1].x, this.trail[j].z - this.trail[j - 1].z,
-        );
-        if (acc + seg >= want) {
-          const t = seg > 1e-6 ? (want - acc) / seg : 0;
-          p = {
-            x: this.trail[j - 1].x + (this.trail[j].x - this.trail[j - 1].x) * t,
-            y: this.trail[j - 1].y + (this.trail[j].y - this.trail[j - 1].y) * t,
-            z: this.trail[j - 1].z + (this.trail[j].z - this.trail[j - 1].z) * t,
-          };
-          found = true;
-          break;
-        }
-        acc += seg;
-        p = this.trail[j];
-      }
-      // Ran off the end of the breadcrumbs: carry on in the direction the tail
-      // was already going rather than parking everyone left over on the last
-      // crumb, which piles the back half of the shoal onto one point.
-      if (!found && this.trail.length > 1) {
-        const a = this.trail[this.trail.length - 2];
-        const b = this.trail[this.trail.length - 1];
-        const len = Math.hypot(b.x - a.x, b.z - a.z) || 1;
-        const over = want - acc;
-        p = { x: b.x + ((b.x - a.x) / len) * over, y: b.y, z: b.z + ((b.z - a.z) / len) * over };
-      }
+      const p = this.pointAt(want);
+      // A second sample further back down the file, for heading. Taken from the
+      // UNWOBBLED points: wobbling both ends first makes every shrimp twitch
+      // through a half-turn each time the sine crosses.
+      const back = this.pointAt(want + 0.14);
       const wob = this.phase + i * 0.7;
-      this.attr.setXYZ(
-        i,
-        p.x + Math.sin(wob) * 0.12,
-        p.y + Math.sin(wob * 1.7) * 0.09,
-        p.z + Math.cos(wob * 0.9) * 0.12,
-      );
+      const x = p.x + Math.sin(wob) * 0.12;
+      const y = p.y + Math.sin(wob * 1.7) * 0.09;
+      const z = p.z + Math.cos(wob * 0.9) * 0.12;
+      this.attr.setXYZ(i, x, y, z);
+
+      SHRIMP_DIR.set(p.x - back.x, p.y - back.y, p.z - back.z);
+      if (SHRIMP_DIR.lengthSq() > 1e-8) {
+        SHRIMP_DIR.normalize();
+        SHRIMP_OBJ.quaternion.setFromUnitVectors(SHRIMP_FWD, SHRIMP_DIR);
+      }
+      SHRIMP_OBJ.position.set(x, y, z);
+      // A slow roll each, so the file is not fifty animals swimming perfectly
+      // upright in formation.
+      SHRIMP_OBJ.rotateZ(Math.sin(wob * 0.8) * 0.3);
+      SHRIMP_OBJ.updateMatrix();
+      this.shrimp.setMatrixAt(i, SHRIMP_OBJ.matrix);
+
       // The blue dorsal flash runs down the file rather than pulsing in unison
       // — a shoal flashing as one body would read as a single object.
       const flash = 0.5 + 0.5 * Math.sin(this.phase * 1.8 - i * 0.42);
@@ -1090,9 +1384,12 @@ export class WillOWaves extends Agent {
       // will desaturate anything near 1 in all three channels, and a blue
       // shoal that renders white is just a light.
       this.colAttr.setXYZ(i, 0.05 * k, 0.32 * k, 1.0 * k);
+      this.shrimp.setColorAt(i, SHRIMP_COL.setRGB(0.08 * k, 0.4 * k, 1.0 * k));
     }
     this.attr.needsUpdate = true;
     this.colAttr.needsUpdate = true;
+    this.shrimp.instanceMatrix.needsUpdate = true;
+    if (this.shrimp.instanceColor) this.shrimp.instanceColor.needsUpdate = true;
 
     this.lamp.position.copy(this.pos);
     // Kept low on purpose. The shoal should tint the tile it swims over, not
@@ -1106,9 +1403,10 @@ export class WillOWaves extends Agent {
   present() {}
 
   /**
-   * The base sweep only releases meshes, and the shoal is a THREE.Points with
-   * its own generated glow sprite — without this, every level rebuild leaks a
-   * buffer geometry, a material and a texture.
+   * The base sweep only releases meshes. The bodies are an InstancedMesh, which
+   * is one, but the halo is a THREE.Points with its own generated sprite —
+   * without this, every level rebuild leaks a buffer geometry, a material and a
+   * texture.
    */
   dispose() {
     super.dispose();
@@ -1158,9 +1456,10 @@ export const POOL_ENTITY_INFO = {
     origin: 'Backrooms Wiki — Entity 3',
     href: 'https://backrooms-wiki.wikidot.com/entity-3',
     blurb: 'Nobody has established what a Smiler is, only what shows: reflective eyes and a long '
-      + 'grin of teeth gleaming in the dark. It is modelled as exactly that and nothing else. It '
-      + 'lives in the unlit stretches of the level and physically cannot route through a lit '
-      + 'room — the light is not a deterrent, it is a wall.',
+      + 'grin of teeth gleaming out of a billowing dark mass. There is no anatomy under it — the '
+      + 'body is smoke, and there is nothing to find on it up close. It lives in the unlit '
+      + 'stretches of the level and physically cannot route through a lit room — the light is not '
+      + 'a deterrent, it is a wall.',
     senses: 'It sees everything. It hears you panic.',
     counterplay: 'The inverse of the chaser: hold eye contact and it will not move. Turn your '
       + `back for ${SMILER.PATIENCE} s inside ${SMILER.WATCH_RANGE} m, or sprint anywhere near `

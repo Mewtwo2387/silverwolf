@@ -399,6 +399,27 @@ export function glowTexture() {
   return new THREE.CanvasTexture(c);
 }
 
+/**
+ * A soft puff, for smoke. NOT glowTexture: that one's alpha starts falling off
+ * immediately from the centre, which is right for a light and wrong for matter
+ * — a black puff drawn with it shows only its dense core and reads as a speck
+ * however large you make the sprite. This holds full alpha out to nearly half
+ * the radius before it feathers, so a sprite covers the area it claims to and a
+ * few dozen of them overlap into one opaque mass.
+ */
+export function smokeTexture() {
+  const c = makeCanvas(64);
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.44, 'rgba(255,255,255,1)');
+  g.addColorStop(0.72, 'rgba(255,255,255,0.52)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+}
+
 // ----------------------------------------------------------- library ----
 
 export const WALLPAPER_VARIANTS = 4;
