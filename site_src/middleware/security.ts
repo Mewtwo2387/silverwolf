@@ -10,9 +10,20 @@ export function buildCsp(nonce: string): string {
     // block is migrated to a class or hash. Today this allowance gives any future
     // XSS a CSS-injection exfil channel (background-image: url(...) leaks).
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: https://cdn.discordapp.com https://media.discordapp.net https://media.tenor.com https://c.tenor.com https://drive.google.com https://media.forgecdn.net",
+    // blob: is required by the Backrooms player model. three.js's GLTFLoader
+    // extracts a GLB's embedded textures with URL.createObjectURL and loads
+    // them through an <img>, so without it every material on the figure renders
+    // untextured white. It is a narrow allowance: a blob: URL can only ever
+    // name bytes this page itself created, so it adds no new remote origin and
+    // no exfiltration channel.
+    "img-src 'self' data: blob: https://cdn.discordapp.com https://media.discordapp.net https://media.tenor.com https://c.tenor.com https://drive.google.com https://media.forgecdn.net",
     "font-src 'self'",
-    "connect-src 'self'",
+    // blob: here for the same reason as img-src above, and it is the half that
+    // actually matters: three.js decodes a GLB's embedded textures with
+    // ImageBitmapLoader, which fetch()es the object URL, so the load is
+    // governed by connect-src rather than img-src. Both are needed — img-src
+    // covers the <img> fallback path on browsers without createImageBitmap.
+    "connect-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",
     "frame-ancestors 'none'",

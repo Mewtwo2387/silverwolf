@@ -221,28 +221,23 @@ export async function loadPlayerModel() {
     const vz = player.vel.z;
     const speed = Math.hypot(vx, vz);
 
-    // Where the body should face. Both branches feed atan2(x, z) because the
-    // rig faces +Z; the idle case uses the camera's own forward vector rather
-    // than player.yaw so the two -Z/+Z conventions never have to be reconciled
-    // by hand (which is how the body ended up facing backwards).
-    let want = bodyYaw;
-    let rate = 0;
-    if (speed > 0.12) {
-      want = Math.atan2(vx, vz);
-      rate = dt * 12;
-    } else if (firstPerson) {
-      // Standing still in first person, square the body up with the camera so
-      // looking down shows your own chest rather than your shoulder.
-      want = Math.atan2(player.forward.x, player.forward.z);
-      rate = dt * 6;
-    }
-    if (rate > 0) {
-      let d = want - bodyYaw;
-      while (d > Math.PI) d -= Math.PI * 2;
-      while (d < -Math.PI) d += Math.PI * 2;
-      bodyYaw += d * Math.min(1, rate);
-    }
+    // The body faces where you are *looking*, always — not where you are
+    // moving. Aiming it at the velocity instead makes walking backwards look
+    // like walking forwards in another direction, and it drags the arms across
+    // the screen whenever you pan, because the body is chasing the camera by a
+    // lerp. Locking yaw to the camera exactly is what keeps your own hands
+    // still in view while you look around, which is how every first-person
+    // game with a visible body behaves.
+    bodyYaw = Math.atan2(player.forward.x, player.forward.z);
     group.rotation.y = bodyYaw;
+
+    // Which way you are travelling relative to that facing. Backwards movement
+    // plays the walk cycle in reverse rather than turning the body round, so
+    // stepping back reads as stepping back.
+    const facingDot = speed > 0.12
+      ? (vx * Math.sin(bodyYaw) + vz * Math.cos(bodyYaw)) / speed
+      : 1;
+    const reversing = facingDot < -0.35;
 
     // Feet on the ground, not eyes. In first person the body is also pushed
     // back along its own facing, so the camera — which sits on the player's
@@ -256,13 +251,19 @@ export async function loadPlayerModel() {
     );
 
     if (!frozen) {
+      // Every locomotion clip in the library walks forwards, so a reversed
+      // timeScale is what backing away looks like. There is no strafe clip, so
+      // sidestepping plays the forward walk — visibly a compromise, but a much
+      // smaller one than spinning the body to face its own velocity.
+      const dir = reversing ? -1 : 1;
       if (state === 'death') play('death', { loop: false });
-      else if (state === 'swim') play(speed > 0.3 ? 'swim' : 'tread');
+      else if (state === 'swim') play(speed > 0.3 ? 'swim' : 'tread', { timeScale: dir });
       else if (state === 'air') play('jumpLoop');
-      else if (state === 'crouch') play(speed > 0.15 ? 'crouchWalk' : 'crouchIdle');
-      else if (speed > 3.4) play('sprint');
-      else if (speed > 1.9) play('jog');
-      else if (speed > 0.15) play('walk', { timeScale: Math.max(0.6, speed / 1.4) });
+      else if (state === 'crouch') {
+        play(speed > 0.15 ? 'crouchWalk' : 'crouchIdle', { timeScale: speed > 0.15 ? dir : 1 });
+      } else if (speed > 3.4) play('sprint', { timeScale: dir });
+      else if (speed > 1.9) play('jog', { timeScale: dir });
+      else if (speed > 0.15) play('walk', { timeScale: Math.max(0.6, speed / 1.4) * dir });
       else play('idle');
     }
 
@@ -275,11 +276,20 @@ export async function loadPlayerModel() {
     else mixer.update(dt);
     // Must come after the mixer: the clips write these bones every frame, so a
     // bend applied before would simply be overwritten.
-    applySpineBend(player.pitch);
+    //
+    // Third person only. The lean is the right look from outside, but the
+    // camera here is pinned to eye height by the game rather than carried on
+    // the head bone, so in first person the torso rotates *up into the lens*
+    // instead of away — the opposite of what the bend is for. Upright, looking
+    // down gives a clean view past the chest to the legs.
+    applySpineBend(firstPerson ? 0 : player.pitch);
   }
 
-  // Scratch vector — the bend runs every frame and must not allocate.
+  // Scratch objects — the bend runs every frame and must not allocate.
   const bendAxis = new THREE.Vector3();
+  const bendQuat = new THREE.Quaternion();
+  const parentQuat = new THREE.Quaternion();
+  const groupQuat = new THREE.Quaternion();
   // The un-bent pose of each spine bone, as the clip last left it.
   const spineClean = spineBones.map(([bone]) => bone.quaternion.clone());
 
@@ -293,9 +303,13 @@ export async function loadPlayerModel() {
    * whole upper body the way a real one does, which also carries the shoulders
    * out of the downward view.
    *
-   * The axis is derived in world space from the body's own yaw rather than
-   * assumed to be a bone's local X — UE-style rigs orient bones along their
-   * length, so the local axes are not the ones you would guess.
+   * The axis is the body's own right — constant in the group's frame, which is
+   * why it is built from (1, 0, 0) there and then carried into each bone's
+   * PARENT space. Object3D.rotateOnWorldAxis is the obvious tool and the wrong
+   * one: it premultiplies onto the local quaternion and so assumes the object
+   * has no rotated parents. These bones hang off a group that yaws with the
+   * camera, so using it made the whole lean depend on which way you were
+   * facing — the arms drifted across the screen as you panned.
    */
   function applySpineBend(pitch) {
     if (!spineBones.length) return;
@@ -306,10 +320,16 @@ export async function loadPlayerModel() {
     for (let i = 0; i < spineBones.length; i += 1) {
       spineClean[i].copy(spineBones[i][0].quaternion);
     }
-    // Body-right in world space, for a +Z-facing rig turned by bodyYaw.
-    bendAxis.set(Math.cos(bodyYaw), 0, -Math.sin(bodyYaw));
+    group.updateMatrixWorld(true);
+    group.getWorldQuaternion(groupQuat);
     for (const [bone, share] of spineBones) {
-      bone.rotateOnWorldAxis(bendAxis, -pitch * share);
+      bone.parent.getWorldQuaternion(parentQuat).invert();
+      bendAxis.set(1, 0, 0).applyQuaternion(groupQuat).applyQuaternion(parentQuat).normalize();
+      bendQuat.setFromAxisAngle(bendAxis, -pitch * share);
+      bone.quaternion.premultiply(bendQuat);
+      // Each spine bone is the next one's parent, so its world matrix has to be
+      // current before the next iteration reads it.
+      bone.updateMatrixWorld(true);
     }
   }
 

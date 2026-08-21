@@ -72,6 +72,17 @@ entry points. How the assets were produced (and how to regenerate or re-source t
 `scripts/backrooms-assets/README.md`. **Every third-party asset must be listed in the `REFERENCES`
 `Art assets` group in `pages/games/backrooms.ts`,** including CC0 ones that do not require it.
 
+> **The harness sends no CSP — production does.** `tests/harness` skips `securityHeadersMiddleware`
+> entirely, so anything the CSP blocks looks perfect there and breaks only in the real app. This
+> already bit once: three.js's `GLTFLoader` pulls a GLB's embedded textures out as `blob:` object
+> URLs and decodes them with `ImageBitmapLoader`, which `fetch()`es them — so the load is governed
+> by **`connect-src`**, not `img-src`, and the player model rendered as an untextured white
+> mannequin in `bun run dev` while the harness showed it fully textured. Both `img-src` and
+> `connect-src` now allow `blob:`. **After any asset-loading change, check `bun run dev` on
+> `:6769`, not just the harness.** Note also that `cmux browser eval` falls back to an isolated
+> world on a CSP page, so page globals like `window.__backrooms` are invisible there — drive the
+> real app through the DOM, and use the harness when you need the scripting API.
+
 **Verify in a browser — a green `build:js` is not enough.** The bundler does not catch undefined
 identifiers: a forgotten import bundles fine and only throws `ReferenceError` at runtime. Run
 `bun run test:harness` (standalone dev server, port 7788, `HARNESS_PORT` to override) — it renders
