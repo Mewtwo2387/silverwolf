@@ -31,6 +31,19 @@ export const DEFAULT_TIMEOUT_MS = 180_000;
  *  previous single-request timeout (10 minutes). */
 export const DEFAULT_OVERALL_TIMEOUT_MS = 600_000;
 
+/** Hard ceiling on any single attempt, imposed by the runtime rather than by us.
+ *
+ *  Bun 1.4 made the fetch idle timeout an *absolute* 300s deadline for receiving
+ *  response headers, and a non-streaming completion sends no headers until the
+ *  model has finished generating. There is no per-call override — `timeout` is
+ *  not part of `BunFetchRequestInit`, and the request goes through the OpenAI
+ *  SDK regardless — so any per-attempt timeout above 300s is unreachable.
+ *
+ *  We clamp slightly under it so the attempt trips *our* AbortSignal and
+ *  surfaces a classifiable SDK timeout, instead of racing Bun's deadline and
+ *  surfacing an opaque network error. Callers asking for more get this. */
+export const MAX_ATTEMPT_TIMEOUT_MS = 280_000;
+
 /** Is this failure worth retrying? Rate limits, server errors, timeouts and
  *  network failures are; client errors (400/401/402/403/404…) are not. */
 export function isRetryableCompletionError(err: any): boolean {
@@ -108,7 +121,7 @@ export async function createChatCompletionWithRetry(
   body: any,
   opts: RetryOptions = {},
 ): Promise<any> {
-  const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const timeoutMs = Math.min(opts.timeoutMs ?? DEFAULT_TIMEOUT_MS, MAX_ATTEMPT_TIMEOUT_MS);
   const deadline = Date.now() + (opts.overallTimeoutMs ?? DEFAULT_OVERALL_TIMEOUT_MS);
   const delays = opts.delaysMs ?? RETRY_DELAYS_MS;
   const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((resolve) => { setTimeout(resolve, ms); }));
