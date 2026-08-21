@@ -7,7 +7,7 @@ import { recordUsage, getCalibrationMultiplier } from './tokenCalibration';
 import { countTokensOpenRouterMessages } from './tokenizer';
 import { listSearchTools, listSearchToolsGemini, callSearchTool } from './mcp';
 import { creditsForTokens, isFreeModel, ESTIMATED_COMPLETION_TOKENS } from './aiPricing';
-import { createChatCompletionWithRetry } from './llmRetry';
+import { createChatCompletionWithRetry, MAX_ATTEMPT_TIMEOUT_MS } from './llmRetry';
 import { ALL_MEDIA_KINDS, type MediaKind } from './aiMedia';
 import {
   IMAGE_GEN_TOOL_NAME,
@@ -413,10 +413,15 @@ ${systemPrompt || ''}
       let completion: any;
       try {
         // Music composing turns emit a large composition JSON under a raised
-        // max_tokens cap — give them a longer per-attempt timeout.
+        // max_tokens cap — give them the longest per-attempt timeout the runtime
+        // allows. This used to ask for 480s, which Bun 1.4 cannot honour: it caps
+        // fetch at an absolute 300s deadline for response headers, and a
+        // non-streaming completion sends none until generation finishes. If a
+        // composition genuinely needs longer than this, the fix is to stream that
+        // turn, not to raise the number.
         // eslint-disable-next-line no-await-in-loop
         completion = await createChatCompletionWithRetry(openrouter, requestBody, {
-          timeoutMs: musicGuideRead ? 480_000 : undefined,
+          timeoutMs: musicGuideRead ? MAX_ATTEMPT_TIMEOUT_MS : undefined,
         });
       } catch (err: any) {
         const msg = (err?.message || '').toLowerCase();

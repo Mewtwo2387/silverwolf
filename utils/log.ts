@@ -41,8 +41,22 @@ function handleUncaughtException(error: Error): void {
   logError('----- UNCAUGHT EXCEPTION: -----', error);
 }
 
+// A rejected promise nobody awaited is fatal by default — the process exits
+// with code 1 and Docker restarts the bot. That is far too blunt for this
+// codebase: schedulers, keyword handlers and the interaction dispatcher all
+// fire async work that nobody awaits, so one failed Discord or DB call would
+// take the whole bot (and the website it hosts) down. Log and keep serving,
+// mirroring the uncaughtException handler above.
+//
+// `reason` is whatever was passed to reject() — not necessarily an Error —
+// so it is typed as unknown and logError stringifies non-Errors.
+function handleUnhandledRejection(reason: unknown): void {
+  logError('----- UNHANDLED REJECTION: -----', reason);
+}
+
 process.on('uncaughtException', handleUncaughtException);
-log('Catching uncaught exceptions...');
+process.on('unhandledRejection', handleUnhandledRejection);
+log('Catching uncaught exceptions and unhandled rejections...');
 
 export {
   log,

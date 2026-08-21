@@ -5,6 +5,8 @@ import {
   createChatCompletionWithRetry,
   isRetryableCompletionError,
   RETRY_DELAYS_MS,
+  MAX_ATTEMPT_TIMEOUT_MS,
+  DEFAULT_TIMEOUT_MS,
 } from '../../utils/llmRetry';
 
 function fakeClient(behavior: ((call: number) => any)[]): { client: any; calls: () => number } {
@@ -117,5 +119,70 @@ describe('createChatCompletionWithRetry', () => {
     };
     await createChatCompletionWithRetry(client, {}, { timeoutMs: 12345, sleep: noSleep });
     expect(seenOptions?.timeout).toBe(12345);
+  });
+});
+
+describe('per-attempt timeout ceiling', () => {
+  function capturingClient(): { client: any; seen: () => any } {
+    let seenOptions: any;
+    const client = {
+      chat: {
+        completions: {
+          create: async (_body: any, options?: any) => { seenOptions = options; return { ok: true }; },
+        },
+      },
+    };
+    return { client, seen: () => seenOptions };
+  }
+
+  test('stays below the runtime deadline it is protecting against', () => {
+    // Bun 1.4 caps fetch at an absolute 300s deadline for response headers.
+    // The ceiling has to sit under that or it does not do anything.
+    expect(MAX_ATTEMPT_TIMEOUT_MS).toBeLessThan(300_000);
+  });
+
+  test('clamps a caller asking for more than the ceiling', async () => {
+    const { client, seen } = capturingClient();
+    // 480s is what the music-composing turn used to ask for.
+    await createChatCompletionWithRetry(client, {}, { timeoutMs: 480_000, sleep: noSleep });
+    expect(seen()?.timeout).toBe(MAX_ATTEMPT_TIMEOUT_MS);
+  });
+
+  test('leaves a request under the ceiling untouched', async () => {
+    const { client, seen } = capturingClient();
+    await createChatCompletionWithRetry(client, {}, { timeoutMs: 5_000, sleep: noSleep });
+    expect(seen()?.timeout).toBe(5_000);
+  });
+
+  test('the default timeout is unaffected by the clamp', async () => {
+    const { client, seen } = capturingClient();
+    await createChatCompletionWithRetry(client, {}, { sleep: noSleep });
+    expect(seen()?.timeout).toBe(DEFAULT_TIMEOUT_MS);
+    expect(DEFAULT_TIMEOUT_MS).toBeLessThan(MAX_ATTEMPT_TIMEOUT_MS);
+  });
+
+  test.each([
+    ['NaN', NaN],
+    ['zero', 0],
+    ['negative', -1],
+    ['fractional', 1.5],
+    ['Infinity', Infinity],
+  ])('rejects an explicit %s timeout instead of passing it to the SDK', async (_label, value) => {
+    const { client, seen } = capturingClient();
+    await expect(
+      createChatCompletionWithRetry(client, {}, { timeoutMs: value as number, sleep: noSleep }),
+    ).rejects.toThrow(TypeError);
+    // The point is that nothing reached the SDK — NaN in particular used to
+    // survive Math.min/Math.max and arrive as `timeout: NaN`.
+    expect(seen()).toBeUndefined();
+  });
+
+  test('the remaining overall budget still wins when it is smaller', async () => {
+    const { client, seen } = capturingClient();
+    await createChatCompletionWithRetry(client, {}, {
+      timeoutMs: 480_000, overallTimeoutMs: 1_000, sleep: noSleep,
+    });
+    // min(clamped per-attempt, remaining budget) — the budget is tighter here.
+    expect(seen()?.timeout).toBeLessThanOrEqual(1_000);
   });
 });

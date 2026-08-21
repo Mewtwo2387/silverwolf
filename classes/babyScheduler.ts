@@ -1,23 +1,36 @@
-import { log } from '../utils/log';
+import { log, logError } from '../utils/log';
 // Note: Bun automatically reads .env files
 import { getAmount } from '../utils/claim';
 
 class BabyScheduler {
   client: any;
-  private dailyJob: BunCronJob | null = null;
-  private tenMinuteJob: BunCronJob | null = null;
+  private dailyJob: Bun.CronJob | null = null;
+  private tenMinuteJob: Bun.CronJob | null = null;
 
   constructor(client: any) {
     this.client = client;
   }
 
   start(): void {
-    this.dailyJob = (Bun.cron as any)('0 0 * * *', async () => {
-      await this.dailyAutomations();
-    });
-    this.tenMinuteJob = (Bun.cron as any)('*/10 * * * *', async () => {
-      await this.tenMinuteAutomations();
-    });
+    // utils/log installs a global unhandledRejection handler, so a rejection
+    // escaping here no longer kills the process. These catches are still worth
+    // having: they name the failing automation in the log instead of surfacing a
+    // bare stack from the scheduler, and they keep the job's next fire clean.
+    // Both automations touch the DB and Discord, either of which can throw.
+    this.dailyJob = Bun.cron('0 0 * * *', async () => {
+      try {
+        await this.dailyAutomations();
+      } catch (error) {
+        logError('Error during daily baby automations:', error);
+      }
+    }, { tz: 'UTC' });
+    this.tenMinuteJob = Bun.cron('*/10 * * * *', async () => {
+      try {
+        await this.tenMinuteAutomations();
+      } catch (error) {
+        logError('Error during ten-minute baby automations:', error);
+      }
+    }, { tz: 'UTC' });
   }
 
   stop(): void {
@@ -26,18 +39,26 @@ class BabyScheduler {
   }
 
   async dailyAutomations(): Promise<void> {
+    // Loading the list is all-or-nothing, so a failure here propagates to the
+    // scheduler's catch. Each baby is then isolated: a deleted channel or a bad
+    // row for one baby must not skip everyone after it in the list, which would
+    // silently cost them their daily automation every day.
     const babies = await this.client.db.baby.getAllBabies();
     for (const baby of babies) {
       if (baby.status === 'born') {
-        switch (baby.job) {
-          case 'nuggieClaimer':
-            await this.dailyNuggieClaim(baby);
-            break;
-          case 'pinger':
-            await this.dailyPing(baby);
-            break;
-          default:
-            log(`${baby.name} (${baby.id}) have no daily tasks`);
+        try {
+          switch (baby.job) {
+            case 'nuggieClaimer':
+              await this.dailyNuggieClaim(baby);
+              break;
+            case 'pinger':
+              await this.dailyPing(baby);
+              break;
+            default:
+              log(`${baby.name} (${baby.id}) have no daily tasks`);
+          }
+        } catch (error) {
+          logError(`Daily automation failed for ${baby.name} (${baby.id}):`, error);
         }
       } else {
         log(`${baby.name} (${baby.id}) is not born`);
@@ -46,15 +67,20 @@ class BabyScheduler {
   }
 
   async tenMinuteAutomations(): Promise<void> {
+    // Same isolation as dailyAutomations: one baby's failure must not stop the rest.
     const babies = await this.client.db.baby.getAllBabies();
     for (const baby of babies) {
       if (baby.status === 'born') {
-        switch (baby.job) {
-          case 'gambler':
-            await this.tenMinuteGamble(baby);
-            break;
-          default:
-            log(`${baby.name} (${baby.id}) have no ten minute tasks`);
+        try {
+          switch (baby.job) {
+            case 'gambler':
+              await this.tenMinuteGamble(baby);
+              break;
+            default:
+              log(`${baby.name} (${baby.id}) have no ten minute tasks`);
+          }
+        } catch (error) {
+          logError(`Ten-minute automation failed for ${baby.name} (${baby.id}):`, error);
         }
       } else {
         log(`${baby.name} (${baby.id}) is not born`);
