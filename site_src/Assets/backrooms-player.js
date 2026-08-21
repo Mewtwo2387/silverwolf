@@ -18,10 +18,13 @@
 //     for one with the head triangles cut out, not by hiding or shrinking the
 //     head bone. See the long note above that code for why the obvious
 //     approaches fail.
-//   * The figure never turns to face where you are *looking*, only where you
-//     are *going*. Yaw-locking a body to the camera makes it pirouette on the
-//     spot every time the mouse moves, which reads as a bug even though it is
-//     technically correct for an FPS.
+//   * The two views want opposite facing rules and get them. First person
+//     locks the body to the camera so your hands stay put on screen; third
+//     person lets the camera orbit freely and turns the avatar toward where it
+//     is being driven. Do not unify them.
+//   * In first person the body is placed to keep the *neck* a fixed distance
+//     from the camera, not the hips. The run cycles pitch the torso a long way
+//     forward, and a fixed hip offset puts the shoulders in front of the lens.
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -53,15 +56,6 @@ const FADE = 0.18; // seconds to cross-fade between clips
 // shows shoulders and inside surfaces. Roughly half a head's depth.
 const BODY_SETBACK = 0.16;
 
-// Share of camera pitch each spine joint takes when looking up or down. Real
-// necks are not the only thing that bends; leaning the chest is what puts your
-// own torso where you expect it and keeps the shoulders out of frame. Sums to
-// well under 1 so the body leans rather than folds.
-const SPINE_BEND = [
-  ['spine_01', 0.16],
-  ['spine_02', 0.20],
-  ['spine_03', 0.24],
-];
 
 /**
  * Load and wire the player figure.
@@ -82,12 +76,10 @@ export async function loadPlayerModel() {
   group.add(root);
 
   const skinned = [];
-  const spineBones = [];
+  // The bone the first-person camera is anchored behind — see setbackFor().
+  let neckBone = null;
   root.traverse((o) => {
-    if (o.isBone) {
-      const bend = SPINE_BEND.find(([name]) => name === o.name);
-      if (bend) spineBones.push([o, bend[1]]);
-    }
+    if (o.isBone && o.name === 'neck_01') neckBone = o;
     if (o.isSkinnedMesh) {
       skinned.push(o);
       // The figure is lit by the same fixtures as the walls; frustum culling on
@@ -221,37 +213,38 @@ export async function loadPlayerModel() {
     const vz = player.vel.z;
     const speed = Math.hypot(vx, vz);
 
-    // The body faces where you are *looking*, always — not where you are
-    // moving. Aiming it at the velocity instead makes walking backwards look
-    // like walking forwards in another direction, and it drags the arms across
-    // the screen whenever you pan, because the body is chasing the camera by a
-    // lerp. Locking yaw to the camera exactly is what keeps your own hands
-    // still in view while you look around, which is how every first-person
-    // game with a visible body behaves.
-    bodyYaw = Math.atan2(player.forward.x, player.forward.z);
+    // Facing. The two views want opposite things and get them.
+    //
+    // First person locks the body to the camera, exactly and without smoothing:
+    // that is what keeps your own hands still on screen while you look around,
+    // and it is what lets backing away be a reversed walk cycle rather than the
+    // body spinning to chase its own velocity.
+    //
+    // Third person does the conventional thing instead — the camera orbits
+    // freely and the avatar ignores it, turning only toward where the stick is
+    // pushing it. You can walk one way and look another, which is the whole
+    // point of the view. Standing still it simply holds its last heading.
+    if (firstPerson) {
+      bodyYaw = Math.atan2(player.forward.x, player.forward.z);
+    } else if (speed > 0.12) {
+      const want = Math.atan2(vx, vz);
+      let d = want - bodyYaw;
+      while (d > Math.PI) d -= Math.PI * 2;
+      while (d < -Math.PI) d += Math.PI * 2;
+      bodyYaw += d * Math.min(1, dt * 10);
+    }
     group.rotation.y = bodyYaw;
 
-    // Which way you are travelling relative to that facing. Backwards movement
-    // plays the walk cycle in reverse rather than turning the body round, so
-    // stepping back reads as stepping back.
+    // Which way you are travelling relative to that facing. Only ever non-1 in
+    // first person, where the body is pinned to the camera; in third person the
+    // body has already turned to face its own velocity.
     const facingDot = speed > 0.12
       ? (vx * Math.sin(bodyYaw) + vz * Math.cos(bodyYaw)) / speed
       : 1;
     const reversing = facingDot < -0.35;
 
-    // Feet on the ground, not eyes. In first person the body is also pushed
-    // back along its own facing, so the camera — which sits on the player's
-    // centre line — ends up at the front of the head instead of buried in the
-    // middle of the chest. See BODY_SETBACK.
-    const back = firstPerson ? BODY_SETBACK : 0;
-    group.position.set(
-      player.pos.x - Math.sin(bodyYaw) * back,
-      player.y,
-      player.pos.z - Math.cos(bodyYaw) * back,
-    );
-
     if (!frozen) {
-      // Every locomotion clip in the library walks forwards, so a reversed
+      // Every locomotion clip in the library runs forwards, so a reversed
       // timeScale is what backing away looks like. There is no strafe clip, so
       // sidestepping plays the forward walk — visibly a compromise, but a much
       // smaller one than spinning the body to face its own velocity.
@@ -267,79 +260,62 @@ export async function loadPlayerModel() {
       else play('idle');
     }
 
-    // setTime() rather than update(0) when frozen: applySpineBend() is
-    // cumulative and only safe because the mixer rewrites these bones from the
-    // clip every frame. update(0) does not guarantee that write, and the bend
-    // then winds the spine further on every frame until the body folds double.
-    restoreSpine();
     if (frozen) mixer.setTime(frozenTime);
     else mixer.update(dt);
-    // Must come after the mixer: the clips write these bones every frame, so a
-    // bend applied before would simply be overwritten.
-    //
-    // Third person only. The lean is the right look from outside, but the
-    // camera here is pinned to eye height by the game rather than carried on
-    // the head bone, so in first person the torso rotates *up into the lens*
-    // instead of away — the opposite of what the bend is for. Upright, looking
-    // down gives a clean view past the chest to the legs.
-    applySpineBend(firstPerson ? 0 : player.pitch);
+
+    // Placing the body comes last, because in first person how far back it goes
+    // depends on the pose the mixer just produced. See neckLean().
+    const back = firstPerson ? setbackFor(dt) : 0;
+    group.position.set(
+      player.pos.x - Math.sin(bodyYaw) * back,
+      player.y,
+      player.pos.z - Math.cos(bodyYaw) * back,
+    );
   }
 
-  // Scratch objects — the bend runs every frame and must not allocate.
-  const bendAxis = new THREE.Vector3();
-  const bendQuat = new THREE.Quaternion();
-  const parentQuat = new THREE.Quaternion();
-  const groupQuat = new THREE.Quaternion();
-  // The un-bent pose of each spine bone, as the clip last left it.
-  const spineClean = spineBones.map(([bone]) => bone.quaternion.clone());
+  // Where the neck sits, front-to-back, in the rig's own space when standing
+  // still. Everything is measured against this.
+  const NECK_REST_Z = -0.02;
+  // Gap kept between the camera and the neck. Tuned on the idle pose, where it
+  // is the difference between the lens being inside the collar and just clear
+  // of it.
+  const NECK_CLEARANCE = 0.18;
+  const MAX_SETBACK = 0.55;
+  let smoothedBack = BODY_SETBACK;
+  const neckPos = new THREE.Vector3();
 
   /**
-   * Lean the torso with the camera's pitch.
+   * How far behind the player's centre line to put the body, this frame.
    *
-   * Without this the body is a rigid post: looking down leaves the chest and
-   * shoulders exactly where they were, filling the lower half of the screen,
-   * and in third person the figure stares straight ahead while the camera is
-   * pointed at the floor. Spreading the pitch over three spine joints bends the
-   * whole upper body the way a real one does, which also carries the shoulders
-   * out of the downward view.
+   * A fixed offset is only right for a pose that stands upright. The run cycles
+   * pitch the whole torso forward — the neck travels from 2 cm *behind* the
+   * rig's origin at idle to 30 cm in front of it at a sprint — so with a fixed
+   * offset the shoulders end up ahead of the lens and you are looking out from
+   * inside your own chest.
    *
-   * The axis is the body's own right — constant in the group's frame, which is
-   * why it is built from (1, 0, 0) there and then carried into each bone's
-   * PARENT space. Object3D.rotateOnWorldAxis is the obvious tool and the wrong
-   * one: it premultiplies onto the local quaternion and so assumes the object
-   * has no rotated parents. These bones hang off a group that yaws with the
-   * camera, so using it made the whole lean depend on which way you were
-   * facing — the arms drifted across the screen as you panned.
+   * So the body is placed to keep the *neck* a constant distance from the
+   * camera rather than the hips: measure where the pose actually put it and
+   * push back by that much. This is the head-bone camera constraint that true
+   * first-person rigs use, done in reverse — the camera is pinned by the game,
+   * so the body moves to meet it instead.
+   *
+   * Smoothed, because the lean arrives with the animation blend and a hard step
+   * would read as the world lurching.
    */
-  function applySpineBend(pitch) {
-    if (!spineBones.length) return;
-    // Snapshot the clip's own pose before bending. update() has already put the
-    // previous frame's clean pose back, so whether or not the mixer overwrote
-    // it, what we read here is un-bent — which is what stops the rotation
-    // below, which is cumulative, from winding the spine up frame after frame.
-    for (let i = 0; i < spineBones.length; i += 1) {
-      spineClean[i].copy(spineBones[i][0].quaternion);
+  function setbackFor(dt) {
+    let want = BODY_SETBACK;
+    if (neckBone) {
+      group.updateMatrixWorld(true);
+      neckBone.getWorldPosition(neckPos);
+      group.worldToLocal(neckPos);
+      want = Math.min(MAX_SETBACK, Math.max(BODY_SETBACK, neckPos.z + NECK_CLEARANCE));
     }
-    group.updateMatrixWorld(true);
-    group.getWorldQuaternion(groupQuat);
-    for (const [bone, share] of spineBones) {
-      bone.parent.getWorldQuaternion(parentQuat).invert();
-      bendAxis.set(1, 0, 0).applyQuaternion(groupQuat).applyQuaternion(parentQuat).normalize();
-      bendQuat.setFromAxisAngle(bendAxis, -pitch * share);
-      bone.quaternion.premultiply(bendQuat);
-      // Each spine bone is the next one's parent, so its world matrix has to be
-      // current before the next iteration reads it.
-      bone.updateMatrixWorld(true);
-    }
+    smoothedBack += (want - smoothedBack) * Math.min(1, dt * 8);
+    return smoothedBack;
   }
 
-  /** Put the clip's pose back, undoing the last frame's lean. Runs before the
-   *  mixer, so the mixer is free to overwrite it and nothing compounds. */
-  function restoreSpine() {
-    for (let i = 0; i < spineBones.length; i += 1) {
-      spineBones[i][0].quaternion.copy(spineClean[i]);
-    }
-  }
+
+
 
 
   /**

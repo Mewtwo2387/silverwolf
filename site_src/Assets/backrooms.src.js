@@ -1273,6 +1273,8 @@ import {
   const TP_BOOM = 2.6;   // metres behind the head
   const TP_LIFT = 0.28;  // raised slightly so the body does not fill the frame
   const TP_RADIUS = 0.34;
+  const TP_MIN = 0.55;  // closest the boom is allowed to pull in
+  const TP_STEPS = 6;   // boom lengths tested, far to near
 
   /**
    * Collapse everything the movement code knows into the one word the
@@ -1315,17 +1317,33 @@ import {
     // the view never ends up looking through wallpaper — cheaper and more
     // reliable here than a raycast, because the maze is all axis-aligned boxes.
     if (thirdPerson && playerModel) {
-      const eye = player.y + playerModel.eyeHeight() * 0.94;
-      let bx = camera.position.x - player.forward.x * TP_BOOM;
-      let bz = camera.position.z - player.forward.z * TP_BOOM;
-      const by = eye - player.forward.y * TP_BOOM + TP_LIFT;
-      if (collider) {
-        const fixed = collider.resolve(bx, bz, TP_RADIUS);
-        bx = fixed.x;
-        bz = fixed.z;
+      // Orbit pivot: the head, not the feet.
+      const px = player.pos.x;
+      const pz = player.pos.z;
+      const py = player.y + playerModel.eyeHeight() * 0.94 + TP_LIFT;
+      // Shorten the boom until it is clear, rather than sliding it sideways out
+      // of whatever it hit. Sliding was fine while the camera was locked behind
+      // the player, but a freely orbiting camera in corridors this tight spends
+      // most of its time with a wall behind it, and sliding parks the lens flat
+      // against the wallpaper. Pulling in toward the player keeps the avatar in
+      // frame, which is the entire point of the view.
+      let dist = TP_MIN;
+      for (let i = TP_STEPS; i >= 1; i -= 1) {
+        const d = TP_MIN + ((TP_BOOM - TP_MIN) * i) / TP_STEPS;
+        const bx = px - player.forward.x * d;
+        const bz = pz - player.forward.z * d;
+        if (!collider || !collider.resolve(bx, bz, TP_RADIUS).hit) {
+          dist = d;
+          break;
+        }
       }
-      camera.position.set(bx, by, bz);
+      camera.position.set(
+        px - player.forward.x * dist,
+        py - player.forward.y * dist,
+        pz - player.forward.z * dist,
+      );
     }
+
   }
 
   // Interference static: a 160x90 canvas of noise, scaled up by CSS with
