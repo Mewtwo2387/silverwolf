@@ -161,6 +161,22 @@ describe('per-attempt timeout ceiling', () => {
     expect(DEFAULT_TIMEOUT_MS).toBeLessThan(MAX_ATTEMPT_TIMEOUT_MS);
   });
 
+  test.each([
+    ['NaN', NaN],
+    ['zero', 0],
+    ['negative', -1],
+    ['fractional', 1.5],
+    ['Infinity', Infinity],
+  ])('rejects an explicit %s timeout instead of passing it to the SDK', async (_label, value) => {
+    const { client, seen } = capturingClient();
+    await expect(
+      createChatCompletionWithRetry(client, {}, { timeoutMs: value as number, sleep: noSleep }),
+    ).rejects.toThrow(TypeError);
+    // The point is that nothing reached the SDK — NaN in particular used to
+    // survive Math.min/Math.max and arrive as `timeout: NaN`.
+    expect(seen()).toBeUndefined();
+  });
+
   test('the remaining overall budget still wins when it is smaller', async () => {
     const { client, seen } = capturingClient();
     await createChatCompletionWithRetry(client, {}, {

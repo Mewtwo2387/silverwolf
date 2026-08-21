@@ -116,12 +116,28 @@ interface RetryOptions {
   sleep?: (ms: number) => Promise<void>;
 }
 
+/** Validates an explicitly-supplied per-attempt timeout, then applies the ceiling.
+ *
+ *  Without the guard a `NaN` survives `Math.min`/`Math.max` all the way into the
+ *  SDK as `timeout: NaN`, and a zero or negative value collapses to a 1ms timeout
+ *  that fails every attempt instantly — both of which look like flaky upstreams
+ *  rather than the caller bugs they are. Callers pass module constants today, so
+ *  this is about failing loudly if that ever stops being true.
+ */
+function resolveAttemptTimeout(requested: number | undefined): number {
+  if (requested === undefined) return Math.min(DEFAULT_TIMEOUT_MS, MAX_ATTEMPT_TIMEOUT_MS);
+  if (!Number.isInteger(requested) || requested <= 0) {
+    throw new TypeError(`timeoutMs must be a positive integer number of milliseconds, got ${requested}`);
+  }
+  return Math.min(requested, MAX_ATTEMPT_TIMEOUT_MS);
+}
+
 export async function createChatCompletionWithRetry(
   client: ChatCompletionsClient,
   body: any,
   opts: RetryOptions = {},
 ): Promise<any> {
-  const timeoutMs = Math.min(opts.timeoutMs ?? DEFAULT_TIMEOUT_MS, MAX_ATTEMPT_TIMEOUT_MS);
+  const timeoutMs = resolveAttemptTimeout(opts.timeoutMs);
   const deadline = Date.now() + (opts.overallTimeoutMs ?? DEFAULT_OVERALL_TIMEOUT_MS);
   const delays = opts.delaysMs ?? RETRY_DELAYS_MS;
   const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((resolve) => { setTimeout(resolve, ms); }));

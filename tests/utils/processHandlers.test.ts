@@ -20,7 +20,9 @@ interface RunResult {
  *  distinguishes "survived" from "crashed".
  */
 async function run(body: string): Promise<RunResult> {
-  const proc = Bun.spawn(['bun', '-e', body], { stdout: 'pipe', stderr: 'pipe' });
+  // process.execPath, not 'bun': PATH may resolve a different Bun than the one
+  // running this suite, and the whole point here is the current runtime's behaviour.
+  const proc = Bun.spawn([process.execPath, '-e', body], { stdout: 'pipe', stderr: 'pipe' });
   const stderr = await new Response(proc.stderr).text();
   const exitCode = await proc.exited;
   return { exitCode, stderr };
@@ -33,12 +35,15 @@ describe('unhandledRejection handler', () => {
   test('an unawaited rejection kills a process that has no handler', async () => {
     // Control case. Without this the test below proves nothing — it would pass
     // just as happily if unhandled rejections were harmless in the first place.
-    const { exitCode } = await run(`
+    const { exitCode, stderr } = await run(`
       Promise.reject(new Error('control-boom'));
       ${exitLater}
     `);
 
     expect(exitCode).not.toBe(0);
+    // Assert *why* it died. A bare non-zero exit would also pass if the fixture
+    // failed to start at all, which would make this control prove nothing.
+    expect(stderr).toContain('control-boom');
   });
 
   test('importing utils/log keeps the process alive and logs the reason', async () => {
