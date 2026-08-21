@@ -39,6 +39,24 @@ const MODEL_MULTIPLIERS: Record<string, ModelMultipliers> = {
 };
 
 /**
+ * Image models bill per generated image, not per token: OpenRouter charges a
+ * flat $/image and the token usage around it is noise. Listed in USD per image;
+ * models absent from this table generate free of charge (they don't exist today
+ * — add one here before pointing the Imgen persona at it).
+ */
+const MODEL_USD_PER_IMAGE: Record<string, number> = {
+  // Google: Nano Banana 2 Lite (Gemini 3.1 Flash Lite Image) — $0.03363/image.
+  'google/gemini-3.1-flash-lite-image': 0.03363,
+};
+
+/**
+ * Surcharge on top of an image's list price. Image generation is the most
+ * expensive thing a user can trigger per call and the cheapest to spam, so it
+ * bills at 1.5x cost rather than at cost.
+ */
+export const IMAGE_CREDIT_MULTIPLIER = 1.5;
+
+/**
  * Models that are free to run. They bill 0 credits AND skip the rate-limit
  * reservation entirely (see generateContent), so a user who has exhausted
  * their paid budget can still talk to them.
@@ -81,4 +99,19 @@ export function usdCostForTokens(
 ): number {
   return (creditsForTokens(model, promptTokens, completionTokens)
     * CREDIT_BASE_USD_PER_MILLION) / 1_000_000;
+}
+
+/** USD list price of `images` generations on `model` (0 for unpriced models). */
+export function usdCostForImages(model: string, images: number = 1): number {
+  return (MODEL_USD_PER_IMAGE[model] ?? 0) * Math.max(0, images);
+}
+
+/**
+ * Credits charged for `images` generations: list price converted at the same
+ * $0.28/M = 1x base as tokens, times IMAGE_CREDIT_MULTIPLIER. Fractional —
+ * callers round as needed.
+ */
+export function creditsForImages(model: string, images: number = 1): number {
+  return ((usdCostForImages(model, images) * 1_000_000) / CREDIT_BASE_USD_PER_MILLION)
+    * IMAGE_CREDIT_MULTIPLIER;
 }

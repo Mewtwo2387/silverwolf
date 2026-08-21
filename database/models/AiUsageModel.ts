@@ -1,7 +1,9 @@
 import type Database from '../Database';
 import aiUsageQueries from '../queries/aiUsageQueries';
 import { DAILY_LIMIT, WEEKLY_LIMIT } from '../../utils/ai';
-import { creditsForTokens, usdCostForTokens } from '../../utils/aiPricing';
+import {
+  creditsForImages, creditsForTokens, usdCostForImages, usdCostForTokens,
+} from '../../utils/aiPricing';
 
 type WindowType = 'daily' | 'weekly';
 
@@ -53,6 +55,33 @@ class AiUsageModel {
         .run(userId, model, promptTokens, completionTokens, usdCost);
       if (!logResult || logResult.changes === 0) {
         throw new Error('Failed to record AI usage in the database');
+      }
+      (Object.keys(WINDOW_INTERVALS) as WindowType[]).forEach((type) => {
+        const { pos } = WINDOW_INTERVALS[type];
+        rawDb.query(aiUsageQueries.UPSERT_WINDOW).run(userId, type, credits, pos, pos);
+      });
+    });
+  }
+
+  /**
+   * Record image generations against the same credit windows as chat usage
+   * (see creditsForImages). Logged with zero tokens — image models bill per
+   * image, not per token — and with the image's TRUE list cost in `cost`, so
+   * the audit ledger stays real money while the windows carry the 1.5x
+   * surcharge.
+   */
+  async addImageUsage(userId: string, model: string, images: number = 1): Promise<void> {
+    if (!Number.isFinite(images) || images <= 0) return;
+    await this.db.user.getUser(userId);
+
+    const credits = Math.round(creditsForImages(model, images));
+    const usdCost = usdCostForImages(model, images);
+
+    await this.db.executeTransaction((rawDb) => {
+      const logResult = rawDb.query(aiUsageQueries.ADD_USAGE)
+        .run(userId, model, 0, 0, usdCost);
+      if (!logResult || logResult.changes === 0) {
+        throw new Error('Failed to record AI image usage in the database');
       }
       (Object.keys(WINDOW_INTERVALS) as WindowType[]).forEach((type) => {
         const { pos } = WINDOW_INTERVALS[type];
