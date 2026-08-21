@@ -35,7 +35,9 @@ import * as THREE from 'three';
 import {
   generate, Collider, CELL, WALL_H, mulberry32, hashSeed,
 } from './backrooms-maze.js';
-import { buildMaterials, defaultChaserTexture, irisTexture } from './backrooms-materials.js';
+import {
+  buildMaterials, defaultChaserTexture, irisTexture, upgradeSurfaces,
+} from './backrooms-materials.js';
 import { buildWorld, updateFixtures } from './backrooms-world.js';
 import {
   PngChaser, Lifeform, Entity96, Director, CHASER_MODES, PLAYER_SPEEDS,
@@ -44,7 +46,8 @@ import { Audio } from './backrooms-audio.js';
 import {
   generatePools, WATER_Y, DECK_Y, STEP_UP, DECK,
 } from './backrooms-pools.js';
-import { buildPoolMaterials } from './backrooms-materials.js';
+import { buildPoolMaterials, upgradePoolSurfaces } from './backrooms-materials.js';
+import { loadPlayerModel } from './backrooms-player.js';
 import { buildPoolWorld } from './backrooms-pool-world.js';
 import { buildWater } from './backrooms-water.js';
 import {
@@ -498,13 +501,37 @@ import {
       poolMaterials = null;
     }
     if (pools) {
-      if (!poolMaterials) poolMaterials = buildPoolMaterials(settings.quality);
+      if (!poolMaterials) {
+        poolMaterials = buildPoolMaterials(settings.quality);
+        poolMaterials.scanned = upgradePoolSurfaces(poolMaterials);
+      }
     } else if (!materials) {
       materials = buildMaterials(settings.quality);
+      materials.scanned = upgradeSurfaces(materials);
+    }
+
+    // The body is level-independent, so it loads once and is then simply
+    // re-used; a failure leaves playerModel null and the game stays a
+    // disembodied camera exactly as before.
+    if (!playerModelLoad) {
+      playerModelLoad = loadPlayerModel().then((m) => {
+        if (!m) return null;
+        playerModel = m;
+        playerModel.setFirstPerson(!thirdPerson);
+        scene.add(m.group);
+        return m;
+      });
     }
 
     setLoading(true, pools ? 'filling the pools…' : 'laying carpet…');
     await nextTick();
+    await playerModelLoad;
+    // Swap in the scanned surface maps before the world is shown. The promise
+    // is stored on the material set, which outlives the level, so this only
+    // waits on the network the first time a level is entered — every rebuild
+    // after that awaits an already-settled promise. A failure resolves false
+    // and we simply show the procedural textures.
+    await (pools ? poolMaterials : materials).scanned;
     if (pools) {
       world = buildPoolWorld(level, poolMaterials, collider);
       water = buildWater(level, settings.quality);
@@ -603,6 +630,13 @@ import {
     }
     if (e.code === 'KeyR' && game.phase !== 'menu') {
       restart();
+      e.preventDefault();
+    }
+    if (e.code === 'KeyV' && playerModel) {
+      thirdPerson = !thirdPerson;
+      // The head only exists in third person; in first person it is collapsed
+      // so the camera is not sitting inside a face.
+      playerModel.setFirstPerson(!thirdPerson);
       e.preventDefault();
     }
     // The browser scrolls on space / arrows even in a locked-pointer game.
@@ -1217,6 +1251,27 @@ import {
     }
   }
 
+  // The player's own body. Loaded once, lives for the whole session, and is
+  // simply absent if the fetch fails — see backrooms-player.js.
+  let playerModel = null;
+  let playerModelLoad = null;
+  let thirdPerson = false;
+  const TP_BOOM = 2.6;   // metres behind the head
+  const TP_LIFT = 0.28;  // raised slightly so the body does not fill the frame
+  const TP_RADIUS = 0.34;
+
+  /**
+   * Collapse everything the movement code knows into the one word the
+   * animation needs. Order matters: dead outranks swimming outranks falling.
+   */
+  function playerAnimState() {
+    if (!player.alive) return 'death';
+    if (player.swimming) return 'swim';
+    if (!player.grounded && !player.climbing) return 'air';
+    if (player.crouching) return 'crouch';
+    return 'ground';
+  }
+
   function updateCamera(dt) {
     // player.y is 0 for the whole of Level 0, so this is the same line it was
     // — it only comes alive once there is somewhere to fall to.
@@ -1239,6 +1294,24 @@ import {
     }
     camera.rotation.set(player.pitch, player.yaw, roll);
     camera.getWorldDirection(player.forward);
+
+    // Third person: pull the camera back along the look axis from a point just
+    // behind the head. The boom is clamped by the same collider the player
+    // walks with (resolve() pushes a point out of any wall it is inside), so
+    // the view never ends up looking through wallpaper — cheaper and more
+    // reliable here than a raycast, because the maze is all axis-aligned boxes.
+    if (thirdPerson && playerModel) {
+      const eye = player.y + playerModel.eyeHeight() * 0.94;
+      let bx = camera.position.x - player.forward.x * TP_BOOM;
+      let bz = camera.position.z - player.forward.z * TP_BOOM;
+      const by = eye - player.forward.y * TP_BOOM + TP_LIFT;
+      if (collider) {
+        const fixed = collider.resolve(bx, bz, TP_RADIUS);
+        bx = fixed.x;
+        bz = fixed.z;
+      }
+      camera.position.set(bx, by, bz);
+    }
   }
 
   // Interference static: a 160x90 canvas of noise, scaled up by CSS with
@@ -1347,6 +1420,7 @@ import {
       director.paused = game.frozen;
       director.update(dt, player, entityApi);
     }
+    if (playerModel && level) playerModel.update(dt, player, playerAnimState());
     if (level) updateCamera(dt);
     if (isPools()) updateUnderwater(dt);
 

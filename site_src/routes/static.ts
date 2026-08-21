@@ -8,6 +8,7 @@ const ASSETS_DIR = path.join(import.meta.dir, '..', 'Assets');
 const IMAGES_DIR = path.join(ASSETS_DIR, 'Images');
 const SVG_DIR = path.join(ASSETS_DIR, 'svg');
 const FONTS_DIR = path.join(ASSETS_DIR, 'fonts');
+const BACKROOMS_DIR = path.join(ASSETS_DIR, 'backrooms');
 const IMMUTABLE_CACHE = 'public, max-age=31536000, immutable';
 
 interface StaticEntry {
@@ -32,9 +33,9 @@ const STATIC_ASSETS: Record<string, StaticEntry> = {
   '/static/plane-viewer.js': { path: path.join(ASSETS_DIR, 'plane-viewer.js'), contentType: 'text/javascript; charset=utf-8' },
   // Standalone Gerstner wave sandbox (wave-sim.src.js + wave-field.js).
   '/static/wave-sim.js': { path: path.join(ASSETS_DIR, 'wave-sim.js'), contentType: 'text/javascript; charset=utf-8' },
-  // The Backrooms (backrooms.src.js + its backrooms-*.js modules). Every
-  // texture, model and sound in it is generated at runtime, so this bundle is
-  // the game's only asset.
+  // The Backrooms (backrooms.src.js + its backrooms-*.js modules). Geometry and
+  // sound are still generated at runtime; the surface maps under
+  // /static/backrooms/ below are the one thing it loads.
   '/static/backrooms.js': { path: path.join(ASSETS_DIR, 'backrooms.js'), contentType: 'text/javascript; charset=utf-8' },
   // Its entity viewer — same classes and materials, turntable instead of a maze.
   '/static/backrooms-viewer.js': { path: path.join(ASSETS_DIR, 'backrooms-viewer.js'), contentType: 'text/javascript; charset=utf-8' },
@@ -65,6 +66,24 @@ for (const skin of [
 ]) {
   STATIC_ASSETS[`/static/planes/${skin}.jpg`] = { path: path.join(ASSETS_DIR, 'planes', `${skin}.jpg`), contentType: 'image/jpeg' };
 }
+// The Backrooms' scanned surface maps (CC0, ambientCG — see
+// site_src/Assets/backrooms-textures.js and the game's credits page). Listed
+// explicitly rather than by reading the directory: every served path stays a
+// literal, so no request can ever steer the join() somewhere else.
+for (const slug of [
+  'wall-a', 'wall-b', 'wall-c', 'wall-d',
+  'carpet-a', 'carpet-b', 'carpet-c',
+  'ceiling-a', 'ceiling-b',
+  'pooltile-a', 'pooltile-b',
+]) {
+  for (const kind of ['col', 'nrm', 'rgh']) {
+    const file = `${slug}_${kind}.webp`;
+    STATIC_ASSETS[`/static/backrooms/${file}`] = { path: path.join(BACKROOMS_DIR, file), contentType: 'image/webp' };
+  }
+}
+// The player figure: CC0 Quaternius body + animation clips, assembled into one
+// glTF binary (see site_src/Assets/backrooms-player.js).
+STATIC_ASSETS['/static/backrooms/player.glb'] = { path: path.join(BACKROOMS_DIR, 'player.glb'), contentType: 'model/gltf-binary' };
 // Hero responsive variants — emitted by scripts/build-images.ts. The about-page
 // <picture> picks the smallest width that covers its slot (sizes attribute).
 for (const w of [512, 1024, 1600]) {

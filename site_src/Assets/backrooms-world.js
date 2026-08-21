@@ -14,10 +14,9 @@ import {
 } from './backrooms-maze.js';
 import {
   grimeAt, exitSignTexture, WALLPAPER_VARIANTS, CARPET_VARIANTS, CEILING_VARIANTS,
+  UV_WALL, UV_FLOOR,
 } from './backrooms-materials.js';
 
-const UV_WALL = 2.6; // metres per texture repeat on walls
-const UV_FLOOR = 3.1;
 const EXIT_DEPTH = 3; // cells of passage beyond the border
 
 // -------------------------------------------------------- mesh builder ----

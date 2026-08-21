@@ -1,7 +1,8 @@
 import path from 'path';
 import { html, raw } from 'hono/html';
 import { Layout } from '../../components/layout';
-import { assetVersion } from '../../asset-version';
+import { assetVersion, assetVersionMap } from '../../asset-version';
+import { inlineJSON } from '../../inline';
 
 // Backrooms — a first-person Three.js survival-horror wander through seeded,
 // procedurally generated levels (Level 0, and Level 37 "the Poolrooms"). All
@@ -14,6 +15,7 @@ import { assetVersion } from '../../asset-version';
 // in localStorage as a data URL, which is why the CSP's `img-src data:` is
 // enough and no upload endpoint exists).
 const BACKROOMS_JS = path.resolve(import.meta.dir, '..', '..', 'Assets', 'backrooms.js');
+const BACKROOMS_TEX = path.resolve(import.meta.dir, '..', '..', 'Assets', 'backrooms');
 
 // Rendered into the References tab and, near enough verbatim, into the code
 // comments of the modules each one informed.
@@ -114,6 +116,26 @@ const REFERENCES: { group: string; items: { title: string; href?: string; note: 
         title: 'Silverwolf — Plane Sim',
         href: '/games/plane-sim',
         note: 'This site\'s existing Three.js game; its bundling, quality-tier and glass-panel UI conventions are reused here.',
+      },
+    ],
+  },
+  {
+    group: 'Art assets',
+    items: [
+      {
+        title: 'ambientCG — photoscanned PBR materials (CC0)',
+        href: 'https://ambientcg.com/',
+        note: 'Every surface you can touch. Wallpaper001A / 001C / 002B / 002C are the four wallpapers, clean through streaked to mould-blotched; Carpet016 / Carpet011 / Carpet008 the three carpets; OfficeCeiling001 / OfficeCeiling006 the ceiling tiles; Tiles036 / Tiles107 the Poolrooms\' ceramic. Each ships albedo, normal and roughness, with the scan\'s own ambient occlusion multiplied into the albedo at bake time. The scans are near-white; the mono-yellow is a measured tint that lands them on the same palette the procedural textures used, and the per-surface variant choice and world-space vertex grime that break up the tiling are unchanged. CC0 asks for no credit at all — this list exists because knowing where a texture came from is worth more than the licence requires.',
+      },
+      {
+        title: 'Quaternius — Universal Base Characters (CC0)',
+        href: 'https://quaternius.com/packs/universalbasecharacters.html',
+        note: 'The player\'s body: a 1.81 m humanoid on the 65-bone Unreal-standard rig. It ships undressed, so the clothes are ours — cut geometrically rather than painted, by baking a UV-to-3D-position map off the mesh and letting the hem, waistband and cuffs fall out of plane tests against the rest pose. The scanned skin normal map is flattened under cloth so the anatomy underneath does not print through it.',
+      },
+      {
+        title: 'Quaternius — Universal Animation Library (CC0)',
+        href: 'https://quaternius.com/packs/universalanimationlibrary.html',
+        note: 'Twelve clips: idle, walk, jog, sprint, crouch idle and crouch walk, swim and tread water, the three-part jump, and death. The library uses the identical 65-bone rig as the base character, so the clips drive the body with no retargeting — the channels simply address the same bone names.',
       },
     ],
   },
@@ -745,6 +767,7 @@ export function BackroomsPage(opts: {
               <kbd>Shift</kbd><span>In deep water, dive &middot; on a ladder, climb down</span>
               <kbd>H</kbd><span>Hum &mdash; calls a shoal of Will o' Waves, and is heard by everything else</span>
               <kbd>A</kbd> <kbd>D</kbd><span>Thrash left and right to tear out of a Drowner's grip</span>
+              <kbd>V</kbd><span>Switch between first and third person</span>
               <kbd>Esc</kbd><span>Release the mouse / open this menu</span>
               <kbd>M</kbd><span>Toggle the test harness (when enabled)</span>
               <kbd>R</kbd><span>Restart this level</span>
@@ -796,6 +819,9 @@ export function BackroomsPage(opts: {
       </div>
     </div>
     ${styles}
+    <!-- Content hashes for /static/backrooms/*.webp, read by backrooms-textures.js
+         so the immutable surface maps bust their own cache when re-baked. -->
+    <script type="application/json" id="br-asset-ver">${raw(inlineJSON(assetVersionMap(BACKROOMS_TEX)))}</script>
     <script type="module" nonce="${nonce}" src="/static/backrooms.js?v=${assetVersion(BACKROOMS_JS)}"></script>
   `;
 

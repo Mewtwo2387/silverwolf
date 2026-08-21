@@ -60,6 +60,18 @@ the entity viewer, so a stat card cannot quote a number the game does not use; `
 whose Gerstner sum drives both the Wave Sim and the Poolrooms' water). Immersive pages pass
 `Layout({ fullscreen: true })`, which drops the navbar/footer/centred `<main>`.
 
+**Backrooms binary assets.** Backrooms is no longer purely procedural: it loads photoscanned PBR
+surface maps and a rigged player model from `site_src/Assets/backrooms/` (served as
+`/static/backrooms/*`, listed explicitly in `routes/static.ts`, versioned through the
+`#br-asset-ver` island — the same `assetVersionMap` scheme `/static/planes/` uses). The
+procedural canvas textures remain the fallback and the `low`-quality path, so the scanned set is
+strictly an upgrade: `upgradeSurfaces()` / `upgradePoolSurfaces()` mutate the already-built
+materials in place and resolve `false` on any failure. `COPY . .` in the Dockerfile already picks
+the directory up — **no Dockerfile change is needed for new assets there**, only for new bundle
+entry points. How the assets were produced (and how to regenerate or re-source them) is
+`scripts/backrooms-assets/README.md`. **Every third-party asset must be listed in the `REFERENCES`
+`Art assets` group in `pages/games/backrooms.ts`,** including CC0 ones that do not require it.
+
 **Verify in a browser — a green `build:js` is not enough.** The bundler does not catch undefined
 identifiers: a forgotten import bundles fine and only throws `ReferenceError` at runtime. Run
 `bun run test:harness` (standalone dev server, port 7788, `HARNESS_PORT` to override) — it renders

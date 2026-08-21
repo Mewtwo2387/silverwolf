@@ -20,7 +20,8 @@
 // wallpaper, damp brownish-beige berber carpet, water-stained ceiling tiles.
 
 import * as THREE from 'three';
-import { hash2 } from './backrooms-maze.js';
+import { hash2, CELL } from './backrooms-maze.js';
+import { loadSurfaceSet, applySurfaceSet } from './backrooms-textures.js';
 
 // ------------------------------------------------------------- noise ----
 
@@ -426,6 +427,13 @@ export const WALLPAPER_VARIANTS = 4;
 export const CARPET_VARIANTS = 3;
 export const CEILING_VARIANTS = 2;
 
+// Metres of world per texture repeat. These live here rather than in the world
+// builder because the scanned surface sets need them too (backrooms-textures.js
+// divides by them to get physically-correct texel density), and a constant that
+// two modules must agree on belongs to neither of them exclusively.
+export const UV_WALL = 2.6;
+export const UV_FLOOR = 3.1;
+
 /**
  * Build every surface material once. `quality` picks Lambert (cheap, no
  * specular — which suits matt wallpaper anyway) vs Standard with normal maps.
@@ -477,6 +485,61 @@ export function buildMaterials(quality = 'high') {
       }
     },
   };
+}
+
+/**
+ * Swap Level 0's procedural surfaces for the scanned ones (see
+ * backrooms-textures.js). Safe to call on a set that is already drawing: it
+ * mutates the shared materials in place, so every mesh already pointing at them
+ * picks the new maps up on the next frame with no rebuild.
+ *
+ * The tints are not eyeballed. The scans are near-white plaster, white acoustic
+ * tile and neutral beige carpet; each `color` here is the linear-space ratio
+ * between that scan's measured mean and the corresponding `base` palette entry
+ * in wallpaperCanvas()/carpetCanvas() above, so the scanned level lands on the
+ * exact same mono-yellow as the procedural one it replaces. Change a base
+ * colour up there and this needs recomputing to match.
+ *
+ * Resolves false on a Lambert (low-quality) set or any load failure, leaving
+ * the procedural textures in place — this is an upgrade, never a dependency.
+ */
+export function upgradeSurfaces(materials) {
+  if (!materials || !materials.detailed) return Promise.resolve(false);
+  const jobs = [
+    // [material, slug, uvScale, tint, normalScale]
+    ...['wall-a', 'wall-b', 'wall-c', 'wall-d'].map((slug, i) => (
+      [materials.wall[i], slug, UV_WALL, [0xe1cb70, 0xebd680, 0xdfc768, 0xffff9b][i], 0.55])),
+    ...['carpet-a', 'carpet-b', 'carpet-c'].map((slug, i) => (
+      [materials.carpet[i], slug, UV_FLOOR, [0x988f7b, 0xc2bad5, 0xc9c1af][i], 1.0])),
+    ...['ceiling-a', 'ceiling-b'].map((slug, i) => (
+      [materials.ceiling[i], slug, CELL, [0xe9e3cf, 0xebe4d1][i], 0.6])),
+  ];
+  return Promise.all(jobs.map(([mat, slug, uv, color, normalScale]) => (
+    loadSurfaceSet(slug, uv).then((maps) => applySurfaceSet(mat, maps, { color, normalScale }))
+  ))).then((results) => results.some(Boolean)).catch(() => false);
+}
+
+/**
+ * The Poolrooms' half. Only two scans exist for four roles, because the source
+ * insists every tiled surface in the level is the *same* tile — the deck, the
+ * basin, the walls and the ceiling differ by tone alone, which is exactly what
+ * the per-role tint below does. Roughness stays low: glazed ceramic.
+ */
+export function upgradePoolSurfaces(materials) {
+  if (!materials || !materials.detailed) return Promise.resolve(false);
+  const slugFor = (i) => (i % 2 === 0 ? 'pooltile-a' : 'pooltile-b');
+  const jobs = [
+    ...materials.deck.map((m, i) => [m, slugFor(i), 0xf7f8f5, 0.3]),
+    // The basin reads cooler and greener than the deck even when drained; that
+    // cast is what gives the water its colour before any water shader runs.
+    ...materials.basin.map((m, i) => [m, slugFor(i), 0xdcece8, 0.3]),
+    ...materials.wall.map((m, i) => [m, slugFor(i), 0xeef2f1, 0.26]),
+    [materials.ceiling, 'pooltile-a', 0xd6dbda, 0.22],
+  ];
+  return Promise.all(jobs.map(([mat, slug, color, normalScale]) => (
+    loadSurfaceSet(slug, UV_TILE).then((maps) => (
+      applySurfaceSet(mat, maps, { color, normalScale, roughness: 0.55 })))
+  ))).then((results) => results.some(Boolean)).catch(() => false);
 }
 
 /**

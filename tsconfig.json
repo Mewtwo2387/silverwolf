@@ -15,5 +15,11 @@
     "types": ["node", "bun"]
   },
   "include": ["**/*.ts", "types/**/*.d.ts"],
-  "exclude": ["node_modules", "persistence", "data", ".tsbuild", "coverage", "local_db_folder"]
+  "exclude": [
+    "node_modules", "persistence", "data", ".tsbuild", "coverage", "local_db_folder",
+    // One-off asset tooling. Not part of the app, and it imports dev-only
+    // packages (@gltf-transform, sharp) that are deliberately not dependencies
+    // — the assets it produces are committed. See its README.
+    "scripts/backrooms-assets"
+  ]
 }

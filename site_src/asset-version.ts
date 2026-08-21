@@ -33,7 +33,10 @@ export function assetVersion(absPath: string): string {
 // /static/planes/*.jpg the same way styles.css / app.js do — no manual ?v bump.
 // The directory listing is itself cached by the dir's mtime (adding/removing a
 // file moves it), so a warm call only re-stats the files it already knows.
-const IMG_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+// Images plus .glb: the Backrooms' player model is versioned through this same
+// manifest, and a model is no different from a texture as far as cache-busting
+// an immutable /static/ URL goes.
+const IMG_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.glb']);
 const dirListCache = new Map<string, { mtime: number; names: string[] }>();
 
 export function assetVersionMap(dirAbs: string): Record<string, string> {
