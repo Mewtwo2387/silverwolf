@@ -73,4 +73,11 @@ describe('image pricing', () => {
     expect(creditsForImages(IMAGE_MODEL, 0)).toBe(0);
     expect(creditsForImages(IMAGE_MODEL, -3)).toBe(0);
   });
+
+  test('fractional and non-finite image counts cost nothing', () => {
+    [1.5, NaN, Infinity, -Infinity].forEach((count) => {
+      expect(usdCostForImages(IMAGE_MODEL, count)).toBe(0);
+      expect(creditsForImages(IMAGE_MODEL, count)).toBe(0);
+    });
+  });
 });

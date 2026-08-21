@@ -192,7 +192,10 @@ export async function runImageGeneration(opts: {
   };
 
   const attempt = async (): Promise<ImageGenResult> => {
-    log(`[imagegen] user ${ctx.userId} generating${useAttached ? ` (editing ${imageParts.length} attached image${imageParts.length === 1 ? '' : 's'})` : ''}: ${prompt.slice(0, 120)}`);
+    // Prompt text is deliberately kept out of the persistent log — the quota row
+    // written by reserveGeneration already holds it, so repeating it here would
+    // only widen where user content lives.
+    log(`[imagegen] user ${ctx.userId} generating on ${model}${useAttached ? ` (editing ${imageParts.length} attached image${imageParts.length === 1 ? '' : 's'})` : ''}, prompt ${prompt.length} chars`);
 
     // For edits the request carries the source images as multimodal content
     // parts alongside the instruction text (base64 data URLs, never persisted).
@@ -220,7 +223,10 @@ export async function runImageGeneration(opts: {
 
     const match = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/is.exec(dataUrl);
     if (!match) {
-      logError(`[imagegen] unexpected response format (no base64 data URL); got: ${dataUrl.slice(0, 80)}`);
+      // Truncate at the base64 marker so provider error text stays debuggable
+      // without ever writing image bytes to the log.
+      const preview = dataUrl.slice(0, 80).replace(/(base64,).*/is, '$1...');
+      logError(`[imagegen] unexpected response format (no base64 data URL); ${dataUrl.length} chars, got: ${preview}`);
       await releaseQuota();
       return { ok: false, error: 'Error: the image model returned no image. Tell the user to try again later.' };
     }
@@ -245,10 +251,19 @@ export async function runImageGeneration(opts: {
     const result = await attempt();
     if (result.ok && aiUsage && imageCredits > 0) {
       // Charged only for images that actually shipped — failures released the
-      // slot above and must not bill the user either.
-      await aiUsage.addImageUsage(ctx.userId, model, 1).catch((err: any) => {
+      // slot above and must not bill the user either. A charge that cannot be
+      // persisted fails closed: withhold the image rather than hand out an
+      // unmetered generation, and leave the daily slot spent so a broken ledger
+      // can't be farmed for free images.
+      try {
+        await aiUsage.addImageUsage(ctx.userId, model, 1);
+      } catch (err) {
         logError('[imagegen] failed to record image credit usage:', err);
-      });
+        return {
+          ok: false,
+          error: 'Error: image generation is temporarily unavailable. Tell the user to try again later.',
+        };
+      }
     }
     return result;
   } finally {

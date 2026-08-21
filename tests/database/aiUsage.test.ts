@@ -215,6 +215,19 @@ describe('AiUsageModel', () => {
     expect(await aiUsageModel.getDailyUsage('u1')).toBe(0);
   });
 
+  test('addImageUsage ignores fractional and non-finite image counts', async () => {
+    const model = 'google/gemini-3.1-flash-lite-image';
+    await aiUsageModel.addImageUsage('u1', model, 1.5);
+    await aiUsageModel.addImageUsage('u1', model, NaN);
+    await aiUsageModel.addImageUsage('u1', model, Infinity);
+    expect(await aiUsageModel.getDailyUsage('u1')).toBe(0);
+    const row = await db.executeSelectQuery(
+      'SELECT COUNT(*) AS n FROM AiUsage WHERE user_id = ?',
+      ['u1'],
+    );
+    expect(row!.n).toBe(0);
+  });
+
   test('tryReserve counts in-flight usage toward the limit', async () => {
     await aiUsageModel.addUsage('u1', 'test-model', DAILY_LIMIT - 10000, 0);
 

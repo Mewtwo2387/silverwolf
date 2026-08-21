@@ -101,9 +101,18 @@ export function usdCostForTokens(
     * CREDIT_BASE_USD_PER_MILLION) / 1_000_000;
 }
 
+/**
+ * Coerce an image count to a billable quantity: a finite positive integer, or
+ * 0 for anything else (NaN, Infinity, fractions, negatives). Billing boundaries
+ * must never carry a NaN into the credit windows.
+ */
+function billableImageCount(images: number): number {
+  return Number.isInteger(images) && images > 0 ? images : 0;
+}
+
 /** USD list price of `images` generations on `model` (0 for unpriced models). */
 export function usdCostForImages(model: string, images: number = 1): number {
-  return (MODEL_USD_PER_IMAGE[model] ?? 0) * Math.max(0, images);
+  return (MODEL_USD_PER_IMAGE[model] ?? 0) * billableImageCount(images);
 }
 
 /**

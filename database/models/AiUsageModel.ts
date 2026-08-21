@@ -71,7 +71,7 @@ class AiUsageModel {
    * surcharge.
    */
   async addImageUsage(userId: string, model: string, images: number = 1): Promise<void> {
-    if (!Number.isFinite(images) || images <= 0) return;
+    if (!Number.isInteger(images) || images <= 0) return;
     await this.db.user.getUser(userId);
 
     const credits = Math.round(creditsForImages(model, images));

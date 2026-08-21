@@ -45,7 +45,9 @@ the Imgen persona at it.
 
 `runImageGeneration` reserves those credits with `tryReserve` after taking its daily slot, releases
 in a `finally`, and charges via `db.aiUsage.addImageUsage` **only when an image actually shipped** —
-a failed generation releases both the slot and the reservation. `addImageUsage` logs zero tokens and
+a failed generation releases both the slot and the reservation. If that charge cannot be persisted
+the call **fails closed**: the image is withheld and the daily slot stays spent, so a broken ledger
+can't be farmed for unmetered images. `addImageUsage` logs zero tokens and
 the image's **true list cost** in `AiUsage.cost` (not the surcharged figure), so the audit ledger
 stays real money while the windows carry the 1.5x. At current prices one image is ~180k credits, so
 the credit budget — not the 5/day slot cap — is what actually bounds image generation.
