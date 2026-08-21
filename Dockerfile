@@ -1,5 +1,9 @@
 # --- STAGE 1: Build ---
-FROM oven/bun:1 AS builder
+# Pin the exact Bun version — do NOT float on `oven/bun:1`. That tag tracks the
+# latest 1.x, so it silently moved to 1.4.0 (a release with breaking changes:
+# cron now runs in local time, Node target 24->26, lockfile v2) and the next
+# deploy would have upgraded prod with no review. Bump this deliberately.
+FROM oven/bun:1.3.14 AS builder
 WORKDIR /app
 
 # 1. Install system-level build tools
@@ -39,7 +43,7 @@ RUN bun scripts/fetch-soundfont.ts
 
 # --- STAGE 2: Run ---
 # Use 'slim' (Debian) for a smaller final image that is still compatible with Stage 1
-FROM oven/bun:1-slim
+FROM oven/bun:1.3.14-slim
 WORKDIR /app
 
 # Install runtime libraries only
