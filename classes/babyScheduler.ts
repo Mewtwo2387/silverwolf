@@ -1,23 +1,35 @@
-import { log } from '../utils/log';
+import { log, logError } from '../utils/log';
 // Note: Bun automatically reads .env files
 import { getAmount } from '../utils/claim';
 
 class BabyScheduler {
   client: any;
-  private dailyJob: BunCronJob | null = null;
-  private tenMinuteJob: BunCronJob | null = null;
+  private dailyJob: Bun.CronJob | null = null;
+  private tenMinuteJob: Bun.CronJob | null = null;
 
   constructor(client: any) {
     this.client = client;
   }
 
   start(): void {
-    this.dailyJob = (Bun.cron as any)('0 0 * * *', async () => {
-      await this.dailyAutomations();
-    });
-    this.tenMinuteJob = (Bun.cron as any)('*/10 * * * *', async () => {
-      await this.tenMinuteAutomations();
-    });
+    // Handlers must not reject: Bun.cron matches setTimeout error semantics, so an
+    // unhandled rejection here takes the whole process down (we install an
+    // uncaughtException handler in utils/log, but no unhandledRejection one).
+    // Both automations touch the DB and Discord, either of which can throw.
+    this.dailyJob = Bun.cron('0 0 * * *', async () => {
+      try {
+        await this.dailyAutomations();
+      } catch (error) {
+        logError('Error during daily baby automations:', error);
+      }
+    }, { tz: 'UTC' });
+    this.tenMinuteJob = Bun.cron('*/10 * * * *', async () => {
+      try {
+        await this.tenMinuteAutomations();
+      } catch (error) {
+        logError('Error during ten-minute baby automations:', error);
+      }
+    }, { tz: 'UTC' });
   }
 
   stop(): void {

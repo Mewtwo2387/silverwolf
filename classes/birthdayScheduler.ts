@@ -6,8 +6,8 @@ import { getNextBirthdayInfo } from '../utils/birthdays';
 
 class BirthdayScheduler {
   client: any;
-  private hourlyJob: BunCronJob | null = null;
-  private dailyJob: BunCronJob | null = null;
+  private hourlyJob: Bun.CronJob | null = null;
+  private dailyJob: Bun.CronJob | null = null;
 
   constructor(client: any) {
     this.client = client;
@@ -15,7 +15,7 @@ class BirthdayScheduler {
 
   // Start the scheduler to run every hour
   start(): void {
-    this.hourlyJob = (Bun.cron as any)('0 * * * *', async () => { // * * * * * every minute for testing, change to '0 * * * *' for every hour
+    this.hourlyJob = Bun.cron('0 * * * *', async () => { // * * * * * every minute for testing, change to '0 * * * *' for every hour
       const now = new Date();
       const utcMonth = (now.getUTCMonth() + 1).toString().padStart(2, '0');
       const utcDay = now.getUTCDate().toString().padStart(2, '0');
@@ -63,13 +63,13 @@ class BirthdayScheduler {
       } catch (error) {
         logError('Error during birthday check:', error);
       }
-    });
+    }, { tz: 'UTC' });
 
-    // Daily reminder check at midnight UTC
-    // Note: Bun.cron does not support timezone options like node-cron did.
-    // The callback uses UTC date methods internally, so the logic is UTC-safe.
-    // The cron expression fires at system local time (UTC in Docker by default).
-    this.dailyJob = (Bun.cron as any)('0 0 * * *', async () => {
+    // Daily reminder check at midnight UTC. The handler reads the clock with
+    // getUTC* methods, so the schedule is pinned to UTC to match — without it
+    // Bun.cron fires on the host's local time, which is UTC in the container
+    // but not on a dev machine.
+    this.dailyJob = Bun.cron('0 0 * * *', async () => {
       const now = new Date();
       const currentYear = now.getUTCFullYear();
       log(`Running daily birthday reminder check for year ${currentYear}`);
@@ -117,7 +117,7 @@ class BirthdayScheduler {
       } catch (error) {
         logError('Error during daily reminder check:', error);
       }
-    });
+    }, { tz: 'UTC' });
   }
 
   stop(): void {

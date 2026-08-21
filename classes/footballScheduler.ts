@@ -29,7 +29,7 @@ import type { FootballMatchAnnouncementState } from '../database/models/Football
 
 class FootballScheduler {
   client: any;
-  private minuteJob: BunCronJob | null = null;
+  private minuteJob: Bun.CronJob | null = null;
   private isRunning = false;
 
   constructor(client: any) {
@@ -39,7 +39,7 @@ class FootballScheduler {
   start(): void {
     if (this.minuteJob) return;
 
-    this.minuteJob = (Bun.cron as any)('* * * * *', async () => {
+    this.minuteJob = Bun.cron('* * * * *', async () => {
       if (this.isRunning) return;
       this.isRunning = true;
       try {
@@ -47,7 +47,7 @@ class FootballScheduler {
       } finally {
         this.isRunning = false;
       }
-    });
+    }, { tz: 'UTC' });
   }
 
   stop(): void {
