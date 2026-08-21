@@ -33,6 +33,25 @@ Enforcement is `db.aiUsage.tryReserve(userId, estCredits)` → `release()` in `f
 in-memory in-flight reservation held for the whole generation so concurrent spam can't all pass the
 check before usage lands. **No dev bypass — everyone is metered.**
 
+## Image generation
+
+`generate_image` bills the **same credit windows** as chat, on top of its own
+`IMAGE_GEN_DAILY_LIMIT` burst cap (`utils/imageGen.ts`). Image models bill per image, not per token:
+`MODEL_USD_PER_IMAGE` in `utils/aiPricing.ts` holds the $/image list price, and
+`creditsForImages` converts it at the same $0.28/M = 1x base times
+`IMAGE_CREDIT_MULTIPLIER` (1.5x — images are the priciest per-call thing a user can trigger and the
+cheapest to spam). A model missing from that table generates **free** — add it there before pointing
+the Imgen persona at it.
+
+`runImageGeneration` reserves those credits with `tryReserve` after taking its daily slot, releases
+in a `finally`, and charges via `db.aiUsage.addImageUsage` **only when an image actually shipped** —
+a failed generation releases both the slot and the reservation. If that charge cannot be persisted
+the call **fails closed**: the image is withheld and the daily slot stays spent, so a broken ledger
+can't be farmed for unmetered images. `addImageUsage` logs zero tokens and
+the image's **true list cost** in `AiUsage.cost` (not the surcharged figure), so the audit ledger
+stays real money while the windows carry the 1.5x. At current prices one image is ~180k credits, so
+the credit budget — not the 5/day slot cap — is what actually bounds image generation.
+
 ## Content-safety moderation
 
 Off by default; `GlobalConfig.ai_moderation = 1` turns it on globally (`utils/aiModeration.ts`).

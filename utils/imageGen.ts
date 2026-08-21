@@ -1,4 +1,5 @@
 import type { OpenAI } from 'openai';
+import { creditsForImages } from './aiPricing';
 import { log, logError } from './log';
 
 export const IMAGE_GEN_TOOL_NAME = 'generate_image';
@@ -18,7 +19,8 @@ const TOOL_DESCRIPTION = 'Generate an image from a text prompt, or edit the sing
   + 'when the user explicitly asks you to generate, create, draw, or edit an image/picture — never for ordinary '
   + 'questions. The generated image is attached to your reply automatically; do not claim you cannot generate '
   + 'images, and do not write links or placeholders for it. '
-  + `Users are limited to ${IMAGE_GEN_DAILY_LIMIT} generations per 24 hours.`;
+  + `Users are limited to ${IMAGE_GEN_DAILY_LIMIT} generations per 24 hours, and each image also spends a large `
+  + 'share of their shared AI credit budget, so generate one image per request and never speculatively.';
 
 const USE_ATTACHED_DESCRIPTION = 'Set to true to use the image attached to the user\'s current message as the '
   + 'base for an edit/transformation (the prompt then describes the desired change). Only valid when the current '
@@ -168,51 +170,103 @@ export async function runImageGeneration(opts: {
     });
   };
 
-  log(`[imagegen] user ${ctx.userId} generating${useAttached ? ` (editing ${imageParts.length} attached image${imageParts.length === 1 ? '' : 's'})` : ''}: ${prompt.slice(0, 120)}`);
-
-  // For edits the request carries the source images as multimodal content
-  // parts alongside the instruction text (base64 data URLs, never persisted).
-  const userContent = useAttached
-    ? [{ type: 'text', text: prompt }, ...imageParts]
-    : prompt;
-
-  let dataUrl = '';
-  try {
-    const completion: any = await withTimeout(
-      openrouter.chat.completions.create({
-        model,
-        messages: [{ role: 'user', content: userContent }],
-        modalities,
-      } as any),
-      IMAGE_GEN_TIMEOUT_MS,
-      '[imagegen] generation',
-    );
-    dataUrl = completion?.choices?.[0]?.message?.images?.[0]?.image_url?.url ?? '';
-  } catch (err) {
-    logError('[imagegen] generation failed:', err);
-    await releaseQuota();
-    return { ok: false, error: 'Error: image generation failed. Tell the user to try again later.' };
+  // Image generation also draws on the shared AI credit budget (utils/aiPricing.ts):
+  // the per-day slot limit above only caps burst, while this is what makes an
+  // image cost as much as it actually costs. Reserved before the call and
+  // released in a finally; the real charge lands via addImageUsage on success.
+  const imageCredits = creditsForImages(model);
+  const aiUsage = ctx.db?.aiUsage;
+  if (aiUsage && imageCredits > 0) {
+    const gate = aiUsage.tryReserve(ctx.userId, imageCredits);
+    if (!gate.ok) {
+      await releaseQuota();
+      return {
+        ok: false,
+        error: `Error: this user has run out of ${gate.reason === 'weekly' ? 'weekly' : 'daily'} AI credits, and an `
+          + 'image costs a large share of that budget. Do NOT retry — tell them to try again after their limit resets.',
+      };
+    }
   }
-
-  const match = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/is.exec(dataUrl);
-  if (!match) {
-    logError(`[imagegen] unexpected response format (no base64 data URL); got: ${dataUrl.slice(0, 80)}`);
-    await releaseQuota();
-    return { ok: false, error: 'Error: the image model returned no image. Tell the user to try again later.' };
-  }
-
-  const ext = match[1].split('/')[1].replace('jpeg', 'jpg');
-  const buffer = Buffer.from(match[2], 'base64');
-  if (buffer.length === 0 || buffer.length > MAX_IMAGE_BYTES) {
-    await releaseQuota();
-    return { ok: false, error: 'Error: the generated image could not be attached (empty or too large).' };
-  }
-
-  return {
-    ok: true,
-    attachment: { attachment: buffer, name: `imgen-${Date.now()}.${ext}` },
-    resultText: `Image ${useAttached ? 'edited' : 'generated'} successfully from prompt "${prompt.slice(0, 200)}". `
-      + 'It is attached to your reply automatically — do not write a link, markdown image, or placeholder for it; '
-      + 'just describe it briefly.',
+  const releaseCredits = () => {
+    if (aiUsage && imageCredits > 0) aiUsage.release(ctx.userId, imageCredits);
   };
+
+  const attempt = async (): Promise<ImageGenResult> => {
+    // Prompt text is deliberately kept out of the persistent log — the quota row
+    // written by reserveGeneration already holds it, so repeating it here would
+    // only widen where user content lives.
+    log(`[imagegen] user ${ctx.userId} generating on ${model}${useAttached ? ` (editing ${imageParts.length} attached image${imageParts.length === 1 ? '' : 's'})` : ''}, prompt ${prompt.length} chars`);
+
+    // For edits the request carries the source images as multimodal content
+    // parts alongside the instruction text (base64 data URLs, never persisted).
+    const userContent = useAttached
+      ? [{ type: 'text', text: prompt }, ...imageParts]
+      : prompt;
+
+    let dataUrl = '';
+    try {
+      const completion: any = await withTimeout(
+        openrouter.chat.completions.create({
+          model,
+          messages: [{ role: 'user', content: userContent }],
+          modalities,
+        } as any),
+        IMAGE_GEN_TIMEOUT_MS,
+        '[imagegen] generation',
+      );
+      dataUrl = completion?.choices?.[0]?.message?.images?.[0]?.image_url?.url ?? '';
+    } catch (err) {
+      logError('[imagegen] generation failed:', err);
+      await releaseQuota();
+      return { ok: false, error: 'Error: image generation failed. Tell the user to try again later.' };
+    }
+
+    const match = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/is.exec(dataUrl);
+    if (!match) {
+      // Truncate at the base64 marker so provider error text stays debuggable
+      // without ever writing image bytes to the log.
+      const preview = dataUrl.slice(0, 80).replace(/(base64,).*/is, '$1...');
+      logError(`[imagegen] unexpected response format (no base64 data URL); ${dataUrl.length} chars, got: ${preview}`);
+      await releaseQuota();
+      return { ok: false, error: 'Error: the image model returned no image. Tell the user to try again later.' };
+    }
+
+    const ext = match[1].split('/')[1].replace('jpeg', 'jpg');
+    const buffer = Buffer.from(match[2], 'base64');
+    if (buffer.length === 0 || buffer.length > MAX_IMAGE_BYTES) {
+      await releaseQuota();
+      return { ok: false, error: 'Error: the generated image could not be attached (empty or too large).' };
+    }
+
+    return {
+      ok: true,
+      attachment: { attachment: buffer, name: `imgen-${Date.now()}.${ext}` },
+      resultText: `Image ${useAttached ? 'edited' : 'generated'} successfully from prompt "${prompt.slice(0, 200)}". `
+        + 'It is attached to your reply automatically — do not write a link, markdown image, or placeholder for it; '
+        + 'just describe it briefly.',
+    };
+  };
+
+  try {
+    const result = await attempt();
+    if (result.ok && aiUsage && imageCredits > 0) {
+      // Charged only for images that actually shipped — failures released the
+      // slot above and must not bill the user either. A charge that cannot be
+      // persisted fails closed: withhold the image rather than hand out an
+      // unmetered generation, and leave the daily slot spent so a broken ledger
+      // can't be farmed for free images.
+      try {
+        await aiUsage.addImageUsage(ctx.userId, model, 1);
+      } catch (err) {
+        logError('[imagegen] failed to record image credit usage:', err);
+        return {
+          ok: false,
+          error: 'Error: image generation is temporarily unavailable. Tell the user to try again later.',
+        };
+      }
+    }
+    return result;
+  } finally {
+    releaseCredits();
+  }
 }

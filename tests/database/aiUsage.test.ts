@@ -183,6 +183,51 @@ describe('AiUsageModel', () => {
     expect(row!.cost).toBeCloseTo(0.42, 5);
   });
 
+  test('addImageUsage charges image credits and logs the true USD cost', async () => {
+    await aiUsageModel.addImageUsage('u1', 'google/gemini-3.1-flash-lite-image', 1);
+    // $0.03363 at $0.28/M = 120107.14 credits, x1.5 surcharge = 180161 (rounded).
+    expect(await aiUsageModel.getDailyUsage('u1')).toBe(180161);
+    expect(await aiUsageModel.getWeeklyUsage('u1')).toBe(180161);
+
+    const row = await db.executeSelectQuery(
+      'SELECT tokens_prompt, tokens_completion, cost FROM AiUsage WHERE user_id = ?',
+      ['u1'],
+    );
+    expect(row!.tokensPrompt).toBe(0);
+    expect(row!.tokensCompletion).toBe(0);
+    expect(row!.cost).toBeCloseTo(0.03363, 6);
+  });
+
+  test('addImageUsage shares the window with token usage and blocks once spent', async () => {
+    await aiUsageModel.addUsage('u1', 'test-model', 60000, 0);
+    await aiUsageModel.addImageUsage('u1', 'google/gemini-3.1-flash-lite-image', 1);
+    expect(await aiUsageModel.getDailyUsage('u1')).toBe(240161);
+    expect(await aiUsageModel.isRateLimited('u1')).toBe(false);
+
+    // A second image no longer fits in what's left of the daily budget.
+    const gate = aiUsageModel.tryReserve('u1', 180161);
+    expect(gate.ok).toBe(false);
+    expect(gate.reason).toBe('daily');
+  });
+
+  test('addImageUsage ignores non-positive image counts', async () => {
+    await aiUsageModel.addImageUsage('u1', 'google/gemini-3.1-flash-lite-image', 0);
+    expect(await aiUsageModel.getDailyUsage('u1')).toBe(0);
+  });
+
+  test('addImageUsage ignores fractional and non-finite image counts', async () => {
+    const model = 'google/gemini-3.1-flash-lite-image';
+    await aiUsageModel.addImageUsage('u1', model, 1.5);
+    await aiUsageModel.addImageUsage('u1', model, NaN);
+    await aiUsageModel.addImageUsage('u1', model, Infinity);
+    expect(await aiUsageModel.getDailyUsage('u1')).toBe(0);
+    const row = await db.executeSelectQuery(
+      'SELECT COUNT(*) AS n FROM AiUsage WHERE user_id = ?',
+      ['u1'],
+    );
+    expect(row!.n).toBe(0);
+  });
+
   test('tryReserve counts in-flight usage toward the limit', async () => {
     await aiUsageModel.addUsage('u1', 'test-model', DAILY_LIMIT - 10000, 0);
 

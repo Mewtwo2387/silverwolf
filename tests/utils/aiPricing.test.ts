@@ -1,6 +1,8 @@
 import { describe, test, expect } from 'bun:test';
 import {
+  creditsForImages,
   creditsForTokens,
+  usdCostForImages,
   usdCostForTokens,
   CREDIT_BASE_USD_PER_MILLION,
 } from '../../utils/aiPricing';
@@ -45,5 +47,37 @@ describe('usdCostForTokens', () => {
   test('1x model: 1M tokens costs exactly the base rate', () => {
     expect(usdCostForTokens('unknown/model', 1_000_000, 0))
       .toBeCloseTo(CREDIT_BASE_USD_PER_MILLION, 10);
+  });
+});
+
+describe('image pricing', () => {
+  const IMAGE_MODEL = 'google/gemini-3.1-flash-lite-image';
+
+  test('Nano Banana 2 Lite bills its list price per image', () => {
+    expect(usdCostForImages(IMAGE_MODEL)).toBeCloseTo(0.03363, 10);
+    expect(usdCostForImages(IMAGE_MODEL, 3)).toBeCloseTo(0.10089, 10);
+  });
+
+  test('credits are the list price at the $0.28/M base, times the 1.5x surcharge', () => {
+    // 0.03363 / 0.00000028 = 120107.142... credits at 1x, x1.5 = 180160.71...
+    expect(creditsForImages(IMAGE_MODEL)).toBeCloseTo(180160.714, 3);
+    expect(creditsForImages(IMAGE_MODEL, 2)).toBeCloseTo(360321.4286, 3);
+  });
+
+  test('unpriced models generate free', () => {
+    expect(creditsForImages('some/unknown-image-model')).toBe(0);
+    expect(usdCostForImages('some/unknown-image-model')).toBe(0);
+  });
+
+  test('zero or negative image counts cost nothing', () => {
+    expect(creditsForImages(IMAGE_MODEL, 0)).toBe(0);
+    expect(creditsForImages(IMAGE_MODEL, -3)).toBe(0);
+  });
+
+  test('fractional and non-finite image counts cost nothing', () => {
+    [1.5, NaN, Infinity, -Infinity].forEach((count) => {
+      expect(usdCostForImages(IMAGE_MODEL, count)).toBe(0);
+      expect(creditsForImages(IMAGE_MODEL, count)).toBe(0);
+    });
   });
 });
