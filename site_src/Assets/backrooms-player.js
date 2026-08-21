@@ -42,6 +42,27 @@ const EYE_RATIO = 1.66 / MODEL_HEIGHT;
 
 const FADE = 0.18; // seconds to cross-fade between clips
 
+// This rig faces +Z (measured off the rest pose: foot_l sits at z = +0.13), so
+// facing a direction is atan2(x, z) with no sign flip. The camera looks down
+// -Z, which is why the idle case aims at player.forward rather than player.yaw
+// — mixing the two conventions is what had the body standing backwards.
+
+// How far the body is pushed back from the camera in first person. The camera
+// sits on the player's *centre line*, but eyes are at the front of a head, so
+// without this the lens is buried in the middle of the torso and looking down
+// shows shoulders and inside surfaces. Roughly half a head's depth.
+const BODY_SETBACK = 0.16;
+
+// Share of camera pitch each spine joint takes when looking up or down. Real
+// necks are not the only thing that bends; leaning the chest is what puts your
+// own torso where you expect it and keeps the shoulders out of frame. Sums to
+// well under 1 so the body leans rather than folds.
+const SPINE_BEND = [
+  ['spine_01', 0.16],
+  ['spine_02', 0.20],
+  ['spine_03', 0.24],
+];
+
 /**
  * Load and wire the player figure.
  *
@@ -61,7 +82,12 @@ export async function loadPlayerModel() {
   group.add(root);
 
   const skinned = [];
+  const spineBones = [];
   root.traverse((o) => {
+    if (o.isBone) {
+      const bend = SPINE_BEND.find(([name]) => name === o.name);
+      if (bend) spineBones.push([o, bend[1]]);
+    }
     if (o.isSkinnedMesh) {
       skinned.push(o);
       // The figure is lit by the same fixtures as the walls; frustum culling on
@@ -113,12 +139,16 @@ export async function loadPlayerModel() {
   // exact, costs nothing per frame, and cannot fight the animation.
   //
   // Both index buffers are kept and the mesh simply swaps between them.
-  const HEAD_BONE = 'Head';
+  // Head *and* neck. The neck stump is visible looking down and reads as a
+  // severed throat; cutting triangles (rather than scaling the bone, which
+  // drags co-weighted collar vertices into a funnel) removes it cleanly.
+  const HEAD_BONES = ['Head', 'neck_01'];
   const headless = new Map();
   for (const mesh of skinned) {
     const bones = mesh.skeleton?.bones || [];
-    const headIndex = bones.findIndex((b) => b.name === HEAD_BONE);
-    if (headIndex < 0) continue;
+    const headIdx = HEAD_BONES.map((n) => bones.findIndex((b) => b.name === n))
+      .filter((i) => i >= 0);
+    if (!headIdx.length) continue;
     const geo = mesh.geometry;
     const idx = geo.getIndex();
     const si = geo.getAttribute('skinIndex');
@@ -130,9 +160,12 @@ export async function loadPlayerModel() {
     for (let v = 0; v < si.count; v += 1) {
       let w = 0;
       for (let k = 0; k < 4; k += 1) {
-        if (si.getComponent(v, k) === headIndex) w += sw.getComponent(v, k);
+        if (headIdx.includes(si.getComponent(v, k))) w += sw.getComponent(v, k);
       }
-      isHead[v] = w > 0.5 ? 1 : 0;
+      // Deliberately low: a vertex only *part* owned by the neck still sits in
+      // front of the lens, and the collar looks better cut back than left as a
+      // ring of shards.
+      isHead[v] = w > 0.25 ? 1 : 0;
     }
     // Drop a triangle if any corner is head. Keeping partially-head triangles
     // would leave exactly the stretched shards this approach exists to avoid.
@@ -171,6 +204,9 @@ export async function loadPlayerModel() {
   // Body yaw is smoothed toward the direction of travel; see the note at the
   // top about why it does not follow the camera.
   let bodyYaw = 0;
+  // Non-null while pose() is holding the rig still for inspection.
+  let frozen = null;
+  let frozenTime = 0;
 
   /**
    * Drive the figure from the game's own player object.
@@ -181,39 +217,129 @@ export async function loadPlayerModel() {
    * ends up disagreeing with the physics.
    */
   function update(dt, player, state) {
-    // Feet on the ground, not eyes: the camera sits EYE_RATIO up the model.
-    group.position.set(player.pos.x, player.y, player.pos.z);
-
     const vx = player.vel.x;
     const vz = player.vel.z;
     const speed = Math.hypot(vx, vz);
+
+    // Where the body should face. Both branches feed atan2(x, z) because the
+    // rig faces +Z; the idle case uses the camera's own forward vector rather
+    // than player.yaw so the two -Z/+Z conventions never have to be reconciled
+    // by hand (which is how the body ended up facing backwards).
+    let want = bodyYaw;
+    let rate = 0;
     if (speed > 0.12) {
-      // atan2(x, z) — three.js yaw is about +Y with -Z forward.
-      const want = Math.atan2(vx, vz);
-      let d = want - bodyYaw;
-      while (d > Math.PI) d -= Math.PI * 2;
-      while (d < -Math.PI) d += Math.PI * 2;
-      bodyYaw += d * Math.min(1, dt * 12);
+      want = Math.atan2(vx, vz);
+      rate = dt * 12;
     } else if (firstPerson) {
       // Standing still in first person, square the body up with the camera so
       // looking down shows your own chest rather than your shoulder.
-      let d = player.yaw - bodyYaw;
+      want = Math.atan2(player.forward.x, player.forward.z);
+      rate = dt * 6;
+    }
+    if (rate > 0) {
+      let d = want - bodyYaw;
       while (d > Math.PI) d -= Math.PI * 2;
       while (d < -Math.PI) d += Math.PI * 2;
-      bodyYaw += d * Math.min(1, dt * 6);
+      bodyYaw += d * Math.min(1, rate);
     }
     group.rotation.y = bodyYaw;
 
-    if (state === 'death') play('death', { loop: false });
-    else if (state === 'swim') play(speed > 0.3 ? 'swim' : 'tread');
-    else if (state === 'air') play('jumpLoop');
-    else if (state === 'crouch') play(speed > 0.15 ? 'crouchWalk' : 'crouchIdle');
-    else if (speed > 3.4) play('sprint');
-    else if (speed > 1.9) play('jog');
-    else if (speed > 0.15) play('walk', { timeScale: Math.max(0.6, speed / 1.4) });
-    else play('idle');
+    // Feet on the ground, not eyes. In first person the body is also pushed
+    // back along its own facing, so the camera — which sits on the player's
+    // centre line — ends up at the front of the head instead of buried in the
+    // middle of the chest. See BODY_SETBACK.
+    const back = firstPerson ? BODY_SETBACK : 0;
+    group.position.set(
+      player.pos.x - Math.sin(bodyYaw) * back,
+      player.y,
+      player.pos.z - Math.cos(bodyYaw) * back,
+    );
 
-    mixer.update(dt);
+    if (!frozen) {
+      if (state === 'death') play('death', { loop: false });
+      else if (state === 'swim') play(speed > 0.3 ? 'swim' : 'tread');
+      else if (state === 'air') play('jumpLoop');
+      else if (state === 'crouch') play(speed > 0.15 ? 'crouchWalk' : 'crouchIdle');
+      else if (speed > 3.4) play('sprint');
+      else if (speed > 1.9) play('jog');
+      else if (speed > 0.15) play('walk', { timeScale: Math.max(0.6, speed / 1.4) });
+      else play('idle');
+    }
+
+    // setTime() rather than update(0) when frozen: applySpineBend() is
+    // cumulative and only safe because the mixer rewrites these bones from the
+    // clip every frame. update(0) does not guarantee that write, and the bend
+    // then winds the spine further on every frame until the body folds double.
+    restoreSpine();
+    if (frozen) mixer.setTime(frozenTime);
+    else mixer.update(dt);
+    // Must come after the mixer: the clips write these bones every frame, so a
+    // bend applied before would simply be overwritten.
+    applySpineBend(player.pitch);
+  }
+
+  // Scratch vector — the bend runs every frame and must not allocate.
+  const bendAxis = new THREE.Vector3();
+  // The un-bent pose of each spine bone, as the clip last left it.
+  const spineClean = spineBones.map(([bone]) => bone.quaternion.clone());
+
+  /**
+   * Lean the torso with the camera's pitch.
+   *
+   * Without this the body is a rigid post: looking down leaves the chest and
+   * shoulders exactly where they were, filling the lower half of the screen,
+   * and in third person the figure stares straight ahead while the camera is
+   * pointed at the floor. Spreading the pitch over three spine joints bends the
+   * whole upper body the way a real one does, which also carries the shoulders
+   * out of the downward view.
+   *
+   * The axis is derived in world space from the body's own yaw rather than
+   * assumed to be a bone's local X — UE-style rigs orient bones along their
+   * length, so the local axes are not the ones you would guess.
+   */
+  function applySpineBend(pitch) {
+    if (!spineBones.length) return;
+    // Snapshot the clip's own pose before bending. update() has already put the
+    // previous frame's clean pose back, so whether or not the mixer overwrote
+    // it, what we read here is un-bent — which is what stops the rotation
+    // below, which is cumulative, from winding the spine up frame after frame.
+    for (let i = 0; i < spineBones.length; i += 1) {
+      spineClean[i].copy(spineBones[i][0].quaternion);
+    }
+    // Body-right in world space, for a +Z-facing rig turned by bodyYaw.
+    bendAxis.set(Math.cos(bodyYaw), 0, -Math.sin(bodyYaw));
+    for (const [bone, share] of spineBones) {
+      bone.rotateOnWorldAxis(bendAxis, -pitch * share);
+    }
+  }
+
+  /** Put the clip's pose back, undoing the last frame's lean. Runs before the
+   *  mixer, so the mixer is free to overwrite it and nothing compounds. */
+  function restoreSpine() {
+    for (let i = 0; i < spineBones.length; i += 1) {
+      spineBones[i][0].quaternion.copy(spineClean[i]);
+    }
+  }
+
+
+  /**
+   * Freeze the rig on one clip at one time, for inspection. Returns false for
+   * an unknown clip. `pose(null)` hands control back to update().
+   */
+  function pose(clip, t = 0) {
+    if (clip === null) { frozen = null; return true; }
+    const action = actions.get(clip);
+    if (!action) return false;
+    for (const a of actions.values()) a.stop();
+    action.reset();
+    action.play();
+    action.paused = true;
+    action.time = t;
+    current = action;
+    frozen = action;
+    frozenTime = t;
+    mixer.update(0);
+    return true;
   }
 
   /** Where the camera sits on the model, for the third-person orbit to aim at. */
@@ -236,7 +362,7 @@ export async function loadPlayerModel() {
   }
 
   return {
-    group, play, update, setFirstPerson, eyeHeight, dispose, mixer,
+    group, play, update, setFirstPerson, eyeHeight, dispose, mixer, pose,
     get firstPerson() { return firstPerson; },
   };
 }

@@ -54,9 +54,15 @@ cloth = np.clip(hoodie + jeans + boots.astype(float), 0, 1) * COV
 # --- albedo --------------------------------------------------------------
 col = np.asarray(Image.open(f"{BASE}/T_Superhero_Male_Dark.png").convert("RGB"), dtype=np.float32)
 
-JEANS = np.array([46, 52, 66], np.float32)
-HOODIE = np.array([62, 64, 60], np.float32)
-BOOTS = np.array([32, 31, 34], np.float32)
+# Values matter more than hues here. Level 0 is dim and monochrome-yellow, and
+# the first pass used ~60/255 for both garments: under that light the top and
+# the trousers collapsed to the same near-black shape and the figure read as
+# unclothed. These are lifted well clear of black and, more importantly, split
+# across value (pale top, mid trousers, dark boots) so the waistline is legible
+# even when the colour is being crushed by a sodium-yellow key light.
+JEANS = np.array([88, 98, 124], np.float32)
+HOODIE = np.array([166, 168, 158], np.float32)
+BOOTS = np.array([44, 42, 46], np.float32)
 
 # Cheap fabric grain: fine noise for weave, broad noise for wear and fading.
 fine = rng.normal(0, 1, (SIZE, SIZE)).astype(np.float32)
@@ -76,12 +82,12 @@ out = np.clip(out, 0, 255)
 
 # Waistband and cuffs: a thin darker band reads as a seam and stops the two
 # garments dissolving into each other where they meet.
-for band, width in ((WAIST, 0.022), (ANKLE + 0.05, 0.016), (NECK, 0.014)):
+for band, width in ((WAIST, 0.026), (ANKLE + 0.05, 0.018), (NECK, 0.016)):
     b = (np.abs(Y - band) < width) & (cloth > 0.5)
-    out[b] *= 0.72
+    out[b] *= 0.58
 # Sleeve cuffs run along x, not y.
-cuff = (np.abs(np.abs(X) - WRIST) < 0.016) & (cloth > 0.5)
-out[cuff] *= 0.72
+cuff = (np.abs(np.abs(X) - WRIST) < 0.018) & (cloth > 0.5)
+out[cuff] *= 0.58
 
 Image.fromarray(out.astype(np.uint8)).save("body_col.png")
 

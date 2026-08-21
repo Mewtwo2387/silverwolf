@@ -654,7 +654,7 @@ import {
     const s = settings.sensitivity * 0.0022;
     player.yaw -= e.movementX * s;
     player.pitch -= e.movementY * s * (settings.invert ? -1 : 1);
-    player.pitch = clamp(player.pitch, -Math.PI / 2 + 0.02, Math.PI / 2 - 0.02);
+    player.pitch = clampPitch(player.pitch);
   });
 
   document.addEventListener('pointerlockchange', () => {
@@ -1251,6 +1251,20 @@ import {
     }
   }
 
+  /**
+   * Clamp look pitch.
+   *
+   * Straight down is fine with no body in the way, but once you have shoulders
+   * the last few degrees are spent looking at the top of your own trapezius,
+   * which reads as a bug rather than as a body. Stopping at ~66 degrees keeps
+   * chest, hands and legs reachable and the shoulders out of frame. Without a
+   * body loaded the old near-vertical limit stands.
+   */
+  function clampPitch(p) {
+    const down = playerModel && !thirdPerson ? -1.15 : -Math.PI / 2 + 0.02;
+    return clamp(p, down, Math.PI / 2 - 0.02);
+  }
+
   // The player's own body. Loaded once, lives for the whole session, and is
   // simply absent if the fetch fails — see backrooms-player.js.
   let playerModel = null;
@@ -1725,6 +1739,21 @@ import {
       get renderer() { return renderer; },
       get player() { return player; },
       get entities() { return director?.entities ?? []; },
+      get body() { return playerModel; },
+      /** Toggle the third-person view from a script, as KeyV does by hand. */
+      setThirdPerson(on) {
+        thirdPerson = !!on;
+        if (playerModel) playerModel.setFirstPerson(!thirdPerson);
+        return thirdPerson;
+      },
+      /**
+       * Freeze the body mid-clip so a pose can be photographed from several
+       * angles without it moving between shots. `clip` is a name from
+       * PLAYER_STATES, `t` a time in seconds into it.
+       */
+      poseBody(clip, t = 0) {
+        return playerModel ? playerModel.pose(clip, t) : false;
+      },
       get state() {
         return {
           phase: game.phase,
@@ -1841,7 +1870,7 @@ import {
       toExit() { $('br-debug').querySelector('[data-dbg="exit"]').click(); },
       look(yaw, pitch = 0) {
         player.yaw = yaw;
-        player.pitch = pitch;
+        player.pitch = clampPitch(pitch);
       },
       /** Walk the shortest route to the exit, one cell per call. */
       stepToExit() {
