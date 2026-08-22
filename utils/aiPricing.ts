@@ -23,8 +23,8 @@ interface ModelMultipliers {
 // Multipliers per live OpenRouter pricing ($0.28/M = 1x). Models not listed here
 // bill at 1x/1x (identical to the old raw-token accounting).
 const MODEL_MULTIPLIERS: Record<string, ModelMultipliers> = {
-  // $0.14/M in, $0.28/M out
-  'deepseek/deepseek-v4-flash-0731': { input: 0.5, output: 1 },
+  // $0.22/M in, $0.66/M out
+  'deepseek/deepseek-v4-flash-vision-exp': { input: 0.79, output: 2.36 },
   // $0.14/M in, $0.28/M out
   'xiaomi/mimo-v2.5': { input: 0.5, output: 1 },
   // $2/M in, $6/M out

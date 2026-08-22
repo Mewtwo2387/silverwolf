@@ -58,7 +58,7 @@ const CONTEXT_LIMITS: Record<string, number> = {
   // OpenRouter models
   // Calibration further narrows the effective budget based on real usage.
   'nvidia/nemotron-3-ultra-550b-a55b:free': 1_000_000,
-  'deepseek/deepseek-v4-flash-0731': 1_000_000,
+  'deepseek/deepseek-v4-flash-vision-exp': 1_000_000,
   'xiaomi/mimo-v2-flash:nitro': 256_000,
   // 1M on the pinned Xiaomi endpoint; media (base64 parts) is not counted by
   // the tokenizer, so leave the standard reserve headroom to absorb it.

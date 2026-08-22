@@ -76,7 +76,7 @@ class AiView extends Command {
       const allSessions = await this.client.db.aiChat.getUserDiscordSessions(userId);
 
       // Search matches the session title, persona name, invoke trigger
-      // (e.g. "DS"), configured model id (e.g. "deepseek/deepseek-v4-flash-0731"),
+      // (e.g. "DS"), configured model id (e.g. "deepseek/deepseek-v4-flash-vision-exp"),
       // or the numeric session id.
       const sessions = search
         ? allSessions.filter((s: any) => [
