@@ -163,9 +163,9 @@ describe('AiUsageModel', () => {
   });
 
   test('meters credit-priced models by multiplier, not raw tokens', async () => {
-    // deepseek-v4-flash-vision: 0.79x input, 2.36x output ($0.22/M in, $0.66/M out)
+    // deepseek-v4-flash-vision: 1.58x input, 4.72x output (peak $0.44/M, $1.32/M)
     await aiUsageModel.addUsage('u1', 'deepseek/deepseek-v4-flash-vision-exp', 100000, 50000);
-    expect(await aiUsageModel.getDailyUsage('u1')).toBe(197000); // 79k + 118k credits
+    expect(await aiUsageModel.getDailyUsage('u1')).toBe(394000); // 158k + 236k credits
 
     // Unlisted models keep the old 1x/1x accounting
     await aiUsageModel.addUsage('u2', 'some-unknown-model', 100000, 50000);
@@ -179,8 +179,8 @@ describe('AiUsageModel', () => {
   test('stores the derived USD cost on the audit row', async () => {
     await aiUsageModel.addUsage('u1', 'deepseek/deepseek-v4-flash-vision-exp', 1_000_000, 1_000_000);
     const row = await db.executeSelectQuery('SELECT cost FROM AiUsage WHERE user_id = ?', ['u1']);
-    // 0.79M + 2.36M = 3.15M credits × $0.28/M
-    expect(row!.cost).toBeCloseTo(0.882, 5);
+    // 1.58M + 4.72M = 6.3M credits × $0.28/M
+    expect(row!.cost).toBeCloseTo(1.764, 5);
   });
 
   test('addImageUsage charges image credits and logs the true USD cost', async () => {
